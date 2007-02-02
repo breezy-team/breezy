@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -42,11 +42,13 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
+        'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
         'bzrlib.tests.branch_implementations.test_locking',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
+        'bzrlib.tests.branch_implementations.test_push',
         'bzrlib.tests.branch_implementations.test_update',
         ]
     adapter = BranchTestProviderAdapter(

@@ -194,7 +194,7 @@ Environment
                 E-Mail address of the user. Overrides default user config.
 
 **EMAIL**
-                E-Mail address of the user. Overriddes default user config.
+                E-Mail address of the user. Overrides default user config.
 
 **BZR_EDITOR**
                 Editor for editing commit messages

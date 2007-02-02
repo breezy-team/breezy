@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,13 @@ displays no output.
 
 import sys
 
-import bzrlib.progress
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    progress,
+    )
+""")
+
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 
 
@@ -65,7 +71,7 @@ class UIFactory(object):
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
-        When the bar has been finished with, it should be released bu calling
+        When the bar has been finished with, it should be released by calling
         bar.finished().
         """
         raise NotImplementedError(self.nested_progress_bar)
@@ -118,15 +124,15 @@ class SilentUIFactory(CLIUIFactory):
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
-        return bzrlib.progress.DummyProgress()
+        return progress.DummyProgress()
 
     def get_password(self, prompt='', **kwargs):
         return None
 
     def nested_progress_bar(self):
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
-                klass=bzrlib.progress.DummyProgress)
+            self._progress_bar_stack = progress.ProgressBarStack(
+                klass=progress.DummyProgress)
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):

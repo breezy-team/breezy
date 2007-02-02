@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,13 +35,14 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import (InstallFailed,
                            )
-from bzrlib.trace import mutter
 from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
         zero_eight,
         )
+from bzrlib.trace import mutter
+import bzrlib.ui
 
 
 # TODO: Avoid repeatedly opening weaves so many times.

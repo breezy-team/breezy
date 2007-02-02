@@ -4,8 +4,8 @@ A Branch represents a series of commits and merges carried out by a user.
 
 Make a temporary directory for these tests:
 
-   >>> from bzrlib.osutils import mkdtemp
-   >>> test_dir = mkdtemp(prefix='bzrlib_doc_api_branch_txt_')
+   >>> from bzrlib import osutils
+   >>> test_dir = osutils.mkdtemp(prefix='bzrlib_doc_api_branch_txt_')
 
 Branches are created by BzrDir's:
 

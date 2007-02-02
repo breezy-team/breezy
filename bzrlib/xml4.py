@@ -1,3 +1,5 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -12,16 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
-
-
-
-
 
 
 class _Serializer_v4(Serializer):
