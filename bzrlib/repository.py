@@ -1190,19 +1190,6 @@ class RepositoryFormat(object):
             raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
-    @deprecated_method(symbol_versioning.zero_fourteen)
-    def set_default_format(klass, format):
-        klass._set_default_format(format)
-
-    @classmethod
-    def _set_default_format(klass, format):
-        """Set the default format for new Repository creation.
-
-        The format must already be registered.
-        """
-        format_registry.default_key = format.get_format_string()
-
-    @classmethod
     def register_format(klass, format):
         format_registry.register(format.get_format_string(), format)
 
@@ -1213,7 +1200,8 @@ class RepositoryFormat(object):
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return format_registry.get(format_registry.default_key)
+        from bzrlib import bzrdir
+        return bzrdir.format_registry.make_bzrdir('default').repository_format
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -1819,12 +1807,9 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
-# KEEP in sync with bzrdir.format_registry default, which controls the overall
-# default control directory format
-_default_format = RepositoryFormatKnit1()
-RepositoryFormat.register_format(_default_format)
+# KEEP in sync with bzrdir.format_registry default
+RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.register_format(RepositoryFormatKnit2())
-RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
