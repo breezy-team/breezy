@@ -22,21 +22,35 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
-class SmartServerRequestHasRevision(SmartServerRequest):
+class SmartServerRepositoryRequest(SmartServerRequest):
+    """Common base class for Repository requests."""
 
-    def do(self, path, revision_id):
-        """Return ok if a specific revision is in the repository at path.
-
+    def do(self, path, *args):
+        """Execute a repository request.
+        
         The repository must be at the exact path - no searching is done.
 
+        The actual logic is delegated to self.do_repository_request.
+
         :param path: The path for the repository.
-        :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if the revision is
-            present.
+        :return: A smart server from self.do_repository_request().
         """
         transport = self._backing_transport.clone(path)
         bzrdir = BzrDir.open_from_transport(transport)
         repository = bzrdir.open_repository()
+        return self.do_repository_request(repository, *args)
+
+
+class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return ok if a specific revision is in the repository at path.
+
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to lookup.
+        :return: A smart server response of ('ok', ) if the revision is
+            present.
+        """
         decoded_revision_id = revision_id.decode('utf8')
         if repository.has_revision(decoded_revision_id):
             return SmartServerResponse(('ok', ))

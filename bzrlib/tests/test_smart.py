@@ -76,42 +76,6 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath('subdir/deeper')))
 
 
-class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
-
-    def test_no_repository(self):
-        """NoRepositoryPresent is raised when there is no repository."""
-        # we test this using a shared repository above the named path,
-        # thus checking the right search logic is used.
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRequestHasRevision(backing)
-        self.make_repository('.', shared=True)
-        self.make_bzrdir('subdir')
-        self.assertRaises(errors.NoRepositoryPresent,
-            request.execute, backing.local_abspath('subdir'), 'revid')
-
-    def test_missing_revision(self):
-        """For a missing revision, ('no', ) is returned."""
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRequestHasRevision(backing)
-        self.make_repository('.')
-        self.assertEqual(SmartServerResponse(('no', )),
-            request.execute(backing.local_abspath(''), 'revid'))
-
-    def test_present_revision(self):
-        """For a present revision, ('ok', ) is returned."""
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRequestHasRevision(backing)
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        r1 = tree.commit('a commit', rev_id=u'\xc8abc')
-        tree.unlock()
-        self.assertTrue(tree.branch.repository.has_revision(u'\xc8abc'))
-        self.assertEqual(SmartServerResponse(('ok', )),
-            request.execute(backing.local_abspath(''),
-                u'\xc8abc'.encode('utf8')))
-
-
 class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithTransport):
 
     def test_empty_dir(self):
@@ -243,6 +207,48 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
         self.assertEqual(
             SmartServerResponse(('ok', '2', u'\xc8'.encode('utf8'))),
             request.execute(backing.local_abspath('')))
+
+
+class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
+
+    def test_no_repository(self):
+        """Raise NoRepositoryPresent when there is a bzrdir and no repo."""
+        # we test this using a shared repository above the named path,
+        # thus checking the right search logic is used - that is, that
+        # its the exact path being looked at and the server is not
+        # searching.
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        self.make_repository('.', shared=True)
+        self.make_bzrdir('subdir')
+        self.assertRaises(errors.NoRepositoryPresent,
+            request.execute, backing.local_abspath('subdir'), 'revid')
+
+
+class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
+
+    def test_missing_revision(self):
+        """For a missing revision, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute(backing.local_abspath(''), 'revid'))
+
+    def test_present_revision(self):
+        """For a present revision, ('ok', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id=u'\xc8abc')
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision(u'\xc8abc'))
+        self.assertEqual(SmartServerResponse(('ok', )),
+            request.execute(backing.local_abspath(''),
+                u'\xc8abc'.encode('utf8')))
+
 
 
 class TestHandlers(tests.TestCase):
