@@ -35,6 +35,7 @@ import sys
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import imp
+import re
 import types
 import zipimport
 
@@ -176,12 +177,16 @@ def load_from_dir(d):
     
     for name in plugin_names:
         try:
-            exec "import bzrlib.plugins.%s" % name
+            exec "import bzrlib.plugins.%s" % name in {}
         except KeyboardInterrupt:
             raise
         except Exception, e:
             ## import pdb; pdb.set_trace()
-            warning('Unable to load plugin %r from %r' % (name, d))
+            if re.search('\.|-| ', name):
+                warning('Unable to load plugin %r from %r: '
+                    'It is not a valid python module name.' % (name, d))
+            else:
+                warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
 
 
