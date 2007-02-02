@@ -176,15 +176,15 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    history = branch.revision_history()
+    branch_revno, branch_last_revision = branch.last_revision_info()
     try:
         tree_last_id = working.get_parent_ids()[0]
     except IndexError:
         tree_last_id = None
 
-    if len(history) and tree_last_id != history[-1]:
+    if branch_revno and tree_last_id != branch_last_revision:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)
-        missing_count = len(history) - tree_last_revno
+        missing_count = branch_revno - tree_last_revno
         print
         print 'Working tree is out of date: missing %d revision%s.' % (
             missing_count, plural(missing_count))
