@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+from StringIO import StringIO
+
 from bzrlib import (
-    delta,
+    delta as _mod_delta,
     inventory,
     tests,
     )
@@ -45,7 +48,7 @@ class TestReportChanges(tests.TestCase):
         if old_path is not None:
             inv.add(inventory.InventoryFile(file_id, old_path,
                                             inv.root.file_id))
-        reporter = delta.ChangeReporter(inv, result_line)
+        reporter = _mod_delta.ChangeReporter(inv, result_line)
         reporter.report(file_id, path, versioned_change, renamed, modified,
                          exe_change, kind)
         self.assertEqualDiff(expected, result[0])
@@ -100,8 +103,8 @@ class TestReportChanges(tests.TestCase):
                            modified='unchanged',
                            exe_change=False):
         reporter = InstrumentedReporter()
-        delta.report_changes([(file_id, path, content_change, versioned,
-                               parent_id, name, kind, executable)], reporter)
+        _mod_delta.report_changes([(file_id, path, content_change, versioned,
+            parent_id, name, kind, executable)], reporter)
         output = reporter.calls[0]
         self.assertEqual(file_id, output[0])
         self.assertEqual(path, output[1])
@@ -150,3 +153,56 @@ class TestReportChanges(tests.TestCase):
                                 exe_change=True, versioned=(True, False),
                                 content_change=True, name=('old', 'new'),
                                 executable=(False, True))
+
+
+class TestChangesFrom (tests.TestCaseWithTransport):
+
+    def show_string(self, delta, *args,  **kwargs):
+        to_file = StringIO()
+        delta.show(to_file, *args, **kwargs)
+        return to_file.getvalue()
+
+    def test_kind_change(self):
+        """Doing a status when a file has changed kind should work"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['filename'])
+        tree.add('filename', 'file-id')
+        tree.commit('added filename')
+        os.unlink('filename')
+        self.build_tree(['filename/'])
+        delta = tree.changes_from(tree.basis_tree())
+        self.assertEqual([('filename', 'file-id', 'file', 'directory')],
+                         delta.kind_changed)
+        self.assertEqual([], delta.added)
+        self.assertEqual([], delta.removed)
+        self.assertEqual([], delta.renamed)
+        self.assertEqual([], delta.modified)
+        self.assertEqual([], delta.unchanged)
+        self.assertTrue(delta.has_changed())
+        self.assertTrue(delta.touches_file_id('file-id'))
+        self.assertEqual('kind changed:\n  filename (file => directory)\n',
+                         self.show_string(delta))
+        other_delta = _mod_delta.TreeDelta()
+        self.assertNotEqual(other_delta, delta)
+        other_delta.kind_changed = [('filename', 'file-id', 'file',
+                                     'symlink')]
+        self.assertNotEqual(other_delta, delta)
+        other_delta.kind_changed = [('filename', 'file-id', 'file',
+                                     'directory')]
+        self.assertEqual(other_delta, delta)
+        self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
+            " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
+            " modified=[], unchanged=[])", repr(delta))
+        self.assertEqual('K  filename (file => directory) file-id\n',
+                         self.show_string(delta, show_ids=True,
+                         short_status=True))
+
+        tree.rename_one('filename', 'dirname')
+        delta = tree.changes_from(tree.basis_tree())
+        self.assertEqual([], delta.kind_changed)
+        # This loses the fact that kind changed, remembering it as a
+        # modification
+        self.assertEqual([('filename', 'dirname', 'file-id', 'directory',
+                           True, False)], delta.renamed)
+        self.assertTrue(delta.has_changed())
+        self.assertTrue(delta.touches_file_id('file-id'))
