@@ -25,6 +25,7 @@ also see this file.
 from stat import S_ISDIR
 from StringIO import StringIO
 
+from bzrlib import symbol_versioning
 import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -33,20 +34,31 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
+from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
-from bzrlib import upgrade, workingtree
+from bzrlib import (
+    repository,
+    upgrade,
+    workingtree,
+    )
 
 
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
-        private_default = repository._default_format.__class__
+        old_default = bzrdir.format_registry.get('default')
+        private_default = old_default().repository_format.__class__
         old_format = repository.RepositoryFormat.get_default_format()
         self.assertTrue(isinstance(old_format, private_default))
-        repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
+        def make_sample_bzrdir():
+            my_bzrdir = bzrdir.BzrDirMetaFormat1()
+            my_bzrdir.repository_format = SampleRepositoryFormat()
+            return my_bzrdir
+        bzrdir.format_registry.remove('default')
+        bzrdir.format_registry.register('sample', make_sample_bzrdir, '')
+        bzrdir.format_registry.set_default('sample')
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
@@ -55,8 +67,10 @@ class TestDefaultFormat(TestCase):
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
-            repository.RepositoryFormat.set_default_format(old_format)
-        self.assertEqual(old_format, repository.RepositoryFormat.get_default_format())
+            bzrdir.format_registry.remove('default')
+            bzrdir.format_registry.register('default', old_default, '')
+        self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
+                              old_format.__class__)
 
 
 class SampleRepositoryFormat(repository.RepositoryFormat):

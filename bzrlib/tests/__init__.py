@@ -569,6 +569,12 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        # prevent hooks affecting tests
+        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self.addCleanup(self._restoreHooks)
+        # this list of hooks must be kept in sync with the defaults
+        # in branch.py
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -661,9 +667,19 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertIs(self, left, right):
+    def assertIs(self, left, right, message=None):
         if not (left is right):
-            raise AssertionError("%r is not %r." % (left, right))
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is not %r." % (left, right))
+
+    def assertIsNot(self, left, right, message=None):
+        if (left is right):
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -824,6 +840,9 @@ class TestCase(unittest.TestCase):
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
+
+    def _restoreHooks(self):
+        bzrlib.branch.Branch.hooks = self._preserved_hooks
 
     def tearDown(self):
         self._runCleanups()
@@ -1262,14 +1281,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
-    def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
-
-    def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
-        
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
         t = get_transport(self.get_url())
@@ -1413,7 +1424,9 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
-            if format is None:
+            if isinstance(format, basestring):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            elif format is None:
                 format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
@@ -1529,16 +1542,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 elif line_endings == 'native':
                     end = os.linesep
                 else:
-                    raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
+                    raise errors.BzrError(
+                        'Invalid line ending request %r' % line_endings)
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                # Technically 'put()' is the right command. However, put
-                # uses an AtomicFile, which requires an extra rename into place
-                # As long as the files didn't exist in the past, append() will
-                # do the same thing as put()
-                # On jam's machine, make_kernel_like_tree is:
-                #   put:    4.5-7.5s (averaging 6s)
-                #   append: 2.9-4.5s
-                #   put_non_atomic: 2.9-4.5s
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
@@ -1546,9 +1552,17 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
+
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path),path+" exists")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -1663,9 +1677,22 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
+def sort_suite_by_re(suite, pattern):
+    first = []
+    second = []
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        if filter_re.search(test.id()):
+            first.append(test)
+        else:
+            second.append(test)
+    return TestUtil.TestSuite(first + second)
+
+
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None, bench_history=None):
+              transport=None, lsprof_timed=None, bench_history=None,
+              matching_tests_first=None):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -1678,7 +1705,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
-        suite = filter_suite_by_re(suite, pattern)
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern)
+        else:
+            suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -1688,7 +1718,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              transport=None,
              test_suite_factory=None,
              lsprof_timed=None,
-             bench_history=None):
+             bench_history=None,
+             matching_tests_first=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -1710,7 +1741,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
-                     bench_history=bench_history)
+                     bench_history=bench_history,
+                     matching_tests_first=matching_tests_first)
     finally:
         default_transport = old_transport
 
@@ -1737,6 +1769,7 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
@@ -1769,6 +1802,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',

@@ -154,7 +154,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         if tf.tell() == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+            tf.write("bug reports to bazaar@lists.canonical.com\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
         datefmt = r'%a %H:%M:%S'
@@ -309,4 +309,4 @@ def report_bug(exc_info, err_file):
                         sys.platform)
     print >>err_file, 'arguments: %r' % sys.argv
     print >>err_file
-    print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
+    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"

@@ -173,3 +173,16 @@ class TestMerge(TestCaseWithTransport):
             conflicts.DeletingParent('Not deleting', 'b', 'b-id'),
             conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
             tree_a.conflicts())
+
+    def test_merge_with_missing(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file')
+        tree_a.commit('commit base')
+        base_tree = tree_a.basis_tree()
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree_contents([('tree_a/file', 'content_2')])
+        tree_a.commit('commit other')
+        other_tree = tree_a.basis_tree()
+        os.unlink('tree_b/file')
+        merge_inner(tree_b.branch, other_tree, base_tree, this_tree=tree_b)

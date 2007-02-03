@@ -17,7 +17,7 @@ import bzrlib
 META_INFO = {'name':         'bzr',
              'version':      bzrlib.__version__,
              'author':       'Canonical Ltd',
-             'author_email': 'bazaar-ng@lists.ubuntu.com',
+             'author_email': 'bazaar@lists.canonical.com',
              'url':          'http://www.bazaar-vcs.org/',
              'description':  'Friendly distributed version control system',
              'license':      'GNU GPL v2',
@@ -188,12 +188,24 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2006",
+                                     copyright = "(c) Canonical Ltd, 2005-2007",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
+
+    additional_packages =  []
+    if sys.version.startswith('2.4'):
+        # adding elementtree package
+        additional_packages.append('elementtree')
+    elif sys.version.startswith('2.5'):
+        additional_packages.append('xml.etree')
+    else:
+        import warnings
+        warnings.warn('Unknown Python version.\n'
+                      'Please check setup.py script for compatibility.')
+
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
-                                           ['elementtree'],
+                                           additional_packages,
                                "excludes": ["Tkinter", "medusa"],
                                "dist_dir": "win32_bzr.exe",
                               },
