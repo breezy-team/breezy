@@ -30,12 +30,32 @@ IN DEVELOPMENT
       push, pull, commit, and so on. Developed for use with the branchrss
       plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
 
+    * New method ``Branch.push()`` which should be used when pushing from a
+      branch as it makes performance and policy decisions to match the UI
+      level command ``push``. (Robert Collins).
+
     * New Branch.last_revision_info method, this is being done to allow
       optimization of requests for both the number of revisions and the last
       revision of a branch with smartservers and potentially future branch
       formats. (Wouter van Heyst, Robert Collins)
 
+    * Allow 'import bzrlib.plugins.NAME' to work when the plugin NAME has not
+      yet been loaded by load_plugins(). This allows plugins to depend on each
+      other for code reuse without requiring users to perform file-renaming
+      gymnastics. (Robert Collins)
+
+    * New Repository method 'gather_stats' for statistic data collection.
+      This is expected to grow to cover a number of related uses mainly
+      related to bzr info. (Robert Collins)
+
   BUGFIXES:
+
+    * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+      branch, rather than the last changed revision of the file.
+      (John Arbash Meinel, #82158)
+
+    * Lock operations no longer hang if they encounter a permission problem.
+      (Aaron Bentley)
 
   TESTING:
 

@@ -1688,6 +1688,7 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+    internal_error = True
 
     def __init__(self, transport):
         self.transport = transport

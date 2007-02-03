@@ -243,6 +243,45 @@ class Repository(object):
         return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
+    def gather_stats(self, revid, committers=None):
+        """Gather statistics from a revision id.
+
+        :param revid: The revision id to gather statistics from.
+        :param committers: Optional parameter controlling whether to grab
+            a count of committers.
+        :return: A dictionary of statistics. Currently this contains:
+            committers: The number of committers if requested.
+            firstrev: A tuple with timestamp, timezone for the penultimate left
+                most ancestor of revid, if revid is not the NULL_REVISION.
+            latestrev: A tuple with timestamp, timezone for revid, if revid is
+                not the NULL_REVISION.
+        """
+        result = {}
+        if committers:
+            result['committers'] = 0
+        if revid == _mod_revision.NULL_REVISION:
+            return result
+        all_committers = set()
+        revisions = self.get_ancestry(revid)
+        # pop the leading None
+        revisions.pop(0)
+        first_revision = None
+        if not committers:
+            # ignore the revisions in the middle - just grab first and last
+            revisions = revisions[0], revisions[-1]
+        for revision in self.get_revisions(revisions):
+            if not first_revision:
+                first_revision = revision
+            if committers:
+                all_committers.add(revision.committer)
+        last_revision = revision
+        if committers:
+            result['committers'] = len(all_committers)
+        result['firstrev'] = first_revision.timestamp, first_revision.timezone
+        result['latestrev'] = last_revision.timestamp, last_revision.timezone
+        return result
+
+    @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
         """Return the revision ids that other has that this does not.
         
@@ -1190,19 +1229,6 @@ class RepositoryFormat(object):
             raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
-    @deprecated_method(symbol_versioning.zero_fourteen)
-    def set_default_format(klass, format):
-        klass._set_default_format(format)
-
-    @classmethod
-    def _set_default_format(klass, format):
-        """Set the default format for new Repository creation.
-
-        The format must already be registered.
-        """
-        format_registry.default_key = format.get_format_string()
-
-    @classmethod
     def register_format(klass, format):
         format_registry.register(format.get_format_string(), format)
 
@@ -1213,7 +1239,8 @@ class RepositoryFormat(object):
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return format_registry.get(format_registry.default_key)
+        from bzrlib import bzrdir
+        return bzrdir.format_registry.make_bzrdir('default').repository_format
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -1821,12 +1848,9 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
-# KEEP in sync with bzrdir.format_registry default, which controls the overall
-# default control directory format
-_default_format = RepositoryFormatKnit1()
-RepositoryFormat.register_format(_default_format)
+# KEEP in sync with bzrdir.format_registry default
+RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.register_format(RepositoryFormatKnit2())
-RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]

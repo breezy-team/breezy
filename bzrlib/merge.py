@@ -141,7 +141,8 @@ class Merger(object):
 
     def check_basis(self, check_clean, require_commits=True):
         if self.this_basis is None and require_commits is True:
-            raise BzrCommandError("This branch has no commits")
+            raise BzrCommandError("This branch has no commits."
+                                  " (perhaps you would prefer 'bzr pull')")
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:

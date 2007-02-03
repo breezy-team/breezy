@@ -101,6 +101,17 @@ h
 class TestAnnotate(tests.TestCaseWithTransport):
 
     def create_merged_trees(self):
+        """create 2 trees with merges between them.
+
+        rev-1 --+
+         |      |
+        rev-2  rev-1_1_1
+         |      |
+         +------+
+         |
+        rev-3
+        """
+
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/a', 'first\n')])
         tree1.add(['a'], ['a-id'])
@@ -132,11 +143,33 @@ class TestAnnotate(tests.TestCaseWithTransport):
         return tree1, tree2
 
     def create_deeply_merged_trees(self):
+        """Create some trees with a more complex merge history.
+
+        rev-1 --+
+         |      |
+        rev-2  rev-1_1_1 --+
+         |      |          |
+         +------+          |
+         |      |          |
+        rev-3  rev-1_1_2  rev-1_1_1_1_1 --+
+         |      |          |              |
+         +------+          |              |
+         |                 |              |
+        rev-4             rev-1_1_1_1_2  rev-1_1_1_1_1_1_1
+         |                 |              |
+         +-----------------+              |
+         |                                |
+        rev-5                             |
+         |                                |
+         +--------------------------------+
+         |
+        rev-6
+        """
         tree1, tree2 = self.create_merged_trees()
 
         tree3 = tree2.bzrdir.clone('tree3').open_workingtree()
 
-        tree2.commit('noop', rev_id='rev-1.1.2')
+        tree2.commit('noop', rev_id='rev-1_1_2')
         self.assertEqual(0, tree1.merge_from_branch(tree2.branch))
         tree1.commit('noop merge', rev_id='rev-4')
 
@@ -147,7 +180,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         tree4 = tree3.bzrdir.clone('tree4').open_workingtree()
 
-        tree3.commit('noop', rev_id='rev-1.1.1.1.2',
+        tree3.commit('noop', rev_id='rev-1_1_1_1_2',
                      committer='jerry@foo.com',
                      timestamp=1166046004.00, timezone=0)
         self.assertEqual(0, tree1.merge_from_branch(tree3.branch))
@@ -221,7 +254,25 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              '1.1.1.1.1.1.1 george@foo.com 20061213 | fifth\n'
                              '1.1.1.1.1.1.1 george@foo.com 20061213 | sixth\n',
                              sio.getvalue())
-    
+
+    def test_annotate_uses_branch_context(self):
+        """Dotted revnos should use the Branch context.
+
+        When annotating a non-mainline revision, the annotation should still
+        use dotted revnos from the mainline.
+        """
+        tree1 = self.create_deeply_merged_trees()
+
+        sio = StringIO()
+        annotate.annotate_file(tree1.branch, 'rev-1_1_1_1_1_1_1', 'a-id',
+                               to_file=sio, verbose=False, full=False)
+        self.assertEqualDiff('1            joe@foo | first\n'
+                             '1.1.1        barry@f | third\n'
+                             '1.1.1.1.1    jerry@f | fourth\n'
+                             '1.1.1.1.1.1> george@ | fifth\n'
+                             '                     | sixth\n',
+                             sio.getvalue())
+
     def test_annotate_show_ids(self):
         tree1 = self.create_deeply_merged_trees()
 
