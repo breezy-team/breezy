@@ -84,6 +84,49 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             return SmartServerResponse(('no', ))
 
 
+class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revid, committers):
+        """Return the result of repository.gather_stats().
+
+        :param repository: The repository to query in.
+        :param revid: utf8 encoded rev id or an empty string to indicate None
+        :param committers: 'yes' or 'no'.
+
+        :return: A SmartServerResponse ('ok',), a encoded body looking like
+              committers: 1
+              firstrev: 1234.230 0
+              latestrev: 345.700 3600
+              revisions: 2
+              size:45
+
+              But containing only fields returned by the gather_stats() call
+        """
+        if revid == '':
+            decoded_revision_id = None
+        else:
+            decoded_revision_id = revid.decode('utf8')
+        if committers == 'yes':
+            decoded_committers = True
+        else:
+            decoded_committers = None
+        stats = repository.gather_stats(decoded_revision_id, decoded_committers)
+
+        body = ''
+        if stats.has_key('committers'):
+            body += 'committers: %d\n' % stats['committers']
+        if stats.has_key('firstrev'):
+            body += 'firstrev: %.3f %d\n' % stats['firstrev']
+        if stats.has_key('latestrev'):
+             body += 'latestrev: %.3f %d\n' % stats['latestrev']
+        if stats.has_key('revisions'):
+            body += 'revisions: %d\n' % stats['revisions']
+        if stats.has_key('size'):
+            body += 'size: %d\n' % stats['size']
+
+        return SmartServerResponse(('ok', ), body)
+
+
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository):

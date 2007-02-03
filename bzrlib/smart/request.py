@@ -271,6 +271,9 @@ request_handlers.register_lazy(
     'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy('Repository.gather_stats',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryGatherStats')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(
