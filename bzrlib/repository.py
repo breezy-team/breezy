@@ -243,42 +243,53 @@ class Repository(object):
         return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
-    def gather_stats(self, revid, committers=None):
+    def gather_stats(self, revid=None, committers=None):
         """Gather statistics from a revision id.
 
-        :param revid: The revision id to gather statistics from.
+        :param revid: The revision id to gather statistics from, if None, then
+            no revision specific statistics are gathered.
         :param committers: Optional parameter controlling whether to grab
-            a count of committers.
+            a count of committers from the revision specific statistics.
         :return: A dictionary of statistics. Currently this contains:
             committers: The number of committers if requested.
             firstrev: A tuple with timestamp, timezone for the penultimate left
                 most ancestor of revid, if revid is not the NULL_REVISION.
             latestrev: A tuple with timestamp, timezone for revid, if revid is
                 not the NULL_REVISION.
+            revisions: The total revision count in the repository.
+            size: An estimate disk size of the repository in bytes.
         """
         result = {}
-        if committers:
+        if revid and committers:
             result['committers'] = 0
-        if revid == _mod_revision.NULL_REVISION:
-            return result
-        all_committers = set()
-        revisions = self.get_ancestry(revid)
-        # pop the leading None
-        revisions.pop(0)
-        first_revision = None
-        if not committers:
-            # ignore the revisions in the middle - just grab first and last
-            revisions = revisions[0], revisions[-1]
-        for revision in self.get_revisions(revisions):
-            if not first_revision:
-                first_revision = revision
+        if revid and revid != _mod_revision.NULL_REVISION:
             if committers:
-                all_committers.add(revision.committer)
-        last_revision = revision
-        if committers:
-            result['committers'] = len(all_committers)
-        result['firstrev'] = first_revision.timestamp, first_revision.timezone
-        result['latestrev'] = last_revision.timestamp, last_revision.timezone
+                all_committers = set()
+            revisions = self.get_ancestry(revid)
+            # pop the leading None
+            revisions.pop(0)
+            first_revision = None
+            if not committers:
+                # ignore the revisions in the middle - just grab first and last
+                revisions = revisions[0], revisions[-1]
+            for revision in self.get_revisions(revisions):
+                if not first_revision:
+                    first_revision = revision
+                if committers:
+                    all_committers.add(revision.committer)
+            last_revision = revision
+            if committers:
+                result['committers'] = len(all_committers)
+            result['firstrev'] = (first_revision.timestamp,
+                first_revision.timezone)
+            result['latestrev'] = (last_revision.timestamp,
+                last_revision.timezone)
+
+        # now gather global repository information
+        if self.bzrdir.root_transport.listable():
+            c, t = self._revision_store.total_size(self.get_transaction())
+            result['revisions'] = c
+            result['size'] = t
         return result
 
     @needs_read_lock

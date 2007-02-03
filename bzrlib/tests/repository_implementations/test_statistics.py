@@ -21,6 +21,16 @@ from bzrlib.tests.repository_implementations.test_repository import TestCaseWith
 
 class TestGatherStats(TestCaseWithRepository):
 
+    def check_stats_has_size(self, stats):
+        """Check that stats has a reasonable size entry."""
+        # actual disk size varies from implementation to implementation,
+        # but they should all provide it on their native transport.
+        self.assertTrue('size' in stats)
+        # and it should be a number
+        self.assertIsInstance(stats['size'], (int, long))
+        # and now remove it to make other assertions work without variation.
+        del stats['size']
+
     def test_gather_stats(self):
         """First smoke test covering the refactoring into the Repository api."""
         tree = self.make_branch_and_memory_tree('.')
@@ -36,15 +46,48 @@ class TestGatherStats(TestCaseWithRepository):
             timestamp=1172491381, timezone=0)
         tree.unlock()
         # now, in the same repository, asking for stats with/without the 
-        # committers flag generates the same date information
+        # committers flag generates the same date information.
         stats = tree.branch.repository.gather_stats(rev2, committers=False)
+        self.check_stats_has_size(stats)
         self.assertEqual({
             'firstrev': (1170491381.0, 0),
-            'latestrev': (1171491381.0, 0)},
+            'latestrev': (1171491381.0, 0),
+            'revisions': 3,
+            },
             stats)
         stats = tree.branch.repository.gather_stats(rev2, committers=True)
+        self.check_stats_has_size(stats)
         self.assertEqual({
             'committers': 2,
             'firstrev': (1170491381.0, 0),
-            'latestrev': (1171491381.0, 0)},
+            'latestrev': (1171491381.0, 0),
+            'revisions': 3,
+            },
+            stats)
+
+    def test_gather_stats_norevid_gets_size(self):
+        """Without a revid, repository size is still gathered."""
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        # put something in the repository, because zero-size is borink.
+        rev1 = tree.commit('first post')
+        tree.unlock()
+        # now ask for global repository stats.
+        stats = tree.branch.repository.gather_stats()
+        self.check_stats_has_size(stats)
+        self.assertEqual({
+            'revisions': 1
+            },
+            stats)
+
+    def test_gather_stats_empty_repo(self):
+        """An empty repository still has size and revisions."""
+        tree = self.make_branch_and_memory_tree('.')
+        # now ask for global repository stats.
+        stats = tree.branch.repository.gather_stats()
+        self.check_stats_has_size(stats)
+        self.assertEqual({
+            'revisions': 0
+            },
             stats)

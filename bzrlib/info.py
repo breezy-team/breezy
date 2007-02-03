@@ -242,6 +242,7 @@ def _show_branch_stats(branch, verbose):
         timestamp, timezone = stats['latestrev']
         print '  latest revision: %s' % osutils.format_date(timestamp,
             timezone)
+    return stats
 
 
 def _show_repository_info(repository):
@@ -251,14 +252,16 @@ def _show_repository_info(repository):
         print 'Create working tree for new branches inside the repository.'
 
 
-def _show_repository_stats(repository):
+def _show_repository_stats(stats):
     """Show statistics about a repository."""
-    if repository.bzrdir.root_transport.listable():
+    if 'revisions' in stats or 'size' in stats:
         print
         print 'Revision store:'
-        c, t = repository._revision_store.total_size(repository.get_transaction())
-        print '  %8d revision%s' % (c, plural(c))
-        print '  %8d KiB' % (t/1024)
+    if 'revisions' in stats:
+        revisions = stats['revisions']
+        print '  %8d revision%s' % (revisions, plural(revisions))
+    if 'size' in stats:
+        print '  %8d KiB' % (stats['size']/1024)
 
 
 @deprecated_function(zero_eight)
@@ -319,8 +322,8 @@ def show_tree_info(working, verbose):
     _show_missing_revisions_branch(branch)
     _show_missing_revisions_working(working)
     _show_working_stats(working)
-    _show_branch_stats(branch, verbose)
-    _show_repository_stats(repository)
+    stats = _show_branch_stats(branch, verbose)
+    _show_repository_stats(stats)
 
 
 def show_branch_info(branch, verbose):
@@ -333,8 +336,8 @@ def show_branch_info(branch, verbose):
     _show_format_info(control, repository, branch)
     _show_locking_info(repository, branch)
     _show_missing_revisions_branch(branch)
-    _show_branch_stats(branch, verbose)
-    _show_repository_stats(repository)
+    stats = _show_branch_stats(branch, verbose)
+    _show_repository_stats(stats)
 
 
 def show_repository_info(repository, verbose):
@@ -345,4 +348,5 @@ def show_repository_info(repository, verbose):
     _show_format_info(control, repository)
     _show_locking_info(repository)
     _show_repository_info(repository)
-    _show_repository_stats(repository)
+    stats = repository.gather_stats()
+    _show_repository_stats(stats)
