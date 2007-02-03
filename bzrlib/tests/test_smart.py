@@ -264,6 +264,55 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
             request.execute, backing.local_abspath('subdir'))
 
 
+class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
+
+    def test_none_argument(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevisionGraph(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        tree.unlock()
+
+        # the lines of revision_id->revision_parent_list has no guaranteed
+        # order coming out of a dict, so sort both our test and response
+        lines = sorted([' '.join([r2, r1]), r1])
+        response = request.execute(backing.local_abspath(''), '')
+        response.body = '\n'.join(sorted(response.body.split('\n')))
+
+        self.assertEqual(SmartServerResponse(('ok', ),
+            '\n'.join(lines).encode('utf8')),
+            response)
+
+    def test_specific_revision_argument(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevisionGraph(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit', rev_id=u'\xc9')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        tree.unlock()
+
+        self.assertEqual(SmartServerResponse(('ok', ),
+            u'\xc9'.encode('utf8')),
+            request.execute(backing.local_abspath(''), u'\xc9'.encode('utf8')))
+    
+    def test_no_such_revision(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevisionGraph(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        tree.unlock()
+
+        self.assertEqual(SmartServerResponse(
+            ('nosuchrevision', 'missingrevision', )),
+            request.execute(backing.local_abspath(''), 'missingrevision'))
+
 class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
 
     def test_missing_revision(self):
@@ -331,6 +380,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_revision_graph'),
+            smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)

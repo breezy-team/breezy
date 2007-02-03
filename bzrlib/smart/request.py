@@ -272,6 +272,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
 request_handlers.register_lazy(
+    'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
+request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')

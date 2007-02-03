@@ -23,6 +23,7 @@ from urlparse import urlparse
 from bzrlib import branch, errors, repository
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
+from bzrlib.errors import NoSuchRevision
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.urlutils import unescape
@@ -195,6 +196,30 @@ class RemoteRepository(object):
         else:
             self._client = _client
         self._format = RemoteRepositoryFormat()
+
+    def get_revision_graph(self, revision_id=None):
+        """See Repository.get_revision_graph()."""
+        if revision_id is None:
+            revision_id = ''
+        elif revision_id == NULL_REVISION:
+            return {}
+
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call2('Repository.get_revision_graph', path, revision_id.encode('utf8'))
+        assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
+        if response[0][0] == 'ok':
+            coded = response[1].read_body_bytes()
+            lines = coded.decode('utf8').split('\n')
+            revision_graph = {}
+            # FIXME
+            for line in lines:
+                d = list(line.split())
+                revision_graph[d[0]] = d[1:]
+                
+            return revision_graph
+        else:
+            assert response[1] != ''
+            raise NoSuchRevision(self, revision_id)
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""

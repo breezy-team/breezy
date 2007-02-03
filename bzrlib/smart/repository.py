@@ -41,6 +41,32 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         return self.do_repository_request(repository, *args)
 
 
+class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
+    
+    def do_repository_request(self, repository, revision_id):
+        """Return the result of repository.get_revision_graph(revision_id).
+        
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to get a graph from.
+        :return: A smart server response where the body contains an utf8
+            encoded flattened list of the revision graph.
+        """
+        decoded_revision_id = revision_id.decode('utf8')
+        if not decoded_revision_id:
+            decoded_revision_id = None
+
+        lines = []
+        try:
+            revision_graph = repository.get_revision_graph(decoded_revision_id)
+        except errors.NoSuchRevision:
+            return SmartServerResponse(('nosuchrevision', revision_id))
+
+        for revision, parents in revision_graph.items():
+            lines.append(' '.join([revision,] + parents))
+
+        return SmartServerResponse(('ok', ), '\n'.join(lines).encode('utf8'))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):

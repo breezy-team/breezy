@@ -26,6 +26,7 @@ from cStringIO import StringIO
 from bzrlib import bzrdir, remote, tests
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.errors import NoSuchRevision
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBzrDir,
@@ -179,7 +180,7 @@ class TestBranchControlGetBranchConf(tests.TestCase):
         self.assertEqual('config file body', result.read())
 
 
-class TestRepositoryIsShared(tests.TestCase):
+class TestRemoteRepository(tests.TestCase):
 
     def setup_fake_client_and_repository(self, responses, transport_path):
         """Create the fake client and repository for testing with."""
@@ -191,6 +192,72 @@ class TestRepositoryIsShared(tests.TestCase):
         bzrdir = RemoteBzrDir(transport, _client=False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         return repo, client
+
+
+class TestRepositoryGetRevisionGraph(TestRemoteRepository):
+    
+    def test_null_revision(self):
+        # a null revision has the predictable result {}, we should have no wire
+        # traffic when calling it with this argument
+        responses = [(('notused', ), '')]
+        transport_path = 'empty'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.get_revision_graph(NULL_REVISION)
+        self.assertEqual([], client._calls)
+        self.assertEqual({}, result)
+
+    def test_none_revision(self):
+        # with none we want the entire graph
+        r1 = u'\u0e33'
+        r2 = u'\u0dab'
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = '\n'.join(lines).encode('utf8')
+
+        responses = [(('ok', ), encoded_body)]
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.get_revision_graph()
+        self.assertEqual(
+            [('call2', 'Repository.get_revision_graph', ('///sinhala/', ''))],
+            client._calls)
+        self.assertEqual({r1: [], r2: [r1]}, result)
+
+    def test_specific_revision(self):
+        # with a specific revision we want the graph for that
+        # with none we want the entire graph
+        r11 = u'\u0e33'
+        r12 = u'\xc9'
+        r2 = u'\u0dab'
+        lines = [' '.join([r2, r11, r12]), r11, r12]
+        encoded_body = '\n'.join(lines).encode('utf8')
+
+        responses = [(('ok', ), encoded_body)]
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.get_revision_graph(r2)
+        self.assertEqual(
+            [('call2', 'Repository.get_revision_graph', ('///sinhala/', r2.encode('utf8')))],
+            client._calls)
+        self.assertEqual({r11: [], r12: [], r2: [r11, r12], }, result)
+
+    def test_no_such_revision(self):
+        revid = '123'
+        responses = [(('nosuchrevision', revid), '')]
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        # also check that the right revision is reported in the error
+        self.assertRaises(NoSuchRevision,
+            repo.get_revision_graph, revid)
+        self.assertEqual(
+            [('call2', 'Repository.get_revision_graph', ('///sinhala/', revid))],
+            client._calls)
+
+        
+class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
         # ('yes', ) for Repository.is_shared -> 'True'.
