@@ -2851,7 +2851,7 @@ class cmd_unbind(Command):
     """Unbind the current branch from its master branch.
 
     After unbinding, the local branch is considered independent.
-    All subsequent commits will be local. This turns a heavy checkout in to
+    All subsequent commits will be local. This turns a heavy checkout into
     a normal branch.
 
     See "help checkouts" for more information on checkouts.
