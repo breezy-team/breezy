@@ -203,6 +203,11 @@ class RemoteRepository(object):
         assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'ok'
 
+    def gather_stats(self, revid, committers=None):
+        """See Repository.gather_stats()."""
+        # SMART_SERVER_MERGE_BLOCKER
+        return self._real_repository.gather_stats(revid, committers)
+
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
         return False
