@@ -231,6 +231,19 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+    def test_setting_vfs_transport(self):
+        """The vfs_transport_factory can be set optionally."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        formats = [("c", "C")]
+        adapter = RepositoryTestProviderAdapter(None, None, formats,
+            vfs_transport_factory="vfs")
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(1, len(tests))
+        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
+
 
 class TestInterRepositoryProviderAdapter(TestCase):
     """A group of tests that test the InterRepository test adapter."""

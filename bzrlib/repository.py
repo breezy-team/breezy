@@ -2252,9 +2252,11 @@ class RepositoryTestProviderAdapter(object):
     to make it easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
+        self._vfs_transport_factory = vfs_transport_factory
         self._formats = formats
     
     def adapt(self, test):
@@ -2263,6 +2265,8 @@ class RepositoryTestProviderAdapter(object):
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
+            if self._vfs_transport_factory:
+                new_test.vfs_transport_factory = self._vfs_transport_factory
             new_test.bzrdir_format = bzrdir_format
             new_test.repository_format = repository_format
             def make_new_test_id():
