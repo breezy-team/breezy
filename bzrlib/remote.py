@@ -92,7 +92,8 @@ class RemoteBzrDir(BzrDir):
                 # This branch accessed through the smart server, so wrap the
                 # file-level objects.
                 real_repository = real_branch.repository
-                remote_repository = RemoteRepository(self, real_repository)
+                assert isinstance(real_repository.bzrdir, RemoteBzrDir)
+                remote_repository = RemoteRepository(real_repository.bzrdir, real_repository)
                 return RemoteBranch(self, remote_repository, real_branch)
             else:
                 # otherwise just create a proxy for the branch.
@@ -202,12 +203,34 @@ class RemoteRepository(object):
         assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'ok'
 
+    def get_physical_lock_status(self):
+        """See Repository.get_physical_lock_status()."""
+        return False
+
     def is_shared(self):
         """See Repository.is_shared()."""
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.is_shared', path)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def lock_read(self):
+        # wrong eventually - want a local lock cache context
+        return self._real_repository.lock_read()
+
+    def lock_write(self):
+        # definately wrong: want to check if there is a real repo
+        # and not thunk through if not
+        return self._real_repository.lock_write()
+
+    def unlock(self):
+        # should free cache context.
+        return self._real_repository.unlock()
+
+    def break_lock(self):
+        # should hand off to the network - or better yet, we should not
+        # allow stale network locks ?
+        return self._real_repository.break_lock()
 
 
 class RemoteBranchLockableFiles(object):
@@ -235,6 +258,9 @@ class RemoteBranchLockableFiles(object):
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+
+    def get_format_description(self):
+        return 'Remote BZR Branch'
 
     def open(self, a_bzrdir):
         assert isinstance(a_bzrdir, RemoteBzrDir)
@@ -271,6 +297,11 @@ class RemoteBranch(branch.Branch):
         self._format = RemoteBranchFormat()
         self.base = self.bzrdir.root_transport.base
         self.control_files = RemoteBranchLockableFiles(self.bzrdir, self._client)
+
+    def get_physical_lock_status(self):
+        """See Branch.get_physical_lock_status()."""
+        # should be an API call to the server, as branches must be lockable.
+        return self._real_branch.get_physical_lock_status()
 
     def lock_read(self):
         return self._real_branch.lock_read()
