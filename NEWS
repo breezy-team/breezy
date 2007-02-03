@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Support for OS Windows 98. Also .bzr.log on any windows system
+      saved in My Documents folder. (Alexander Belchenko)
+
     * ``bzr mv`` enhanced to support already moved files.
       In the past the mv command would have failed if the source file doesn't
       exist. In this situation ``bzr mv`` would now detect that the file has

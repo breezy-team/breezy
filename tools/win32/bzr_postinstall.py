@@ -50,12 +50,26 @@ OPTIONS:
 
 # Windows version
 _major,_minor,_build,_platform,_text = sys.getwindowsversion()
-if _platform == 0:
-    raise Exception('This platform does not supported!')
-elif _platform == 1:
-    winver = 'Windows 98'
-else:
+# from MSDN:
+# dwPlatformId
+#   The operating system platform.
+#   This member can be one of the following values.
+#   ==========================  ======================================
+#   Value                       Meaning
+#   --------------------------  --------------------------------------
+#   VER_PLATFORM_WIN32_NT       The operating system is Windows Vista,
+#   2                           Windows Server "Longhorn",
+#                               Windows Server 2003, Windows XP,
+#                               Windows 2000, or Windows NT.
+#
+#   VER_PLATFORM_WIN32_WINDOWS  The operating system is Windows Me,
+#   1                           Windows 98, or Windows 95.
+#   ==========================  ======================================
+if _platform == 2:
     winver = 'Windows NT'
+else:
+    # don't care about real Windows name, just to force safe operations
+    winver = 'Windows 98'
 
 
 ##
