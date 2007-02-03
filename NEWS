@@ -44,6 +44,11 @@ IN DEVELOPMENT
       other for code reuse without requiring users to perform file-renaming
       gymnastics. (Robert Collins)
 
+    * Allow a start message to be passed to the edit_commit_message function.
+      This will be placed in the message offered to the user for editing above
+      the separator. It allows a template commit message to be used more
+      easily. (James Westby)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the

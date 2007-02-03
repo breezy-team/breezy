@@ -80,7 +80,8 @@ DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
     { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
 
 
-def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
+                        start_message=None):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -90,6 +91,13 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
         Text to be displayed at bottom of message for
         the user's reference; currently similar to
         'bzr status'.
+
+    ignoreline:
+        The separator to use above the infotext.
+
+    start_message:
+        The text to place above the separator, if any. This will not be
+        removed from the message after the user has edited it.
     """
     import tempfile
 
@@ -97,14 +105,24 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
+        havefile = False
+        if start_message is not None and start_message != "":
+            havefile = True
+            msgfile = file(msgfilename, "w")
+            msgfile.write("%s\n" % start_message.encode(
+                                     bzrlib.user_encoding, 'replace'))
         if infotext is not None and infotext != "":
             hasinfo = True
-            msgfile = file(msgfilename, "w")
+            if not havefile:
+              msgfile = file(msgfilename, "w")
+              havefile = True
             msgfile.write("\n\n%s\n\n%s" % (ignoreline,
                 infotext.encode(bzrlib.user_encoding, 'replace')))
-            msgfile.close()
         else:
             hasinfo = False
+
+        if havefile:
+          msgfile.close()
 
         if not _run_editor(msgfilename):
             return None

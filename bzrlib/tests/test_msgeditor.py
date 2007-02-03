@@ -120,6 +120,11 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(u'\u1234'))
 
+        mutter('edit_commit_message with starting message')
+        self.assertEqual('test message from fed\nstart message\n',
+                         bzrlib.msgeditor.edit_commit_message('',
+                                              start_message='start message\n'))
+
     def test_deleted_commit_message(self):
         working_tree = self.make_uncommitted_tree()
 
