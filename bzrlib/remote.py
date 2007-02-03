@@ -92,8 +92,8 @@ class RemoteBzrDir(BzrDir):
                 # This branch accessed through the smart server, so wrap the
                 # file-level objects.
                 real_repository = real_branch.repository
-                assert isinstance(real_repository.bzrdir, RemoteBzrDir)
-                remote_repository = RemoteRepository(real_repository.bzrdir, real_repository)
+                remote_repository = self.find_repository()
+                remote_repository._real_repository = real_repository
                 return RemoteBranch(self, remote_repository, real_branch)
             else:
                 # otherwise just create a proxy for the branch.
