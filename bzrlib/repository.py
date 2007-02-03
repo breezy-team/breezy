@@ -243,6 +243,45 @@ class Repository(object):
         return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
+    def gather_stats(self, revid, committers=None):
+        """Gather statistics from a revision id.
+
+        :param revid: The revision id to gather statistics from.
+        :param committers: Optional parameter controlling whether to grab
+            a count of committers.
+        :return: A dictionary of statistics. Currently this contains:
+            committers: The number of committers if requested.
+            firstrev: A tuple with timestamp, timezone for the penultimate left
+                most ancestor of revid, if revid is not the NULL_REVISION.
+            latestrev: A tuple with timestamp, timezone for revid, if revid is
+                not the NULL_REVISION.
+        """
+        result = {}
+        if committers:
+            result['committers'] = 0
+        if revid == _mod_revision.NULL_REVISION:
+            return result
+        all_committers = set()
+        revisions = self.get_ancestry(revid)
+        # pop the leading None
+        revisions.pop(0)
+        first_revision = None
+        if not committers:
+            # ignore the revisions in the middle - just grab first and last
+            revisions = revisions[0], revisions[-1]
+        for revision in self.get_revisions(revisions):
+            if not first_revision:
+                first_revision = revision
+            if committers:
+                all_committers.add(revision.committer)
+        last_revision = revision
+        if committers:
+            result['committers'] = len(all_committers)
+        result['firstrev'] = first_revision.timestamp, first_revision.timezone
+        result['latestrev'] = last_revision.timestamp, last_revision.timezone
+        return result
+
+    @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
         """Return the revision ids that other has that this does not.
         

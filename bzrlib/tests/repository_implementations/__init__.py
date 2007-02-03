@@ -48,6 +48,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
+        'bzrlib.tests.repository_implementations.test_statistics',
         ]
     all_formats = [v for (k, v) in repository.format_registry.iteritems()]
     all_formats.extend(_legacy_formats)

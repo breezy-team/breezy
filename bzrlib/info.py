@@ -27,7 +27,7 @@ from bzrlib import (
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-from bzrlib.symbol_versioning import (deprecated_function, 
+from bzrlib.symbol_versioning import (deprecated_function,
         zero_eight)
 
 
@@ -225,40 +225,23 @@ def _show_working_stats(working):
 
 def _show_branch_stats(branch, verbose):
     """Show statistics about a branch."""
-    repository = branch.repository
-    history = branch.revision_history()
-
+    revno, head = branch.last_revision_info()
     print
     print 'Branch history:'
-    revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
+    stats = branch.repository.gather_stats(head, committers=verbose)
     if verbose:
-        committers = {}
-        for rev in history:
-            committers[repository.get_revision(rev).committer] = True
-        print '  %8d committer%s' % (len(committers), plural(len(committers)))
-    if revno > 0:
-        firstrev = repository.get_revision(history[0])
-        age = int((time.time() - firstrev.timestamp) / 3600 / 24)
+        committers = stats['committers']
+        print '  %8d committer%s' % (committers, plural(committers))
+    if revno:
+        timestamp, timezone = stats['firstrev']
+        age = int((time.time() - timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
-        print '   first revision: %s' % osutils.format_date(firstrev.timestamp,
-                                                            firstrev.timezone)
-
-        lastrev = repository.get_revision(history[-1])
-        print '  latest revision: %s' % osutils.format_date(lastrev.timestamp,
-                                                            lastrev.timezone)
-
-#     print
-#     print 'Text store:'
-#     c, t = branch.text_store.total_size()
-#     print '  %8d file texts' % c
-#     print '  %8d KiB' % (t/1024)
-
-#     print
-#     print 'Inventory store:'
-#     c, t = branch.inventory_store.total_size()
-#     print '  %8d inventories' % c
-#     print '  %8d KiB' % (t/1024)
+        print '   first revision: %s' % osutils.format_date(timestamp,
+            timezone)
+        timestamp, timezone = stats['latestrev']
+        print '  latest revision: %s' % osutils.format_date(timestamp,
+            timezone)
 
 
 def _show_repository_info(repository):
