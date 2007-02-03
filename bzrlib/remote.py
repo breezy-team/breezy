@@ -258,7 +258,8 @@ class RemoteBranchLockableFiles(object):
         assert path == 'branch.conf'
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.get_config_file', path)
-        assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
+        assert response[0][0] == 'ok', \
+            'unexpected response code %s' % (response[0],)
         return StringIO(response[1].read_body_bytes())
 
 
