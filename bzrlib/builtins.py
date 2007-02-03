@@ -3028,7 +3028,16 @@ class cmd_serve(Command):
         else:
             raise errors.BzrCommandError(
                 "bzr serve requires one of --inet or --port")
-        smart_server.serve()
+        # for the duration of this server, no UI output is permitted.
+        # note that this may cause problems with blackbox tests. This should
+        # be changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
 
 
 # command-line interpretation helper for merge-related commands
