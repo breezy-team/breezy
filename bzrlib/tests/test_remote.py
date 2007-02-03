@@ -179,6 +179,76 @@ class TestBranchControlGetBranchConf(tests.TestCase):
         self.assertEqual('config file body', result.read())
 
 
+class TestRepositoryGatherStats(tests.TestCase):
+
+    def setup_fake_client_and_repository(self, responses, transport_path):
+        """Create the fake client and repository for testing with."""
+        client = FakeClient(responses)
+        transport = MemoryTransport()
+        transport.mkdir(transport_path)
+        transport = transport.clone(transport_path)
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        return repo, client
+
+    def test_revid_none(self):
+        # ('ok',), body with revisions and size
+        responses = [(('ok', ), 'revisions: 2\nsize: 18\n')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.gather_stats(None)
+        self.assertEqual(
+            [('call2', 'Repository.gather_stats', ('///quack/','','no'))],
+            client._calls)
+        self.assertEqual({'revisions': 2, 'size': 18}, result)
+
+    def test_revid_no_committers(self):
+        # ('ok',), body without committers
+        responses = [(('ok', ),
+                      'firstrev: 123456.300 3600\n'
+                      'latestrev: 654231.400 0\n'
+                      'revisions: 2\n'
+                      'size: 18\n')]
+        transport_path = 'quick'
+        revid = u'\xc8'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.gather_stats(revid)
+        self.assertEqual(
+            [('call2', 'Repository.gather_stats',
+              ('///quick/', revid.encode('utf8'), 'no'))],
+            client._calls)
+        self.assertEqual({'revisions': 2, 'size': 18,
+                          'firstrev': (123456.300, 3600),
+                          'latestrev': (654231.400, 0),},
+                         result)
+
+    def test_revid_with_committers(self):
+        # ('ok',), body with committers
+        responses = [(('ok', ),
+                      'committers: 128\n'
+                      'firstrev: 123456.300 3600\n'
+                      'latestrev: 654231.400 0\n'
+                      'revisions: 2\n'
+                      'size: 18\n')]
+        transport_path = 'buick'
+        revid = u'\xc8'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.gather_stats(revid, True)
+        self.assertEqual(
+            [('call2', 'Repository.gather_stats',
+              ('///buick/', revid.encode('utf8'), 'yes'))],
+            client._calls)
+        self.assertEqual({'revisions': 2, 'size': 18,
+                          'committers': 128,
+                          'firstrev': (123456.300, 3600),
+                          'latestrev': (654231.400, 0),},
+                         result)
+
+
 class TestRepositoryIsShared(tests.TestCase):
 
     def setup_fake_client_and_repository(self, responses, transport_path):

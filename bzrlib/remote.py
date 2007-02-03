@@ -205,8 +205,33 @@ class RemoteRepository(object):
 
     def gather_stats(self, revid, committers=None):
         """See Repository.gather_stats()."""
-        # SMART_SERVER_MERGE_BLOCKER
-        return self._real_repository.gather_stats(revid, committers)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        if revid in (None, NULL_REVISION):
+            fmt_revid = ''
+        else:
+            fmt_revid = revid.encode('utf8')
+        if committers is None:
+            fmt_committers = 'no'
+        else:
+            fmt_committers = 'yes'
+        response = self._client.call2('Repository.gather_stats', path,
+                                      fmt_revid, fmt_committers)
+        assert response[0][0] == 'ok', \
+            'unexpected response code %s' % (response[0],)
+
+        body = response[1].read_body_bytes()
+        result = {}
+        for line in body.split('\n'):
+            if not line:
+                continue
+            key, val_text = line.split(':')
+            if key in ('revisions', 'size', 'committers'):
+                result[key] = int(val_text)
+            elif key in ('firstrev', 'latestrev'):
+                values = val_text.split(' ')[1:]
+                result[key] = (float(values[0]), long(values[1]))
+
+        return result
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
