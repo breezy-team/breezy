@@ -61,10 +61,23 @@ class DebBuild(object):
   """The object that does the building work."""
 
   def __init__(self, properties, tree):
+    """Create a builder.
+
+    properties:
+        an instance of a DebBuildProperties class that the builder should
+        query to know where to do it's work.
+    tree:
+        the tree that the user wants to build.
+    """
     self._properties = properties
     self._tree = tree
 
   def prepare(self, keep_source_dir=False):
+    """Do any preparatory steps that should be run before the build.
+
+    It checks that everything is well, and that some needed dirs are
+    created.
+    """
     build_dir = self._properties.build_dir()
     info("Preparing the build area: %s", build_dir);
     if not os.path.exists(build_dir):
@@ -81,6 +94,11 @@ class DebBuild(object):
         raise NoSourceDirError;
 
   def _find_tarball(self):
+    """Find the upstream tarball and return it's location.
+
+    This method will check that the upstream tarball is available, and
+    will return its location. If it is not an exception will be raised.
+    """
     tarballdir = self._properties.tarball_dir()
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
@@ -92,11 +110,17 @@ class DebBuild(object):
     return tarball
 
   def _tarball_name(self):
+    """Returns the name that the upstream tarball should have."""
     package = self._properties.package()
     upstream = self._properties.upstream_version()
     return package+"_"+upstream+".orig.tar.gz"
 
   def export(self, use_existing=False):
+    """Export the package in to a clean dir for building.
+
+    This does all that is needed to set up a clean tree in the build dir
+    so that it can be built later.
+    """
     # It's not documented the use_existing will use the same 
     # tarball, and it doesn't save much here, but we will
     # do it anyway.
@@ -114,6 +138,7 @@ class DebBuild(object):
     remove_bzrbuilddeb_dir(source_dir)
 
   def build(self, builder):
+    """This builds the package using the supplied command."""
     wd = os.getcwdu()
     source_dir = self._properties.source_dir()
     info("Building the package in %s, using %s", source_dir, builder)
@@ -124,11 +149,16 @@ class DebBuild(object):
       raise BuildFailedError;
 
   def clean(self):
+    """This removes the build directory."""
     source_dir = self._properties.source_dir()
     info("Cleaning build dir: %s", source_dir)
     shutil.rmtree(source_dir)
 
   def move_result(self, result):
+    """Moves the files that resulted from the build to the given dir.
+
+    The files are found by reading the changes file.
+    """
     info("Placing result in %s", result)
     package = self._properties.package()
     version = self._properties.full_version()
