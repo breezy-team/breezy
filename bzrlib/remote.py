@@ -49,12 +49,9 @@ class RemoteBzrDir(BzrDir):
         # to talk to the other side
         # XXX: We should go into find_format, but not allow it to find
         # RemoteBzrDirFormat and make sure it finds the real underlying format.
+        self._real_bzrdir = None
         
-        # THIS IS A COMPLETE AND UTTER LIE.
-        # XXX: XXX: XXX: must be removed before merging to mainline
-        # SMART_SERVER_MERGE_BLOCKER
-        default_format = BzrDirFormat.get_default_format()
-        self._real_bzrdir = default_format.open(transport, _found=True)
+        self._ensure_real()
         smartclient = client.SmartClient(self.client)
         path = self._path_for_remote_call(smartclient)
         #self._real_bzrdir._format.probe_transport(transport)
@@ -62,15 +59,23 @@ class RemoteBzrDir(BzrDir):
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
 
+    def _ensure_real(self):
+        """Ensure that there is a _real_bzrdir set.
+
+        used before calls to self._real_bzrdir.
+        """
+        if not self._real_bzrdir:
+            default_format = BzrDirFormat.get_default_format()
+            self._real_bzrdir = default_format.open(self.root_transport,
+                _found=True)
+
     def create_repository(self, shared=False):
         return RemoteRepository(
             self, self._real_bzrdir.create_repository(shared=shared))
 
     def create_branch(self):
         real_branch = self._real_bzrdir.create_branch()
-        real_repository = real_branch.repository
-        remote_repository = RemoteRepository(self, real_repository)
-        return RemoteBranch(self, remote_repository, real_branch)
+        return RemoteBranch(self, self.find_repository(), real_branch)
 
     def create_workingtree(self, revision_id=None):
         real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
@@ -87,18 +92,7 @@ class RemoteBzrDir(BzrDir):
             raise errors.NotBranchError(path=self.root_transport.base)
         if response[1] == '':
             # branch at this location.
-            if vfs.vfs_enabled():
-                # if the VFS is enabled, create a local object using the VFS.
-                real_branch = self._real_bzrdir.open_branch(unsupported=_unsupported)
-                # This branch accessed through the smart server, so wrap the
-                # file-level objects.
-                real_repository = real_branch.repository
-                remote_repository = self.find_repository()
-                remote_repository._real_repository = real_repository
-                return RemoteBranch(self, remote_repository, real_branch)
-            else:
-                # otherwise just create a proxy for the branch.
-                return RemoteBranch(self, self.find_repository())
+            return RemoteBranch(self, self.find_repository())
         else:
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
@@ -113,10 +107,7 @@ class RemoteBzrDir(BzrDir):
         if response[0] == 'norepository':
             raise errors.NoRepositoryPresent(self)
         if response[1] == '':
-            if vfs.vfs_enabled():
-                return RemoteRepository(self, self._real_bzrdir.open_repository())
-            else:
-                return RemoteRepository(self)
+            return RemoteRepository(self)
         else:
             raise errors.NoRepositoryPresent(self)
 
@@ -190,12 +181,23 @@ class RemoteRepository(object):
         """
         if real_repository:
             self._real_repository = real_repository
+        else:
+            self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
             self._client = client.SmartClient(self.bzrdir.client)
         else:
             self._client = _client
         self._format = RemoteRepositoryFormat()
+
+    def _ensure_real(self):
+        """Ensure that there is a _real_repository set.
+
+        used before calls to self._real_repository.
+        """
+        if not self._real_repository:
+            self.bzrdir._ensure_real()
+            self._real_repository = self.bzrdir._real_bzrdir.open_repository()
 
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
@@ -271,11 +273,13 @@ class RemoteRepository(object):
 
     def lock_read(self):
         # wrong eventually - want a local lock cache context
+        self._ensure_real()
         return self._real_repository.lock_read()
 
     def lock_write(self):
         # definately wrong: want to check if there is a real repo
         # and not thunk through if not
+        self._ensure_real()
         return self._real_repository.lock_write()
 
     def unlock(self):
@@ -285,6 +289,7 @@ class RemoteRepository(object):
     def break_lock(self):
         # should hand off to the network - or better yet, we should not
         # allow stale network locks ?
+        self._ensure_real()
         return self._real_repository.break_lock()
 
 
@@ -349,26 +354,47 @@ class RemoteBranch(branch.Branch):
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
+        else:
+            self._real_branch = None
         # Fill out expected attributes of branch for bzrlib api users.
         self._format = RemoteBranchFormat()
         self.base = self.bzrdir.root_transport.base
         self.control_files = RemoteBranchLockableFiles(self.bzrdir, self._client)
 
+    def _ensure_real(self):
+        """Ensure that there is a _real_branch set.
+
+        used before calls to self._real_branch.
+        """
+        if not self._real_branch:
+            assert vfs.vfs_enabled()
+            self.bzrdir._ensure_real()
+            self._real_branch = self.bzrdir._real_bzrdir.open_branch()
+            # give the repository the matching file level repo.
+            self.repository._real_repository = self._real_branch.repository
+            # give the branch the remote repository to let fast-pathing happen
+            self._real_branch.repository = self.repository
+
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
         # should be an API call to the server, as branches must be lockable.
+        self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
     def lock_read(self):
+        self._ensure_real()
         return self._real_branch.lock_read()
 
     def lock_write(self):
+        self._ensure_real()
         return self._real_branch.lock_write()
 
     def unlock(self):
+        self._ensure_real()
         return self._real_branch.unlock()
 
     def break_lock(self):
+        self._ensure_real()
         return self._real_branch.break_lock()
 
     def last_revision_info(self):
@@ -396,12 +422,15 @@ class RemoteBranch(branch.Branch):
         return result
 
     def set_revision_history(self, rev_history):
+        self._ensure_real()
         return self._real_branch.set_revision_history(rev_history)
 
     def get_parent(self):
+        self._ensure_real()
         return self._real_branch.get_parent()
         
     def set_parent(self, url):
+        self._ensure_real()
         return self._real_branch.set_parent(url)
         
 
