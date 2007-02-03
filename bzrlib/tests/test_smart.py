@@ -289,6 +289,69 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
                 u'\xc8abc'.encode('utf8')))
 
 
+class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
+
+    def test_empty_revid(self):
+        """With an empty revid, we get only size an number and revisions"""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGatherStats(backing)
+        repository = self.make_repository('.')
+        stats = repository.gather_stats()
+        size = stats['size']
+        expected_body = 'revisions: 0\nsize: %d\n' % size
+        self.assertEqual(SmartServerResponse(('ok', ), expected_body),
+                         request.execute(backing.local_abspath(''), '', 'no'))
+
+    def test_revid_with_committers(self):
+        """For a revid we get more infos."""
+        backing = self.get_transport()
+        rev_id = u'\xc8abc'
+        request = smart.repository.SmartServerRepositoryGatherStats(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        # Let's build a predictable result
+        tree.commit('a commit', timestamp=123456.2, timezone=3600)
+        tree.commit('a commit', timestamp=654321.4, timezone=0, rev_id=rev_id)
+        tree.unlock()
+
+        stats = tree.branch.repository.gather_stats()
+        size = stats['size']
+        expected_body = ('firstrev: 123456.200 3600\n'
+                         'latestrev: 654321.400 0\n'
+                         'revisions: 2\n'
+                         'size: %d\n' % size)
+        self.assertEqual(SmartServerResponse(('ok', ), expected_body),
+                         request.execute(backing.local_abspath(''),
+                                         rev_id.encode('utf8'), 'no'))
+
+    def test_not_empty_repository_with_committers(self):
+        """For a revid and requesting committers we get the whole thing."""
+        backing = self.get_transport()
+        rev_id = u'\xc8abc'
+        request = smart.repository.SmartServerRepositoryGatherStats(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        # Let's build a predictable result
+        tree.commit('a commit', timestamp=123456.2, timezone=3600,
+                    committer='foo')
+        tree.commit('a commit', timestamp=654321.4, timezone=0,
+                    committer='bar', rev_id=rev_id)
+        tree.unlock()
+        stats = tree.branch.repository.gather_stats()
+
+        size = stats['size']
+        expected_body = ('committers: 2\n'
+                         'firstrev: 123456.200 3600\n'
+                         'latestrev: 654321.400 0\n'
+                         'revisions: 2\n'
+                         'size: %d\n' % size)
+        self.assertEqual(SmartServerResponse(('ok', ), expected_body),
+                         request.execute(backing.local_abspath(''),
+                                         rev_id.encode('utf8'), 'yes'))
+
+
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithTransport):
 
     def test_is_shared(self):
@@ -331,6 +394,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.gather_stats'),
+            smart.repository.SmartServerRepositoryGatherStats)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)
