@@ -20,6 +20,7 @@
 
 import glob
 import shutil
+import tarfile
 import tempfile
 import os
 
@@ -166,8 +167,9 @@ class DebMergeBuild(DebBuild):
       tarball = self._find_tarball()
       mutter("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-      if os.system('tar xzf "'+tarball+'" -C "'+tempdir+'"') > 0:
-        raise BuildFailedError
+      tar = tarfile.open(tarball)
+      tar.extractall(tempdir)
+      tar.close
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       for file in files:
@@ -210,17 +212,15 @@ class DebSplitBuild(DebBuild):
     # To acheive this we export delete debian/ and tar the result,
     # then we blow that away and export the whole thing again.
     source_dir = self._properties.source_dir()
-    tarball = self._tarball_name()
     build_dir = self._properties.build_dir()
+    tarball = os.path.join(build_dir, self._tarball_name())
     export(self._tree,source_dir,None,None)
-    info("Creating .orig.tar.gz: %s", os.path.join(build_dir, tarball))
+    info("Creating .orig.tar.gz: %s", tarball)
     remove_bzrbuilddeb_dir(source_dir)
     remove_debian_dir(source_dir)
+    tar = tarfile.open(tarball, "w:gz")
     source_dir_rel = self._properties.source_dir(False)
-    result = os.system('cd "'+build_dir+'" && tar czf "'+tarball+'" "'
-              +source_dir_rel+'"')
-    if result > 0:
-      raise BuildFailedError
+    tar.add(source_dir, source_dir_rel)
     shutil.rmtree(source_dir)
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
