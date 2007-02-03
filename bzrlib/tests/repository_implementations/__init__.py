@@ -37,6 +37,7 @@ from bzrlib.tests import (
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -71,7 +72,9 @@ def test_suite():
     adapt_to_smart_server = RepositoryTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
-            [(RemoteRepositoryFormat(), RemoteBzrDirFormat())])
+        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        MemoryServer
+        )
     adapt_modules(test_repository_implementations,
                   adapt_to_smart_server,
                   loader,

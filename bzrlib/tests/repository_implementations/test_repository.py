@@ -59,6 +59,25 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
         made_control = self.make_bzrdir(relpath)
         return self.repository_format.initialize(made_control)
 
+    def make_branch_and_tree(self, relpath):
+        branch = self.make_branch(relpath)
+        try:
+            branch.bzrdir.root_transport.local_abspath('.')
+        except errors.TransportNotPossible:
+            # we want callers of this function to see a RemoteRepository at
+            # tree.branch.repository
+            return branch.create_checkout(relpath, lightweight=True)
+        else:
+            return branch.bzrdir.create_workingtree()
+
+
+class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
+
+    def test_repository_format(self):
+        # make sure the repository on tree.branch is of the desired format
+        tree = self.make_branch_and_tree('repo')
+        self.assertIsInstance(tree.branch.repository._format,
+            self.repository_format.__class__)
 
 class TestRepository(TestCaseWithRepository):
 
