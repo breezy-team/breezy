@@ -106,7 +106,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
         havefile = False
-        if start_message is not None and start_message != "":
+        if start_message is not None:
             havefile = True
             msgfile = file(msgfilename, "w")
             msgfile.write("%s\n" % start_message.encode(

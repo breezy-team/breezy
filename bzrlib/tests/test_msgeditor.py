@@ -80,9 +80,12 @@ added:
         self.assertEqual(True, bzrlib.msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
-    def test_edit_commit_message(self):
-        working_tree = self.make_uncommitted_tree()
-        # make fake editor
+    def make_fake_editor(self):
+        """Set up environment so that an editor will be a known script.
+
+        Sets up BZR_EDITOR so that if an editor is spawned it will run a
+        script that just adds a known message to the start of the file.
+        """
         f = file('fed.py', 'wb')
         f.write('#!%s\n' % sys.executable)
         f.write("""\
@@ -112,6 +115,10 @@ if len(sys.argv) == 2:
             os.chmod('fed.py', 0755)
             os.environ['BZR_EDITOR'] = './fed.py'
 
+    def test_edit_commit_message(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message without infotext')
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(''))
@@ -120,10 +127,15 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(u'\u1234'))
 
-        mutter('edit_commit_message with starting message')
+    def test_start_message(self):
+        self.make_uncommitted_tree()
+        self.make_fake_editor()
         self.assertEqual('test message from fed\nstart message\n',
                          bzrlib.msgeditor.edit_commit_message('',
                                               start_message='start message\n'))
+        self.assertEqual('test message from fed\n',
+                         bzrlib.msgeditor.edit_commit_message('',
+                                              start_message=''))
 
     def test_deleted_commit_message(self):
         working_tree = self.make_uncommitted_tree()
