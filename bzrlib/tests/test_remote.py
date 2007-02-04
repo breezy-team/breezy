@@ -277,19 +277,6 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         self.assertEqual([], client._calls)
         self.assertEqual({}, result)
 
-class TestRepositoryGetRevisionGraph(TestRemoteRepository):
-    
-    def test_null_revision(self):
-        # a null revision has the predictable result {}, we should have no wire
-        # traffic when calling it with this argument
-        responses = [(('notused', ), '')]
-        transport_path = 'empty'
-        repo, client = self.setup_fake_client_and_repository(
-            responses, transport_path)
-        result = repo.get_revision_graph(NULL_REVISION)
-        self.assertEqual([], client._calls)
-        self.assertEqual({}, result)
-
     def test_none_revision(self):
         # with none we want the entire graph
         r1 = u'\u0e33'
