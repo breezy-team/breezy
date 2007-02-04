@@ -153,7 +153,6 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
             self.wfile.write("--%s\r\n" % boundary)
-            pass
 
     def do_GET(self):
         """Serve a GET request.
@@ -267,18 +266,23 @@ class HttpServer(Server):
     def __init__(self, request_handler=TestingHTTPRequestHandler):
         Server.__init__(self)
         self.request_handler = request_handler
+        self.host = 'localhost'
+        self.port = 0
+        self._httpd = None
 
     def _get_httpd(self):
-        return TestingHTTPServer(('localhost', 0),
-                                  self.request_handler,
-                                  self)
+        if self._httpd is None:
+            self._httpd = TestingHTTPServer((self.host, self.port),
+                                            self.request_handler,
+                                            self)
+            host, self.port = self._httpd.socket.getsockname()
+        return self._httpd
 
     def _http_start(self):
-        httpd = None
         httpd = self._get_httpd()
-        host, self.port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol,
-                                                      self.port)
+        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                               self.host,
+                                               self.port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 

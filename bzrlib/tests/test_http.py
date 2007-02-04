@@ -42,6 +42,7 @@ from bzrlib.tests.HTTPTestUtil import (
     BadStatusRequestHandler,
     FakeProxyRequestHandler,
     ForbiddenRequestHandler,
+    HTTPServerRedirecting,
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
     SingleRangeRequestHandler,
@@ -814,3 +815,55 @@ class TestRanges_pycurl(TestWithTransport_pycurl,
                         TestRanges,
                         TestCaseWithWebserver):
     """Test the Range header in GET methods for pycurl implementation"""
+
+
+class TestRedirections(object):
+    """Test redirection from the 'old' server to the 'new' server.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithTwoWebservers.
+
+    We can't inherit directly from TestCaseWithTwoWebservers or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete. 
+    """
+
+    def create_transport_secondary_server(self):
+        """Create the secondary server redirecting to the primary server"""
+        new = self.get_new_server()
+
+        return HTTPServerRedirecting(new.host, new.port)
+
+    def get_old_server(self):
+        """The redirected server"""
+        return self.get_secondary_server()
+
+    def get_new_server(self):
+        """The redirected to server"""
+        return self.get_readonly_server()
+
+    def setUp(self):
+        super(TestRedirections, self).setUp()
+        new = self.get_new_server()
+        old = self.get_old_server()
+
+        self.build_tree_contents([('a', '0123456789')],)
+
+        self.new_transport = self._transport(new.get_url())
+        self.old_transport = self._transport(old.get_url())
+
+    def test_redirected(self):
+        old = self.old_transport
+        hints = old.create_get_hints(follow_redirections=False)
+        self.assertRaises(errors.RedirectRequested, old.get, 'a', **hints)
+
+    def test_redirection_loop(self):
+        pass
+
+
+class TestRedirections_urllib(TestRedirections,
+                              TestCaseWithTwoWebservers):
+    """Tests redirections for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+

@@ -143,7 +143,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._qualified_proto = apparent_proto
         # range hint is handled dynamically throughout the life
-        # of the object. We start by trying mulri-range requests
+        # of the object. We start by trying multi-range requests
         # and if the server returns bougs results, we retry with
         # single range requests and, finally, we forget about
         # range if the server really can't understand. Once

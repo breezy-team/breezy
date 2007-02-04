@@ -524,17 +524,19 @@ class BzrDir(object):
                 redirected = False
             except errors.RedirectRequested, e:
 
-                relpath = transport.relpath(e.source)
+                qualified_source = e.get_source_url()
+                relpath = transport.relpath(qualified_source)
                 if not e.target.endswith(relpath):
                     # Not redirected to a branch-format, not a branch
                     raise errors.NotBranchError(path=e.target)
 
                 target = e.target[:-len(relpath)]
-                note('%s has been%s redirected to %s',
+                note('%s is%s redirected to %s',
                      transport.base,
                      e.permanently,
                      target)
                 # Let's try with a new transport
+                qualified_target = e.get_target_url()[:-len(relpath)]
                 transport = get_transport(target)
                 redirections += 1
         if redirected:
@@ -1257,7 +1259,7 @@ class BzrDirFormat(object):
 
     @classmethod
     def register_control_format(klass, format):
-        """Register a format that does not use '.bzrdir' for its control dir.
+        """Register a format that does not use '.bzr' for its control dir.
 
         TODO: This should be pulled up into a 'ControlDirFormat' base class
         which BzrDirFormat can inherit from, and renamed to register_format 
@@ -1287,10 +1289,6 @@ class BzrDirFormat(object):
     @classmethod
     def unregister_control_format(klass, format):
         klass._control_formats.remove(format)
-
-
-# register BzrDirFormat as a control format
-BzrDirFormat.register_control_format(BzrDirFormat)
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -1527,9 +1525,16 @@ class BzrDirMetaFormat1(BzrDirFormat):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
+    # REVIEWER: The following line is black magic for me. Any
+    # pointer appreciated
     repository_format = property(__return_repository_format, __set_repository_format)
 
 
+# register BzrDirMetaFormat1 as a control format. Our only
+# concrete control format (BzrDirFormat is an abstract one).
+BzrDirFormat.register_control_format(BzrDirMetaFormat1)
+
+# Register bzr formats
 BzrDirFormat.register_format(BzrDirFormat4())
 BzrDirFormat.register_format(BzrDirFormat5())
 BzrDirFormat.register_format(BzrDirFormat6())

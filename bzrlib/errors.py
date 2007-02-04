@@ -1180,7 +1180,7 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permament=False):
+    def __init__(self, source, target, is_permament=False, qual_proto=None):
         self.source = source
         self.target = target
         if is_permament:
@@ -1188,7 +1188,37 @@ class RedirectRequested(TransportError):
         else:
             self.permanently = ''
         self.is_permament = is_permament
+        self._qualified_proto = qual_proto
         TransportError.__init__(self)
+
+    def _requalify_url(self, url):
+        """Restore the qualified proto in front of the url"""
+        # When this exception is raised, source and target are in
+        # user readable format. But some transports mau use a
+        # different proto (http+urllib:// will present http:// to
+        # the user. If a qualified proto is specified, the code
+        # trapping the exeception can get the qualified urls to
+        # properly handle the redirection themself (creating a
+        # new transport object from the target url for example).
+        if self._qualified_proto is None:
+            return url
+
+        # The TODO related to NotBranchError mention that doing
+        # that kind of manipulation on the urls may not be the
+        # exception object job. On the other hand, this object is
+        # the interface between the code and the user so
+        # presenting the urls in different ways is indeed its
+        # job...
+        import urlparse
+        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
+        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
+                                   query, fragment))
+
+    def get_source_url(self):
+        return self._requalify_url(self.source)
+
+    def get_target_url(self):
+        return self._requalify_url(self.source)
 
 
 class UnknownHint(TransportError):

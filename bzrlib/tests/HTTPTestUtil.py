@@ -177,7 +177,7 @@ class TestCaseWithWebserver(TestCaseWithTransport):
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
-    """A support class providinf readonly urls (on two servers) that are http://.
+    """A support class providing readonly urls on two servers that are http://.
 
     We setup two webservers to allows various tests involving
     proxies or redirections from one server to the other.
@@ -224,5 +224,32 @@ class FakeProxyRequestHandler(TestingHTTPRequestHandler):
         # wants with the path
         return TestingHTTPRequestHandler.translate_path(self, path)
 
+
+class RedirectRequestHandler(TestingHTTPRequestHandler):
+    """Redirect all request to the specified server"""
+
+    def parse_request(self):
+        """Redirect a single HTTP request to another host"""
+        valid = TestingHTTPRequestHandler.parse_request(self)
+        if valid:
+            # Just redirect permanently
+            self.send_response(301)
+            target = 'http://%s:%s%s' % (self.server.test_case.redirect_to_host,
+                                         self.server.test_case.redirect_to_port,
+                                         self.path)
+            self.send_header('Location', target)
+            self.end_headers()
+            return False # The job is done
+        return valid
+
+
+class HTTPServerRedirecting(HttpServer):
+    """An HttpServer redirecting to another server """
+
+    def __init__(self, redir_host, redir_port,
+                 request_handler=RedirectRequestHandler):
+        HttpServer.__init__(self, request_handler)
+        self.redirect_to_host = redir_host
+        self.redirect_to_port = redir_port
 
 
