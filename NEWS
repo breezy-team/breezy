@@ -47,6 +47,10 @@ IN DEVELOPMENT
       other for code reuse without requiring users to perform file-renaming
       gymnastics. (Robert Collins)
 
+    * New Repository method 'gather_stats' for statistic data collection.
+      This is expected to grow to cover a number of related uses mainly
+      related to bzr info. (Robert Collins)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
