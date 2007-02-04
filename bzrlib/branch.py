@@ -696,7 +696,7 @@ class BranchFormat(object):
 
     def get_format_description(self):
         """Return the short format description for this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(self.get_format_description)
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
