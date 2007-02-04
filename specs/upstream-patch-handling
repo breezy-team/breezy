@@ -1,0 +1,24 @@
+Handling of patches against upstream
+====================================
+
+Status: Draft
+
+Aim
+---
+
+Patching upstream sources, either to backport a fix or to add a Debian specific
+change is very common. It is desirable to do it in a way in which the changes
+are separate, and can easily be handled when moving to a new upstream. This
+usually means storing them in ``debian/patches/`` and using a system like
+quilt to handle them.
+
+This works OK in a full source branch as is. However merge mode for instance
+requires more work. The tool could certainly help in doing this.
+
+The requirements are:
+
+  * Seamless handling of patches regardless of the mode.
+  * Conformance with standard handling practices.
+  * Easy way to move to new upstream version.
+  * Integration with the VCS wherever possible.
+
