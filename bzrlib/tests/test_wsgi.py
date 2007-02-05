@@ -208,7 +208,7 @@ class TestWSGI(tests.TestCase):
         transport.put_bytes('foo/bar', 'this is foo/bar')
         wsgi_app = wsgi.SmartWSGIApp(transport.clone('foo'))
 
-        smart_request = StringIO('mkdir\x01/bad file\x01\n0\ndone\n')
+        smart_request = StringIO('mkdir\x01../bad file\x01\n0\ndone\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(smart_request.getvalue()),
@@ -219,7 +219,7 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         self.assertEqual(
-            "error\x01Path '/bad file' is not a child of "
+            "error\x01Path '../bad file' is not a child of "
             "path 'memory:///foo/'\n",
             response)
 
