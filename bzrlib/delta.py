@@ -255,7 +255,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
 class ChangeReporter(object):
     """Report changes between two trees"""
 
-    def __init__(self, old_inventory, output=None, suppress_root_add=True):
+    def __init__(self, old_inventory, output=None, suppress_root_add=True,
+                 output_file=None):
         """Constructor
 
         :param old_inventory: The inventory of the old tree
@@ -263,8 +264,15 @@ class ChangeReporter(object):
             accepts a format and parameters.
         :param supress_root_add: If true, adding the root will be ignored
             (i.e. when a tree has just been initted)
+        :param output_file: If supplied, a file-like object to write to.
+            Only one of output and output_file may be supplied.
         """
         self.old_inventory = old_inventory
+        if output_file is not None:
+            if output is not None:
+                raise BzrError('Cannot specify both output and output_file')
+            def output(fmt, *args):
+                output_file.write((fmt % args) + '\n')
         self.output = output
         if self.output is None:
             from bzrlib import trace

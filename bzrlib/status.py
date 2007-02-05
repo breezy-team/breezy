@@ -144,9 +144,8 @@ def show_tree_status(wt, show_unchanged=None,
                 (old, new), require_versioned=False)
             changes = new._iter_changes(old, show_unchanged,
                                         specific_file_ids)
-            def output(fmt, *args):
-                to_file.write((fmt % args) + '\n')
-            reporter = _mod_delta.ChangeReporter(old.inventory, output)
+            reporter = _mod_delta.ChangeReporter(old.inventory,
+                output_file=to_file)
             _mod_delta.report_changes(changes, reporter)
         else:
             delta = new.changes_from(old, want_unchanged=show_unchanged,
