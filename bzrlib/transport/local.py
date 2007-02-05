@@ -480,7 +480,7 @@ class LocalTransport(Transport):
             return True
 
 
-class Win32LocalTransport(LocalTransport):
+class EmulatedWin32LocalTransport(LocalTransport):
     """Special transport for testing Win32 [UNC] paths on non-windows"""
 
     def __init__(self, base):
