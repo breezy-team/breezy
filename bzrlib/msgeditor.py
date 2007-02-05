@@ -104,25 +104,25 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     msgfilename = None
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
-        msgfile = os.close(tmp_fileno)
-        havefile = False
+        os.close(tmp_fileno)
+        msgfile = None
         if start_message is not None:
-            havefile = True
-            msgfile = file(msgfilename, "w")
-            msgfile.write("%s\n" % start_message.encode(
-                                     bzrlib.user_encoding, 'replace'))
+            message = "%s\n" % start_message.encode(bzrlib.user_encoding,
+                                                    'replace')
+        else:
+            message = ''
+
         if infotext is not None and infotext != "":
             hasinfo = True
-            if not havefile:
-              msgfile = file(msgfilename, "w")
-              havefile = True
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
+            message = message + ("\n\n%s\n\n%s" % (ignoreline,
                 infotext.encode(bzrlib.user_encoding, 'replace')))
         else:
             hasinfo = False
 
-        if havefile:
-          msgfile.close()
+        if message != '':
+            msgfile = file(msgfilename, "w")
+            msgfile.write(message)
+            msgfile.close()
 
         if not _run_editor(msgfilename):
             return None
