@@ -495,6 +495,22 @@ class EmulatedWin32LocalTransport(LocalTransport):
                     self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 
+    def clone(self, offset=None):
+        """Return a new LocalTransport with root at self.base + offset
+        Because the local filesystem does not require a connection, 
+        we can just return a new object.
+        """
+        if offset is None:
+            return EmulatedWin32LocalTransport(self.base)
+        else:
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return EmulatedWin32LocalTransport(abspath)
+
 
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
