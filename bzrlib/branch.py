@@ -1519,10 +1519,12 @@ class BranchTestProviderAdapter(object):
     easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
+        self._vfs_transport_factory = vfs_transport_factory
     
     def adapt(self, test):
         result = TestSuite()
@@ -1530,6 +1532,8 @@ class BranchTestProviderAdapter(object):
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
+            if self._vfs_transport_factory:
+                new_test.vfs_transport_factory = self._vfs_transport_factory
             new_test.bzrdir_format = bzrdir_format
             new_test.branch_format = branch_format
             def make_new_test_id():
