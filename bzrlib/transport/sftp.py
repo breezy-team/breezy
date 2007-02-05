@@ -1144,7 +1144,13 @@ class SFTPServerWithoutSSH(SFTPServer):
             else:
                 raise
         except Exception, e:
-            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
+            # This typically seems to happen during interpreter shutdown, so
+            # most of the useful ways to report this error are won't work.
+            # Writing the exception type, and then the text of the exception,
+            # seems to be the best we can do.
+            import sys
+            sys.stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
+            sys.stderr.write('%s\n\n' % (e,))
         server.finish_subsystem()
 
 
