@@ -564,7 +564,7 @@ class Commit(object):
             try:
                 kind = self.work_tree.kind(file_id)
                 if kind != new_ie.kind:
-                    new_ie = inventory.make_entry(kind, new_ie.name, 
+                    new_ie = inventory.make_entry(kind, new_ie.name,
                                                   new_ie.parent_id, file_id)
             except errors.NoSuchFile:
                 pass
