@@ -38,6 +38,7 @@ from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
                            NoSuchFile,)
 from bzrlib.merge import Merge3Merger
+from bzrlib.repofmt import knitrepo
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
                           TestCase, TestSkipped)
@@ -313,7 +314,7 @@ class BundleTester1(TestCaseWithTransport):
 
     def test_mismatched_bundle(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
         self.assertRaises(errors.IncompatibleBundleFormat, serializer.write, 
@@ -322,7 +323,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_matched_bundle(self):
         """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         serializer = BundleSerializerV09('0.9')
         b = self.make_branch('.', format=format)
         serializer.write(b.repository, [], {}, StringIO())
@@ -330,7 +331,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_mismatched_model(self):
         """Try copying a bundle from knit2 to knit1"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         source = self.make_branch_and_tree('source', format=format)
         source.commit('one', rev_id='one-id')
         source.commit('two', rev_id='two-id')
@@ -890,7 +891,7 @@ class V09BundleKnit2Tester(V08BundleTester):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         return format
 
 

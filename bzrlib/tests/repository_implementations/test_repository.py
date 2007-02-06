@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,12 @@ import re
 import sys
 
 import bzrlib
-from bzrlib import bzrdir, errors, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    transactions,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -32,10 +37,10 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -190,7 +195,7 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         f = bzrdir.BzrDirMetaFormat1()
-        f._repository_format = repository.RepositoryFormatKnit2()
+        f._repository_format = knitrepo.RepositoryFormatKnit2()
         os.mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         repo = b_bzrdir.create_repository()

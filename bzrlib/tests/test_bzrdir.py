@@ -40,7 +40,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
-from bzrlib.repofmt import weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo
 
 
 class TestDefaultFormat(TestCase):
@@ -126,7 +126,7 @@ class TestFormatRegistry(TestCase):
                           bzrdir.format_registry.get('default'))
             self.assertIs(
                 repository.RepositoryFormat.get_default_format().__class__,
-                repository.RepositoryFormatKnit2)
+                knitrepo.RepositoryFormatKnit2)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 

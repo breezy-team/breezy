@@ -43,7 +43,7 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-from bzrlib.repofmt import weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo
 
 
 class TestDefaultFormat(TestCase):
@@ -432,7 +432,7 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
             revision_tree.inventory.root.file_id)
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree('dull')

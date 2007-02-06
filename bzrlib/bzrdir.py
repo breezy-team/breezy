@@ -2111,5 +2111,7 @@ format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
     deprecated=True,
     repo_module='bzrlib.repofmt.weaverepo')
-format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
-    'Experimental successor to knit.  Use at your own risk.')
+format_registry.register_metadir('experimental-knit2',
+    'RepositoryFormatKnit2',
+    'Experimental successor to knit.  Use at your own risk.',
+    repo_module='bzrlib.repofmt.knitrepo')

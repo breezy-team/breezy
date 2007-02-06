@@ -1018,52 +1018,6 @@ class KnitRepository(MetaDirRepository):
         return self._get_revision_vf().get_parents(revision_id)
 
 
-class KnitRepository2(KnitRepository):
-    """"""
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-                              _revision_store, control_store, text_store)
-        self._serializer = xml6.serializer_v6
-
-    def deserialise_inventory(self, revision_id, xml):
-        """Transform the xml into an inventory object. 
-
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
-        """
-        result = self._serializer.read_inventory_from_string(xml)
-        assert result.root.revision is not None
-        return result
-
-    def serialise_inventory(self, inv):
-        """Transform the inventory object into XML text.
-
-        :param revision_id: The expected revision id of the inventory.
-        :param xml: A serialised inventory.
-        """
-        assert inv.revision_id is not None
-        assert inv.root.revision is not None
-        return KnitRepository.serialise_inventory(self, inv)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
-                           revision_id=None):
-        """Obtain a CommitBuilder for this repository.
-        
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        """
-        return RootCommitBuilder(self, parents, config, timestamp, timezone,
-                                 committer, revprops, revision_id)
-
-
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats.
     """
@@ -1405,65 +1359,6 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         pass
 
 
-class RepositoryFormatKnit2(RepositoryFormatKnit):
-    """Bzr repository knit format 2.
-
-    THIS FORMAT IS EXPERIMENTAL
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
-     - Support for recording full info about the tree root
-
-    """
-    
-    rich_root_data = True
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 2\n"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Knit repository format 2"
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
-        """See RepositoryFormat.open().
-        
-        :param _override_transport: INTERNAL USE ONLY. Allows opening the
-                                    repository at a slightly different url
-                                    than normal. I.e. during 'upgrade'.
-        """
-        if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
-        if _override_transport is not None:
-            repo_transport = _override_transport
-        else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport, 'lock',
-                                                     lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository2(_format=self,
-                               a_bzrdir=a_bzrdir,
-                               control_files=control_files,
-                               _revision_store=_revision_store,
-                               control_store=control_store,
-                               text_store=text_store)
-
-
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.  They're 
 # all in bzrlib.repofmt.weaverepo now.
@@ -1476,7 +1371,11 @@ format_registry.register_lazy(
 # default control directory format
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
-RepositoryFormat.register_format(RepositoryFormatKnit2())
+format_registry.register_lazy(
+    'Bazaar Knit Repository Format 2\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatKnit2_instance',
+    )
 RepositoryFormat._set_default_format(_default_format)
 
 
@@ -1715,6 +1614,7 @@ class InterKnit1and2(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit1 source and Knit2 target"""
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit2
         try:
             return (isinstance(source._format, (RepositoryFormatKnit1)) and
                     isinstance(target._format, (RepositoryFormatKnit2)))
@@ -1804,7 +1704,7 @@ class InterRepositoryTestProviderAdapter(object):
     @staticmethod
     def default_test_list():
         """Generate the default list of interrepo permutations to test."""
-        from bzrlib.repofmt import weaverepo
+        from bzrlib.repofmt import knitrepo, weaverepo
         result = []
         # test the default InterRepository between format 6 and the current 
         # default format.
@@ -1823,9 +1723,9 @@ class InterRepositoryTestProviderAdapter(object):
         # here.
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
-                       RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit2()))
         result.append((InterKnit1and2, RepositoryFormatKnit1(),
-                       RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit2()))
         return result
 
 
