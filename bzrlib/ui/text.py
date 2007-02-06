@@ -19,12 +19,21 @@
 """Text UI, write output to the console.
 """
 
-import getpass
 import sys
 
-import bzrlib.progress
-from bzrlib.symbol_versioning import (deprecated_method, 
-        zero_eight)
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import getpass
+
+from bzrlib import (
+    progress,
+    )
+""")
+
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eight,
+    )
 from bzrlib.ui import CLIUIFactory
 
 
@@ -61,7 +70,7 @@ class TextUIFactory(CLIUIFactory):
         """See UIFactory.nested_progress_bar()."""
         # this in turn is abstract, and creates either a tty or dots
         # bar depending on what we think of the terminal
-        return bzrlib.progress.ProgressBar()
+        return progress.ProgressBar()
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -86,7 +95,7 @@ class TextUIFactory(CLIUIFactory):
         may return a tty or dots bar depending on the terminal.
         """
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
+            self._progress_bar_stack = progress.ProgressBarStack(
                 klass=self._bar_type)
         return self._progress_bar_stack.get_nested()
 

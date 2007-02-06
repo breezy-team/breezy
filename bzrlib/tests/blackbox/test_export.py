@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -241,3 +241,13 @@ class TestExport(ExternalBase):
         finally:
             zf.close()
 
+    def test_export_from_outside_branch(self):
+        self.example_branch()
+
+        # Use directory exports to test stating the branch location
+        self.run_bzr('export', 'latest', 'branch')
+        self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
+        self.check_file_contents('latest/goodbye', 'baz')
+        self.run_bzr('export', 'first', '-r', '1', 'branch')
+        self.assertEqual(['hello'], sorted(os.listdir('first')))
+        self.check_file_contents('first/hello', 'foo')

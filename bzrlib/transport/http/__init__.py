@@ -20,31 +20,24 @@ There are separate implementation modules for each http client implementation.
 """
 
 from cStringIO import StringIO
-import errno
 import mimetools
-import os
-import posixpath
 import re
-import sys
 import urlparse
 import urllib
-from warnings import warn
+import sys
 
-# TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
-
-from bzrlib import errors
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError, InvalidURL)
-from bzrlib.branch import Branch
+from bzrlib import errors, ui
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, Server
-from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
-                                            HttpRangeResponse)
-from bzrlib.ui import ui_factory
+from bzrlib.transport import (
+    smart,
+    Transport,
+    )
 
 
+# TODO: This is not used anymore by HttpTransport_urllib
+# (extracting the auth info and prompting the user for a password
+# have been split), only the tests still use it. It should be
+# deleted and the tests rewritten ASAP to stay in sync.
 def extract_auth(url, password_manager):
     """Extract auth parameters from am HTTP/HTTPS url and add them to the given
     password manager.  Return the url, minus those auth parameters (which
@@ -53,7 +46,7 @@ def extract_auth(url, password_manager):
     assert re.match(r'^(https?)(\+\w+)?://', url), \
             'invalid absolute url %r' % url
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    
+
     if '@' in netloc:
         auth, netloc = netloc.split('@', 1)
         if ':' in auth:
@@ -68,8 +61,9 @@ def extract_auth(url, password_manager):
         if password is not None:
             password = urllib.unquote(password)
         else:
-            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
-                                               user=username, host=host)
+            password = ui.ui_factory.get_password(
+                prompt='HTTP %(user)s@%(host)s password',
+                user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
@@ -102,7 +96,7 @@ def _extract_headers(header_text, url):
         if not first_line.startswith('HTTP'):
             if first_header: # The first header *must* start with HTTP
                 raise errors.InvalidHttpResponse(url,
-                    'Opening header line did not start with HTTP: %s' 
+                    'Opening header line did not start with HTTP: %s'
                     % (first_line,))
                 assert False, 'Opening header line was not HTTP'
             else:
@@ -119,7 +113,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport):
+class HttpTransportBase(Transport, smart.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -131,7 +125,7 @@ class HttpTransportBase(Transport):
     # _proto: "http" or "https"
     # _qualified_proto: may have "+pycurl", etc
 
-    def __init__(self, base):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
@@ -144,13 +138,20 @@ class HttpTransportBase(Transport):
         if base[-1] != '/':
             base = base + '/'
         super(HttpTransportBase, self).__init__(base)
-        # In the future we might actually connect to the remote host
-        # rather than using get_url
-        # self._connection = None
         (apparent_proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._qualified_proto = apparent_proto
+        # range hint is handled dynamically throughout the life
+        # of the object. We start by trying mulri-range requests
+        # and if the server returns bougs results, we retry with
+        # single range requests and, finally, we forget about
+        # range if the server really can't understand. Once
+        # aquired, this piece of info is propogated to clones.
+        if from_transport is not None:
+            self._range_hint = from_transport._range_hint
+        else:
+            self._range_hint = 'multi'
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -163,7 +164,7 @@ class HttpTransportBase(Transport):
         """
         assert isinstance(relpath, basestring)
         if isinstance(relpath, unicode):
-            raise InvalidURL(relpath, 'paths must not be unicode.')
+            raise errors.InvalidURL(relpath, 'paths must not be unicode.')
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:
@@ -174,8 +175,9 @@ class HttpTransportBase(Transport):
         else:
             # Except for the root, no trailing slashes are allowed
             if len(relpath_parts) > 1 and relpath_parts[-1] == '':
-                raise ValueError("path %r within branch %r seems to be a directory"
-                                 % (relpath, self._path))
+                raise ValueError(
+                    "path %r within branch %r seems to be a directory"
+                    % (relpath, self._path))
             basepath = self._path.split('/')
             if len(basepath) > 0 and basepath[-1] == '':
                 basepath = basepath[:-1]
@@ -238,6 +240,46 @@ class HttpTransportBase(Transport):
         """
         raise NotImplementedError(self._get)
 
+    def get_request(self):
+        return SmartClientHTTPMediumRequest(self)
+
+    def get_smart_medium(self):
+        """See Transport.get_smart_medium.
+
+        HttpTransportBase directly implements the minimal interface of
+        SmartMediumClient, so this returns self.
+        """
+        return self
+
+    def _retry_get(self, relpath, ranges, exc_info):
+        """A GET request have failed, let's retry with a simpler request."""
+
+        try_again = False
+        # The server does not gives us enough data or
+        # bogus-looking result, let's try again with
+        # a simpler request if possible.
+        if self._range_hint == 'multi':
+            self._range_hint = 'single'
+            mutter('Retry %s with single range request' % relpath)
+            try_again = True
+        elif self._range_hint == 'single':
+            self._range_hint = None
+            mutter('Retry %s without ranges' % relpath)
+            try_again = True
+        if try_again:
+            # Note that since the offsets and the ranges may not
+            # be in the same order, we don't try to calculate a
+            # restricted single range encompassing unprocessed
+            # offsets.
+            code, f = self._get(relpath, ranges)
+            return try_again, code, f
+        else:
+            # We tried all the tricks, but nothing worked. We
+            # re-raise original exception; the 'mutter' calls
+            # above will indicate that further tries were
+            # unsuccessful
+            raise exc_info[0], exc_info[1], exc_info[2]
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -247,14 +289,34 @@ class HttpTransportBase(Transport):
         ranges = self.offsets_to_ranges(offsets)
         mutter('http readv of %s collapsed %s offsets => %s',
                 relpath, len(offsets), ranges)
-        code, f = self._get(relpath, ranges)
+
+        try_again = True
+        while try_again:
+            try_again = False
+            try:
+                code, f = self._get(relpath, ranges)
+            except (errors.InvalidRange, errors.ShortReadvError), e:
+                try_again, code, f = self._retry_get(relpath, ranges,
+                                                     sys.exc_info())
+
         for start, size in offsets:
-            f.seek(start, (start < 0) and 2 or 0)
-            start = f.tell()
-            data = f.read(size)
-            if len(data) != size:
-                raise errors.ShortReadvError(relpath, start, size,
-                                             actual=len(data))
+            try_again = True
+            while try_again:
+                try_again = False
+                f.seek(start, (start < 0) and 2 or 0)
+                start = f.tell()
+                try:
+                    data = f.read(size)
+                    if len(data) != size:
+                        raise errors.ShortReadvError(relpath, start, size,
+                                                     actual=len(data))
+                except (errors.InvalidRange, errors.ShortReadvError), e:
+                    # Note that we replace 'f' here and that it
+                    # may need cleaning one day before being
+                    # thrown that way.
+                    try_again, code, f = self._retry_get(relpath, ranges,
+                                                         sys.exc_info())
+            # After one or more tries, we get the data.
             yield start, data
 
     @staticmethod
@@ -284,31 +346,42 @@ class HttpTransportBase(Transport):
 
         return combined
 
+    def _post(self, body_bytes):
+        """POST body_bytes to .bzr/smart on this transport.
+        
+        :returns: (response code, response body file-like object).
+        """
+        # TODO: Requiring all the body_bytes to be available at the beginning of
+        # the POST may require large client buffers.  It would be nice to have
+        # an interface that allows streaming via POST when possible (and
+        # degrades to a local buffer when not).
+        raise NotImplementedError(self._post)
+
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
         """
-        raise TransportNotPossible('http PUT not supported')
+        raise errors.TransportNotPossible('http PUT not supported')
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        raise TransportNotPossible('http does not support mkdir()')
+        raise errors.TransportNotPossible('http does not support mkdir()')
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
-        raise TransportNotPossible('http does not support rmdir()')
+        raise errors.TransportNotPossible('http does not support rmdir()')
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
-        raise TransportNotPossible('http does not support append()')
+        raise errors.TransportNotPossible('http does not support append()')
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support copy()')
+        raise errors.TransportNotPossible('http does not support copy()')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -322,18 +395,19 @@ class HttpTransportBase(Transport):
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransportBase):
-            raise TransportNotPossible('http cannot be the target of copy_to()')
+            raise errors.TransportNotPossible(
+                'http cannot be the target of copy_to()')
         else:
             return super(HttpTransportBase, self).\
                     copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support move()')
+        raise errors.TransportNotPossible('http does not support move()')
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise TransportNotPossible('http does not support delete()')
+        raise errors.TransportNotPossible('http does not support delete()')
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -346,7 +420,7 @@ class HttpTransportBase(Transport):
     def stat(self, relpath):
         """Return the stat information for a file.
         """
-        raise TransportNotPossible('http does not support stat()')
+        raise errors.TransportNotPossible('http does not support stat()')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -367,26 +441,56 @@ class HttpTransportBase(Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        raise TransportNotPossible('http does not support lock_write()')
+        raise errors.TransportNotPossible('http does not support lock_write()')
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
-        For now HttpTransportBase does not actually connect, so just return
-        a new HttpTransportBase object.
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
         """
         if offset is None:
-            return self.__class__(self.base)
+            return self.__class__(self.base, self)
         else:
-            return self.__class__(self.abspath(offset))
+            return self.__class__(self.abspath(offset), self)
+
+    def attempted_range_header(self, ranges, tail_amount):
+        """Prepare a HTTP Range header at a level the server should accept"""
+
+        if self._range_hint == 'multi':
+            # Nothing to do here
+            return self.range_header(ranges, tail_amount)
+        elif self._range_hint == 'single':
+            # Combine all the requested ranges into a single
+            # encompassing one
+            if len(ranges) > 0:
+                start, ignored = ranges[0]
+                ignored, end = ranges[-1]
+                if tail_amount not in (0, None):
+                    # Nothing we can do here to combine ranges
+                    # with tail_amount, just returns None. The
+                    # whole file should be downloaded.
+                    return None
+                else:
+                    return self.range_header([(start, end)], 0)
+            else:
+                # Only tail_amount, requested, leave range_header
+                # do its work
+                return self.range_header(ranges, tail_amount)
+        else:
+            return None
 
     @staticmethod
     def range_header(ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
-        :param offsets: A list of byte ranges, (start, end). An empty list
-        is not accepted.
+        :param ranges: A list of byte ranges, (start, end).
+        :param tail_amount: The amount to get from the end of the file.
 
         :return: HTTP range header string.
+
+        At least a non-empty ranges *or* a tail_amount must be
+        provided.
         """
         strings = []
         for start, end in ranges:
@@ -397,176 +501,29 @@ class HttpTransportBase(Transport):
 
         return ','.join(strings)
 
-
-#---------------- test server facilities ----------------
-# TODO: load these only when running tests
-
-
-class WebserverNotAvailable(Exception):
-    pass
+    def send_http_smart_request(self, bytes):
+        code, body_filelike = self._post(bytes)
+        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        return body_filelike
 
 
-class BadWebserverPath(ValueError):
-    def __str__(self):
-        return 'path %s is not in %s' % self.args
+class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an HTTP medium."""
 
+    def __init__(self, medium):
+        smart.SmartClientMediumRequest.__init__(self, medium)
+        self._buffer = ''
 
-class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def _accept_bytes(self, bytes):
+        self._buffer += bytes
 
-    def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
+    def _finished_writing(self):
+        data = self._medium.send_http_smart_request(self._buffer)
+        self._response_body = data
 
-    def handle_one_request(self):
-        """Handle a single HTTP request.
+    def _read_bytes(self, count):
+        return self._response_body.read(count)
 
-        You normally don't need to override this method; see the class
-        __doc__ string for information on how to handle specific HTTP
-        commands such as GET and POST.
-
-        """
-        for i in xrange(1,11): # Don't try more than 10 times
-            try:
-                self.raw_requestline = self.rfile.readline()
-            except socket.error, e:
-                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    # omitted for now because some tests look at the log of
-                    # the server and expect to see no errors.  see recent
-                    # email thread. -- mbp 20051021. 
-                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
-                    time.sleep(0.01)
-                    continue
-                raise
-            else:
-                break
-        if not self.raw_requestline:
-            self.close_connection = 1
-            return
-        if not self.parse_request(): # An error code has been sent, just exit
-            return
-        mname = 'do_' + self.command
-        if getattr(self, mname, None) is None:
-            self.send_error(501, "Unsupported method (%r)" % self.command)
-            return
-        method = getattr(self, mname)
-        method()
-
-    if sys.platform == 'win32':
-        # On win32 you cannot access non-ascii filenames without
-        # decoding them into unicode first.
-        # However, under Linux, you can access bytestream paths
-        # without any problems. If this function was always active
-        # it would probably break tests when LANG=C was set
-        def translate_path(self, path):
-            """Translate a /-separated PATH to the local filename syntax.
-
-            For bzr, all url paths are considered to be utf8 paths.
-            On Linux, you can access these paths directly over the bytestream
-            request, but on win32, you must decode them, and access them
-            as Unicode files.
-            """
-            # abandon query parameters
-            path = urlparse.urlparse(path)[2]
-            path = posixpath.normpath(urllib.unquote(path))
-            path = path.decode('utf-8')
-            words = path.split('/')
-            words = filter(None, words)
-            path = os.getcwdu()
-            for word in words:
-                drive, word = os.path.splitdrive(word)
-                head, word = os.path.split(word)
-                if word in (os.curdir, os.pardir): continue
-                path = os.path.join(path, word)
-            return path
-
-
-class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
-
-
-class HttpServer(Server):
-    """A test server for http transports."""
-
-    # used to form the url that connects to this server
-    _url_protocol = 'http'
-
-    # Subclasses can provide a specific request handler
-    def __init__(self, request_handler=TestingHTTPRequestHandler):
-        Server.__init__(self)
-        self.request_handler = request_handler
-
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
-                                  self.request_handler,
-                                  self)
-        host, port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
-        self._http_starting.release()
-        httpd.socket.settimeout(0.1)
-
-        while self._http_running:
-            try:
-                httpd.handle_request()
-            except socket.timeout:
-                pass
-
-    def _get_remote_url(self, path):
-        path_parts = path.split(os.path.sep)
-        if os.path.isabs(path):
-            if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
-                raise BadWebserverPath(path, self.test_dir)
-            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
-        else:
-            remote_path = '/'.join(path_parts)
-
-        self._http_starting.acquire()
-        self._http_starting.release()
-        return self._http_base_url + remote_path
-
-    def log(self, format, *args):
-        """Capture Server log output."""
-        self.logs.append(format % args)
-
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
-        self._home_dir = os.getcwdu()
-        self._local_path_parts = self._home_dir.split(os.path.sep)
-        self._http_starting = threading.Lock()
-        self._http_starting.acquire()
-        self._http_running = True
-        self._http_base_url = None
-        self._http_thread = threading.Thread(target=self._http_start)
-        self._http_thread.setDaemon(True)
-        self._http_thread.start()
-        self._http_proxy = os.environ.get("http_proxy")
-        if self._http_proxy is not None:
-            del os.environ["http_proxy"]
-        self.logs = []
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._http_running = False
-        self._http_thread.join()
-        if self._http_proxy is not None:
-            import os
-            os.environ["http_proxy"] = self._http_proxy
-
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return self._get_remote_url(self._home_dir)
-        
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, weird dns,
-        # etc
-        return 'http://127.0.0.1:1/'
-
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading."""
+        pass

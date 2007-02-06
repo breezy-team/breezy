@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,15 +18,20 @@
 import os
 
 import bzrlib
-from bzrlib import errors, osutils, tests
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    errors,
+    lockdir,
+    osutils,
+    tests,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
-from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.workingtree import WorkingTree
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -408,10 +413,14 @@ class TestCommit(TestCaseWithTransport):
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
+
+        orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
         master_branch.lock_write()
         try:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 1
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
             master_branch.unlock()
 
     def test_commit_bound_merge(self):
@@ -595,3 +604,54 @@ class TestCommit(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
                           'message', specific_files=['bogus'])
+
+    class Callback(object):
+        
+        def __init__(self, message, testcase):
+            self.called = False
+            self.message = message
+            self.testcase = testcase
+
+        def __call__(self, commit_obj):
+            self.called = True
+            self.testcase.assertTrue(isinstance(commit_obj, Commit))
+            return self.message
+
+    def test_commit_callback(self):
+        """Commit should invoke a callback to get the message"""
+
+        tree = self.make_branch_and_tree('.')
+        try:
+            tree.commit()
+        except Exception, e:
+            self.assertTrue(isinstance(e, BzrError))
+            self.assertEqual('The message or message_callback keyword'
+                             ' parameter is required for commit().', str(e))
+        else:
+            self.fail('exception not raised')
+        cb = self.Callback(u'commit 1', self)
+        tree.commit(message_callback=cb)
+        self.assertTrue(cb.called)
+        repository = tree.branch.repository
+        message = repository.get_revision(tree.last_revision()).message
+        self.assertEqual('commit 1', message)
+
+    def test_no_callback_pointless(self):
+        """Callback should not be invoked for pointless commit"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
+                          allow_pointless=False)
+        self.assertFalse(cb.called)
+
+    def test_no_callback_netfailure(self):
+        """Callback should not be invoked if connectivity fails"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        repository = tree.branch.repository
+        # simulate network failure
+        def raise_(self, arg, arg2):
+            raise errors.NoSuchFile('foo')
+        repository.add_inventory = raise_
+        self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertFalse(cb.called)

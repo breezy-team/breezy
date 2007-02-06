@@ -15,8 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from copy import deepcopy
 from cStringIO import StringIO
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from copy import deepcopy
 from unittest import TestSuite
 from warnings import warn
 
@@ -24,26 +27,29 @@ import bzrlib
 from bzrlib import (
         bzrdir,
         cache_utf8,
+        config as _mod_config,
         errors,
         lockdir,
+        lockable_files,
         osutils,
-        revision,
+        revision as _mod_revision,
         transport,
         tree,
         ui,
         urlutils,
         )
-from bzrlib.config import TreeConfig
-from bzrlib.decorators import needs_read_lock, needs_write_lock
-import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
-                           HistoryMissing, InvalidRevisionId, 
-                           InvalidRevisionNumber, LockError, NoSuchFile, 
-                           NoSuchRevision, NoWorkingTree, NotVersionedError,
-                           NotBranchError, UninitializableFormat, 
-                           UnlistableStore, UnlistableBranch, 
-                           )
+from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.lockable_files import LockableFiles, TransportLock
+""")
+
+from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
+                           HistoryMissing, InvalidRevisionId,
+                           InvalidRevisionNumber, LockError, NoSuchFile,
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat,
+                           UnlistableStore, UnlistableBranch,
+                           )
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
@@ -75,6 +81,8 @@ class Branch(object):
 
     base
         Base directory/url of the branch.
+
+    hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -148,7 +156,7 @@ class Branch(object):
         pass
 
     def get_config(self):
-        return bzrlib.config.BranchConfig(self)
+        return BranchConfig(self)
 
     def _get_nick(self):
         return self.get_config().get_nickname()
@@ -217,12 +225,7 @@ class Branch(object):
         try:
             if last_revision is None:
                 pb.update('get source history')
-                from_history = from_branch.revision_history()
-                if from_history:
-                    last_revision = from_history[-1]
-                else:
-                    # no history in the source branch
-                    last_revision = revision.NULL_REVISION
+                last_revision = from_branch.last_revision_info()[1]
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -316,6 +319,18 @@ class Branch(object):
         else:
             return None
 
+    def last_revision_info(self):
+        """Return information about the last revision.
+
+        :return: A tuple (revno, last_revision_id).
+        """
+        rh = self.revision_history()
+        revno = len(rh)
+        if revno:
+            return (revno, rh[-1])
+        else:
+            return (0, _mod_revision.NULL_REVISION)
+
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
@@ -369,7 +384,18 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
+        """Mirror source into this branch.
+
+        This branch is considered to be 'local', having low latency.
+        """
         raise NotImplementedError(self.pull)
+
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Mirror this branch into target.
+
+        This branch is considered to be 'local', having low latency.
+        """
+        raise NotImplementedError(self.push)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -593,7 +619,7 @@ class Branch(object):
             format = self.repository.bzrdir.cloning_metadir()
         return format
 
-    def create_checkout(self, to_location, revision_id=None, 
+    def create_checkout(self, to_location, revision_id=None,
                         lightweight=False):
         """Create a checkout of a branch.
         
@@ -670,7 +696,7 @@ class BranchFormat(object):
 
     def get_format_description(self):
         """Return the short format description for this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(self.get_format_description)
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -710,6 +736,45 @@ class BranchFormat(object):
         return self.get_format_string().rstrip()
 
 
+class BranchHooks(dict):
+    """A dictionary mapping hook name to a list of callables for branch hooks.
+    
+    e.g. ['set_rh'] Is the list of items to be called when the
+    set_revision_history function is invoked.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        dict.__init__(self)
+        # invoked whenever the revision history has been set
+        # with set_revision_history. The api signature is
+        # (branch, revision_history), and the branch will
+        # be write-locked. Introduced in 0.15.
+        self['set_rh'] = []
+
+    def install_hook(self, hook_name, a_callable):
+        """Install a_callable in to the hook hook_name.
+
+        :param hook_name: A hook name. See the __init__ method of BranchHooks
+            for the complete list of hooks.
+        :param a_callable: The callable to be invoked when the hook triggers.
+            The exact signature will depend on the hook - see the __init__ 
+            method of BranchHooks for details on each hook.
+        """
+        try:
+            self[hook_name].append(a_callable)
+        except KeyError:
+            raise errors.UnknownHook('branch', hook_name)
+
+
+# install the default hooks into the Branch class.
+Branch.hooks = BranchHooks()
+
+
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
 
@@ -729,8 +794,8 @@ class BzrBranchFormat4(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'branch-lock',
-                                      TransportLock)
+        control_files = lockable_files.LockableFiles(branch_transport,
+                             'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -790,7 +855,8 @@ class BzrBranchFormat5(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', lockdir.LockDir)
+        control_files = lockable_files.LockableFiles(branch_transport, 'lock',
+                                                     lockdir.LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -815,7 +881,8 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
+        control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                     lockdir.LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,
@@ -1069,6 +1136,7 @@ class BzrBranch(Branch):
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
         for revision_id in revision_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)
@@ -1092,6 +1160,8 @@ class BzrBranch(Branch):
             # this call is disabled because revision_history is 
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     @needs_read_lock
     def revision_history(self):
@@ -1129,7 +1199,7 @@ class BzrBranch(Branch):
         # make a new revision history from the graph
         current_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, revision.NULL_REVISION):
+        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
             new_history.append(current_rev_id)
             current_rev_id_parents = stop_graph[current_rev_id]
             try:
@@ -1183,7 +1253,7 @@ class BzrBranch(Branch):
         """See Branch.pull."""
         source.lock_read()
         try:
-            old_count = len(self.revision_history())
+            old_count = self.last_revision_info()[0]
             try:
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
@@ -1191,10 +1261,28 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 self.set_revision_history(source.revision_history())
-            new_count = len(self.revision_history())
+            new_count = self.last_revision_info()[0]
             return new_count - old_count
         finally:
             source.unlock()
+
+    @needs_read_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        """See Branch.push."""
+        target.lock_write()
+        try:
+            old_count = len(target.revision_history())
+            try:
+                target.update_revisions(self, stop_revision)
+            except DivergedBranches:
+                if not overwrite:
+                    raise
+            if overwrite:
+                target.set_revision_history(self.revision_history())
+            new_count = len(target.revision_history())
+            return new_count - old_count
+        finally:
+            target.unlock()
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -1223,8 +1311,9 @@ class BzrBranch(Branch):
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        self.get_config().set_user_option('push_location', location, 
-                                          local=True)
+        self.get_config().set_user_option(
+            'push_location', location,
+            store=_mod_config.STORE_LOCATION_NORECURSE)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -1273,7 +1362,7 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):
-        """Updates branch.pull to be bound branch aware."""
+        """Extends branch.pull to be bound branch aware."""
         bound_location = self.get_bound_location()
         if source.base != bound_location:
             # not pulling from master, so we need to update master.
@@ -1282,6 +1371,22 @@ class BzrBranch5(BzrBranch):
                 master_branch.pull(source)
                 source = master_branch
         return super(BzrBranch5, self).pull(source, overwrite, stop_revision)
+
+    @needs_write_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Updates branch.push to be bound branch aware."""
+        bound_location = target.get_bound_location()
+        if target.base != bound_location:
+            # not pushing to master, so we need to update master.
+            master_branch = target.get_master_branch()
+            if master_branch:
+                # push into the master from this branch.
+                super(BzrBranch5, self).push(master_branch, overwrite,
+                    stop_revision)
+        # and push into the target branch from this. Note that we push from
+        # this branch again, because its considered the highest bandwidth
+        # repository.
+        return super(BzrBranch5, self).push(target, overwrite, stop_revision)
 
     def get_bound_location(self):
         try:
@@ -1445,4 +1550,5 @@ class BranchCheckResult(object):
 @deprecated_function(zero_eight)
 def is_control_file(*args, **kwargs):
     """See bzrlib.workingtree.is_control_file."""
-    return bzrlib.workingtree.is_control_file(*args, **kwargs)
+    from bzrlib import workingtree
+    return workingtree.is_control_file(*args, **kwargs)

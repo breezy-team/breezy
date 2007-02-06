@@ -31,3 +31,5 @@ build
 ./dist
 # performance history data file
 ./.perf_history
+./html_docs
+./pretty_docs

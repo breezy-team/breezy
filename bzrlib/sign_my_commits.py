@@ -17,9 +17,15 @@
 """Command which looks for unsigned commits by the current user, and signs them.
 """
 
-from bzrlib import config, gpg
-from bzrlib.commands import Command
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    config,
+    gpg,
+    )
 from bzrlib.bzrdir import BzrDir
+""")
+from bzrlib.commands import Command
 from bzrlib.option import Option
 
 

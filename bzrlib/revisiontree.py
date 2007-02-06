@@ -40,7 +40,6 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        assert inv.root is not None
         self._revision_id = revision_id
 
     def get_parent_ids(self):
@@ -74,10 +73,15 @@ class RevisionTree(Tree):
     def get_file(self, file_id):
         return StringIO(self.get_file_text(file_id))
 
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter"""
+        w = self.get_weave(file_id)
+        return w.annotate_iter(self.inventory[file_id].revision)
+
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         ie = self._inventory[file_id]
         if ie.kind == "file":
             return ie.text_sha1
@@ -100,7 +104,8 @@ class RevisionTree(Tree):
     def list_files(self, include_root=False):
         # The only files returned by this are those from the version
         entries = self.inventory.iter_entries()
-        if not include_root:
+        # skip the root for compatability with the current apis.
+        if self.inventory.root is not None and not include_root:
             # skip the root for compatability with the current apis.
             entries.next()
         for path, entry in entries:
@@ -112,6 +117,15 @@ class RevisionTree(Tree):
 
     def kind(self, file_id):
         return self._inventory[file_id].kind
+
+    def _comparison_data(self, entry, path):
+        if entry is None:
+            return None, False, None
+        return entry.kind, entry.executable, None
+
+    def _file_size(self, entry, stat_value):
+        assert entry.text_size is not None
+        return entry.text_size
 
     def lock_read(self):
         self._repository.lock_read()

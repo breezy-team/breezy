@@ -100,8 +100,6 @@ class MutableTree(tree.Tree):
             if self.is_control_filename(f):
                 raise errors.ForbiddenControlFileError(filename=f)
             fp = splitpath(f)
-            if len(fp) == 0:
-                raise BzrError("cannot add top-level %r" % f)
         # fill out file kinds for all files [not needed when we stop 
         # caring about the instantaneous file kind within a uncommmitted tree
         #

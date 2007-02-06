@@ -7,6 +7,14 @@
 AppName=Bazaar
 
 ; [[[cog
+; # Python 2.5 compatibility code
+; import os
+; import sys
+; cwd = os.getcwd()
+; if cwd not in sys.path:
+;     sys.path.insert(0, cwd)
+; #/Python 2.5 compatibility code
+;
 ; import bzrlib
 ; try: 
 ;     VERSION = bzrlib.__version__
@@ -33,10 +41,10 @@ OutputDir="..\"
 SourceDir="..\..\win32_bzr.exe"
 
 SetupIconFile="..\bzr.ico"
-LicenseFile="..\COPYING.txt"
+InfoBeforeFile="..\tools\win32\info.txt"
 
 VersionInfoCompany="Canonical Ltd."
-VersionInfoCopyright="Canonical Ltd., 2005-2006"
+VersionInfoCopyright="Canonical Ltd., 2005-2007"
 VersionInfoDescription="Installer for stand-alone bzr.exe"
 ; [[[cog
 ; import bzrlib
@@ -82,7 +90,7 @@ Name: "{userappdata}\bazaar\2.0"
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
 Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
-Name: "{group}\Start Bzr in cmd shell"; Filename: "{sys}\cmd.exe"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
 Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
 
 [Tasks]

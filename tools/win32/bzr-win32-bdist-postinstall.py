@@ -16,10 +16,13 @@
 # [bialix]: bzr de-facto does not support win98.
 #           Although it seems to work on. Sometimes.
 # 2006/07/30    added minimal support of win98.
+# 2007/01/30    added *real* support of win98.
 
 import os
 import sys
 import _winreg
+
+from bzrlib import win32utils
 
 
 def _quoted_path(path):
@@ -29,7 +32,7 @@ def _quoted_path(path):
         return path
 
 def _win_batch_args():
-    if os.name == 'nt':
+    if win32utils.winver == 'Windows NT':
         return '%*'
     else:
         return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
@@ -62,27 +65,19 @@ Congratulation! Bzr successfully installed.
         python_path = _quoted_path(os.path.join(prefix, "python.exe"))
         args = _win_batch_args()
         batch_str = "@%s %s %s" % (python_path, script_path, args)
-        # minimal support of win98
-        # if there is no HOME in system then set it for Bazaar manually
-        homes = ('BZR_HOME', 'APPDATA', 'HOME')
-        for home in homes:
-            bzr_home = os.environ.get(home, None)
-            if bzr_home is not None:
-                break
-        else:
-            try:
-                bzr_home = get_special_folder('CSIDL_APPDATA')
-            except OSError:
-                # no Application Data
-                bzr_home = ''
-
-            if not bzr_home:
-                bzr_home = os.path.splitdrive(sys.prefix)[0] + '\\'
-
-            batch_str = ("@SET BZR_HOME=" + _quoted_path(bzr_home) + "\n" +
+        # support of win98
+        # if there is no HOME for bzr then set it for Bazaar manually
+        base = os.environ.get('BZR_HOME', None)
+        if base is None:
+            base = win32utils.get_appdata_location()
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            base = os.path.splitdrive(sys.prefix)[0] + '\\'
+            batch_str = ("@SET BZR_HOME=" + _quoted_path(base) + "\n" +
                          batch_str)
 
-        batch_path = script_path + ".bat"
+        batch_path = os.path.join(scripts_dir, "bzr.bat")
         f = file(batch_path, "w")
         f.write(batch_str)
         f.close()
@@ -94,20 +89,6 @@ Congratulation! Bzr successfully installed.
         print "Use this batch file to run bzr"
     except Exception, e:
         print "ERROR: Unable to create %s: %s" % (batch_path, e)
-
-    # make entry in bzr home directory
-    dst = os.path.join(bzr_home, "bazaar", "2.0")
-    if not os.path.isdir(dst):
-        os.makedirs(dst)
-        import locale
-        print "Configuration files stored in %s" % \
-              dst.encode(locale.getpreferredencoding(), 'replace')
-        # create dummy bazaar.conf
-        f = file(os.path.join(dst,'bazaar.conf'), 'w')
-        f.write("# main configuration file of Bazaar\n"
-                "[DEFAULT]\n"
-                "#email=Your Name <you@domain.com>\n")
-        f.close()
 
     ## this hunk borrowed from pywin32_postinstall.py
     # use bdist_wininst builtins to create a shortcut.

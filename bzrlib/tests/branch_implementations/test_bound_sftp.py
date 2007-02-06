@@ -20,6 +20,9 @@
 import os
 
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir,
                            BzrDirFormat,
@@ -34,12 +37,9 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            wt_base = BzrDir.create_standalone_workingtree('base')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        wt_base = BzrDir.create_standalone_workingtree('base',
+            format=format)
     
         b_base = wt_base.branch
 
@@ -72,12 +72,8 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         # manually make a branch we can bind, because the default format
         # may not be bindable-from, and we want to test the side effects etc
         # of bondage.
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            b_child = BzrDir.create_branch_convenience('child')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        b_child = BzrDir.create_branch_convenience('child', format=format)
         self.assertEqual(None, b_child.get_bound_location())
         self.assertEqual(None, b_child.get_master_branch())
 
@@ -187,18 +183,6 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1'], b_base.revision_history())
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1'], sftp_b_newbase.revision_history())
-
-    def test_pull_updates_both(self):
-        b_base, wt_child = self.create_branches()
-
-        wt_newchild = b_base.bzrdir.sprout('newchild').open_workingtree()
-        open('newchild/b', 'wb').write('newchild b contents\n')
-        wt_newchild.commit('newchild', rev_id='r@d-2')
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_newchild.branch.revision_history())
-
-        wt_child.pull(wt_newchild.branch)
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@d-2'], b_base.revision_history())
 
     def test_bind_diverged(self):
         from bzrlib.builtins import merge
@@ -336,25 +320,6 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 wt_child.commit, 'added text', rev_id='r@c-2')
-
-    def test_pull_fails(self):
-        b_base, wt_child = self.create_branches()
-
-        wt_other = wt_child.bzrdir.sprout('other').open_workingtree()
-        open('other/a', 'wb').write('new contents\n')
-        wt_other.commit('changed a', rev_id='r@d-2')
-
-        self.assertEqual(['r@b-1'], b_base.revision_history())
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_other.branch.revision_history())
-
-        # this deletes the branch from memory
-        del b_base
-        # and this moves it out of the way on disk
-        os.rename('base', 'hidden_base')
-
-        self.assertRaises(errors.BoundBranchConnectionFailure,
-                wt_child.pull, wt_other.branch)
 
     # TODO: jam 20051231 We need invasive failure tests, so that we can show
     #       performance even when something fails.
