@@ -70,6 +70,8 @@ class TestReportChanges(tests.TestCase):
                           kind=(None, 'directory'))
         self.assertReport('+   path/', versioned_change='added',
                           modified='unchanged', kind=(None, 'directory'))
+        self.assertReport('+   path', versioned_change='added',
+                          modified='unchanged', kind=(None, None))
         self.assertReport('+N  path/', versioned_change='added',
                           modified='created', kind=(None, 'directory'))
         self.assertReport('+M  path/', versioned_change='added',

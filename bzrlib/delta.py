@@ -315,7 +315,7 @@ class ChangeReporter(object):
                 old_path = path
         if modified == 'deleted':
             path += osutils.kind_marker(kind[0])
-        else:
+        elif kind[1] is not None:
             path += osutils.kind_marker(kind[1])
         if old_path != "":
             old_path += "%s => " % osutils.kind_marker(kind[0])
