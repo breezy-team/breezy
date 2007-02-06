@@ -318,7 +318,9 @@ class ChangeReporter(object):
         elif kind[1] is not None:
             path += osutils.kind_marker(kind[1])
         if old_path != "":
-            old_path += "%s => " % osutils.kind_marker(kind[0])
+            if kind[0] is not None:
+                old_path += osutils.kind_marker(kind[0])
+            old_path += " => "
         if exe_change:
             exe = '*'
         else:
