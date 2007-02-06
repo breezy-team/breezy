@@ -1,10 +1,13 @@
 This is a plugin to implement post commmit emails for bzr.
-This should eventually automatically activate if an email
-address is set, and should allow format specifiers too.
+This should eventually allow format specifiers.
 
-Until then, it is activated by setting 
+The plugin is activated by installing it (check it out to
+~/.bazaar/plugins/email - 'ls ~/.bazaar/plugins/email/__init__.py' should list
+a file), and then configure an address to send to as listed below.
+
+NB: If you are using a bzr release from before 0.15, you need to manually tell
+bzr about the commit action, by setting
 post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
-The plugin must be installed as "email" (i.e. ~/.bazaar/plugins/email/).
 
 The address to sent to is read from 'post_commit_to' and the address to send
 from from 'post_commit_sender'.
