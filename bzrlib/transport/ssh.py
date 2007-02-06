@@ -65,7 +65,7 @@ class SSHVendorManager(object):
 
     def __init__(self):
         self._ssh_vendors = {}
-        self.ssh_vendor = None
+        self._cached_ssh_vendor = None
         self._default_ssh_vendor = None
 
     def register_default_vendor(self, vendor):
@@ -75,6 +75,10 @@ class SSHVendorManager(object):
     def register_vendor(self, name, vendor):
         """Register new SSH vendor by name."""
         self._ssh_vendors[name] = vendor
+
+    def clear_cache(self):
+        """Clear cache."""
+        self._cached_ssh_vendor = None
 
     def _get_vendor_by_environment(self, environment=None):
         if environment is None:
@@ -122,7 +126,7 @@ class SSHVendorManager(object):
 
     def get_vendor(self, environment=None):
         """Find out what version of SSH is on the system."""
-        if self.ssh_vendor is None:
+        if self._cached_ssh_vendor is None:
             vendor = self._get_vendor_by_environment(environment)
             if vendor is None:
                 vendor = self._get_vendor_by_inspection()
@@ -131,8 +135,8 @@ class SSHVendorManager(object):
                     vendor = self._default_ssh_vendor
                     if vendor is None:
                         raise SSHVendorNotFound()
-            self.ssh_vendor = vendor
-        return self.ssh_vendor
+            self._cached_ssh_vendor = vendor
+        return self._cached_ssh_vendor
 
 _ssh_vendor_manager = SSHVendorManager()
 _get_ssh_vendor = _ssh_vendor_manager.get_vendor

@@ -95,11 +95,11 @@ class SSHVendorManagerTests(TestCase):
         manager.register_default_vendor(default_vendor)
         self.assertIs(manager.get_vendor({}), default_vendor)
 
-        manager.ssh_vendor = None
+        manager.clear_cache()
         manager.set_ssh_version_string("OpenSSH")
         self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
 
-        manager.ssh_vendor = None
+        manager.clear_cache()
         vendor = object()
         manager.register_vendor("vendor", vendor)
         self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
