@@ -28,9 +28,9 @@ from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
                            ParamikoNotPresent,
                            SocketConnectionError,
+                           SSHVendorNotFound,
                            TransportError,
                            UnknownSSH,
-                           SSHVendorNotFound,
                            )
 
 from bzrlib.osutils import pathjoin
