@@ -304,20 +304,21 @@ class Repository(object):
 
         Currently no check is made that the format of this repository and
         the bzrdir format are compatible. FIXME RBC 20060201.
+
+        :return: The newly created destination repository.
         """
         if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
             # use target default format.
-            result = a_bzrdir.create_repository()
-        # FIXME RBC 20060209 split out the repository type to avoid this check ?
-        elif isinstance(a_bzrdir._format,
-                      (bzrdir.BzrDirFormat4,
-                       bzrdir.BzrDirFormat5,
-                       bzrdir.BzrDirFormat6)):
-            result = a_bzrdir.open_repository()
+            dest_repo = a_bzrdir.create_repository()
         else:
-            result = self._format.initialize(a_bzrdir, shared=self.is_shared())
-        self.copy_content_into(result, revision_id, basis)
-        return result
+            # Most control formats need the repository to be specifically
+            # created, but on some old all-in-one formats it's not needed
+            try:
+                dest_repo = self._format.initialize(a_bzrdir, shared=self.is_shared())
+            except errors.UninitializableFormat:
+                dest_repo = a_bzrdir.open_repository()
+        self.copy_content_into(dest_repo, revision_id, basis)
+        return dest_repo
 
     @needs_read_lock
     def has_revision(self, revision_id):
@@ -779,68 +780,6 @@ class Repository(object):
                     raise errors.NonAsciiRevisionId(method, self)
 
 
-class AllInOneRepository(Repository):
-    """Legacy support - the repository behaviour for all-in-one branches."""
-
-    def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
-        # we reuse one control files instance.
-        dir_mode = a_bzrdir._control_files._dir_mode
-        file_mode = a_bzrdir._control_files._file_mode
-
-        def get_store(name, compressed=True, prefixed=False):
-            # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
-            # still want the option to look for both.
-            relpath = a_bzrdir._control_files._escape(name)
-            store = TextStore(a_bzrdir._control_files._transport.clone(relpath),
-                              prefixed=prefixed, compressed=compressed,
-                              dir_mode=dir_mode,
-                              file_mode=file_mode)
-            #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
-            return store
-
-        # not broken out yet because the controlweaves|inventory_store
-        # and text_store | weave_store bits are still different.
-        if isinstance(_format, RepositoryFormat4):
-            # cannot remove these - there is still no consistent api 
-            # which allows access to this old info.
-            self.inventory_store = get_store('inventory-store')
-            text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return Repository.get_commit_builder(self, branch, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
-
-    @needs_read_lock
-    def is_shared(self):
-        """AllInOne repositories cannot be shared."""
-        return False
-
-    @needs_write_lock
-    def set_make_working_trees(self, new_value):
-        """Set the policy flag for making working trees when creating branches.
-
-        This only applies to branches that use this repository.
-
-        The default is 'True'.
-        :param new_value: True to restore the default, False to disable making
-                          working trees.
-        """
-        raise NotImplementedError(self.set_make_working_trees)
-    
-    def make_working_trees(self):
-        """Returns the policy for making working trees on new branches."""
-        return True
-
-
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
     present_parents = []
@@ -928,17 +867,6 @@ class MetaDirRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return not self.control_files._transport.has('no-working-trees')
-
-
-class WeaveMetaDirRepository(MetaDirRepository):
-    """A subclass of MetaDirRepository to set weave specific policy."""
-
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None):
-        self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return MetaDirRepository.get_commit_builder(self, branch, parents,
-            config, timestamp, timezone, committer, revprops, revision_id)
 
 
 class KnitRepository(MetaDirRepository):
@@ -1306,193 +1234,6 @@ class RepositoryFormat(object):
         raise NotImplementedError(self.open)
 
 
-class PreSplitOutRepositoryFormat(RepositoryFormat):
-    """Base class for the pre split out repository formats."""
-
-    rich_root_data = False
-
-    def initialize(self, a_bzrdir, shared=False, _internal=False):
-        """Create a weave repository.
-        
-        TODO: when creating split out bzr branch formats, move this to a common
-        base for Format5, Format6. or something like that.
-        """
-        if shared:
-            raise errors.IncompatibleFormat(self, a_bzrdir._format)
-
-        if not _internal:
-            # always initialized when the bzrdir is.
-            return self.open(a_bzrdir, _found=True)
-        
-        # Create an empty weave
-        sio = StringIO()
-        weavefile.write_weave_v5(weave.Weave(), sio)
-        empty_weave = sio.getvalue()
-
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
-                 ]
-        
-        # FIXME: RBC 20060125 don't peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        control_files = lockable_files.LockableFiles(a_bzrdir.transport,
-                                'branch-lock', lockable_files.TransportLock)
-        control_files.create_lock()
-        control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
-        try:
-            for file, content in files:
-                control_files.put(file, content)
-        finally:
-            control_files.unlock()
-        return self.open(a_bzrdir, _found=True)
-
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return self._get_versioned_file_store('',
-                                              repo_transport,
-                                              control_files,
-                                              prefixed=False)
-
-    def _get_text_store(self, transport, control_files):
-        """Get a store for file texts for this format."""
-        raise NotImplementedError(self._get_text_store)
-
-    def open(self, a_bzrdir, _found=False):
-        """See RepositoryFormat.open()."""
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-
-        repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = a_bzrdir._control_files
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return AllInOneRepository(_format=self,
-                                  a_bzrdir=a_bzrdir,
-                                  _revision_store=_revision_store,
-                                  control_store=control_store,
-                                  text_store=text_store)
-
-    def check_conversion_target(self, target_format):
-        pass
-
-
-class RepositoryFormat4(PreSplitOutRepositoryFormat):
-    """Bzr repository format 4.
-
-    This repository format has:
-     - flat stores
-     - TextStores for texts, inventories,revisions.
-
-    This format is deprecated: it indexes texts using a text id which is
-    removed in format 5; initialization and write support for this format
-    has been removed.
-    """
-
-    def __init__(self):
-        super(RepositoryFormat4, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat4()
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Repository format 4"
-
-    def initialize(self, url, shared=False, _internal=False):
-        """Format 4 branches cannot be created."""
-        raise errors.UninitializableFormat(self)
-
-    def is_supported(self):
-        """Format 4 is not supported.
-
-        It is not supported because the model changed from 4 to 5 and the
-        conversion logic is expensive - so doing it on the fly was not 
-        feasible.
-        """
-        return False
-
-    def _get_control_store(self, repo_transport, control_files):
-        """Format 4 repositories have no formal control store at this point.
-        
-        This will cause any control-file-needing apis to fail - this is desired.
-        """
-        return None
-    
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        from bzrlib.xml4 import serializer_v4
-        return self._get_text_rev_store(repo_transport,
-                                        control_files,
-                                        'revision-store',
-                                        serializer=serializer_v4)
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-
-
-class RepositoryFormat5(PreSplitOutRepositoryFormat):
-    """Bzr control format 5.
-
-    This repository format has:
-     - weaves for file texts and inventory
-     - flat stores
-     - TextStores for revisions and signatures.
-    """
-
-    def __init__(self):
-        super(RepositoryFormat5, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat5()
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Weave repository format 5"
-
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        """Return the revision store object for this a_bzrdir."""
-        return self._get_text_rev_store(repo_transport,
-                                        control_files,
-                                        'revision-store',
-                                        compressed=False)
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('weaves', transport, control_files, prefixed=False)
-
-
-class RepositoryFormat6(PreSplitOutRepositoryFormat):
-    """Bzr control format 6.
-
-    This repository format has:
-     - weaves for file texts and inventory
-     - hash subdirectory based stores.
-     - TextStores for revisions and signatures.
-    """
-
-    def __init__(self):
-        super(RepositoryFormat6, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Weave repository format 6"
-
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        return self._get_text_rev_store(repo_transport,
-                                        control_files,
-                                        'revision-store',
-                                        compressed=False,
-                                        prefixed=True)
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('weaves', transport, control_files)
-
-
 class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
@@ -1527,98 +1268,6 @@ class MetaDirRepositoryFormat(RepositoryFormat):
                 control_files.put_utf8('shared-storage', '')
         finally:
             control_files.unlock()
-
-
-class RepositoryFormat7(MetaDirRepositoryFormat):
-    """Bzr repository 7.
-
-    This repository format has:
-     - weaves for file texts and inventory
-     - hash subdirectory based stores.
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-    """
-
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return self._get_versioned_file_store('',
-                                              repo_transport,
-                                              control_files,
-                                              prefixed=False)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Repository format 7"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Weave repository format 7"
-
-    def check_conversion_target(self, target_format):
-        pass
-
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        return self._get_text_rev_store(repo_transport,
-                                        control_files,
-                                        'revision-store',
-                                        compressed=False,
-                                        prefixed=True,
-                                        )
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('weaves',
-                                              transport,
-                                              control_files)
-
-    def initialize(self, a_bzrdir, shared=False):
-        """Create a weave repository.
-
-        :param shared: If true the repository will be initialized as a shared
-                       repository.
-        """
-        # Create an empty weave
-        sio = StringIO()
-        weavefile.write_weave_v5(weave.Weave(), sio)
-        empty_weave = sio.getvalue()
-
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)), 
-                 ]
-        utf8_files = [('format', self.get_format_string())]
- 
-        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
-
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
-        """See RepositoryFormat.open().
-        
-        :param _override_transport: INTERNAL USE ONLY. Allows opening the
-                                    repository at a slightly different url
-                                    than normal. I.e. during 'upgrade'.
-        """
-        if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
-        if _override_transport is not None:
-            repo_transport = _override_transport
-        else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return WeaveMetaDirRepository(_format=self,
-            a_bzrdir=a_bzrdir,
-            control_files=control_files,
-            _revision_store=_revision_store,
-            control_store=control_store,
-            text_store=text_store)
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -1815,19 +1464,20 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
                                text_store=text_store)
 
 
-
 # formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-RepositoryFormat.register_format(RepositoryFormat7())
+# and not independently creatable, so are not registered.  They're 
+# all in bzrlib.repofmt.weaverepo now.
+format_registry.register_lazy(
+    'Bazaar-NG Repository format 7',
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat7_instance'
+    )
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())
 RepositoryFormat._set_default_format(_default_format)
-_legacy_formats = [RepositoryFormat4(),
-                   RepositoryFormat5(),
-                   RepositoryFormat6()]
 
 
 class InterRepository(InterObject):
@@ -1893,7 +1543,7 @@ class InterSameDataRepository(InterRepository):
     Data format and model must match for this to work.
     """
 
-    _matching_repo_format = RepositoryFormat4()
+    _matching_repo_format = _default_format
     """Repository format for testing with."""
 
     @staticmethod
@@ -1943,124 +1593,6 @@ class InterSameDataRepository(InterRepository):
                                last_revision=revision_id,
                                pb=pb)
         return f.count_copied, f.failed_revisions
-
-
-class InterWeaveRepo(InterSameDataRepository):
-    """Optimised code paths between Weave based repositories."""
-
-    _matching_repo_format = RepositoryFormat7()
-    """Repository format for testing with."""
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with known Weave formats.
-        
-        We don't test for the stores being of specific types because that
-        could lead to confusing results, and there is no need to be 
-        overly general.
-        """
-        try:
-            return (isinstance(source._format, (RepositoryFormat5,
-                                                RepositoryFormat6,
-                                                RepositoryFormat7)) and
-                    isinstance(target._format, (RepositoryFormat5,
-                                                RepositoryFormat6,
-                                                RepositoryFormat7)))
-        except AttributeError:
-            return False
-    
-    @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
-        """See InterRepository.copy_content()."""
-        # weave specific optimised path:
-        if basis is not None:
-            # copy the basis in, then fetch remaining data.
-            basis.copy_content_into(self.target, revision_id)
-            # the basis copy_content_into could miss-set this.
-            try:
-                self.target.set_make_working_trees(self.source.make_working_trees())
-            except NotImplementedError:
-                pass
-            self.target.fetch(self.source, revision_id=revision_id)
-        else:
-            try:
-                self.target.set_make_working_trees(self.source.make_working_trees())
-            except NotImplementedError:
-                pass
-            # FIXME do not peek!
-            if self.source.control_files._transport.listable():
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
-                    self.target.weave_store.copy_all_ids(
-                        self.source.weave_store,
-                        pb=pb,
-                        from_transaction=self.source.get_transaction(),
-                        to_transaction=self.target.get_transaction())
-                    pb.update('copying inventory', 0, 1)
-                    self.target.control_weaves.copy_multi(
-                        self.source.control_weaves, ['inventory'],
-                        from_transaction=self.source.get_transaction(),
-                        to_transaction=self.target.get_transaction())
-                    self.target._revision_store.text_store.copy_all_ids(
-                        self.source._revision_store.text_store,
-                        pb=pb)
-                finally:
-                    pb.finished()
-            else:
-                self.target.fetch(self.source, revision_id=revision_id)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import GenericRepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
-        f = GenericRepoFetcher(to_repository=self.target,
-                               from_repository=self.source,
-                               last_revision=revision_id,
-                               pb=pb)
-        return f.count_copied, f.failed_revisions
-
-    @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
-        """See InterRepository.missing_revision_ids()."""
-        # we want all revisions to satisfy revision_id in source.
-        # but we don't want to stat every file here and there.
-        # we want then, all revisions other needs to satisfy revision_id 
-        # checked, but not those that we have locally.
-        # so the first thing is to get a subset of the revisions to 
-        # satisfy revision_id in source, and then eliminate those that
-        # we do already have. 
-        # this is slow on high latency connection to self, but as as this
-        # disk format scales terribly for push anyway due to rewriting 
-        # inventory.weave, this is considered acceptable.
-        # - RBC 20060209
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
-            source_ids.pop(0)
-        else:
-            source_ids = self.source._all_possible_ids()
-        source_ids_set = set(source_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target._all_possible_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
-        if revision_id is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            return required_topo_revisions
-        else:
-            # if we just grabbed the possibly available ids, then 
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
 class InterKnitRepo(InterSameDataRepository):
@@ -2204,7 +1736,6 @@ class InterKnit1and2(InterKnitRepo):
 
 
 InterRepository.register_optimiser(InterSameDataRepository)
-InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
@@ -2273,6 +1804,7 @@ class InterRepositoryTestProviderAdapter(object):
     @staticmethod
     def default_test_list():
         """Generate the default list of interrepo permutations to test."""
+        from bzrlib.repofmt import weaverepo
         result = []
         # test the default InterRepository between format 6 and the current 
         # default format.
@@ -2289,7 +1821,8 @@ class InterRepositoryTestProviderAdapter(object):
                                ))
         # if there are specific combinations we want to use, we can add them 
         # here.
-        result.append((InterModel1and2, RepositoryFormat5(),
+        result.append((InterModel1and2,
+                       weaverepo.RepositoryFormat5(),
                        RepositoryFormatKnit2()))
         result.append((InterKnit1and2, RepositoryFormatKnit1(),
                        RepositoryFormatKnit2()))

@@ -1089,15 +1089,13 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     RegistryOption('format',
-                            help='Specify a format for this branch. Current'
-                                 ' formats are: default, knit, metaweave and'
-                                 ' weave. Default is knit; metaweave and'
-                                 ' weave are deprecated',
-                            registry=bzrdir.format_registry,
-                            converter=get_format_type,
-                            value_switches=True),
-                     ]
+         RegistryOption('format',
+                help='Specify a format for this branch. '
+                'See "help formats".',
+                registry=bzrdir.format_registry,
+                converter=get_format_type,
+                value_switches=True),
+         ]
     def run(self, location=None, format=None):
         if format is None:
             format = get_format_type('default')
@@ -1148,12 +1146,10 @@ class cmd_init_repository(Command):
         cd trunk-checkout
         (add files here)
     """
-    takes_args = ["location"] 
+    takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository.'
-                                 ' Current formats are: default, knit,'
-                                 ' metaweave and weave. Default is knit;'
-                                 ' metaweave and weave are deprecated',
+                                'See "help formats".',
                             registry=bzrdir.format_registry,
                             converter=get_format_type,
                             value_switches=True),
@@ -1982,10 +1978,8 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
                     RegistryOption('format',
-                        help='Upgrade to a specific format. Current formats'
-                             ' are: default, knit, metaweave and weave.'
-                             ' Default is knit; metaweave and weave are'
-                             ' deprecated',
+                        help='Upgrade to a specific format. '
+                        'See "help formats"',
                         registry=bzrdir.format_registry,
                         converter=get_format_type,
                         value_switches=True),

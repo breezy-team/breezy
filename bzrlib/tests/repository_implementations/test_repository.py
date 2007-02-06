@@ -392,7 +392,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
-        if self.repository_format.__class__ == repository.RepositoryFormat4:
+        if self.repository_format.get_format_description() \
+            == "Repository format 4":
             raise TestSkipped('Cannot convert format-4 to itself')
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
