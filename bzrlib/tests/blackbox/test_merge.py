@@ -23,8 +23,8 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import ConflictList
-from bzrlib.osutils import abspath
+from bzrlib.conflicts import ConflictList, ContentsConflict
+from bzrlib.osutils import abspath, file_kind
 from bzrlib.tests.blackbox import ExternalBase
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
@@ -269,3 +269,23 @@ class TestMerge(ExternalBase):
         self.assertContainsRe(err, '1 revision\\(s\\) pulled')
         tree_a = WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
+
+    def test_merge_kind_change(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file', 'file-id')
+        tree_a.commit('added file')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        os.unlink('tree_a/file')
+        self.build_tree(['tree_a/file/'])
+        tree_a.commit('changed file to directory')
+        os.chdir('tree_b')
+        self.run_bzr('merge', '../tree_a')
+        self.assertEqual('directory', file_kind('file'))
+        tree_b.revert([])
+        self.assertEqual('file', file_kind('file'))
+        self.build_tree_contents([('file', 'content_2')])
+        tree_b.commit('content change')
+        self.run_bzr('merge', '../tree_a', retcode=1)
+        self.assertEqual(tree_b.conflicts(),
+                         [ContentsConflict('file', file_id='file-id')])
