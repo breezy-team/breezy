@@ -56,6 +56,8 @@ class TestReportChanges(tests.TestCase):
     def test_rename(self):
         self.assertReport('R   old => path', renamed=True, old_path='old')
         self.assertReport('    path')
+        self.assertReport('RN  old => path', renamed=True, old_path='old',
+                          modified='created', kind=(None, 'file'))
 
     def test_kind(self):
         self.assertReport(' K  path => path/', modified='kind changed',
@@ -70,6 +72,8 @@ class TestReportChanges(tests.TestCase):
                           kind=(None, 'directory'))
         self.assertReport('+   path/', versioned_change='added',
                           modified='unchanged', kind=(None, 'directory'))
+        self.assertReport('+   path', versioned_change='added',
+                          modified='unchanged', kind=(None, None))
         self.assertReport('+N  path/', versioned_change='added',
                           modified='created', kind=(None, 'directory'))
         self.assertReport('+M  path/', versioned_change='added',
