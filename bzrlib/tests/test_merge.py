@@ -23,7 +23,7 @@ from bzrlib.builtins import merge
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.revision import common_ancestor
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import (enable_test_log, disable_test_log)
@@ -186,3 +186,23 @@ class TestMerge(TestCaseWithTransport):
         other_tree = tree_a.basis_tree()
         os.unlink('tree_b/file')
         merge_inner(tree_b.branch, other_tree, base_tree, this_tree=tree_b)
+
+    def test_merge_kind_change(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file', 'file-id')
+        tree_a.commit('added file')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        os.unlink('tree_a/file')
+        self.build_tree(['tree_a/file/'])
+        tree_a.commit('changed file to directory')
+        tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual('directory', file_kind('tree_b/file'))
+        tree_b.revert([])
+        self.assertEqual('file', file_kind('tree_b/file'))
+        self.build_tree_contents([('tree_b/file', 'content_2')])
+        tree_b.commit('content change')
+        tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(tree_b.conflicts(),
+                         [conflicts.ContentsConflict('file',
+                          file_id='file-id')])

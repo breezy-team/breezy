@@ -99,6 +99,9 @@ class MemoryTree(mutabletree.MutableTree):
     def is_executable(self, file_id, path=None):
         return self._inventory[file_id].executable
 
+    def kind(self, file_id):
+        return self._inventory[file_id].kind
+
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         self.add(path, file_id, 'directory')

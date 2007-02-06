@@ -1030,14 +1030,14 @@ class TransportTests(TestTransportImplementation):
         # directory of this transport
         root_transport = orig_transport
         new_transport = root_transport.clone("..")
-        # as we are walking up directories, the path must be must be 
+        # as we are walking up directories, the path must be
         # growing less, except at the top
         self.assertTrue(len(new_transport.base) < len(root_transport.base)
             or new_transport.base == root_transport.base)
         while new_transport.base != root_transport.base:
             root_transport = new_transport
             new_transport = root_transport.clone("..")
-            # as we are walking up directories, the path must be must be 
+            # as we are walking up directories, the path must be
             # growing less, except at the top
             self.assertTrue(len(new_transport.base) < len(root_transport.base)
                 or new_transport.base == root_transport.base)

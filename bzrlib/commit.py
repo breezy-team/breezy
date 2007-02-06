@@ -58,6 +58,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     errors,
+    inventory,
     tree,
     )
 from bzrlib.branch import Branch
@@ -582,6 +583,13 @@ class Commit(object):
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
+            try:
+                kind = self.work_tree.kind(file_id)
+                if kind != new_ie.kind:
+                    new_ie = inventory.make_entry(kind, new_ie.name,
+                                                  new_ie.parent_id, file_id)
+            except errors.NoSuchFile:
+                pass
             # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):
