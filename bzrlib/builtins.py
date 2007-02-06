@@ -121,29 +121,49 @@ class cmd_status(Command):
     This reports on versioned and unknown files, reporting them
     grouped by state.  Possible states are:
 
-    added / A
+    added
         Versioned in the working copy but not in the previous revision.
 
-    removed / D
+    removed
         Versioned in the previous revision but removed or deleted
         in the working copy.
 
-    renamed / R
+    renamed
         Path of this file changed from the previous revision;
         the text may also have changed.  This includes files whose
         parent directory was renamed.
 
-    modified / M
+    modified
         Text has changed since the previous revision.
 
-    unknown / ?
+    kind changed
+        File kind has been changed (e.g. from file to directory).
+
+    unknown
         Not versioned and not matching an ignore pattern.
 
     To see ignored files use 'bzr ignored'.  For details in the
     changes to file texts, use 'bzr diff'.
     
-    --short gives a one character status flag for each item, similar
-    to the SVN's status command.
+    --short gives a status flags for each item, similar to the SVN's status
+    command.
+
+    Column 1: versioning / renames
+      + File versioned
+      - File unversioned
+      R File renamed
+      ? File unknown
+      C File has conflicts
+      P Entry for a pending merge (not a file)
+
+    Column 2: Contents
+      N File created
+      D File deleted
+      K File kind changed
+      M File modified
+
+    Column 3: Execute
+      * The execute bit was changed
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
