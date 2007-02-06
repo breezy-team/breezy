@@ -60,6 +60,7 @@ from bzrlib import (
     errors,
     tree,
     )
+from bzrlib.branch import Branch
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
@@ -331,6 +332,8 @@ class Commit(object):
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
+            # old style commit hooks - should be deprecated ? (obsoleted in
+            # 0.15)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny
@@ -339,6 +342,25 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
+            # new style commit hooks:
+            if not self.bound_branch:
+                hook_master = self.branch
+                hook_local = None
+            else:
+                hook_master = self.master_branch
+                hook_local = self.branch
+            new_revno = self.branch.revno()
+            # With bound branches, when the master is behind the local branch,
+            # the 'old_revno' and old_revid values here are incorrect.
+            # XXX: FIXME ^. RBC 20060206
+            old_revno = new_revno - 1
+            if self.parents:
+                old_revid = self.parents[0]
+            else:
+                old_revid = bzrlib.revision.NULL_REVISION
+            for hook in Branch.hooks['post_commit']:
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                    self.rev_id)
             self._emit_progress_update()
         finally:
             self._cleanup()
