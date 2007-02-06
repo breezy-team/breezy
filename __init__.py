@@ -18,6 +18,7 @@
 from StringIO import StringIO
 import subprocess
 
+from bzrlib.branch import Branch
 import bzrlib.config as config
 import bzrlib.errors as errors
 
@@ -167,7 +168,18 @@ class EmailSender(object):
 
 
 def post_commit(branch, revision_id):
+    if not use_legacy:
+        return
     EmailSender(branch, revision_id, config.BranchConfig(branch)).send_maybe()
+
+
+def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
+    EmailSender(master, new_revid, config.BranchConfig(master)).send_maybe()
+
+
+def install_hooks():
+    """Install CommitSender to send after commits with bzr >= 0.15 """
+    Branch.hooks.install_hook('post_commit', branch_commit_hook)
 
 
 def test_suite():
@@ -177,3 +189,14 @@ def test_suite():
     result.addTest(bzrlib.plugins.email.tests.test_suite())
     return result
 
+
+# setup the email plugin with > 0.15 hooks.
+try:
+    install_hooks()
+    use_legacy = False
+except AttributeError:
+    # bzr < 0.15 - no Branch.hooks
+    use_legacy = True
+except errors.UnknownHook:
+    # bzr 0.15 dev before post_commit was added
+    use_legacy = True
