@@ -299,8 +299,6 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
-    revision_history = branch.revision_history()
-
     for sequence, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
         yield rev_id, '.'.join(map(str, revno)), merge_depth
 

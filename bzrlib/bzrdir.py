@@ -558,6 +558,26 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
+    @classmethod
+    def open_containing_tree_or_branch(klass, location):
+        """Return the branch and working tree contained by a location.
+
+        Returns (tree, branch, relpath).
+        If there is no tree at containing the location, tree will be None.
+        If there is no branch containing the location, an exception will be
+        raised
+        relpath is the portion of the path that is contained by the branch.
+        """
+        bzrdir, relpath = klass.open_containing(location)
+        try:
+            tree = bzrdir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
+            branch = bzrdir.open_branch()
+        else:
+            branch = tree.branch
+        return tree, branch, relpath
+
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
 
@@ -2018,9 +2038,6 @@ class BzrDirFormatRegistry(registry.Registry):
         self.set_default(key)
         format = self.get('default')()
         assert isinstance(format, BzrDirMetaFormat1)
-        from bzrlib import repository
-        repository.RepositoryFormat._set_default_format(
-            format.repository_format)
 
     def make_bzrdir(self, key):
         return self.get(key)()

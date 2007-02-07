@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    registry,
     revision as _mod_revision,
     symbol_versioning,
     transactions,
@@ -97,6 +98,7 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        _mod_revision.check_not_reserved_id(revid)
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
@@ -128,6 +130,7 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
+        _mod_revision.check_not_reserved_id(rev_id)
         if config is not None and config.signature_needed():
             if inv is None:
                 inv = self.get_inventory(rev_id)
@@ -238,6 +241,56 @@ class Repository(object):
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
+
+    @needs_read_lock
+    def gather_stats(self, revid=None, committers=None):
+        """Gather statistics from a revision id.
+
+        :param revid: The revision id to gather statistics from, if None, then
+            no revision specific statistics are gathered.
+        :param committers: Optional parameter controlling whether to grab
+            a count of committers from the revision specific statistics.
+        :return: A dictionary of statistics. Currently this contains:
+            committers: The number of committers if requested.
+            firstrev: A tuple with timestamp, timezone for the penultimate left
+                most ancestor of revid, if revid is not the NULL_REVISION.
+            latestrev: A tuple with timestamp, timezone for revid, if revid is
+                not the NULL_REVISION.
+            revisions: The total revision count in the repository.
+            size: An estimate disk size of the repository in bytes.
+        """
+        result = {}
+        if revid and committers:
+            result['committers'] = 0
+        if revid and revid != _mod_revision.NULL_REVISION:
+            if committers:
+                all_committers = set()
+            revisions = self.get_ancestry(revid)
+            # pop the leading None
+            revisions.pop(0)
+            first_revision = None
+            if not committers:
+                # ignore the revisions in the middle - just grab first and last
+                revisions = revisions[0], revisions[-1]
+            for revision in self.get_revisions(revisions):
+                if not first_revision:
+                    first_revision = revision
+                if committers:
+                    all_committers.add(revision.committer)
+            last_revision = revision
+            if committers:
+                result['committers'] = len(all_committers)
+            result['firstrev'] = (first_revision.timestamp,
+                first_revision.timezone)
+            result['latestrev'] = (last_revision.timestamp,
+                last_revision.timezone)
+
+        # now gather global repository information
+        if self.bzrdir.root_transport.listable():
+            c, t = self._revision_store.total_size(self.get_transaction())
+            result['revisions'] = c
+            result['size'] = t
+        return result
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -1133,6 +1186,15 @@ class KnitRepository2(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class RepositoryFormatRegistry(registry.Registry):
+    """Registry of RepositoryFormats.
+    """
+    
+
+format_registry = RepositoryFormatRegistry()
+"""Registry of formats, indexed by their identifying format string."""
+
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1157,35 +1219,43 @@ class RepositoryFormat(object):
     parameterisation.
     """
 
-    _default_format = None
-    """The default format used for new repositories."""
-
-    _formats = {}
-    """The known formats."""
-
     def __str__(self):
         return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir."""
+        """Return the format for the repository object in a_bzrdir.
+        
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of 
+        control directory.
+        """
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get("format").read()
-            return klass._formats[format_string]
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        raise NotImplementedError(self._get_control_store)
+    @classmethod
+    def register_format(klass, format):
+        format_registry.register(format.get_format_string(), format)
+
+    @classmethod
+    def unregister_format(klass, format):
+        format_registry.remove(format.get_format_string())
     
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._default_format
+        from bzrlib import bzrdir
+        return bzrdir.format_registry.make_bzrdir('default').repository_format
+
+    def _get_control_store(self, repo_transport, control_files):
+        """Return the control store for this repository."""
+        raise NotImplementedError(self._get_control_store)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format.
@@ -1272,24 +1342,6 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
-
-    @classmethod
-    def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
-
-    @classmethod
-    @deprecated_method(symbol_versioning.zero_fourteen)
-    def set_default_format(klass, format):
-        klass._set_default_format(format)
-
-    @classmethod
-    def _set_default_format(klass, format):
-        klass._default_format = format
-
-    @classmethod
-    def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
-        del klass._formats[format.get_format_string()]
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -1806,10 +1858,8 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
 # KEEP in sync with bzrdir.format_registry default
-_default_format = RepositoryFormatKnit1()
-RepositoryFormat.register_format(_default_format)
+RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.register_format(RepositoryFormatKnit2())
-RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
