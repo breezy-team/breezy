@@ -968,4 +968,4 @@ def get_merge_type_registry():
     This method provides a sanctioned way to retrieve it.
     """
     from bzrlib import option
-    return option._merge_type_registry()
+    return option._merge_type_registry
