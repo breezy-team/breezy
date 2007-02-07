@@ -1166,7 +1166,7 @@ class InterSameDataRepository(InterRepository):
     """
 
     @classmethod
-    def _get_matching_repo_format(self):
+    def _get_repo_format_to_test(self):
         """Repository format for testing with."""
         return RepositoryFormat.get_default_format()
 
@@ -1223,7 +1223,7 @@ class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
     @classmethod
-    def _get_matching_repo_format(self):
+    def _get_repo_format_to_test(self):
         from bzrlib.repofmt import knitrepo
         return knitrepo.RepositoryFormatKnit1()
 
@@ -1288,7 +1288,7 @@ class InterKnitRepo(InterSameDataRepository):
 class InterModel1and2(InterRepository):
 
     @classmethod
-    def _get_matching_repo_format(self):
+    def _get_repo_format_to_test(self):
         return None
 
     @staticmethod
@@ -1340,7 +1340,7 @@ class InterModel1and2(InterRepository):
 class InterKnit1and2(InterKnitRepo):
 
     @classmethod
-    def _get_matching_repo_format(self):
+    def _get_repo_format_to_test(self):
         return None
 
     @staticmethod
@@ -1448,7 +1448,7 @@ class InterRepositoryTestProviderAdapter(object):
         #               RepositoryFormat6(),
         #               RepositoryFormatKnit1()))
         for optimiser_class in InterRepository._optimisers:
-            format_to_test = optimiser_class._get_matching_repo_format()
+            format_to_test = optimiser_class._get_repo_format_to_test()
             if format_to_test is not None:
                 result.append((optimiser_class,
                                format_to_test, format_to_test))
