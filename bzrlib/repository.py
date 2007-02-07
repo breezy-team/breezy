@@ -38,7 +38,6 @@ from bzrlib import (
     symbol_versioning,
     transactions,
     ui,
-    weave,
     )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
@@ -985,9 +984,11 @@ class RepositoryFormat(object):
                                   transport,
                                   control_files,
                                   prefixed=True,
-                                  versionedfile_class=weave.WeaveFile,
+                                  versionedfile_class=None,
                                   versionedfile_kwargs={},
                                   escaped=False):
+        if versionedfile_class is None:
+            versionedfile_class = self._versionedfile_class
         weave_transport = control_files._transport.clone(name)
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode

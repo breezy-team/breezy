@@ -119,7 +119,6 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
 
     rich_root_data = False
-    _serializer = xml5.serializer_v5
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository.
@@ -252,6 +251,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
      - TextStores for revisions and signatures.
     """
 
+    _versionedfile_class = weave.WeaveFile
+
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat5()
@@ -281,6 +282,8 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
      - hash subdirectory based stores.
      - TextStores for revisions and signatures.
     """
+
+    _versionedfile_class = weave.WeaveFile
 
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
@@ -314,6 +317,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
     """
+
+    _versionedfile_class = weave.WeaveFile
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
