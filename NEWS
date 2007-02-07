@@ -68,6 +68,11 @@ IN DEVELOPMENT
     * Lock operations no longer hang if they encounter a permission problem.
       (Aaron Bentley)
 
+    * ``bzr push`` can resume a push that was canceled before it finished.
+      Also, it can push even if the target directory exists if you supply
+      the ``--use-existing-dir`` flag.
+      (John Arbash Meinel, #30576, #45504)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
