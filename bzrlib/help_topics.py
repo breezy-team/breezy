@@ -184,7 +184,7 @@ command.  (e.g. "bzr --quiet help").
                This does not suppress other plugin effects
 --no-plugins   Do not process any plugins
 
---Derror       Instead of normal error handling, always print a traceback on
+-Derror        Instead of normal error handling, always print a traceback on
                error.
 --profile      Profile execution using the hotshot profiler
 --lsprof       Profile execution using the lsprof profiler

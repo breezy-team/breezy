@@ -77,6 +77,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     urlutils,
+    win32utils,
     )
 import bzrlib.util.configobj.configobj as configobj
 """)
@@ -709,7 +710,7 @@ def config_dir():
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
         if base is None:
-            base = os.environ.get('APPDATA', None)
+            base = win32utils.get_appdata_location_unicode()
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
@@ -755,7 +756,16 @@ def _auto_user_id():
     """
     import socket
 
-    # XXX: Any good way to get real user name on win32?
+    if sys.platform == 'win32':
+        name = win32utils.get_user_name_unicode()
+        if name is None:
+            raise errors.BzrError("Cannot autodetect user name.\n"
+                                  "Please, set your name with command like:\n"
+                                  'bzr whoami "Your Name <name@domain.com>"')
+        host = win32utils.get_host_name_unicode()
+        if host is None:
+            host = socket.gethostname()
+        return name, (name + '@' + host)
 
     try:
         import pwd

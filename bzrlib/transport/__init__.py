@@ -61,9 +61,11 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import mutter, warning
 from bzrlib import registry
 
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return transport_list_registry
+
 
 def _set_protocol_handlers(new_handlers):
     """Replace the current protocol handlers dictionary.
@@ -73,9 +75,11 @@ def _set_protocol_handlers(new_handlers):
     global transport_list_registry
     transport_list_registry = new_handlers
 
+
 def _clear_protocol_handlers():
     global transport_list_registry
     transport_list_registry = TransportListRegistry()
+
 
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
@@ -90,7 +94,22 @@ def _get_transport_modules():
     result.sort()
     return result
 
+
 class TransportListRegistry(registry.Registry):
+    """A registry which simplifies tracking available Transports.
+
+    A registration of a new protocol requires two step:
+    1) register the prefix with the function register_transport( )
+    2) register the protocol provider with the function
+    register_transport_provider( ) ( and the "lazy" variant )
+
+    This in needed because:
+    a) a single provider can support multple protcol ( like the ftp
+    privider which supports both the ftp:// and the aftp:// protocols )
+    b) a single protocol can have multiple providers ( like the http://
+    protocol which is supported by both the urllib and pycurl privider )
+    """
+
     def register_transport_provider(self, key, obj):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
@@ -105,25 +124,31 @@ class TransportListRegistry(registry.Registry):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
+
 transport_list_registry = TransportListRegistry( )
+
 
 def register_transport_proto(prefix, help=None, info=None):
     transport_list_registry.register_transport(prefix, help, info)
+
 
 def register_lazy_transport(prefix, module, classname):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
-    
+
+
 def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)
 
+
 def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
+
 
 def split_url(url):
     # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL

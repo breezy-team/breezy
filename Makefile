@@ -95,7 +95,7 @@ installer: exe copy-docs
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
 python-installer: docs
-	python setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py"
+	python setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 
 # clean on win32 all installer-related files and directories
@@ -107,4 +107,5 @@ clean-win32:
 	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe
+	python tools/win32/ostools.py remove bzr-*win32.exe
 	python tools/win32/ostools.py remove dist
