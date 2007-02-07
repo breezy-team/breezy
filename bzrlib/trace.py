@@ -137,22 +137,32 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def open_tracefile(tracefilename='~/.bzr.log'):
+def open_tracefile(tracefilename=None):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
     global _file_handler, _bzr_log_file
     import codecs
 
-    trace_fname = os.path.join(os.path.expanduser(tracefilename))
+    if tracefilename is None:
+        if sys.platform == 'win32':
+            from bzrlib import win32utils
+            home = win32utils.get_home_location()
+        else:
+            home = os.path.expanduser('~')
+        tracefilename = os.path.join(home, '.bzr.log')
+
+    trace_fname = os.path.expanduser(tracefilename)
     _rollover_trace_maybe(trace_fname)
     try:
         LINE_BUFFERED = 1
         #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
         tf = open(trace_fname, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
-        if tf.tell() == 0:
-            tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+        # tf.tell() on windows always return 0 until some writing done
+        tf.write('\n')
+        if tf.tell() <= 2:
+            tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
             tf.write("bug reports to bazaar@lists.canonical.com\n\n")
         _file_handler = logging.StreamHandler(tf)
