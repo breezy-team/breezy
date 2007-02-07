@@ -963,7 +963,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     return merger.do_merge()
 
 def get_merge_type_registry():
-    """Merge type registry is in option to avoid circular imports.
+    """Merge type registry is in bzrlib.option to avoid circular imports.
 
     This method provides a sanctioned way to retrieve it.
     """

@@ -306,9 +306,11 @@ def _global_option(name, **kwargs):
 def _global_registry_option(name, help, registry, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
+
 class MergeTypeRegistry(registry.Registry):
 
     pass
+
 
 _merge_type_registry = MergeTypeRegistry()
 _merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
