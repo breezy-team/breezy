@@ -2831,11 +2831,10 @@ class cmd_re_sign(Command):
 
 
 class cmd_bind(Command):
-    """Bind the current branch to a master branch.
+    """Convert the current branch into a checkout of the supplied branch.
 
-    After binding, commits must succeed on the master branch
-    before they are executed on the local one, turning the current branch
-    in to a checkout of the master.
+    Once converted into a checkout, commits must succeed on the master branch
+    before they will be applied to the local branch.
 
     See "help checkouts" for more information on checkouts.
     """
@@ -2854,11 +2853,10 @@ class cmd_bind(Command):
 
 
 class cmd_unbind(Command):
-    """Unbind the current branch from its master branch.
+    """Convert the current checkout into a regular branch.
 
-    After unbinding, the local branch is considered independent.
-    All subsequent commits will be local. This turns a heavy checkout into
-    a normal branch.
+    After unbinding, the local branch is considered independent and subsequent
+    commits will be local only.
 
     See "help checkouts" for more information on checkouts.
     """
