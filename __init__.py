@@ -23,34 +23,32 @@ See the README file for basic information on how to configure this plugin.
 """
 
 
+if __name__ != 'bzrlib.plugins.email':
+    raise ImportError('The email plugin must be installed as'
+                      ' bzrlib.plugins.email not %s'
+                      % __name__)
+
+
 from bzrlib import errors
 from bzrlib.branch import Branch
+from bzrlib.lazy_import import lazy_import
+
+# lazy_import emailer so that it doesn't get loaded if it isn't used
+lazy_import(globals(), """\
+from bzrlib.plugins.email import emailer
+""")
 
 
 def post_commit(branch, revision_id):
     if not use_legacy:
         return
     """This is the post_commit hook that should get run after commit."""
-    # Import 'emailer' late so that everything doesn't have to load every bzr
-    # run.
-    try:
-        from bzrlib.plugins.email.emailer import EmailSender
-    except ImportError, e:
-        raise ImportError('Could not import bzrlib.plugins.email.emailer. '
-                          'Is the plugin installed as "email"?: %s' % e)
-    EmailSender(branch, revision_id, branch.get_config()).send_maybe()
+    emailer.EmailSender(branch, revision_id, branch.get_config()).send_maybe()
 
 
 def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
     """This is the post_commit hook that runs after commit."""
-    # Import 'emailer' late so that everything doesn't have to load every bzr
-    # run.
-    try:
-        from bzrlib.plugins.email.emailer import EmailSender
-    except ImportError, e:
-        raise ImportError('Could not import bzrlib.plugins.email.emailer. '
-                          'Is the plugin installed as "email"?: %s' % e)
-    EmailSender(master, new_revid, master.get_config()).send_maybe()
+    emailer.EmailSender(master, new_revid, master.get_config()).send_maybe()
 
 
 def install_hooks():
@@ -60,11 +58,7 @@ def install_hooks():
 
 def test_suite():
     from unittest import TestSuite
-    try:
-        import bzrlib.plugins.email.tests
-    except ImportError, e:
-        raise ImportError('Could not import bzrlib.plugins.email.tests. '
-                          'Is the plugin installed as "email"?: %s' % e)
+    import bzrlib.plugins.email.tests
     result = TestSuite()
     result.addTest(bzrlib.plugins.email.tests.test_suite())
     return result
