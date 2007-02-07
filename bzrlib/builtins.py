@@ -704,10 +704,9 @@ class cmd_push(Command):
             # we have a bzrdir but no branch or repository
             # XXX: Figure out what to do other than complain.
             raise errors.BzrCommandError("At %s you have a valid .bzr control"
-                " directory. But we could not find a valid repository or"
-                " branch associated with it. This is an unsupported"
-                " configuration. Please move the target directory out of the"
-                " way and try again."
+                " directory, but not a branch or repository. This is an"
+                " unsupported configuration. Please move the target directory"
+                " out of the way and try again."
                 % location)
         elif br_to is None:
             # We have a repository but no branch, copy the revisions, and then
