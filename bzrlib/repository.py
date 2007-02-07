@@ -18,8 +18,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from binascii import hexlify
-from copy import deepcopy
 import re
 import time
 import unittest
@@ -27,12 +25,10 @@ import unittest
 from bzrlib import (
     bzrdir,
     check,
-    delta,
     errors,
     generate_ids,
     gpg,
     graph,
-    knit,
     lazy_regex,
     lockable_files,
     lockdir,
@@ -1383,6 +1379,7 @@ class RepositoryTestProviderAdapter(object):
     def adapt(self, test):
         result = unittest.TestSuite()
         for repository_format, bzrdir_format in self._formats:
+            from copy import deepcopy
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
@@ -1413,6 +1410,7 @@ class InterRepositoryTestProviderAdapter(object):
     def adapt(self, test):
         result = unittest.TestSuite()
         for interrepo_class, repository_format, repository_format_to in self._formats:
+            from copy import deepcopy
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
