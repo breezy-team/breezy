@@ -2103,9 +2103,12 @@ class BzrDirFormatRegistry(registry.Registry):
 format_registry = BzrDirFormatRegistry()
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories.', deprecated=True)
-format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-    'Format using knits.  Recommended.')
+    ' support checkouts or shared repositories.',
+    deprecated=True)
+format_registry.register_metadir('knit',
+    'RepositoryFormatKnit1',
+    'Format using knits.  Recommended.',
+    repo_module='bzrlib.repofmt.knitrepo')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',

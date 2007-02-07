@@ -28,6 +28,10 @@ from bzrlib.tests.blackbox import TestUIFactory
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
+from bzrlib.repofmt.knitrepo import (
+    RepositoryFormatKnit1,
+    RepositoryFormatKnit2,
+    )
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
@@ -140,7 +144,7 @@ finished
         self.assertTrue(isinstance(converted_dir._format,
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
-                                   repository.RepositoryFormatKnit1))
+                                   RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
         self.run_bzr('init-repository', '--format=metaweave', 'repo')

@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
-from bzrlib.repository import RepositoryFormatKnit1
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url

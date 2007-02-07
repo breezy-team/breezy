@@ -260,7 +260,7 @@ class TestFormatKnit1(TestCaseWithTransport):
     
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control)
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
@@ -293,7 +293,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
         # lock: is a directory
@@ -312,7 +312,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
@@ -402,7 +402,7 @@ class TestRepositoryConverter(TestCaseWithTransport):
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
-        target_format = repository.RepositoryFormatKnit1()
+        target_format = knitrepo.RepositoryFormatKnit1()
         converter = repository.CopyConverter(target_format)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -425,7 +425,7 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
         tree.commit("Dull commit", rev_id="dull")
         revision_tree = tree.branch.repository.revision_tree('dull')

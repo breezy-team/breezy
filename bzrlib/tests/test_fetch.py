@@ -124,7 +124,7 @@ class TestFetch(TestCaseWithTransport):
         corresponding filename, parent, contents or other changes.
         """
         knit1_format = bzrdir.BzrDirMetaFormat1()
-        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
         knit2_format = bzrdir.BzrDirMetaFormat1()
         knit2_format.repository_format = knitrepo.RepositoryFormatKnit2()
         # we start with a knit1 repository because that causes the

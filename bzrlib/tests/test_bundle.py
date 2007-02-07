@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -341,7 +341,7 @@ class BundleTester1(TestCaseWithTransport):
         text.seek(0)
 
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         target = self.make_branch('target', format=format)
         self.assertRaises(errors.IncompatibleRevision, install_bundle, 
                           target.repository, read_bundle(text))
@@ -353,7 +353,7 @@ class V08BundleTester(TestCaseWithTransport):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         return format
 
     def make_branch_and_tree(self, path, format=None):
@@ -901,7 +901,7 @@ class V09BundleKnit1Tester(V08BundleTester):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         return format
 
 

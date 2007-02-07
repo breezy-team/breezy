@@ -869,155 +869,6 @@ class MetaDirRepository(Repository):
         return not self.control_files._transport.has('no-working-trees')
 
 
-class KnitRepository(MetaDirRepository):
-    """Knit format repository."""
-
-    def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
-
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
-        inv_vf.add_lines_with_ghosts(revid, parents, lines)
-
-    @needs_read_lock
-    def _all_revision_ids(self):
-        """See Repository.all_revision_ids()."""
-        # Knits get the revision graph from the index of the revision knit, so
-        # it's always possible even if they're on an unlistable transport.
-        return self._revision_store.all_revision_ids(self.get_transaction())
-
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """Find file_id(s) which are involved in the changes between revisions.
-
-        This determines the set of revisions which are involved, and then
-        finds all file ids affected by those revisions.
-        """
-        vf = self._get_revision_vf()
-        from_set = set(vf.get_ancestry(from_revid))
-        to_set = set(vf.get_ancestry(to_revid))
-        changed = to_set.difference(from_set)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved(self, last_revid=None):
-        """Find all file_ids modified in the ancestry of last_revid.
-
-        :param last_revid: If None, last_revision() will be used.
-        """
-        if not last_revid:
-            changed = set(self.all_revision_ids())
-        else:
-            changed = set(self.get_ancestry(last_revid))
-        if None in changed:
-            changed.remove(None)
-        return self._fileid_involved_by_set(changed)
-
-    @needs_read_lock
-    def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        
-        This is topologically sorted.
-        """
-        if revision_id is None:
-            return [None]
-        vf = self._get_revision_vf()
-        try:
-            return [None] + vf.get_ancestry(revision_id)
-        except errors.RevisionNotPresent:
-            raise errors.NoSuchRevision(self, revision_id)
-
-    @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        return self.get_revision_reconcile(revision_id)
-
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self._get_revision_vf()
-        entire_graph = a_weave.get_graph()
-        if revision_id is None:
-            return a_weave.get_graph()
-        elif revision_id not in a_weave:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = a_weave.get_parents(node)
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
-
-    @needs_read_lock
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        """Return a graph of the revisions with ghosts marked as applicable.
-
-        :param revision_ids: an iterable of revisions to graph or None for all.
-        :return: a Graph object with the graph reachable from revision_ids.
-        """
-        result = graph.Graph()
-        vf = self._get_revision_vf()
-        versions = set(vf.versions())
-        if not revision_ids:
-            pending = set(self.all_revision_ids())
-            required = set([])
-        else:
-            pending = set(revision_ids)
-            # special case NULL_REVISION
-            if _mod_revision.NULL_REVISION in pending:
-                pending.remove(_mod_revision.NULL_REVISION)
-            required = set(pending)
-        done = set([])
-        while len(pending):
-            revision_id = pending.pop()
-            if not revision_id in versions:
-                if revision_id in required:
-                    raise errors.NoSuchRevision(self, revision_id)
-                # a ghost
-                result.add_ghost(revision_id)
-                # mark it as done so we don't try for it again.
-                done.add(revision_id)
-                continue
-            parent_ids = vf.get_parents_with_ghosts(revision_id)
-            for parent_id in parent_ids:
-                # is this queued or done ?
-                if (parent_id not in pending and
-                    parent_id not in done):
-                    # no, queue it.
-                    pending.add(parent_id)
-            result.add_node(revision_id, parent_ids)
-            done.add(revision_id)
-        return result
-
-    def _get_revision_vf(self):
-        """:return: a versioned file containing the revisions."""
-        vf = self._revision_store.get_revision_file(self.get_transaction())
-        return vf
-
-    @needs_write_lock
-    def reconcile(self, other=None, thorough=False):
-        """Reconcile this repository."""
-        from bzrlib.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
-    
-    def revision_parents(self, revision_id):
-        return self._get_revision_vf().get_parents(revision_id)
-
-
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats.
     """
@@ -1140,6 +991,8 @@ class RepositoryFormat(object):
         _revision_store = TextRevisionStore(text_store, serializer)
         return _revision_store
 
+    # TODO: this shouldn't be in the base class, it's specific to things that
+    # use weaves or knits -- mbp 20070207
     def _get_versioned_file_store(self,
                                   name,
                                   transport,
@@ -1224,141 +1077,6 @@ class MetaDirRepositoryFormat(RepositoryFormat):
             control_files.unlock()
 
 
-class RepositoryFormatKnit(MetaDirRepositoryFormat):
-    """Bzr repository knit format (generalized). 
-
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
-    """
-
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return VersionedFileStore(
-            repo_transport,
-            prefixed=False,
-            file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
-            )
-
-    def _get_revision_store(self, repo_transport, control_files):
-        """See RepositoryFormat._get_revision_store()."""
-        from bzrlib.store.revision.knit import KnitRevisionStore
-        versioned_file_store = VersionedFileStore(
-            repo_transport,
-            file_mode=control_files._file_mode,
-            prefixed=False,
-            precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
-            versionedfile_kwargs={'delta':False,
-                                  'factory':knit.KnitPlainFactory(),
-                                 },
-            escaped=True,
-            )
-        return KnitRevisionStore(versioned_file_store)
-
-    def _get_text_store(self, transport, control_files):
-        """See RepositoryFormat._get_text_store()."""
-        return self._get_versioned_file_store('knits',
-                                  transport,
-                                  control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
-                                  versionedfile_kwargs={
-                                      'create_parent_dir':True,
-                                      'delay_create':True,
-                                      'dir_mode':control_files._dir_mode,
-                                  },
-                                  escaped=True)
-
-    def initialize(self, a_bzrdir, shared=False):
-        """Create a knit format 1 repository.
-
-        :param a_bzrdir: bzrdir to contain the new repository; must already
-            be initialized.
-        :param shared: If true the repository will be initialized as a shared
-                       repository.
-        """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'knits']
-        files = []
-        utf8_files = [('format', self.get_format_string())]
-        
-        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
-        control_store = self._get_control_store(repo_transport, control_files)
-        transaction = transactions.WriteTransaction()
-        # trigger a write of the inventory store.
-        control_store.get_weave_or_empty('inventory', transaction)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        # the revision id here is irrelevant: it will not be stored, and cannot
-        # already exist.
-        _revision_store.has_revision_id('A', transaction)
-        _revision_store.get_signature_file(transaction)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
-
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
-        """See RepositoryFormat.open().
-        
-        :param _override_transport: INTERNAL USE ONLY. Allows opening the
-                                    repository at a slightly different url
-                                    than normal. I.e. during 'upgrade'.
-        """
-        if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
-        if _override_transport is not None:
-            repo_transport = _override_transport
-        else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
-        text_store = self._get_text_store(repo_transport, control_files)
-        control_store = self._get_control_store(repo_transport, control_files)
-        _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository(_format=self,
-                              a_bzrdir=a_bzrdir,
-                              control_files=control_files,
-                              _revision_store=_revision_store,
-                              control_store=control_store,
-                              text_store=text_store)
-
-
-class RepositoryFormatKnit1(RepositoryFormatKnit):
-    """Bzr repository knit format 1.
-
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
-
-    This format was introduced in bzr 0.8.
-    """
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Knit Repository Format 1"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Knit repository format 1"
-
-    def check_conversion_target(self, target_format):
-        pass
-
-
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.  They're 
 # all in bzrlib.repofmt.weaverepo now.
@@ -1369,14 +1087,19 @@ format_registry.register_lazy(
     )
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
-_default_format = RepositoryFormatKnit1()
-RepositoryFormat.register_format(_default_format)
+
+format_registry.register_lazy(
+    'Bazaar-NG Knit Repository Format 1',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatKnit1_instance',
+    )
+format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
+
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 2\n',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit2_instance',
     )
-RepositoryFormat._set_default_format(_default_format)
 
 
 class InterRepository(InterObject):
@@ -1442,8 +1165,10 @@ class InterSameDataRepository(InterRepository):
     Data format and model must match for this to work.
     """
 
-    _matching_repo_format = _default_format
-    """Repository format for testing with."""
+    @classmethod
+    def _get_matching_repo_format(self):
+        """Repository format for testing with."""
+        return RepositoryFormat.get_default_format()
 
     @staticmethod
     def is_compatible(source, target):
@@ -1497,8 +1222,10 @@ class InterSameDataRepository(InterRepository):
 class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
-    _matching_repo_format = RepositoryFormatKnit1()
-    """Repository format for testing with."""
+    @classmethod
+    def _get_matching_repo_format(self):
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit1()
 
     @staticmethod
     def is_compatible(source, target):
@@ -1508,6 +1235,7 @@ class InterKnitRepo(InterSameDataRepository):
         could lead to confusing results, and there is no need to be 
         overly general.
         """
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
         try:
             return (isinstance(source._format, (RepositoryFormatKnit1)) and
                     isinstance(target._format, (RepositoryFormatKnit1)))
@@ -1559,7 +1287,9 @@ class InterKnitRepo(InterSameDataRepository):
 
 class InterModel1and2(InterRepository):
 
-    _matching_repo_format = None
+    @classmethod
+    def _get_matching_repo_format(self):
+        return None
 
     @staticmethod
     def is_compatible(source, target):
@@ -1609,13 +1339,17 @@ class InterModel1and2(InterRepository):
 
 class InterKnit1and2(InterKnitRepo):
 
-    _matching_repo_format = None
+    @classmethod
+    def _get_matching_repo_format(self):
+        return None
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit1 source and Knit2 target"""
         from bzrlib.repofmt.knitrepo import RepositoryFormatKnit2
         try:
+            from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1, \
+                    RepositoryFormatKnit2
             return (isinstance(source._format, (RepositoryFormatKnit1)) and
                     isinstance(target._format, (RepositoryFormatKnit2)))
         except AttributeError:
@@ -1713,18 +1447,18 @@ class InterRepositoryTestProviderAdapter(object):
         #result.append((InterRepository,
         #               RepositoryFormat6(),
         #               RepositoryFormatKnit1()))
-        for optimiser in InterRepository._optimisers:
-            if optimiser._matching_repo_format is not None:
-                result.append((optimiser,
-                               optimiser._matching_repo_format,
-                               optimiser._matching_repo_format
-                               ))
+        for optimiser_class in InterRepository._optimisers:
+            format_to_test = optimiser_class._get_matching_repo_format()
+            if format_to_test is not None:
+                result.append((optimiser_class,
+                               format_to_test, format_to_test))
         # if there are specific combinations we want to use, we can add them 
         # here.
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
                        knitrepo.RepositoryFormatKnit2()))
-        result.append((InterKnit1and2, RepositoryFormatKnit1(),
+        result.append((InterKnit1and2,
+                       knitrepo.RepositoryFormatKnit1(),
                        knitrepo.RepositoryFormatKnit2()))
         return result
 
