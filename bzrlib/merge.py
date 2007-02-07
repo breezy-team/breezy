@@ -21,6 +21,7 @@ import warnings
 
 from bzrlib import (
     osutils,
+    registry,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -961,14 +962,10 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.other_basis = other_rev_id
     return merger.do_merge()
 
+def get_merge_type_registry():
+    """Merge type registry is in option to avoid circular imports.
 
-merge_types = {     "merge3": (Merge3Merger, "Native diff3-style merge"), 
-                     "diff3": (Diff3Merger,  "Merge using external diff3"),
-                     'weave': (WeaveMerger, "Weave-based merge")
-              }
-
-
-def merge_type_help():
-    templ = '%s%%7s: %%s' % (' '*12)
-    lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
-    return '\n'.join(lines)
+    This method provides a sanctioned way to retrieve it.
+    """
+    from bzrlib import option
+    return option._merge_type_registry()
