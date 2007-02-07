@@ -43,14 +43,6 @@ from bzrlib import (
     transactions,
     ui,
     weave,
-    weavefile,
-    xml5,
-    xml6,
-    )
-from bzrlib.osutils import (
-    rand_bytes,
-    compact_date, 
-    local_time_offset,
     )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
@@ -224,7 +216,6 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
-        self._serializer = xml5.serializer_v5
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -1560,7 +1551,7 @@ class CommitBuilder(object):
         self._timestamp = round(timestamp, 3)
 
         if timezone is None:
-            self._timezone = local_time_offset()
+            self._timezone = osutils.local_time_offset()
         else:
             self._timezone = int(timezone)
 

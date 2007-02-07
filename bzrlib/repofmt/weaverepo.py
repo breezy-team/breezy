@@ -25,6 +25,7 @@ from bzrlib import (
     lockdir,
     weave,
     weavefile,
+    xml5,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
@@ -39,6 +40,8 @@ from bzrlib.trace import mutter
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
+
+    _serializer = xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
         # we reuse one control files instance.
@@ -102,6 +105,8 @@ class AllInOneRepository(Repository):
 class WeaveMetaDirRepository(MetaDirRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
+    _serializer = xml5.serializer_v5
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
@@ -114,6 +119,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
 
     rich_root_data = False
+    _serializer = xml5.serializer_v5
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository.

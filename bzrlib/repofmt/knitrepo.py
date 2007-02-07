@@ -21,6 +21,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     transactions,
+    xml5,
     xml6,
     )
 
@@ -38,6 +39,9 @@ from bzrlib.trace import mutter, note, warning
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+
+    _serializer = xml5.serializer_v5
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
