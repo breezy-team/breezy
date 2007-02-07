@@ -1833,7 +1833,7 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat7_instance
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
         from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = pb
@@ -1869,7 +1869,7 @@ class ConvertBzrDir6ToMeta(Converter):
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
         # future format within each component.
-        self.put_format('repository', RepositoryFormat7_instance)
+        self.put_format('repository', RepositoryFormat7())
         for entry in repository_names:
             self.move_entry('repository', entry)
 

@@ -358,6 +358,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     This format was introduced in bzr 0.8.
     """
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
@@ -427,7 +428,3 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
                                _revision_store=_revision_store,
                                control_store=control_store,
                                text_store=text_store)
-
-
-RepositoryFormatKnit1_instance = RepositoryFormatKnit1()
-RepositoryFormatKnit2_instance = RepositoryFormatKnit2()

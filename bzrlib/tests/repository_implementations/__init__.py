@@ -51,7 +51,8 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         ]
-    all_formats = [v for (k, v) in repository.format_registry.iteritems()]
+    registry = repository.format_registry
+    all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
     adapter = RepositoryTestProviderAdapter(
         default_transport,

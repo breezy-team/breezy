@@ -858,10 +858,20 @@ class MetaDirRepository(Repository):
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats.
     """
+
+    def get(self, format_string):
+        r = registry.Registry.get(self, format_string)
+        if callable(r):
+            r = r()
+        return r
     
 
 format_registry = RepositoryFormatRegistry()
-"""Registry of formats, indexed by their identifying format string."""
+"""Registry of formats, indexed by their identifying format string.
+
+This can contain either format instances themselves, or classes/factories that
+can be called to obtain one.
+"""
 
 
 class RepositoryFormat(object):
@@ -890,6 +900,10 @@ class RepositoryFormat(object):
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
+
+    def __eq__(self, other):
+        # format objects are generally stateless
+        return isinstance(other, self.__class__)
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -1033,10 +1047,10 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
+    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -1067,11 +1081,14 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.  They're 
-# all in bzrlib.repofmt.weaverepo now.
+# all in bzrlib.repofmt.weaverepo now.  When an instance of one of these is
+# needed, it's constructed directly by the BzrDir.  Non-native formats where
+# the repository is not separately opened are similar.
+
 format_registry.register_lazy(
     'Bazaar-NG Repository format 7',
     'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat7_instance'
+    'RepositoryFormat7'
     )
 # KEEP in sync with bzrdir.format_registry default, which controls the overall
 # default control directory format
@@ -1079,14 +1096,14 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
-    'RepositoryFormatKnit1_instance',
+    'RepositoryFormatKnit1',
     )
 format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 2\n',
     'bzrlib.repofmt.knitrepo',
-    'RepositoryFormatKnit2_instance',
+    'RepositoryFormatKnit2',
     )
 
 

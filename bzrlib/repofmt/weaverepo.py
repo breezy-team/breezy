@@ -202,9 +202,10 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
+    _matchingbzrdir = bzrdir.BzrDirFormat4()
+
     def __init__(self):
         super(RepositoryFormat4, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -252,10 +253,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
+    _matchingbzrdir = bzrdir.BzrDirFormat5()
 
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat5()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -284,10 +285,10 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
+    _matchingbzrdir = bzrdir.BzrDirFormat6()
 
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -398,9 +399,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             _revision_store=_revision_store,
             control_store=control_store,
             text_store=text_store)
-
-
-RepositoryFormat7_instance = RepositoryFormat7()
 
 
 _legacy_formats = [RepositoryFormat4(),
