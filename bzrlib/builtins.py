@@ -1118,13 +1118,11 @@ class cmd_init(Command):
     takes_args = ['location?']
     takes_options = [
                      RegistryOption('format',
-                            help='Specify a format for this branch. Current'
-                                 ' formats are: default, knit, metaweave and'
-                                 ' weave. Default is knit; metaweave and'
-                                 ' weave are deprecated',
+                            help='Specify a format for this branch. See "bzr '
+                            'help formats" for details',
                             converter=bzrdir.format_registry.make_bzrdir,
                             registry=bzrdir.format_registry,
-                            value_switches=True),
+                            value_switches=True, title="Branch Format"),
                      ]
     def run(self, location=None, format=None):
         if format is None:
@@ -1178,13 +1176,11 @@ class cmd_init_repository(Command):
     """
     takes_args = ["location"] 
     takes_options = [RegistryOption('format',
-                            help='Specify a format for this repository.'
-                                 ' Current formats are: default, knit,'
-                                 ' metaweave and weave. Default is knit;'
-                                 ' metaweave and weave are deprecated',
+                            help='Specify a format for this repository. See'
+                                 ' "bzr help formats" for details',
                             registry=bzrdir.format_registry,
                             converter=bzrdir.format_registry.make_bzrdir,
-                            value_switches=True),
+                            value_switches=True, title='Repository format'),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
@@ -2002,13 +1998,11 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
                     RegistryOption('format',
-                        help='Upgrade to a specific format. Current formats'
-                             ' are: default, knit, metaweave and weave.'
-                             ' Default is knit; metaweave and weave are'
-                             ' deprecated',
+                        help='Upgrade to a specific format.  See "bzr help'
+                             ' formats" for details',
                         registry=bzrdir.format_registry,
                         converter=bzrdir.format_registry.make_bzrdir,
-                        value_switches=True),
+                        value_switches=True, title='Branch format'),
                     ]
 
 

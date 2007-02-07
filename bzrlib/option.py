@@ -226,7 +226,7 @@ class RegistryOption(Option):
             return self.converter(value)
 
     def __init__(self, name, help, registry, converter=None,
-        value_switches=False):
+        value_switches=False, title=None):
         """
         Constructor.
 
@@ -244,9 +244,14 @@ class RegistryOption(Option):
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
+        self.title = title
+        if self.title is None:
+            self.title = name
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
+        if self.value_switches:
+            parser = parser.add_option_group(self.title)
         Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
