@@ -51,6 +51,18 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, 'ancestor:')
         self.assertContainsRe(out, 'branch:')
 
+    def test_help_urlspec(self):
+        """Smoke test for 'bzr help urlspec'"""
+        out, err = self.run_bzr('help', 'urlspec')
+        self.assertContainsRe(out, 'aftp://')
+        self.assertContainsRe(out, 'bzr://')
+        self.assertContainsRe(out, 'bzr\+ssh://')
+        self.assertContainsRe(out, 'file://')
+        self.assertContainsRe(out, 'ftp://')
+        self.assertContainsRe(out, 'http://')
+        self.assertContainsRe(out, 'https://')
+        self.assertContainsRe(out, 'sftp://')
+
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]

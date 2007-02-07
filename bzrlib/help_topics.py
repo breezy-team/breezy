@@ -99,6 +99,7 @@ def _help_on_revisionspec(name):
 
     return ''.join(out)
 
+
 def _help_on_transport(name):
     from bzrlib.transport import (
         transport_list_registry,
@@ -124,8 +125,6 @@ def _help_on_transport(name):
     out = []
     protl = []
     decl = []
-    protl.append("\nSupported URL prefix\n--------------------\n")
-    decl.append("\nSupported modifiers\n-------------------\n")
     protos = transport_list_registry.keys( )
     protos.sort(sort_func)
     for proto in protos:
@@ -138,7 +137,12 @@ def _help_on_transport(name):
             decl.extend(add_string(proto, shorthelp, 79))
 
 
-    out = ''.join(protl+decl)
+    out = "\nSupported URL prefix\n--------------------\n" + \
+            ''.join(protl)
+
+    if len(decl):
+        out += "\nSupported modifiers\n-------------------\n" + \
+            ''.join(decl)
 
     return out
 
