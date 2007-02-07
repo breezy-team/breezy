@@ -30,6 +30,7 @@ from bzrlib import (
     branch,
     bundle,
     bzrdir,
+    delta,
     config,
     errors,
     ignores,
@@ -37,6 +38,7 @@ from bzrlib import (
     merge as _mod_merge,
     osutils,
     repository,
+    symbol_versioning,
     transport,
     tree as _mod_tree,
     ui,
@@ -51,7 +53,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option
+from bzrlib.option import Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -93,6 +95,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.zero_fifteen)
 def get_format_type(typestring):
     """Parse and return a format specifier."""
     # Have to use BzrDirMetaFormat1 directly, so that
@@ -118,29 +121,49 @@ class cmd_status(Command):
     This reports on versioned and unknown files, reporting them
     grouped by state.  Possible states are:
 
-    added / A
+    added
         Versioned in the working copy but not in the previous revision.
 
-    removed / D
+    removed
         Versioned in the previous revision but removed or deleted
         in the working copy.
 
-    renamed / R
+    renamed
         Path of this file changed from the previous revision;
         the text may also have changed.  This includes files whose
         parent directory was renamed.
 
-    modified / M
+    modified
         Text has changed since the previous revision.
 
-    unknown / ?
+    kind changed
+        File kind has been changed (e.g. from file to directory).
+
+    unknown
         Not versioned and not matching an ignore pattern.
 
     To see ignored files use 'bzr ignored'.  For details in the
     changes to file texts, use 'bzr diff'.
     
-    --short gives a one character status flag for each item, similar
-    to the SVN's status command.
+    --short gives a status flags for each item, similar to the SVN's status
+    command.
+
+    Column 1: versioning / renames
+      + File versioned
+      - File unversioned
+      R File renamed
+      ? File unknown
+      C File has conflicts
+      P Entry for a pending merge (not a file)
+
+    Column 2: Contents
+      N File created
+      D File deleted
+      K File kind changed
+      M File modified
+
+    Column 3: Execute
+      * The execute bit was changed
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -450,16 +473,25 @@ class cmd_mv(Command):
 
     If the last argument is a versioned directory, all the other names
     are moved into it.  Otherwise, there must be exactly two arguments
-    and the file is changed to a new name, which must not already exist.
+    and the file is changed to a new name.
+
+    If OLDNAME does not exist on the filesystem but is versioned and
+    NEWNAME does exist on the filesystem but is not versioned, mv
+    assumes that the file has been manually moved and only updates
+    its internal inventory to reflect that change.
+    The same is valid when moving many SOURCE files to a DESTINATION.
 
     Files cannot be moved between branches.
     """
 
     takes_args = ['names*']
+    takes_options = [Option("after", help="move only the bzr identifier"
+        " of the file (file has already been moved). Use this flag if"
+        " bzr is not able to detect this itself.")]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 
-    def run(self, names_list):
+    def run(self, names_list, after=False):
         if names_list is None:
             names_list = []
 
@@ -469,13 +501,14 @@ class cmd_mv(Command):
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
-            for pair in tree.move(rel_names[:-1], rel_names[-1]):
+            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
         else:
             if len(names_list) != 2:
-                raise errors.BzrCommandError('to mv multiple files the destination '
-                                             'must be a versioned directory')
-            tree.rename_one(rel_names[0], rel_names[1])
+                raise errors.BzrCommandError('to mv multiple files the'
+                                             ' destination must be a versioned'
+                                             ' directory')
+            tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
             
     
@@ -696,7 +729,7 @@ class cmd_push(Command):
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
-            count = len(br_to.revision_history())
+            count = br_to.last_revision_info()[0]
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -730,11 +763,16 @@ class cmd_push(Command):
                 except errors.NotLocalUrl:
                     warning('This transport does not update the working '
                             'tree of: %s' % (br_to.base,))
-                    count = br_to.pull(br_from, overwrite)
+                    count = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
-                    count = br_to.pull(br_from, overwrite)
+                    count = br_from.push(br_to, overwrite)
                 else:
-                    count = tree_to.pull(br_from, overwrite)
+                    tree_to.lock_write()
+                    try:
+                        count = br_from.push(tree_to.branch, overwrite)
+                        tree_to.update()
+                    finally:
+                        tree_to.unlock()
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
@@ -1143,16 +1181,16 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     Option('format', 
-                            help='Specify a format for this branch. Current'
-                                 ' formats are: default, knit, metaweave and'
-                                 ' weave. Default is knit; metaweave and'
-                                 ' weave are deprecated',
-                            type=get_format_type),
+                     RegistryOption('format',
+                            help='Specify a format for this branch. See "bzr '
+                            'help formats" for details',
+                            converter=bzrdir.format_registry.make_bzrdir,
+                            registry=bzrdir.format_registry,
+                            value_switches=True, title="Branch Format"),
                      ]
     def run(self, location=None, format=None):
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
             location = u'.'
 
@@ -1201,19 +1239,19 @@ class cmd_init_repository(Command):
         (add files here)
     """
     takes_args = ["location"] 
-    takes_options = [Option('format', 
-                            help='Specify a format for this repository.'
-                                 ' Current formats are: default, knit,'
-                                 ' metaweave and weave. Default is knit;'
-                                 ' metaweave and weave are deprecated',
-                            type=get_format_type),
+    takes_options = [RegistryOption('format',
+                            help='Specify a format for this repository. See'
+                                 ' "bzr help formats" for details',
+                            registry=bzrdir.format_registry,
+                            converter=bzrdir.format_registry.make_bzrdir,
+                            value_switches=True, title='Repository format'),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
 
         if location is None:
             location = '.'
@@ -1431,12 +1469,10 @@ class cmd_log(Command):
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
-                     'line', 'long', 
                      Option('message',
                             short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     'short',
                      ]
     encoding_type = 'replace'
 
@@ -1447,11 +1483,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None,
-            long=False,
-            short=False,
-            line=False):
-        from bzrlib.log import log_formatter, show_log
+            message=None):
+        from bzrlib.log import show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
@@ -1518,14 +1551,11 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        if (log_format is None):
-            default = b.get_config().log_format()
-            log_format = get_log_format(long=long, short=short, line=line, 
-                                        default=default)
-        lf = log_formatter(log_format,
-                           show_ids=show_ids,
-                           to_file=self.outf,
-                           show_timezone=timezone)
+        if log_format is None:
+            log_format = log.log_formatter_registry.get_default(b)
+
+        lf = log_format(show_ids=show_ids, to_file=self.outf,
+                        show_timezone=timezone)
 
         show_log(b,
                  lf,
@@ -1609,14 +1639,17 @@ class cmd_ls(Command):
                                              ' and PATH')
             fs_path = path
             prefix = path
-        tree, relpath = WorkingTree.open_containing(fs_path)
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            fs_path)
         if from_root:
             relpath = u''
         elif relpath:
             relpath += '/'
         if revision is not None:
-            tree = tree.branch.repository.revision_tree(
-                revision[0].in_history(tree.branch).rev_id)
+            tree = branch.repository.revision_tree(
+                revision[0].in_history(branch).rev_id)
+        elif tree is None:
+            tree = branch.basis_tree()
 
         for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
@@ -2028,19 +2061,19 @@ class cmd_upgrade(Command):
     """
     takes_args = ['url?']
     takes_options = [
-                     Option('format', 
-                            help='Upgrade to a specific format. Current formats'
-                                 ' are: default, knit, metaweave and weave.'
-                                 ' Default is knit; metaweave and weave are'
-                                 ' deprecated',
-                            type=get_format_type),
+                    RegistryOption('format',
+                        help='Upgrade to a specific format.  See "bzr help'
+                             ' formats" for details',
+                        registry=bzrdir.format_registry,
+                        converter=bzrdir.format_registry.make_bzrdir,
+                        value_switches=True, title='Branch format'),
                     ]
 
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
@@ -2111,22 +2144,29 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory,
-    but not existing data is affected.  These directories are deleted
-    if the tests pass, or left behind to help in debugging if they
-    fail and --keep-output is specified.
+    This creates temporary test directories in the working directory, but not
+    existing data is affected.  These directories are deleted if the tests
+    pass, or left behind to help in debugging if they fail and --keep-output
+    is specified.
     
-    If arguments are given, they are regular expressions that say
-    which tests should run.
+    If arguments are given, they are regular expressions that say which tests
+    should run.  Tests matching any expression are run, and other tests are
+    not run.
+
+    Alternatively if --first is given, matching tests are run first and then
+    all other tests are run.  This is useful if you have been working in a
+    particular area, but want to make sure nothing else was broken.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
     modified by plugins will not be tested, and tests provided by plugins will
     not be run.
 
-    examples:
+    examples::
         bzr selftest ignore
+            run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
+            disable plugins and list tests as they're run
     """
     # TODO: --list should give a list of all available tests
 
@@ -2167,12 +2207,16 @@ class cmd_selftest(Command):
                      Option('clean-output',
                             help='clean temporary tests directories'
                                  ' without running tests'),
+                     Option('first',
+                            help='run all tests, but run specified tests first',
+                            )
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None, clean_output=False):
+            lsprof_timed=None, cache_dir=None, clean_output=False,
+            first=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2211,7 +2255,9 @@ class cmd_selftest(Command):
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
-                              bench_history=benchfile)
+                              bench_history=benchfile,
+                              matching_tests_first=first,
+                              )
         finally:
             if benchfile is not None:
                 benchfile.close()
@@ -2254,9 +2300,6 @@ class cmd_find_merge_base(Command):
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
-
-        history_1 = branch1.revision_history()
-        history_2 = branch2.revision_history()
 
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()
@@ -2570,7 +2613,7 @@ class cmd_revert(Command):
         try:
             tree.revert(file_list, 
                         tree.branch.repository.revision_tree(rev_id),
-                        not no_backup, pb)
+                        not no_backup, pb, report_changes=True)
         finally:
             pb.finished()
 
@@ -2643,9 +2686,6 @@ class cmd_missing(Command):
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
                      'log-format',
-                     'line',
-                     'long', 
-                     'short',
                      'show-ids',
                      'verbose'
                      ]
@@ -2663,7 +2703,10 @@ class cmd_missing(Command):
             other_branch = parent
             if other_branch is None:
                 raise errors.BzrCommandError("No peer location known or specified.")
-            print "Using last location: " + local_branch.get_parent()
+            display_url = urlutils.unescape_for_display(parent,
+                                                        self.outf.encoding)
+            print "Using last location: " + display_url
+
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
@@ -2673,13 +2716,11 @@ class cmd_missing(Command):
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format is None):
-                    default = local_branch.get_config().log_format()
-                    log_format = get_log_format(long=long, short=short, 
-                                                line=line, default=default)
-                lf = log_formatter(log_format,
-                                   to_file=self.outf,
-                                   show_ids=show_ids,
-                                   show_timezone='original')
+                    log_format = log.log_formatter_registry.get_default(
+                        local_branch)
+                lf = log_format(to_file=self.outf,
+                                show_ids=show_ids,
+                                show_timezone='original')
                 if reverse is False:
                     local_extra.reverse()
                     remote_extra.reverse()

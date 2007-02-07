@@ -467,7 +467,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         a branch and checking no directory was created at its relpath.
         """
         tree = self.make_branch_and_memory_tree('dir')
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
@@ -475,7 +477,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormat7()
         tree = self.make_branch_and_memory_tree('dir', format=format)
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
@@ -848,7 +852,12 @@ class TestTestCase(TestCase):
         self.assertContainsRe(
             output_stream.getvalue(),
             r"\d+ms/ +\d+ms\n$")
-        
+
+    def test_hooks_sanitised(self):
+        """The bzrlib hooks should be sanitised by setUp."""
+        self.assertEqual(bzrlib.branch.BranchHooks(),
+            bzrlib.branch.Branch.hooks)
+
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
         
