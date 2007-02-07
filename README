@@ -10,7 +10,8 @@ bzr about the commit action, by setting
 post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
 
 The address to sent to is read from 'post_commit_to' and the address to send
-from from 'post_commit_sender'.
+from from 'post_commit_sender' (if not supplied defaults to standard bzr
+'email').
 
 If 'post_commit_url' is set, it is used instead of the branch URL
 (useful since in most cases, you commit to a private url, and you want
@@ -19,6 +20,15 @@ the public HTTP url in the commit message).
 The option 'post_commit_mailer' can be used to override the name of
 the mail program to use. It should behave like /bin/mail, at minimum
 supporting the -s and -a options.
+
+Alternatively 'post_commit_mailer' can be set to 'smtplib' which will use
+python's smtplib to send the email directly. If you use 'smtplib' you can also
+configure the settings "smtp_server=host[:port]", "smtp_username=userid",
+"smtp_password". If "smtp_username" is set but "smtp_password" is not, you
+will be prompted for a password.
+Also, if using 'smtplib', the messages will be sent as a UTF-8 text message,
+with a 8-bit text diff attached (rather than all-as-one). Work has also been
+done to make sure usernames do not have to be ascii.
 
 By default, the diff for the commit will be included in the email, if the
 length is less than 1000 lines. This limit can be changed (for instance, to 0

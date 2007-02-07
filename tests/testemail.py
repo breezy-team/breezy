@@ -18,10 +18,13 @@
 from cStringIO import StringIO
 from unittest import TestLoader
 
+from bzrlib import (
+    config,
+    )
 from bzrlib.bzrdir import BzrDir
-import bzrlib.config as config
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.plugins.email import post_commit, EmailSender
+from bzrlib.plugins.email import post_commit
+from bzrlib.plugins.email.emailer import EmailSender
 
 
 def test_suite():
@@ -41,6 +44,10 @@ sender_configured_config=("[DEFAULT]\n"
 to_configured_config=("[DEFAULT]\n"
                       "post_commit_to=Sample <foo@example.com>\n")
 
+multiple_to_configured_config=("[DEFAULT]\n"
+              "post_commit_sender=Sender <from@example.com>\n"
+              "post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
+
 with_url_config=("[DEFAULT]\n"
                  "post_commit_url=http://some.fake/url/\n"
                  "post_commit_to=demo@example.com\n"
@@ -52,6 +59,8 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender()
         # FIXME: this should not use a literal log, rather grab one from bzrlib.log
         self.assertEqual(
+            'At %s\n'
+            '\n'
             '------------------------------------------------------------\n'
             'revno: 1\n'
             'revision-id: A\n'
@@ -61,11 +70,11 @@ class TestGetTo(TestCaseInTempDir):
             'message:\n'
             '  foo bar baz\n'
             '  fuzzy\n'
-            '  wuzzy\n', sender.body())
+            '  wuzzy\n' % sender.url(), sender.body())
 
     def test_command_line(self):
         sender = self.get_sender()
-        self.assertEqual(['mail', '-s', sender.subject(), '-a', 
+        self.assertEqual(['mail', '-s', sender.subject(), '-a',
                           'From: ' + sender.from_address(), sender.to()],
                          sender._command_line())
 
@@ -97,6 +106,13 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender(to_configured_config)
         self.assertEqual(True, sender.should_send())
 
+    def test_send_to_multiple(self):
+        sender = self.get_sender(multiple_to_configured_config)
+        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+                         sender.to())
+        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+                         sender._command_line()[-2:])
+
     def test_url_set(self):
         sender = self.get_sender(with_url_config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
@@ -120,9 +136,13 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_subject(self):
         sender = self.get_sender()
-        self.assertEqual("Rev 1: foo bar baz in %s" % 
+        self.assertEqual("Rev 1: foo bar baz in %s" %
                             sender.branch.base,
                          sender.subject())
+
+    def test_diff_filename(self):
+        sender = self.get_sender()
+        self.assertEqual('patch-1.diff', sender.diff_filename())
 
     def get_sender(self, text=sample_config):
         self.branch = BzrDir.create_branch_convenience('.')
@@ -133,7 +153,9 @@ class TestGetTo(TestCaseInTempDir):
             timezone=0,
             committer="Sample <john@example.com>",
             )
-        my_config = config.BranchConfig(self.branch)
+        my_config = self.branch.get_config()
         config_file = StringIO(text)
         (my_config._get_global_config()._get_parser(config_file))
         return EmailSender(self.branch, 'A', my_config)
+
+
