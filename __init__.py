@@ -35,7 +35,7 @@ from bzrlib.lazy_import import lazy_import
 
 # lazy_import emailer so that it doesn't get loaded if it isn't used
 lazy_import(globals(), """\
-from bzrlib.plugins.email import emailer
+from bzrlib.plugins.email import emailer as _emailer
 """)
 
 
@@ -43,12 +43,12 @@ def post_commit(branch, revision_id):
     if not use_legacy:
         return
     """This is the post_commit hook that should get run after commit."""
-    emailer.EmailSender(branch, revision_id, branch.get_config()).send_maybe()
+    _emailer.EmailSender(branch, revision_id, branch.get_config()).send_maybe()
 
 
 def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
     """This is the post_commit hook that runs after commit."""
-    emailer.EmailSender(master, new_revid, master.get_config()).send_maybe()
+    _emailer.EmailSender(master, new_revid, master.get_config()).send_maybe()
 
 
 def install_hooks():
