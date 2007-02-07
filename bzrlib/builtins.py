@@ -2363,10 +2363,6 @@ class cmd_merge(Command):
                              ' you do not need to commit the result.'),
                      ]
 
-    def help(self):
-        from inspect import getdoc
-        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
-
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
             uncommitted=False, pull=False):
@@ -2499,10 +2495,6 @@ class cmd_remerge(Command):
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
-
-    def help(self):
-        from inspect import getdoc
-        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
