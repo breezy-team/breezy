@@ -55,6 +55,10 @@ IN DEVELOPMENT
       This is expected to grow to cover a number of related uses mainly
       related to bzr info. (Robert Collins)
 
+    * Log formatters are now managed with a registry.  log.register_formatter
+      continues to work, but callers accessed the FORMATTERS dictionary
+      directly will not.
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
