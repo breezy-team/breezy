@@ -628,7 +628,7 @@ class cmd_push(Command):
                      Option('create-prefix',
                             help='Create the path leading up to the branch '
                                  'if it does not already exist'),
-                     Option('use-existing',
+                     Option('use-existing-dir',
                             help='By default push will fail if the target'
                                  ' directory exists, but does not already'
                                  ' have a control directory. This flag will'
@@ -638,7 +638,7 @@ class cmd_push(Command):
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False, use_existing=False):
+            create_prefix=False, verbose=False, use_existing_dir=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
         
@@ -686,13 +686,11 @@ class cmd_push(Command):
             try:
                 to_transport.mkdir('.')
             except errors.FileExists:
-                if not use_existing:
+                if not use_existing_dir:
                     raise errors.BzrCommandError("Target directory %s"
-                                                 " already exists, but does not"
-                                                 " have a valid .bzr directory."
-                                                 " Supply --use-existing to"
-                                                 " push there anyway."
-                                                 % location)
+                         " already exists, but does not have a valid .bzr"
+                         " directory. Supply --use-existing-dir to push"
+                         " there anyway." % location)
             except errors.NoSuchFile:
                 if not create_prefix:
                     raise errors.BzrCommandError("Parent directory of %s"

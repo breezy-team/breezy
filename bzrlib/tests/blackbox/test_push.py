@@ -185,7 +185,7 @@ class TestPush(ExternalBase):
         self.failUnlessExists('new/tree/a')
 
     def test_push_use_existing(self):
-        """'bzr push --use-existing' can push into a dir that already exists.
+        """'bzr push --use-existing-dir' can push into an existing dir.
 
         By default, 'bzr push' will not use an existing, non-versioned dir.
         """
@@ -193,11 +193,11 @@ class TestPush(ExternalBase):
         self.build_tree(['target/'])
 
         self.run_bzr_error(['Target directory ../target already exists',
-                            'Supply --use-existing',
+                            'Supply --use-existing-dir',
                            ], 'push', '../target',
                            working_dir='tree')
-        
-        self.run_bzr('push', '--use-existing', '../target',
+
+        self.run_bzr('push', '--use-existing-dir', '../target',
                      working_dir='tree')
 
         new_tree = WorkingTree.open('target')
