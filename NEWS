@@ -26,6 +26,9 @@ IN DEVELOPMENT
       Supported by ``commit``, ``revert`` and ``status``
       (Aaron Bentley)
 
+    * ``bzr help checkouts`` descibes what checkouts are and some possible
+      uses of them. (James Westby, Aaron Bentley)
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
