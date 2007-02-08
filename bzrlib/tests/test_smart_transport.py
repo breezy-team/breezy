@@ -1480,7 +1480,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
             'hello\n')
         # Beware: the ('localhost', 80) below is the
         # client_address parameter, but we don't have one because
-        # we have defined a socket which is not bind to an
+        # we have defined a socket which is not bound to an
         # address. The test framework never uses this client
         # address, so far...
         request_handler = SmartRequestHandler(socket, ('localhost', 80), httpd)
