@@ -81,7 +81,7 @@ class TestCommandLine(TestCase):
         self.assertEqual([True], clear_term_called)
 
     def test_aborts_on_unicode(self):
-        """You can't sign Unicode text, it must be encoded first."""
+        """You can't sign Unicode text; it must be encoded first."""
         self.assertRaises(errors.BzrBadParameterUnicode,
                           self.assertProduces, u'foo')
 
