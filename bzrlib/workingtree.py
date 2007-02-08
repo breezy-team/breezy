@@ -2664,7 +2664,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)
             wt.set_last_revision(revision_id)
-            build_tree(wt.basis_tree(), wt)
+            transform.build_tree(wt.basis_tree(), wt)
         finally:
             control_files.unlock()
             wt.unlock()

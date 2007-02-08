@@ -256,9 +256,15 @@ class TestDirstateManipulations(TestCaseWithTransport):
         # set_parent_trees is a slow but important api to support.
         state = dirstate.DirState.initialize('dirstate')
         tree1 = self.make_branch_and_memory_tree('tree1')
+        tree1.lock_write()
+        tree1.add('')
         revid1 = tree1.commit('foo')
+        tree1.unlock()
         tree2 = self.make_branch_and_memory_tree('tree2')
+        tree2.lock_write()
+        tree2.add('')
         revid2 = tree2.commit('foo')
+        tree2.unlock()
         state.set_parent_trees(
             ((revid1, tree1.branch.repository.revision_tree(revid1)),
              (revid2, tree2.branch.repository.revision_tree(revid2)),
