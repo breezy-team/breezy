@@ -11,9 +11,9 @@ IN DEVELOPMENT
       already moved and update the repository accordingly, if the target file
       does exist.
       A new option ``--after`` has been added so that if two files already
-      exist, you could notify Bazaar that you have moved a (versioned) file and
-      replaced it with another. Thus in this case ``bzr move --after`` will
-      only update the Bazaar identifier.
+      exist, you could notify Bazaar that you have moved a (versioned) file
+      and replaced it with another. Thus in this case ``bzr move --after``
+      will only update the Bazaar identifier.
       (Steffen Eichenberg, Marius Kruger)
 
     * ``ls`` now works on treeless branches and remote branches.
@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
     * Files are now allowed to change kind (e.g. from file to symlink).
       Supported by ``commit``, ``revert`` and ``status``
+      (Aaron Bentley)
+
+    * ``inventory`` and ``unknowns`` hidden in favour of ``ls``
       (Aaron Bentley)
 
   INTERNALS:
