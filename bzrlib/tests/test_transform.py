@@ -587,6 +587,40 @@ class TestTreeTransform(TestCaseInTempDir):
         bar1_abspath = self.wt.abspath('bar')
         self.assertEqual([bar1_abspath], stat_paths)
 
+    def test_iter_changes(self):
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1', True)
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            self.assertEqual([], list(transform._iter_changes()))
+            old = transform.trans_id_tree_file_id('id-1')
+            transform.unversion_file(old)
+            self.assertEqual([('id-1', 'old', False, (True, False),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (True, True))], list(transform._iter_changes()))
+            transform.new_directory('new', root, 'id-1')
+            self.assertEqual([('id-1', 'new', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'new'),
+                ('file', 'directory'),
+                (True, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_new(self):
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            transform.version_file('id-1', old)
+            self.assertEqual([('id-1', 'old', False, (False, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
@@ -597,6 +631,7 @@ class TransformGroup(object):
         self.b = self.wt.branch
         self.tt = TreeTransform(self.wt)
         self.root = self.tt.trans_id_tree_file_id(self.wt.get_root_id())
+
 
 def conflict_text(tree, merge):
     template = '%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'
