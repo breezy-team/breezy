@@ -58,6 +58,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     errors,
+    inventory,
     tree,
     )
 import bzrlib.config
@@ -428,9 +429,9 @@ class Commit(object):
         #       to local.
         
         # Make sure the local branch is identical to the master
-        master_rh = self.master_branch.revision_history()
-        local_rh = self.branch.revision_history()
-        if local_rh != master_rh:
+        master_info = self.master_branch.last_revision_info()
+        local_info = self.branch.last_revision_info()
+        if local_info != master_info:
             raise errors.BoundBranchOutOfDate(self.branch,
                     self.master_branch)
 
@@ -560,6 +561,13 @@ class Commit(object):
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
+            try:
+                kind = self.work_tree.kind(file_id)
+                if kind != new_ie.kind:
+                    new_ie = inventory.make_entry(kind, new_ie.name,
+                                                  new_ie.parent_id, file_id)
+            except errors.NoSuchFile:
+                pass
             # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):

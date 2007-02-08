@@ -159,7 +159,7 @@ class OptionTests(TestCase):
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
-                   bzrdir.format_registry, builtins.get_format_type)]
+                   bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               repository.RepositoryFormatKnit1)
@@ -170,11 +170,12 @@ class OptionTests(TestCase):
         registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
-                   str, value_switches=True)]
+                   str, value_switches=True, title='Formats')]
         parser = option.get_optparser(dict((o.name, o) for o in options))
         value = parser.format_option_help()
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
+        self.assertContainsRe(value, 'Formats:\n *--format')
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')

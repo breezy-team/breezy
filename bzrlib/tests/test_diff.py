@@ -205,7 +205,7 @@ class TestDiffFiles(TestCaseInTempDir):
         # Make sure external_diff doesn't fail in the current LANG
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
-        cmd = ['diff', '-u', 'old', 'new']
+        cmd = ['diff', '-u', '--binary', 'old', 'new']
         open('old', 'wb').write('\x00foobar\n')
         open('new', 'wb').write('foo\x00bar\n')
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
