@@ -405,7 +405,7 @@ def strip_trailing_slash(url):
     if not url.endswith('/'):
         # Nothing to do
         return url
-    if sys.platform == 'win32' and url.startswith('file:///'):
+    if sys.platform == 'win32' and url.startswith('file://'):
         return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)

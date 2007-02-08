@@ -25,6 +25,7 @@ import optparse
 
 from bzrlib import (
     errors,
+    log,
     revisionspec,
     symbol_versioning,
     )
@@ -225,7 +226,7 @@ class RegistryOption(Option):
             return self.converter(value)
 
     def __init__(self, name, help, registry, converter=None,
-        value_switches=False):
+        value_switches=False, title=None):
         """
         Constructor.
 
@@ -243,9 +244,14 @@ class RegistryOption(Option):
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
+        self.title = title
+        if self.title is None:
+            self.title = name
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
+        if self.value_switches:
+            parser = parser.add_option_group(self.title)
         Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
@@ -295,6 +301,11 @@ def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
+
+def _global_registry_option(name, help, registry, **kwargs):
+    Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
+
+
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
@@ -329,7 +340,9 @@ _global_option('verbose',
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('log-format', type=str, help="Use this log format")
+_global_registry_option('log-format', "Use this log format",
+                        log.log_formatter_registry, value_switches=True,
+                        title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
