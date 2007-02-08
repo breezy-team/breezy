@@ -6,6 +6,8 @@ IN DEVELOPMENT
       typo in prroxy handling have been unnoticed. (Vincent
       Ladeuil, #83954).
 
+    * Fix recursive upwalk for win32 UNC path. (Alexander Belchenko)
+
 bzr 0.14  2007-01-23
 
   IMPROVEMENTS:
