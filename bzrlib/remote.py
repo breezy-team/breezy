@@ -422,8 +422,20 @@ class RemoteBranch(branch.Branch):
         return result
 
     def set_revision_history(self, rev_history):
-        self._ensure_real()
-        return self._real_branch.set_revision_history(rev_history)
+        # Send just the tip revision of the history; the server will generate
+        # the full history from that.  If the revision doesn't exist in this
+        # branch, NoSuchRevision will be raised.
+        path = self.bzrdir._path_for_remote_call(self._client)
+        if rev_history == []:
+            rev_id = ''
+        else:
+            rev_id = rev_history[-1]
+        response = self._client.call('Branch.set_last_revision', path, rev_id)
+        if response[0] == 'NoSuchRevision':
+            raise NoSuchRevision(self, rev_id)
+        else:
+            assert response == ('ok',), (
+                'unexpected response code %r' % (response,))
 
     def get_parent(self):
         self._ensure_real()

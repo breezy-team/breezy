@@ -224,7 +224,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath('')))
 
 
-class TestSmartServerBranchGetConfigFile(tests.TestCaseWithTransport):
+class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithTransport):
 
     def test_default(self):
         """With no file, we get empty content."""
@@ -246,6 +246,53 @@ class TestSmartServerBranchGetConfigFile(tests.TestCaseWithTransport):
         branch.control_files.put_utf8('branch.conf', 'foo bar baz')
         self.assertEqual(SmartServerResponse(('ok', ), 'foo bar baz'),
             request.execute(backing.local_abspath('')))
+
+
+class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
+
+    def test_empty(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
+        self.make_branch('.')
+        self.assertEqual(SmartServerResponse(('ok',)),
+            request.execute(backing.local_abspath(''), ''))
+
+    def test_not_present_revision_id(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
+        self.make_branch('.')
+        revision_id = 'non-existent revision'
+        self.assertEqual(SmartServerResponse(('NoSuchRevision', revision_id)),
+            request.execute(backing.local_abspath(''), revision_id))
+
+    def test_revision_id_present(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit', rev_id=u'\xc8')
+        r2 = tree.commit('2nd commit')
+        tree.unlock()
+        self.assertEqual(
+            SmartServerResponse(('ok',)),
+            request.execute(backing.local_abspath(''), u'\xc8'.encode('utf8')))
+        self.assertEqual([u'\xc8'], tree.branch.revision_history())
+
+    def test_revision_id_present2(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit', rev_id=u'\xc8')
+        r2 = tree.commit('2nd commit')
+        tree.unlock()
+        tree.branch.set_revision_history([])
+        self.assertEqual(
+            SmartServerResponse(('ok',)),
+            request.execute(backing.local_abspath(''), u'\xc8'.encode('utf8')))
+        self.assertEqual([u'\xc8'], tree.branch.revision_history())
 
 
 class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
