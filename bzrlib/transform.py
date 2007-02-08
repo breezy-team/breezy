@@ -906,6 +906,9 @@ class TreeTransform(object):
     def _iter_changes(self):
         """Produce output in the same format as Tree._iter_changes.
 
+        Will produce nonsensical results if invoked while conflicts are
+        present.
+
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
         states are not reflected.
@@ -913,6 +916,11 @@ class TreeTransform(object):
         final_paths = FinalPaths(self)
         trans_ids = set(self._removed_id)
         trans_ids.update(self._new_id.keys())
+        trans_ids.update(self._removed_contents)
+        trans_ids.update(self._new_contents.keys())
+        trans_ids.update(self._new_executability.keys())
+        trans_ids.update(self._new_name.keys())
+        trans_ids.update(self._new_parent.keys())
         from_trans_ids = {}
         to_trans_ids = {}
         modified = False
@@ -966,8 +974,11 @@ class TreeTransform(object):
                 from_kind = None
                 from_executable = False
             to_name = self.final_name(to_trans_id)
-            to_kind = self.final_kind(to_trans_id)
-            to_parent = self.final_parent(to_trans_id)
+            try:
+                to_kind = self.final_kind(to_trans_id)
+            except NoSuchFile:
+                to_kind = None
+            to_parent = self.final_file_id(self.final_parent(to_trans_id))
             if to_trans_id in self._new_executability:
                 to_executable = self._new_executability[to_trans_id]
             elif to_trans_id == from_trans_id:
@@ -977,9 +988,17 @@ class TreeTransform(object):
             to_path = final_paths.get_path(to_trans_id)
             if from_kind != to_kind:
                 modified = True
+            elif to_kind in ('file' or 'symlink') and (
+                to_trans_id != from_trans_id or
+                to_trans_id in self._new_contents):
+                modified = True
+            if (not modified and from_versioned == to_versioned and
+                from_parent==to_parent and from_name == to_name and
+                from_executable == to_executable):
+                continue
             yield (file_id, to_path, modified,
                    (from_versioned, to_versioned),
-                   (from_parent, from_parent),
+                   (from_parent, to_parent),
                    (from_name, to_name),
                    (from_kind, to_kind),
                    (from_executable, to_executable))

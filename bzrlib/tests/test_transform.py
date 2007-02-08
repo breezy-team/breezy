@@ -621,6 +621,96 @@ class TestTreeTransform(TestCaseInTempDir):
         finally:
             transform.finalize()
 
+    def test_iter_changes_modifications(self):
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_file('new', root, 'blah')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            new = transform.trans_id_tree_path('new')
+            self.assertEqual([], list(transform._iter_changes()))
+
+            #content deletion
+            transform.delete_contents(old)
+            self.assertEqual([('id-1', 'old', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', None),
+                (False, False))], list(transform._iter_changes()))
+
+            #content change
+            transform.create_file('blah', old)
+            self.assertEqual([('id-1', 'old', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_deletion(old)
+            self.assertEqual([('id-1', 'old', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_creation(old)
+
+            # move file_id to a different file
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.unversion_file(old)
+            transform.version_file('id-1', new)
+            transform.adjust_path('old', root, new)
+            self.assertEqual([('id-1', 'old', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_versioning(new)
+            transform._removed_id = set()
+
+            #execute bit
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.set_executability(True, old)
+            self.assertEqual([('id-1', 'old', False, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'old'), ('file', 'file'),
+                (False, True))], list(transform._iter_changes()))
+            transform.set_executability(None, old)
+
+            # filename
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', root, old)
+            transform._new_parent = {}
+            self.assertEqual([('id-1', 'new', False, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('old', 'new'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform._new_name = {}
+
+            # parent directory
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', subdir, old)
+            transform._new_name = {}
+            self.assertEqual([('id-1', 'subdir/old', False, (True, True),
+                ('TREE_ROOT', 'subdir-id'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform._new_path = {}
+
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_pointless(self):
+        """Ensure that no-ops are not treated as modifications"""
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.delete_contents(subdir)
+            transform.create_directory(subdir)
+            transform.set_executability(False, old)
+            transform.unversion_file(old)
+            transform.version_file('id-1', old)
+            transform.adjust_path('old', root, old)
+            self.assertEqual([], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
