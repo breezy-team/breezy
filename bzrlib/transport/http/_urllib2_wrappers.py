@@ -708,14 +708,17 @@ class ProxyHandler(urllib2.ProxyHandler):
             user_pass, host = host.split('@', 1)
             if ':' in user_pass:
                 user, password = user_pass.split(':', 1)
-                user_pass = '%s:%s' % (urllib.unquote(user),
-                               urllib.unquote(password))
-                user_pass.encode('base64').strip()
-                request.add_header('Proxy-authorization', 'Basic ' + user_pass)
+            else:
+                user = user_pass
+                password = ''
+            user_pass = '%s:%s' % (urllib.unquote(user),
+                                   urllib.unquote(password))
+            user_pass = user_pass.encode('base64').strip()
+            request.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:
-            print 'set_proxy: proxy set to %r://%r' % (type, host)
+            print 'set_proxy: proxy set to %s://%s' % (type, host)
         return request
 
 
