@@ -20,48 +20,47 @@ from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
-class TestPushHook(TestCaseWithMemoryTransport):
+class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
 
     def setUp(self):
         self.hook_calls = []
         TestCaseWithMemoryTransport.setUp(self)
 
     def capture_set_rh_hook(self, branch, rev_history):
-        """Capture post push hook calls to self.hook_calls.
+        """Capture post set-rh hook calls to self.hook_calls.
         
-        The call is logged, as is some state of the two branches.
+        The call is logged, as is some state of the branch.
         """
         self.hook_calls.append(
             ('set_rh', branch, rev_history, branch.is_locked()))
 
     def test_set_rh_empty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
+        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True)])
 
     def test_set_rh_nonempty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
+        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
         branch.set_revision_history([u'foo'])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [u'foo'], True)])
 
     def test_set_rh_branch_is_locked(self):
         branch = self.make_branch('source')
-        Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
+        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True)])
 
     def test_set_rh_calls_all_hooks_no_errors(self):
         branch = self.make_branch('source')
-        Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
-        Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
+        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True),
              ('set_rh', branch, [], True),
             ])
-

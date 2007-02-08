@@ -349,7 +349,8 @@ class TestBoundBranches(TestCaseWithTransport):
 
         bzr('cat-revision', new_rev_id)
 
-    def test_pull_overwrite_fails(self):
+    def test_pull_overwrite(self):
+        # XXX: This test should be moved to branch-implemenations/test_pull
         bzr = self.run_bzr
         self.create_branches()
 
@@ -373,17 +374,8 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(2)
         self.check_revno(2, '../base')
 
-        # It might be possible that we want pull --overwrite to
-        # actually succeed.
-        # If we want it, just change this test to make sure that 
-        # both base and child are updated properly
-        bzr('pull', '--overwrite', '../other', retcode=3)
+        bzr('pull', '--overwrite', '../other')
 
-        # It should fail without changing the local revision
-        self.check_revno(2)
-        self.check_revno(2, '../base')
-
-    # TODO: jam 20051230 Test that commit & pull fail when the branch we 
-    #       are bound to is not available
-
-
+        # both the local and master should have been updated.
+        self.check_revno(4)
+        self.check_revno(4, '../base')
