@@ -1651,7 +1651,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # manually check for equality of other things such as the parents list.
         self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
         differences = left.changes_from(right)
-        self.assertFalse(differences.has_changed())
+        self.assertFalse(differences.has_changed(),
+            "Trees %r and %r are different: %r" % (left, right, differences))
 
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()

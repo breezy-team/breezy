@@ -270,7 +270,18 @@ class TestDirstateManipulations(TestCaseWithTransport):
              (revid2, tree2.branch.repository.revision_tree(revid2)),
              ('ghost-rev', None)),
             ['ghost-rev'])
-        # be sure that it sets not appends
+        # check we can reopen and use the dirstate after setting parent trees.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual([revid1, revid2, 'ghost-rev'],  state.get_parent_ids())
+        # iterating the entire state ensures that the state is parsable.
+        list(state._iter_rows())
+        # be sure that it sets not appends - change it
+        state.set_parent_trees(
+            ((revid1, tree1.branch.repository.revision_tree(revid1)),
+             ('ghost-rev', None)),
+            ['ghost-rev'])
+        # and now put it back.
         state.set_parent_trees(
             ((revid1, tree1.branch.repository.revision_tree(revid1)),
              (revid2, tree2.branch.repository.revision_tree(revid2)),

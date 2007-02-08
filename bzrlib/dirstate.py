@@ -387,7 +387,10 @@ class DirState(object):
             expected_field_count = entry_size * self._num_entries
             # is the file too short ?
             assert field_count - cur == expected_field_count, \
-                'field count incorrect %s != %s' % (expected_field_count, field_count)
+                'field count incorrect %s != %s, entry_size=%s, '\
+                'num_entries=%s fields=%r' % (
+                    expected_field_count, field_count, entry_size,
+                    self._num_entries, fields)
 
             # Fast path the case where there are 1 or 2 parents
             if num_parents == 0:

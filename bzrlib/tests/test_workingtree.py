@@ -384,7 +384,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # it's given; any calls to forbidden methods will raise an 
         # AssertionError
         repo = tree.branch.repository
-        repo.get_revision = self.fail
+        # dont uncomment this: the revision object must be accessed to 
+        # answer 'get_parent_ids' for the revision tree- dirstate does not 
+        # cache the parents of a parent tree at this point.
+        #repo.get_revision = self.fail
         repo.get_inventory = self.fail
         repo.get_inventory_xml = self.fail
         # set the parent trees.
