@@ -1309,7 +1309,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             _alter_files(working_tree, target_tree, tt, child_pb, 
-                         interesting_ids, backups, change_reporter)
+                         interesting_ids, backups )
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1322,6 +1322,9 @@ def revert(working_tree, target_tree, filenames, backups=False,
         for conflict in conflicts:
             warning(conflict)
         pp.next_phase()
+        from bzrlib import delta
+        change_reporter = delta.ChangeReporter(working_tree.inventory)
+        delta.report_changes(tt._iter_changes(), change_reporter)
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
@@ -1330,22 +1333,19 @@ def revert(working_tree, target_tree, filenames, backups=False,
     return conflicts
 
 
-def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups,
-                 report_changes):
+def _alter_files(working_tree, target_tree, tt, pb, interesting_ids,
+                 backups):
     from bzrlib import delta
     merge_modified = working_tree.merge_modified()
-    change_list = list(target_tree._iter_changes(working_tree,
-        specific_file_ids=interesting_ids, pb=pb))
+    change_list = target_tree._iter_changes(working_tree,
+        specific_file_ids=interesting_ids, pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
     else:
         skip_root = False
     basis_tree = None
-    if report_changes:
-        change_reporter = delta.ChangeReporter(working_tree.inventory)
-        delta.report_changes(change_list, change_reporter)
-    for id_num, (file_id, path, changed_content, versioned, parent, name, kind,
-                 executable) in enumerate(change_list):
+    for id_num, (file_id, path, changed_content, versioned, parent, name,
+        kind, executable) in enumerate(change_list):
         if skip_root and file_id[0] is not None and parent[0] is None:
             continue
         trans_id = tt.trans_id_file_id(file_id)
