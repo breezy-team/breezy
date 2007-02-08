@@ -81,3 +81,12 @@ class TestEncodeCache(TestCase):
         self.failUnless(xp is x)
         self.failUnless(xp is yp)
 
+    def test_cached_utf8(self):
+        x = u'\xb5yy\xe5zz'.encode('utf8')
+        y = u'\xb5yy\xe5zz'.encode('utf8')
+        self.failIf(x is y)
+        xp = cache_utf8.get_cached_utf8(x)
+        yp = cache_utf8.get_cached_utf8(y)
+
+        self.failUnless(xp is x)
+        self.failUnless(xp is yp)

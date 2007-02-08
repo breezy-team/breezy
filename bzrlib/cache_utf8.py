@@ -78,6 +78,16 @@ def get_cached_unicode(unicode_str):
     return decode(encode(unicode_str))
 
 
+def get_cached_utf8(utf8_str):
+    """Return a cached version of the utf-8 string.
+
+    Get a cached version of this string (similar to intern()).
+    At present, this will be decoded to ensure it is a utf-8 string. In the
+    future this might change to simply caching the string.
+    """
+    return encode(decode(utf8_str))
+
+
 def clear_encoding_cache():
     """Clear the encoding and decoding caches"""
     _unicode_to_utf8_map.clear()
