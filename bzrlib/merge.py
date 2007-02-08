@@ -21,6 +21,7 @@ import warnings
 
 from bzrlib import (
     osutils,
+    registry,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
@@ -141,7 +142,8 @@ class Merger(object):
 
     def check_basis(self, check_clean, require_commits=True):
         if self.this_basis is None and require_commits is True:
-            raise BzrCommandError("This branch has no commits")
+            raise BzrCommandError("This branch has no commits."
+                                  " (perhaps you would prefer 'bzr pull')")
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
@@ -960,14 +962,10 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.other_basis = other_rev_id
     return merger.do_merge()
 
+def get_merge_type_registry():
+    """Merge type registry is in bzrlib.option to avoid circular imports.
 
-merge_types = {     "merge3": (Merge3Merger, "Native diff3-style merge"), 
-                     "diff3": (Diff3Merger,  "Merge using external diff3"),
-                     'weave': (WeaveMerger, "Weave-based merge")
-              }
-
-
-def merge_type_help():
-    templ = '%s%%7s: %%s' % (' '*12)
-    lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
-    return '\n'.join(lines)
+    This method provides a sanctioned way to retrieve it.
+    """
+    from bzrlib import option
+    return option._merge_type_registry
