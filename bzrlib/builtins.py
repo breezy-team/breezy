@@ -416,9 +416,14 @@ class cmd_inventory(Command):
 
     It is also possible to restrict the list of files to a specific
     set. For example: bzr inventory --show-ids this/file
+
+    See also: bzr ls
     """
 
+    hidden = True
+
     takes_options = ['revision', 'show-ids', 'kind']
+
     takes_args = ['file*']
 
     @display_command
@@ -1401,8 +1406,13 @@ class cmd_deleted(Command):
 
 
 class cmd_modified(Command):
-    """List files modified in working tree."""
+    """List files modified in working tree.
+
+    See also: "bzr status".
+    """
+
     hidden = True
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -1412,8 +1422,13 @@ class cmd_modified(Command):
 
 
 class cmd_added(Command):
-    """List files added in working tree."""
+    """List files added in working tree.
+
+    See also: "bzr status".
+    """
+
     hidden = True
+
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
@@ -1685,7 +1700,13 @@ class cmd_ls(Command):
 
 
 class cmd_unknowns(Command):
-    """List unknown files."""
+    """List unknown files.
+
+    See also: "bzr ls --unknown".
+    """
+
+    hidden = True
+
     @display_command
     def run(self):
         for f in WorkingTree.open_containing(u'.')[0].unknowns():
