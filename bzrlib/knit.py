@@ -174,11 +174,7 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is of the format:
         (revid, plaintext)
         """
-        decode_utf8 = cache_utf8.decode
-        lines = []
-        for line in content:
-            origin, text = line.split(' ', 1)
-            lines.append((decode_utf8(origin), text))
+        lines = [line.split(' ', 1) for line in content]
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
@@ -194,19 +190,14 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
-        decode_utf8 = cache_utf8.decode
         result = []
         lines = iter(lines)
         next = lines.next
+
         # walk through the lines parsing.
         for header in lines:
             start, end, count = [int(n) for n in header.split(',')]
-            contents = []
-            remaining = count
-            while remaining:
-                origin, text = next().split(' ', 1)
-                remaining -= 1
-                contents.append((decode_utf8(origin), text))
+            contents = [next().split(' ', 1) for i in xrange(count)]
             result.append((start, end, count, contents))
         return result
 
@@ -1157,7 +1148,6 @@ class _KnitIndex(_KnitComponentFile):
     def _load_data(self, fp):
         cache = self._cache
         history = self._history
-        decode_utf8 = cache_utf8.decode
 
         self.check_header(fp)
         # readlines reads the whole file at once:
@@ -1182,12 +1172,11 @@ class _KnitIndex(_KnitComponentFile):
             for value in rec[4:-1]:
                 if value[0] == '.':
                     # uncompressed reference
-                    parents.append(decode_utf8(value[1:]))
+                    parents.append(value[1:])
                 else:
                     parents.append(history[int(value)])
 
             version_id, options, pos, size = rec[:4]
-            version_id = decode_utf8(version_id)
 
             # See self._cache_version
             # only want the _history index to reference the 1st 
