@@ -23,7 +23,9 @@ from bzrlib import (
 from bzrlib.transport import get_transport
 from bzrlib.tests import TestCase, TestSkipped
 
+
 class IndirectUrlTests(TestCase):
+    """Tests for indirect branch urls through Launchpad.net"""
 
     def test_short_form(self):
         """A launchpad url should map to a http url"""
