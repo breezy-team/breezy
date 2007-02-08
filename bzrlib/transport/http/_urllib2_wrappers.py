@@ -711,7 +711,7 @@ class ProxyHandler(urllib2.ProxyHandler):
                 user_pass = '%s:%s' % (urllib.unquote(user),
                                urllib.unquote(password))
                 user_pass.encode('base64').strip()
-                req.add_header('Proxy-authorization', 'Basic ' + user_pass)
+                request.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:

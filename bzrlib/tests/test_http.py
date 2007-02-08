@@ -655,6 +655,10 @@ class TestProxyHttpServer(object):
     # FIXME: We don't have an https server available, so we don't
     # test https connections.
 
+    # FIXME: Once the test suite is better fitted to test
+    # authorization schemes, test proxy authorizations too (see
+    # bug #83954).
+
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)
         self.build_tree_contents([('foo', 'contents of foo\n'),
