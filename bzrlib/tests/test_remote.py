@@ -194,18 +194,7 @@ class TestRemoteRepository(tests.TestCase):
         return repo, client
 
 
-class TestRepositoryGatherStats(tests.TestCase):
-
-    def setup_fake_client_and_repository(self, responses, transport_path):
-        """Create the fake client and repository for testing with."""
-        client = FakeClient(responses)
-        transport = MemoryTransport()
-        transport.mkdir(transport_path)
-        transport = transport.clone(transport_path)
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        return repo, client
+class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
         # ('ok',), body with revisions and size
