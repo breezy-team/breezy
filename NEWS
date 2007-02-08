@@ -2,6 +2,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+      branch, rather than the last changed revision of the file.
+      (John Arbash Meinel, #82158)
+
     * Lack of http authorization support in test framework, a
       typo in prroxy handling have been unnoticed. (Vincent
       Ladeuil, #83954).
