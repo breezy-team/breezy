@@ -434,6 +434,15 @@ class TestBranch(TestCaseWithBranch):
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
+    def test_set_revision_history(self):
+        br = self.get_branch()
+        br.set_revision_history(["rev1"])
+        self.assertEquals(br.revision_history(), ["rev1"])
+        br.set_revision_history([])
+        self.assertEquals(br.revision_history(), [])
+        br.set_revision_history(["rev2", "rev1"])
+        self.assertEquals(br.revision_history(), ["rev2", "rev1"])
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
