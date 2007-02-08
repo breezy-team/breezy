@@ -421,7 +421,9 @@ class cmd_inventory(Command):
     """
 
     hidden = True
+
     takes_options = ['revision', 'show-ids', 'kind']
+
     takes_args = ['file*']
 
     @display_command
@@ -1348,7 +1350,9 @@ class cmd_modified(Command):
 
     See also: "bzr status".
     """
+
     hidden = True
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -1362,7 +1366,9 @@ class cmd_added(Command):
 
     See also: "bzr status".
     """
+
     hidden = True
+
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
@@ -1646,7 +1652,9 @@ class cmd_unknowns(Command):
 
     See also: "bzr ls --unknown".
     """
+
     hidden = True
+
     @display_command
     def run(self):
         for f in WorkingTree.open_containing(u'.')[0].unknowns():
