@@ -1,3 +1,11 @@
+IN DEVELOPMENT
+
+  BUGFIXES:
+
+    * Lack of http authorization support in test framework, a
+      typo in prroxy handling have been unnoticed. (Vincent
+      Ladeuil, #83954).
+
 bzr 0.14  2007-01-23
 
   IMPROVEMENTS:
