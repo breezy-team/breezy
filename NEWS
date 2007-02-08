@@ -41,6 +41,10 @@ IN DEVELOPMENT
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
+    * Minor performance improvement by not creating a ProgressBar for
+      every KnitIndex we create. (about 90ms for a bzr.dev tree)
+      (John Arbash Meinel)
+
     * New easier to use Branch hooks facility. There are five initial hooks,
       all documented in bzrlib.branch.BranchHooks.__init__ - 'set_rh',
       'post_push', 'post_pull', 'post_commit', 'post_uncommit'. These hooks
