@@ -62,6 +62,10 @@ IN DEVELOPMENT
       continues to work, but callers accessed the FORMATTERS dictionary
       directly will not.
 
+    * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
+      you pass a Unicode string rather than an 8-bit string. Callers need
+      to be updated to encode first. (John Arbash Meinel)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
