@@ -26,7 +26,7 @@ from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 class SmartServerBranchRequest(SmartServerRequest):
     """Base class for handling common branch request logic."""
 
-    def do(self, path):
+    def do(self, path, *args):
         """Execute a request for a branch at path.
 
         If the branch is a branch reference, NotBranchError is raised.
@@ -36,7 +36,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
         branch = bzrdir.open_branch()
-        return self.do_with_branch(branch)
+        return self.do_with_branch(branch, *args)
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
@@ -78,4 +78,17 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         return SmartServerResponse(
             ('ok', str(revno), last_revision.encode('utf8')))
 
+
+class SmartServerBranchRequestSetLastRevision(SmartServerBranchRequest):
+    
+    def do_with_branch(self, branch, new_last_revision_id):
+        unicode_new_last_revision_id = new_last_revision_id.decode('utf-8')  # XXX test
+        if new_last_revision_id == '':
+            branch.set_revision_history([])
+        else:
+            if not branch.repository.has_revision(unicode_new_last_revision_id):
+                return SmartServerResponse(
+                    ('NoSuchRevision', new_last_revision_id))
+            branch.generate_revision_history(unicode_new_last_revision_id)
+        return SmartServerResponse(('ok',))
 

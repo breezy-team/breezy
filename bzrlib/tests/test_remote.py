@@ -155,10 +155,60 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         self.assertEqual((2, u'\xc8'), result)
 
 
+class TestBranchSetLastRevision(tests.TestCase):
+
+    def test_set_empty(self):
+        # set_revision_history([]) is translated to calling
+        # Branch.set_last_revision(path, '') on the wire.
+        client = FakeClient([(('ok',), )])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+
+        result = branch.set_revision_history([])
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision', ('///branch/', ''))],
+            client._calls)
+        self.assertEqual(None, result)
+
+    def test_set_nonempty(self):
+        # set_revision_history([rev-id1, ..., rev-idN]) is translated to calling
+        # Branch.set_last_revision(path, rev-idN) on the wire.
+        client = FakeClient([(('ok',), )])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+
+        result = branch.set_revision_history(['rev-id1', 'rev-id2'])
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision', ('///branch/', 'rev-id2'))],
+            client._calls)
+        self.assertEqual(None, result)
+
+    def test_no_such_revision(self):
+        # A response of 'NoSuchRevision' is translated into an exception.
+        client = FakeClient([(('NoSuchRevision', 'rev-id'), )])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+
+        self.assertRaises(
+            NoSuchRevision, branch.set_revision_history, ['rev-id'])
+
+
 class TestBranchControlGetBranchConf(tests.TestCase):
     """Test branch.control_files api munging...
 
-    we special case RemoteBranch.control_files.get('branch.conf') to 
+    we special case RemoteBranch.control_files.get('branch.conf') to
     call a specific API so that RemoteBranch's can intercept configuration
     file reading, allowing them to signal to the client about things like
     'email is configured for commits'.
@@ -194,18 +244,7 @@ class TestRemoteRepository(tests.TestCase):
         return repo, client
 
 
-class TestRepositoryGatherStats(tests.TestCase):
-
-    def setup_fake_client_and_repository(self, responses, transport_path):
-        """Create the fake client and repository for testing with."""
-        client = FakeClient(responses)
-        transport = MemoryTransport()
-        transport.mkdir(transport_path)
-        transport = transport.clone(transport_path)
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        repo = RemoteRepository(bzrdir, None, _client=client)
-        return repo, client
+class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
         # ('ok',), body with revisions and size
