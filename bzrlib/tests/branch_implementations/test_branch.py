@@ -219,6 +219,19 @@ class TestBranch(TestCaseWithBranch):
         branch_d = branch_b.clone(repo_d.bzrdir)
         self.assertEqual(random_parent, branch_d.get_parent())
 
+    def test_copy_content_incomplete(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_branch_and_tree('source')
+        # this gives us an incomplete repository
+        tree.bzrdir.open_repository().copy_content_into(
+            source.branch.repository)
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        tree.bzrdir.open_branch().copy_content_into(source.branch)
+
+
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
         raise TestSkipped('XXX branch sprouting is not yet tested..')

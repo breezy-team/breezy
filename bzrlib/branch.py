@@ -556,6 +556,16 @@ class Branch(object):
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
+    def _synchronize_history(self, destination, revision_id):
+        new_history = self.revision_history()
+        if revision_id is not None:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
+
     @needs_read_lock
     def copy_content_into(self, destination, revision_id=None):
         """Copy the content of self into destination.
@@ -563,9 +573,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        if revision_id is None:
-            revision_id = self.last_revision()
-        destination.set_last_revision(revision_id)
+        self._synchronize_history(destination, revision_id)
         try:
             parent = self.get_parent()
         except errors.InaccessibleParent, e:
@@ -1646,6 +1654,10 @@ class BzrBranch6(BzrBranch5):
             location = None
         return location
 
+    def _synchronize_history(self, destination, revision_id):
+        if revision_id is None:
+            revision_id = self.last_revision()
+        destination.set_last_revision(revision_id)
 
 class BranchTestProviderAdapter(object):
     """A tool to generate a suite testing multiple branch formats at once.
