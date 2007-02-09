@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1509,15 +1509,12 @@ class cmd_log(Command):
         if location:
             # find the file id to log:
 
-            dir, fp = bzrdir.BzrDir.open_containing(location)
-            b = dir.open_branch()
+            tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
+                location)
             if fp != '':
-                try:
-                    # might be a tree:
-                    inv = dir.open_workingtree().inventory
-                except (errors.NotBranchError, errors.NotLocalUrl):
-                    # either no tree, or is remote.
-                    inv = b.basis_tree().inventory
+                if tree is None:
+                    tree = b.basis_tree()
+                inv = tree.inventory
                 file_id = inv.path2id(fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
