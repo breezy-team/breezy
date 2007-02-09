@@ -938,7 +938,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=DummyProgress()):
+                pb=DummyProgress(),
+                change_reporter=None):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -952,7 +953,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
              stacklevel=2)
         this_tree = this_branch.bzrdir.open_workingtree()
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree, 
-                    pb=pb)
+                    pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids

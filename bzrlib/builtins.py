@@ -541,7 +541,8 @@ class cmd_pull(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
+    def run(self, location=None, remember=False, overwrite=False,
+            revision=None, verbose=False):
         # FIXME: too much stuff is in the command class
         try:
             tree_to = WorkingTree.open_containing(u'.')[0]
@@ -589,7 +590,8 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id)
+            count = tree_to.pull(branch_from, overwrite, rev_id,
+            delta.ChangeReporter(tree_to.inventory))
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
