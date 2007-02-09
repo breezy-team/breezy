@@ -1312,7 +1312,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             _alter_files(working_tree, target_tree, tt, child_pb, 
-                         interesting_ids, backups )
+                         interesting_ids, backups)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1325,9 +1325,10 @@ def revert(working_tree, target_tree, filenames, backups=False,
         for conflict in conflicts:
             warning(conflict)
         pp.next_phase()
-        from bzrlib import delta
-        change_reporter = delta.ChangeReporter(working_tree.inventory)
-        delta.report_changes(tt._iter_changes(), change_reporter)
+        if change_reporter:
+            from bzrlib import delta
+            change_reporter = delta.ChangeReporter(working_tree.inventory)
+            delta.report_changes(tt._iter_changes(), change_reporter)
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
