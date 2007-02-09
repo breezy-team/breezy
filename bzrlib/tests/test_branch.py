@@ -168,6 +168,13 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         bzrlib.branch.BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
 
+    def test_checkout_format(self):
+        branch = self.make_repository('repository', shared=True)
+        branch = self.make_branch('repository/branch',
+            format='metaweave')
+        tree = branch.create_checkout('checkout')
+        self.assertIs(tree.branch.__class__, _mod_branch.BzrBranch5)
+
 
 class TestBranch6(TestCaseWithTransport):
 
