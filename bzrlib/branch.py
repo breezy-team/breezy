@@ -1602,6 +1602,8 @@ class BzrBranch6(BzrBranch5):
         else:
             assert history == self._lefthand_history(history[-1])
             self.set_last_revision(history[-1])
+        for hook in Branch.hooks['set_rh']:
+            hook(self, history)
 
     @needs_write_lock
     def append_revision(self, *revision_ids):

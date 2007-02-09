@@ -42,7 +42,12 @@ class TestPushHook(TestCaseWithMemoryTransport):
             [('set_rh', branch, [], True)])
 
     def test_set_rh_nonempty_history(self):
-        branch = self.make_branch('source')
+        tree = self.make_branch_and_memory_tree('source')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('empty commit', rev_id='foo')
+        tree.unlock()
+        branch = tree.branch
         Branch.hooks['set_rh'].append(self.capture_set_rh_hook)
         branch.set_revision_history([u'foo'])
         self.assertEqual(self.hook_calls,
