@@ -923,7 +923,6 @@ class TreeTransform(object):
         trans_ids.update(self._new_parent.keys())
         from_trans_ids = {}
         to_trans_ids = {}
-        modified = False
         # Build up two dicts: trans_ids associated with file ids in the
         # FROM state, vs the TO state.
         for trans_id in trans_ids:
@@ -938,6 +937,7 @@ class TreeTransform(object):
 
         # Now iterate through all active file_ids
         for file_id in set(from_trans_ids.keys() + to_trans_ids.keys()):
+            modified = False
             from_trans_id = from_trans_ids.get(file_id)
             # find file ids, and determine versioning state
             if from_trans_id is None:

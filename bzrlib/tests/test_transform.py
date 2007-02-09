@@ -691,6 +691,31 @@ class TestTreeTransform(TestCaseInTempDir):
         finally:
             transform.finalize()
 
+    def test_iter_changes_modified_bleed(self):
+        """Modified flag should not bleed from one change to another"""
+        # unfortunately, we have no guarantee that file1 (which is modified)
+        # will be applied before file2.  And if it's applied after file2, it
+        # obviously can't bleed into file2's change output.  But for now, it
+        # works.
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'blah', 'id-1')
+        transform.new_file('file2', root, 'blah', 'id-2')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            transform.delete_contents(transform.trans_id_file_id('id-1'))
+            transform.set_executability(True,
+            transform.trans_id_file_id('id-2'))
+            self.assertEqual([('id-1', u'file1', True, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('file1', u'file1'),
+                ('file', None), (False, False)),
+                ('id-2', u'file2', False, (True, True),
+                ('TREE_ROOT', 'TREE_ROOT'), ('file2', u'file2'),
+                ('file', 'file'), (False, True))],
+                list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
     def test_iter_changes_pointless(self):
         """Ensure that no-ops are not treated as modifications"""
         transform, root = self.get_transform()
