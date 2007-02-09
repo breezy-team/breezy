@@ -1153,8 +1153,8 @@ class BzrBranch(Branch):
         if history is not None:
             # mutter("cache hit for revision-history in %s", self)
             return list(history)
-        decode_utf8 = cache_utf8.decode
-        history = [decode_utf8(l.rstrip('\r\n')) for l in
+        get_cached_utf8 = cache_utf8.get_cached_utf8
+        history = [get_cached_utf8(l.rstrip('\r\n')) for l in
                 self.control_files.get('revision-history').readlines()]
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
