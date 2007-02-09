@@ -88,6 +88,19 @@ def get_cached_utf8(utf8_str):
     return encode(decode(utf8_str))
 
 
+def get_cached_ascii(ascii_str,
+                     _uni_to_utf8=_unicode_to_utf8_map,
+                     _utf8_to_uni=_utf8_to_unicode_map):
+    """This is a string which is identical in utf-8 and unicode."""
+    # We don't need to do any encoding, but we want _utf8_to_uni to return a
+    # real Unicode string. Unicode and plain strings of this type will have the
+    # same hash, so we can just use it as the key in _uni_to_utf8, but we need
+    # the return value to be different in _utf8_to_uni
+    ascii_str = _uni_to_utf8.setdefault(ascii_str, ascii_str)
+    _utf8_to_uni.setdefault(ascii_str, unicode(ascii_str))
+    return ascii_str
+
+
 def clear_encoding_cache():
     """Clear the encoding and decoding caches"""
     _unicode_to_utf8_map.clear()
