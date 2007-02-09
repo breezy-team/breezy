@@ -84,6 +84,29 @@ def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
     return text
 
 
+def _get_utf8_or_ascii(a_str,
+                       _encode_utf8=cache_utf8.encode,
+                       _get_cached_ascii=cache_utf8.get_cached_ascii):
+    """Return a cached version of the string.
+
+    cElementTree will return a plain string if the XML is plain ascii. It only
+    returns Unicode when it needs to. We want to work in utf-8 strings. So if
+    cElementTree returns a plain string, we can just return the cached version.
+    If it is Unicode, then we need to encode it.
+
+    :param a_str: An 8-bit string or Unicode as returned by
+                  cElementTree.Element.get()
+    :return: A utf-8 encoded 8-bit string.
+    """
+    # This is fairly optimized because we know what cElementTree does, this is
+    # not meant as a generic function for all cases. Because it is possible for
+    # an 8-bit string to not be ascii or valid utf8.
+    if a_str.__class__ == unicode:
+        return _encode_utf8(a_str)
+    else:
+        return _get_cached_ascii(a_str)
+
+
 def _clear_cache():
     """Clean out the unicode => escaped map"""
     _unicode_to_escaped_map.clear()
@@ -178,10 +201,11 @@ class Serializer_v5(Serializer):
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
+        decode_utf8 = cache_utf8.decode
         root = Element('revision',
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
-                       revision_id = rev.revision_id,
+                       revision_id = decode_utf8(rev.revision_id),
                        inventory_sha1 = rev.inventory_sha1,
                        format='5',
                        )
@@ -198,7 +222,7 @@ class Serializer_v5(Serializer):
                 assert isinstance(parent_id, basestring)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                p.set('revision_id', parent_id)
+                p.set('revision_id', decode_utf8(parent_id))
         if rev.properties:
             self._pack_revision_properties(rev, root)
         return root
@@ -226,7 +250,7 @@ class Serializer_v5(Serializer):
                                 % format)
         revision_id = elt.get('revision_id')
         if revision_id is not None:
-            revision_id = cache_utf8.get_cached_unicode(revision_id)
+            revision_id = cache_utf8.encode(revision_id)
         inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)
@@ -240,7 +264,7 @@ class Serializer_v5(Serializer):
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
-        get_cached = cache_utf8.get_cached_unicode
+        get_cached = _get_utf8_or_ascii
 
         parent_id = elt.get('parent_id')
         if parent_id is None and not none_parents:
@@ -290,7 +314,7 @@ class Serializer_v5(Serializer):
             if format != '5':
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
-        get_cached = cache_utf8.get_cached_unicode
+        get_cached = _get_utf8_or_ascii
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
                        revision_id = get_cached(elt.get('revision_id')),

@@ -259,3 +259,18 @@ class TestSerializer(TestCase):
         txt = s_v5.write_revision_to_string(rev)
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
+
+    def test_revision_ids_are_utf8(self):
+        """Parsed revision_ids should all be utf-8 strings, not unicode."""
+        s_v5 = bzrlib.xml5.serializer_v5
+        rev = s_v5.read_revision_from_string(_revision_v5)
+        self.assertIsInstance(rev.revision_id, str)
+        for parent_id in rev.parent_ids:
+            self.assertIsInstance(parent_id, str)
+
+        # ie.revision should either be None or a utf-8 revision id
+        inv = s_v5.read_inventory_from_string(_committed_inv_v5)
+        for path, ie in inv.iter_entries():
+            if ie.revision is None:
+                continue
+            self.assertIsInstance(ie.revision, str)
