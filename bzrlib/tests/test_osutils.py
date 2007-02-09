@@ -246,6 +246,50 @@ class TestSafeUnicode(TestCase):
                           '\xbb\xbb')
 
 
+class TestSafeUtf8(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_utf8(f))
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_utf8(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae', osutils.safe_utf8('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_utf8, '\xbb\xbb')
+
+
+class TestSafeRevisionId(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_revision_id(f))
+        self.assertIs(osutils.safe_utf8(f), f)
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_revision_id(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae',
+                         osutils.safe_revision_id(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae',
+                         osutils.safe_revision_id('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        # This check may eventually go away
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_utf8, '\xbb\xbb')
+
+
 class TestWin32Funcs(TestCase):
     """Test that the _win32 versions of os utilities return appropriate paths."""
 

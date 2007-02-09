@@ -49,6 +49,7 @@ import unicodedata
 
 from bzrlib import (
     errors,
+    cache_utf8,
     )
 """)
 
@@ -841,6 +842,41 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
         raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
+def safe_utf8(unicode_or_utf8_string):
+    """Coerce unicode_or_utf8_string to a utf8 string.
+
+    If it is a str, it is returned.
+    If it is Unicode, it is encoded into a utf-8 string.
+    """
+    if isinstance(unicode_or_utf8_string, str):
+        # TODO: jam 20070209 This is overkill, and probably has an impact on
+        #       performance if we are dealing with lots of apis that want a
+        #       utf-8 revision id
+        try:
+            # Make sure it is a valid utf-8 string
+            unicode_or_utf8_string.decode('utf-8')
+        except UnicodeDecodeError:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        return unicode_or_utf8_string
+    return unicode_or_utf8_string.encode('utf-8')
+
+
+def safe_revision_id(unicode_or_utf8_string):
+    """Revision ids should now be utf8, but at one point they were unicode.
+
+    This is the same as safe_utf8, except it uses the cached encode functions
+    to save a little bit of performance.
+    """
+    if isinstance(unicode_or_utf8_string, str):
+        # TODO: jam 20070209 Eventually just remove this check.
+        try:
+            utf8_str = cache_utf8.get_cached_utf8(unicode_or_utf8_string)
+        except UnicodeDecodeError:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        return utf8_str
+    return cache_utf8.encode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
