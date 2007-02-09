@@ -1011,6 +1011,13 @@ class BzrDirMeta1(BzrDir):
                 return True
         except errors.NoRepositoryPresent:
             pass
+        try:
+            if not isinstance(self.open_branch()._format,
+                              format.branch_format.__class__):
+                # the repository needs an upgrade.
+                return True
+        except errors.NotBranchError:
+            pass
         # currently there are no other possible conversions for meta1 formats.
         return False
 
@@ -1985,6 +1992,18 @@ class ConvertMetaToMeta(Converter):
                 self.pb.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
+        try:
+            branch = self.bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            # Avoid circular imports
+            from bzrlib import branch as _mod_branch
+            if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
+                self.target_format.branch_format.__class__ is
+                _mod_branch.BzrBranchFormat6):
+                branch_converter = _mod_branch.Converter5to6()
+                branch_converter.convert(branch)
         return to_convert
 
 

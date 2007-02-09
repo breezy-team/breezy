@@ -1721,3 +1721,30 @@ def is_control_file(*args, **kwargs):
     """See bzrlib.workingtree.is_control_file."""
     from bzrlib import workingtree
     return workingtree.is_control_file(*args, **kwargs)
+
+
+class Converter5to6(object):
+    """Perform an in-place upgrade of format 5 to format 6"""
+
+    def convert(self, branch):
+        # Data for 5 and 6 can peacefully coexist.
+        format = BzrBranchFormat6()
+        new_branch = format.open(branch.bzrdir, _found=True)
+
+        # Copy source data into target
+        new_branch.set_last_revision(branch.last_revision())
+        new_branch.set_parent(branch.get_parent())
+        new_branch.set_bound_location(branch.get_bound_location())
+        new_branch.set_push_location(branch.get_push_location())
+
+        # Copying done; now update target format
+        new_branch.control_files.put_utf8('format',
+            format.get_format_string())
+
+        # Clean up old files
+        new_branch.control_files._transport.delete('revision-history')
+        try:
+            branch.set_parent(None)
+        except NoSuchFile:
+            pass
+        branch.set_bound_location(None)
