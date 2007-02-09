@@ -934,6 +934,8 @@ class TreeTransform(object):
             if to_file_id is not None:
                 to_trans_ids[to_file_id] = trans_id
 
+        results = []
+
         # Now iterate through all active file_ids
         for file_id in set(from_trans_ids.keys() + to_trans_ids.keys()):
             from_trans_id = from_trans_ids.get(file_id)
@@ -996,12 +998,13 @@ class TreeTransform(object):
                 from_parent==to_parent and from_name == to_name and
                 from_executable == to_executable):
                 continue
-            yield (file_id, to_path, modified,
+            results.append((file_id, to_path, modified,
                    (from_versioned, to_versioned),
                    (from_parent, to_parent),
                    (from_name, to_name),
                    (from_kind, to_kind),
-                   (from_executable, to_executable))
+                   (from_executable, to_executable)))
+        return iter(sorted(results, key=lambda x:x[1]))
 
 
 def joinpath(parent, child):
