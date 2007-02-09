@@ -360,6 +360,7 @@ class Branch(object):
         """Given a revision id, return its revno"""
         if revision_id is None:
             return 0
+        revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -545,6 +546,7 @@ class Branch(object):
         """
         new_history = self.revision_history()
         if revision_id is not None:
+            revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
@@ -1127,7 +1129,8 @@ class BzrBranch(Branch):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
-        self.control_files.put_utf8(
+        rev_history = [osutils.safe_revision_id(r) for r in rev_history]
+        self.control_files.put_bytes(
             'revision-history', '\n'.join(rev_history))
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
@@ -1173,6 +1176,7 @@ class BzrBranch(Branch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
         if last_rev is not None and last_rev not in stop_graph:
@@ -1201,6 +1205,8 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     # if there are no commits, we're done.
                     return
+            else:
+                stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = self.last_revision()
@@ -1299,7 +1305,7 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
-            self.control_files.put('parent', StringIO(url + '\n'))
+            self.control_files.put_bytes('parent', url + '\n')
 
     @deprecated_function(zero_nine)
     def tree_config(self):
