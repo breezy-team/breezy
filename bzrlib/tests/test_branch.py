@@ -161,10 +161,12 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         bzrlib.branch.BranchFormat.register_format(format)
         # which branch.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrlib.branch.Branch.open, self.get_url())
+        self.make_branch_and_tree('foo')
         # but open_downlevel will work
         self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         bzrlib.branch.BranchFormat.unregister_format(format)
+        self.make_branch_and_tree('bar')
 
 
 class TestBranch6(TestCaseWithTransport):
