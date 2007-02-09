@@ -906,8 +906,8 @@ class TreeTransform(object):
     def _iter_changes(self):
         """Produce output in the same format as Tree._iter_changes.
 
-        Will produce nonsensical results if invoked while conflicts are
-        present.
+        Will produce nonsensical results if invoked while inventory/filesystem
+        conflicts (as reported by TreeTransform.find_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
