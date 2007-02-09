@@ -1472,7 +1472,19 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
-        return BzrDirMeta1(transport, self)
+        from bzrlib.repository import RepositoryFormat
+        from bzrlib.branch import BranchFormat
+        bzrdir = BzrDirMeta1(transport, self)
+        try:
+            bzrdir._format.repository_format = \
+                RepositoryFormat.find_format(bzrdir)
+        except errors.NoRepositoryPresent:
+            pass
+        try:
+            bzrdir._format.branch_format = BranchFormat.find_format(bzrdir)
+        except errors.NotBranchError:
+            pass
+        return bzrdir
 
     def __return_repository_format(self):
         """Circular import protection."""
