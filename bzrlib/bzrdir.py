@@ -2122,4 +2122,4 @@ format_registry.register_metadir('experimental-branch6',
     'RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',
     branch_format='BzrBranchFormat6')
-format_registry.set_default('experimental-branch6') 
+format_registry.set_default('knit')

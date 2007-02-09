@@ -1027,7 +1027,7 @@ __default_format = BzrBranchFormat5()
 BranchFormat.register_format(__default_format)
 BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(BzrBranchFormat6())
-BranchFormat.set_default_format(BzrBranchFormat6())
+BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
 

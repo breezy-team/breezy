@@ -92,7 +92,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
     # InstallFailed should be raised if the branch is missing a revision
     # from its own revision history
-    br_a2.set_last_revision('a-b-c')
+    br_a2.append_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
 
     # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
