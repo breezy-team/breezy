@@ -405,6 +405,16 @@ class InvalidURLJoin(PathError):
         self.args = [base] + list(args)
 
 
+class UnknownHook(BzrError):
+
+    _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."
+
+    def __init__(self, hook_type, hook_name):
+        BzrError.__init__(self)
+        self.type = hook_type
+        self.hook = hook_name
+
+
 class UnsupportedProtocol(PathError):
 
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
@@ -1675,6 +1685,9 @@ class RootNotRich(BzrError):
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+
+    internal_error = True
+
     def __init__(self, transport):
         self.transport = transport
 

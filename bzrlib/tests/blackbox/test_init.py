@@ -124,7 +124,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
         # make sure using 'bzr checkout' is not suggested
         # for remote locations missing a working tree
-        self.assertFalse(re.search(r'checkout', err))
+        self.assertFalse(re.search(r'use bzr checkout', err))
 
     def test_init_existing_branch_with_workingtree(self):
         # don't distinguish between the branch having a working tree or not

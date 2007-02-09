@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Support for OS Windows 98. Also .bzr.log on any windows system
+      saved in My Documents folder. (Alexander Belchenko)
+
     * ``bzr mv`` enhanced to support already moved files.
       In the past the mv command would have failed if the source file doesn't
       exist. In this situation ``bzr mv`` would now detect that the file has
@@ -19,13 +22,56 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
+    * Files are now allowed to change kind (e.g. from file to symlink).
+      Supported by ``commit``, ``revert`` and ``status``
+      (Aaron Bentley)
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
+    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
+      whenever the revision history is set. This allows triggering on e.g.
+      push, pull, commit, and so on. Developed for use with the branchrss
+      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+
+    * New method ``Branch.push()`` which should be used when pushing from a
+      branch as it makes performance and policy decisions to match the UI
+      level command ``push``. (Robert Collins).
+
+    * New Branch.last_revision_info method, this is being done to allow
+      optimization of requests for both the number of revisions and the last
+      revision of a branch with smartservers and potentially future branch
+      formats. (Wouter van Heyst, Robert Collins)
+
+    * Allow 'import bzrlib.plugins.NAME' to work when the plugin NAME has not
+      yet been loaded by load_plugins(). This allows plugins to depend on each
+      other for code reuse without requiring users to perform file-renaming
+      gymnastics. (Robert Collins)
+
+    * New Repository method 'gather_stats' for statistic data collection.
+      This is expected to grow to cover a number of related uses mainly
+      related to bzr info. (Robert Collins)
+
+    * Log formatters are now managed with a registry.  log.register_formatter
+      continues to work, but callers accessed the FORMATTERS dictionary
+      directly will not.
+
   BUGFIXES:
+
+    * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+      branch, rather than the last changed revision of the file.
+      (John Arbash Meinel, #82158)
+
+    * Lock operations no longer hang if they encounter a permission problem.
+      (Aaron Bentley)
+
+    * ``bzr push`` can resume a push that was canceled before it finished.
+      Also, it can push even if the target directory exists if you supply
+      the ``--use-existing-dir`` flag.
+      (John Arbash Meinel, #30576, #45504)
 
   TESTING:
 
