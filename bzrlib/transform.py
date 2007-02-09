@@ -1322,13 +1322,13 @@ def revert(working_tree, target_tree, filenames, backups=False,
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
-        for conflict in conflicts:
-            warning(conflict)
-        pp.next_phase()
         if change_reporter:
             from bzrlib import delta
             change_reporter = delta.ChangeReporter(working_tree.inventory)
             delta.report_changes(tt._iter_changes(), change_reporter)
+        for conflict in conflicts:
+            warning(conflict)
+        pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
