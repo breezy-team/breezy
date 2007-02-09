@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
+    * ``bzr pull --overwrite`` will now correctly overwrite checkouts.
+      (Robert Collins)
+
     * Files are now allowed to change kind (e.g. from file to symlink).
       Supported by ``commit``, ``revert`` and ``status``
       (Aaron Bentley)
@@ -29,16 +32,24 @@ IN DEVELOPMENT
     * ``inventory`` and ``unknowns`` hidden in favour of ``ls``
       (Aaron Bentley)
 
+    * ``bzr help checkouts`` descibes what checkouts are and some possible
+      uses of them. (James Westby, Aaron Bentley)
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
-    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
-      whenever the revision history is set. This allows triggering on e.g.
-      push, pull, commit, and so on. Developed for use with the branchrss
-      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+    * Minor performance improvement by not creating a ProgressBar for
+      every KnitIndex we create. (about 90ms for a bzr.dev tree)
+      (John Arbash Meinel)
+
+    * New easier to use Branch hooks facility. There are five initial hooks,
+      all documented in bzrlib.branch.BranchHooks.__init__ - 'set_rh',
+      'post_push', 'post_pull', 'post_commit', 'post_uncommit'. These hooks
+      fire after the matching operation on a branch has taken place, and were
+      originally added for the branchrss plugin. (Robert Collins)
 
     * New method ``Branch.push()`` which should be used when pushing from a
       branch as it makes performance and policy decisions to match the UI
@@ -62,6 +73,10 @@ IN DEVELOPMENT
       continues to work, but callers accessed the FORMATTERS dictionary
       directly will not.
 
+    * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
+      you pass a Unicode string rather than an 8-bit string. Callers need
+      to be updated to encode first. (John Arbash Meinel)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
@@ -70,6 +85,11 @@ IN DEVELOPMENT
 
     * Lock operations no longer hang if they encounter a permission problem.
       (Aaron Bentley)
+
+    * ``bzr push`` can resume a push that was canceled before it finished.
+      Also, it can push even if the target directory exists if you supply
+      the ``--use-existing-dir`` flag.
+      (John Arbash Meinel, #30576, #45504)
 
   TESTING:
 
