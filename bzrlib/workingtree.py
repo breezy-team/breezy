@@ -815,6 +815,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(
                 merger.other_rev_id)
+            merger.other_branch = branch
             merger.pp.next_phase()
             merger.find_base()
             if merger.base_rev_id == merger.other_rev_id:

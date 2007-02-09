@@ -637,6 +637,12 @@ class Branch(object):
         return tree
 
     def reference_parent(self, file_id, path):
+        """Return the parent branch for a tree-reference file_id
+        :param file_id: The file_id of the tree reference
+        :param path: The path of the file_id in the tree
+        :return: A branch associated with the file_id
+        """
+        # FIXME should provide multiple branches, based on config
         return Branch.open(self.bzrdir.root_transport.clone(path).base)
 
 

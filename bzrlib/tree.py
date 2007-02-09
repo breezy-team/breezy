@@ -532,8 +532,8 @@ class InterTree(InterObject):
                     to_tree.get_symlink_target(file_id)):
                     changed_content = True
             elif from_kind == 'tree-reference':
-                if (from_tree.get_reference_revision(file_id, from_path) != 
-                    to_tree.get_reference_revision(file_id, to_path)):
+                if (from_tree.get_reference_revision(from_entry, from_path) !=
+                    to_tree.get_reference_revision(to_entry, to_path)):
                     changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
