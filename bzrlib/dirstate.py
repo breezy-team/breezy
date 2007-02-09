@@ -23,17 +23,22 @@ NULL = "\0";
 WHOLE NUMBER = {digit}, digit;
 
 dirstate format = header line, full checksum, row count, parent details,
- rows;
+ ghost_details, rows;
 header line = "#bazaar dirstate flat format 1", NL;
 full checksum = "adler32: ", ["-"], WHOLE NUMBER, NL;
 row count = "num_entries: ", digit, NL;
 parent_details = WHOLE NUMBER, NULL, NL; XXX: complete this line
+ghost_details = WHOLE NUMBER, NULL, {GHOST_ID NULL}*, NL;
 rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
     WHOLE NUMBER (* size *), NULL, packed stat, NULL, symlink value, 
     {PARENT ROW}
 PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
     basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
     SHA1
+
+PARENT ROW's are emitted for every parent that is not in the ghosts details
+line. That is, if the parents are foo, bar, baz, and the ghosts are bar, then
+each row will have a PARENT ROW for foo and baz, but not for bar.
 
 ----
 
@@ -50,7 +55,6 @@ Locking:
  acquired, yet we cannot trust the data after the previous lock was released.
 
 Memory representation:
-open questions:
  vecter of all directories, and vector of the childen ?
    i.e. 
      root_row = (direntry for root, [parent_direntries_for_root]), 
@@ -70,6 +74,7 @@ open questions:
     - Whats the risk of error here? Once we have the base format being processed
       we should have a net win regardless of optimality. So we are going to 
       go with what seems reasonably.
+open questions:
 
 maybe we should do a test profile of these core structure - 10K simulated searches/lookups/etc?
 
@@ -135,7 +140,21 @@ class DirState(object):
     IN_MEMORY_UNMODIFIED = 1
     IN_MEMORY_MODIFIED = 2
 
+    NULLSTAT = 'x' * 32
+
     def __init__(self):
+        """Create a  DirState object.
+
+        Attributes of note:
+
+        :attr _root_row: The root row of the directory/file information,
+            - contains the path to / - '', ''
+            - kind of 'directory',
+            - the file id of the root in utf8
+            - size of 0
+            - a packed state
+            - and no sha information.
+        """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
         # NOT_IN_MEMORY indicates that no data is in memory
@@ -152,6 +171,7 @@ class DirState(object):
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
+        self._root_row = None
         self._state_file=None
 
     def add_parent_tree(self, tree_id, tree):
@@ -238,16 +258,8 @@ class DirState(object):
                     s = os.readlink(abspath)
                 parent_info = []
                 for count in xrange(num_parents):
-                    parent_entry = parent_trees[count].inventory[fileid]
                     parent_info.append(
-                        (parent_entry.revision.encode('utf8'),
-                         parent_entry.kind,
-                         # FIXME: set these from the parent
-                         dirname.encode('utf8'), basename.encode('utf8'),
-                         parent_entry.text_size,
-                         parent_entry.executable,
-                         parent_entry.text_sha1,
-                         ))
+                        self._parent_info(parent_trees[count], fileid))
                 row_data = (dirname.encode('utf8'), basename.encode('utf8'),
                     kind, fileid.encode('utf8'), st.st_size, pack_stat(st),
                     s)
@@ -315,7 +327,8 @@ class DirState(object):
         result._state_file = open(path, 'wb+')
         # a new root directory, with a pack_stat (the x's) that is just noise and will 
         # never match the output of base64 encode.
-        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0, 'x'*32, '')
+        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0, 
+            DirState.NULLSTAT, '')
         root_parents = []
         root_row = (root_row_data, root_parents)
         empty_tree_dirblocks = [('', [])] # root dir contents - no entries.
@@ -361,6 +374,23 @@ class DirState(object):
         result._state_file = open(path, 'rb+')
         return result
 
+    def _parent_info(self, parent_tree, fileid):
+        """Generate the parent information for file_id in parent_tree."""
+        # FIXME: This is probably expensive - we encode the path that in the
+        # common case will be the same across all parents, twice. 
+        # also, id2path is slow in inventory, and we should make that fast.
+        parent_entry = parent_tree.inventory[fileid]
+        parent_path = parent_tree.inventory.id2path(fileid)
+        dirname, basename = os.path.split(parent_path.encode('utf8'))
+        return (parent_entry.revision.encode('utf8'),
+            parent_entry.kind,
+            # FIXME: set these from the parent
+            dirname.encode('utf8'), basename.encode('utf8'),
+            parent_entry.text_size,
+            parent_entry.executable,
+            parent_entry.text_sha1,
+            )
+
     def _read_dirblocks_if_needed(self):
         """Read in all the dirblocks from the file if they are not in memory."""
         self._read_header_if_needed()
@@ -404,10 +434,11 @@ class DirState(object):
                             fields[pos+14:pos+21],])
                     for pos in xrange(cur, field_count, entry_size)]
             else:
-                raise NotImplementedError(self._read_dirblocks_if_needed)
-                entries = [tuple(
-                        [fields[chunk:chunk+7] for chunk in xrange(pos, pos+entry_size-1, 7)])
-                    for pos in xrange(cur, field_count, entry_size)
+                entries = [(
+                    fields[pos:pos+7],
+                    tuple([fields[chunk:chunk+7] for 
+                        chunk in xrange(pos + 7, pos+entry_size-1, 7)]))
+                            for pos in xrange(cur, field_count, entry_size)
                 ]
 
             assert len(entries) == self._num_entries, '%s != %s entries' % (len(entries),
@@ -423,6 +454,7 @@ class DirState(object):
             for entry in entry_iter:
                 # do something here
                 pass
+        self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
@@ -521,6 +553,23 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._parents = list(parent_ids)
 
+    def set_path_id(self, path, new_id):
+        """Change the id of path to new_id.
+
+        :param path: The path inside the tree to set - '' is the root, 'foo'
+            is the path foo in the root.
+        :param new_id: The new id to assign to the path. If unicode, it will
+            be encoded to utf8. In future this will be deprecated: avoid using
+            unicode ids if possible.
+        """
+        if len(path) or len(self._parents):
+            # logic not written
+            raise NotImplementedError(self.set_path_id)
+        if new_id.__class__ == unicode:
+            new_id = new_id.encode('utf8')
+        root_info, root_parents = self._root_row
+        self._root_row = (root_info[0:3] + (new_id, ) + root_info[4:7]), root_parents
+
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
 
@@ -530,8 +579,36 @@ class DirState(object):
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
         """ 
-        # TODO regenerate self._dirblocks and self._root_row
+        # TODO: generate a list of parent indexes to preserve to save 
+        # processing specific parent trees. In the common case one tree will
+        # be preserved - the left most parent.
+        # TODO: if the parent tree is a dirstate, we might want to walk them
+        # all by path in parallel for 'optimal' common-case performance.
+        # generate new root row.
         self._read_dirblocks_if_needed()
+        old_root = self._root_row
+        root_info = self._root_row[0]
+        new_parent_count = len(trees)
+        # sketch: loop over all rows in the dirstate, cherry picking 
+        # entries from the parent trees, if they are not ghosts.
+        # after we finish walking the dirstate, all entries not in the dirstate
+        # are deletes, so we want to append them to the end as per the design
+        # discussions. So do a set difference on ids with the parents to
+        # get deletes, and add them to the end.
+        new_rows = []
+        # skip ghost trees, as they dont get represented.
+        parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
+        for entry, old_parents in self._iter_rows():
+            file_id = entry[3]
+            new_parents = [None] * new_parent_count
+            for position, parent_tree in enumerate(parent_trees):
+                # revision_utf8, KIND, dirname, basename, size, executable, sha
+                new_parents[position] = self._parent_info(parent_tree, file_id)
+            assert None not in new_parents
+            new_rows.append((entry, new_parents))
+        self._root_row = new_rows[0]
+        self._dirblocks = []
+         
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
         self._header_state = DirState.IN_MEMORY_MODIFIED

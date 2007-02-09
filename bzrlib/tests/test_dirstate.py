@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import dirstate
+from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -36,6 +37,14 @@ from bzrlib.tests import TestCaseWithTransport
 # test parent manipulation 
 # test parents that are null in save : i.e. no record in the parent tree for this.
 # todo: _set_data records ghost parents.
+# TESTS to write:
+# set_path_id  unicode support
+# set_path_id  setting id of a path not root
+# set_path_id  setting id when there are parents without the id in the parents
+# set_path_id  setting id when there are parents with the id in the parents
+# set_path_id  setting id when state is not in memory
+# set_path_id  setting id when state is in memory unmodified
+# set_path_id  setting id when state is in memory modified
 
 class TestTreeToDirstate(TestCaseWithTransport):
 
@@ -252,6 +261,18 @@ class TestDirstateManipulations(TestCaseWithTransport):
         self.assertEqual(['a-ghost'], state.get_parent_ids())
         self.assertEqual(['a-ghost'], state.get_ghosts())
 
+    def test_set_path_id_no_parents(self):
+        """The id of a path can be changed trivally with no parents."""
+        state = dirstate.DirState.initialize('dirstate')
+        # check precondition to be sure the state does change appropriately.
+        self.assertEqual(
+            [(('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
+            list(state._iter_rows()))
+        state.set_path_id('', 'foobarbaz')
+        self.assertEqual(
+            [(('', '', 'directory', 'foobarbaz', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
+            list(state._iter_rows()))
+
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.
         state = dirstate.DirState.initialize('dirstate')
@@ -260,10 +281,13 @@ class TestDirstateManipulations(TestCaseWithTransport):
         tree1.add('')
         revid1 = tree1.commit('foo')
         tree1.unlock()
-        tree2 = self.make_branch_and_memory_tree('tree2')
+        branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
+        tree2 = MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         tree2.add('')
         revid2 = tree2.commit('foo')
+        root_id = tree2.inventory.root.file_id
+        state.set_path_id('', root_id)
         tree2.unlock()
         state.set_parent_trees(
             ((revid1, tree1.branch.repository.revision_tree(revid1)),
@@ -291,7 +315,7 @@ class TestDirstateManipulations(TestCaseWithTransport):
         # the ghost should be recorded as such by set_parent_trees.
         self.assertEqual(['ghost-rev'], state.get_ghosts())
         self.assertEqual(
-            [(('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
+            [(('', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
             list(state._iter_rows()))
 
     ### add a path via _set_data - so we dont need delta work, just
