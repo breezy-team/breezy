@@ -201,11 +201,17 @@ class Serializer_v5(Serializer):
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
+        # For the XML format, we need to write them as Unicode rather than as
+        # utf-8 strings. So that cElementTree can handle properly escaping
+        # them.
         decode_utf8 = cache_utf8.decode
+        revision_id = rev.revision_id
+        if isinstance(revision_id, str):
+            revision_id = decode_utf8(revision_id)
         root = Element('revision',
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
-                       revision_id = decode_utf8(rev.revision_id),
+                       revision_id = revision_id,
                        inventory_sha1 = rev.inventory_sha1,
                        format='5',
                        )
@@ -222,7 +228,9 @@ class Serializer_v5(Serializer):
                 assert isinstance(parent_id, basestring)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                p.set('revision_id', decode_utf8(parent_id))
+                if isinstance(parent_id, str):
+                    parent_id = decode_utf8(parent_id)
+                p.set('revision_id', parent_id)
         if rev.properties:
             self._pack_revision_properties(rev, root)
         return root
