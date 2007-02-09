@@ -825,13 +825,14 @@ class WeaveMerger(Merge3Merger):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
-                 reprocess=False):
+                 reprocess=False, change_reporter=None):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp, reprocess=reprocess)
+                                          pb=pb, pp=pp, reprocess=reprocess,
+                                          change_reporter=change_reporter)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree related to this tree.
