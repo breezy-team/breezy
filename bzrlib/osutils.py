@@ -869,6 +869,8 @@ def safe_revision_id(unicode_or_utf8_string):
     This is the same as safe_utf8, except it uses the cached encode functions
     to save a little bit of performance.
     """
+    if unicode_or_utf8_string is None:
+        return None
     if isinstance(unicode_or_utf8_string, str):
         # TODO: jam 20070209 Eventually just remove this check.
         try:

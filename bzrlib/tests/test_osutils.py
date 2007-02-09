@@ -289,6 +289,10 @@ class TestSafeRevisionId(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_utf8, '\xbb\xbb')
 
+    def test_none(self):
+        """Currently, None is a valid revision_id"""
+        self.assertEqual(None, osutils.safe_revision_id(None))
+
 
 class TestWin32Funcs(TestCase):
     """Test that the _win32 versions of os utilities return appropriate paths."""
