@@ -503,7 +503,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._control_files.get_utf8('pending-merges')
+            merges_file = self._control_files.get('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
@@ -1955,7 +1955,7 @@ class WorkingTree3(WorkingTree):
     def _last_revision(self):
         """See Mutable.last_revision."""
         try:
-            return self._control_files.get_utf8('last-revision').read()
+            return self._control_files.get('last-revision').read()
         except errors.NoSuchFile:
             return None
 
