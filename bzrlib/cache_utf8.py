@@ -61,7 +61,8 @@ def decode(utf8_str,
     try:
         return _utf8_to_uni[utf8_str]
     except KeyError:
-        _utf8_to_uni[utf8_str] = unicode_str = _utf8_decode(utf8_str)[0]
+        unicode_str = _utf8_decode(utf8_str)[0]
+        _utf8_to_uni[utf8_str] = unicode_str
         _uni_to_utf8[unicode_str] = utf8_str
         return unicode_str
 

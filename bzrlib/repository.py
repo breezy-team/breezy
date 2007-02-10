@@ -90,39 +90,41 @@ class Repository(object):
         )
 
     @needs_write_lock
-    def add_inventory(self, revid, inv, parents):
-        """Add the inventory inv to the repository as revid.
+    def add_inventory(self, revision_id, inv, parents):
+        """Add the inventory inv to the repository as revision_id.
         
-        :param parents: The revision ids of the parents that revid
+        :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
 
         returns the sha1 of the serialized inventory.
         """
-        _mod_revision.check_not_reserved_id(revid)
-        assert inv.revision_id is None or inv.revision_id == revid, \
+        revision_id = osutils.safe_revision_id(revision_id)
+        _mod_revision.check_not_reserved_id(revision_id)
+        assert inv.revision_id is None or inv.revision_id == revision_id, \
             "Mismatch between inventory revision" \
-            " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
         assert inv.root is not None
         inv_text = self.serialise_inventory(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
-        self._inventory_add_lines(inv_vf, revid, parents, osutils.split_lines(inv_text))
+        self._inventory_add_lines(inv_vf, revision_id, parents,
+                                  osutils.split_lines(inv_text))
         return inv_sha1
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
 
-        inv_vf.add_lines(revid, final_parents, lines)
+        inv_vf.add_lines(revision_id, final_parents, lines)
 
     @needs_write_lock
-    def add_revision(self, rev_id, rev, inv=None, config=None):
-        """Add rev to the revision store as rev_id.
+    def add_revision(self, revision_id, rev, inv=None, config=None):
+        """Add rev to the revision store as revision_id.
 
-        :param rev_id: the revision id to use.
+        :param revision_id: the revision id to use.
         :param rev: The revision object.
         :param inv: The inventory for the revision. if None, it will be looked
                     up in the inventory storer
@@ -130,20 +132,21 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
-        _mod_revision.check_not_reserved_id(rev_id)
+        revision_id = osutils.safe_revision_id(revision_id)
+        _mod_revision.check_not_reserved_id(revision_id)
         if config is not None and config.signature_needed():
             if inv is None:
-                inv = self.get_inventory(rev_id)
+                inv = self.get_inventory(revision_id)
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
-                gpg.GPGStrategy(config), plaintext, rev_id)
-        if not rev_id in self.get_inventory_weave():
+                gpg.GPGStrategy(config), plaintext, revision_id)
+        if not revision_id in self.get_inventory_weave():
             if inv is None:
-                raise errors.WeaveRevisionNotPresent(rev_id,
+                raise errors.WeaveRevisionNotPresent(revision_id,
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(rev_id, inv, rev.parent_ids)
+                self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     @needs_read_lock
@@ -292,6 +295,7 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return _CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
 
@@ -776,6 +780,11 @@ class Repository(object):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
+                    raise errors.NonAsciiRevisionId(method, self)
+            else:
+                try:
+                    revision_id.decode('ascii')
+                except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
 
