@@ -18,6 +18,9 @@
 
 from cStringIO import StringIO
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.tree import Tree
 
 
@@ -40,7 +43,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        self._revision_id = revision_id
+        self._revision_id = osutils.safe_revision_id(revision_id)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
