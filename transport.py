@@ -31,10 +31,6 @@ import svn.client
 
 from errors import convert_svn_error
 
-# Some older versions of the Python bindings need to be 
-# explicitly initialized
-svn.ra.initialize()
-
 svn_config = svn.core.svn_config_get_config(None)
 
 
