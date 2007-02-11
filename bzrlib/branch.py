@@ -1789,6 +1789,7 @@ class BzrBranch6(BzrBranch5):
             revision_id = self.last_revision()
         destination.set_last_revision(revision_id)
 
+
 class BranchTestProviderAdapter(object):
     """A tool to generate a suite testing multiple branch formats at once.
 
