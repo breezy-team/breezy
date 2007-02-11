@@ -102,7 +102,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     continue
                 try:
                     stat = source.stat(path)
-                except errors.NoSuchFile: 
+                except errors.NoSuchFile:
                     self.fail('%s not in source' % path)
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
@@ -326,7 +326,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
-                                     './.bzr/stat-cache', 
+                                     './.bzr/stat-cache',
                                     ])
 
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
