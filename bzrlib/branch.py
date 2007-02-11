@@ -318,6 +318,10 @@ class Branch(object):
         """Older format branches cannot bind or unbind."""
         raise errors.UpgradeRequired(self.base)
 
+    def set_strict_history(self, strict):
+        """Older format branches cannot have a strict history policy."""
+        raise errors.UpgradeRequired(self.base)
+
     def last_revision(self):
         """Return last revision id, or None"""
         ph = self.revision_history()
@@ -1590,9 +1594,18 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision(self, revision_id):
+        if self._get_strict_history():
+            self._check_history_violation(revision_id)
         if revision_id is None:
             revision_id = 'null:'
         self.control_files.put_utf8('last-revision', revision_id + '\n')
+
+    def _check_history_violation(self, revision_id):
+        last_revision = self.last_revision()
+        if last_revision is None:
+            return
+        if last_revision not in self._lefthand_history(revision_id):
+            raise errors.StrictHistoryViolation
 
     @needs_read_lock
     def revision_history(self):
@@ -1679,6 +1692,16 @@ class BzrBranch6(BzrBranch5):
     def get_old_bound_location(self):
         """See Branch.get_old_bound_location"""
         return self._get_bound_location(False)
+
+    def set_strict_history(self, strict):
+        if strict:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('strict_history', value)
+
+    def _get_strict_history(self):
+        return self.get_config().get_user_option('strict_history') == 'True'
 
     def _synchronize_history(self, destination, revision_id):
         if revision_id is None:
