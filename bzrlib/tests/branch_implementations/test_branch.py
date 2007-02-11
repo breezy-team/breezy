@@ -346,17 +346,6 @@ class TestBranch(TestCaseWithBranch):
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 
-    def test_commit_nicks(self):
-        """Nicknames are committed to the revision"""
-        get_transport(self.get_url()).mkdir('bzr.dev')
-        wt = self.make_branch_and_tree('bzr.dev')
-        branch = wt.branch
-        branch.nick = "My happy branch"
-        wt.commit('My commit respect da nick.')
-        committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
-                         "My happy branch")
-
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)

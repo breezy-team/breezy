@@ -232,6 +232,10 @@ class TestHooks(TestCase):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = bzrlib.branch.BranchHooks()
         self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
+        self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
+        self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
+        self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
