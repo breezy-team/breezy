@@ -662,3 +662,15 @@ class TestBound(TestCaseWithBranch):
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
         self.assertIs(None, branch.get_bound_location())
+
+    def test_old_bound_location(self):
+        branch = self.make_branch('branch1')
+        try:
+            self.assertIs(None, branch.get_old_bound_location())
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not store old bound locations')
+        branch2 = self.make_branch('branch2')
+        branch.bind(branch2)
+        self.assertIs(None, branch.get_old_bound_location())
+        branch.unbind()
+        self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')

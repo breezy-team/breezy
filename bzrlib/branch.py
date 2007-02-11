@@ -244,6 +244,11 @@ class Branch(object):
         """
         return None
     
+    def get_old_bound_location(self):
+        """Return the URL of the branch we used to be bound to
+        """
+        raise errors.UpgradeRequired(self.base)
+
     def get_commit_builder(self, parents, config=None, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
                            revision_id=None):
@@ -1642,20 +1647,38 @@ class BzrBranch6(BzrBranch5):
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
         result = None
+        config = self.get_config()
         if location is None:
-            if self.get_bound_location() is None:
+            if config.get_user_option('bound') != 'True':
                 return False
-            location = ''
-            result = True
-        self.get_config().set_user_option('bound_location', location)
-        return result
+            else:
+                config.set_user_option('bound', 'False')
+                return True
+        else:
+            config.set_user_option('bound_location', location)
+            config.set_user_option('bound', 'True')
+        return True
 
-    def get_bound_location(self):
-        """See Branch.set_push_location."""
-        location = self.get_config().get_user_option('bound_location')
+    def _get_bound_location(self, bound):
+        """Return the bound location in the config file.
+
+        Return None if the bound parameter does not match"""
+        config = self.get_config()
+        config_bound = (config.get_user_option('bound') == 'True')
+        if config_bound != bound:
+            return None
+        location = config.get_user_option('bound_location')
         if location == '':
             location = None
         return location
+
+    def get_bound_location(self):
+        """See Branch.set_push_location."""
+        return self._get_bound_location(True)
+
+    def get_old_bound_location(self):
+        """See Branch.get_old_bound_location"""
+        return self._get_bound_location(False)
 
     def _synchronize_history(self, destination, revision_id):
         if revision_id is None:

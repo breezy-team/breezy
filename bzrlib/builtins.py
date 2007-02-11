@@ -2835,11 +2835,21 @@ class cmd_bind(Command):
     before they are executed on the local one.
     """
 
-    takes_args = ['location']
+    takes_args = ['location?']
     takes_options = []
 
     def run(self, location=None):
         b, relpath = Branch.open_containing(u'.')
+        if location is None:
+            try:
+                location = b.get_old_bound_location()
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('No location supplied.  '
+                    'This format does not remember old locations.')
+            else:
+                if location is None:
+                    raise errors.BzrCommandError('No location supplied.  '
+                        'No previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
