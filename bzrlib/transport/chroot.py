@@ -69,12 +69,9 @@ class ChrootTransportDecorator(TransportDecorator):
         self._ensure_relpath_is_child(relpath)
         return TransportDecorator.delete_tree(self, relpath)
 
-    def get(self, relpath, **hints):
+    def get(self, relpath):
         self._ensure_relpath_is_child(relpath)
-        # FIXME: Is it wise to forward the follow_redirection
-        # hint ? Shouldn't we force it to never follow
-        # redirectons instead ?
-        return TransportDecorator.get(self, relpath, **hints)
+        return TransportDecorator.get(self, relpath)
 
     def get_bytes(self, relpath):
         self._ensure_relpath_is_child(relpath)

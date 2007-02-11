@@ -123,7 +123,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0, **hints):
+    def _get(self, relpath, ranges, tail_amount=0):
         """See HttpTransport._get"""
 
         abspath = self._real_abspath(relpath)
@@ -135,7 +135,6 @@ class HttpTransport_urllib(HttpTransportBase):
                 headers = {'Range': bytes}
 
         request = Request('GET', abspath, None, headers)
-        request.follow_redirections = hints.get('follow_redirections', True)
         response = self._perform(request)
 
         code = response.code

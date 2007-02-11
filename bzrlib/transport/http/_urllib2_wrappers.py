@@ -156,9 +156,8 @@ class Request(urllib2.Request):
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
-        # Unless told otherwise, redirections are followed
-        # silently
-        self.follow_redirections = True
+        # Unless told otherwise, redirections are not followed
+        self.follow_redirections = False
 
     def extract_auth(self, url):
         """Extracts authentification information from url.

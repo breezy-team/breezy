@@ -1221,14 +1221,6 @@ class RedirectRequested(TransportError):
         return self._requalify_url(self.source)
 
 
-class UnknownHint(TransportError):
-
-    _fmt = '%(hint) is not known'
-
-    def __init_(self, source, hint):
-        self.hint = hint
-
-
 class ConflictsInTree(BzrError):
 
     _fmt = "Working tree has conflicts."

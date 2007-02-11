@@ -854,8 +854,7 @@ class TestRedirections(object):
 
     def test_redirected(self):
         old = self.old_transport
-        hints = old.create_get_hints(follow_redirections=False)
-        self.assertRaises(errors.RedirectRequested, old.get, 'a', **hints)
+        self.assertRaises(errors.RedirectRequested, old.get, 'a')
 
     def test_redirection_loop(self):
         pass

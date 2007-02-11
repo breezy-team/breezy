@@ -29,7 +29,6 @@ it.
 from cStringIO import StringIO
 import re
 import sys
-import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -82,33 +81,6 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
         warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
-def _add_hints_to_get(klass):
-    if getattr(klass,'_get_without_hints',None) is None:
-        # Importing inspect is costly (see
-        # bzrlib.inspect_for_copy). But, on the other hand, it
-        # provides us the service we want in an official way, so
-        # better use it instead of rewriting our own version.
-        import inspect
-        args, varargs, varkw, defaults = inspect.getargspec(klass.get)
-        if varkw is None:
-            # Looks like we have a candidate here
-            mutter('in %(klass)r, original proto is: %(name)s%(joined)s' % \
-                   dict(klass=klass, name='get',
-                        joined=inspect.formatargspec(args, varargs, varkw,
-                                                     defaults,)))
-            klass._get_without_hints = klass.get
-            def get(self, *gvarargs, **hints):
-                return self._get_without_hints(*gvarargs)
-
-            klass.get = get
-            # Inform user
-            args, varargs, varkw, defaults = inspect.getargspec(klass.get)
-            mutter('in %(klass)r, proto is now: %(name)s%(joined)s' % \
-                   dict(klass=klass, name='get',
-                        joined=inspect.formatargspec(args, varargs, varkw,
-                                                     defaults,)))
-            return True
-    return False
 
 def register_lazy_transport(scheme, module, classname):
     """Register lazy-loaded transport class.
@@ -128,16 +100,8 @@ def register_lazy_transport(scheme, module, classname):
     def _loader(base):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
-        # FIXME: Cache the patched transports ?
-        if _add_hints_to_get(klass):
-            symbol_versioning.warn('Transport %s should declare a **hints'
-                                   ' parameter for its get method'
-                                   % classname,
-                                   DeprecationWarning,
-                                   stacklevel=4)
         return klass(base)
     _loader.module = module
-    _loader.classname = classname
     register_transport(scheme, _loader)
 
 
@@ -228,57 +192,6 @@ class _CoalescedOffset(object):
                    (other.start, other.length, other.ranges))
 
 
-class TransportHints(dict):
-    """A specialization of dict targeted to hints handling.
-
-    This class is only a helper for daughter classes and serve no
-    purpose by itself: its main purpose is to simplify the
-    writing of the daughter classes respecting some simple rules.
-    """
-
-    _deprecated_hints = {'deprecated_hint_example': 'use shiny_hint instead'}
-    """Hint name associated with the explanation presented as a note"""
-
-    _valid_hints = {}
-    """Hint name with its default value"""
-
-    def __init__(self, **hints):
-        """Init object from daughter classes definitions"""
-        for (name, value) in hints.iteritems():
-            status, value = self.check_hint(name, value)
-            if status is 'valid':
-                self[name] = value
-            elif status is 'deprecated':
-                symbol_versioning.warn('hint %s is deprecated: %s' % (name,
-                                                                      value),
-                                       DeprecationWarning)
-            else:
-                raise errors.UnknownHint(name)
-
-        # Add default values
-        for name, value in self._valid_hints.iteritems():
-            if not self.has_key(name):
-                self[name] = value
-
-    def check_hint(self, name, value):
-        if self._valid_hints.has_key(name):
-            return 'valid', value
-        elif self._deprecated_hints.has_key(name):
-            return 'deprecated', self._deprecated_hints[name]
-        else:
-            return 'unknown', None
-
-
-class TransportGetHints(TransportHints):
-    """Hints for transport get method"""
-
-    _valid_hints = TransportHints._valid_hints
-
-    # When a transport is queried for a file, it will silently
-    # follow redirections (if any) except if told otherwise.
-    _valid_hints['follow_redirections'] = True
-
-
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -307,11 +220,6 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-
-    @classmethod
-    def create_get_hints(klass, **hints):
-        """Create a hints object to be used with the get method"""
-        return TransportGetHints(**hints)
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -524,7 +432,7 @@ class Transport(object):
                                           "(but must claim to be listable "
                                           "to trigger this error).")
 
-    def get(self, relpath, **hints):
+    def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -1240,13 +1148,9 @@ class TransportLogger(object):
         self._adapted = adapted
         self._calls = []
 
-    def get(self, name, **hints):
-        # There is only one test using the information collected
-        # below and it asks for the name only. So we do not
-        # record the hints parameter.
-        # FIXME: Fix the test instead, and record the hints !
+    def get(self, name):
         self._calls.append((name,))
-        return self._adapted.get(name, **hints)
+        return self._adapted.get(name)
 
     def __getattr__(self, name):
         """Thunk all undefined access through to self._adapted."""

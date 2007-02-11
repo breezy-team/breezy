@@ -84,9 +84,9 @@ class TransportDecorator(Transport):
         """Return the URL prefix of this decorator."""
         raise NotImplementedError(self._get_url_prefix)
 
-    def get(self, relpath, **hints):
+    def get(self, relpath):
         """See Transport.get()."""
-        return self._decorated.get(relpath, **hints)
+        return self._decorated.get(relpath)
 
     def get_smart_client(self):
         return self._decorated.get_smart_client()

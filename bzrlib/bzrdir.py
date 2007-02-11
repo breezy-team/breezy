@@ -1514,8 +1514,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         Redirections are not followed.
         """
         try:
-            hints = transport.create_get_hints(follow_redirections=False)
-            format_file = transport.get(".bzr/branch-format",**hints)
+            format_file = transport.get(".bzr/branch-format")
             format_string = format_file.read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
@@ -1525,8 +1524,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
-    # REVIEWER: The following line is black magic for me. Any
-    # pointer appreciated
     repository_format = property(__return_repository_format, __set_repository_format)
 
 

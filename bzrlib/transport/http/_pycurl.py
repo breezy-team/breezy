@@ -116,9 +116,7 @@ class PyCurlTransport(HttpTransportBase):
         else:
             self._raise_curl_http_error(curl)
 
-    def _get(self, relpath, ranges, tail_amount=0, **hints):
-        # FIXME: some hints may have to be forwarded to
-        # _get_ranged and/or _get_full
+    def _get(self, relpath, ranges, tail_amount=0):
         # This just switches based on the type of request
         if ranges is not None or tail_amount not in (0, None):
             return self._get_ranged(relpath, ranges, tail_amount=tail_amount)
