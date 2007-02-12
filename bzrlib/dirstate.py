@@ -386,9 +386,9 @@ class DirState(object):
             parent_entry.kind,
             # FIXME: set these from the parent
             dirname.encode('utf8'), basename.encode('utf8'),
-            parent_entry.text_size,
+            parent_entry.text_size or 0,
             parent_entry.executable,
-            parent_entry.text_sha1,
+            parent_entry.text_sha1 or '',
             )
 
     def _read_dirblocks_if_needed(self):
@@ -598,9 +598,10 @@ class DirState(object):
         new_rows = []
         # skip ghost trees, as they dont get represented.
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
+        parent_tree_count = len(parent_trees)
         for entry, old_parents in self._iter_rows():
             file_id = entry[3]
-            new_parents = [None] * new_parent_count
+            new_parents = [None] * parent_tree_count
             for position, parent_tree in enumerate(parent_trees):
                 # revision_utf8, KIND, dirname, basename, size, executable, sha
                 new_parents[position] = self._parent_info(parent_tree, file_id)
