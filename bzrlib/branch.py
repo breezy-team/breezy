@@ -318,8 +318,8 @@ class Branch(object):
         """Older format branches cannot bind or unbind."""
         raise errors.UpgradeRequired(self.base)
 
-    def set_strict_history(self, strict):
-        """Older format branches cannot have a strict history policy."""
+    def set_append_revisions_only(self, enabled):
+        """Older format branches are never restricted to append-only"""
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
@@ -1688,7 +1688,7 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision(self, revision_id):
-        if self._get_strict_history():
+        if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         if revision_id is None:
             revision_id = 'null:'
@@ -1699,7 +1699,7 @@ class BzrBranch6(BzrBranch5):
         if last_revision is None:
             return
         if last_revision not in self._lefthand_history(revision_id):
-            raise errors.StrictHistoryViolation(self.base)
+            raise errors.AppendRevisionsOnlyViolation(self.base)
 
     @needs_read_lock
     def revision_history(self):
@@ -1798,15 +1798,16 @@ class BzrBranch6(BzrBranch5):
         """See Branch.get_old_bound_location"""
         return self._get_bound_location(False)
 
-    def set_strict_history(self, strict):
-        if strict:
+    def set_append_revisions_only(self, enabled):
+        if enabled:
             value = 'True'
         else:
             value = 'False'
-        self.get_config().set_user_option('strict_history', value)
+        self.get_config().set_user_option('append_revisions_only', value)
 
-    def _get_strict_history(self):
-        return self.get_config().get_user_option('strict_history') == 'True'
+    def _get_append_revisions_only(self):
+        value = self.get_config().get_user_option('append_revisions_only')
+        return value == 'True'
 
     def _synchronize_history(self, destination, revision_id):
         """Synchronize last revision and revision history between branches.

@@ -670,7 +670,7 @@ class TestStrict(TestCaseWithBranch):
     def test_strict_history(self):
         tree1 = self.make_branch_and_tree('tree1')
         try:
-            tree1.branch.set_strict_history(True)
+            tree1.branch.set_append_revisions_only(True)
         except errors.UpgradeRequired:
             raise TestSkipped('Format does not support strict history')
         tree1.commit('empty commit')
@@ -682,7 +682,7 @@ class TestStrict(TestCaseWithBranch):
         self.assertRaises(errors.DivergedBranches, tree1.pull, tree2.branch)
         tree2.merge_from_branch(tree1.branch)
         tree2.commit('empty commit 5')
-        self.assertRaises(errors.StrictHistoryViolation, tree1.pull,
+        self.assertRaises(errors.AppendRevisionsOnlyViolation, tree1.pull,
                           tree2.branch)
         tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
         tree3.merge_from_branch(tree2.branch)
