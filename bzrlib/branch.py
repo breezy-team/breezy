@@ -566,6 +566,18 @@ class Branch(object):
         return result
 
     def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch5, but works for BzrBranch6 as long as the revision
+        history is the true lefthand parent history, and all of the revisions
+        are in the destination's repository.  If not, set_revision_history
+        will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
         new_history = self.revision_history()
         if revision_id is not None:
             try:
@@ -1785,6 +1797,17 @@ class BzrBranch6(BzrBranch5):
         return self.get_config().get_user_option('strict_history') == 'True'
 
     def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch6, but works for BzrBranch5, as long as the destination's
+        repository contains all the lefthand ancestors of the intended
+        last_revision.  If not, set_last_revision will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
         if revision_id is None:
             revision_id = self.last_revision()
         destination.set_last_revision(revision_id)
