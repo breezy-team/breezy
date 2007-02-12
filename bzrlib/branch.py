@@ -960,8 +960,11 @@ class BzrBranchFormat5(BranchFormat):
 class BzrBranchFormat6(BzrBranchFormat5):
     """Branch format with last-revision
 
-    Unlike previous formats, this has no explicit revision history, instead
-    the left-parent revision history is used.
+    Unlike previous formats, this has no explicit revision history. Instead,
+    this just stores the last-revision, and the left-hand history leading
+    up to there is the history.
+
+    This format was introduced in bzr 0.15
     """
 
     def get_format_string(self):
