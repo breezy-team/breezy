@@ -245,4 +245,5 @@ class TestPush(ExternalBase):
         tree.commit('a')
 
         to_branch = BzrDir.create_branch_convenience('repo/branch')
-        tree.branch.push(to_branch)
+        self.run_bzr('push', '../branch',
+                     working_dir='repo/tree')
