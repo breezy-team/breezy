@@ -230,7 +230,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     """Tests specific to WorkingTreeFormat4."""
 
     def test_disk_layout(self):
-        control = bzrdir.BzrDir.create(self.get_url())
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
         tree = workingtree.WorkingTreeFormat4().initialize(control)
@@ -241,11 +241,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # stat-cache = ??
         # no inventory.basis yet
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar Working Tree format 4',
+        self.assertEqualDiff('Bazaar Working Tree format 4\n',
                              t.get('format').read())
-        self.assertEqualDiff('<inventory format="5">\n'
-                             '</inventory>\n',
-                             t.get('inventory').read())
         self.assertEqualDiff('### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
