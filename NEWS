@@ -19,6 +19,12 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
+    * HTTP redirections are now taken into account when a branch is accessed
+      for the first time. In the past, http redirections were silently
+      followed for each request which signifanctly degrade performances. The
+      http redirections are not followed anymore by default.
+      (Vincent Ladeuil)
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by

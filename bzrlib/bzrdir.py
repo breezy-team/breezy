@@ -523,7 +523,6 @@ class BzrDir(object):
                 format = BzrDirFormat.find_format(transport)
                 redirected = False
             except errors.RedirectRequested, e:
-
                 qualified_source = e.get_source_url()
                 relpath = transport.relpath(qualified_source)
                 if not e.target.endswith(relpath):
@@ -535,7 +534,13 @@ class BzrDir(object):
                      transport.base,
                      e.permanently,
                      target)
-                # Let's try with a new transport
+                # Let's try with a new transport 
+
+                # FIXME: If 'transport' have a qualifier, this
+                # should be applied again to the new transport
+                # *iff* the schemes used are the same. It's a bit
+                # tricky to verify, so I'll punt for now 
+                # -- vila20070212
                 qualified_target = e.get_target_url()[:-len(relpath)]
                 transport = get_transport(target)
                 redirections += 1
@@ -543,7 +548,10 @@ class BzrDir(object):
             # Out of the loop and still redirected ? Either the
             # user have kept a very very very old reference to a
             # branch or a loop occured in the redirections.
-            # Nothing we can cure here: tell the user.
+            # Nothing we can cure here: tell the user. Note that
+            # as the user have been informed about each
+            # redirection, there is no need to issue an
+            # additional error message.
             raise errors.NotBranchError(path=initial_base)
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
@@ -1506,23 +1514,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __set_repository_format(self, value):
         """Allow changint the repository format for metadir formats."""
         self._repository_format = value
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Return the .bzrdir style transport present at URL.
-
-        Redirections are not followed.
-        """
-        try:
-            format_file = transport.get(".bzr/branch-format")
-            format_string = format_file.read()
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
-
-        try:
-            return klass._formats[format_string]
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
 
     repository_format = property(__return_repository_format, __set_repository_format)
 

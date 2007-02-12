@@ -232,24 +232,30 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
         """Redirect a single HTTP request to another host"""
         valid = TestingHTTPRequestHandler.parse_request(self)
         if valid:
-            # Just redirect permanently
-            self.send_response(301)
-            target = 'http://%s:%s%s' % (self.server.test_case.redirect_to_host,
-                                         self.server.test_case.redirect_to_port,
-                                         self.path)
-            self.send_header('Location', target)
-            self.end_headers()
-            return False # The job is done
+            rhost, rport = self.server.test_case.redirected_to_address()
+            if rhost is not None and rport is not None:
+                # Just redirect permanently
+                self.send_response(301)
+                target = 'http://%s:%s%s' % (rhost, rport, self.path)
+                self.send_header('Location', target)
+                self.end_headers()
+                return False # The job is done
         return valid
 
 
 class HTTPServerRedirecting(HttpServer):
     """An HttpServer redirecting to another server """
 
-    def __init__(self, redir_host, redir_port,
-                 request_handler=RedirectRequestHandler):
+    def __init__(self, request_handler=RedirectRequestHandler):
         HttpServer.__init__(self, request_handler)
-        self.redirect_to_host = redir_host
-        self.redirect_to_port = redir_port
+        self._redirect_to_host = None
+        self._redirect_to_port = None
+
+    def redirect_to(self, redir_host, redir_port):
+        self._redirect_to_host = redir_host
+        self._redirect_to_port = redir_port
+
+    def redirected_to_address(self):
+        return self._redirect_to_host, self._redirect_to_port
 
 

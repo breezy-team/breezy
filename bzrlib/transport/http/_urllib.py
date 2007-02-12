@@ -179,12 +179,10 @@ class HttpTransport_urllib(HttpTransportBase):
         response = self._head(relpath)
 
         code = response.code
-        # FIXME: 302 MAY have been already processed by the
-        # redirection handler
-        if code in (200, 302): # "ok", "found"
+        if code == 200: # "ok",
             return True
         else:
-            assert(code == 404, 'Only 200, 404 or may be 302 are correct')
+            assert(code == 404, 'Only 200 or 404 are correct')
             return False
 
 

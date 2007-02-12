@@ -816,9 +816,15 @@ class TestRanges_pycurl(TestWithTransport_pycurl,
                         TestCaseWithWebserver):
     """Test the Range header in GET methods for pycurl implementation"""
 
+# FIXME: http implementations do not redirect silently anymore
+# (they do not redirect at all in fact). The mechanism is still
+# in place at the _urllib2_wrappers.Request level and tests
+# hsould be written to exercise it. For the pycurl implementation
+# the redirection have been deleted as we may deprecate pycurl.
+# -- vila 20070212
 
-class TestRedirections(object):
-    """Test redirection from the 'old' server to the 'new' server.
+class TestHTTPRedirections(object):
+    """Test redirection between http servers.
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithTwoWebservers.
@@ -830,39 +836,36 @@ class TestRedirections(object):
 
     def create_transport_secondary_server(self):
         """Create the secondary server redirecting to the primary server"""
-        new = self.get_new_server()
+        new = self.get_readonly_server()
 
-        return HTTPServerRedirecting(new.host, new.port)
-
-    def get_old_server(self):
-        """The redirected server"""
-        return self.get_secondary_server()
-
-    def get_new_server(self):
-        """The redirected to server"""
-        return self.get_readonly_server()
+        redirecting = HTTPServerRedirecting()
+        redirecting.redirect_to(new.host, new.port)
+        return redirecting
 
     def setUp(self):
-        super(TestRedirections, self).setUp()
-        new = self.get_new_server()
-        old = self.get_old_server()
+        super(TestHTTPRedirections, self).setUp()
+        # The redirections will point to the new server
+        new_server = self.get_readonly_server()
+        # The requests to the old server will be redirected
+        old_server = self.get_secondary_server()
 
         self.build_tree_contents([('a', '0123456789')],)
 
-        self.new_transport = self._transport(new.get_url())
-        self.old_transport = self._transport(old.get_url())
+        self.old_transport = self._transport(old_server.get_url())
 
     def test_redirected(self):
-        old = self.old_transport
-        self.assertRaises(errors.RedirectRequested, old.get, 'a')
-
-    def test_redirection_loop(self):
-        pass
+        self.assertRaises(errors.RedirectRequested, self.old_transport.get, 'a')
 
 
-class TestRedirections_urllib(TestRedirections,
-                              TestCaseWithTwoWebservers):
+class TestHTTPRedirections_urllib(TestHTTPRedirections,
+                                  TestCaseWithTwoWebservers):
     """Tests redirections for urllib implementation"""
 
     _transport = HttpTransport_urllib
 
+
+
+class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
+                                  TestHTTPRedirections,
+                                  TestCaseWithTwoWebservers):
+    """Tests redirections for pycurl implementation"""
