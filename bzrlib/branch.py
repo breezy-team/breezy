@@ -1730,25 +1730,38 @@ class BzrBranch6(BzrBranch5):
             prev_revision = revision.revision_id
         self.set_last_revision(revision_ids[-1])
 
+    def _set_config_location(self, name, url, config=None,
+                             make_relative=False):
+        if config is None:
+            config = self.get_config()
+        if url is None:
+            url = ''
+        elif make_relative:
+            url = urlutils.relative_url(self.base, url)
+        config.set_user_option(name, url)
+
+
+    def _get_config_location(self, name, config=None):
+        if config is None:
+            config = self.get_config()
+        location = config.get_user_option(name)
+        if location == '':
+            location = None
+        return location
+
     @needs_write_lock
     def _set_parent_location(self, url):
         """Set the parent branch"""
-        if url is None:
-            url = ''
-        url = urlutils.relative_url(self.base, url)
-        self.get_config().set_user_option('parent_location', url)
+        self._set_config_location('parent_location', url, make_relative=True)
 
     @needs_read_lock
     def _get_parent_location(self):
         """Set the parent branch"""
-        parent = self.get_config().get_user_option('parent_location')
-        if parent == '':
-            parent = None
-        return parent
+        return self._get_config_location('parent_location')
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        self.get_config().set_user_option('push_location', location)
+        self._set_config_location('push_location', location)
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
@@ -1761,7 +1774,8 @@ class BzrBranch6(BzrBranch5):
                 config.set_user_option('bound', 'False')
                 return True
         else:
-            config.set_user_option('bound_location', location)
+            self._set_config_location('bound_location', location,
+                                      config=config)
             config.set_user_option('bound', 'True')
         return True
 
@@ -1773,10 +1787,7 @@ class BzrBranch6(BzrBranch5):
         config_bound = (config.get_user_option('bound') == 'True')
         if config_bound != bound:
             return None
-        location = config.get_user_option('bound_location')
-        if location == '':
-            location = None
-        return location
+        return self._get_config_location('bound_location', config=config)
 
     def get_bound_location(self):
         """See Branch.set_push_location."""
