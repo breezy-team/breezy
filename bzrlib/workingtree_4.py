@@ -61,7 +61,7 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
+from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, make_entry
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -360,6 +360,20 @@ class DirStateRevisionTree(Tree):
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
 
+    def _file_size(self, entry, stat_value):
+        return entry.text_size
+
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        # TODO: if path is present, fast-path on that, as inventory
+        # might not be present
+        ie = self.inventory[file_id]
+        if ie.kind == "file":
+            return ie.text_sha1
+        return None
+
+    def get_file_size(self, file_id):
+        return self.inventory[file_id].text_size
+
     def _get_inventory(self):
         if self._inventory is not None:
             return self._inventory
@@ -379,9 +393,25 @@ class DirStateRevisionTree(Tree):
         assert self._revision_id in self._dirstate.get_parent_ids(), \
             'parent %s has disappeared from %s' % (
             self._revision_id, self._dirstate.get_parent_ids())
-        inv = Inventory()
-        for line in self._dirstate._iter_rows():
-            print line
+        parent_index = self._dirstate.get_parent_ids().index(self._revision_id)
+        rows = self._dirstate._iter_rows()
+        root_row = rows.next()
+        inv = Inventory(root_id=root_row[0][3].decode('utf8'),
+            revision_id=self._revision_id)
+        for line in rows:
+            revid, kind, dirname, name, size, executable, sha1 = line[1][parent_index]
+            if not revid:
+                # not in this revision tree.
+                continue
+            parent_id = inv[inv.path2id(dirname.decode('utf8'))].file_id
+            file_id = line[0][3].decode('utf8')
+            entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
+            entry.revision = revid.decode('utf8')
+            if kind == 'file':
+                entry.executable = executable
+                entry.text_size = size
+                entry.text_sha1 = sha1
+            inv.add(entry)
         self._inventory = inv
 
     def get_parent_ids(self):

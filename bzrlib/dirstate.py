@@ -116,11 +116,10 @@ import sha
 import struct
 import zlib
 
+from bzrlib import errors
 import bzrlib.inventory
 from bzrlib.osutils import pathjoin, sha_file, sha_string, walkdirs
 
-# TODO:
-# 1)
 
 class DirState(object):
     """Record directory and metadata state for fast access.
@@ -414,7 +413,16 @@ class DirState(object):
         # FIXME: This is probably expensive - we encode the path that in the
         # common case will be the same across all parents, twice. 
         # also, id2path is slow in inventory, and we should make that fast.
-        parent_entry = parent_tree.inventory[fileid]
+        try:
+            parent_entry = parent_tree.inventory[fileid]
+        except errors.NoSuchId:
+            # this parent does not have fileid - return a bogus entry, which 
+            # will be filtered out on iteration etc.
+            # an empty revision id is bogus and safe to put on disk
+            # we make it be a 'file', just because. We give it the 
+            # deleted file path dirname and basename, 0 size, not executable
+            # and no sha1.
+            return ('', 'file', '/', 'RECYCLED.BIN', 0, False, '')
         parent_path = parent_tree.inventory.id2path(fileid)
         dirname, basename = os.path.split(parent_path.encode('utf8'))
         return (parent_entry.revision.encode('utf8'),

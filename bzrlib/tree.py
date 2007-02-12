@@ -166,7 +166,7 @@ class Tree(object):
         """
         raise NotImplementedError(self._comparison_data)
 
-    def _file_size(entry, stat_value):
+    def _file_size(self, entry, stat_value):
         raise NotImplementedError(self._file_size)
 
     def _get_inventory(self):

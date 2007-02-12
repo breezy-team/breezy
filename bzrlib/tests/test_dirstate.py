@@ -25,6 +25,8 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 # TODO:
+# test DirStateRevisionTree : test filtering out of deleted files does not
+#         filter out files called RECYCLED.BIN ;)
 # test 0 parents, 1 parent, 4 parents.
 # test unicode parents, non unicode parents
 # test all change permutations in one and two parents.
@@ -227,6 +229,7 @@ class TestDirStateOnFile(TestCaseWithTransport):
         self.assertEqual([], state.get_parent_ids())
         # doing a save should work here as there have been no changes.
         state.save()
+
 
 class TestDirStateInitialize(TestCaseWithTransport):
 

@@ -331,7 +331,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # set the parents as if a merge had taken place. 
         # this should cause the tree data to be folded into the 
         # dirstate.
-        ## import pdb;pdb.set_trace()
         tree.set_parent_trees([
             (rev1, rev1_tree),
             (rev2, rev2_tree),
