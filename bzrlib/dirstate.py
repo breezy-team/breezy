@@ -192,12 +192,18 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         dirname, basename = os.path.split(path.encode('utf8'))
         block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
-        assert self._dirblocks[block_index][0] == dirname, \
-            "dirname %r not in dirstate, found %r instead" % (
-            dirname, self._dirblocks[block_index][0])
+        if (block_index == len(self._dirblocks) or
+            self._dirblocks[block_index][0] != dirname):
+            # some parent path has not been added - its an error to add this
+            # child
+            raise errors.NoSuchFile(path)
         block = self._dirblocks[block_index][1]
-        row_data = (dirname, basename, kind, file_id.encode('utf8'),
-            stat.st_size, pack_stat(stat), sha1)
+        if kind == 'directory':
+            row_data = ((dirname, basename, kind, file_id.encode('utf8'),
+                0, pack_stat(stat), ''), [])
+        else:
+            row_data = ((dirname, basename, kind, file_id.encode('utf8'),
+                stat.st_size, pack_stat(stat), sha1), [])
         row_index = bisect.bisect_left(block, row_data)
         if len(block) > row_index:
             assert block[row_index][1] != basename, \
@@ -207,7 +213,7 @@ class DirState(object):
         # if kind == 'directory':
         #    # insert a new dirblock
         #    self._dirblocks.insert(block_index, (dirname, []))
-        
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def add_parent_tree(self, tree_id, tree):
         """Add tree as a parent to this dirstate."""
@@ -501,7 +507,7 @@ class DirState(object):
                 return tuple(line[0]), map(tuple, line[1])
             new_rows = map(_line_to_row, entries)
             self._rows_to_current_state(new_rows)
-        self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+            self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.

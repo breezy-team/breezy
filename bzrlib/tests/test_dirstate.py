@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import dirstate
+from bzrlib import dirstate, errors
 from bzrlib.dirstate import DirState
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
@@ -374,13 +374,41 @@ class TestDirstateManipulations(TestCaseWithTransport):
         stat = os.lstat('a file')
         # the 1*20 is the sha1 pretend value.
         state.add('a file', 'a file id', 'file', stat, '1'*20)
-        # having added the file, it should be in the output of iter_rows.
-        self.assertEqual([
+        # having added it, it should be in the output of iter_rows.
+        expected_rows = [
             (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), []),
-            (('', 'a file', 'file', 'a file id', 19, dirstate.pack_stat(stat), '1'*20)),
-            ],
-            list(state._iter_rows()))
+            (('', 'a file', 'file', 'a file id', 19, dirstate.pack_stat(stat), '1'*20), []),
+            ]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
         # saving and reloading should not affect this.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+
+    def test_add_path_to_unversioned_directory(self):
+        """Adding a path to an unversioned directory should error."""
+        state = dirstate.DirState.initialize('dirstate')
+        self.build_tree(['unversioned/', 'unversioned/a file'])
+        self.assertRaises(errors.NoSuchFile, state.add, 'unversioned/a file',
+            'a file id', 'file', None, None)
+        
+    def test_add_directory_to_root_no_parents_all_data(self):
+        # The most trivial addition of a dir is when there are no parents and
+        # its in the root and all data about the file is supplied
+        state = dirstate.DirState.initialize('dirstate')
+        self.build_tree(['a dir/'])
+        stat = os.lstat('a dir')
+        state.add('a dir', 'a dir id', 'directory', stat, None)
+        # having added it, it should be in the output of iter_rows.
+        expected_rows = [
+            (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), []),
+            (('', 'a dir', 'directory', 'a dir id', 0, dirstate.pack_stat(stat), ''), []),
+            ]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # saving and reloading should not affect this.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
 
 
 class TestGetLines(TestCaseWithTransport):
