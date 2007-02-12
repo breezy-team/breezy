@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Old repository formats fused with the branch and workingtree."""
+"""Old weave-based repository formats"""
 
 from StringIO import StringIO
 

@@ -43,6 +43,7 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
+
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
