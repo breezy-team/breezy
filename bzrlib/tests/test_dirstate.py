@@ -330,6 +330,13 @@ class TestDirstateManipulations(TestCaseWithTransport):
         stat = os.lstat('a file')
         # the 1*20 is the sha1 pretend value.
         state.add('a file', 'a file id', 'file', stat, '1'*20)
+        # having added the file, it should be in the output of iter_rows.
+        self.assertEqual([
+            (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), []),
+            (('', 'a file', 'file', 'a file id', 19, dirstate.pack_stat(stat), '1'*20)),
+            ],
+            list(state._iter_rows()))
+        # saving and reloading should not affect this.
 
 
 class TestGetLines(TestCaseWithTransport):

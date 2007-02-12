@@ -174,6 +174,41 @@ class DirState(object):
         self._root_row = None
         self._state_file=None
 
+    def add(self, path, file_id, kind, stat, sha1):
+        """Add a path to be tracked.
+
+        :param path: The path within the dirstate - '' is the root, 'foo' is the
+            path foo within the root, 'foo/bar' is the path bar within foo 
+            within the root.
+        :param file_id: The file id of the path being added.
+        :param kind: The kind of the path.
+        :param stat: The output of os.lstate for the path.
+        :param sha1: The sha value of the file, IFF it has one.
+        """
+        # adding a file:
+        # find the block its in. 
+        # find the location in the block.
+        # check its not there
+        # add it.
+        dirname, basename = os.path.split(path.encode('utf8'))
+        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
+        assert self._dirblocks[block_index][0] == dirname, \
+            "dirname %r not in dirstate, found %r instead" % (
+            dirname, self._dirblocks[block_index][0])
+        block = self._dirblocks[block_index][1]
+        row_data = (dirname, basename, kind, file_id.encode('utf8'),
+            stat.st_size, pack_stat(stat), sha1)
+        row_index = bisect.bisect_left(block, row_data)
+        if len(block) > row_index:
+            assert block[row_index][1] != basename, \
+                "basename %r already added" % basename
+        block.insert(row_index, row_data)
+
+        # if kind == 'directory':
+        #    # insert a new dirblock
+        #    self._dirblocks.insert(block_index, (dirname, []))
+        
+
     def add_parent_tree(self, tree_id, tree):
         """Add tree as a parent to this dirstate."""
         self._read_dirblocks_if_needed()
@@ -327,7 +362,7 @@ class DirState(object):
         result._state_file = open(path, 'wb+')
         # a new root directory, with a pack_stat (the x's) that is just noise and will 
         # never match the output of base64 encode.
-        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0, 
+        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0,
             DirState.NULLSTAT, '')
         root_parents = []
         root_row = (root_row_data, root_parents)
