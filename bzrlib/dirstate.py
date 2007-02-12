@@ -413,7 +413,7 @@ class DirState(object):
             # so we just skip over it
             # number of fields per dir_entry + number of fields per parent_entry + newline
             num_parents = len(self._parents)
-            entry_size = 7 + (7 * num_parents) + 1
+            entry_size = 7 + (7 * (num_parents - len(self._ghosts))) + 1
             expected_field_count = entry_size * self._num_entries
             # is the file too short ?
             assert field_count - cur == expected_field_count, \

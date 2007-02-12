@@ -314,7 +314,9 @@ class TestDirstateManipulations(TestCaseWithTransport):
         # the ghost should be recorded as such by set_parent_trees.
         self.assertEqual(['ghost-rev'], state.get_ghosts())
         self.assertEqual(
-            [(('', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
+            [(['', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''], [
+             (revid1, 'directory', '', '', 0, False, ''),
+             (revid2, 'directory', '', '', 0, False, '')])],
             list(state._iter_rows()))
 
     ### add a path via _set_data - so we dont need delta work, just
