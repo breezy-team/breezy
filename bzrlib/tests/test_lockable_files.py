@@ -21,6 +21,7 @@ from bzrlib.branch import Branch
 import bzrlib.errors as errors
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib import lockdir
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
@@ -34,6 +35,15 @@ from bzrlib.transport import get_transport
 
 # these tests are applied in each parameterized suite for LockableFiles
 class _TestLockableFiles_mixin(object):
+
+    def setUp(self):
+        # Reduce the default timeout, so that if tests fail, they will do so
+        # reasonably quickly.
+        orig_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        def resetTimeout():
+            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
+        self.addCleanup(resetTimeout)
+        lockdir._DEFAULT_TIMEOUT_SECONDS = 3
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -123,6 +133,116 @@ class _TestLockableFiles_mixin(object):
             self.assertRaises(errors.LockBroken, self.lockable.unlock)
             self.assertFalse(self.lockable.is_locked())
 
+    def test_lock_write_returns_None_refuses_token(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is not None:
+                # This test does not apply, because this lockable supports
+                # tokens.
+                return
+            self.assertRaises(errors.TokenLockingNotSupported,
+                              self.lockable.lock_write, token='token')
+        finally:
+            self.lockable.unlock()
+
+    def test_lock_write_raises_on_token_mismatch(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            different_token = token + 'xxx'
+            # Re-using the same lockable instance with a different token will
+            # raise TokenMismatch.
+            self.assertRaises(errors.TokenMismatch,
+                              self.lockable.lock_write, token=different_token)
+            # A seperate instance for the same lockable will also raise
+            # TokenMismatch.
+            # This detects the case where a caller claims to have a lock (via
+            # the token) for an external resource, but doesn't (the token is
+            # different).  Clients need a seperate lock object to make sure the
+            # external resource is probed, whereas the existing lock object
+            # might cache.
+            new_lockable = self.get_lockable()
+            self.assertRaises(errors.TokenMismatch,
+                              new_lockable.lock_write, token=different_token)
+        finally:
+            self.lockable.unlock()
+
+    def test_lock_write_with_matching_token(self):
+        # If the token matches, so no exception is raised by lock_write.
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            # The same instance will accept a second lock_write if the specified
+            # token matches.
+            self.lockable.lock_write(token=token)
+            self.lockable.unlock()
+            # Calling lock_write on a new instance for the same lockable will
+            # also succeed.
+            new_lockable = self.get_lockable()
+            new_lockable.lock_write(token=token)
+            new_lockable.unlock()
+        finally:
+            self.lockable.unlock()
+
+    def test_unlock_after_lock_write_with_token(self):
+        # If lock_write did not physically acquire the lock (because it was
+        # passed a token), then unlock should not physically release it.
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            new_lockable = self.get_lockable()
+            new_lockable.lock_write(token=token)
+            new_lockable.unlock()
+            self.assertTrue(self.lockable.get_physical_lock_status())
+        finally:
+            self.lockable.unlock()
+
+    def test_lock_write_with_token_fails_when_unlocked(self):
+        # Lock and unlock to get a superficially valid token.  This mimics a
+        # likely programming error, where a caller accidentally tries to lock
+        # with a token that is no longer valid (because the original lock was
+        # released).
+        token = self.lockable.lock_write()
+        self.lockable.unlock()
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+
+        self.assertRaises(errors.TokenMismatch,
+                          self.lockable.lock_write, token=token)
+
+    def test_lock_write_reenter_with_token(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            # Relock with a token.
+            self.lockable.lock_write(token=token)
+            self.lockable.unlock()
+        finally:
+            self.lockable.unlock()
+        # The lock should be unlocked on disk.  Verify that with a new lock
+        # instance.
+        new_lockable = self.get_lockable()
+        # Calling lock_write now should work, rather than raise LockContention.
+        new_lockable.lock_write()
+        new_lockable.unlock()
+
+
+
+
 
 # This method of adapting tests to parameters is different to 
 # the TestProviderAdapters used elsewhere, but seems simpler for this 
@@ -131,7 +251,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
     def setUp(self):
-        super(TestLockableFiles_TransportLock, self).setUp()
+        TestCaseInTempDir.setUp(self)
+        _TestLockableFiles_mixin.setUp(self)
         transport = get_transport('.')
         transport.mkdir('.bzr')
         self.sub_transport = transport.clone('.bzr')
@@ -153,7 +274,8 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
     """LockableFile tests run with LockDir underneath"""
 
     def setUp(self):
-        super(TestLockableFiles_LockDir, self).setUp()
+        TestCaseInTempDir.setUp(self)
+        _TestLockableFiles_mixin.setUp(self)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch 

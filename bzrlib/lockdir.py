@@ -160,6 +160,7 @@ class LockDir(object):
         self.transport = transport
         self.path = path
         self._lock_held = False
+        self._locked_via_token = False
         self._fake_read_lock = False
         self._held_dir = path + '/held'
         self._held_info_path = self._held_dir + self.__INFO_NAME
@@ -234,15 +235,19 @@ class LockDir(object):
             return
         if not self._lock_held:
             raise LockNotHeld(self)
-        # rename before deleting, because we can't atomically remove the whole
-        # tree
-        tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
-        # gotta own it to unlock
-        self.confirm()
-        self.transport.rename(self._held_dir, tmpname)
-        self._lock_held = False
-        self.transport.delete(tmpname + self.__INFO_NAME)
-        self.transport.rmdir(tmpname)
+        if self._locked_via_token:
+            self._locked_via_token = False
+            self._lock_held = False
+        else:
+            # rename before deleting, because we can't atomically remove the
+            # whole tree
+            tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+            # gotta own it to unlock
+            self.confirm()
+            self.transport.rename(self._held_dir, tmpname)
+            self._lock_held = False
+            self.transport.delete(tmpname + self.__INFO_NAME)
+            self.transport.rmdir(tmpname)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -415,9 +420,26 @@ class LockDir(object):
             else:
                 raise LockContention(self)
 
-    def lock_write(self):
-        """Wait for and acquire the lock."""
-        self.wait_lock()
+    def lock_write(self, token=None):
+        """Wait for and acquire the lock.
+        
+        :param token: if this is already locked, then lock_write will fail
+            unless the token matches the existing lock.
+        :returns: a token if this instance supports tokens, otherwise None.
+        :raises TokenLockingNotSupported: when a token is given but this
+            instance doesn't support using token locks.
+        :raises MismatchedToken: if the specified token doesn't match the token
+            of the existing lock.
+         
+        XXX: docstring duplicated from LockableFiles.lock_write.
+        """
+        if token is not None:
+            self.validate_token(token)
+            self._lock_held = True
+            self._locked_via_token = True
+        else:
+            self.wait_lock()
+            return self.peek().get('nonce')
 
     def lock_read(self):
         """Compatibility-mode shared lock.
@@ -456,4 +478,15 @@ class LockDir(object):
             'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
             'locked %s' % (format_delta(delta),),
             ]
+
+    def validate_token(self, token):
+        if token is not None:
+            info = self.peek()
+            if info is None:
+                # Lock isn't held
+                lock_token = None
+            else:
+                lock_token = info.get('nonce')
+            if token != lock_token:
+                raise errors.TokenMismatch(token, lock_token)
 

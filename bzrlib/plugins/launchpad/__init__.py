@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Launchpad.net branch registration plugin for bzr
-
-This adds commands that tell launchpad about newly-created branches, etc.
+"""Launchpad.net integration plugin for Bazaar
 
 To install this file, put the 'bzr_lp' directory, or a symlink to it,
 in your ~/.bazaar/plugins/ directory.
@@ -28,7 +26,8 @@ in your ~/.bazaar/plugins/ directory.
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
 from bzrlib.commands import Command, Option, register_command
-
+from bzrlib.transport import register_lazy_transport
+from bzrlib.help_topics import topic_registry
 
 
 class cmd_register_branch(Command):
@@ -115,8 +114,48 @@ class cmd_register_branch(Command):
 
 register_command(cmd_register_branch)
 
+register_lazy_transport(
+    'lp:',
+    'bzrlib.plugins.launchpad.lp_indirect',
+    'launchpad_transport_indirect')
+
+register_lazy_transport(
+    'lp://',
+    'bzrlib.plugins.launchpad.lp_indirect',
+    'launchpad_transport_indirect')
+
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     import test_register
-    return TestLoader().loadTestsFromModule(test_register)
+    import test_lp_indirect
+
+    loader = TestLoader()
+    suite = TestSuite()
+    for m in [test_register, test_lp_indirect]:
+        suite.addTests(loader.loadTestsFromModule(m))
+    return suite
+
+_launchpad_help = """Integration with Launchpad.net
+
+Launchpad.net provides free Bazaar branch hosting with integrated bug and
+specification tracking.
+
+The bzr client (through the plugin called 'launchpad') has two special
+features to communicate with Launchpad:
+
+    * The register-branch command tells launchpad about the url of a 
+      public branch.  Launchpad will then mirror the branch, display
+      its contents and allow it to be attached to bugs and other 
+      objects.
+
+    * The 'lp:' transport uses Launchpad as a directory service: 
+      for example 'lp:bzr' and 'lp:python' refer to the main branches of the
+      relevant projects and may be branched, logged, etc.  (Only read access
+      is supported at present.)
+
+For more information see http://help.launchpad.net/
+"""
+topic_registry.register('launchpad',
+    _launchpad_help,
+    'Using Bazaar with Launchpad.net')

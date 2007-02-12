@@ -56,6 +56,7 @@ class TreeDelta(object):
         self.added = []
         self.removed = []
         self.renamed = []
+        self.kind_changed = []
         self.modified = []
         self.unchanged = []
 
@@ -66,21 +67,24 @@ class TreeDelta(object):
                and self.removed == other.removed \
                and self.renamed == other.renamed \
                and self.modified == other.modified \
-               and self.unchanged == other.unchanged
+               and self.unchanged == other.unchanged \
+               and self.kind_changed == other.kind_changed
 
     def __ne__(self, other):
         return not (self == other)
 
     def __repr__(self):
-        return "TreeDelta(added=%r, removed=%r, renamed=%r, modified=%r," \
-            " unchanged=%r)" % (self.added, self.removed, self.renamed,
-            self.modified, self.unchanged)
+        return "TreeDelta(added=%r, removed=%r, renamed=%r," \
+            " kind_changed=%r, modified=%r, unchanged=%r)" % (self.added,
+            self.removed, self.renamed, self.kind_changed, self.modified,
+            self.unchanged)
 
     def has_changed(self):
         return bool(self.modified
                     or self.added
                     or self.removed
-                    or self.renamed)
+                    or self.renamed
+                    or self.kind_changed)
 
     def touches_file_id(self, file_id):
         """Return True if file_id is modified by this delta."""
@@ -91,10 +95,14 @@ class TreeDelta(object):
         for v in self.renamed:
             if v[2] == file_id:
                 return True
+        for v in self.kind_changed:
+            if v[1] == file_id:
+                return True
         return False
             
 
-    def show(self, to_file, show_ids=False, show_unchanged=False, short_status=False):
+    def show(self, to_file, show_ids=False, show_unchanged=False,
+             short_status=False):
         """output this delta in status-like form to to_file."""
         def show_list(files, short_status_letter=''):
             for item in files:
@@ -109,7 +117,8 @@ class TreeDelta(object):
                     path += '*'
 
                 if show_ids:
-                    print >>to_file, '%s  %-30s %s' % (short_status_letter, path, fid)
+                    print >>to_file, '%s  %-30s %s' % (short_status_letter,
+                        path, fid)
                 else:
                     print >>to_file, '%s  %s' % (short_status_letter, path)
             
@@ -142,12 +151,26 @@ class TreeDelta(object):
                 if meta_modified:
                     newpath += '*'
                 if show_ids:
-                    print >>to_file, '%s  %s => %s %s' % (short_status_letter,
-                                                          oldpath, newpath, fid)
+                    print >>to_file, '%s  %s => %s %s' % (
+                        short_status_letter, oldpath, newpath, fid)
                 else:
-                    print >>to_file, '%s  %s => %s' % (short_status_letter,
-                                                       oldpath, newpath)
-                    
+                    print >>to_file, '%s  %s => %s' % (
+                        short_status_letter, oldpath, newpath)
+
+        if self.kind_changed:
+            if short_status:
+                short_status_letter = 'K'
+            else:
+                print >>to_file, 'kind changed:'
+                short_status_letter = ''
+            for (path, fid, old_kind, new_kind) in self.kind_changed:
+                if show_ids:
+                    suffix = ' '+fid
+                else:
+                    suffix = ''
+                print >>to_file, '%s  %s (%s => %s)%s' % (
+                    short_status_letter, path, old_kind, new_kind, suffix)
+
         if self.modified or extra_modified:
             short_status_letter = 'M'
             if not short_status:
@@ -187,8 +210,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
                                                specific_file_ids):
         if not include_root and (None, None) == parent_id:
             continue
-        assert kind[0] == kind[1] or None in kind
-        # the only 'kind change' permitted is creation/deletion
         fully_present = tuple((versioned[x] and kind[x] is not None) for
                               x in range(2))
         if fully_present[0] != fully_present[1]:
@@ -211,6 +232,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
                                   kind[1],
                                   content_change, 
                                   (executable[0] != executable[1])))
+        elif kind[0] != kind[1]:
+            delta.kind_changed.append((path, file_id, kind[0], kind[1]))
         elif content_change is True or executable[0] != executable[1]:
             delta.modified.append((path, file_id, kind[1],
                                    content_change, 
@@ -232,12 +255,29 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
 class ChangeReporter(object):
     """Report changes between two trees"""
 
-    def __init__(self, old_inventory, output=None):
+    def __init__(self, old_inventory, output=None, suppress_root_add=True,
+                 output_file=None):
+        """Constructor
+
+        :param old_inventory: The inventory of the old tree
+        :param output: a function with the signature of trace.note, i.e.
+            accepts a format and parameters.
+        :param supress_root_add: If true, adding the root will be ignored
+            (i.e. when a tree has just been initted)
+        :param output_file: If supplied, a file-like object to write to.
+            Only one of output and output_file may be supplied.
+        """
         self.old_inventory = old_inventory
+        if output_file is not None:
+            if output is not None:
+                raise BzrError('Cannot specify both output and output_file')
+            def output(fmt, *args):
+                output_file.write((fmt % args) + '\n')
         self.output = output
         if self.output is None:
             from bzrlib import trace
             self.output = trace.note
+        self.suppress_root_add = suppress_root_add
 
     def report(self, file_id, path, versioned, renamed, modified, exe_change,
                kind):
@@ -254,6 +294,8 @@ class ChangeReporter(object):
         :param kind: A pair of file kinds, as generated by Tree._iter_changes.
             None indicates no file present.
         """
+        if path == '' and versioned == 'added' and self.suppress_root_add:
+            return
         modified_map = {'kind changed': 'K',
                         'unchanged': ' ',
                         'created': 'N',
@@ -273,10 +315,12 @@ class ChangeReporter(object):
                 old_path = path
         if modified == 'deleted':
             path += osutils.kind_marker(kind[0])
-        else:
+        elif kind[1] is not None:
             path += osutils.kind_marker(kind[1])
         if old_path != "":
-            old_path += "%s => " % osutils.kind_marker(kind[0])
+            if kind[0] is not None:
+                old_path += osutils.kind_marker(kind[0])
+            old_path += " => "
         if exe_change:
             exe = '*'
         else:
