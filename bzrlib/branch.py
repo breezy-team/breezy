@@ -751,6 +751,7 @@ class BranchFormat(object):
         """True if this format supports tags stored in the branch"""
         return False  # by default
 
+    # XXX: Probably doesn't really belong here -- mbp 20070212
     def _initialize_control_files(self, a_bzrdir, utf8_files, lock_filename,
             lock_class):
         branch_transport = a_bzrdir.get_branch_transport(self)
@@ -870,62 +871,6 @@ class BzrBranchFormat5(BranchFormat):
                           _repository=a_bzrdir.find_repository())
 
 
-class BzrBranchFormatExperimental(BranchFormat):
-    """Bzr experimental branch format
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-     - a tag dictionary in the branch
-
-    This format is new in bzr 0.15, but shouldn't be used for real data, 
-    only for testing.
-    """
-
-    def get_format_string(self):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format experimental\n"
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Experimental branch format"
-        
-    def initialize(self, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('format', self.get_format_string()),
-                      ('revision-history', ''),
-                      ('branch-name', ''),
-                      ('tags', ''),
-                      ]
-        self._initialize_control_files(a_bzrdir, utf8_files,
-            'lock', lockdir.LockDir)
-        return self.open(a_bzrdir, _found=True)
-
-    def __init__(self):
-        super(BzrBranchFormatExperimental, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return BzrBranchExperimental(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
-
-
 class BranchReferenceFormat(BranchFormat):
     """Bzr branch reference format.
 
@@ -1001,7 +946,6 @@ class BranchReferenceFormat(BranchFormat):
 __default_format = BzrBranchFormat5()
 BranchFormat.register_format(__default_format)
 BranchFormat.register_format(BranchReferenceFormat())
-BranchFormat.register_format(BzrBranchFormatExperimental())
 BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
@@ -1493,11 +1437,87 @@ class BzrBranch5(BzrBranch):
 
 
 class BzrBranchExperimental(BzrBranch5):
+    """Bzr experimental branch format
 
-    # TODO: within a lock scope, we could keep the tags in memory...
-    
+    This format has:
+     - a revision-history file.
+     - a format string
+     - a lock dir guarding the branch itself
+     - all of this stored in a branch/ subdirectory
+     - works with shared repositories.
+     - a tag dictionary in the branch
+
+    This format is new in bzr 0.15, but shouldn't be used for real data, 
+    only for testing.
+
+    This class acts as it's own BranchFormat.
+    """
+
+    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    @classmethod
+    def get_format_string(cls):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar-NG branch format experimental\n"
+
+    @classmethod
+    def get_format_description(cls):
+        """See BranchFormat.get_format_description()."""
+        return "Experimental branch format"
+
+    @classmethod
+    def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
+            lock_class):
+        branch_transport = a_bzrdir.get_branch_transport(cls)
+        control_files = lockable_files.LockableFiles(branch_transport,
+            lock_filename, lock_class)
+        control_files.create_lock()
+        control_files.lock_write()
+        try:
+            for filename, content in utf8_files:
+                control_files.put_utf8(filename, content)
+        finally:
+            control_files.unlock()
+        
+    @classmethod
+    def initialize(cls, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('format', cls.get_format_string()),
+                      ('revision-history', ''),
+                      ('branch-name', ''),
+                      ('tags', ''),
+                      ]
+        cls._initialize_control_files(a_bzrdir, utf8_files,
+            'lock', lockdir.LockDir)
+        return cls.open(a_bzrdir, _found=True)
+
+    @classmethod
+    def open(cls, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            format = BranchFormat.find_format(a_bzrdir)
+            assert format.__class__ == cls
+        transport = a_bzrdir.get_branch_transport(None)
+        control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                     lockdir.LockDir)
+        return cls(_format=cls,
+            _control_files=control_files,
+            a_bzrdir=a_bzrdir,
+            _repository=a_bzrdir.find_repository())
+
+    @classmethod
+    def is_supported(cls):
+        return True
+
     def _make_tag_store(self):
         return BasicTagStore(self)
+
+
+BranchFormat.register_format(BzrBranchExperimental)
 
 
 class BranchTestProviderAdapter(object):

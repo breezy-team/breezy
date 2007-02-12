@@ -346,7 +346,7 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         # override format as the default one may not support tags
         control = bzrdir.BzrDir.create(relpath)
         control.create_repository()
-        branch.BzrBranchFormatExperimental().initialize(control)
+        branch.BzrBranchExperimental.initialize(control)
         return control.create_workingtree()
 
     def test_from_string_tag(self):

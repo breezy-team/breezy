@@ -18,7 +18,7 @@
 
 from bzrlib.branch import (
     Branch,
-    BzrBranchFormatExperimental,
+    BzrBranchExperimental,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
@@ -37,7 +37,7 @@ class TestTagging(TestCaseWithTransport):
     def make_branch_and_tree(self, relpath):
         control = BzrDir.create(relpath)
         repo = RepositoryFormatKnit2().initialize(control)
-        BzrBranchFormatExperimental().initialize(control)
+        BzrBranchExperimental.initialize(control)
         return control.create_workingtree()
 
     def test_tag_command_help(self):
