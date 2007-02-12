@@ -394,16 +394,36 @@ class TestInterRepository(TestCaseWithTransport):
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
-    def test_interweave_registered(self):
-        # optimized conversion between weave repos is (still) present
-        t = self.get_transport()
-        t.mkdir('r1')
-        t.mkdir('r2')
-        r1 = bzrdir.BzrDirFormat6().initialize('r1')
-        r2 = bzrdir.BzrDirFormat6().initialize('r2')
-        inter_repo = repository.InterRepository.get(r1.open_repository(), 
-                r2.open_repository())
-        self.assertIsInstance(inter_repo, repository.InterWeaveRepo)
+
+class TestInterWeaveRepo(TestCaseWithTransport):
+
+    def test_is_compatible_and_registered(self):
+        # InterWeaveRepo is compatible when either side
+        # is a format 5/6/7 branch
+        formats = [repository.RepositoryFormat5(),
+                   repository.RepositoryFormat6(),
+                   repository.RepositoryFormat7()]
+        incompatible_formats = [repository.RepositoryFormat4(),
+                                repository.RepositoryFormatKnit1(),
+                                ]
+        repo_a = self.make_repository('a')
+        repo_b = self.make_repository('b')
+        is_compatible = repository.InterWeaveRepo.is_compatible
+        for source in incompatible_formats:
+            # force incompatible left then right
+            repo_a._format = source
+            repo_b._format = formats[0]
+            self.assertFalse(is_compatible(repo_a, repo_b))
+            self.assertFalse(is_compatible(repo_b, repo_a))
+        for source in formats:
+            repo_a._format = source
+            for target in formats:
+                repo_b._format = target
+                self.assertTrue(is_compatible(repo_a, repo_b))
+        self.assertEqual(repository.InterWeaveRepo,
+                         repository.InterRepository.get(repo_a,
+                                                        repo_b).__class__)
+
 
 class TestRepositoryConverter(TestCaseWithTransport):
 
