@@ -1224,6 +1224,131 @@ class InterSameDataRepository(InterRepository):
         return f.count_copied, f.failed_revisions
 
 
+class InterWeaveRepo(InterSameDataRepository):
+    """Optimised code paths between Weave based repositories."""
+
+
+    def _get_repo_format_to_test(self):
+        from bzrlib.repofmt import weaverepo
+        return weaverepo.RepositoryFormat7()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Weave formats.
+        
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be 
+        overly general.
+        """
+        from bzrlib.repofmt.weaverepo import (
+                RepositoryFormat5,
+                RepositoryFormat6,
+                RepositoryFormat7,
+                )
+        try:
+            return (isinstance(source._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)) and
+                    isinstance(target._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)))
+        except AttributeError:
+            return False
+    
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """See InterRepository.copy_content()."""
+        # weave specific optimised path:
+        if basis is not None:
+            # copy the basis in, then fetch remaining data.
+            basis.copy_content_into(self.target, revision_id)
+            # the basis copy_content_into could miss-set this.
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
+        else:
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            # FIXME do not peek!
+            if self.source.control_files._transport.listable():
+                pb = ui.ui_factory.nested_progress_bar()
+                try:
+                    self.target.weave_store.copy_all_ids(
+                        self.source.weave_store,
+                        pb=pb,
+                        from_transaction=self.source.get_transaction(),
+                        to_transaction=self.target.get_transaction())
+                    pb.update('copying inventory', 0, 1)
+                    self.target.control_weaves.copy_multi(
+                        self.source.control_weaves, ['inventory'],
+                        from_transaction=self.source.get_transaction(),
+                        to_transaction=self.target.get_transaction())
+                    self.target._revision_store.text_store.copy_all_ids(
+                        self.source._revision_store.text_store,
+                        pb=pb)
+                finally:
+                    pb.finished()
+            else:
+                self.target.fetch(self.source, revision_id=revision_id)
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import GenericRepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        f = GenericRepoFetcher(to_repository=self.target,
+                               from_repository=self.source,
+                               last_revision=revision_id,
+                               pb=pb)
+        return f.count_copied, f.failed_revisions
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """See InterRepository.missing_revision_ids()."""
+        # we want all revisions to satisfy revision_id in source.
+        # but we don't want to stat every file here and there.
+        # we want then, all revisions other needs to satisfy revision_id 
+        # checked, but not those that we have locally.
+        # so the first thing is to get a subset of the revisions to 
+        # satisfy revision_id in source, and then eliminate those that
+        # we do already have. 
+        # this is slow on high latency connection to self, but as as this
+        # disk format scales terribly for push anyway due to rewriting 
+        # inventory.weave, this is considered acceptable.
+        # - RBC 20060209
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids[0] is None
+            source_ids.pop(0)
+        else:
+            source_ids = self.source._all_possible_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target._all_possible_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
+        if revision_id is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            return required_topo_revisions
+        else:
+            # if we just grabbed the possibly available ids, then 
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            return self.source._eliminate_revisions_not_present(required_topo_revisions)
+
+
 class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
