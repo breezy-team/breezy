@@ -699,7 +699,10 @@ class TestHTTPRedirectionLoop(object):
     """
 
     # Should be defined by daughter classes to ensure redirection
-    # still use the same transport implementation
+    # still use the same transport implementation (not currently
+    # enforced as it's a bit tricky to get right (see the FIXME
+    # in BzrDir.open_from_transport for the unique use case so
+    # far)
     _qualifier = None
 
     def create_transport_readonly_server(self):

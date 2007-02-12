@@ -819,9 +819,10 @@ class TestRanges_pycurl(TestWithTransport_pycurl,
 # FIXME: http implementations do not redirect silently anymore
 # (they do not redirect at all in fact). The mechanism is still
 # in place at the _urllib2_wrappers.Request level and tests
-# hsould be written to exercise it. For the pycurl implementation
-# the redirection have been deleted as we may deprecate pycurl.
-# -- vila 20070212
+# should be written to exercise it. For the pycurl implementation
+# the redirection have been deleted as we may deprecate pycurl
+# and I have no place to keep a working implementation.
+#  -- vila 20070212
 
 class TestHTTPRedirections(object):
     """Test redirection between http servers.

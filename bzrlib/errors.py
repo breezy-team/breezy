@@ -1194,12 +1194,16 @@ class RedirectRequested(TransportError):
     def _requalify_url(self, url):
         """Restore the qualified proto in front of the url"""
         # When this exception is raised, source and target are in
-        # user readable format. But some transports mau use a
+        # user readable format. But some transports may use a
         # different proto (http+urllib:// will present http:// to
         # the user. If a qualified proto is specified, the code
-        # trapping the exeception can get the qualified urls to
+        # trapping the exception can get the qualified urls to
         # properly handle the redirection themself (creating a
         # new transport object from the target url for example).
+        # But checking that the scheme of the original and
+        # redirected urls are the same can be tricky. (see the
+        # FIXME in BzrDir.open_from_transport for the unique use
+        # case so far).
         if self._qualified_proto is None:
             return url
 

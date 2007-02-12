@@ -528,20 +528,16 @@ class BzrDir(object):
                 if not e.target.endswith(relpath):
                     # Not redirected to a branch-format, not a branch
                     raise errors.NotBranchError(path=e.target)
-
                 target = e.target[:-len(relpath)]
                 note('%s is%s redirected to %s',
-                     transport.base,
-                     e.permanently,
-                     target)
+                     transport.base, e.permanently, target)
                 # Let's try with a new transport 
-
+                qualified_target = e.get_target_url()[:-len(relpath)]
                 # FIXME: If 'transport' have a qualifier, this
                 # should be applied again to the new transport
                 # *iff* the schemes used are the same. It's a bit
                 # tricky to verify, so I'll punt for now 
                 # -- vila20070212
-                qualified_target = e.get_target_url()[:-len(relpath)]
                 transport = get_transport(target)
                 redirections += 1
         if redirected:
