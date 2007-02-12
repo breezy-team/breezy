@@ -109,6 +109,33 @@ class TestPush(TestCaseWithBranch):
         finally:
             source.branch.unlock()
 
+    def test_push_within_repository(self):
+        """Push from one branch to another inside the same repository."""
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except (errors.IncompatibleFormat, errors.UninitializableFormat):
+            # This Branch format cannot create shared repositories
+            return
+        # This is a little bit trickier because make_branch_and_tree will not
+        # re-use a shared repository.
+        a_bzrdir = self.make_bzrdir('repo/tree')
+        try:
+            a_branch = self.branch_format.initialize(a_bzrdir)
+        except (errors.UninitializableFormat):
+            # Cannot create these branches
+            return
+        tree = a_branch.bzrdir.create_workingtree()
+        self.build_tree(['repo/tree/a'])
+        tree.add(['a'])
+        tree.commit('a')
+
+        to_bzrdir = self.make_bzrdir('repo/branch')
+        to_branch = self.branch_format.initialize(to_bzrdir)
+        tree.branch.push(to_branch)
+
+        self.assertEqual(tree.branch.last_revision(),
+                         to_branch.last_revision())
+
 
 class TestPushHook(TestCaseWithBranch):
 
