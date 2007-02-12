@@ -19,6 +19,7 @@ import os
 import time
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     repository,
@@ -344,8 +345,8 @@ class TestRevisionSpec_tag(TestRevisionSpec):
     def make_branch_and_tree(self, relpath):
         # override format as the default one may not support tags
         control = bzrdir.BzrDir.create(relpath)
-        repo = repository.RepositoryFormatKnit2().initialize(control)
-        control.create_branch()
+        control.create_repository()
+        branch.BzrBranchFormatExperimental().initialize(control)
         return control.create_workingtree()
 
     def test_from_string_tag(self):
@@ -354,7 +355,7 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         self.assertEqual(spec.spec, 'bzr-0.14')
 
     def test_lookup_tag(self):
-        self.tree.branch.repository.set_tag('bzr-0.14', 'r1')
+        self.tree.branch.set_tag('bzr-0.14', 'r1')
         self.assertInHistoryIs(1, 'r1', 'tag:bzr-0.14')
 
     def test_failed_lookup(self):

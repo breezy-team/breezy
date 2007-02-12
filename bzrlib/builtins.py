@@ -792,14 +792,12 @@ def _copy_tags_maybe(from_branch, to_branch):
     This method has common command-line behaviour about handling 
     error cases.
     """
-    from_repo = from_branch.repository
-    to_repo = to_branch.repository
-    if not from_repo.supports_tags():
+    if not from_branch.supports_tags():
         # obviously nothing to copy
         return
     # TODO: give a warning if the source format supports tags and actually has
     # tags, but the destination doesn't accept them.
-    from_repo.copy_tags_to(to_repo)
+    from_branch.copy_tags_to(to_branch)
 
 
 class cmd_checkout(Command):
@@ -3064,7 +3062,7 @@ class cmd_tag(Command):
     takes_args = ['tag_name']
     takes_options = [
         Option('directory',
-            help='branch or repository to tag',
+            help='branch in which to place the tag',
             short_name='d',
             type=unicode,
             ),
@@ -3081,7 +3079,7 @@ class cmd_tag(Command):
             revision_id = revision[0].in_history(branch).rev_id
         else:
             revision_id = branch.last_revision()
-        branch.repository.set_tag(tag_name, revision_id)
+        branch.set_tag(tag_name, revision_id)
         self.outf.write('created tag %s' % tag_name)
 
 
