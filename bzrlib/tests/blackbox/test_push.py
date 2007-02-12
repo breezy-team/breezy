@@ -23,9 +23,8 @@ import os
 from bzrlib import (
     errors,
     )
-import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDirMetaFormat1
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repository import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
@@ -100,7 +99,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push', 'pushed-location')
         self.assertEqual('', out)
         self.assertEqual('0 revision(s) pushed.\n', err)
-        b2 = bzrlib.branch.Branch.open('pushed-location')
+        b2 = Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
@@ -233,3 +232,17 @@ class TestPush(ExternalBase):
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push', '../dir',
                 working_dir='tree')
+
+    def test_push_inside_repository(self):
+        """Push from one branch to another inside the same repository."""
+        repo = self.make_repository('repo', shared=True)
+        # This is a little bit trickier because make_branch_and_tree will not
+        # re-use a shared repository.
+        a_branch = BzrDir.create_branch_convenience('repo/tree')
+        tree = a_branch.bzrdir.open_workingtree()
+        self.build_tree(['repo/tree/a'])
+        tree.add(['a'])
+        tree.commit('a')
+
+        to_branch = BzrDir.create_branch_convenience('repo/branch')
+        tree.branch.push(to_branch)

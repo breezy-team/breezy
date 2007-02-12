@@ -1446,7 +1446,7 @@ class BzrBranch5(BzrBranch):
             if master_branch:
                 master_branch.unlock()
 
-    @needs_write_lock
+    @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         """Updates branch.push to be bound branch aware."""
         bound_location = target.get_bound_location()

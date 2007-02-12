@@ -90,6 +90,25 @@ class TestPush(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
 
+    def test_push_uses_read_lock(self):
+        """Push should only need a read lock on the source side."""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        self.build_tree(['source/a'])
+        source.add(['a'])
+        source.commit('a')
+
+        source.branch.lock_read()
+        try:
+            target.lock_write()
+            try:
+                source.branch.push(target, stop_revision=source.last_revision())
+            finally:
+                target.unlock()
+        finally:
+            source.branch.unlock()
+
 
 class TestPushHook(TestCaseWithBranch):
 
