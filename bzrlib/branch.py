@@ -1699,7 +1699,7 @@ class BzrBranch6(BzrBranch5):
         if last_revision is None:
             return
         if last_revision not in self._lefthand_history(revision_id):
-            raise errors.StrictHistoryViolation
+            raise errors.StrictHistoryViolation(self.base)
 
     @needs_read_lock
     def revision_history(self):

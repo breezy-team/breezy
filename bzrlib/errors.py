@@ -805,7 +805,14 @@ class HistoryMissing(BzrError):
 
 class StrictHistoryViolation(BzrError):
 
-    _fmt = """Applying operation would alter current history"""
+    _fmt = 'Operation denied because it would change the main history, '\
+           'which is not permitted by the strict_history setting on branch'\
+           ' "%(location)s".'
+
+    def __init__(self, location):
+       import bzrlib.urlutils as urlutils
+       location = urlutils.unescape_for_display(location, 'ascii')
+       BzrError.__init__(self, location=location)
 
 
 class DivergedBranches(BzrError):
