@@ -725,6 +725,38 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
+    def _initialize_helper(self, a_bzrdir, utf8_files, lock_type='metadir',
+                           set_format=True):
+        """Initialize a branch in a bzrdir, with specified files
+
+        :param a_bzrdir: The bzrdir to initialize the branch in
+        :param utf8_files: The files to create as a list of
+            (filename, content) tuples
+        :param set_format: If True, set the format with
+            self.get_format_string.  (BzrBranch4 has its format set
+            elsewhere)
+        :return: a branch in this format
+        """
+        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
+        branch_transport = a_bzrdir.get_branch_transport(self)
+        lock_map = {
+            'metadir': ('lock', lockdir.LockDir),
+            'branch4': ('branch-lock', lockable_files.TransportLock),
+        }
+        lock_name, lock_class = lock_map[lock_type]
+        control_files = lockable_files.LockableFiles(branch_transport,
+            lock_name, lock_class)
+        control_files.create_lock()
+        control_files.lock_write()
+        if set_format:
+            control_files.put_utf8('format', self.get_format_string())
+        try:
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+        finally:
+            control_files.unlock()
+        return self.open(a_bzrdir, _found=True)
+
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialize)
@@ -844,21 +876,11 @@ class BzrBranchFormat4(BranchFormat):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch in %s', a_bzrdir.transport.base)
-        branch_transport = a_bzrdir.get_branch_transport(self)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = lockable_files.LockableFiles(branch_transport,
-                             'branch-lock', lockable_files.TransportLock)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-        finally:
-            control_files.unlock()
-        return self.open(a_bzrdir, _found=True)
+        return self._initialize_helper(a_bzrdir, utf8_files,
+                                       lock_type='branch4', set_format=False)
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
@@ -905,22 +927,10 @@ class BzrBranchFormat5(BranchFormat):
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
-        branch_transport = a_bzrdir.get_branch_transport(self)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = lockable_files.LockableFiles(branch_transport, 'lock',
-                                                     lockdir.LockDir)
-        control_files.create_lock()
-        control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
-        try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-        finally:
-            control_files.unlock()
-        return self.open(a_bzrdir, _found=True, )
+        return self._initialize_helper(a_bzrdir, utf8_files)
 
     def __init__(self):
         super(BzrBranchFormat5, self).__init__()
@@ -964,23 +974,11 @@ class BzrBranchFormat6(BzrBranchFormat5):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
-        branch_transport = a_bzrdir.get_branch_transport(self)
         utf8_files = [('last-revision', 'null:\n'),
                       ('branch-name', ''),
                       ('branch.conf', '')
                       ]
-        control_files = lockable_files.LockableFiles(branch_transport, 'lock',
-                                                     lockdir.LockDir)
-        control_files.create_lock()
-        control_files.lock_write()
-        control_files.put_utf8('format', self.get_format_string())
-        try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-        finally:
-            control_files.unlock()
-        return self.open(a_bzrdir, _found=True, )
+        return self._initialize_helper(a_bzrdir, utf8_files)
 
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
