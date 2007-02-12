@@ -163,6 +163,20 @@ class WorkingTree4(WorkingTree3):
         self._parent_revisions = None
         self._dirstate = None
 
+    @needs_write_lock
+    def _add(self, files, ids, kinds):
+        """See MutableTree._add."""
+        state = self.current_dirstate()
+        for f, file_id, kind in zip(files, ids, kinds):
+            assert '//' not in f
+            assert not f.startswith('/')
+            assert '..' not in f
+            if file_id is None:
+                file_id = generate_ids.gen_file_id(name)
+            stat = os.lstat(self.abspath(f))
+            sha1 = '1' * 20 # FIXME: DIRSTATE MERGE BLOCKER
+            state.add(f, file_id, kind, stat, sha1)
+
     def current_dirstate(self):
         """Return the current dirstate object. 
 

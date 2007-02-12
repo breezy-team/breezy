@@ -189,6 +189,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
+        self._read_dirblocks_if_needed()
         dirname, basename = os.path.split(path.encode('utf8'))
         block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
         assert self._dirblocks[block_index][0] == dirname, \
