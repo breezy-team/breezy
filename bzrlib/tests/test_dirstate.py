@@ -410,6 +410,46 @@ class TestDirstateManipulations(TestCaseWithTransport):
         state = dirstate.DirState.on_file('dirstate')
         self.assertEqual(expected_rows, list(state._iter_rows()))
 
+    def test_add_symlink_to_root_no_parents_all_data(self):
+        # The most trivial addition of a symlink when there are no parents and
+        # its in the root and all data about the file is supplied
+        state = dirstate.DirState.initialize('dirstate')
+        ## TODO: windows: dont fail this test. Also, how are symlinks meant to
+        # be represented on windows.
+        os.symlink('target', 'a link')
+        stat = os.lstat('a link')
+        state.add('a link', 'a link id', 'symlink', stat, 'target')
+        # having added it, it should be in the output of iter_rows.
+        expected_rows = [
+            (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), []),
+            (('', 'a link', 'symlink', 'a link id', 6, dirstate.pack_stat(stat), 'target'), []),
+            ]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # saving and reloading should not affect this.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+
+    def test_add_directory_and_child_no_parents_all_data(self):
+        # after adding a directory, we should be able to add children to it.
+        state = dirstate.DirState.initialize('dirstate')
+        self.build_tree(['a dir/', 'a dir/a file'])
+        stat = os.lstat('a dir')
+        state.add('a dir', 'a dir id', 'directory', stat, None)
+        filestat = os.lstat('a dir/a file')
+        state.add('a dir/a file', 'a file id', 'file', filestat, '1'*20)
+        # having added it, it should be in the output of iter_rows.
+        expected_rows = [
+            (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), []),
+            (('', 'a dir', 'directory', 'a dir id', 0, dirstate.pack_stat(stat), ''), []),
+            (('a dir', 'a file', 'file', 'a file id', 25, dirstate.pack_stat(filestat), '1'*20), []),
+            ]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # saving and reloading should not affect this.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+
 
 class TestGetLines(TestCaseWithTransport):
 

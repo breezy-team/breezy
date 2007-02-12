@@ -173,7 +173,7 @@ class DirState(object):
         self._root_row = None
         self._state_file=None
 
-    def add(self, path, file_id, kind, stat, sha1):
+    def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
 
         :param path: The path within the dirstate - '' is the root, 'foo' is the
@@ -182,7 +182,8 @@ class DirState(object):
         :param file_id: The file id of the path being added.
         :param kind: The kind of the path.
         :param stat: The output of os.lstate for the path.
-        :param sha1: The sha value of the file, IFF it has one.
+        :param link_or_sha1: The sha value of the file, or the target of a
+            symlink. '' for directories.
         """
         # adding a file:
         # find the block its in. 
@@ -190,7 +191,8 @@ class DirState(object):
         # check its not there
         # add it.
         self._read_dirblocks_if_needed()
-        dirname, basename = os.path.split(path.encode('utf8'))
+        utf8path = path.encode('utf8')
+        dirname, basename = os.path.split(utf8path)
         block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
         if (block_index == len(self._dirblocks) or
             self._dirblocks[block_index][0] != dirname):
@@ -198,21 +200,26 @@ class DirState(object):
             # child
             raise errors.NoSuchFile(path)
         block = self._dirblocks[block_index][1]
-        if kind == 'directory':
+        if kind == 'file':
+            row_data = ((dirname, basename, kind, file_id.encode('utf8'),
+                stat.st_size, pack_stat(stat), link_or_sha1), [])
+        elif kind == 'directory':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
                 0, pack_stat(stat), ''), [])
-        else:
+        elif kind == 'symlink':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                stat.st_size, pack_stat(stat), sha1), [])
+                stat.st_size, pack_stat(stat), link_or_sha1), [])
+        else:
+            raise errors.BzrError('unknown kind %r' % kind)
         row_index = bisect.bisect_left(block, row_data)
         if len(block) > row_index:
             assert block[row_index][1] != basename, \
                 "basename %r already added" % basename
         block.insert(row_index, row_data)
 
-        # if kind == 'directory':
-        #    # insert a new dirblock
-        #    self._dirblocks.insert(block_index, (dirname, []))
+        if kind == 'directory':
+           # insert a new dirblock
+           bisect.insort_left(self._dirblocks, (utf8path, []))
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def add_parent_tree(self, tree_id, tree):

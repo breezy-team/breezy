@@ -168,8 +168,8 @@ class WorkingTree4(WorkingTree3):
         """See MutableTree._add."""
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
+            f = f.strip('/')
             assert '//' not in f
-            assert not f.startswith('/')
             assert '..' not in f
             if file_id is None:
                 file_id = generate_ids.gen_file_id(name)
