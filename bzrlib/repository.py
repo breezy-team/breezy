@@ -1227,7 +1227,7 @@ class InterSameDataRepository(InterRepository):
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories."""
 
-
+    @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import weaverepo
         return weaverepo.RepositoryFormat7()
@@ -1500,6 +1500,7 @@ class InterKnit1and2(InterKnitRepo):
 
 
 InterRepository.register_optimiser(InterSameDataRepository)
+InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)

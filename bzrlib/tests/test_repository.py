@@ -394,6 +394,16 @@ class TestInterRepository(TestCaseWithTransport):
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
+    def test_interweave_registered(self):
+        # optimized conversion between weave repos is (still) present
+        t = self.get_transport()
+        t.mkdir('r1')
+        t.mkdir('r2')
+        r1 = bzrdir.BzrDirFormat6().initialize('r1')
+        r2 = bzrdir.BzrDirFormat6().initialize('r2')
+        inter_repo = repository.InterRepository.get(r1.open_repository(), 
+                r2.open_repository())
+        self.assertIsInstance(inter_repo, repository.InterWeaveRepo)
 
 class TestRepositoryConverter(TestCaseWithTransport):
 
