@@ -284,7 +284,6 @@ class TestDirstateManipulations(TestCaseWithTransport):
         branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
         tree2 = MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
-        tree2.add('')
         revid2 = tree2.commit('foo')
         root_id = tree2.inventory.root.file_id
         state.set_path_id('', root_id)
