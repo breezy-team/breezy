@@ -91,6 +91,10 @@ IN DEVELOPMENT
       the ``--use-existing-dir`` flag.
       (John Arbash Meinel, #30576, #45504)
 
+    * Fix http proxy authentication when user and an optional
+      password appears in the *_proxy vars. (Vincent Ladeuil,
+      #83954).
+
     * ``bzr log branch/file`` works for local treeless branches
       (Aaron Bentley, #84247)
 
