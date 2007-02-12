@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import dirstate
+from bzrlib.dirstate import DirState
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
 
@@ -62,7 +63,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             # there should be one fileid in this tree - the root of the tree.
             root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
             self.assertEqual(
-                [(['', '', 'directory', tree.inventory.root.file_id, 0, root_stat_pack, ''], [])],
+                [(('', '', 'directory', tree.inventory.root.file_id, 0, root_stat_pack, ''), [])],
                 list(state._iter_rows()))
         check_state()
         state = dirstate.DirState.on_file('dirstate')
@@ -314,10 +315,50 @@ class TestDirstateManipulations(TestCaseWithTransport):
         # the ghost should be recorded as such by set_parent_trees.
         self.assertEqual(['ghost-rev'], state.get_ghosts())
         self.assertEqual(
-            [(['', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''], [
+            [(('', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [
              (revid1, 'directory', '', '', 0, False, ''),
              (revid2, 'directory', '', '', 0, False, '')])],
             list(state._iter_rows()))
+
+    def test_set_parent_trees_file_missing_from_tree(self):
+        # Adding a parent tree may reference files not in the current state.
+        # they should get listed just once by id, even if they are in two  
+        # separate trees.
+        # set_parent_trees is a slow but important api to support.
+        state = dirstate.DirState.initialize('dirstate')
+        tree1 = self.make_branch_and_memory_tree('tree1')
+        tree1.lock_write()
+        tree1.add('')
+        tree1.add(['a file'], ['file-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('file-id', 'file-content')
+        revid1 = tree1.commit('foo')
+        tree1.unlock()
+        branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
+        tree2 = MemoryTree.create_on_branch(branch2)
+        tree2.lock_write()
+        tree2.put_file_bytes_non_atomic('file-id', 'new file-content')
+        revid2 = tree2.commit('foo')
+        root_id = tree2.inventory.root.file_id
+        state.set_path_id('', root_id)
+        tree2.unlock()
+        state.set_parent_trees(
+            ((revid1, tree1.branch.repository.revision_tree(revid1)),
+             (revid2, tree2.branch.repository.revision_tree(revid2)),
+             ), [])
+        # check the layout in memory
+        expected_rows = [
+            (('', '', 'directory', root_id, 0, DirState.NULLSTAT, ''),
+             [(revid1.encode('utf8'), 'directory', '', '', 0, False, ''),
+              (revid2.encode('utf8'), 'directory', '', '', 0, False, '')]),
+            (('/', 'RECYCLED.BIN', 'file', 'file-id', 0, DirState.NULLSTAT, ''),
+             [(revid1.encode('utf8'), 'file', '', 'a file', 12, False, '2439573625385400f2a669657a7db6ae7515d371'),
+              (revid2.encode('utf8'), 'file', '', 'a file', 16, False, '542e57dc1cda4af37cb8e55ec07ce60364bb3c7d')])
+            ]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # check we can reopen and use the dirstate after setting parent trees.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
 
     ### add a path via _set_data - so we dont need delta work, just
     # raw data in, and ensure that it comes out via get_lines happily.

@@ -245,13 +245,13 @@ class DirState(object):
         to_yesno = DirState._to_yesno
 
         st = os.lstat(tree.basedir)
-        root_info = [
+        root_info = (
             '', '' # No path
             , 'directory', tree.inventory.root.file_id.encode('utf8')
             , 0 # no point having a size for dirs.
             , pack_stat(st)
             , '' # No sha
-            ]
+            )
         root_parents = []
         for parent_tree in parent_trees:
             root_parents.append((
@@ -294,7 +294,7 @@ class DirState(object):
                 parent_info = []
                 for count in xrange(num_parents):
                     parent_info.append(
-                        self._parent_info(parent_trees[count], fileid))
+                        result._parent_info(parent_trees[count], fileid))
                 row_data = (dirname.encode('utf8'), basename.encode('utf8'),
                     kind, fileid.encode('utf8'), st.st_size, pack_stat(st),
                     s)
@@ -478,17 +478,20 @@ class DirState(object):
 
             assert len(entries) == self._num_entries, '%s != %s entries' % (len(entries),
                 self._num_entries)
-            entry_iter = iter(entries)
-            self._root_row = entry_iter.next()
-            # convert the minikind to kind
-            self._root_row[0][2] = self._minikind_to_kind[self._root_row[0][2]]
-            # convert the size to an int
-            self._root_row[0][4] = int(self._root_row[0][4])
-            # TODO parent converion
-            # TODO dirblock population
-            for entry in entry_iter:
-                # do something here
-                pass
+
+            def _line_to_row(line):
+                """Convert a freshly read line's size and minikind for use."""
+                # convert the minikind to kind
+                line[0][2] = self._minikind_to_kind[line[0][2]]
+                # convert the size to an int
+                line[0][4] = int(line[0][4])
+                for parent in line[1]:
+                    parent[1] = self._minikind_to_kind[parent[1]]
+                    parent[4] = int(parent[4])
+                    parent[5] = parent[5] == 'y'
+                return tuple(line[0]), map(tuple, line[1])
+            new_rows = map(_line_to_row, entries)
+            self._rows_to_current_state(new_rows)
         self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
@@ -557,6 +560,28 @@ class DirState(object):
         entire_row[4] = str(entire_row[4])
         # minikind of parents
         return '\0'.join(entire_row)
+
+    def _rows_to_current_state(self, new_rows):
+        """Load new_rows into self._root_row and self.dirblocks.
+
+        Process new_rows into the current state object, making them the active
+        state.
+
+        :param new_rows: A sorted list of rows. This function does not sort
+            to prevent unneeded overhead when callers have a sorted list
+            already.
+        :return: Nothing.
+        """
+        assert new_rows[0][0][0:2] == ('', ''), \
+            "Incorrect root row %r" % new_rows[0][0]
+        self._root_row = new_rows[0]
+        self._dirblocks = [('', [])]
+        for row in new_rows[1:]:
+            if row[0] != self._dirblocks[-1][0]:
+                # new block
+                self._dirblocks.append((row[0][0], []))
+            # append the row to the current block
+            self._dirblocks[-1][1].append(row)
     
     def save(self):
         """Save any pending changes created during this session."""
@@ -634,17 +659,39 @@ class DirState(object):
         # skip ghost trees, as they dont get represented.
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
         parent_tree_count = len(parent_trees)
+        # loop over existing entries in the dirstate.
+        checked_ids = set()
         for entry, old_parents in self._iter_rows():
             file_id = entry[3]
+            checked_ids.add(file_id)
             new_parents = [None] * parent_tree_count
             for position, parent_tree in enumerate(parent_trees):
                 # revision_utf8, KIND, dirname, basename, size, executable, sha
                 new_parents[position] = self._parent_info(parent_tree, file_id)
             assert None not in new_parents
             new_rows.append((entry, new_parents))
-        self._root_row = new_rows[0]
-        self._dirblocks = []
-         
+        # get additional ids that are present in parents and not in this tree.
+        deleted_ids = set()
+        for tree in parent_trees:
+            deleted_ids.update(set(tree.inventory._byid).difference(checked_ids))
+        # add the deleted ids to the dirstate. deleted files are represented as
+        # a file with dirname '', basename ''
+        for file_id in deleted_ids:
+            # add these ids to the deleted block
+            checked_ids.add(file_id)
+            # deleted items have a synthetic entry.
+            entry = ('/', 'RECYCLED.BIN', 'file', file_id.encode('utf8'), 0,
+                DirState.NULLSTAT, '')
+            new_parents = [None] * parent_tree_count
+            for position, parent_tree in enumerate(parent_trees):
+                # revision_utf8, KIND, dirname, basename, size, executable, sha
+                new_parents[position] = self._parent_info(parent_tree, file_id)
+            assert None not in new_parents
+            new_rows.append((entry, new_parents))
+
+        # sort all the rows
+        new_rows = sorted(new_rows)
+        self._rows_to_current_state(new_rows)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
         self._header_state = DirState.IN_MEMORY_MODIFIED
