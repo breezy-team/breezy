@@ -14,9 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tag storage"""
 
 # NOTE: Don't try to call this 'tags.py', vim seems to get confused about
 # whether it's a tag or source file.
+
 
 
 from bzrlib import (
@@ -29,8 +31,9 @@ from bzrlib import (
 
 
 class _TagStore(object):
-    def __init__(self, repository):
-        self.repository = repository
+    def __init__(self, branch):
+        self.branch = branch
+
 
 class DisabledTagStore(_TagStore):
     """Tag storage that refuses to store anything.
@@ -39,7 +42,7 @@ class DisabledTagStore(_TagStore):
     """
 
     def _not_supported(self, *a, **k):
-        raise errors.TagsNotSupported(self.repository)
+        raise errors.TagsNotSupported(self.branch)
 
     def supports_tags(self):
         return False
@@ -51,25 +54,25 @@ class DisabledTagStore(_TagStore):
 
 
 class BasicTagStore(_TagStore):
-    """Tag storage in an unversioned repository control file.
+    """Tag storage in an unversioned branch control file.
     """
 
     def supports_tags(self):
         return True
 
     def set_tag(self, tag_name, tag_target):
-        """Add a tag definition to the repository.
+        """Add a tag definition to the branch.
 
         Behaviour if the tag is already present is not defined (yet).
         """
         # all done with a write lock held, so this looks atomic
-        self.repository.lock_write()
+        self.branch.lock_write()
         try:
             td = self.get_tag_dict()
             td[tag_name] = tag_target
             self._set_tag_dict(td)
         finally:
-            self.repository.unlock()
+            self.branch.unlock()
 
     def lookup_tag(self, tag_name):
         """Return the referent string of a tag"""
@@ -80,24 +83,24 @@ class BasicTagStore(_TagStore):
             raise errors.NoSuchTag(tag_name)
 
     def get_tag_dict(self):
-        self.repository.lock_read()
+        self.branch.lock_read()
         try:
-            tag_content = self.repository.control_files.get_utf8('tags').read()
+            tag_content = self.branch.control_files.get_utf8('tags').read()
             return self._deserialize_tag_dict(tag_content)
         finally:
-            self.repository.unlock()
+            self.branch.unlock()
 
     def _set_tag_dict(self, new_dict):
         """Replace all tag definitions
 
         :param new_dict: Dictionary from tag name to target.
         """
-        self.repository.lock_read()
+        self.branch.lock_read()
         try:
-            self.repository.control_files.put_utf8('tags',
+            self.branch.control_files.put_utf8('tags',
                 self._serialize_tag_dict(new_dict))
         finally:
-            self.repository.unlock()
+            self.branch.unlock()
 
     def _serialize_tag_dict(self, tag_dict):
         s = []
