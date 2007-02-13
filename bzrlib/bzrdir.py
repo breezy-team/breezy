@@ -512,16 +512,14 @@ class BzrDir(object):
         :param _unsupported: private.
         """
         initial_base = transport.base
-        redirected = True # to enter the loop
-        redirections = 0
         # If a loop occurs, there is little we can do. So we
         # don't try to detect them, just getting out if too much
         # redirections occurs. The solution is outside: where the
         # loop is defined.
-        while redirected and redirections < BzrDir.MAX_REDIRECTIONS:
+        for redirections in range(BzrDir.MAX_REDIRECTIONS):
             try:
                 format = BzrDirFormat.find_format(transport)
-                redirected = False
+                break
             except errors.RedirectRequested, e:
                 qualified_source = e.get_source_url()
                 relpath = transport.relpath(qualified_source)
@@ -531,21 +529,20 @@ class BzrDir(object):
                 target = e.target[:-len(relpath)]
                 note('%s is%s redirected to %s',
                      transport.base, e.permanently, target)
-                # Let's try with a new transport 
+                # Let's try with a new transport
                 qualified_target = e.get_target_url()[:-len(relpath)]
-                # FIXME: If 'transport' have a qualifier, this
-                # should be applied again to the new transport
-                # *iff* the schemes used are the same. It's a bit
-                # tricky to verify, so I'll punt for now 
+                # FIXME: If 'transport' have a qualifier, this should
+                # be applied again to the new transport *iff* the
+                # schemes used are the same. It's a bit tricky to
+                # verify, so I'll punt for now
                 # -- vila20070212
                 transport = get_transport(target)
-                redirections += 1
-        if redirected:
-            # Out of the loop and still redirected ? Either the
-            # user have kept a very very very old reference to a
+        else:
+            # Loop exited without resolving redirect ? Either the
+            # user has kept a very very very old reference to a
             # branch or a loop occured in the redirections.
             # Nothing we can cure here: tell the user. Note that
-            # as the user have been informed about each
+            # as the user has been informed about each
             # redirection, there is no need to issue an
             # additional error message.
             raise errors.NotBranchError(path=initial_base)
@@ -1128,8 +1125,7 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style transport present at URL."""
         try:
-            format_file = transport.get(".bzr/branch-format")
-            format_string = format_file.read()
+            format_string = transport.get(".bzr/branch-format").read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
