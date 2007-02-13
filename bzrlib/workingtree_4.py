@@ -22,6 +22,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from cStringIO import StringIO
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -198,6 +199,17 @@ class WorkingTree4(WorkingTree3):
         self._inventory = None
         self._dirty = False
 
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        #if not path:
+        #    path = self.inventory.id2path(file_id)
+        #    # now lookup row by path
+        row, parents = self._get_row(file_id=file_id)
+        assert row is not None, 'what error should this raise'
+        # TODO:
+        # if row stat is valid, use cached sha1, else, get a new sha1.
+        path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
+        return self._hashcache.get_sha1(path, stat_value)
+
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
         
@@ -239,14 +251,23 @@ class WorkingTree4(WorkingTree3):
         """Return the id of this trees root"""
         return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
 
+    def _get_row(self, file_id):
+        """Get the dirstate row for file_id."""
+        state = self.current_dirstate()
+        fileid_utf8 = file_id.encode('utf8')
+        for row in state._iter_rows():
+            if row[0][3] == fileid_utf8:
+                return row
+        return None, None
+
     def has_id(self, file_id):
         state = self.current_dirstate()
         fileid_utf8 = file_id.encode('utf8')
-        for row, parents in state._iter_rows():
-            if row[3] == fileid_utf8:
-                return osutils.lexists(pathjoin(
+        row, parents = self._get_row(file_id)
+        if row is None:
+            return False
+        return osutils.lexists(pathjoin(
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
-        return False
 
     @needs_read_lock
     def id2path(self, fileid):
@@ -551,26 +572,6 @@ class DirStateRevisionTree(Tree):
     def _file_size(self, entry, stat_value):
         return entry.text_size
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        # TODO: if path is present, fast-path on that, as inventory
-        # might not be present
-        ie = self.inventory[file_id]
-        if ie.kind == "file":
-            return ie.text_sha1
-        return None
-
-    def get_file_size(self, file_id):
-        return self.inventory[file_id].text_size
-
-    def _get_inventory(self):
-        if self._inventory is not None:
-            return self._inventory
-        self._generate_inventory()
-        return self._inventory
-
-    inventory = property(_get_inventory,
-                         doc="Inventory of this Tree")
-
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
         
@@ -602,12 +603,52 @@ class DirStateRevisionTree(Tree):
             inv.add(entry)
         self._inventory = inv
 
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        # TODO: if path is present, fast-path on that, as inventory
+        # might not be present
+        ie = self.inventory[file_id]
+        if ie.kind == "file":
+            return ie.text_sha1
+        return None
+
+    def get_file(self, file_id):
+        return StringIO(self.get_file_text(file_id))
+
+    def get_file_lines(self, file_id):
+        ie = self.inventory[file_id]
+        return self._repository.weave_store.get_weave(file_id,
+                self._repository.get_transaction()).get_lines(ie.revision)
+
+    def get_file_size(self, file_id):
+        return self.inventory[file_id].text_size
+
+    def get_file_text(self, file_id):
+        return ''.join(self.get_file_lines(file_id))
+
+    def _get_inventory(self):
+        if self._inventory is not None:
+            return self._inventory
+        self._generate_inventory()
+        return self._inventory
+
+    inventory = property(_get_inventory,
+                         doc="Inventory of this Tree")
+
     def get_parent_ids(self):
         """The parents of a tree in the dirstate are not cached."""
         return self._repository.get_revision(self._revision_id).parent_ids
 
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
+
+    def kind(self, file_id):
+        return self.inventory[file_id].kind
+
+    def is_executable(self, file_id, path=None):
+        ie = self.inventory[file_id]
+        if ie.kind != "file":
+            return None 
+        return ie.executable
 
     def lock_read(self):
         """Lock the tree for a set of operations."""

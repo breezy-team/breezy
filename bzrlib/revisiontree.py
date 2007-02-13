@@ -97,7 +97,7 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         if ie.kind != "file":
             return None 
-        return self._inventory[file_id].executable
+        return ie.executable
 
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))

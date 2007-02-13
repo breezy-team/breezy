@@ -86,7 +86,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 
 class Merger(object):
-    def __init__(self, this_branch, other_tree=None, base_tree=None, 
+    def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=DummyProgress()):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
@@ -103,9 +103,8 @@ class Merger(object):
         self.interesting_ids = None
         self.show_base = False
         self.reprocess = False
-        self._pb = pb 
+        self._pb = pb
         self.pp = None
-
 
     def revision_tree(self, revision_id):
         return self.this_branch.repository.revision_tree(revision_id)
@@ -252,8 +251,8 @@ class Merger(object):
                                                 self.this_branch)
 
     def do_merge(self):
-        kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree, 
-                  'other_tree': self.other_tree, 
+        kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
+                  'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'pp': self.pp}
         if self.merge_type.requires_base:
@@ -268,7 +267,19 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
-        merge = self.merge_type(pb=self._pb, **kwargs)
+        self.this_tree.lock_write()
+        if self.base_tree is not None:
+            self.base_tree.lock_read()
+        if self.other_tree is not None:
+            self.other_tree.lock_read()
+        try:
+            merge = self.merge_type(pb=self._pb, **kwargs)
+        finally:
+            if self.other_tree is not None:
+                self.other_tree.unlock()
+            if self.base_tree is not None:
+                self.base_tree.unlock()
+            self.this_tree.unlock()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero:
                 note("All changes applied successfully.")
@@ -924,11 +935,11 @@ class Diff3Merger(Merge3Merger):
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
-                backup_files=False, 
-                merge_type=Merge3Merger, 
-                interesting_ids=None, 
-                show_base=False, 
-                reprocess=False, 
+                backup_files=False,
+                merge_type=Merge3Merger,
+                interesting_ids=None,
+                show_base=False,
+                reprocess=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
@@ -945,7 +956,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
              DeprecationWarning,
              stacklevel=2)
         this_tree = this_branch.bzrdir.open_workingtree()
-    merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree, 
+    merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
