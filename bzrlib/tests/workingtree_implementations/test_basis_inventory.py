@@ -26,6 +26,11 @@ import bzrlib.xml6
 class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_create(self):
+        # This test is not applicable to DirState based trees: the basis is
+        # not separate is mandatory.
+        if isinstance(self.workingtree_format,
+            bzrlib.workingtree_4.WorkingTreeFormat4):
+            return
         # TODO: jam 20051218 this probably should add more than just
         #                    a couple files to the inventory
 
@@ -59,6 +64,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_wrong_format(self):
         """WorkingTree.basis safely ignores junk basis inventories"""
+        # This test is not applicable to DirState based trees: the basis is
+        # not separate and ignorable.
+        if isinstance(self.workingtree_format,
+            bzrlib.workingtree_4.WorkingTreeFormat4):
+            return
         t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('a\n')

@@ -168,7 +168,7 @@ class WorkingTree4(WorkingTree3):
             assert '//' not in f
             assert '..' not in f
             if file_id is None:
-                file_id = generate_ids.gen_file_id(name)
+                file_id = generate_ids.gen_file_id(f)
             stat = os.lstat(self.abspath(f))
             sha1 = '1' * 20 # FIXME: DIRSTATE MERGE BLOCKER
             state.add(f, file_id, kind, stat, sha1)
