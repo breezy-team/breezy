@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -232,13 +232,14 @@ class TestMerge(ExternalBase):
         tree_a.rename_one('file_1', 'file_i')
         tree_a.commit('commit 2')
         tree_a.rename_one('file_2', 'file_ii')
-        os.chdir('b')
-        self.run_bzr('merge', '../a', '--uncommitted')
-        self.failUnlessExists('file_1')
-        self.failUnlessExists('file_ii')
+        ## os.chdir('b')
+        self.run_bzr('merge', 'a', '--uncommitted', '-d', 'b')
+        self.failUnlessExists('b/file_1')
+        self.failUnlessExists('b/file_ii')
         tree_b.revert([])
-        self.run_bzr_error(('Cannot use --uncommitted and --revision',), 
-                           'merge', '../a', '--uncommitted', '-r1')
+        self.run_bzr_error(('Cannot use --uncommitted and --revision',),
+                           'merge', '/a', '--uncommitted', '-r1',
+                           '-d', 'b')
 
     def pullable_branch(self):
         os.mkdir('a')
