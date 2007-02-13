@@ -75,12 +75,20 @@ class TestBranchTags(TestCaseWithBranch):
             self.fail("didn't get expected exception")
 
     def test_copy_tags(self):
-        repo1 = self.make_branch('repo1')
-        repo2 = self.make_branch('repo2')
-        repo1.set_tag('tagname', 'revid')
-        repo1.copy_tags_to(repo2)
-        self.assertEquals(repo2.lookup_tag('tagname'), 'revid')
+        b1 = self.make_branch('b1')
+        b2 = self.make_branch('b2')
+        b1.set_tag('tagname', 'revid')
+        b1.copy_tags_to(b2)
+        self.assertEquals(b2.lookup_tag('tagname'), 'revid')
 
+    def test_unicode_tag(self):
+        b1 = self.make_branch('b')
+        tag_name = u'\u3070'
+        # in anticipation of the planned change to treating revision ids as
+        # just 8bit strings
+        revid = ('revid' + tag_name).encode('utf-8')
+        b1.set_tag(tag_name, revid)
+        self.assertEquals(b1.lookup_tag(tag_name), revid)
 
 
 class TestUnsupportedTags(TestCaseWithBranch):

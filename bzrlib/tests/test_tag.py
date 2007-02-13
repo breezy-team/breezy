@@ -23,11 +23,14 @@ class TestTagSerialization(TestCase):
     def test_tag_serialization(self):
         """Test the precise representation of tag dicts."""
         # Don't change this after we commit to this format, as it checks 
-        # that the format is stable and compatible across releases
-        store = tag.BasicTagStore(repository=None)
+        # that the format is stable and compatible across releases.
+        #
+        # This release stores them in bencode as a dictionary from name to
+        # target.
+        store = tag.BasicTagStore(branch=None)
         td = dict(stable='stable-revid', boring='boring-revid')
         packed = store._serialize_tag_dict(td)
-        expected = 'boring\tboring-revid\nstable\tstable-revid\n'
+        expected = r'd6:boring12:boring-revid6:stable12:stable-revide'
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)
 

@@ -24,6 +24,7 @@
 from bzrlib import (
     errors,
     )
+from bzrlib.util import bencode
 
 
 ######################################################################
@@ -65,6 +66,8 @@ class BasicTagStore(_TagStore):
 
         Behaviour if the tag is already present is not defined (yet).
         """
+        if isinstance(tag_name, unicode):
+            tag_name = tag_name.encode('utf-8')
         # all done with a write lock held, so this looks atomic
         self.branch.lock_write()
         try:
@@ -76,6 +79,8 @@ class BasicTagStore(_TagStore):
 
     def lookup_tag(self, tag_name):
         """Return the referent string of a tag"""
+        if isinstance(tag_name, unicode):
+            tag_name = tag_name.encode('utf-8')
         td = self.get_tag_dict()
         try:
             return td[tag_name]
@@ -85,7 +90,7 @@ class BasicTagStore(_TagStore):
     def get_tag_dict(self):
         self.branch.lock_read()
         try:
-            tag_content = self.branch.control_files.get_utf8('tags').read()
+            tag_content = self.branch.control_files._transport.get_bytes('tags')
             return self._deserialize_tag_dict(tag_content)
         finally:
             self.branch.unlock()
@@ -97,24 +102,21 @@ class BasicTagStore(_TagStore):
         """
         self.branch.lock_read()
         try:
-            self.branch.control_files.put_utf8('tags',
+            self.branch.control_files._transport.put_bytes('tags',
                 self._serialize_tag_dict(new_dict))
         finally:
             self.branch.unlock()
 
     def _serialize_tag_dict(self, tag_dict):
-        s = []
-        for tag, target in sorted(tag_dict.items()):
-            # TODO: check that tag names and targets are acceptable
-            s.append(tag + '\t' + target + '\n')
-        return ''.join(s)
+        return bencode.bencode(tag_dict)
 
     def _deserialize_tag_dict(self, tag_content):
         """Convert the tag file into a dictionary of tags"""
-        d = {}
-        for l in tag_content.splitlines():
-            tag, target = l.split('\t', 1)
-            d[tag] = target
-        return d
-
-
+        # as a special case to make initialization easy, an empty definition
+        # is an empty dictionary
+        if tag_content == '':
+            return {}
+        try:
+            return bencode.bdecode(tag_content)
+        except ValueError:
+            raise ValueError("failed to deserialize tag dictionary %r" % tag_content)
