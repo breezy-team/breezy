@@ -141,6 +141,7 @@ class Tree(object):
         """
         return self.bzrdir.is_control_filename(filename)
 
+    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.
 

@@ -41,6 +41,8 @@ from bzrlib.tests import TestCaseWithTransport
 # test parents that are null in save : i.e. no record in the parent tree for this.
 # todo: _set_data records ghost parents.
 # TESTS to write:
+# general checks for NOT_IN_MEMORY error conditions.
+# set_path_id on a NOT_IN_MEMORY dirstate
 # set_path_id  unicode support
 # set_path_id  setting id of a path not root
 # set_path_id  setting id when there are parents without the id in the parents
@@ -249,6 +251,11 @@ class TestDirStateInitialize(TestCaseWithTransport):
             '\x00\x00d\x00TREE_ROOT\x000\x00xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\x00\x00\n'
             '\x00',
             'dirstate')
+        expected_rows = [
+            (('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
 
 
 class TestDirstateManipulations(TestCaseWithTransport):
@@ -273,9 +280,13 @@ class TestDirstateManipulations(TestCaseWithTransport):
             [(('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
             list(state._iter_rows()))
         state.set_path_id('', 'foobarbaz')
-        self.assertEqual(
-            [(('', '', 'directory', 'foobarbaz', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
-            list(state._iter_rows()))
+        expected_rows = [
+            (('', '', 'directory', 'foobarbaz', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # should work across save too
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
 
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.

@@ -100,13 +100,13 @@ class WorkingTree4(WorkingTree3):
 
     This differs from WorkingTree3 by:
      - having a consolidated internal dirstate.
+     - not having a regular inventory attribute.
 
     This is new in bzr TODO FIXME SETMEBEFORE MERGE.
     """
 
     def __init__(self, basedir,
                  branch,
-                 _inventory=None,
                  _control_files=None,
                  _format=None,
                  _bzrdir=None):
@@ -150,18 +150,14 @@ class WorkingTree4(WorkingTree3):
             mutter("write hc")
             hc.write()
 
-        if _inventory is None:
-            self._inventory_is_modified = False
-            self.read_working_inventory()
-        else:
-            # the caller of __init__ has provided an inventory,
-            # we assume they know what they are doing - as its only
-            # the Format factory and creation methods that are
-            # permitted to do this.
-            self._set_inventory(_inventory, dirty=False)
         self._dirty = None
         self._parent_revisions = None
+        #-------------
+        # during a read or write lock these objects are set, and are
+        # None the rest of the time.
         self._dirstate = None
+        self._inventory = None
+        #-------------
 
     @needs_write_lock
     def _add(self, files, ids, kinds):
@@ -187,7 +183,7 @@ class WorkingTree4(WorkingTree3):
             XXX: This should probably be errors.NotLocked.
         """
         if not self._control_files._lock_count:
-            raise errors.NotWriteLocked(self)
+            raise errors.ObjectNotLocked(self)
         if self._dirstate is not None:
             return self._dirstate
         local_path = self.bzrdir.get_workingtree_transport(None
@@ -195,10 +191,74 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
 
+    def _generate_inventory(self):
+        """Create and set self.inventory from the dirstate object.
+        
+        This is relatively expensive: we have to walk the entire dirstate.
+        Ideally we would not, and can deprecate this function.
+        """
+        dirstate = self.current_dirstate()
+        rows = self._dirstate._iter_rows()
+        root_row = rows.next()
+        inv = Inventory(root_id=root_row[0][3].decode('utf8'))
+        for line in rows:
+            dirname, name, kind, fileid_utf8, size, stat, link_or_sha1 = line[0]
+            if dirname == '/':
+                # not in this revision tree.
+                continue
+            parent_id = inv[inv.path2id(dirname.decode('utf8'))].file_id
+            file_id = fileid_utf8.decode('utf8')
+            entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
+            if kind == 'file':
+                #entry.executable = executable
+                #entry.text_size = size
+                #entry.text_sha1 = sha1
+                pass
+            inv.add(entry)
+        self._inventory = inv
+
+    @needs_read_lock
+    def id2path(self, fileid):
+        state = self.current_dirstate()
+        fileid_utf8 = fileid.encode('utf8')
+        for row, parents in state._iter_rows():
+            if row[3] == fileid_utf8:
+                return (row[0] + '/' + row[1]).decode('utf8').strip('/')
+
+    def _get_inventory(self):
+        """Get the inventory for the tree. This is only valid within a lock."""
+        if self._inventory is not None:
+            return self._inventory
+        self._generate_inventory()
+        return self._inventory
+
+    inventory = property(_get_inventory,
+                         doc="Inventory of this Tree")
+
+    @needs_read_lock
+    def get_root_id(self):
+        """Return the id of this trees root"""
+        return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
+
+    @needs_read_lock
+    def __iter__(self):
+        """Iterate through file_ids for this tree.
+
+        file_ids are in a WorkingTree if they are in the working inventory
+        and the working file exists.
+        """
+        result = []
+        for row, parents in self.current_dirstate()._iter_rows():
+            if row[0] == '/':
+                continue
+            path = pathjoin(self.basedir, row[0].decode('utf8'), row[1].decode('utf8'))
+            if osutils.lexists(path):
+                result.append(row[3].decode('utf8'))
+        return iter(result)
+
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
         self._parent_revisions = [NULL_REVISION]
-        self._inventory = Inventory()
         self._dirty = True
 
     @needs_read_lock
@@ -263,6 +323,11 @@ class WorkingTree4(WorkingTree3):
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
         self._dirty = True
 
+    def _set_root_id(self, file_id):
+        """See WorkingTree.set_root_id."""
+        self.current_dirstate().set_path_id('', file_id)
+        self._dirty = True
+
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:
@@ -274,6 +339,7 @@ class WorkingTree4(WorkingTree3):
                 if self._dirty:
                     self.flush()
             self._dirstate = None
+            self._inventory = None
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -321,20 +387,17 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory()
         local_path = transport.local_abspath('dirstate')
         dirstate.DirState.initialize(local_path)
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
-                         inv,
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_write()
         try:
-            wt._write_inventory(inv)
-            wt.set_root_id(inv.root.file_id)
+            #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
             transform.build_tree(wt.basis_tree(), wt)
         finally:

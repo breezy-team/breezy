@@ -30,7 +30,7 @@ row count = "num_entries: ", digit, NL;
 parent_details = WHOLE NUMBER, NULL, NL; XXX: complete this line
 ghost_details = WHOLE NUMBER, NULL, {GHOST_ID NULL}*, NL;
 rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
-    WHOLE NUMBER (* size *), NULL, packed stat, NULL, symlink value, 
+    WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target, 
     {PARENT ROW}
 PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
     basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
@@ -476,7 +476,7 @@ class DirState(object):
             assert field_count - cur == expected_field_count, \
                 'field count incorrect %s != %s, entry_size=%s, '\
                 'num_entries=%s fields=%r' % (
-                    expected_field_count, field_count, entry_size,
+                    field_count - cur, expected_field_count, entry_size,
                     self._num_entries, fields)
 
             # Fast path the case where there are 1 or 2 parents
@@ -612,6 +612,7 @@ class DirState(object):
             self._state_file.seek(0)
             self._state_file.writelines(self.get_lines())
             self._state_file.flush()
+            self._state_file.truncate()
             self._header_state = DirState.IN_MEMORY_UNMODIFIED
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
@@ -644,13 +645,16 @@ class DirState(object):
             be encoded to utf8. In future this will be deprecated: avoid using
             unicode ids if possible.
         """
+        self._read_header_if_needed()
         if len(path) or len(self._parents):
             # logic not written
             raise NotImplementedError(self.set_path_id)
+        self._read_dirblocks_if_needed()
         if new_id.__class__ == unicode:
             new_id = new_id.encode('utf8')
         root_info, root_parents = self._root_row
         self._root_row = (root_info[0:3] + (new_id, ) + root_info[4:7]), root_parents
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.

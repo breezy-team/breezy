@@ -420,13 +420,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             tree.current_dirstate()
             tree.unlock()
         tree = self.make_workingtree()
-        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, 'lock_read')
-        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, 'lock_write')
-        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, 'lock_tree_write')
-        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
 
     def test_new_dirstate_on_new_lock(self):
         # until we have detection for when a dirstate can be reused, we

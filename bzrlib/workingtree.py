@@ -592,7 +592,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     else:
         def is_executable(self, file_id, path=None):
             if not path:
-                path = self._inventory.id2path(file_id)
+                path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
@@ -1266,9 +1266,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         These are files in the working directory that are not versioned or
         control files or ignored.
         """
-        for subp in self.extras():
-            if not self.is_ignored(subp):
-                yield subp
+        # force the extras method to be fully executed before returning, to 
+        # prevent race conditions with the lock
+        return iter(
+            [subp for subp in self.extras() if not self.is_ignored(subp)])
     
     @needs_tree_write_lock
     def unversion(self, file_ids):
@@ -1405,7 +1406,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for subf in fl:
                 subp = pathjoin(path, subf)
                 yield subp
-
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -1729,6 +1729,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 DeprecationWarning,
                 stacklevel=3)
             file_id = ROOT_ID
+        self._set_root_id(file_id)
+
+    def _set_root_id(self, file_id):
+        """Set the root id for this tree, in a format specific manner.
+
+        :param file_id: The file id to assign to the root. It must not be 
+            present in the current inventory or an error will occur. It must
+            not be None, but rather a valid file id.
+        """
         inv = self._inventory
         orig_root_id = inv.root.file_id
         # TODO: it might be nice to exit early if there was nothing
