@@ -38,6 +38,20 @@ from bzrlib.tests import (
 
 class TestOSUtils(TestCaseInTempDir):
 
+    def test_contains_whitespace(self):
+        self.failUnless(osutils.contains_whitespace(u' '))
+        self.failUnless(osutils.contains_whitespace(u'hello there'))
+        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
+        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+
+        # \xa0 is "Non-breaking-space" which on some python locales thinks it
+        # is whitespace, but we do not.
+        self.failIf(osutils.contains_whitespace(u''))
+        self.failIf(osutils.contains_whitespace(u'hellothere'))
+        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
+
     def test_fancy_rename(self):
         # This should work everywhere
         def rename(a, b):

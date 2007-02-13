@@ -16,6 +16,10 @@
 
 import sys
 
+from bzrlib import (
+    delta as _mod_delta,
+    tree,
+    )
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
 from bzrlib.log import line_log
@@ -135,13 +139,22 @@ def show_tree_status(wt, show_unchanged=None,
             else:
                 new = wt
         _raise_if_nonexistent(specific_files, old, new)
-        delta = new.changes_from(old, want_unchanged=show_unchanged,
-                              specific_files=specific_files)
-        delta.show(to_file,
-                   show_ids=show_ids,
-                   show_unchanged=show_unchanged,
-                   short_status=short)
-        short_status_letter = '?'
+        if short:
+            specific_file_ids = tree.find_ids_across_trees(specific_files,
+                (old, new), require_versioned=False)
+            changes = new._iter_changes(old, show_unchanged,
+                                        specific_file_ids)
+            reporter = _mod_delta.ChangeReporter(old.inventory,
+                output_file=to_file)
+            _mod_delta.report_changes(changes, reporter)
+        else:
+            delta = new.changes_from(old, want_unchanged=show_unchanged,
+                                  specific_files=specific_files)
+            delta.show(to_file,
+                       show_ids=show_ids,
+                       show_unchanged=show_unchanged,
+                       short_status=short)
+        short_status_letter = '? '
         if not short:
             short_status_letter = ''
         list_paths('unknown', new.unknowns(), specific_files, to_file,
@@ -153,7 +166,7 @@ def show_tree_status(wt, show_unchanged=None,
                 print >> to_file, "conflicts:"
                 conflict_title = True
             if short:
-                prefix = 'C '
+                prefix = 'C  '
             else:
                 prefix = ' '
             print >> to_file, "%s %s" % (prefix, conflict)
@@ -190,7 +203,7 @@ def show_pending_merges(new, to_file, short=False):
             width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
             if short:
-                prefix = 'P '
+                prefix = 'P  '
             else:
                 prefix = ' '
             print >> to_file, prefix, line_log(m_revision, width - 4)
@@ -203,14 +216,14 @@ def show_pending_merges(new, to_file, short=False):
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
                 if short:
-                    prefix = 'P. '
+                    prefix = 'P.  '
                 else:
                     prefix = '   '
                 print >> to_file, prefix, line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             if short:
-                prefix = 'P '
+                prefix = 'P  '
             else:
                 prefix = ' '
             print >> to_file, prefix, merge

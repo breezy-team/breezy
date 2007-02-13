@@ -27,10 +27,12 @@ rather than in tests/branch_implementations/*.py.
 from bzrlib import (
     repository,
     )
-from bzrlib.repository import (_legacy_formats,
-                               RepositoryTestProviderAdapter,
-                               )
-                            
+from bzrlib.repository import (
+    RepositoryTestProviderAdapter,
+    )
+from bzrlib.repofmt import (
+    weaverepo,
+    )
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
@@ -48,9 +50,11 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
+        'bzrlib.tests.repository_implementations.test_statistics',
         ]
-    all_formats = [v for (k, v) in repository.format_registry.iteritems()]
-    all_formats.extend(_legacy_formats)
+    registry = repository.format_registry
+    all_formats = [registry.get(k) for k in registry.keys()]
+    all_formats.extend(weaverepo._legacy_formats)
     adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created

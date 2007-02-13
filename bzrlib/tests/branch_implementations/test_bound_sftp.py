@@ -184,18 +184,6 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1'], sftp_b_newbase.revision_history())
 
-    def test_pull_updates_both(self):
-        b_base, wt_child = self.create_branches()
-
-        wt_newchild = b_base.bzrdir.sprout('newchild').open_workingtree()
-        open('newchild/b', 'wb').write('newchild b contents\n')
-        wt_newchild.commit('newchild', rev_id='r@d-2')
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_newchild.branch.revision_history())
-
-        wt_child.pull(wt_newchild.branch)
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@d-2'], b_base.revision_history())
-
     def test_bind_diverged(self):
         from bzrlib.builtins import merge
 
@@ -332,25 +320,6 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 wt_child.commit, 'added text', rev_id='r@c-2')
-
-    def test_pull_fails(self):
-        b_base, wt_child = self.create_branches()
-
-        wt_other = wt_child.bzrdir.sprout('other').open_workingtree()
-        open('other/a', 'wb').write('new contents\n')
-        wt_other.commit('changed a', rev_id='r@d-2')
-
-        self.assertEqual(['r@b-1'], b_base.revision_history())
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@d-2'], wt_other.branch.revision_history())
-
-        # this deletes the branch from memory
-        del b_base
-        # and this moves it out of the way on disk
-        os.rename('base', 'hidden_base')
-
-        self.assertRaises(errors.BoundBranchConnectionFailure,
-                wt_child.pull, wt_other.branch)
 
     # TODO: jam 20051231 We need invasive failure tests, so that we can show
     #       performance even when something fails.

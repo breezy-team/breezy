@@ -40,7 +40,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import string
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -48,8 +47,9 @@ from tempfile import (
 import unicodedata
 
 from bzrlib import (
-    errors,
     cache_utf8,
+    errors,
+    win32utils,
     )
 """)
 
@@ -778,7 +778,18 @@ def has_symlinks():
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
-    for ch in string.whitespace:
+    # string.whitespace can include '\xa0' in certain locales, because it is
+    # considered "non-breaking-space" as part of ISO-8859-1. But it
+    # 1) Isn't a breaking whitespace
+    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
+    #    separators
+    # 3) '\xa0' isn't unicode safe since it is >128.
+
+    # This should *not* be a unicode set of characters in case the source
+    # string is not a Unicode string. We can auto-up-cast the characters since
+    # they are ascii, but we don't want to auto-up-cast the string in case it
+    # is utf-8
+    for ch in ' \t\n\r\v\f':
         if ch in s:
             return True
     else:
@@ -928,8 +939,7 @@ else:
 def terminal_width():
     """Return estimated terminal width."""
     if sys.platform == 'win32':
-        import bzrlib.win32console
-        return bzrlib.win32console.get_console_size()[0]
+        return win32utils.get_console_size()[0]
     width = 0
     try:
         import struct, fcntl, termios
@@ -950,6 +960,19 @@ def terminal_width():
 
 
 def supports_executable():
+    return sys.platform != "win32"
+
+
+def supports_posix_readonly():
+    """Return True if 'readonly' has POSIX semantics, False otherwise.
+
+    Notably, a win32 readonly file cannot be deleted, unlike POSIX where the
+    directory controls creation/deletion, etc.
+
+    And under win32, readonly means that the directory itself cannot be
+    deleted.  The contents of a readonly directory can be changed, unlike POSIX
+    where files in readonly directories cannot be added, deleted or renamed.
+    """
     return sys.platform != "win32"
 
 

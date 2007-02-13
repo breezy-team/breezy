@@ -672,7 +672,7 @@ class VersionedFileTestMixIn(object):
         parent_id_unicode = u'b\xbfse'
         parent_id_utf8 = parent_id_unicode.encode('utf8')
         try:
-            vf.add_lines_with_ghosts(u'notbxbfse', [parent_id_unicode], [])
+            vf.add_lines_with_ghosts(u'notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
             self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')

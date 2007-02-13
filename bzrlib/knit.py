@@ -1145,28 +1145,22 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
-        pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update('read knit index', 0, 1)
+            fp = self._transport.get(self._filename)
             try:
-                fp = self._transport.get(self._filename)
-                try:
-                    # _load_data may raise NoSuchFile if the target knit is
-                    # completely empty.
-                    self._load_data(fp)
-                finally:
-                    fp.close()
-            except NoSuchFile:
-                if mode != 'w' or not create:
-                    raise
-                elif delay_create:
-                    self._need_to_create = True
-                else:
-                    self._transport.put_bytes_non_atomic(
-                        self._filename, self.HEADER, mode=self._file_mode)
-        finally:
-            pb.update('read knit index', 1, 1)
-            pb.finished()
+                # _load_data may raise NoSuchFile if the target knit is
+                # completely empty.
+                self._load_data(fp)
+            finally:
+                fp.close()
+        except NoSuchFile:
+            if mode != 'w' or not create:
+                raise
+            elif delay_create:
+                self._need_to_create = True
+            else:
+                self._transport.put_bytes_non_atomic(
+                    self._filename, self.HEADER, mode=self._file_mode)
 
     def _load_data(self, fp):
         cache = self._cache

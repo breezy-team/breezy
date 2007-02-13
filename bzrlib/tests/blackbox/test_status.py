@@ -24,7 +24,7 @@ interface later, they will be non blackbox tests.
 
 from cStringIO import StringIO
 import codecs
-from os import mkdir, chdir
+from os import mkdir, chdir, rmdir, unlink
 import sys
 from tempfile import TemporaryFile
 
@@ -76,8 +76,8 @@ class BranchStatus(TestCaseWithTransport):
             ],
             wt)
         self.assertStatus([
-                '?  bye.c\n',
-                '?  hello.c\n',
+                '?   bye.c\n',
+                '?   hello.c\n',
             ],
             wt, short=True)
 
@@ -94,9 +94,9 @@ class BranchStatus(TestCaseWithTransport):
             ],
             wt)
         self.assertStatus([
-                '?  bye.c\n',
-                '?  hello.c\n',
-                'P  pending@pending-0-0\n',
+                '?   bye.c\n',
+                '?   hello.c\n',
+                'P   pending@pending-0-0\n',
             ],
             wt, short=True)
 
@@ -174,9 +174,9 @@ class BranchStatus(TestCaseWithTransport):
                 wt)
 
         self.assertStatus([
-                '?  bye.c\n',
-                '?  dir2\n',
-                '?  directory/hello.c\n'
+                '?   bye.c\n',
+                '?   dir2\n',
+                '?   directory/hello.c\n'
                 ],
                 wt, short=True)
 
@@ -197,7 +197,7 @@ class BranchStatus(TestCaseWithTransport):
         show_tree_status(wt, specific_files=['directory'], to_file=tof,
                          short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?  directory/hello.c\n'])
+        self.assertEquals(tof.readlines(), ['?   directory/hello.c\n'])
 
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof)
@@ -209,7 +209,7 @@ class BranchStatus(TestCaseWithTransport):
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?  dir2\n'])
+        self.assertEquals(tof.readlines(), ['?   dir2\n'])
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
@@ -258,31 +258,49 @@ class TestStatus(TestCaseWithTransport):
         result = self.run_bzr("status")[0]
         self.assert_("unknown:\n  hello.txt\n" in result, result)
         result = self.run_bzr("status","--short")[0]
-        self.assert_("?  hello.txt\n" in result, result)
+        self.assertContainsRe(result, "[?]   hello.txt\n")
 
         self.run_bzr("add", "hello.txt")
         result = self.run_bzr("status")[0]
-        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
         result = self.run_bzr("status","--short")[0]
-        self.assert_("A  hello.txt\n" in result, result)
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.run_bzr("commit", "-m", "added")
         result = self.run_bzr("status", "-r", "0..1")[0]
-        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
         result = self.run_bzr("status", "--short", "-r", "0..1")[0]
-        self.assert_("A  hello.txt\n" in result, result)
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status", "-r", "0")[0]
-        self.assert_("added:\n  hello.txt\n" \
-                     "unknown:\n  world.txt\n" in result, result)
+        self.assertContainsRe(result, "added:\n  hello.txt\n" \
+                                      "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status", "-r", "0..")[0]
         self.assertEquals(result2, result)
         result = self.run_bzr("status", "--short", "-r", "0")[0]
-        self.assert_("A  hello.txt\n" \
-                     "?  world.txt\n" in result, result)
+        self.assertContainsRe(result, "[+]N  hello.txt\n" \
+                                      "[?]   world.txt\n")
         result2 = self.run_bzr("status", "--short", "-r", "0..")[0]
         self.assertEquals(result2, result)
+
+    def assertStatusContains(self, pattern):
+        """Run status, and assert it contains the given pattern"""
+        result = self.run_bzr("status", "--short")[0]
+        self.assertContainsRe(result, pattern)
+
+    def test_kind_change_short(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add('file')
+        tree.commit('added file')
+        unlink('file')
+        self.build_tree(['file/'])
+        self.assertStatusContains('K  file => file/')
+        tree.rename_one('file', 'directory')
+        self.assertStatusContains('RK  file => directory/')
+        rmdir('directory')
+        self.assertStatusContains('RD  file => directory')
 
 
 class TestStatusEncodings(TestCaseWithTransport):
