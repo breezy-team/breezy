@@ -199,6 +199,11 @@ class KnitAnnotateFactory(_KnitFactory):
         lines = iter(lines)
         next = lines.next
 
+        cache = {}
+        def cache_and_return(line):
+            origin, text = line.split(' ', 1)
+            return cache.setdefault(origin, origin), text
+
         # walk through the lines parsing.
         for header in lines:
             start, end, count = [int(n) for n in header.split(',')]
@@ -232,8 +237,7 @@ class KnitAnnotateFactory(_KnitFactory):
         """
         # TODO: jam 20070209 We only do the caching thing to make sure that
         #       the origin is a valid utf-8 line, eventually we could remove it
-        get_cached_utf8 = cache_utf8.get_cached_utf8
-        return ['%s %s' % (get_cached_utf8(o), t) for o, t in content._lines]
+        return ['%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
@@ -242,11 +246,10 @@ class KnitAnnotateFactory(_KnitFactory):
         """
         # TODO: jam 20070209 We only do the caching thing to make sure that
         #       the origin is a valid utf-8 line, eventually we could remove it
-        get_cached_utf8 = cache_utf8.get_cached_utf8
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
-            out.extend(get_cached_utf8(origin) + ' ' + text
+            out.extend(origin + ' ' + text
                        for origin, text in lines)
         return out
 
@@ -741,6 +744,7 @@ class KnitVersionedFile(VersionedFile):
             # I/O and the time spend applying deltas.
             delta = self._check_should_delta(present_parents)
 
+        assert isinstance(version_id, str)
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
@@ -1167,7 +1171,6 @@ class _KnitIndex(_KnitComponentFile):
     def _load_data(self, fp):
         cache = self._cache
         history = self._history
-        get_cached_utf8 = cache_utf8.get_cached_utf8
 
         self.check_header(fp)
         # readlines reads the whole file at once:
@@ -1192,13 +1195,13 @@ class _KnitIndex(_KnitComponentFile):
             for value in rec[4:-1]:
                 if value[0] == '.':
                     # uncompressed reference
-                    parent_id = get_cached_utf8(value[1:])
+                    parent_id = value[1:]
                 else:
                     parent_id = history[int(value)]
                 parents.append(parent_id)
 
             version_id, options, pos, size = rec[:4]
-            version_id = get_cached_utf8(version_id)
+            version_id = version_id
 
             # See self._cache_version
             # only want the _history index to reference the 1st 
@@ -1274,11 +1277,6 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
-        # TODO: jam 20070209 We only do the caching thing to make sure that
-        #       what we have in memory is already a proper utf-8 string
-        #       Eventually we should be able to write out the index without
-        #       doing any sort of encode step
-        get_cached_utf8 = cache_utf8.get_cached_utf8
         result_list = []
         cache = self._cache
         for version in versions:
@@ -1287,7 +1285,7 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append(str(cache[version][5]))
                 # -- end lookup () --
             else:
-                result_list.append('.' + get_cached_utf8(version))
+                result_list.append('.' + version)
         return ' '.join(result_list)
 
     def add_version(self, version_id, options, pos, size, parents):
@@ -1301,16 +1299,12 @@ class _KnitIndex(_KnitComponentFile):
                          (version_id, options, pos, size, parents).
         """
         lines = []
-        # TODO: jam 20070209 get_cached_utf8 is just used to verify the
-        #       version_ids are indeed utf-8 eventually these calls can be
-        #       removed
-        get_cached_utf8 = cache_utf8.get_cached_utf8
         orig_history = self._history[:]
         orig_cache = self._cache.copy()
 
         try:
             for version_id, options, pos, size, parents in versions:
-                line = "\n%s %s %s %s %s :" % (get_cached_utf8(version_id),
+                line = "\n%s %s %s %s %s :" % (version_id,
                                                ','.join(options),
                                                pos,
                                                size,
@@ -1424,13 +1418,13 @@ class _KnitData(_KnitComponentFile):
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
 
-        version_id_utf8 = cache_utf8.get_cached_utf8(version_id)
+        assert isinstance(version_id, str)
         data_file.writelines(chain(
-            ["version %s %d %s\n" % (version_id_utf8,
+            ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id_utf8]))
+            ["end %s\n" % version_id]))
         data_file.close()
         length= sio.tell()
 
