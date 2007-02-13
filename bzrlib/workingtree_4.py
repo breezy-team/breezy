@@ -606,6 +606,9 @@ class DirStateRevisionTree(Tree):
         """The parents of a tree in the dirstate are not cached."""
         return self._repository.get_revision(self._revision_id).parent_ids
 
+    def has_filename(self, filename):
+        return bool(self.inventory.path2id(filename))
+
     def lock_read(self):
         """Lock the tree for a set of operations."""
         self._locked = True

@@ -196,9 +196,8 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         utf8path = path.encode('utf8')
         dirname, basename = os.path.split(utf8path)
-        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
-        if (block_index == len(self._dirblocks) or
-            self._dirblocks[block_index][0] != dirname):
+        block_index = self._find_dirblock_index(dirname)
+        if block_index < 0:
             # some parent path has not been added - its an error to add this
             # child
             raise errors.NotVersionedError(path, str(self))
@@ -232,6 +231,18 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         if tree is None:
             self._ghosts.append(tree_id)
+
+    def _find_dirblock_index(self, dirname):
+        """Find the dirblock index for dirname.
+
+        :return: -1 if the dirname is not present, or the index in
+            self._dirblocks for it otherwise.
+        """
+        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
+        if (block_index == len(self._dirblocks) or
+            self._dirblocks[block_index][0] != dirname):
+            return -1
+        return 0
 
     @staticmethod
     def from_tree(tree, dir_state_filename):

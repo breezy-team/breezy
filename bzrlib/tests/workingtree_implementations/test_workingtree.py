@@ -351,10 +351,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('B', rev_id='B')
         wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
+        tree.lock_read()
         self.failUnless(tree.has_filename('bar'))
+        tree.unlock()
         wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
+        tree.lock_read()
         self.failUnless(tree.has_filename('foo'))
+        tree.unlock()
 
     def test_clone_tree_revision(self):
         # make a tree with a last-revision,
