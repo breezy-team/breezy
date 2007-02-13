@@ -2936,8 +2936,8 @@ class cmd_bind(Command):
                     'This format does not remember old locations.')
             else:
                 if location is None:
-                    raise errors.BzrCommandError('No location supplied.  '
-                        'No previous location known')
+                    raise errors.BzrCommandError('No location supplied and no '
+                        'previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
