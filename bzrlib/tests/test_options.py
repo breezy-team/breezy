@@ -25,6 +25,7 @@ from bzrlib import (
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
+from bzrlib.repofmt import knitrepo
 
 def parse(options, args):
     parser = option.get_optparser(dict((o.name, o) for o in options))
@@ -162,12 +163,13 @@ class OptionTests(TestCase):
                    bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
-                              repository.RepositoryFormatKnit1)
+                              knitrepo.RepositoryFormatKnit1)
 
     def test_help(self):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help',
+            repo_module='bzrlib.repofmt.knitrepo')
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
@@ -189,7 +191,8 @@ class OptionTests(TestCase):
                          [('hello', None, 'GAR', 'fg')])
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help',
+            repo_module='bzrlib.repofmt.knitrepo')
         registry.set_default('one')
         opt = option.RegistryOption('format', 'format help', registry,
                                     value_switches=False)

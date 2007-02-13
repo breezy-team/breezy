@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ from bzrlib import (
     lockdir,
     registry,
     revision as _mod_revision,
-    repository as _mod_repository,
     symbol_versioning,
     urlutils,
     xml4,
@@ -873,7 +872,7 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat4
+        from bzrlib.repofmt.weaverepo import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
 
 
@@ -885,7 +884,7 @@ class BzrDir5(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False):
@@ -902,7 +901,7 @@ class BzrDir6(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False):
@@ -1309,7 +1308,7 @@ class BzrDirFormat4(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat4
+        from bzrlib.repofmt.weaverepo import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
@@ -1349,7 +1348,7 @@ class BzrDirFormat5(BzrDirFormat):
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         from bzrlib.workingtree import WorkingTreeFormat2
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
@@ -1369,7 +1368,7 @@ class BzrDirFormat5(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
@@ -1408,7 +1407,7 @@ class BzrDirFormat6(BzrDirFormat):
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         from bzrlib.workingtree import WorkingTreeFormat2
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
@@ -1428,7 +1427,7 @@ class BzrDirFormat6(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
@@ -1856,6 +1855,7 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
         from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = pb
@@ -1891,7 +1891,7 @@ class ConvertBzrDir6ToMeta(Converter):
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
         # future format within each component.
-        self.put_format('repository', _mod_repository.RepositoryFormat7())
+        self.put_format('repository', RepositoryFormat7())
         for entry in repository_names:
             self.move_entry('repository', entry)
 
@@ -2022,19 +2022,29 @@ class BzrDirFormatRegistry(registry.Registry):
     """
 
     def register_metadir(self, key, repo, help, native=True, deprecated=False,
-                         branch_format=None):
+            repo_module='bzrlib.repository', branch_format=None):
         """Register a metadir subformat.
-        
-        repo is the repository format name as a string.
+
+        These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
+        by the Repository format.
+
+        :param repo: The repository format class name as a string.
+
+        :param repo_module: The module from which the repository class 
+        should be lazily loaded.  By default this is bzrlib.repository.
         """
         # This should be expanded to support setting WorkingTree and Branch
         # formats, once BzrDirMetaFormat1 supports that.
         def helper():
-            import bzrlib.repository
             import bzrlib.branch
-            repo_format = getattr(bzrlib.repository, repo)
+            mod = __import__(repo_module, globals(), locals(), [repo])
+            try:
+                repo_format_class = getattr(mod, repo)
+            except AttributeError:
+                raise AttributeError('no repository format %r in module %r' 
+                    % (repo, mod))
             bd = BzrDirMetaFormat1()
-            bd.repository_format = repo_format()
+            bd.repository_format = repo_format_class()
             if branch_format is not None:
                 bd.branch_format =  getattr(bzrlib.branch, branch_format)()
             return bd
@@ -2127,18 +2137,24 @@ class BzrDirFormatRegistry(registry.Registry):
 format_registry = BzrDirFormatRegistry()
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories.', deprecated=True)
-format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-    'Format using knits.  Recommended.', branch_format='BzrBranchFormat5')
+    ' support checkouts or shared repositories.',
+    deprecated=True)
+format_registry.register_metadir('knit',
+    'RepositoryFormatKnit1',
+    'Format using knits.  Recommended.',
+    repo_module='bzrlib.repofmt.knitrepo', branch_format='BzrBranchFormat5')
+format_registry.set_default('knit')
 format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
-    branch_format='BzrBranchFormat5',
-    deprecated=True)
+    deprecated=True,
+    repo_module='bzrlib.repofmt.weaverepo')
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.',
+    repo_module='bzrlib.repofmt.knitrepo', 
     branch_format='BzrBranchFormat5')
+
 format_registry.register_metadir('experimental-branch6',
     'RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',
+    repo_module='bzrlib.repofmt.knitrepo', 
     branch_format='BzrBranchFormat6')
-format_registry.set_default('knit')

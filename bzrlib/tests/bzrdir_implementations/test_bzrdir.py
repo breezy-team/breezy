@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
+from bzrlib.repofmt import weaverepo
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -1139,9 +1140,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(isinstance(dir.get_repository_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # repositoryes, or it supports anonymous  repository formats, but not both.
-        anonymous_format = repository.RepositoryFormat6()
-        identifiable_format = repository.RepositoryFormat7()
+        # repositories, or it supports anonymous  repository formats, but not both.
+        anonymous_format = weaverepo.RepositoryFormat6()
+        identifiable_format = weaverepo.RepositoryFormat7()
         try:
             found_transport = dir.get_repository_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,

@@ -95,6 +95,9 @@ IN DEVELOPMENT
       password appears in the *_proxy vars. (Vincent Ladeuil,
       #83954).
 
+    * ``bzr log branch/file`` works for local treeless branches
+      (Aaron Bentley, #84247)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests

@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -487,7 +486,7 @@ Revision store:
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -789,7 +788,7 @@ Revision store:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1020,7 +1019,7 @@ Revision store:
         self.assertEqual('', err)
     
     def test_info_shared_repository_with_tree_in_root(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
