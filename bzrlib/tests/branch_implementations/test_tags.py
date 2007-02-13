@@ -23,52 +23,51 @@ import sys
 import bzrlib
 from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.tests.repository_implementations.test_repository \
-        import TestCaseWithRepository
+from bzrlib.tests.branch_implementations.test_branch \
+        import TestCaseWithBranch
 
 
-class TestRepositoryTags(TestCaseWithRepository):
+class TestBranchTags(TestCaseWithBranch):
 
     def setUp(self):
         # formats that don't support tags can skip the rest of these 
         # tests...
-        fmt = self.repository_format
+        fmt = self.branch_format
         f = getattr(fmt, 'supports_tags')
         if f is None:
             raise TestSkipped("format %s doesn't declare whether it "
                 "supports tags, assuming not" % fmt)
         if not f():
             raise TestSkipped("format %s doesn't support tags" % fmt)
-        TestCaseWithRepository.setUp(self)
+        TestCaseWithBranch.setUp(self)
 
     def test_tags_initially_empty(self):
-        repo = self.make_repository('repo')
-        tags = repo.get_tag_dict()
+        b = self.make_branch('b')
+        tags = b.get_tag_dict()
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
-        repo = self.make_repository('repo')
-        repo.set_tag('tag-name', 'target-revid-1')
-        repo.set_tag('other-name', 'target-revid-2')
-        # then reopen the repo and see they're still there
-        repo = Repository.open('repo')
-        self.assertEqual(repo.get_tag_dict(), 
+        b = self.make_branch('b')
+        b.set_tag('tag-name', 'target-revid-1')
+        b.set_tag('other-name', 'target-revid-2')
+        # then reopen the branch and see they're still there
+        b = Branch.open('b')
+        self.assertEqual(b.get_tag_dict(),
             {'tag-name': 'target-revid-1',
              'other-name': 'target-revid-2',
             })
         # read one at a time
-        result = repo.lookup_tag('tag-name')
+        result = b.lookup_tag('tag-name')
         self.assertEqual(result, 'target-revid-1')
 
     def test_no_such_tag(self):
-        repo = self.make_repository('repo')
+        b = self.make_branch('b')
         try:
-            repo.lookup_tag('bosko')
+            b.lookup_tag('bosko')
         except errors.NoSuchTag, e:
             self.assertEquals(e.tag_name, 'bosko')
             self.assertEquals(str(e), 'No such tag: bosko')
@@ -76,19 +75,19 @@ class TestRepositoryTags(TestCaseWithRepository):
             self.fail("didn't get expected exception")
 
     def test_copy_tags(self):
-        repo1 = self.make_repository('repo1')
-        repo2 = self.make_repository('repo2')
+        repo1 = self.make_branch('repo1')
+        repo2 = self.make_branch('repo2')
         repo1.set_tag('tagname', 'revid')
         repo1.copy_tags_to(repo2)
         self.assertEquals(repo2.lookup_tag('tagname'), 'revid')
 
 
 
-class TestUnsupportedTags(TestCaseWithRepository):
+class TestUnsupportedTags(TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
 
     def setUp(self):
-        fmt = self.repository_format
+        fmt = self.branch_format
         supported = getattr(fmt, 'supports_tags')
         if supported is None:
             warn("Format %s doesn't declare whether it supports tags or not"
@@ -97,16 +96,16 @@ class TestUnsupportedTags(TestCaseWithRepository):
         if supported():
             raise TestSkipped("Format %s declares that tags are supported"
                               % fmt)
-            # it's covered by TestRepositoryTags
-        TestCaseWithRepository.setUp(self)
+            # it's covered by TestBranchTags
+        TestCaseWithBranch.setUp(self)
     
     def test_tag_methods_raise(self):
-        repo = self.make_repository('repo')
+        b = self.make_branch('b')
         self.assertRaises(errors.TagsNotSupported,
-            repo.set_tag, 'foo', 'bar')
+            b.set_tag, 'foo', 'bar')
         self.assertRaises(errors.TagsNotSupported,
-            repo.lookup_tag, 'foo')
+            b.lookup_tag, 'foo')
         self.assertRaises(errors.TagsNotSupported,
-            repo.set_tag, 'foo', 'bar')
+            b.set_tag, 'foo', 'bar')
 
 

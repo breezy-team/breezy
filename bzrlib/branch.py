@@ -1516,6 +1516,10 @@ class BzrBranchExperimental(BzrBranch5):
     def _make_tag_store(self):
         return BasicTagStore(self)
 
+    @classmethod
+    def supports_tags(cls):
+        return True
+
 
 BranchFormat.register_format(BzrBranchExperimental)
 
@@ -1543,7 +1547,10 @@ class BranchTestProviderAdapter(object):
             new_test.bzrdir_format = bzrdir_format
             new_test.branch_format = branch_format
             def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), branch_format.__class__.__name__)
+                # the format can be either a class or an instance
+                name = getattr(branch_format, '__name__',
+                        branch_format.__class__.__name__)
+                new_id = "%s(%s)" % (new_test.id(), name)
                 return lambda: new_id
             new_test.id = make_new_test_id()
             result.addTest(new_test)
