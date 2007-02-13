@@ -723,6 +723,55 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
+    def set_state_from_inventory(self, new_inv):
+        """Set new_inv as the current state. 
+
+        :param new_inv: The inventory object to set current state from.
+        """
+        self._read_dirblocks_if_needed()
+        # sketch:
+        #  generate a byid index of the dirstate
+        parent_rows = {}
+        for row, parents in self._iter_rows():
+            parent_rows[row[3]] = parents
+        #  walk the new inventory in directory order, copying parent data
+        #    from the id index
+        new_rows = []
+        for path, entry in new_inv.iter_entries_by_dir():
+            dirname, basename = os.path.split(path.encode('utf8'))
+            kind = entry.kind
+            fileid_utf8 = entry.file_id.encode('utf8')
+            if kind == 'file':
+                size = entry.text_size or 0
+                sha1 = entry.text_sha1 or ''
+            elif kind == 'symlink':
+                size = 0
+                sha1 = entry.symlink_target.encode('utf8')
+            else:
+                size = 0
+                sha1 = ''
+            try:
+                parents = parent_rows[fileid_utf8]
+                del parent_rows[fileid_utf8]
+            except KeyError:
+                parents = []
+            new_row = (dirname, basename, kind, fileid_utf8, size, DirState.NULLSTAT, sha1), parents
+            new_rows.append(new_row)
+        #  append deleted data to the end of the tree as usual.
+        for fileid_utf8, parents in parent_rows.items():
+            if not parents:
+                # this row was only present in the old state, had no parents
+                continue
+            # deleted items have a synthetic entry.
+            new_row = ('/', 'RECYCLED.BIN', 'file', fileid_utf8, 0,
+                DirState.NULLSTAT, ''), parents
+            new_rows.append(new_row)
+
+        # sort all the rows (the ones in parents not in current may be unsorted)
+        new_rows = sorted(new_rows)
+        self._rows_to_current_state(new_rows)
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""

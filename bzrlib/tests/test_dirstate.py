@@ -272,6 +272,25 @@ class TestDirstateManipulations(TestCaseWithTransport):
         self.assertEqual(['a-ghost'], state.get_parent_ids())
         self.assertEqual(['a-ghost'], state.get_ghosts())
 
+    def test_set_state_from_inventory_no_content_no_parents(self):
+        # setting the current inventory is a slow but important api to support.
+        state = dirstate.DirState.initialize('dirstate')
+        tree1 = self.make_branch_and_memory_tree('tree1')
+        tree1.lock_write()
+        tree1.add('')
+        revid1 = tree1.commit('foo')
+        root_id = tree1.inventory.root.file_id
+        state.set_state_from_inventory(tree1.inventory)
+        tree1.unlock()
+        self.assertEqual(DirState.IN_MEMORY_UNMODIFIED, state._header_state)
+        self.assertEqual(DirState.IN_MEMORY_MODIFIED, state._dirblock_state)
+        expected_rows = [(('', '', 'directory', root_id, 0, DirState.NULLSTAT, ''), [])]
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+        # check we can reopen and have the change preserved.
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(expected_rows, list(state._iter_rows()))
+
     def test_set_path_id_no_parents(self):
         """The id of a path can be changed trivally with no parents."""
         state = dirstate.DirState.initialize('dirstate')

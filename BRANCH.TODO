@@ -9,3 +9,8 @@ set_parent_trees needing to do the weird hack of making empty trees to pass in.
 deprecate Tree.__iter__.
 
 Cache [and keep synced] path to id mappings. - update WorkingTree4.id2path.
+
+Lazy inventory object that will:
+ - be synced with the dirstate - or invalidated or something
+ - only convert as much as needed. I.e. calling iter_entries_by_dir does not
+   parse the lot.

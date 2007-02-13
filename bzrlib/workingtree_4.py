@@ -172,6 +172,7 @@ class WorkingTree4(WorkingTree3):
             stat = os.lstat(self.abspath(f))
             sha1 = '1' * 20 # FIXME: DIRSTATE MERGE BLOCKER
             state.add(f, file_id, kind, stat, sha1)
+        self._dirty = True
 
     def current_dirstate(self):
         """Return the current dirstate object. 
@@ -347,9 +348,19 @@ class WorkingTree4(WorkingTree3):
             self.branch.unlock()
 
     def flush(self):
-        """Write the full dirstate to disk."""
+        """Write all cached data to disk."""
         self.current_dirstate().save()
+        self._inventory = None
+        self._dirty = False
         
+    @needs_tree_write_lock
+    def _write_inventory(self, inv):
+        """Write inventory as the current inventory."""
+        assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
+        self.current_dirstate().set_state_from_inventory(inv)
+        self._dirty = True
+        self.flush()
+
 
 class WorkingTreeFormat4(WorkingTreeFormat3):
     """The first consolidated dirstate working tree format.
@@ -399,6 +410,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         try:
             #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
+            wt.flush()
             transform.build_tree(wt.basis_tree(), wt)
         finally:
             control_files.unlock()
