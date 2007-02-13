@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -471,9 +471,11 @@ class DirState(object):
             field_count = len(fields)
             # Each line now has an extra '\n' field which is not used
             # so we just skip over it
-            # number of fields per dir_entry + number of fields per parent_entry + newline
-            num_parents = len(self._parents) - len(self._ghosts)
-            entry_size = 7 + (7 * (num_parents)) + 1
+            # number of fields per dir_entry
+            #  + number of fields per parent_entry
+            #  + newline
+            num_present_parents = len(self._parents) - len(self._ghosts)
+            entry_size = 7 + (7 * (num_present_parents)) + 1
             expected_field_count = entry_size * self._num_entries
             # is the file too short ?
             assert field_count - cur == expected_field_count, \
@@ -483,12 +485,12 @@ class DirState(object):
                     self._num_entries, fields)
 
             # Fast path the case where there are 1 or 2 parents
-            if num_parents == 0:
+            if num_present_parents == 0:
                 entries = [(fields[pos:pos+7], []) for pos in xrange(cur, field_count, entry_size)]
-            elif num_parents == 1:
+            elif num_present_parents == 1:
                 entries = [(fields[pos:pos+7], [fields[pos+7:pos+14],])
                     for pos in xrange(cur, field_count, entry_size)]
-            elif num_parents == 2:
+            elif num_present_parents == 2:
                 entries = [(fields[pos:pos+7], [
                             fields[pos+7:pos+14],
                             fields[pos+14:pos+21],])
