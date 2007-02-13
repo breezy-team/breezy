@@ -212,6 +212,15 @@ class LockableFiles(object):
             raise errors.BzrBadParameterNotString(a_string)
         self.put(path, StringIO(a_string.encode('utf-8')))
 
+    def leave_in_place(self):
+        """Set this LockableFiles to not clear the physical lock on unlock."""
+        self._lock.leave_in_place()
+
+    def dont_leave_in_place(self):
+        """Set this LockableFiles to clear the physical lock on unlock."""
+        # XXX: think about renaming this!
+        self._lock.dont_leave_in_place()
+
     def lock_write(self, token=None):
         """Lock this group of files for writing.
         
@@ -334,6 +343,9 @@ class TransportLock(object):
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
+
+    def leave_in_place(self):
+        raise NotImplementedError(self.leave_in_place)
 
     def lock_write(self, token=None):
         if token is not None:

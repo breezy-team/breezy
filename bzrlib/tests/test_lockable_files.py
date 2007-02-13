@@ -43,7 +43,7 @@ class _TestLockableFiles_mixin(object):
         def resetTimeout():
             lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
         self.addCleanup(resetTimeout)
-        lockdir._DEFAULT_TIMEOUT_SECONDS = 3
+        lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -240,8 +240,43 @@ class _TestLockableFiles_mixin(object):
         new_lockable.lock_write()
         new_lockable.unlock()
 
+    def test_leave_in_place(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            self.lockable.leave_in_place()
+        finally:
+            self.lockable.unlock()
+        # At this point, the lock is still in place on disk
+        self.assertRaises(errors.LockContention, self.lockable.lock_write)
+        # But should be relockable with a token.
+        self.lockable.lock_write(token=token)
+        self.lockable.unlock()
 
-
+    def test_dont_leave_in_place(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            self.lockable.leave_in_place()
+        finally:
+            self.lockable.unlock()
+        # At this point, the lock is still in place on disk.
+        # Acquire the existing lock with the token, and ask that it is removed
+        # when this object unlocks, and unlock to trigger that removal.
+        new_lockable = self.get_lockable()
+        new_lockable.lock_write(token=token)
+        new_lockable.dont_leave_in_place()
+        new_lockable.unlock()
+        # At this point, the lock is no longer on disk, so we can lock it.
+        third_lockable = self.get_lockable()
+        third_lockable.lock_write()
+        third_lockable.unlock()
 
 
 # This method of adapting tests to parameters is different to 
@@ -305,7 +340,8 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
     """LockableFile tests run with RemoteLockDir on a branch."""
 
     def setUp(self):
-        super(TestLockableFiles_RemoteLockDir, self).setUp()
+        TestCaseWithSmartMedium.setUp(self)
+        _TestLockableFiles_mixin.setUp(self)
         # can only get a RemoteLockDir with some RemoteObject...
         # use a branch as thats what we want. These mixin tests test the end
         # to end behaviour, so stubbing out the backend and simulating would
@@ -319,3 +355,36 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # getting a new lockable involves opening a new instance of the branch
         branch = bzrlib.branch.Branch.open(self.get_url('foo'))
         return branch.control_files
+
+    def test_lock_write_returns_None_refuses_token(self):
+        # this test is not relevant for RemoteBranchLockableFiles as remote
+        # locks are done directly from the remote branch object.
+        return None
+
+    def test_lock_write_raises_on_token_mismatch(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_lock_write_with_matching_token(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_unlock_after_lock_write_with_token(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_lock_write_with_token_fails_when_unlocked(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_lock_write_reenter_with_token(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_leave_in_place(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_dont_leave_in_place(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None

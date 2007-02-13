@@ -1145,10 +1145,10 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         self.repository.lock_write()
         try:
-            self.control_files.lock_write()
+            return self.control_files.lock_write(token=token)
         except:
             self.repository.unlock()
             raise

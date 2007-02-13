@@ -166,7 +166,6 @@ class LockDir(object):
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
-        self.nonce = rand_chars(20)
 
         self._report_function = note
 
@@ -210,6 +209,7 @@ class LockDir(object):
                 # After creating the lock directory, try again
                 self.transport.mkdir(tmpname)
 
+            self.nonce = rand_chars(20)
             info_bytes = self._prepare_info()
             # We use put_file_non_atomic because we just created a new unique
             # directory so we don't have to worry about files existing there.
@@ -419,6 +419,12 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+    
+    def leave_in_place(self):
+        self._locked_via_token = True
+
+    def dont_leave_in_place(self):
+        self._locked_via_token = False
 
     def lock_write(self, token=None):
         """Wait for and acquire the lock.
@@ -435,6 +441,7 @@ class LockDir(object):
         """
         if token is not None:
             self.validate_token(token)
+            self.nonce = token
             self._lock_held = True
             self._locked_via_token = True
         else:

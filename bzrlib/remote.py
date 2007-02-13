@@ -189,6 +189,9 @@ class RemoteRepository(object):
         else:
             self._client = _client
         self._format = RemoteRepositoryFormat()
+        self._lock_mode = None
+        self._lock_token = None
+        self._lock_count = 0
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
@@ -273,18 +276,53 @@ class RemoteRepository(object):
 
     def lock_read(self):
         # wrong eventually - want a local lock cache context
+        if not self._lock_mode:
+            self._lock_mode = 'r'
+            self._lock_count = 1
+        else:
+            self._lock_count += 1
         self._ensure_real()
         return self._real_repository.lock_read()
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         # definately wrong: want to check if there is a real repo
         # and not thunk through if not
-        self._ensure_real()
-        return self._real_repository.lock_write()
+        if not self._lock_mode:
+            self._ensure_real()
+            self._lock_token = self._real_repository.lock_write(token=token)
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        elif self._lock_mode == 'r':
+            raise errors.ReadOnlyTransaction
+        else:
+            self._lock_count += 1
+        return self._lock_token
+
+    def leave_lock_in_place(self):
+        self._real_repository.leave_lock_in_place()
+
+    def dont_leave_lock_in_place(self):
+        self._real_repository.dont_leave_lock_in_place()
+
+    def _set_real_repository(self, repository):
+        """Set the _real_repository for this repository.
+
+        :param repository: The repository to fallback to for non-hpss
+            implemented operations.
+        """
+        self._real_repository = repository
+        if self._lock_mode == 'w':
+            # if we are already locked, the real repository must be able to
+            # acquire the lock with our token.
+            self._real_repository.lock_write(self._lock_token)
 
     def unlock(self):
         # should free cache context.
-        return self._real_repository.unlock()
+        self._lock_count -= 1
+        if not self._lock_count:
+            self._lock_mode = None
+            self._lock_token = None
+            return self._real_repository.unlock()
 
     def break_lock(self):
         # should hand off to the network - or better yet, we should not
@@ -370,9 +408,9 @@ class RemoteBranch(branch.Branch):
             assert vfs.vfs_enabled()
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch()
-            # give the repository the matching file level repo.
-            self.repository._real_repository = self._real_branch.repository
-            # give the branch the remote repository to let fast-pathing happen
+            # Give the remote repository the matching real repo.
+            self.repository._set_real_repository(self._real_branch.repository)
+            # Give the branch the remote repository to let fast-pathing happen.
             self._real_branch.repository = self.repository
 
     def get_physical_lock_status(self):
@@ -385,9 +423,9 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.lock_read()
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         self._ensure_real()
-        return self._real_branch.lock_write()
+        return self._real_branch.lock_write(token=token)
 
     def unlock(self):
         self._ensure_real()

@@ -24,6 +24,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    lockdir,
     remote,
     repository,
     )
@@ -445,6 +446,64 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
                           allow_pointless=False)
         tree.commit('pointless', allow_pointless=True)
+
+
+class TestRepositoryLocking(TestCaseWithRepository):
+
+    def setUp(self):
+        TestCaseWithRepository.setUp(self)
+        # XXX: This lock timeout fiddling occurs in other tests (e.g.
+        # test_lockable_files) too.
+        orig_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        def resetTimeout():
+            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
+        self.addCleanup(resetTimeout)
+        lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+
+    def test_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Lock the repository, then use leave_lock_in_place so that when we
+        # unlock the repository the lock is still held on disk.
+        repo.lock_write()
+        try:
+            try:
+                repo.leave_lock_in_place()
+            except NotImplementedError:
+                # This repository doesn't support this API.
+                return
+        finally:
+            repo.unlock()
+        # We should be unable to relock the repo.
+        self.assertRaises(errors.LockContention, repo.lock_write)
+
+    def test_dont_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Create a lock on disk.
+        token = repo.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                return
+            try:
+                repo.leave_lock_in_place()
+            except NotImplementedError:
+                # This repository doesn't support this API.
+                return
+        finally:
+            repo.unlock()
+        # Reacquire the lock (with a different repository object) by using the
+        # token.
+        new_repo = repo.bzrdir.open_repository()
+        new_repo.lock_write(token=token)
+        # Call dont_leave_lock_in_place, so that the lock will be released by
+        # this instance, even though the lock wasn't originally acquired by it.
+        new_repo.dont_leave_lock_in_place()
+        new_repo.unlock()
+        # Now the repository is unlocked.  Test this by locking it (without a
+        # token).
+        repo.lock_write()
+        repo.unlock()
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
