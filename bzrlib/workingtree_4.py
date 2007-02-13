@@ -159,7 +159,7 @@ class WorkingTree4(WorkingTree3):
         self._inventory = None
         #-------------
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
         state = self.current_dirstate()
@@ -191,6 +191,12 @@ class WorkingTree4(WorkingTree3):
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
+
+    def flush(self):
+        """Write all cached data to disk."""
+        self.current_dirstate().save()
+        self._inventory = None
+        self._dirty = False
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
@@ -232,6 +238,15 @@ class WorkingTree4(WorkingTree3):
     def get_root_id(self):
         """Return the id of this trees root"""
         return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
+
+    def has_id(self, file_id):
+        state = self.current_dirstate()
+        fileid_utf8 = file_id.encode('utf8')
+        for row, parents in state._iter_rows():
+            if row[3] == fileid_utf8:
+                return osutils.lexists(pathjoin(
+                    self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
+        return False
 
     @needs_read_lock
     def id2path(self, fileid):
@@ -294,7 +309,7 @@ class WorkingTree4(WorkingTree3):
         return DirStateRevisionTree(dirstate, revision_id,
             self.branch.repository)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
         
@@ -317,7 +332,7 @@ class WorkingTree4(WorkingTree3):
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
@@ -366,12 +381,73 @@ class WorkingTree4(WorkingTree3):
         finally:
             self.branch.unlock()
 
-    def flush(self):
-        """Write all cached data to disk."""
-        self.current_dirstate().save()
-        self._inventory = None
-        self._dirty = False
-        
+    @needs_tree_write_lock
+    def unversion(self, file_ids):
+        """Remove the file ids in file_ids from the current versioned set.
+
+        When a file_id is unversioned, all of its children are automatically
+        unversioned.
+
+        :param file_ids: The file ids to stop versioning.
+        :raises: NoSuchId if any fileid is not currently versioned.
+        """
+        if not file_ids:
+            return
+        state = self.current_dirstate()
+        state._read_dirblocks_if_needed()
+        ids_to_unversion = set()
+        for fileid in file_ids:
+            ids_to_unversion.add(fileid.encode('utf8'))
+        paths_to_unversion = set()
+        # sketch:
+        # check if the root is to be unversioned, if so, assert for now.
+        # make a copy of the _dirblocks data 
+        # during the copy,
+        #  skip paths in paths_to_unversion
+        #  skip ids in ids_to_unversion, and add their paths to
+        #  paths_to_unversion if they are a directory
+        # if there are any un-unversioned ids at the end, raise
+        if state._root_row[0][3] in ids_to_unversion:
+            # I haven't written the code to unversion / yet - it should be 
+            # supported.
+            raise errors.BzrError('Unversioning the / is not currently supported')
+        new_blocks = []
+        for block in state._dirblocks:
+            # first check: is the path one to remove - it or its children
+            delete_block = False
+            for path in paths_to_unversion:
+                if (block[0].startswith(path) and
+                    (len(block[0]) == len(path) or
+                     block[0][len(path)] == '/')):
+                    # this path should be deleted
+                    delete_block = True
+                    break
+            # TODO: trim paths_to_unversion as we pass by paths
+            if delete_block:
+                # this block is to be deleted. skip it.
+                continue
+            # copy undeleted rows from within the the block
+            new_blocks.append((block[0], []))
+            new_row = new_blocks[-1][1]
+            for row, row_parents in block[1]:
+                if row[3] not in ids_to_unversion:
+                    new_row.append((row, row_parents))
+                else:
+                    # skip the row, and if its a dir mark its path to be removed
+                    if row[2] == 'directory':
+                        paths_to_unversion.add((row[0] + '/' + row[1]).strip('/'))
+                    assert not row_parents, "not ready to preserve parents."
+                    ids_to_unversion.remove(row[3])
+        if ids_to_unversion:
+            raise errors.NoSuchId(self, iter(ids_to_unversion).next())
+        state._dirblocks = new_blocks
+        state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+        # have to change the legacy inventory too.
+        if self._inventory is not None:
+            for file_id in file_ids:
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
