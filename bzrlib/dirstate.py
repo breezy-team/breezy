@@ -201,7 +201,7 @@ class DirState(object):
             self._dirblocks[block_index][0] != dirname):
             # some parent path has not been added - its an error to add this
             # child
-            raise errors.NoSuchFile(path)
+            raise errors.NotVersionedError(path, str(self))
         block = self._dirblocks[block_index][1]
         if kind == 'file':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),

@@ -552,7 +552,7 @@ class AlreadyVersionedError(BzrError):
     _fmt = "%(context_info)s%(path)s is already versioned"
 
     def __init__(self, path, context_info=None):
-        """Construct a new NotVersionedError.
+        """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
         which should be in a user friendly form.

@@ -416,11 +416,16 @@ class TestDirstateManipulations(TestCaseWithTransport):
         self.assertEqual(expected_rows, list(state._iter_rows()))
 
     def test_add_path_to_unversioned_directory(self):
-        """Adding a path to an unversioned directory should error."""
+        """Adding a path to an unversioned directory should error.
+        
+        This is a duplicate of TestWorkingTree.test_add_in_unversioned, 
+        once dirstate is stable and if it is merged with WorkingTree3, consider
+        removing this copy of the test.
+        """
         state = dirstate.DirState.initialize('dirstate')
         self.build_tree(['unversioned/', 'unversioned/a file'])
-        self.assertRaises(errors.NoSuchFile, state.add, 'unversioned/a file',
-            'a file id', 'file', None, None)
+        self.assertRaises(errors.NotVersionedError, state.add,
+            'unversioned/a file', 'a file id', 'file', None, None)
         
     def test_add_directory_to_root_no_parents_all_data(self):
         # The most trivial addition of a dir is when there are no parents and
