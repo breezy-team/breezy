@@ -116,7 +116,10 @@ import sha
 import struct
 import zlib
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    trace,
+    )
 import bzrlib.inventory
 from bzrlib.osutils import pathjoin, sha_file, sha_string, walkdirs
 
@@ -469,8 +472,8 @@ class DirState(object):
             # Each line now has an extra '\n' field which is not used
             # so we just skip over it
             # number of fields per dir_entry + number of fields per parent_entry + newline
-            num_parents = len(self._parents)
-            entry_size = 7 + (7 * (num_parents - len(self._ghosts))) + 1
+            num_parents = len(self._parents) - len(self._ghosts)
+            entry_size = 7 + (7 * (num_parents)) + 1
             expected_field_count = entry_size * self._num_entries
             # is the file too short ?
             assert field_count - cur == expected_field_count, \
