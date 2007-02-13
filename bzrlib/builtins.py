@@ -1194,8 +1194,11 @@ class cmd_init(Command):
                 value_switches=True,
                 title="Branch Format",
                 ),
+         Option('append-revisions-only',
+                help='Never change revnos or the existing log.'
+                '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None):
+    def run(self, location=None, format=None, append_revisions_only=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1218,7 +1221,8 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+            branch = bzrdir.BzrDir.create_branch_convenience(location,
+                                                             format=format)
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
@@ -1227,8 +1231,14 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             else:
-                existing_bzrdir.create_branch()
+                branch = existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
+        if append_revisions_only:
+            try:
+                branch.set_append_revisions_only(True)
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('This branch format cannot be set'
+                    ' to append-revisions-only.  Try --experimental-branch6')
 
 
 class cmd_init_repository(Command):
