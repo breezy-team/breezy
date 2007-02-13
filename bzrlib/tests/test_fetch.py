@@ -23,6 +23,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
 import bzrlib.errors
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -123,9 +124,9 @@ class TestFetch(TestCaseWithTransport):
         corresponding filename, parent, contents or other changes.
         """
         knit1_format = bzrdir.BzrDirMetaFormat1()
-        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
         knit2_format = bzrdir.BzrDirMetaFormat1()
-        knit2_format.repository_format = repository.RepositoryFormatKnit2()
+        knit2_format.repository_format = knitrepo.RepositoryFormatKnit2()
         # we start with a knit1 repository because that causes the
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.

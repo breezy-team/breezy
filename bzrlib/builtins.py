@@ -1186,13 +1186,15 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     RegistryOption('format',
-                            help='Specify a format for this branch. See "bzr '
-                            'help formats" for details',
-                            converter=bzrdir.format_registry.make_bzrdir,
-                            registry=bzrdir.format_registry,
-                            value_switches=True, title="Branch Format"),
-                     ]
+         RegistryOption('format',
+                help='Specify a format for this branch. '
+                'See "help formats".',
+                registry=bzrdir.format_registry,
+                converter=bzrdir.format_registry.make_bzrdir,
+                value_switches=True,
+                title="Branch Format",
+                ),
+         ]
     def run(self, location=None, format=None):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
@@ -1243,7 +1245,7 @@ class cmd_init_repository(Command):
         cd trunk-checkout
         (add files here)
     """
-    takes_args = ["location"] 
+    takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details',
