@@ -813,14 +813,8 @@ class cmd_branch(Command):
         elif len(revision) > 1:
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
-        try:
-            br_from = Branch.open(from_location)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Source location "%s" does not'
-                                             ' exist.' % to_location)
-            else:
-                raise
+
+        br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
             if basis is not None:
