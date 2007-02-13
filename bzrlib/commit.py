@@ -236,6 +236,8 @@ class Commit(object):
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_tree = self.work_tree.basis_tree()
+        self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
             if len(self.work_tree.conflicts())>0:
@@ -267,7 +269,6 @@ class Commit(object):
                 self.config = self.branch.get_config()
 
             self.work_inv = self.work_tree.inventory
-            self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
             if specific_files is not None:
                 # Ensure specified files are versioned
@@ -443,6 +444,7 @@ class Commit(object):
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
         cleanups = [self._cleanup_bound_branch,
+                    self.basis_tree.unlock,
                     self.work_tree.unlock,
                     self.pb.finished]
         found_exception = None
