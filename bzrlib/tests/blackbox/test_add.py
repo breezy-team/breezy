@@ -177,3 +177,15 @@ class TestAdd(ExternalBase):
         self.assertEquals('added spam\n', out)
         out = self.run_bzr_captured(['added'], retcode=0)[0]
         self.assertEquals('', out)
+
+    def test_add_control_dir(self):
+        """The control dir and its content should be refused."""
+        self.runbzr('init')
+        _, err = self.run_bzr('add', '.bzr', retcode=3)
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        _, err = self.run_bzr('add', '.bzr/README', retcode=3)
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        self.build_tree(['.bzr/crescent'])
+        _, err = self.run_bzr('add', '.bzr/crescent', retcode=3)
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+

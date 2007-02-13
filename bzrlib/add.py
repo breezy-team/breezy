@@ -167,6 +167,9 @@ class FastPath(object):
     def __hash__(self):
         return hash(self.raw_path)
 
+    def __str__(self):
+        return self.raw_path
+
 
 def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     """Add files to version, optionally recursing into directories.
