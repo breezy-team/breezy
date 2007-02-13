@@ -257,6 +257,15 @@ class WorkingTree4(WorkingTree3):
                 result.append(row[3].decode('utf8'))
         return iter(result)
 
+    @needs_read_lock
+    def _last_revision(self):
+        """See Mutable.last_revision."""
+        parent_ids = self.current_dirstate().get_parent_ids()
+        if parent_ids:
+            return parent_ids[0].decode('utf8')
+        else:
+            return None
+
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
         self._parent_revisions = [NULL_REVISION]
