@@ -326,7 +326,11 @@ class WorkingTree4(WorkingTree3):
         for revision_id in revision_ids:
             try:
                 revtree = self.branch.repository.revision_tree(revision_id)
-            except errors.NoSuchRevision:
+                # TODO: jam 20070213 KnitVersionedFile raises
+                #       RevisionNotPresent rather than NoSuchRevision if a
+                #       given revision_id is not present. Should Repository be
+                #       catching it and re-raising NoSuchRevision?
+            except (errors.NoSuchRevision, errors.RevisionNotPresent):
                 revtree = None
             trees.append((revision_id, revtree))
         self.set_parent_trees(trees,
