@@ -181,3 +181,37 @@ example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+
+Branch 6 Options
+================
+
+These options apply only to branches that use the "experimental-branch6"
+format.  They are usually set in .bzr/branch/branch.conf automatically, but
+may be manually set in locations.conf or bazaar.conf
+
+append_revisions_only
+---------------------
+If set to "True", then revisions can only be appended to the log, not removed.
+A branch with this setting enabled can only pull from another branch if the
+other branch's log is a longer version of its own.
+
+This is normally set by "bzr init --append-revisions-only".
+
+parent_location
+---------------
+If present, the location of the default branch for pull or merge.
+
+This is normally set by "pull --remember" or "merge --remember"
+
+push_location
+-------------
+If present, the location of the default branch for push
+
+bound_location
+--------------
+The location that commits should go to when acting as a checkout.
+
+bound
+-----
+If set to "True", the branch should act as a checkout, and push each commit to
+the bound_location.

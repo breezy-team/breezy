@@ -35,6 +35,20 @@ IN DEVELOPMENT
     * ``bzr help checkouts`` descibes what checkouts are and some possible
       uses of them. (James Westby, Aaron Bentley)
 
+    * Branch format 6: smaller, and potentially faster than format 5.  Supports
+      "append_history_only" mode, where the log view and revnos do not change,
+      except by being added to.  Stores policy settings in
+      ".bzr/branch/branch.conf".
+
+    * append_only branches:  Format 6 branches may be configured so that log
+      view and revnos are always consistent.  Either create the branch using
+      "bzr init --append-revisions-only" or edit the config file as descriped
+      in docs/configuration.txt.
+
+    * rebind: Format 6 branches retain the last-used bind location, so if you
+      "bzr unbind", you can "bzr bind" to bind to the previously-selected
+      bind location.
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
