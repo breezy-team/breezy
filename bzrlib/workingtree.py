@@ -459,6 +459,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    @needs_read_lock
     def annotate_iter(self, file_id):
         """See Tree.annotate_iter
 
@@ -1938,6 +1939,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return conflicts
 
     def walkdirs(self, prefix=""):
+        """Walk the directories of this tree.
+
+        This API returns a generator, which is only valid during the current
+        tree transaction - within a single lock_read or lock_write duration.
+
+        If the tree is not locked, it may cause an error to be raised, depending
+        on the tree implementation.
+        """
         disk_top = self.abspath(prefix)
         if disk_top.endswith('/'):
             disk_top = disk_top[:-1]

@@ -23,7 +23,7 @@ class TestWalkdirs(TestCaseWithTree):
 
     def get_all_subdirs_expected(self, tree):
         return [
-            (('', tree.inventory.root.file_id),
+            (('', tree.path2id('')),
             [
              ('0file', '0file', 'file', None, '2file', 'file'),
              ('1top-dir', '1top-dir', 'directory', None, '1top-dir', 'directory'),
@@ -42,6 +42,7 @@ class TestWalkdirs(TestCaseWithTree):
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_content_types()
         expected_dirblocks = self.get_all_subdirs_expected(tree)
+        tree.lock_read()
         # test that its iterable by iterating
         result = []
         for dirinfo, block in tree.walkdirs():
@@ -52,6 +53,7 @@ class TestWalkdirs(TestCaseWithTree):
                 else:
                     newblock.append(row)
             result.append((dirinfo, newblock))
+        tree.unlock()
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
@@ -62,6 +64,7 @@ class TestWalkdirs(TestCaseWithTree):
         expected_dirblocks = self.get_all_subdirs_expected(tree)[1:]
         # test that its iterable by iterating
         result = []
+        tree.lock_read()
         for dirinfo, block in tree.walkdirs('1top-dir'):
             newblock = []
             for row in block:
@@ -70,6 +73,7 @@ class TestWalkdirs(TestCaseWithTree):
                 else:
                     newblock.append(row)
             result.append((dirinfo, newblock))
+        tree.unlock()
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
