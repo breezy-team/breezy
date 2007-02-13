@@ -50,6 +50,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
+        'bzrlib.tests.repository_implementations.test_statistics',
         ]
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]

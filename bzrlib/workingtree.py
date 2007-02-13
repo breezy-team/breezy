@@ -1321,16 +1321,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         try:
             pp = ProgressPhase("Pull phase", 2, top_pb)
             pp.next_phase()
-            old_revision_history = self.branch.revision_history()
+            old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision)
-            new_revision_history = self.branch.revision_history()
-            if new_revision_history != old_revision_history:
+            new_revision_info = self.branch.last_revision_info()
+            if new_revision_info != old_revision_info:
                 pp.next_phase()
-                if len(old_revision_history):
-                    other_revision = old_revision_history[-1]
-                else:
-                    other_revision = None
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:
@@ -1641,28 +1637,28 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for f in files:
             fid = inv.path2id(f)
             if not fid:
-                # TODO: Perhaps make this just a warning, and continue?
-                # This tends to happen when 
-                raise errors.NotVersionedError(path=f)
-            if verbose:
-                # having remove it, it must be either ignored or unknown
-                if self.is_ignored(f):
-                    new_status = 'I'
-                else:
-                    new_status = '?'
-                textui.show_status(new_status, inv[fid].kind, f,
-                                   to_file=to_file)
-            del inv[fid]
+                note("%s is not versioned."%f)
+            else:
+                if verbose:
+                    # having remove it, it must be either ignored or unknown
+                    if self.is_ignored(f):
+                        new_status = 'I'
+                    else:
+                        new_status = '?'
+                    textui.show_status(new_status, inv[fid].kind, f,
+                                       to_file=to_file)
+                del inv[fid]
 
         self._write_inventory(inv)
 
     @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
-               pb=DummyProgress()):
+               pb=DummyProgress(), report_changes=False):
         from bzrlib.conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
-        conflicts = transform.revert(self, old_tree, filenames, backups, pb)
+        conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                     report_changes)
         if not len(filenames):
             self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)

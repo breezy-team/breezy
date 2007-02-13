@@ -2049,9 +2049,6 @@ class BzrDirFormatRegistry(registry.Registry):
         self.set_default(key)
         format = self.get('default')()
         assert isinstance(format, BzrDirMetaFormat1)
-        from bzrlib import repository
-        repository.RepositoryFormat._set_default_format(
-            format.repository_format)
 
     def make_bzrdir(self, key):
         return self.get(key)()

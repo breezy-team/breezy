@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,6 +81,8 @@ class Branch(object):
 
     base
         Base directory/url of the branch.
+
+    hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -223,12 +225,7 @@ class Branch(object):
         try:
             if last_revision is None:
                 pb.update('get source history')
-                from_history = from_branch.revision_history()
-                if from_history:
-                    last_revision = from_history[-1]
-                else:
-                    # no history in the source branch
-                    last_revision = _mod_revision.NULL_REVISION
+                last_revision = from_branch.last_revision_info()[1]
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -262,7 +259,7 @@ class Branch(object):
         if config is None:
             config = self.get_config()
         
-        return self.repository.get_commit_builder(self, parents, config, 
+        return self.repository.get_commit_builder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self):
@@ -322,6 +319,18 @@ class Branch(object):
         else:
             return None
 
+    def last_revision_info(self):
+        """Return information about the last revision.
+
+        :return: A tuple (revno, last_revision_id).
+        """
+        rh = self.revision_history()
+        revno = len(rh)
+        if revno:
+            return (revno, rh[-1])
+        else:
+            return (0, _mod_revision.NULL_REVISION)
+
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
@@ -375,7 +384,18 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
+        """Mirror source into this branch.
+
+        This branch is considered to be 'local', having low latency.
+        """
         raise NotImplementedError(self.pull)
+
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Mirror this branch into target.
+
+        This branch is considered to be 'local', having low latency.
+        """
+        raise NotImplementedError(self.push)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -599,7 +619,7 @@ class Branch(object):
             format = self.repository.bzrdir.cloning_metadir()
         return format
 
-    def create_checkout(self, to_location, revision_id=None, 
+    def create_checkout(self, to_location, revision_id=None,
                         lightweight=False):
         """Create a checkout of a branch.
         
@@ -676,7 +696,7 @@ class BranchFormat(object):
 
     def get_format_description(self):
         """Return the short format description for this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(self.get_format_description)
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -714,6 +734,73 @@ class BranchFormat(object):
 
     def __str__(self):
         return self.get_format_string().rstrip()
+
+
+class BranchHooks(dict):
+    """A dictionary mapping hook name to a list of callables for branch hooks.
+    
+    e.g. ['set_rh'] Is the list of items to be called when the
+    set_revision_history function is invoked.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        dict.__init__(self)
+        # Introduced in 0.15:
+        # invoked whenever the revision history has been set
+        # with set_revision_history. The api signature is
+        # (branch, revision_history), and the branch will
+        # be write-locked.
+        self['set_rh'] = []
+        # invoked after a push operation completes.
+        # the api signature is
+        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
+        # where local is the local branch or None, master is the target 
+        # master branch, and the rest should be self explanatory. The source
+        # is read locked and the target branches write locked. Source will
+        # be the local low-latency branch.
+        self['post_push'] = []
+        # invoked after a pull operation completes.
+        # the api signature is
+        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
+        # where local is the local branch or None, master is the target 
+        # master branch, and the rest should be self explanatory. The source
+        # is read locked and the target branches write locked. The local
+        # branch is the low-latency branch.
+        self['post_pull'] = []
+        # invoked after a commit operation completes.
+        # the api signature is 
+        # (local, master, old_revno, old_revid, new_revno, new_revid)
+        # old_revid is NULL_REVISION for the first commit to a branch.
+        self['post_commit'] = []
+        # invoked after a uncommit operation completes.
+        # the api signature is
+        # (local, master, old_revno, old_revid, new_revno, new_revid) where
+        # local is the local branch or None, master is the target branch,
+        # and an empty branch recieves new_revno of 0, new_revid of None.
+        self['post_uncommit'] = []
+
+    def install_hook(self, hook_name, a_callable):
+        """Install a_callable in to the hook hook_name.
+
+        :param hook_name: A hook name. See the __init__ method of BranchHooks
+            for the complete list of hooks.
+        :param a_callable: The callable to be invoked when the hook triggers.
+            The exact signature will depend on the hook - see the __init__ 
+            method of BranchHooks for details on each hook.
+        """
+        try:
+            self[hook_name].append(a_callable)
+        except KeyError:
+            raise errors.UnknownHook('branch', hook_name)
+
+
+# install the default hooks into the Branch class.
+Branch.hooks = BranchHooks()
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1101,6 +1188,8 @@ class BzrBranch(Branch):
             # this call is disabled because revision_history is 
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     @needs_read_lock
     def revision_history(self):
@@ -1188,11 +1277,18 @@ class BzrBranch(Branch):
         return self.bzrdir.open_workingtree()
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
-        """See Branch.pull."""
+    def pull(self, source, overwrite=False, stop_revision=None,
+        _hook_master=None, _run_hooks=True):
+        """See Branch.pull.
+
+        :param _hook_master: Private parameter - set the branch to 
+            be supplied as the master to push hooks.
+        :param _run_hooks: Private parameter - allow disabling of
+            hooks, used when pushing to a master branch.
+        """
         source.lock_read()
         try:
-            old_count = len(self.revision_history())
+            old_count, old_tip = self.last_revision_info()
             try:
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
@@ -1200,10 +1296,53 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 self.set_revision_history(source.revision_history())
-            new_count = len(self.revision_history())
+            new_count, new_tip = self.last_revision_info()
+            if _run_hooks:
+                if _hook_master:
+                    _hook_local = self
+                else:
+                    _hook_master = self
+                    _hook_local = None
+                for hook in Branch.hooks['post_pull']:
+                    hook(source, _hook_local, _hook_master, old_count, old_tip,
+                        new_count, new_tip)
             return new_count - old_count
         finally:
             source.unlock()
+
+    @needs_read_lock
+    def push(self, target, overwrite=False, stop_revision=None,
+        _hook_master=None, _run_hooks=True):
+        """See Branch.push.
+        
+        :param _hook_master: Private parameter - set the branch to 
+            be supplied as the master to push hooks.
+        :param _run_hooks: Private parameter - allow disabling of
+            hooks, used when pushing to a master branch.
+        """
+        target.lock_write()
+        try:
+            old_count, old_tip = target.last_revision_info()
+            try:
+                target.update_revisions(self, stop_revision)
+            except DivergedBranches:
+                if not overwrite:
+                    raise
+            if overwrite:
+                target.set_revision_history(self.revision_history())
+            new_count, new_tip = target.last_revision_info()
+            if _run_hooks:
+                if _hook_master:
+                    _hook_local = target
+                else:
+                    _hook_master = target
+                    _hook_local = None
+                for hook in Branch.hooks['post_push']:
+                    hook(self, _hook_local, _hook_master, old_count, old_tip,
+                        new_count, new_tip)
+            return new_count - old_count
+        finally:
+            target.unlock()
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -1282,16 +1421,53 @@ class BzrBranch5(BzrBranch):
                                          _repository=_repository)
         
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
-        """Updates branch.pull to be bound branch aware."""
+    def pull(self, source, overwrite=False, stop_revision=None,
+        _run_hooks=True):
+        """Extends branch.pull to be bound branch aware.
+        
+        :param _run_hooks: Private parameter used to force hook running
+            off during bound branch double-pushing.
+        """
         bound_location = self.get_bound_location()
-        if source.base != bound_location:
+        master_branch = None
+        if bound_location and source.base != bound_location:
             # not pulling from master, so we need to update master.
             master_branch = self.get_master_branch()
+            master_branch.lock_write()
+        try:
             if master_branch:
-                master_branch.pull(source)
-                source = master_branch
-        return super(BzrBranch5, self).pull(source, overwrite, stop_revision)
+                # pull from source into master.
+                master_branch.pull(source, overwrite, stop_revision,
+                    _run_hooks=False)
+            return super(BzrBranch5, self).pull(source, overwrite,
+                stop_revision, _hook_master=master_branch,
+                _run_hooks=_run_hooks)
+        finally:
+            if master_branch:
+                master_branch.unlock()
+
+    @needs_write_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Updates branch.push to be bound branch aware."""
+        bound_location = target.get_bound_location()
+        master_branch = None
+        if bound_location and target.base != bound_location:
+            # not pushing to master, so we need to update master.
+            master_branch = target.get_master_branch()
+            master_branch.lock_write()
+        try:
+            if master_branch:
+                # push into the master from this branch.
+                super(BzrBranch5, self).push(master_branch, overwrite,
+                    stop_revision, _run_hooks=False)
+            # and push into the target branch from this. Note that we push from
+            # this branch again, because its considered the highest bandwidth
+            # repository.
+            return super(BzrBranch5, self).push(target, overwrite,
+                stop_revision, _hook_master=master_branch)
+        finally:
+            if master_branch:
+                master_branch.unlock()
 
     def get_bound_location(self):
         try:

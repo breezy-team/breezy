@@ -97,6 +97,15 @@ def check_old_format_lock_error(repository_format):
     raise
 
 
+def check_repo_format_for_funky_id_on_win32(repo):
+    if sys.platform == 'win32':
+        if isinstance(repo, (repository.AllInOneRepository,
+                             repository.WeaveMetaDirRepository)):
+            raise TestSkipped("funky chars does not permitted"
+                              " on this platform in repository"
+                              " %s" % repo.__class__.__name__)
+
+
 class TestInterRepository(TestCaseWithInterRepository):
 
     def test_interrepository_get_returns_correct_optimiser(self):
@@ -188,6 +197,9 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_funky_file_id(self):
         from_tree = self.make_branch_and_tree('tree')
+        if sys.platform == 'win32':
+            from_repo = from_tree.branch.repository
+            check_repo_format_for_funky_id_on_win32(from_repo)
         self.build_tree(['tree/filename'])
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
@@ -197,6 +209,9 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_no_inventory_revision(self):
         """Old inventories lack revision_ids, so simulate this"""
         from_tree = self.make_branch_and_tree('tree')
+        if sys.platform == 'win32':
+            from_repo = from_tree.branch.repository
+            check_repo_format_for_funky_id_on_win32(from_repo)
         self.build_tree(['tree/filename'])
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
