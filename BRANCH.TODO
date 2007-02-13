@@ -14,3 +14,5 @@ Lazy inventory object that will:
  - be synced with the dirstate - or invalidated or something
  - only convert as much as needed. I.e. calling iter_entries_by_dir does not
    parse the lot.
+
+Dirstate query for path2id

@@ -218,14 +218,6 @@ class WorkingTree4(WorkingTree3):
             inv.add(entry)
         self._inventory = inv
 
-    @needs_read_lock
-    def id2path(self, fileid):
-        state = self.current_dirstate()
-        fileid_utf8 = fileid.encode('utf8')
-        for row, parents in state._iter_rows():
-            if row[3] == fileid_utf8:
-                return (row[0] + '/' + row[1]).decode('utf8').strip('/')
-
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if self._inventory is not None:
@@ -240,6 +232,14 @@ class WorkingTree4(WorkingTree3):
     def get_root_id(self):
         """Return the id of this trees root"""
         return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
+
+    @needs_read_lock
+    def id2path(self, fileid):
+        state = self.current_dirstate()
+        fileid_utf8 = fileid.encode('utf8')
+        for row, parents in state._iter_rows():
+            if row[3] == fileid_utf8:
+                return (row[0] + '/' + row[1]).decode('utf8').strip('/')
 
     @needs_read_lock
     def __iter__(self):
@@ -261,6 +261,16 @@ class WorkingTree4(WorkingTree3):
         """Initialize the state in this tree to be a new tree."""
         self._parent_revisions = [NULL_REVISION]
         self._dirty = True
+
+    @needs_read_lock
+    def path2id(self, path):
+        """Return the id for path in this tree."""
+        state = self.current_dirstate()
+        path_utf8 = os.path.split(path.encode('utf8'))
+        for row, parents in state._iter_rows():
+            if row[0:2] == path_utf8:
+                return row[3].decode('utf8')
+        return None
 
     @needs_read_lock
     def revision_tree(self, revision_id):

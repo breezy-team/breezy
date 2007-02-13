@@ -746,7 +746,7 @@ class DirState(object):
                 sha1 = entry.text_sha1 or ''
             elif kind == 'symlink':
                 size = 0
-                sha1 = entry.symlink_target.encode('utf8')
+                sha1 = (entry.symlink_target or '').encode('utf8')
             else:
                 size = 0
                 sha1 = ''
