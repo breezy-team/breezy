@@ -195,23 +195,25 @@ If set to "True", then revisions can only be appended to the log, not removed.
 A branch with this setting enabled can only pull from another branch if the
 other branch's log is a longer version of its own.
 
-This is normally set by "bzr init --append-revisions-only".
+This is normally set by ``bzr init --append-revisions-only``.
 
 parent_location
 ---------------
 If present, the location of the default branch for pull or merge.
 
-This is normally set by "pull --remember" or "merge --remember"
+This is normally set by ``pull --remember`` or ``merge --remember``
 
 push_location
 -------------
-If present, the location of the default branch for push
+If present, the location of the default branch for push.  This is normally
+set by ``push --remember``.
 
 bound_location
 --------------
-The location that commits should go to when acting as a checkout.
+The location that commits should go to when acting as a checkout.  (Normally
+set by ``bind``)
 
 bound
 -----
 If set to "True", the branch should act as a checkout, and push each commit to
-the bound_location.
+the bound_location.  (Normally set by ``bind``/``unbind``.)
