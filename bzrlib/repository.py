@@ -823,7 +823,8 @@ def __make_delegated(name, from_module):
     def _deprecated_repository_forwarder():
         symbol_versioning.warn('%s moved to %s in bzr 0.15'
             % (name, from_module),
-            DeprecationWarning)
+            DeprecationWarning,
+            stacklevel=2)
         m = __import__(from_module, globals(), locals(), [name])
         try:
             return getattr(m, name)

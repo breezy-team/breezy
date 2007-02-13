@@ -403,11 +403,12 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch
-        formats = [repository.RepositoryFormat5(),
-                   repository.RepositoryFormat6(),
-                   repository.RepositoryFormat7()]
-        incompatible_formats = [repository.RepositoryFormat4(),
-                                repository.RepositoryFormatKnit1(),
+        from bzrlib.repofmt import knitrepo, weaverepo
+        formats = [weaverepo.RepositoryFormat5(),
+                   weaverepo.RepositoryFormat6(),
+                   weaverepo.RepositoryFormat7()]
+        incompatible_formats = [weaverepo.RepositoryFormat4(),
+                                knitrepo.RepositoryFormatKnit1(),
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
