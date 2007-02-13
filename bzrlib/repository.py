@@ -39,26 +39,11 @@ from bzrlib import (
     transactions,
     ui,
     )
-from bzrlib.repofmt.knitrepo import(
-    KnitRepository,
-    KnitRepository2,
-    RepositoryFormatKnit,
-    RepositoryFormatKnit1,
-    RepositoryFormatKnit2,
-    )
-from bzrlib.repofmt.weaverepo import(
-    AllInOneRepository,
-    WeaveMetaDirRepository,
-    PreSplitOutRepositoryFormat,
-    RepositoryFormat4,
-    RepositoryFormat5,
-    RepositoryFormat6,
-    RepositoryFormat7,
-    )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
 from bzrlib.testament import Testament
+
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -781,6 +766,41 @@ class Repository(object):
                 except UnicodeEncodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
+
+
+# remove these delegates a while after bzr 0.15
+def __make_delegated(name, from_module):
+    def _deprecated_repository_forwarder():
+        symbol_versioning.warn('%s moved to %s in bzr 0.15'
+            % (name, from_module),
+            DeprecationWarning)
+        m = __import__(from_module, globals(), locals(), [name])
+        try:
+            return getattr(m, name)
+        except AttributeError:
+            raise AttributeError('module %s has no name %s'
+                    % (m, name))
+    globals()[name] = _deprecated_repository_forwarder
+
+for _name in [
+        'AllInOneRepository',
+        'WeaveMetaDirRepository',
+        'PreSplitOutRepositoryFormat',
+        'RepositoryFormat4',
+        'RepositoryFormat5',
+        'RepositoryFormat6',
+        'RepositoryFormat7',
+        ]:
+    __make_delegated(_name, 'bzrlib.repofmt.weaverepo')
+
+for _name in [
+        'KnitRepository',
+        'KnitRepository2',
+        'RepositoryFormatKnit',
+        'RepositoryFormatKnit1',
+        'RepositoryFormatKnit2',
+        ]:
+    __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
 
 
 def install_revision(repository, rev, revision_tree):
