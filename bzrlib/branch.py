@@ -1713,7 +1713,8 @@ class BzrBranch6(BzrBranch5):
         if len(history) == 0:
             self.set_last_revision('null:')
         else:
-            assert history == self._lefthand_history(history[-1])
+            if history != self._lefthand_history(history[-1]):
+                raise errors.NotLefthandHistory(history)
             self.set_last_revision(history[-1])
         for hook in Branch.hooks['set_rh']:
             hook(self, history)
@@ -1725,9 +1726,13 @@ class BzrBranch6(BzrBranch5):
         prev_revision = self.last_revision()
         for revision in self.repository.get_revisions(revision_ids):
             if prev_revision is None:
-                assert revision.parent_ids == []
+                if revision.parent_ids != []:
+                    raise errors.NotLeftParentDescendant(self, prev_revision,
+                                                         revision.revision_id)
             else:
-                assert revision.parent_ids[0] == prev_revision
+                if revision.parent_ids[0] != prev_revision:
+                    raise errors.NotLeftParentDescendant(self, prev_revision,
+                                                         revision.revision_id)
             prev_revision = revision.revision_id
         self.set_last_revision(revision_ids[-1])
 

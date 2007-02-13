@@ -26,12 +26,13 @@ from StringIO import StringIO
 
 from bzrlib import (
     branch as _mod_branch,
+    bzrdir,
+    errors,
     urlutils,
     )
 import bzrlib.branch
 from bzrlib.branch import (BzrBranch5, 
                            BzrBranchFormat5)
-import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
@@ -207,7 +208,48 @@ class TestBranch6(TestCaseWithTransport):
         self.failIfExists('a/.bzr/branch/bound')
         self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
 
+    def test_set_revision_history(self):
+        tree = self.make_branch_and_memory_tree('.',
+            format='experimental-branch6')
+        tree.lock_write()
+        try:
+            tree.add('.')
+            tree.commit('foo', rev_id='foo')
+            tree.commit('bar', rev_id='bar')
+            tree.branch.set_revision_history(['foo', 'bar'])
+            tree.branch.set_revision_history(['foo'])
+            self.assertRaises(errors.NotLefthandHistory,
+                              tree.branch.set_revision_history, ['bar'])
+        finally:
+            tree.unlock()
 
+
+    def test_append_revision(self):
+        tree = self.make_branch_and_tree('branch1',
+            format='experimental-branch6')
+        tree.lock_write()
+        try:
+            tree.add('.')
+            tree.commit('foo', rev_id='foo')
+            tree.commit('bar', rev_id='bar')
+            tree.commit('baz', rev_id='baz')
+            tree.set_last_revision('bar')
+            tree.branch.set_last_revision('bar')
+            tree.commit('qux', rev_id='qux')
+            tree.add_parent_tree_id('baz')
+            tree.commit('qux', rev_id='quxx')
+            tree.branch.set_last_revision('null:')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'bar')
+            tree.branch.append_revision('foo')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'baz')
+            tree.branch.append_revision('bar')
+            tree.branch.append_revision('baz')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'quxx')
+        finally:
+            tree.unlock()
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
