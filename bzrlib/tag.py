@@ -90,7 +90,7 @@ class BasicTagStore(_TagStore):
     def get_tag_dict(self):
         self.branch.lock_read()
         try:
-            tag_content = self.branch.control_files._transport.get_bytes('tags')
+            tag_content = self.branch._transport.get_bytes('tags')
             return self._deserialize_tag_dict(tag_content)
         finally:
             self.branch.unlock()
@@ -102,7 +102,7 @@ class BasicTagStore(_TagStore):
         """
         self.branch.lock_read()
         try:
-            self.branch.control_files._transport.put_bytes('tags',
+            self.branch._transport.put_bytes('tags',
                 self._serialize_tag_dict(new_dict))
         finally:
             self.branch.unlock()

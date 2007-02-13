@@ -979,12 +979,15 @@ class BzrBranch(Branch):
             self.bzrdir = bzrdir.BzrDir.open(transport.base)
         else:
             self.bzrdir = a_bzrdir
-        self._transport = self.bzrdir.transport.clone('..')
-        self._base = self._transport.base
+        # self._transport used to point to the directory containing the
+        # control directory, but was not used - now it's just the transport
+        # for the branch control files.  mbp 20070212
+        self._base = self.bzrdir.transport.clone('..').base
         self._format = _format
         if _control_files is None:
             raise ValueError('BzrBranch _control_files is None')
         self.control_files = _control_files
+        self._transport = _control_files._transport
         if deprecated_passed(init):
             warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
                  "deprecated as of bzr 0.8. Please use Branch.create().",
@@ -1019,6 +1022,7 @@ class BzrBranch(Branch):
     __repr__ = __str__
 
     def _get_base(self):
+        """Returns the directory containing the control directory."""
         return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
