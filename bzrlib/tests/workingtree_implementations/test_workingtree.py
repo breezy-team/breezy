@@ -737,10 +737,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
-        inventory = Inventory(tree.inventory.root.file_id)
+        inventory = Inventory(tree.path2id(''))
         inventory.add_path('missing', 'file', 'missing-id')
         inventory.add_path('present', 'file', 'present-id')
+        # there is no point in being able to write an inventory to an unlocked
+        # tree object - its a low level api not a convenience api.
+        tree.lock_write()
         tree._write_inventory(inventory)
+        tree.unlock()
         tree.lock_read()
         try:
             present_stat = os.lstat('present')
