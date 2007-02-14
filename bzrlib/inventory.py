@@ -1312,6 +1312,8 @@ def make_entry(kind, name, parent_id, file_id=None):
     if file_id is None:
         file_id = generate_ids.gen_file_id(name)
 
+    #------- This has been copied to bzrlib.dirstate.DirState.add, please
+    # keep them synchronised.
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:
         if can_access:

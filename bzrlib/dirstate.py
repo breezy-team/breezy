@@ -121,7 +121,13 @@ from bzrlib import (
     trace,
     )
 import bzrlib.inventory
-from bzrlib.osutils import pathjoin, sha_file, sha_string, walkdirs
+from bzrlib.osutils import (
+    normalized_filename,
+    pathjoin,
+    sha_file,
+    sha_string,
+    walkdirs,
+    )
 
 
 class DirState(object):
@@ -194,9 +200,21 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        self._read_dirblocks_if_needed()
-        utf8path = path.encode('utf8')
+        #------- copied from bzrlib.inventory.make_entry
+        # --- normalized_filename wants a unicode basename only, so get one.
+        dirname, basename = os.path.split(path)
+        norm_name, can_access = normalized_filename(basename)
+        if norm_name != basename:
+            if can_access:
+                basename = norm_name
+            else:
+                raise errors.InvalidNormalization(path)
+        # now that we've normalised, we need the correct utf8 path and 
+        # dirname and basename elements. This single encode and split should be
+        # faster than three separate encodes.
+        utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
         dirname, basename = os.path.split(utf8path)
+        self._read_dirblocks_if_needed()
         block_index = self._find_dirblock_index(dirname)
         if block_index < 0:
             # some parent path has not been added - its an error to add this

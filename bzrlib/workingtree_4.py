@@ -152,7 +152,6 @@ class WorkingTree4(WorkingTree3):
             hc.write()
 
         self._dirty = None
-        self._parent_revisions = None
         #-------------
         # during a read or write lock these objects are set, and are
         # None the rest of the time.
@@ -315,7 +314,6 @@ class WorkingTree4(WorkingTree3):
 
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
-        self._parent_revisions = [NULL_REVISION]
         self._dirty = True
 
     @needs_read_lock
