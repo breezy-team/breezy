@@ -479,7 +479,6 @@ class DirState(object):
 
             # skip the first field which is the trailing null from the header.
             cur = 1
-            field_count = len(fields)
             # Each line now has an extra '\n' field which is not used
             # so we just skip over it
             # number of fields per dir_entry
@@ -488,7 +487,12 @@ class DirState(object):
             num_present_parents = len(self._parents) - len(self._ghosts)
             entry_size = 7 + (7 * (num_present_parents)) + 1
             expected_field_count = entry_size * self._num_entries
-            # is the file too short ?
+            if len(fields) - cur > expected_field_count:
+                fields = fields[:expected_field_count + cur]
+                trace.mutter('Unexpectedly long dirstate field count!')
+                print "XXX: incorrectly truncated dirstate file bug triggered."
+            field_count = len(fields)
+            # this checks our adjustment, and also catches file too short.
             assert field_count - cur == expected_field_count, \
                 'field count incorrect %s != %s, entry_size=%s, '\
                 'num_entries=%s fields=%r' % (
@@ -622,13 +626,26 @@ class DirState(object):
             self._dirblocks[-1][1].append(row)
     
     def save(self):
-        """Save any pending changes created during this session."""
+        """Save any pending changes created during this session.
+        
+        We reuse the existing file, because that prevents race conditions with
+        file creation, and we expect to be using oslocks on it in the near 
+        future to prevent concurrent modification and reads - because dirstates
+        incremental data aggretation is not compatible with reading a modified
+        file, and replacing a file in use by another process is impossible on 
+        windows.
+
+        A dirstate in read only mode should be smart enough though to validate
+        that the file has not changed, and otherwise discard its cache and
+        start over, to allow for fine grained read lock duration, so 'status'
+        wont block 'commit' - for example.
+        """
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
             self._state_file.seek(0)
             self._state_file.writelines(self.get_lines())
-            self._state_file.flush()
             self._state_file.truncate()
+            self._state_file.flush()
             self._header_state = DirState.IN_MEMORY_UNMODIFIED
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 

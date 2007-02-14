@@ -568,12 +568,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                           tree2.conflicts)
 
     def make_merge_conflicts(self):
-        from bzrlib.merge import merge_inner 
+        from bzrlib.merge import merge_inner
         tree = self.make_branch_and_tree('mine')
         file('mine/bloo', 'wb').write('one')
-        tree.add('bloo')
         file('mine/blo', 'wb').write('on')
-        tree.add('blo')
+        tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.basis_tree()
         bzrdir.BzrDir.open("mine").sprout("other")
