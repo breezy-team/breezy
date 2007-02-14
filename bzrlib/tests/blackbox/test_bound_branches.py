@@ -106,7 +106,7 @@ class TestBoundBranches(TestCaseWithTransport):
         branch1 = self.make_branch('branch1', format='experimental-branch6')
         os.chdir('branch1')
         error = self.run_bzr('bind', retcode=3)[1]
-        self.assertContainsRe(error, 'No previous location known')
+        self.assertContainsRe(error, 'no previous location known')
 
     def setup_rebind(self, format):
         branch1 = self.make_branch('branch1')
