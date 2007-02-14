@@ -1252,11 +1252,18 @@ class BzrBranch(Branch):
         rev_history.extend(revision_ids)
         self.set_revision_history(rev_history)
 
+    def _write_revision_history(self, history):
+        """Factored out of set_revision_history.
+
+        This performs the actual writing to disk.
+        It is intended to be called by BzrBranch5.set_revision_history."""
+        self.control_files.put_utf8(
+            'revision-history', '\n'.join(history))
+
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
-        self.control_files.put_utf8(
-            'revision-history', '\n'.join(rev_history))
+        self._write_revision_history(rev_history)
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:
@@ -1690,13 +1697,27 @@ class BzrBranch6(BzrBranch5):
             revision_id = None
         return revision_id
 
+    def _write_last_revision(self, revision_id):
+        """Simply write out the revision id, with no checks.
+
+        Use set_last_revision to perform this safely.
+
+        Does not update the revision_history cache.
+        Intended to be called by set_last_revision and write_revision_history.
+        """
+        if revision_id is None:
+            revision_id = 'null:'
+        self.control_files.put_utf8('last-revision', revision_id + '\n')
+
     @needs_write_lock
     def set_last_revision(self, revision_id):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
-        if revision_id is None:
-            revision_id = 'null:'
-        self.control_files.put_utf8('last-revision', revision_id + '\n')
+        self._write_last_revision(revision_id)
+        transaction = self.get_transaction()
+        cached_history = transaction.map.find_revision_history()
+        if cached_history is not None:
+            transaction.map.remove_object(cached_history)
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()
@@ -1727,17 +1748,21 @@ class BzrBranch6(BzrBranch5):
         history.reverse()
         return history
 
-    @needs_write_lock
-    def set_revision_history(self, history):
-        """Set the last_revision, not revision history"""
+    def _write_revision_history(self, history):
+        """Factored out of set_revision_history.
+
+        This performs the actual writing to disk, with format-specific checks.
+        It is intended to be called by BzrBranch5.set_revision_history.
+        """
         if len(history) == 0:
-            self.set_last_revision('null:')
+            last_revision = 'null:'
         else:
             if history != self._lefthand_history(history[-1]):
                 raise errors.NotLefthandHistory(history)
-            self.set_last_revision(history[-1])
-        for hook in Branch.hooks['set_rh']:
-            hook(self, history)
+            last_revision = history[-1]
+        if self._get_append_revisions_only():
+            self._check_history_violation(last_revision)
+        self._write_last_revision(last_revision)
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
