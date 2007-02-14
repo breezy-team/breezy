@@ -786,7 +786,8 @@ class NotLeftParentDescendant(BzrError):
     internal_error = True
 
     def __init__(self, branch, old_revision, new_revision):
-        BzrError.__init__(self, branch=branch, old_revision=old_revision,
+        BzrError.__init__(self, branch_location=branch.base,
+                          old_revision=old_revision,
                           new_revision=new_revision)
 
 
