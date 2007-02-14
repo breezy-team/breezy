@@ -52,12 +52,14 @@ class TestUnversion(TestCaseWithWorkingTree):
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
         tree = tree.bzrdir.open_workingtree()
+        tree.lock_read()
         self.assertFalse(tree.has_id('a-id'))
         self.assertFalse(tree.has_id('b-id'))
         self.assertTrue(tree.has_id('c-id'))
         self.assertTrue(tree.has_filename('a'))
         self.assertTrue(tree.has_filename('b'))
         self.assertTrue(tree.has_filename('c'))
+        tree.unlock()
         
     def test_unversion_subtree(self):
         """Unversioning the root of a subtree unversions the entire subtree."""

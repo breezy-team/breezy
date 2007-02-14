@@ -503,6 +503,7 @@ class WorkingTree4(WorkingTree3):
         for fileid_utf8, parents in deleted_rows:
             state.add_deleted(fileid_utf8, parents)
         state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+        self._dirty = True
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
