@@ -1543,52 +1543,58 @@ class cmd_log(Command):
             dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
-        if revision is None:
-            rev1 = None
-            rev2 = None
-        elif len(revision) == 1:
-            rev1 = rev2 = revision[0].in_history(b).revno
-        elif len(revision) == 2:
-            if revision[1].get_branch() != revision[0].get_branch():
-                # b is taken from revision[0].get_branch(), and
-                # show_log will use its revision_history. Having
-                # different branches will lead to weird behaviors.
+        b.lock_read()
+        try:
+            if revision is None:
+                rev1 = None
+                rev2 = None
+            elif len(revision) == 1:
+                rev1 = rev2 = revision[0].in_history(b).revno
+            elif len(revision) == 2:
+                if revision[1].get_branch() != revision[0].get_branch():
+                    # b is taken from revision[0].get_branch(), and
+                    # show_log will use its revision_history. Having
+                    # different branches will lead to weird behaviors.
+                    raise errors.BzrCommandError(
+                        "Log doesn't accept two revisions in different"
+                        " branches.")
+                if revision[0].spec is None:
+                    # missing begin-range means first revision
+                    rev1 = 1
+                else:
+                    rev1 = revision[0].in_history(b).revno
+
+                if revision[1].spec is None:
+                    # missing end-range means last known revision
+                    rev2 = b.revno()
+                else:
+                    rev2 = revision[1].in_history(b).revno
+            else:
                 raise errors.BzrCommandError(
-                    "Log doesn't accept two revisions in different branches.")
-            if revision[0].spec is None:
-                # missing begin-range means first revision
-                rev1 = 1
-            else:
-                rev1 = revision[0].in_history(b).revno
+                    'bzr log --revision takes one or two values.')
 
-            if revision[1].spec is None:
-                # missing end-range means last known revision
-                rev2 = b.revno()
-            else:
-                rev2 = revision[1].in_history(b).revno
-        else:
-            raise errors.BzrCommandError('bzr log --revision takes one or two values.')
+            # By this point, the revision numbers are converted to the +ve
+            # form if they were supplied in the -ve form, so we can do
+            # this comparison in relative safety
+            if rev1 > rev2:
+                (rev2, rev1) = (rev1, rev2)
 
-        # By this point, the revision numbers are converted to the +ve
-        # form if they were supplied in the -ve form, so we can do
-        # this comparison in relative safety
-        if rev1 > rev2:
-            (rev2, rev1) = (rev1, rev2)
+            if log_format is None:
+                log_format = log.log_formatter_registry.get_default(b)
 
-        if log_format is None:
-            log_format = log.log_formatter_registry.get_default(b)
+            lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            show_timezone=timezone)
 
-        lf = log_format(show_ids=show_ids, to_file=self.outf,
-                        show_timezone=timezone)
-
-        show_log(b,
-                 lf,
-                 file_id,
-                 verbose=verbose,
-                 direction=direction,
-                 start_revision=rev1,
-                 end_revision=rev2,
-                 search=message)
+            show_log(b,
+                     lf,
+                     file_id,
+                     verbose=verbose,
+                     direction=direction,
+                     start_revision=rev1,
+                     end_revision=rev2,
+                     search=message)
+        finally:
+            b.unlock()
 
 
 def get_log_format(long=False, short=False, line=False, default='long'):
