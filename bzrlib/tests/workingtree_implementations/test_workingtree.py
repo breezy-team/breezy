@@ -327,7 +327,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_clone_preserves_content(self):
         wt = self.make_branch_and_tree('source')
-        self.build_tree(['added', 'deleted', 'notadded'], transport=wt.bzrdir.transport.clone('..'))
+        self.build_tree(['added', 'deleted', 'notadded'],
+                        transport=wt.bzrdir.transport.clone('..'))
         wt.add('deleted', 'deleted')
         wt.commit('add deleted')
         wt.remove('deleted')
