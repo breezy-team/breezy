@@ -373,7 +373,7 @@ class DirState(object):
     def get_parent_ids(self):
         """Return a list of the parent tree ids for the directory state."""
         self._read_header_if_needed()
-        return self._parents
+        return list(self._parents)
 
     @staticmethod
     def initialize(path):
