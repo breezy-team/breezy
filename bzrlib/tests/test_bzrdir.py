@@ -98,9 +98,6 @@ class TestFormatRegistry(TestCase):
         my_bzrdir = my_format_registry.make_bzrdir('knit')
         self.assertIsInstance(my_bzrdir.repository_format, 
             knitrepo.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('metaweave')
-        self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormat7)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
         self.assertIsInstance(my_bzrdir.branch_format,
                               bzrlib.branch.BzrBranchFormat6)
