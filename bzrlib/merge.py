@@ -400,7 +400,7 @@ class Merge3Merger(object):
             finally:
                 child_pb.finished()
             if change_reporter is not None:
-                import delta
+                from bzrlib import delta
                 delta.report_changes(self.tt._iter_changes(), change_reporter)
             self.cook_conflicts(fs_conflicts)
             for conflict in self.cooked_conflicts:

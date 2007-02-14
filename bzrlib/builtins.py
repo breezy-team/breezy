@@ -591,7 +591,7 @@ class cmd_pull(Command):
         old_rh = branch_to.revision_history()
         if tree_to is not None:
             count = tree_to.pull(branch_from, overwrite, rev_id,
-            delta.ChangeReporter(tree_to.inventory))
+                delta.ChangeReporter(tree_to.inventory))
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
