@@ -1334,6 +1334,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     other_revision = None
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
                     merge.merge_inner(
@@ -1347,6 +1348,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         self.set_root_id(new_basis_tree.inventory.root.file_id)
                 finally:
                     pb.finished()
+                    basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
                 # tree data.
@@ -1354,6 +1356,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # we have to pull the merge trees out again, because 
                 # merge_inner has set the ids. - this corner is not yet 
                 # layered well enough to prevent double handling.
+                # XXX TODO: Fix the double handling: telling the tree about
+                # the already known parent data is wasteful.
                 merges = self.get_parent_ids()[1:]
                 parent_trees.extend([
                     (parent, repository.revision_tree(parent)) for

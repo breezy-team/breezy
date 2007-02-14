@@ -586,7 +586,7 @@ class DirStateRevisionTree(Tree):
         self._revision_id = revision_id
         self._repository = repository
         self._inventory = None
-        self._locked = False
+        self._locked = 0
 
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
@@ -679,10 +679,12 @@ class DirStateRevisionTree(Tree):
 
     def lock_read(self):
         """Lock the tree for a set of operations."""
-        self._locked = True
+        self._locked += 1
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
         # outside of a lock, the inventory is suspect: release it.
-        self._inventory = None
-        self._locked = False
+        self._locked -=1
+        if not self._locked:
+            self._inventory = None
+            self._locked = False
