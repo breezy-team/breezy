@@ -339,6 +339,18 @@ class WorkingTree4(WorkingTree3):
             self.branch.repository)
 
     @needs_tree_write_lock
+    def set_last_revision(self, new_revision):
+        """Change the last revision in the working tree."""
+        parents = self.get_parent_ids()
+        if new_revision in (NULL_REVISION, None):
+            assert parents == [], (
+                "setting the last parent to none with a pending merge is "
+                "unsupported.")
+            self.set_parent_ids([])
+        else:
+            self.set_parent_ids([new_revision] + parents[1:])
+
+    @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
         
@@ -393,8 +405,9 @@ class WorkingTree4(WorkingTree3):
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
-        self.current_dirstate().set_path_id('', file_id)
-        self._dirty = True
+        state = self.current_dirstate()
+        state.set_path_id('', file_id)
+        self._dirty = state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
@@ -542,7 +555,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
             wt.flush()
-            transform.build_tree(wt.basis_tree(), wt)
+            basis = wt.basis_tree()
+            basis.lock_read()
+            transform.build_tree(basis, wt)
+            basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()

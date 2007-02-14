@@ -68,7 +68,6 @@ class TestExecutable(TestCaseWithWorkingTree):
     def commit_and_branch(self):
         """Commit the current tree, and create a second tree"""
         self.wt.commit('adding a,b', rev_id='r1')
-
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
         # TODO: Maybe this should be a blackbox test

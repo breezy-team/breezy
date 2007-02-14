@@ -696,13 +696,17 @@ class DirState(object):
             be encoded to utf8. In future this will be deprecated: avoid using
             unicode ids if possible.
         """
-        self._read_header_if_needed()
-        if len(path) or len(self._parents):
-            # logic not written
-            raise NotImplementedError(self.set_path_id)
-        self._read_dirblocks_if_needed()
+        # TODO: start warning here.
         if new_id.__class__ == unicode:
             new_id = new_id.encode('utf8')
+        self._read_dirblocks_if_needed()
+        if new_id == self._root_row[0][3]:
+            # the root id is unchanged
+            return
+        if len(path) or len(self._parents):
+            import pdb;pdb.set_trace()
+            # logic not written
+            raise NotImplementedError(self.set_path_id)
         root_info, root_parents = self._root_row
         self._root_row = (root_info[0:3] + (new_id, ) + root_info[4:7]), root_parents
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
