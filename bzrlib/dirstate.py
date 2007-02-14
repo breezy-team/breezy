@@ -237,14 +237,6 @@ class DirState(object):
         row_index = bisect.insort_left(block, new_row)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
-    def add_parent_tree(self, tree_id, tree):
-        """Add tree as a parent to this dirstate."""
-        self._read_dirblocks_if_needed()
-        self._parents.append(tree_id)
-        self._header_state = DirState.IN_MEMORY_MODIFIED
-        if tree is None:
-            self._ghosts.append(tree_id)
-
     def _find_dirblock_index(self, dirname):
         """Find the dirblock index for dirname.
 

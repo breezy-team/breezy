@@ -260,18 +260,6 @@ class TestDirStateInitialize(TestCaseWithTransport):
 
 class TestDirstateManipulations(TestCaseWithTransport):
 
-    def test_add_ghost_tree(self):
-        state = dirstate.DirState.initialize('dirstate')
-        state.add_parent_tree('a-ghost', None)
-        # now the parent list should be changed:
-        self.assertEqual(['a-ghost'], state.get_parent_ids())
-        self.assertEqual(['a-ghost'], state.get_ghosts())
-        # save the state and reopen to check its persistent
-        state.save()
-        state = dirstate.DirState.on_file('dirstate')
-        self.assertEqual(['a-ghost'], state.get_parent_ids())
-        self.assertEqual(['a-ghost'], state.get_ghosts())
-
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
         state = dirstate.DirState.initialize('dirstate')
@@ -487,24 +475,6 @@ class TestDirstateManipulations(TestCaseWithTransport):
 
 
 class TestGetLines(TestCaseWithTransport):
-
-    def test_adding_ghost_tree_sets_ghosts_line(self):
-        state = dirstate.DirState.initialize('dirstate')
-        state.add_parent_tree('a-ghost', None)
-        self.assertEqual(['#bazaar dirstate flat format 1\n',
-            'adler32: 1202264142\n',
-            'num_entries: 1\n',
-            '1\x00a-ghost\x00\n\x00'
-            '1\x00a-ghost\x00\n\x00'
-            '\x00\x00d\x00TREE_ROOT\x000\x00'
-            'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\x00\x00\n\x00'],
-            state.get_lines())
-
-    def test_adding_tree_changes_lines(self):
-        state = dirstate.DirState.initialize('dirstate')
-        lines = list(state.get_lines())
-        state.add_parent_tree('a-ghost', None)
-        self.assertNotEqual(lines, state.get_lines())
 
     def test_get_line_with_2_rows(self):
         state = dirstate.DirState.initialize('dirstate')
