@@ -281,6 +281,7 @@ def _win98_abspath(path):
         # and this is incorrect
         if path[:1] in ('/','\\'):
             cwd = _nt_splitdrive(cwd)[0]
+            path = path[1:]
         path = cwd + '\\' + path
     return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
 
