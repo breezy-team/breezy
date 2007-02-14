@@ -71,14 +71,16 @@ class TestFormatRegistry(TestCase):
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir', 
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
+        my_format_registry.register_metadir('knit',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
-            repo_module='bzrlib.repofmt.knitrepo')
+            )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir('experimental-knit2',
-                                            'RepositoryFormatKnit2',
+        my_format_registry.register_metadir(
+            'experimental-knit2',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
             'Experimental successor to knit.  Use at your own risk.',
-            repo_module='bzrlib.repofmt.knitrepo')
+            )
         return my_format_registry
 
     def test_format_registry(self):
