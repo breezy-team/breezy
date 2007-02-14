@@ -143,6 +143,7 @@ class DirState(object):
     IN_MEMORY_MODIFIED = 2
 
     NULLSTAT = 'x' * 32
+    NULL_PARENT_ROW = ('', 'file', '/', 'RECYCLED.BIN', 0, False, '')
 
     def __init__(self):
         """Create a  DirState object.
@@ -208,15 +209,17 @@ class DirState(object):
         else:
             size = stat.st_size
             packed_stat = pack_stat(stat)
+        parent_info = [DirState.NULL_PARENT_ROW] * (len(self._parents) -
+                                                    len(self._ghosts))
         if kind == 'file':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                size, packed_stat, link_or_sha1), [])
+                size, packed_stat, link_or_sha1), parent_info)
         elif kind == 'directory':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                0, packed_stat, ''), [])
+                0, packed_stat, ''), parent_info)
         elif kind == 'symlink':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                size, packed_stat, link_or_sha1), [])
+                size, packed_stat, link_or_sha1), parent_info)
         else:
             raise errors.BzrError('unknown kind %r' % kind)
         row_index = bisect.bisect_left(block, row_data)
@@ -466,7 +469,7 @@ class DirState(object):
             # we make it be a 'file', just because. We give it the 
             # deleted file path dirname and basename, 0 size, not executable
             # and no sha1.
-            return ('', 'file', '/', 'RECYCLED.BIN', 0, False, '')
+            return DirState.NULL_PARENT_ROW
         parent_path = parent_tree.inventory.id2path(fileid)
         dirname, basename = os.path.split(parent_path.encode('utf8'))
         return (parent_entry.revision.encode('utf8'),
