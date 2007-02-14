@@ -977,7 +977,7 @@ class BzrBranchFormat6(BzrBranchFormat5):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('last-revision', 'null:\n'),
+        utf8_files = [('last-revision', '0 null:\n'),
                       ('branch-name', ''),
                       ('branch.conf', '')
                       ]
@@ -1281,8 +1281,10 @@ class BzrBranch(Branch):
             hook(self, rev_history)
 
     @needs_write_lock
-    def set_last_revision(self, revision_id):
-        self.set_revision_history(self._lefthand_history(revision_id))
+    def set_last_revision_info(self, revno, revision_id):
+        history = self._lefthand_history(revision_id)
+        assert len(history) == revno, '%d != %d' % (len(history), revno)
+        self.set_revision_history(history)
 
     def _gen_revision_history(self):
         decode_utf8 = cache_utf8.decode
@@ -1689,31 +1691,38 @@ class BzrBranch5(BzrBranch):
 class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
+    def last_revision_info(self):
+        revision_string = self.control_files.get_utf8('last-revision').read()
+        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revno = int(revno)
+        return revno, revision_id
+
     def last_revision(self):
         """Return last revision id, or None"""
-        revision_id = self.control_files.get_utf8('last-revision').read()
-        revision_id = revision_id.rstrip('\n')
+        revision_id = self.last_revision_info()[1]
         if revision_id == _mod_revision.NULL_REVISION:
             revision_id = None
         return revision_id
 
-    def _write_last_revision(self, revision_id):
+    def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
 
-        Use set_last_revision to perform this safely.
+        Use set_last_revision_info to perform this safely.
 
         Does not update the revision_history cache.
-        Intended to be called by set_last_revision and write_revision_history.
+        Intended to be called by set_last_revision_info and
+        _write_revision_history.
         """
         if revision_id is None:
             revision_id = 'null:'
-        self.control_files.put_utf8('last-revision', revision_id + '\n')
+        out_string = '%d %s\n' % (revno, revision_id)
+        self.control_files.put_utf8('last-revision', out_string)
 
     @needs_write_lock
-    def set_last_revision(self, revision_id):
+    def set_last_revision_info(self, revno, revision_id):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
-        self._write_last_revision(revision_id)
+        self._write_last_revision_info(revno, revision_id)
         transaction = self.get_transaction()
         cached_history = transaction.map.find_revision_history()
         if cached_history is not None:
@@ -1762,15 +1771,15 @@ class BzrBranch6(BzrBranch5):
             last_revision = history[-1]
         if self._get_append_revisions_only():
             self._check_history_violation(last_revision)
-        self._write_last_revision(last_revision)
+        self._write_last_revision_info(len(history), last_revision)
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
         if len(revision_ids) == 0:
             return
-        prev_revision = self.last_revision()
+        prev_revno, prev_revision = self.last_revision_info()
         for revision in self.repository.get_revisions(revision_ids):
-            if prev_revision is None:
+            if prev_revision == _mod_revision.NULL_REVISION:
                 if revision.parent_ids != []:
                     raise errors.NotLeftParentDescendant(self, prev_revision,
                                                          revision.revision_id)
@@ -1779,7 +1788,8 @@ class BzrBranch6(BzrBranch5):
                     raise errors.NotLeftParentDescendant(self, prev_revision,
                                                          revision.revision_id)
             prev_revision = revision.revision_id
-        self.set_last_revision(revision_ids[-1])
+        self.set_last_revision_info(prev_revno + len(revision_ids),
+                                    revision_ids[-1])
 
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
@@ -1865,15 +1875,17 @@ class BzrBranch6(BzrBranch5):
         This version is most efficient when the destination is also a
         BzrBranch6, but works for BzrBranch5, as long as the destination's
         repository contains all the lefthand ancestors of the intended
-        last_revision.  If not, set_last_revision will fail.
+        last_revision.  If not, set_last_revision_info will fail.
 
         :param destination: The branch to copy the history into
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
         if revision_id is None:
-            revision_id = self.last_revision()
-        destination.set_last_revision(revision_id)
+            revno, revision_id = self.last_revision_info()
+        else:
+            revno = self.revision_id_to_revno(revision_id)
+        destination.set_last_revision_info(revno, revision_id)
 
 
 class BranchTestProviderAdapter(object):
@@ -1946,7 +1958,7 @@ class Converter5to6(object):
         new_branch = format.open(branch.bzrdir, _found=True)
 
         # Copy source data into target
-        new_branch.set_last_revision(branch.last_revision())
+        new_branch.set_last_revision_info(*branch.last_revision_info())
         new_branch.set_parent(branch.get_parent())
         new_branch.set_bound_location(branch.get_bound_location())
         new_branch.set_push_location(branch.get_push_location())

@@ -223,7 +223,6 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
-
     def test_append_revision(self):
         tree = self.make_branch_and_tree('branch1',
             format='experimental-branch6')
@@ -234,11 +233,11 @@ class TestBranch6(TestCaseWithTransport):
             tree.commit('bar', rev_id='bar')
             tree.commit('baz', rev_id='baz')
             tree.set_last_revision('bar')
-            tree.branch.set_last_revision('bar')
+            tree.branch.set_last_revision_info(2, 'bar')
             tree.commit('qux', rev_id='qux')
             tree.add_parent_tree_id('baz')
             tree.commit('qux', rev_id='quxx')
-            tree.branch.set_last_revision('null:')
+            tree.branch.set_last_revision_info(0, 'null:')
             self.assertRaises(errors.NotLeftParentDescendant,
                               tree.branch.append_revision, 'bar')
             tree.branch.append_revision('foo')
@@ -250,6 +249,8 @@ class TestBranch6(TestCaseWithTransport):
                               tree.branch.append_revision, 'quxx')
         finally:
             tree.unlock()
+
+
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
