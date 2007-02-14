@@ -121,8 +121,8 @@ from bzrlib import (
     trace,
     )
 import bzrlib.inventory
+from bzrlib import osutils
 from bzrlib.osutils import (
-    normalized_filename,
     pathjoin,
     sha_file,
     sha_string,
@@ -203,7 +203,9 @@ class DirState(object):
         #------- copied from bzrlib.inventory.make_entry
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = os.path.split(path)
-        norm_name, can_access = normalized_filename(basename)
+        # we dont import normalized_filename directly because we want to be
+        # able to change the implementation at runtime for tests.
+        norm_name, can_access = osutils.normalized_filename(basename)
         if norm_name != basename:
             if can_access:
                 basename = norm_name

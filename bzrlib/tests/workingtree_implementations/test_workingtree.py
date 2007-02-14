@@ -679,9 +679,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             tree.add([u'a\u030a'])
+            tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                                 tree.inventory.iter_entries()])
+            tree.unlock()
         finally:
             osutils.normalized_filename = orig
 

@@ -1314,6 +1314,8 @@ def make_entry(kind, name, parent_id, file_id=None):
 
     #------- This has been copied to bzrlib.dirstate.DirState.add, please
     # keep them synchronised.
+    # we dont import normalized_filename directly because we want to be
+    # able to change the implementation at runtime for tests.
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:
         if can_access:
