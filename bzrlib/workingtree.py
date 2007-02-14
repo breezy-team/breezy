@@ -1878,6 +1878,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # and we have converted that last revision to a pending merge.
             # base is somewhere between the branch tip now
             # and the now pending merge
+
+            # Since we just modified the working tree and inventory, flush out
+            # the current state, before we modify it again.
+            # TODO: jam 20070214 WorkingTree3 doesn't require this, dirstate
+            #       requires it only because TreeTransform directly munges the
+            #       inventory and calls tree._write_inventory(). Ultimately we
+            #       should be able to remove this extra flush.
+            self.flush()
             from bzrlib.revision import common_ancestor
             try:
                 base_rev_id = common_ancestor(self.branch.last_revision(),
