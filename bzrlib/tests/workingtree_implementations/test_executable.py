@@ -41,15 +41,12 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
-        measured = []
-        for cn, ie in tree.inventory.iter_entries():
-            if isinstance(ie, InventoryFile):
-                measured.append((cn, ie.executable))
-        self.assertEqual([('a', True), ('b', False)], measured)
+        tree.lock_read()
         self.failUnless(tree.is_executable(self.a_id),
                         "'a' lost the execute bit")
         self.failIf(tree.is_executable(self.b_id),
                     "'b' gained an execute bit")
+        tree.unlock()
 
     def check_empty(self, tree, ignore_inv=False):
         """Check that the files are truly missing
