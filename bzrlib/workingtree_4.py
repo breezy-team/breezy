@@ -470,8 +470,7 @@ class WorkingTree4(WorkingTree3):
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
-                if self._inventory.has_id(file_id):
-                    self._inventory.remove_recursive_id(file_id)
+                self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
     def _write_inventory(self, inv):

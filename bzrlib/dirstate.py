@@ -242,7 +242,7 @@ class DirState(object):
         if (block_index == len(self._dirblocks) or
             self._dirblocks[block_index][0] != dirname):
             return -1
-        return 0
+        return block_index
 
     @staticmethod
     def from_tree(tree, dir_state_filename):
