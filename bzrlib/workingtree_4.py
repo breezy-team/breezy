@@ -415,8 +415,7 @@ class WorkingTree4(WorkingTree3):
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
             # eventually we should do signature checking during read locks for
             # dirstate updates.
             if self._control_files._lock_mode == 'w':

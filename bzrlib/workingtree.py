@@ -1838,14 +1838,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if last_rev != self.branch.last_revision():
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
-            to_tree = self.branch.basis_tree()
-            if basis.inventory.root is None:
-                self.set_root_id(to_tree.inventory.root.file_id)
-            result += merge.merge_inner(
-                                  self.branch,
-                                  to_tree,
-                                  basis,
-                                  this_tree=self)
+            basis.lock_read()
+            try:
+                to_tree = self.branch.basis_tree()
+                if basis.inventory.root is None:
+                    self.set_root_id(to_tree.inventory.root.file_id)
+                result += merge.merge_inner(
+                                      self.branch,
+                                      to_tree,
+                                      basis,
+                                      this_tree=self)
+            finally:
+                basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
             parent_trees = [(self.branch.last_revision(), to_tree)]
