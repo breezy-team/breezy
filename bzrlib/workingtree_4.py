@@ -195,6 +195,8 @@ class WorkingTree4(WorkingTree3):
 
     def flush(self):
         """Write all cached data to disk."""
+        if self._control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
         self.current_dirstate().save()
         self._inventory = None
         self._dirty = False
