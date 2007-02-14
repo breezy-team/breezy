@@ -328,6 +328,13 @@ class WorkingTree4(WorkingTree3):
                 return row[3].decode('utf8')
         return None
 
+    def read_working_inventory(self):
+        """Read the working inventory.
+        
+        This is a meaningless operation for dirstate, but we obey it anyhow.
+        """
+        return self.inventory
+
     @needs_read_lock
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.
@@ -337,6 +344,8 @@ class WorkingTree4(WorkingTree3):
         dirstate = self.current_dirstate()
         parent_ids = dirstate.get_parent_ids()
         if revision_id not in parent_ids:
+            raise errors.NoSuchRevisionInTree(self, revision_id)
+        if revision_id in dirstate.get_ghosts():
             raise errors.NoSuchRevisionInTree(self, revision_id)
         return DirStateRevisionTree(dirstate, revision_id,
             self.branch.repository)
