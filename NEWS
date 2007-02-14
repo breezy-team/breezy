@@ -35,6 +35,9 @@ IN DEVELOPMENT
     * ``bzr help checkouts`` descibes what checkouts are and some possible
       uses of them. (James Westby, Aaron Bentley)
 
+    * A new ``-d`` option to push, pull and merge overrides the default 
+      directory.  (Martin Pool)
+
   INTERNALS:
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
