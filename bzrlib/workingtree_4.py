@@ -353,12 +353,13 @@ class WorkingTree4(WorkingTree3):
         """Change the last revision in the working tree."""
         parents = self.get_parent_ids()
         if new_revision in (NULL_REVISION, None):
-            assert parents == [], (
+            assert len(parents) < 2, (
                 "setting the last parent to none with a pending merge is "
                 "unsupported.")
             self.set_parent_ids([])
         else:
-            self.set_parent_ids([new_revision] + parents[1:])
+            self.set_parent_ids([new_revision] + parents[1:],
+                allow_leftmost_as_ghost=True)
 
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
