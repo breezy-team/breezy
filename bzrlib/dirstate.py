@@ -790,6 +790,8 @@ class DirState(object):
         parent_rows = {}
         for row, parents in self._iter_rows():
             parent_rows[row[3]] = parents
+
+        num_present_parents = len(self._parents) - len(self._ghosts)
         #  walk the new inventory in directory order, copying parent data
         #    from the id index
         new_rows = []
@@ -810,7 +812,7 @@ class DirState(object):
                 parents = parent_rows[fileid_utf8]
                 del parent_rows[fileid_utf8]
             except KeyError:
-                parents = []
+                parents = [DirState.NULL_PARENT_ROW] * num_present_parents
             new_row = (dirname, basename, kind, fileid_utf8, size, DirState.NULLSTAT, sha1), parents
             new_rows.append(new_row)
         #  append deleted data to the end of the tree as usual.
