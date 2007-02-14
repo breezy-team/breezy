@@ -879,7 +879,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         Skips the control directory.
         """
-        inv = self._inventory
+        inv = self.inventory
         if include_root is True:
             yield ('', 'V', 'directory', inv.root.file_id, inv.root)
         # Convert these into local objects to save lookup times

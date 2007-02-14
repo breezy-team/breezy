@@ -41,7 +41,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'file'])
         if has_symlinks():
             os.symlink('target', 'symlink')
+        tree.lock_read()
         files = list(tree.list_files())
+        tree.unlock()
         self.assertEqual(files[0], ('dir', '?', 'directory', None, TreeDirectory()))
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
         if has_symlinks():
@@ -52,8 +54,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'file', 'dir/file', 'dir/b',
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
+        tree.lock_read()
         files = [(path, kind) for (path, v, kind, file_id, entry)
                                in tree.list_files()]
+        tree.unlock()
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -62,8 +66,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             ], files)
 
         tree.add(['dir', 'zz_dir'])
+        tree.lock_read()
         files = [(path, kind) for (path, v, kind, file_id, entry)
                                in tree.list_files()]
+        tree.unlock()
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -653,7 +659,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # ensure that foo.pyc is ignored
         self.build_tree_contents([('.bzrignore', 'foo.pyc')])
         tree.add('foo.pyc', 'anid')
+        tree.lock_read()
         files = sorted(list(tree.list_files()))
+        tree.unlock()
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
         self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
         self.assertEqual(2, len(files))
