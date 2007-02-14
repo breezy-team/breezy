@@ -1277,6 +1277,12 @@ class BzrBranch(Branch):
     def set_last_revision(self, revision_id):
         self.set_revision_history(self._lefthand_history(revision_id))
 
+    def _gen_revision_history(self):
+        decode_utf8 = cache_utf8.decode
+        history = [decode_utf8(l.rstrip('\r\n')) for l in
+                self.control_files.get('revision-history').readlines()]
+        return history
+
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1285,9 +1291,7 @@ class BzrBranch(Branch):
         if history is not None:
             # mutter("cache hit for revision-history in %s", self)
             return list(history)
-        decode_utf8 = cache_utf8.decode
-        history = [decode_utf8(l.rstrip('\r\n')) for l in
-                self.control_files.get('revision-history').readlines()]
+        history = self._gen_revision_history()
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
         # not really an object yet, and the transaction is for objects.
@@ -1701,11 +1705,27 @@ class BzrBranch6(BzrBranch5):
         if last_revision not in self._lefthand_history(revision_id):
             raise errors.AppendRevisionsOnlyViolation(self.base)
 
-    @needs_read_lock
-    def revision_history(self):
+    def _history_from_vf(self, vf, revision_id):
+        history = []
+        if revision_id in (None, _mod_revision.NULL_REVISION):
+            return
+        next_id = revision_id
+        weave = self.repository._get_revision_vf()
+        while True:
+            yield next_id
+            parents = weave.get_parents(next_id)
+            if len(parents) == 0:
+                return
+            else:
+                next_id = parents[0]
+
+    def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        return self._lefthand_history(self.last_revision())
+        weave = self.repository._get_revision_vf()
+        history = list(self._history_from_vf(weave, self.last_revision()))
+        history.reverse()
+        return history
 
     @needs_write_lock
     def set_revision_history(self, history):
