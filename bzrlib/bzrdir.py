@@ -2022,24 +2022,28 @@ class BzrDirFormatRegistry(registry.Registry):
     """
 
     def register_metadir(self, key, repo, help, native=True, deprecated=False,
-            repo_module='bzrlib.repository', branch_format=None):
+                         branch_format=None):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
         by the Repository format.
 
-        :param repo: The repository format class name as a string.
-
-        :param repo_module: The module from which the repository class 
-        should be lazily loaded.  By default this is bzrlib.repository.
+        :param repo: The fully-qualified repository format class name as a
+        string.
         """
         # This should be expanded to support setting WorkingTree and Branch
         # formats, once BzrDirMetaFormat1 supports that.
         def helper():
             import bzrlib.branch
-            mod = __import__(repo_module, globals(), locals(), [repo])
+            mod_name, repo_factory_name = repo.rsplit('.', 1)
             try:
-                repo_format_class = getattr(mod, repo)
+                mod = __import__(mod_name, globals(), locals(),
+                        [repo_factory_name])
+            except ImportError, e:
+                raise ImportError('failed to load repository %s: %s'
+                    % (repo, e))
+            try:
+                repo_format_class = getattr(mod, repo_factory_name)
             except AttributeError:
                 raise AttributeError('no repository format %r in module %r' 
                     % (repo, mod))
@@ -2140,21 +2144,20 @@ format_registry.register('weave', BzrDirFormat6,
     ' support checkouts or shared repositories.',
     deprecated=True)
 format_registry.register_metadir('knit',
-    'RepositoryFormatKnit1',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended.',
-    repo_module='bzrlib.repofmt.knitrepo', branch_format='BzrBranchFormat5')
+    branch_format='BzrBranchFormat5')
 format_registry.set_default('knit')
-format_registry.register_metadir('metaweave', 'RepositoryFormat7',
+format_registry.register_metadir('metaweave',
+    'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
     deprecated=True,
-    repo_module='bzrlib.repofmt.weaverepo')
-format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
+    )
+format_registry.register_metadir('experimental-knit2',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.',
-    repo_module='bzrlib.repofmt.knitrepo', 
     branch_format='BzrBranchFormat5')
-
 format_registry.register_metadir('experimental-branch6',
-    'RepositoryFormatKnit1',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',
-    repo_module='bzrlib.repofmt.knitrepo', 
     branch_format='BzrBranchFormat6')

@@ -35,6 +35,9 @@ IN DEVELOPMENT
     * ``bzr help checkouts`` descibes what checkouts are and some possible
       uses of them. (James Westby, Aaron Bentley)
 
+    * A new ``-d`` option to push, pull and merge overrides the default 
+      directory.  (Martin Pool)
+
     * Branch format 6: smaller, and potentially faster than format 5.  Supports
       "append_history_only" mode, where the log view and revnos do not change,
       except by being added to.  Stores policy settings in

@@ -537,18 +537,29 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose']
+    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+        Option('directory',
+            help='branch to pull into, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
+    def run(self, location=None, remember=False, overwrite=False,
+            revision=None, verbose=False,
+            directory=None):
         # FIXME: too much stuff is in the command class
+        if directory is None:
+            directory = u'.'
         try:
-            tree_to = WorkingTree.open_containing(u'.')[0]
+            tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
         except errors.NoWorkingTree:
             tree_to = None
-            branch_to = Branch.open_containing(u'.')[0]
+            branch_to = Branch.open_containing(directory)[0]
 
         reader = None
         if location is not None:
@@ -567,7 +578,6 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-
 
         if reader is not None:
             install_bundle(branch_to.repository, reader)
@@ -630,24 +640,33 @@ class cmd_push(Command):
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
-                     Option('create-prefix',
-                            help='Create the path leading up to the branch '
-                                 'if it does not already exist'),
-                     Option('use-existing-dir',
-                            help='By default push will fail if the target'
-                                 ' directory exists, but does not already'
-                                 ' have a control directory. This flag will'
-                                 ' allow push to proceed.'),
-                     ]
+        Option('create-prefix',
+               help='Create the path leading up to the branch '
+                    'if it does not already exist'),
+        Option('directory',
+            help='branch to push from, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        Option('use-existing-dir',
+               help='By default push will fail if the target'
+                    ' directory exists, but does not already'
+                    ' have a control directory. This flag will'
+                    ' allow push to proceed.'),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False, use_existing_dir=False):
+            create_prefix=False, verbose=False,
+            use_existing_dir=False,
+            directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        
-        br_from = Branch.open_containing('.')[0]
+        if directory is None:
+            directory = '.'
+        br_from = Branch.open_containing(directory)[0]
         stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -813,14 +832,8 @@ class cmd_branch(Command):
         elif len(revision) > 1:
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
-        try:
-            br_from = Branch.open(from_location)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Source location "%s" does not'
-                                             ' exist.' % to_location)
-            else:
-                raise
+
+        br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
             if basis is not None:
@@ -2373,6 +2386,10 @@ class cmd_merge(Command):
     default, use --remember. The value will only be saved if the remote
     location can be accessed.
 
+    The results of the merge are placed into the destination working
+    directory, where they can be reviewed (with bzr diff), tested, and then
+    committed to record the result of the merge.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -2391,23 +2408,31 @@ class cmd_merge(Command):
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
-                     Option('show-base', help="Show base revision text in "
-                            "conflicts"),
-                     Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes'),
-                     Option('pull', help='If the destination is already'
-                             ' completely merged into the source, pull from the'
-                             ' source rather than merging. When this happens,'
-                             ' you do not need to commit the result.'),
-                     ]
+        Option('show-base', help="Show base revision text in "
+               "conflicts"),
+        Option('uncommitted', help='Apply uncommitted changes'
+               ' from a working copy, instead of branch changes'),
+        Option('pull', help='If the destination is already'
+                ' completely merged into the source, pull from the'
+                ' source rather than merging. When this happens,'
+                ' you do not need to commit the result.'),
+        Option('directory',
+            help='branch to merge into, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+    ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False, 
-            uncommitted=False, pull=False):
+            show_base=False, reprocess=False, remember=False,
+            uncommitted=False, pull=False,
+            directory=None,
+            ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
-
-        tree = WorkingTree.open_containing(u'.')[0]
+        if directory is None: directory = u'.'
+        tree = WorkingTree.open_containing(directory)[0]
 
         if branch is not None:
             try:
@@ -2475,6 +2500,7 @@ class cmd_merge(Command):
                     reprocess=reprocess,
                     show_base=show_base,
                     pull=pull,
+                    this_dir=directory,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
