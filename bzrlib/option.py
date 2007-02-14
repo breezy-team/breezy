@@ -26,6 +26,7 @@ import optparse
 from bzrlib import (
     errors,
     log,
+    registry,
     revisionspec,
     symbol_versioning,
     )
@@ -236,8 +237,8 @@ class RegistryOption(Option):
         :param converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
         :param value_switches: If true, each possible value is assigned its
-            own switch.  For example, instead of '--format metaweave',
-            '--metaweave' can be used interchangeably.
+            own switch.  For example, instead of '--format knit',
+            '--knit' can be used interchangeably.
         """
         Option.__init__(self, name, help, type=self.convert)
         self.registry = registry
@@ -306,6 +307,19 @@ def _global_registry_option(name, help, registry, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
+class MergeTypeRegistry(registry.Registry):
+
+    pass
+
+
+_merge_type_registry = MergeTypeRegistry()
+_merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
+                                   "Native diff3-style merge")
+_merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
+                                   "Merge using external diff3")
+_merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
+                                   "Weave-based merge")
+
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
@@ -349,8 +363,9 @@ _global_option('short', help='Use moderately short log format. Same as --log-for
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_option('merge-type', type=_parse_merge_type, 
-               help='Select a particular merge algorithm')
+_global_registry_option('merge-type', 'Select a particular merge algorithm',
+                        _merge_type_registry, value_switches=True,
+                        title='Merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'

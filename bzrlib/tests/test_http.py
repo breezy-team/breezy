@@ -636,6 +636,57 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
     """Tests range requests refusing server for pycurl implementation"""
 
 
+class TestHttpProxyWhiteBox(TestCase):
+    """Whitebox test proxy http authorization."""
+
+    def setUp(self):
+        TestCase.setUp(self)
+        self._old_env = {}
+
+    def tearDown(self):
+        self._restore_env()
+
+    def _set_and_capture_env_var(self, name, new_value):
+        """Set an environment variable, and reset it when finished."""
+        self._old_env[name] = osutils.set_or_unset_env(name, new_value)
+
+    def _install_env(self, env):
+        for name, value in env.iteritems():
+            self._set_and_capture_env_var(name, value)
+
+    def _restore_env(self):
+        for name, value in self._old_env.iteritems():
+            osutils.set_or_unset_env(name, value)
+
+    def _proxied_request(self):
+        from bzrlib.transport.http._urllib2_wrappers import (
+            ProxyHandler,
+            Request,
+            )
+
+        handler = ProxyHandler()
+        request = Request('GET','http://baz/buzzle')
+        handler.set_proxy(request, 'http')
+        return request
+
+    def test_empty_user(self):
+        self._install_env({'http_proxy': 'http://bar.com'})
+        request = self._proxied_request()
+        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+
+    def test_empty_pass(self):
+        self._install_env({'http_proxy': 'http://joe@bar.com'})
+        request = self._proxied_request()
+        self.assertEqual('Basic ' + 'joe:'.encode('base64').strip(),
+                         request.headers['Proxy-authorization'])
+    def test_user_pass(self):
+        self._install_env({'http_proxy': 'http://joe:foo@bar.com'})
+        request = self._proxied_request()
+        self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
+                         request.headers['Proxy-authorization'])
+
+
+
 class TestProxyHttpServer(object):
     """Tests proxy server.
 
@@ -654,6 +705,10 @@ class TestProxyHttpServer(object):
 
     # FIXME: We don't have an https server available, so we don't
     # test https connections.
+
+    # FIXME: Once the test suite is better fitted to test
+    # authorization schemes, test proxy authorizations too (see
+    # bug #83954).
 
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)

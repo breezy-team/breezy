@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -537,19 +537,29 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose']
+    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+        Option('directory',
+            help='branch to pull into, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            revision=None, verbose=False):
+            revision=None, verbose=False,
+            directory=None):
         # FIXME: too much stuff is in the command class
+        if directory is None:
+            directory = u'.'
         try:
-            tree_to = WorkingTree.open_containing(u'.')[0]
+            tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
         except errors.NoWorkingTree:
             tree_to = None
-            branch_to = Branch.open_containing(u'.')[0]
+            branch_to = Branch.open_containing(directory)[0]
 
         reader = None
         if location is not None:
@@ -568,7 +578,6 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-
 
         if reader is not None:
             install_bundle(branch_to.repository, reader)
@@ -632,18 +641,33 @@ class cmd_push(Command):
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
-                     Option('create-prefix', 
-                            help='Create the path leading up to the branch '
-                                 'if it does not already exist')]
+        Option('create-prefix',
+               help='Create the path leading up to the branch '
+                    'if it does not already exist'),
+        Option('directory',
+            help='branch to push from, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        Option('use-existing-dir',
+               help='By default push will fail if the target'
+                    ' directory exists, but does not already'
+                    ' have a control directory. This flag will'
+                    ' allow push to proceed.'),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False):
+            create_prefix=False, verbose=False,
+            use_existing_dir=False,
+            directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        
-        br_from = Branch.open_containing('.')[0]
+        if directory is None:
+            directory = '.'
+        br_from = Branch.open_containing(directory)[0]
         stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -658,35 +682,73 @@ class cmd_push(Command):
         location_url = to_transport.base
 
         old_rh = []
+        count = 0
+
+        br_to = repository_to = dir_to = None
         try:
-            dir_to = bzrdir.BzrDir.open(location_url)
-            br_to = dir_to.open_branch()
+            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
-            # create a branch.
-            to_transport = to_transport.clone('..')
-            if not create_prefix:
+            pass # Didn't find anything
+        else:
+            # If we can open a branch, use its direct repository, otherwise see
+            # if there is a repository without a branch.
+            try:
+                br_to = dir_to.open_branch()
+            except errors.NotBranchError:
+                # Didn't find a branch, can we find a repository?
                 try:
-                    relurl = to_transport.relpath(location_url)
-                    mutter('creating directory %s => %s', location_url, relurl)
-                    to_transport.mkdir(relurl)
-                except errors.NoSuchFile:
-                    raise errors.BzrCommandError("Parent directory of %s "
-                                                 "does not exist." % location)
+                    repository_to = dir_to.find_repository()
+                except errors.NoRepositoryPresent:
+                    pass
             else:
-                current = to_transport.base
-                needed = [(to_transport, to_transport.relpath(location_url))]
-                while needed:
+                # Found a branch, so we must have found a repository
+                repository_to = br_to.repository
+
+        old_rh = []
+        if dir_to is None:
+            # XXX: Refactor the create_prefix/no_create_prefix code into a
+            #      common helper function
+            try:
+                to_transport.mkdir('.')
+            except errors.FileExists:
+                if not use_existing_dir:
+                    raise errors.BzrCommandError("Target directory %s"
+                         " already exists, but does not have a valid .bzr"
+                         " directory. Supply --use-existing-dir to push"
+                         " there anyway." % location)
+            except errors.NoSuchFile:
+                if not create_prefix:
+                    raise errors.BzrCommandError("Parent directory of %s"
+                        " does not exist."
+                        "\nYou may supply --create-prefix to create all"
+                        " leading parent directories."
+                        % location)
+
+                cur_transport = to_transport
+                needed = [cur_transport]
+                # Recurse upwards until we can create a directory successfully
+                while True:
+                    new_transport = cur_transport.clone('..')
+                    if new_transport.base == cur_transport.base:
+                        raise errors.BzrCommandError("Failed to create path"
+                                                     " prefix for %s."
+                                                     % location)
                     try:
-                        to_transport, relpath = needed[-1]
-                        to_transport.mkdir(relpath)
-                        needed.pop()
+                        new_transport.mkdir('.')
                     except errors.NoSuchFile:
-                        new_transport = to_transport.clone('..')
-                        needed.append((new_transport,
-                                       new_transport.relpath(to_transport.base)))
-                        if new_transport.base == to_transport.base:
-                            raise errors.BzrCommandError("Could not create "
-                                                         "path prefix.")
+                        needed.append(new_transport)
+                        cur_transport = new_transport
+                    else:
+                        break
+
+                # Now we only need to create child directories
+                while needed:
+                    cur_transport = needed.pop()
+                    cur_transport.mkdir('.')
+            
+            # Now the target directory exists, but doesn't have a .bzr
+            # directory. So we need to create it, along with any work to create
+            # all of the dependent branches, etc.
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
@@ -694,7 +756,25 @@ class cmd_push(Command):
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
-        else:
+        elif repository_to is None:
+            # we have a bzrdir but no branch or repository
+            # XXX: Figure out what to do other than complain.
+            raise errors.BzrCommandError("At %s you have a valid .bzr control"
+                " directory, but not a branch or repository. This is an"
+                " unsupported configuration. Please move the target directory"
+                " out of the way and try again."
+                % location)
+        elif br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            last_revision_id = br_from.last_revision()
+            repository_to.fetch(br_from.repository,
+                                revision_id=last_revision_id)
+            br_to = br_from.clone(dir_to, revision_id=last_revision_id)
+            count = len(br_to.revision_history())
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
+        else: # We have a valid to branch
             # We were able to connect to the remote location, so remember it
             # we don't need to successfully push because of possible divergence.
             if br_from.get_push_location() is None or remember:
@@ -753,14 +833,8 @@ class cmd_branch(Command):
         elif len(revision) > 1:
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
-        try:
-            br_from = Branch.open(from_location)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.BzrCommandError('Source location "%s" does not'
-                                             ' exist.' % to_location)
-            else:
-                raise
+
+        br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
             if basis is not None:
@@ -828,6 +902,8 @@ class cmd_checkout(Command):
     --basis is to speed up checking out from remote branches.  When specified, it
     uses the inventory and file contents from the basis branch in preference to the
     branch being checked out.
+
+    See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision', # , 'basis']
@@ -1124,13 +1200,15 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     RegistryOption('format',
-                            help='Specify a format for this branch. See "bzr '
-                            'help formats" for details',
-                            converter=bzrdir.format_registry.make_bzrdir,
-                            registry=bzrdir.format_registry,
-                            value_switches=True, title="Branch Format"),
-                     ]
+         RegistryOption('format',
+                help='Specify a format for this branch. '
+                'See "help formats".',
+                registry=bzrdir.format_registry,
+                converter=bzrdir.format_registry.make_bzrdir,
+                value_switches=True,
+                title="Branch Format",
+                ),
+         ]
     def run(self, location=None, format=None):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
@@ -1181,7 +1259,7 @@ class cmd_init_repository(Command):
         cd trunk-checkout
         (add files here)
     """
-    takes_args = ["location"] 
+    takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details',
@@ -1447,15 +1525,12 @@ class cmd_log(Command):
         if location:
             # find the file id to log:
 
-            dir, fp = bzrdir.BzrDir.open_containing(location)
-            b = dir.open_branch()
+            tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
+                location)
             if fp != '':
-                try:
-                    # might be a tree:
-                    inv = dir.open_workingtree().inventory
-                except (errors.NotBranchError, errors.NotLocalUrl):
-                    # either no tree, or is remote.
-                    inv = b.basis_tree().inventory
+                if tree is None:
+                    tree = b.basis_tree()
+                inv = tree.inventory
                 file_id = inv.path2id(fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
@@ -2296,6 +2371,10 @@ class cmd_merge(Command):
     default, use --remember. The value will only be saved if the remote
     location can be accessed.
 
+    The results of the merge are placed into the destination working
+    directory, where they can be reviewed (with bzr diff), tested, and then
+    committed to record the result of the merge.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -2314,27 +2393,32 @@ class cmd_merge(Command):
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
-                     Option('show-base', help="Show base revision text in "
-                            "conflicts"),
-                     Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes'),
-                     Option('pull', help='If the destination is already'
-                             ' completely merged into the source, pull from the'
-                             ' source rather than merging. When this happens,'
-                             ' you do not need to commit the result.'),
-                     ]
-
-    def help(self):
-        from inspect import getdoc
-        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
+        Option('show-base', help="Show base revision text in "
+               "conflicts"),
+        Option('uncommitted', help='Apply uncommitted changes'
+               ' from a working copy, instead of branch changes'),
+        Option('pull', help='If the destination is already'
+                ' completely merged into the source, pull from the'
+                ' source rather than merging. When this happens,'
+                ' you do not need to commit the result.'),
+        Option('directory',
+            help='branch to merge into, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+    ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False, 
-            uncommitted=False, pull=False):
+            show_base=False, reprocess=False, remember=False,
+            uncommitted=False, pull=False,
+            directory=None,
+            ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
-        tree = WorkingTree.open_containing(u'.')[0]
+        if directory is None: directory = u'.'
+        tree = WorkingTree.open_containing(directory)[0]
         change_reporter = delta.ChangeReporter(tree.inventory)
 
         if branch is not None:
@@ -2403,8 +2487,8 @@ class cmd_merge(Command):
                     reprocess=reprocess,
                     show_base=show_base,
                     pull=pull,
-                    pb=pb,
-                    file_list=interesting_files,
+                    this_dir=directory,
+                    pb=pb, file_list=interesting_files,
                     change_reporter=change_reporter)
             finally:
                 pb.finished()
@@ -2463,10 +2547,6 @@ class cmd_remerge(Command):
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
-
-    def help(self):
-        from inspect import getdoc
-        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
@@ -2855,10 +2935,12 @@ class cmd_re_sign(Command):
 
 
 class cmd_bind(Command):
-    """Bind the current branch to a master branch.
+    """Convert the current branch into a checkout of the supplied branch.
 
-    After binding, commits must succeed on the master branch
-    before they are executed on the local one.
+    Once converted into a checkout, commits must succeed on the master branch
+    before they will be applied to the local branch.
+
+    See "help checkouts" for more information on checkouts.
     """
 
     takes_args = ['location']
@@ -2875,10 +2957,12 @@ class cmd_bind(Command):
 
 
 class cmd_unbind(Command):
-    """Unbind the current branch from its master branch.
+    """Convert the current checkout into a regular branch.
 
-    After unbinding, the local branch is considered independent.
-    All subsequent commits will be local.
+    After unbinding, the local branch is considered independent and subsequent
+    commits will be local only.
+
+    See "help checkouts" for more information on checkouts.
     """
 
     takes_args = []
