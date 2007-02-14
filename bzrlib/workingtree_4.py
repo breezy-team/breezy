@@ -390,7 +390,7 @@ class WorkingTree4(WorkingTree3):
         dirstate = self.current_dirstate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
-                raise errors.GhostRevisionUnusableHere(leftmost_id)
+                raise errors.GhostRevisionUnusableHere(parents_list[0][0])
         real_trees = []
         ghosts = []
         # convert absent trees to the null tree, which we convert back to 
