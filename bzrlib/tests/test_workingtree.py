@@ -236,10 +236,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = workingtree.WorkingTreeFormat4().initialize(control)
         # we want:
         # format 'Bazaar Working Tree format 4'
-        # inventory = blank inventory
-        # pending-merges = ''
         # stat-cache = ??
-        # no inventory.basis yet
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar Working Tree format 4\n',
                              t.get('format').read())

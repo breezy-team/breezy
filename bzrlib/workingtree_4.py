@@ -199,17 +199,6 @@ class WorkingTree4(WorkingTree3):
         self._inventory = None
         self._dirty = False
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        #if not path:
-        #    path = self.inventory.id2path(file_id)
-        #    # now lookup row by path
-        row, parents = self._get_row(file_id=file_id)
-        assert row is not None, 'what error should this raise'
-        # TODO:
-        # if row stat is valid, use cached sha1, else, get a new sha1.
-        path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
-        return self._hashcache.get_sha1(path, stat_value)
-
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
         
@@ -236,6 +225,17 @@ class WorkingTree4(WorkingTree3):
             inv.add(entry)
         self._inventory = inv
 
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        #if not path:
+        #    path = self.inventory.id2path(file_id)
+        #    # now lookup row by path
+        row, parents = self._get_row(file_id=file_id)
+        assert row is not None, 'what error should this raise'
+        # TODO:
+        # if row stat is valid, use cached sha1, else, get a new sha1.
+        path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
+        return self._hashcache.get_sha1(path, stat_value)
+
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if self._inventory is not None:
@@ -245,6 +245,14 @@ class WorkingTree4(WorkingTree3):
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
+
+    @needs_read_lock
+    def get_parent_ids(self):
+        """See Tree.get_parent_ids.
+        
+        This implementation requests the ids list from the dirstate file.
+        """
+        return self.current_dirstate().get_parent_ids()
 
     @needs_read_lock
     def get_root_id(self):
