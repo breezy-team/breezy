@@ -1197,17 +1197,18 @@ def _entry_changes(file_id, entry, working_tree):
     return has_contents, contents_mod, meta_mod
 
 
-def revert(working_tree, target_tree, filenames, backups=False, 
+def revert(working_tree, target_tree, filenames, backups=False,
            pb=DummyProgress(), change_reporter=None):
     """Revert a working tree's contents to those of a target tree."""
-    interesting_ids = find_interesting(working_tree, target_tree, filenames)
+    target_tree.lock_read()
     tt = TreeTransform(working_tree, pb)
     try:
+        interesting_ids = find_interesting(working_tree, target_tree, filenames)
         pp = ProgressPhase("Revert phase", 3, pb)
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            _alter_files(working_tree, target_tree, tt, child_pb, 
+            _alter_files(working_tree, target_tree, tt, child_pb,
                          interesting_ids, backups, change_reporter)
         finally:
             child_pb.finished()
@@ -1224,6 +1225,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
+        target_tree.unlock()
         tt.finalize()
         pb.clear()
     return conflicts
@@ -1240,66 +1242,75 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups,
     else:
         skip_root = False
     basis_tree = None
-    if report_changes:
-        change_reporter = delta.ChangeReporter(working_tree.inventory)
-        delta.report_changes(change_list, change_reporter)
-    for id_num, (file_id, path, changed_content, versioned, parent, name, kind,
-                 executable) in enumerate(change_list):
-        if skip_root and file_id[0] is not None and parent[0] is None:
-            continue
-        trans_id = tt.trans_id_file_id(file_id)
-        mode_id = None
-        if changed_content:
-            keep_content = False
-            if kind[0] == 'file' and (backups or kind[1] is None):
-                wt_sha1 = working_tree.get_file_sha1(file_id)
-                if merge_modified.get(file_id) != wt_sha1:
-                    if basis_tree is None:
-                        basis_tree = working_tree.basis_tree()
-                    if file_id in basis_tree:
-                        if wt_sha1 != basis_tree.get_file_sha1(file_id):
+    try:
+        if report_changes:
+            change_reporter = delta.ChangeReporter(working_tree.inventory)
+            delta.report_changes(change_list, change_reporter)
+        for id_num, (file_id, path, changed_content, versioned, parent, name,
+                kind, executable) in enumerate(change_list):
+            if skip_root and file_id[0] is not None and parent[0] is None:
+                continue
+            trans_id = tt.trans_id_file_id(file_id)
+            mode_id = None
+            if changed_content:
+                keep_content = False
+                if kind[0] == 'file' and (backups or kind[1] is None):
+                    wt_sha1 = working_tree.get_file_sha1(file_id)
+                    if merge_modified.get(file_id) != wt_sha1:
+                        # acquire the basis tree lazyily to prevent the expense
+                        # of accessing it when its not needed ? (Guessing, RBC,
+                        # 200702)
+                        if basis_tree is None:
+                            basis_tree = working_tree.basis_tree()
+                            basis_tree.lock_read()
+                        if file_id in basis_tree:
+                            if wt_sha1 != basis_tree.get_file_sha1(file_id):
+                                keep_content = True
+                        elif kind[1] is None and not versioned[1]:
                             keep_content = True
-                    elif kind[1] is None and not versioned[1]:
-                        keep_content = True
-            if kind[0] is not None:
-                if not keep_content:
-                    tt.delete_contents(trans_id)
-                elif kind[1] is not None:
-                    parent_trans_id = tt.trans_id_file_id(parent[0])
-                    by_parent = tt.by_parent()
-                    backup_name = _get_backup_name(name[0], by_parent,
-                                                   parent_trans_id, tt)
-                    tt.adjust_path(backup_name, parent_trans_id, trans_id)
-                    new_trans_id = tt.create_path(name[0], parent_trans_id)
-                    if versioned == (True, True):
-                        tt.unversion_file(trans_id)
-                        tt.version_file(file_id, new_trans_id)
-                    # New contents should have the same unix perms as old
-                    # contents
-                    mode_id = trans_id
-                    trans_id = new_trans_id
-            if kind[1] == 'directory':
-                tt.create_directory(trans_id)
-            elif kind[1] == 'symlink':
-                tt.create_symlink(target_tree.get_symlink_target(file_id),
-                                  trans_id)
-            elif kind[1] == 'file':
-                tt.create_file(target_tree.get_file_lines(file_id),
-                               trans_id, mode_id)
-                # preserve the execute bit when backing up
-                if keep_content and executable[0] == executable[1]:
-                    tt.set_executability(executable[1], trans_id)
-            else:
-                assert kind[1] is None
-        if versioned == (False, True):
-            tt.version_file(file_id, trans_id)
-        if versioned == (True, False):
-            tt.unversion_file(trans_id)
-        if (name[1] is not None and 
-            (name[0] != name[1] or parent[0] != parent[1])):
-            tt.adjust_path(name[1], tt.trans_id_file_id(parent[1]), trans_id)
-        if executable[0] != executable[1] and kind[1] == "file":
-            tt.set_executability(executable[1], trans_id)
+                if kind[0] is not None:
+                    if not keep_content:
+                        tt.delete_contents(trans_id)
+                    elif kind[1] is not None:
+                        parent_trans_id = tt.trans_id_file_id(parent[0])
+                        by_parent = tt.by_parent()
+                        backup_name = _get_backup_name(name[0], by_parent,
+                                                       parent_trans_id, tt)
+                        tt.adjust_path(backup_name, parent_trans_id, trans_id)
+                        new_trans_id = tt.create_path(name[0], parent_trans_id)
+                        if versioned == (True, True):
+                            tt.unversion_file(trans_id)
+                            tt.version_file(file_id, new_trans_id)
+                        # New contents should have the same unix perms as old
+                        # contents
+                        mode_id = trans_id
+                        trans_id = new_trans_id
+                if kind[1] == 'directory':
+                    tt.create_directory(trans_id)
+                elif kind[1] == 'symlink':
+                    tt.create_symlink(target_tree.get_symlink_target(file_id),
+                                      trans_id)
+                elif kind[1] == 'file':
+                    tt.create_file(target_tree.get_file_lines(file_id),
+                                   trans_id, mode_id)
+                    # preserve the execute bit when backing up
+                    if keep_content and executable[0] == executable[1]:
+                        tt.set_executability(executable[1], trans_id)
+                else:
+                    assert kind[1] is None
+            if versioned == (False, True):
+                tt.version_file(file_id, trans_id)
+            if versioned == (True, False):
+                tt.unversion_file(trans_id)
+            if (name[1] is not None and 
+                (name[0] != name[1] or parent[0] != parent[1])):
+                tt.adjust_path(
+                    name[1], tt.trans_id_file_id(parent[1]), trans_id)
+            if executable[0] != executable[1] and kind[1] == "file":
+                tt.set_executability(executable[1], trans_id)
+    finally:
+        if basis_tree is not None:
+            basis_tree.unlock()
 
 
 def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
