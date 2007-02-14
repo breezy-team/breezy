@@ -215,13 +215,26 @@ class DirState(object):
             raise errors.BzrError('unknown kind %r' % kind)
         row_index = bisect.bisect_left(block, row_data)
         if len(block) > row_index:
-            assert block[row_index][1] != basename, \
+            assert block[row_index][0][1] != basename, \
                 "basename %r already added" % basename
         block.insert(row_index, row_data)
 
         if kind == 'directory':
            # insert a new dirblock
            bisect.insort_left(self._dirblocks, (utf8path, []))
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def add_deleted(self, fileid_utf8, parents):
+        """Add fileid_utf8 with parents as deleted."""
+        self._read_dirblocks_if_needed()
+        new_row = self._make_deleted_row(fileid_utf8, parents)
+        block_index = self._find_dirblock_index(new_row[0][0])
+        if block_index < 0:
+            # no deleted block yet.
+            bisect.insort_left(self._dirblocks, (new_row[0][0], []))
+            block_index = self._find_dirblock_index(new_row[0][0])
+        block = self._dirblocks[block_index][1]
+        row_index = bisect.insort_left(block, new_row)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def add_parent_tree(self, tree_id, tree):
@@ -428,6 +441,11 @@ class DirState(object):
         output_lines.append('num_entries: %s\n' % (num_entries,))
         output_lines.append(inventory_text)
         return output_lines
+
+    def _make_deleted_row(self, fileid_utf8, parents):
+        """Return a deleted for for fileid_utf8."""
+        return ('/', 'RECYCLED.BIN', 'file', fileid_utf8, 0, DirState.NULLSTAT,
+            ''), parents
 
     @staticmethod
     def on_file(path):

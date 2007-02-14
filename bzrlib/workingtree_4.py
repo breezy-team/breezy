@@ -445,6 +445,7 @@ class WorkingTree4(WorkingTree3):
             # supported.
             raise errors.BzrError('Unversioning the / is not currently supported')
         new_blocks = []
+        deleted_rows = []
         for block in state._dirblocks:
             # first check: is the path one to remove - it or its children
             delete_block = False
@@ -469,11 +470,14 @@ class WorkingTree4(WorkingTree3):
                     # skip the row, and if its a dir mark its path to be removed
                     if row[2] == 'directory':
                         paths_to_unversion.add((row[0] + '/' + row[1]).strip('/'))
-                    assert not row_parents, "not ready to preserve parents."
+                    if row_parents:
+                        deleted_rows.append((row[3], row_parents))
                     ids_to_unversion.remove(row[3])
         if ids_to_unversion:
             raise errors.NoSuchId(self, iter(ids_to_unversion).next())
         state._dirblocks = new_blocks
+        for fileid_utf8, parents in deleted_rows:
+            state.add_deleted(fileid_utf8, parents)
         state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
         # have to change the legacy inventory too.
         if self._inventory is not None:
