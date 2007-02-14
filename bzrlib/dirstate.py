@@ -202,15 +202,21 @@ class DirState(object):
             # child
             raise errors.NotVersionedError(path, str(self))
         block = self._dirblocks[block_index][1]
+        if stat is None:
+            size = 0
+            packed_stat = DirState.NULLSTAT
+        else:
+            size = stat.st_size
+            packed_stat = pack_stat(stat)
         if kind == 'file':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                stat.st_size, pack_stat(stat), link_or_sha1), [])
+                size, packed_stat, link_or_sha1), [])
         elif kind == 'directory':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                0, pack_stat(stat), ''), [])
+                0, packed_stat, ''), [])
         elif kind == 'symlink':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
-                stat.st_size, pack_stat(stat), link_or_sha1), [])
+                size, packed_stat, link_or_sha1), [])
         else:
             raise errors.BzrError('unknown kind %r' % kind)
         row_index = bisect.bisect_left(block, row_data)

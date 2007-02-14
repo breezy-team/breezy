@@ -170,9 +170,10 @@ class WorkingTree4(WorkingTree3):
             assert '..' not in f
             if file_id is None:
                 file_id = generate_ids.gen_file_id(f)
-            stat = os.lstat(self.abspath(f))
-            sha1 = '1' * 20 # FIXME: DIRSTATE MERGE BLOCKER
-            state.add(f, file_id, kind, stat, sha1)
+            # deliberately add the file with no cached stat or sha1
+            # - on the first access it will be gathered, and we can
+            # always change this once tests are all passing.
+            state.add(f, file_id, kind, None, '')
         self._dirty = True
 
     def current_dirstate(self):
