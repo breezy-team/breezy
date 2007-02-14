@@ -267,7 +267,7 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
-        self.this_tree.lock_write()
+        self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
         if self.other_tree is not None:
