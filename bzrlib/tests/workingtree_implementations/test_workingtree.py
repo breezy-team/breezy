@@ -223,13 +223,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         wt.rename_one('dir', 'newdir')
 
-        self.check_inventory_shape(wt.read_working_inventory(),
+        wt.lock_read()
+        self.check_inventory_shape(wt.inventory,
                                    ['newdir', 'newdir/sub', 'newdir/sub/file'])
-
+        wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
-        self.check_inventory_shape(wt.read_working_inventory(),
+        wt.lock_read()
+        self.check_inventory_shape(wt.inventory,
                                    ['newdir', 'newdir/newsub',
                                     'newdir/newsub/file'])
+        wt.unlock()
 
     def test_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
