@@ -644,6 +644,31 @@ class Repository(object):
             done.add(revision_id)
         return result
 
+    def _get_history_vf(self):
+        """Get a versionedfile whose history graph reflects all revisions.
+
+        For weave repositories, this is the inventory weave.
+        """
+        return self.get_inventory_weave()
+
+    def iter_reverse_revision_history(self, revision_id):
+        """Iterate backwards through revision ids in the lefthand history
+
+        :param revision_id: The revision id to start with.  All its lefthand
+            ancestors will be traversed.
+        """
+        if revision_id in (None, _mod_revision.NULL_REVISION):
+            return
+        next_id = revision_id
+        versionedfile = self._get_history_vf()
+        while True:
+            yield next_id
+            parents = versionedfile.get_parents(next_id)
+            if len(parents) == 0:
+                return
+            else:
+                next_id = parents[0]
+
     @needs_read_lock
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""

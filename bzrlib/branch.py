@@ -1735,25 +1735,11 @@ class BzrBranch6(BzrBranch5):
         if last_revision not in self._lefthand_history(revision_id):
             raise errors.AppendRevisionsOnlyViolation(self.base)
 
-    def _history_from_vf(self, vf, revision_id):
-        history = []
-        if revision_id in (None, _mod_revision.NULL_REVISION):
-            return
-        next_id = revision_id
-        weave = self.repository._get_revision_vf()
-        while True:
-            yield next_id
-            parents = weave.get_parents(next_id)
-            if len(parents) == 0:
-                return
-            else:
-                next_id = parents[0]
-
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        weave = self.repository._get_revision_vf()
-        history = list(self._history_from_vf(weave, self.last_revision()))
+        history = list(self.repository.iter_reverse_revision_history(
+            self.last_revision()))
         history.reverse()
         return history
 
