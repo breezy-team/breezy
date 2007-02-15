@@ -907,6 +907,12 @@ class DirStateRevisionTree(Tree):
         """Lock the tree for a set of operations."""
         self._locked += 1
 
+    def path2id(self, path):
+        """Return the id for path in this tree."""
+        # TODO: jam 20070215 This should be heavily optimized for dirstate
+        #       I'm taking the *very* lazy way out
+        return self._get_inventory().path2id(path)
+
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
         # outside of a lock, the inventory is suspect: release it.

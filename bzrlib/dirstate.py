@@ -426,11 +426,13 @@ class DirState(object):
 
     def _get_ghosts_line(self, ghost_ids):
         """Create a line for the state file for ghost information."""
-        return '\0'.join([str(len(ghost_ids))] + ghost_ids)
+        return '\0'.join([str(len(ghost_ids))] +
+                         [g.encode('utf8') for g in ghost_ids])
         
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
-        return '\0'.join([str(len(parent_ids))] + parent_ids)
+        return '\0'.join([str(len(parent_ids))] +
+                         [p.encode('utf8') for p in parent_ids])
         
     def get_parent_ids(self):
         """Return a list of the parent tree ids for the directory state."""
@@ -528,7 +530,7 @@ class DirState(object):
         return (parent_entry.revision.encode('utf8'),
             parent_entry.kind,
             # FIXME: set these from the parent
-            dirname.encode('utf8'), basename.encode('utf8'),
+            dirname, basename,
             parent_entry.text_size or 0,
             parent_entry.executable,
             parent_entry.text_sha1 or '',
