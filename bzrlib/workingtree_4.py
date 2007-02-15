@@ -898,30 +898,34 @@ class DirStateRevisionTree(Tree):
         # TODO: jam 20070215 This is the cheap way by cheating and using the
         #       RevisionTree implementation.
         #       This should be cleaned up to use the much faster Dirstate code
+        #       This is a little tricky, though, because the dirstate is
+        #       indexed by current path, not by parent path.
+        #       So for now, we just build up the parent inventory, and extract
+        #       it the same way RevisionTree does.
         _directory = 'directory'
-        inv = self.inventory
+        inv = self._get_inventory()
         top_id = inv.path2id(prefix)
         if top_id is None:
             pending = []
         else:
-            pending = [(prefix, '', _directory, None, top_id, None)]
+            pending = [(prefix, top_id)]
         while pending:
             dirblock = []
-            currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
-            if currentdir[0]:
-                relroot = currentdir[0] + '/'
+            relpath, file_id = pending.pop()
+            # 0 - relpath, 1- file-id
+            if relpath:
+                relroot = relpath + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[currentdir[4]]
+            entry = inv[file_id]
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,
                     child.file_id, child.kind
                     ))
-            yield (currentdir[0], entry.file_id), dirblock
+            yield (relpath, entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
-                    pending.append(dir)
+                    pending.append((dir[0], dir[4]))
