@@ -96,6 +96,17 @@ if __name__ == '__main__':
 
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
-    sys.exit(exit_val)
+
+    # By this point we really have completed everything we want to do, and
+    # there's no point doing any additional cleanup.  Abruptly exiting here
+    # stops any background threads getting into trouble as code is unloaded,
+    # and it may also be slightly faster, through avoiding gc of objects that
+    # are just about to be discarded anyhow.  This does mean that atexit hooks
+    # won't run but we don't use them.  Also file buffers won't be flushed,
+    # but our policy is to always close files from a finally block. -- mbp 20070215
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(exit_val)
+    ## sys.exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib
