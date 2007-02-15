@@ -1208,8 +1208,11 @@ class cmd_init(Command):
                 value_switches=True,
                 title="Branch Format",
                 ),
+         Option('append-revisions-only',
+                help='Never change revnos or the existing log.'
+                '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None):
+    def run(self, location=None, format=None, append_revisions_only=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1232,7 +1235,8 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+            branch = bzrdir.BzrDir.create_branch_convenience(location,
+                                                             format=format)
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
@@ -1241,8 +1245,14 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             else:
-                existing_bzrdir.create_branch()
+                branch = existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
+        if append_revisions_only:
+            try:
+                branch.set_append_revisions_only(True)
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('This branch format cannot be set'
+                    ' to append-revisions-only.  Try --experimental-branch6')
 
 
 class cmd_init_repository(Command):
@@ -1547,52 +1557,58 @@ class cmd_log(Command):
             dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
-        if revision is None:
-            rev1 = None
-            rev2 = None
-        elif len(revision) == 1:
-            rev1 = rev2 = revision[0].in_history(b).revno
-        elif len(revision) == 2:
-            if revision[1].get_branch() != revision[0].get_branch():
-                # b is taken from revision[0].get_branch(), and
-                # show_log will use its revision_history. Having
-                # different branches will lead to weird behaviors.
+        b.lock_read()
+        try:
+            if revision is None:
+                rev1 = None
+                rev2 = None
+            elif len(revision) == 1:
+                rev1 = rev2 = revision[0].in_history(b).revno
+            elif len(revision) == 2:
+                if revision[1].get_branch() != revision[0].get_branch():
+                    # b is taken from revision[0].get_branch(), and
+                    # show_log will use its revision_history. Having
+                    # different branches will lead to weird behaviors.
+                    raise errors.BzrCommandError(
+                        "Log doesn't accept two revisions in different"
+                        " branches.")
+                if revision[0].spec is None:
+                    # missing begin-range means first revision
+                    rev1 = 1
+                else:
+                    rev1 = revision[0].in_history(b).revno
+
+                if revision[1].spec is None:
+                    # missing end-range means last known revision
+                    rev2 = b.revno()
+                else:
+                    rev2 = revision[1].in_history(b).revno
+            else:
                 raise errors.BzrCommandError(
-                    "Log doesn't accept two revisions in different branches.")
-            if revision[0].spec is None:
-                # missing begin-range means first revision
-                rev1 = 1
-            else:
-                rev1 = revision[0].in_history(b).revno
+                    'bzr log --revision takes one or two values.')
 
-            if revision[1].spec is None:
-                # missing end-range means last known revision
-                rev2 = b.revno()
-            else:
-                rev2 = revision[1].in_history(b).revno
-        else:
-            raise errors.BzrCommandError('bzr log --revision takes one or two values.')
+            # By this point, the revision numbers are converted to the +ve
+            # form if they were supplied in the -ve form, so we can do
+            # this comparison in relative safety
+            if rev1 > rev2:
+                (rev2, rev1) = (rev1, rev2)
 
-        # By this point, the revision numbers are converted to the +ve
-        # form if they were supplied in the -ve form, so we can do
-        # this comparison in relative safety
-        if rev1 > rev2:
-            (rev2, rev1) = (rev1, rev2)
+            if log_format is None:
+                log_format = log.log_formatter_registry.get_default(b)
 
-        if log_format is None:
-            log_format = log.log_formatter_registry.get_default(b)
+            lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            show_timezone=timezone)
 
-        lf = log_format(show_ids=show_ids, to_file=self.outf,
-                        show_timezone=timezone)
-
-        show_log(b,
-                 lf,
-                 file_id,
-                 verbose=verbose,
-                 direction=direction,
-                 start_revision=rev1,
-                 end_revision=rev2,
-                 search=message)
+            show_log(b,
+                     lf,
+                     file_id,
+                     verbose=verbose,
+                     direction=direction,
+                     start_revision=rev1,
+                     end_revision=rev2,
+                     search=message)
+        finally:
+            b.unlock()
 
 
 def get_log_format(long=False, short=False, line=False, default='long'):
@@ -2943,11 +2959,21 @@ class cmd_bind(Command):
     See "help checkouts" for more information on checkouts.
     """
 
-    takes_args = ['location']
+    takes_args = ['location?']
     takes_options = []
 
     def run(self, location=None):
         b, relpath = Branch.open_containing(u'.')
+        if location is None:
+            try:
+                location = b.get_old_bound_location()
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('No location supplied.  '
+                    'This format does not remember old locations.')
+            else:
+                if location is None:
+                    raise errors.BzrCommandError('No location supplied and no '
+                        'previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
