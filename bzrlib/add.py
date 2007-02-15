@@ -169,6 +169,14 @@ class FastPath(object):
 
 
 def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
+    tree.lock_tree_write()
+    try:
+        return _smart_add_tree(tree=tree, file_list=file_list, recurse=recurse,
+                               action=action, save=save)
+    finally:
+        tree.unlock()
+
+def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
