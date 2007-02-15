@@ -482,6 +482,9 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Branch.revision_history'),
             smart.branch.SmartServerRequestRevisionHistory)
         self.assertEqual(
+            smart.request.request_handlers.get('Branch.set_last_revision'),
+            smart.branch.SmartServerBranchRequestSetLastRevision)
+        self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
             smart.bzrdir.SmartServerRequestFindRepository)
         self.assertEqual(
