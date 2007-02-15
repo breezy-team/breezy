@@ -261,36 +261,6 @@ class WorkingTree4(WorkingTree3):
         """Return the id of this trees root"""
         return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
 
-    def _get_block_row_index(self, dirname, basename):
-        """Get the coordinates for a path in the state structure.
-
-        :param dirname: The dirname to lookup.
-        :param basename: The basename to lookup.
-        :return: A tuple describing where the path is located, or should be
-            inserted. The tuple contains four fields: the block index, the row
-            index, anda two booleans are True when the directory is present, and
-            when the entire path is present.  There is no guarantee that either
-            coordinate is currently reachable unless the found field for it is
-            True. For instance, a directory not present in the state may be
-            returned with a value one greater than the current highest block
-            offset. The directory present field will always be True when the
-            path present field is True.
-        """
-        assert not (dirname == '' and basename == ''), 'blackhole lookup error'
-        state = self.current_dirstate()
-        state._read_dirblocks_if_needed()
-        block_index = bisect_left(state._dirblocks, (dirname, []))
-        if (block_index == len(state._dirblocks) or
-            state._dirblocks[block_index][0] != dirname):
-            # no such directory - return the dir index and 0 for the row.
-            return block_index, 0, False, False
-        block = state._dirblocks[block_index][1] # access the rows only
-        search = ((dirname, basename), [])
-        row_index = bisect_left(block, search)
-        if row_index == len(block) or block[row_index][0][1] != basename:
-            return block_index, row_index, True, False
-        return block_index, row_index, True, True
-
     def _get_row(self, file_id=None, path=None):
         """Get the dirstate row for file_id or path.
 
@@ -387,7 +357,7 @@ class WorkingTree4(WorkingTree3):
         # check destination directory
         # get the details for it
         to_row_block_index, to_row_row_index, dir_present, row_present = \
-            self._get_block_row_index(to_row_dirname, to_basename)
+            state._get_block_row_index(to_row_dirname, to_basename)
         if not row_present:
             raise errors.BzrMoveFailedError('', to_dir,
                 errors.NotInWorkingDirectory(to_dir))
@@ -490,7 +460,7 @@ class WorkingTree4(WorkingTree3):
                 # tricky to rollback, but least likely to need it.
                 basename = from_tail.encode('utf8')
                 old_block_index, old_row_index, dir_present, file_present = \
-                    self._get_block_row_index(from_dirname, basename)
+                    state._get_block_row_index(from_dirname, basename)
                 old_block = state._dirblocks[old_block_index][1]
                 # remove the old row
                 old_row = old_block.pop(old_row_index)
