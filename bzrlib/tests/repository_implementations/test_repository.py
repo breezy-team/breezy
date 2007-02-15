@@ -464,13 +464,14 @@ class TestRepositoryLocking(TestCaseWithRepository):
         repo = self.make_repository('r')
         # Lock the repository, then use leave_lock_in_place so that when we
         # unlock the repository the lock is still held on disk.
-        repo.lock_write()
+        token = repo.lock_write()
         try:
-            try:
-                repo.leave_lock_in_place()
-            except NotImplementedError:
-                # This repository doesn't support this API.
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError, repo.leave_lock_in_place)
                 return
+            repo.leave_lock_in_place()
         finally:
             repo.unlock()
         # We should be unable to relock the repo.
@@ -484,6 +485,8 @@ class TestRepositoryLocking(TestCaseWithRepository):
             if token is None:
                 # This test does not apply, because this repository refuses lock
                 # tokens.
+                self.assertRaises(NotImplementedError,
+                                  repo.dont_leave_lock_in_place)
                 return
             try:
                 repo.leave_lock_in_place()

@@ -257,12 +257,16 @@ class Repository(object):
     def leave_lock_in_place(self):
         """Tell this repository not to release the physical lock when this
         object is unlocked.
+        
+        If lock_write doesn't return a token, then this method is not supported.
         """
         self.control_files.leave_in_place()
 
     def dont_leave_lock_in_place(self):
         """Tell this repository to release the physical lock when this
         object is unlocked, even if it didn't originally acquire it.
+
+        If lock_write doesn't return a token, then this method is not supported.
         """
         self.control_files.dont_leave_in_place()
 

@@ -347,6 +347,9 @@ class TransportLock(object):
     def leave_in_place(self):
         raise NotImplementedError(self.leave_in_place)
 
+    def dont_leave_in_place(self):
+        raise NotImplementedError(self.dont_leave_in_place)
+
     def lock_write(self, token=None):
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
