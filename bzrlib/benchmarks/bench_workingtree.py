@@ -45,7 +45,11 @@ class WorkingTreeBenchmark(Benchmark):
             if root == '.':
                 continue
             tree.add(root)
-        self.time(list, tree.list_files())
+        tree.lock_read()
+        try:
+            self.time(list, tree.list_files())
+        finally:
+            tree.unlock()
 
     def test_is_ignored_single_call(self):
         """How long does is_ignored take to initialise and check one file."""
