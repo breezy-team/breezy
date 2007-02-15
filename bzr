@@ -105,8 +105,7 @@ if __name__ == '__main__':
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
     sys.stdout.flush()
-    sys.stderr.flush()
+    # stderr isn't buffered
     os._exit(exit_val)
-    ## sys.exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib
