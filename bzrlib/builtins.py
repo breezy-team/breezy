@@ -237,8 +237,6 @@ class cmd_remove_tree(Command):
     this will refuse to run against one.
     """
 
-    hidden = True
-
     takes_args = ['location?']
 
     def run(self, location='.'):
