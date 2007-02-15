@@ -25,7 +25,10 @@ import optparse
 
 from bzrlib import (
     errors,
+    log,
+    registry,
     revisionspec,
+    symbol_versioning,
     )
 """)
 from bzrlib.trace import warning
@@ -109,10 +112,11 @@ def get_merge_type(typestring):
             (typestring, type_list)
         raise errors.BzrCommandError(msg)
 
+
 class Option(object):
     """Description of a command line option
     
-    :ivar short_name: If this option has a single-letter name, this is it.
+    :ivar _short_name: If this option has a single-letter name, this is it.
     Otherwise None.
     """
 
@@ -138,12 +142,26 @@ class Option(object):
         self.name = name
         self.help = help
         self.type = type
-        self.short_name = short_name
+        self._short_name = short_name
         if type is None:
             assert argname is None
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+
+    def short_name(self):
+        if self._short_name:
+            return self._short_name
+        else:
+            # remove this when SHORT_OPTIONS is removed
+            # XXX: This is accessing a DeprecatedDict, so we call the super 
+            # method to avoid warnings
+            for (k, v) in dict.iteritems(Option.SHORT_OPTIONS):
+                if v == self:
+                    return k
+
+    def set_short_name(self, short_name):
+        self._short_name = short_name
 
     def get_negation_name(self):
         if self.name.startswith('no-'):
@@ -184,7 +202,81 @@ class Option(object):
         argname =  self.argname
         if argname is not None:
             argname = argname.upper()
-        yield self.name, self.short_name, argname, self.help
+        yield self.name, self.short_name(), argname, self.help
+
+
+class RegistryOption(Option):
+    """Option based on a registry
+
+    The values for the options correspond to entries in the registry.  Input
+    must be a registry key.  After validation, it is converted into an object
+    using Registry.get or a caller-provided converter.
+    """
+
+    def validate_value(self, value):
+        """Validate a value name"""
+        if value not in self.registry:
+            raise errors.BadOptionValue(self.name, value)
+
+    def convert(self, value):
+        """Convert a value name into an output type"""
+        self.validate_value(value)
+        if self.converter is None:
+            return self.registry.get(value)
+        else:
+            return self.converter(value)
+
+    def __init__(self, name, help, registry, converter=None,
+        value_switches=False, title=None):
+        """
+        Constructor.
+
+        :param name: The option name.
+        :param help: Help for the option.
+        :param registry: A Registry containing the values
+        :param converter: Callable to invoke with the value name to produce
+            the value.  If not supplied, self.registry.get is used.
+        :param value_switches: If true, each possible value is assigned its
+            own switch.  For example, instead of '--format knit',
+            '--knit' can be used interchangeably.
+        """
+        Option.__init__(self, name, help, type=self.convert)
+        self.registry = registry
+        self.name = name
+        self.converter = converter
+        self.value_switches = value_switches
+        self.title = title
+        if self.title is None:
+            self.title = name
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        if self.value_switches:
+            parser = parser.add_option_group(self.title)
+        Option.add_option(self, parser, short_name)
+        if self.value_switches:
+            for key in self.registry.keys():
+                option_strings = ['--%s' % key]
+                parser.add_option(action='callback',
+                              callback=self._optparse_value_callback(key),
+                                  help=self.registry.get_help(key),
+                                  *option_strings)
+
+    def _optparse_value_callback(self, cb_value):
+        def cb(option, opt, value, parser):
+            setattr(parser.values, self.name, self.type(cb_value))
+        return cb
+
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        for value in Option.iter_switches(self):
+            yield value
+        if self.value_switches:
+            for key in sorted(self.registry.keys()):
+                yield key, None, None, self.registry.get_help(key)
 
 
 class OptionParser(optparse.OptionParser):
@@ -202,13 +294,31 @@ def get_optparser(options):
     parser = OptionParser()
     parser.remove_option('--help')
     for option in options.itervalues():
-        option.add_option(parser, option.short_name)
+        option.add_option(parser, option.short_name())
     return parser
 
 
 def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
+
+
+def _global_registry_option(name, help, registry, **kwargs):
+    Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
+
+
+class MergeTypeRegistry(registry.Registry):
+
+    pass
+
+
+_merge_type_registry = MergeTypeRegistry()
+_merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
+                                   "Native diff3-style merge")
+_merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
+                                   "Merge using external diff3")
+_merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
+                                   "Weave-based merge")
 
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
@@ -244,15 +354,18 @@ _global_option('verbose',
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('log-format', type=str, help="Use this log format")
+_global_registry_option('log-format', "Use this log format",
+                        log.log_formatter_registry, value_switches=True,
+                        title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_option('merge-type', type=_parse_merge_type, 
-               help='Select a particular merge algorithm')
+_global_registry_option('merge-type', 'Select a particular merge algorithm',
+                        _merge_type_registry, value_switches=True,
+                        title='Merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'
@@ -262,3 +375,21 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
 _global_option('name-from-revision', help='The path name in the old tree.')
+
+
+# prior to 0.14 these were always globally registered; the old dict is
+# available for plugins that use it but it should not be used.
+Option.SHORT_OPTIONS = symbol_versioning.DeprecatedDict(
+    symbol_versioning.zero_fourteen,
+    'SHORT_OPTIONS',
+    {
+        'F': Option.OPTIONS['file'],
+        'h': Option.OPTIONS['help'],
+        'm': Option.OPTIONS['message'],
+        'r': Option.OPTIONS['revision'],
+        'v': Option.OPTIONS['verbose'],
+        'l': Option.OPTIONS['long'],
+        'q': Option.OPTIONS['quiet'],
+    },
+    'Set the short option name when constructing the Option.',
+    )

@@ -262,7 +262,8 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertContainsRe(result[1], 'unknown command')
         err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
                                       retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
+        self.assertContainsRe(err, 'Bad value "magic merge" for option'
+                              ' "merge-type"')
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.

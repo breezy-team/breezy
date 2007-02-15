@@ -338,6 +338,8 @@ class RevisionSpec_revno(RevisionSpec):
                 return RevisionInfo(branch, None, revisions[0][1])
         else:
             if revno < 0:
+                # if get_rev_id supported negative revnos, there would not be a
+                # need for this special case.
                 if (-revno) >= len(revs):
                     revno = 1
                 else:

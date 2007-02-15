@@ -76,6 +76,8 @@ class GPGStrategy(object):
         self._config = config
 
     def sign(self, content):
+        if isinstance(content, unicode):
+            raise errors.BzrBadParameterUnicode('content')
         ui.ui_factory.clear_term()
 
         preexec_fn = _set_gpg_tty

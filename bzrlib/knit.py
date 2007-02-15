@@ -518,6 +518,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
+        self.check_not_reserved_id(version_id)
         if not self.has_version(version_id):
             raise RevisionNotPresent(version_id, self.filename)
         
@@ -685,6 +686,7 @@ class KnitVersionedFile(VersionedFile):
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
+        self.check_not_reserved_id(version_id)
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)
@@ -797,6 +799,8 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
+        for version_id in version_ids:
+            self.check_not_reserved_id(version_id)
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
 
@@ -1126,29 +1130,22 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
-        decode_utf8 = cache_utf8.decode
-        pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update('read knit index', 0, 1)
+            fp = self._transport.get(self._filename)
             try:
-                fp = self._transport.get(self._filename)
-                try:
-                    # _load_data may raise NoSuchFile if the target knit is
-                    # completely empty.
-                    self._load_data(fp)
-                finally:
-                    fp.close()
-            except NoSuchFile:
-                if mode != 'w' or not create:
-                    raise
-                elif delay_create:
-                    self._need_to_create = True
-                else:
-                    self._transport.put_bytes_non_atomic(
-                        self._filename, self.HEADER, mode=self._file_mode)
-        finally:
-            pb.update('read knit index', 1, 1)
-            pb.finished()
+                # _load_data may raise NoSuchFile if the target knit is
+                # completely empty.
+                self._load_data(fp)
+            finally:
+                fp.close()
+        except NoSuchFile:
+            if mode != 'w' or not create:
+                raise
+            elif delay_create:
+                self._need_to_create = True
+            else:
+                self._transport.put_bytes_non_atomic(
+                    self._filename, self.HEADER, mode=self._file_mode)
 
     def _load_data(self, fp):
         cache = self._cache

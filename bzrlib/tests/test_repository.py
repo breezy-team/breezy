@@ -25,6 +25,7 @@ also see this file.
 from stat import S_ISDIR
 from StringIO import StringIO
 
+from bzrlib import symbol_versioning
 import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -33,20 +34,32 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
+from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
-from bzrlib import upgrade, workingtree
+from bzrlib import (
+    repository,
+    upgrade,
+    workingtree,
+    )
+from bzrlib.repofmt import knitrepo, weaverepo
 
 
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
-        private_default = repository._default_format.__class__
+        old_default = bzrdir.format_registry.get('default')
+        private_default = old_default().repository_format.__class__
         old_format = repository.RepositoryFormat.get_default_format()
         self.assertTrue(isinstance(old_format, private_default))
-        repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
+        def make_sample_bzrdir():
+            my_bzrdir = bzrdir.BzrDirMetaFormat1()
+            my_bzrdir.repository_format = SampleRepositoryFormat()
+            return my_bzrdir
+        bzrdir.format_registry.remove('default')
+        bzrdir.format_registry.register('sample', make_sample_bzrdir, '')
+        bzrdir.format_registry.set_default('sample')
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
@@ -55,8 +68,10 @@ class TestDefaultFormat(TestCase):
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
-            repository.RepositoryFormat.set_default_format(old_format)
-        self.assertEqual(old_format, repository.RepositoryFormat.get_default_format())
+            bzrdir.format_registry.remove('default')
+            bzrdir.format_registry.register('default', old_default, '')
+        self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
+                              old_format.__class__)
 
 
 class SampleRepositoryFormat(repository.RepositoryFormat):
@@ -97,7 +112,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             t = get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(repository.RepositoryFormat7(), "bar")
+        check_format(weaverepo.RepositoryFormat7(), "bar")
         
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -132,7 +147,7 @@ class TestFormat6(TestCaseWithTransport):
 
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = repository.RepositoryFormat6().initialize(control)
+        repo = weaverepo.RepositoryFormat6().initialize(control)
         # We no longer need to create the ancestry.weave file
         # since it is *never* used.
         self.assertRaises(NoSuchFile,
@@ -144,7 +159,7 @@ class TestFormat7(TestCaseWithTransport):
     
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormat7().initialize(control)
+        repo = weaverepo.RepositoryFormat7().initialize(control)
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
@@ -166,7 +181,7 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
         # inventory.weave == empty_weave
@@ -189,7 +204,7 @@ class TestFormat7(TestCaseWithTransport):
     def test_creates_lockdir(self):
         """Make sure it appears to be controlled by a LockDir existence"""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
         # TODO: Should check there is a 'lock' toplevel directory, 
         # regardless of contents
@@ -205,7 +220,7 @@ class TestFormat7(TestCaseWithTransport):
         """repo format 7 actually locks on lockdir"""
         base_url = self.get_url()
         control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
-        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
         repo.lock_write()
         repo.unlock()
@@ -219,7 +234,7 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Repository format 7'
@@ -248,7 +263,7 @@ class TestFormatKnit1(TestCaseWithTransport):
     
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control)
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
@@ -281,7 +296,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
         # lock: is a directory
@@ -300,7 +315,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
@@ -387,11 +402,12 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch
-        formats = [repository.RepositoryFormat5(),
-                   repository.RepositoryFormat6(),
-                   repository.RepositoryFormat7()]
-        incompatible_formats = [repository.RepositoryFormat4(),
-                                repository.RepositoryFormatKnit1(),
+        from bzrlib.repofmt import knitrepo, weaverepo
+        formats = [weaverepo.RepositoryFormat5(),
+                   weaverepo.RepositoryFormat6(),
+                   weaverepo.RepositoryFormat7()]
+        incompatible_formats = [weaverepo.RepositoryFormat4(),
+                                knitrepo.RepositoryFormatKnit1(),
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
@@ -418,8 +434,8 @@ class TestRepositoryConverter(TestCaseWithTransport):
         t = get_transport(self.get_url('.'))
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
-        repo = repository.RepositoryFormat7().initialize(repo_dir)
-        target_format = repository.RepositoryFormatKnit1()
+        repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
+        target_format = knitrepo.RepositoryFormatKnit1()
         converter = repository.CopyConverter(target_format)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -442,14 +458,14 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
         tree.commit("Dull commit", rev_id="dull")
         revision_tree = tree.branch.repository.revision_tree('dull')
         self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
             revision_tree.inventory.root.file_id)
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit2()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree('dull')

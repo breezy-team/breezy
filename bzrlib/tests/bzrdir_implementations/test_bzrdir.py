@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
+from bzrlib.repofmt import weaverepo
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -1106,9 +1107,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(isinstance(dir.get_repository_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # repositoryes, or it supports anonymous  repository formats, but not both.
-        anonymous_format = repository.RepositoryFormat6()
-        identifiable_format = repository.RepositoryFormat7()
+        # repositories, or it supports anonymous  repository formats, but not both.
+        anonymous_format = weaverepo.RepositoryFormat6()
+        identifiable_format = weaverepo.RepositoryFormat7()
         try:
             found_transport = dir.get_repository_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
@@ -1261,15 +1262,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('.')
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
-            try:
-                self.assertTrue(isinstance(dir._format.get_converter(),
-                                           bzrdir.Converter))
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            # (we force the latest known format as downgrades may not be
+            # available
+            self.assertTrue(isinstance(dir._format.get_converter(
+                format=dir._format), bzrdir.Converter))
         dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
@@ -1281,15 +1277,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.createWorkingTreeOrSkip(dir)
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
+            # (we force the latest known format as downgrades may not be
+            # available
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                dir._format.get_converter(None).convert(dir, pb)
+                dir._format.get_converter(format=dir._format).convert(dir, pb)
             finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
                 pb.finished()
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)

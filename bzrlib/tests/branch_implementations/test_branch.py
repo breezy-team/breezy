@@ -87,6 +87,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
@@ -325,17 +326,6 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
-
-    def test_commit_nicks(self):
-        """Nicknames are committed to the revision"""
-        get_transport(self.get_url()).mkdir('bzr.dev')
-        wt = self.make_branch_and_tree('bzr.dev')
-        branch = wt.branch
-        branch.nick = "My happy branch"
-        wt.commit('My commit respect da nick.')
-        committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
-                         "My happy branch")
 
     def test_create_open_branch_uses_repository(self):
         try:
