@@ -521,8 +521,8 @@ class Commit(object):
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
         self.parents = self.work_tree.get_parent_ids()
-        self.parent_invs = []
-        for revision in self.parents:
+        self.parent_invs = [self.basis_inv]
+        for revision in self.parents[1:]:
             if self.branch.repository.has_revision(revision):
                 mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)
