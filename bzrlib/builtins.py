@@ -1577,37 +1577,41 @@ class cmd_ls(Command):
         elif tree is None:
             tree = branch.basis_tree()
 
-        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
-            if fp.startswith(relpath):
-                fp = osutils.pathjoin(prefix, fp[len(relpath):])
-                if non_recursive and '/' in fp:
-                    continue
-                if not all and not selection[fc]:
-                    continue
-                if kind is not None and fkind != kind:
-                    continue
-                if verbose:
-                    kindch = entry.kind_character()
-                    outstring = '%-8s %s%s' % (fc, fp, kindch)
-                    if show_ids and fid is not None:
-                        outstring = "%-50s %s" % (outstring, fid)
-                    self.outf.write(outstring + '\n')
-                elif null:
-                    self.outf.write(fp + '\0')
-                    if show_ids:
+        tree.lock_read()
+        try:
+            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
+                if fp.startswith(relpath):
+                    fp = osutils.pathjoin(prefix, fp[len(relpath):])
+                    if non_recursive and '/' in fp:
+                        continue
+                    if not all and not selection[fc]:
+                        continue
+                    if kind is not None and fkind != kind:
+                        continue
+                    if verbose:
+                        kindch = entry.kind_character()
+                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        if show_ids and fid is not None:
+                            outstring = "%-50s %s" % (outstring, fid)
+                        self.outf.write(outstring + '\n')
+                    elif null:
+                        self.outf.write(fp + '\0')
+                        if show_ids:
+                            if fid is not None:
+                                self.outf.write(fid)
+                            self.outf.write('\0')
+                        self.outf.flush()
+                    else:
                         if fid is not None:
-                            self.outf.write(fid)
-                        self.outf.write('\0')
-                    self.outf.flush()
-                else:
-                    if fid is not None:
-                        my_id = fid
-                    else:
-                        my_id = ''
-                    if show_ids:
-                        self.outf.write('%-50s %s\n' % (fp, my_id))
-                    else:
-                        self.outf.write(fp + '\n')
+                            my_id = fid
+                        else:
+                            my_id = ''
+                        if show_ids:
+                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                        else:
+                            self.outf.write(fp + '\n')
+        finally:
+            tree.unlock()
 
 
 class cmd_unknowns(Command):
@@ -1712,12 +1716,16 @@ class cmd_ignored(Command):
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
-        for path, file_class, kind, file_id, entry in tree.list_files():
-            if file_class != 'I':
-                continue
-            ## XXX: Slightly inefficient since this was already calculated
-            pat = tree.is_ignored(path)
-            print '%-50s %s' % (path, pat)
+        tree.lock_read()
+        try:
+            for path, file_class, kind, file_id, entry in tree.list_files():
+                if file_class != 'I':
+                    continue
+                ## XXX: Slightly inefficient since this was already calculated
+                pat = tree.is_ignored(path)
+                print '%-50s %s' % (path, pat)
+        finally:
+            tree.unlock()
 
 
 class cmd_lookup_revision(Command):

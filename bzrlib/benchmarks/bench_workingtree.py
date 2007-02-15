@@ -27,7 +27,11 @@ class WorkingTreeBenchmark(Benchmark):
 
     def test_list_files_kernel_like_tree(self):
         tree = self.make_kernel_like_added_tree()
-        self.time(list, tree.list_files())
+        tree.lock_read()
+        try:
+            self.time(list, tree.list_files())
+        finally:
+            tree.unlock()
 
     def test_list_files_unknown_kernel_like_tree(self):
         tree = self.make_kernel_like_tree(link_working=True)
