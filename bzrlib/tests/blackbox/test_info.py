@@ -480,7 +480,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -531,7 +531,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -591,7 +591,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -633,7 +633,7 @@ Revision store:
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -675,7 +675,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -725,7 +725,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -757,7 +757,7 @@ Revision store:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -850,7 +850,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -894,7 +894,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -938,7 +938,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -985,7 +985,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -1077,7 +1077,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       format.branch_format.get_format_description(),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)

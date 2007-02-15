@@ -181,7 +181,7 @@ class TestBranch6(TestCaseWithTransport):
 
     def test_creation(self):
         format = BzrDirMetaFormat1()
-        format.branch_format = _mod_branch.BzrBranchFormat6()
+        format.set_branch_format(_mod_branch.BzrBranchFormat6())
         branch = self.make_branch('a', format=format)
         self.assertIsInstance(branch, _mod_branch.BzrBranch6)
         branch = self.make_branch('b', format='experimental-branch6')

@@ -101,7 +101,7 @@ class TestFormatRegistry(TestCase):
         self.assertIsInstance(my_bzrdir.repository_format, 
             knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
-        self.assertIsInstance(my_bzrdir.branch_format,
+        self.assertIsInstance(my_bzrdir.get_branch_format(),
                               bzrlib.branch.BzrBranchFormat6)
 
     def test_get_help(self):

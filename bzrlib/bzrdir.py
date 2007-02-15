@@ -925,7 +925,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        return self._format.branch_format.initialize(self)
+        return self._format.get_branch_format().initialize(self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1012,7 +1012,7 @@ class BzrDirMeta1(BzrDir):
             pass
         try:
             if not isinstance(self.open_branch()._format,
-                              format.branch_format.__class__):
+                              format.get_branch_format().__class__):
                 # the repository needs an upgrade.
                 return True
         except errors.NotBranchError:
@@ -1448,16 +1448,14 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __init__(self):
         self._branch_format = None
 
-    def _get_branch_format(self):
+    def get_branch_format(self):
         if self._branch_format is None:
             from bzrlib.branch import BranchFormat
             self._branch_format = BranchFormat.get_default_format()
         return self._branch_format
 
-    def _set_branch_format(self, format):
+    def set_branch_format(self, format):
         self._branch_format = format
-
-    branch_format = property(_get_branch_format, _set_branch_format)
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1478,8 +1476,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
-        from bzrlib.repository import RepositoryFormat
-        from bzrlib.branch import BranchFormat
         return BzrDirMeta1(transport, self)
 
     def __return_repository_format(self):
@@ -2000,7 +1996,7 @@ class ConvertMetaToMeta(Converter):
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
             if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
-                self.target_format.branch_format.__class__ is
+                self.target_format.get_branch_format().__class__ is
                 _mod_branch.BzrBranchFormat6):
                 branch_converter = _mod_branch.Converter5to6()
                 branch_converter.convert(branch)
@@ -2050,7 +2046,7 @@ class BzrDirFormatRegistry(registry.Registry):
             bd = BzrDirMetaFormat1()
             bd.repository_format = repo_format_class()
             if branch_format is not None:
-                bd.branch_format =  getattr(bzrlib.branch, branch_format)()
+                bd.set_branch_format(getattr(bzrlib.branch, branch_format)())
             return bd
         self.register(key, helper, help, native, deprecated)
 
