@@ -776,6 +776,12 @@ class DirStateRevisionTree(Tree):
         self._inventory = None
         self._locked = 0
 
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter"""
+        w = self._repository.weave_store.get_weave(file_id,
+                           self._repository.get_transaction())
+        return w.annotate_iter(self.inventory[file_id].revision)
+
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
@@ -840,6 +846,10 @@ class DirStateRevisionTree(Tree):
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))
 
+    def get_revision_id(self):
+        """Return the revision id for this tree."""
+        return self._revision_id
+
     def _get_inventory(self):
         if self._inventory is not None:
             return self._inventory
@@ -871,8 +881,6 @@ class DirStateRevisionTree(Tree):
 
     def path2id(self, path):
         """Return the id for path in this tree."""
-        # TODO: jam 20070215 This should be heavily optimized for dirstate
-        #       I'm taking the *very* lazy way out
         row = self._dirstate._get_row(path.encode('utf8'))
         if row == (None, None):
             return None
@@ -885,3 +893,35 @@ class DirStateRevisionTree(Tree):
         if not self._locked:
             self._inventory = None
             self._locked = False
+
+    def walkdirs(self, prefix=""):
+        # TODO: jam 20070215 This is the cheap way by cheating and using the
+        #       RevisionTree implementation.
+        #       This should be cleaned up to use the much faster Dirstate code
+        _directory = 'directory'
+        inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[currentdir[4]]
+            for name, child in entry.sorted_children():
+                toppath = relroot + name
+                dirblock.append((toppath, name, child.kind, None,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)
