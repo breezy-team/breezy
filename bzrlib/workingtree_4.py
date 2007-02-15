@@ -310,7 +310,7 @@ class WorkingTree4(WorkingTree3):
             fileid_utf8 = file_id.encode('utf8')
         if path is not None:
             # path lookups are faster
-            row = state.get_row(path)
+            row = state._get_row(path)
             if file_id:
                 if row[0][3] != fileid_utf8:
                     raise BzrError('integrity error ? : mismatching file_id and path')
@@ -903,7 +903,10 @@ class DirStateRevisionTree(Tree):
         """Return the id for path in this tree."""
         # TODO: jam 20070215 This should be heavily optimized for dirstate
         #       I'm taking the *very* lazy way out
-        return self._get_inventory().path2id(path)
+        row = self._dirstate._get_row(path.encode('utf8'))
+        if row == (None, None):
+            return None
+        return row[0][3].decode('utf8')
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
