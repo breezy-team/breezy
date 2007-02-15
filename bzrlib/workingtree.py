@@ -879,6 +879,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         Skips the control directory.
         """
+        # list_files is an iterator, so @needs_read_lock doesn't work properly
+        # with it. So callers should be careful to always read_lock the tree.
+        if not self.is_locked():
+            raise errors.ObjectNotLocked(self)
+
         inv = self.inventory
         if include_root is True:
             yield ('', 'V', 'directory', inv.root.file_id, inv.root)
