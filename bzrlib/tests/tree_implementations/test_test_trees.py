@@ -24,6 +24,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_empty_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_no_content(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -35,6 +37,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_abc_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -51,6 +55,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_abc_tree_content_2_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_2(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -63,10 +69,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('foobar\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_3_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_3(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -79,10 +87,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_4_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_4(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -95,10 +105,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_5_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_5(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -111,10 +123,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('bar\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_6_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_6(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -133,6 +147,8 @@ class TestTreeShapes(TestCaseWithTree):
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
         tree = self.get_tree_with_subdirs_and_all_content_types()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
