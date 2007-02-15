@@ -24,6 +24,8 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.repository import (
     Repository,
+    )
+from bzrlib.repofmt.knitrepo import (
     RepositoryFormatKnit2,
     )
 from bzrlib.workingtree import WorkingTree
