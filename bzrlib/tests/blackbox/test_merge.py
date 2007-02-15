@@ -169,7 +169,7 @@ class TestMerge(ExternalBase):
         
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertEquals(out, 'Merging from remembered location %s\n' % (base,))
-        self.assertEquals(err, 'All changes applied successfully.\n')
+        self.assertEquals(err, '+N  b\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # re-open tree as external runbzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
@@ -177,7 +177,7 @@ class TestMerge(ExternalBase):
         # test explicit --remember
         out, err = self.runbzr('merge ../branch_c --remember')
         self.assertEquals(out, '')
-        self.assertEquals(err, 'All changes applied successfully.\n')
+        self.assertEquals(err, '+N  c\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()),
                           abspath(branch_c.bzrdir.root_transport.base))
         # re-open tree as external runbzr modified it

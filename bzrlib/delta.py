@@ -344,8 +344,8 @@ def report_changes(change_iterator, reporter):
         exe_change = False
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value
-        if None not in name and (name[0] != name[1] or
-                                 parent_id[0] != parent_id[1]):
+        if None not in name and None not in parent_id and\
+            (name[0] != name[1] or parent_id[0] != parent_id[1]):
             renamed = True
         else:
             renamed = False

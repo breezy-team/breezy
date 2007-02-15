@@ -599,7 +599,8 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id)
+            count = tree_to.pull(branch_from, overwrite, rev_id,
+                delta.ChangeReporter(tree_to.inventory))
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
@@ -2415,8 +2416,10 @@ class cmd_merge(Command):
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
+
         if directory is None: directory = u'.'
         tree = WorkingTree.open_containing(directory)[0]
+        change_reporter = delta.ChangeReporter(tree.inventory)
 
         if branch is not None:
             try:
@@ -2425,7 +2428,7 @@ class cmd_merge(Command):
                 pass # Continue on considering this url a Branch
             else:
                 conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                            reprocess, show_base)
+                                         reprocess, show_base, change_reporter)
                 if conflicts == 0:
                     return 0
                 else:
@@ -2485,7 +2488,8 @@ class cmd_merge(Command):
                     show_base=show_base,
                     pull=pull,
                     this_dir=directory,
-                    pb=pb, file_list=interesting_files)
+                    pb=pb, file_list=interesting_files,
+                    change_reporter=change_reporter)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -3143,7 +3147,8 @@ def _merge_helper(other_revision, base_revision,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
                   pull=False,
-                  pb=DummyProgress()):
+                  pb=DummyProgress(),
+                  change_reporter=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3187,7 +3192,7 @@ def _merge_helper(other_revision, base_revision,
         raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
     try:
         merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
-                                   pb=pb)
+                                   pb=pb, change_reporter=change_reporter)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)

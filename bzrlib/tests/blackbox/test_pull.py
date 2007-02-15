@@ -299,7 +299,7 @@ class TestPull(ExternalBase):
         os.chdir('../branch_b')
         output = self.run_bzr('pull', '../bundle')
         self.assertEqual('', output[0])
-        self.assertEqual('All changes applied successfully.\n'
+        self.assertEqual(' M  a\nAll changes applied successfully.\n'
                          '1 revision(s) pulled.\n', output[1])
 
         self.assertEqualDiff(tree_a.branch.revision_history(),
