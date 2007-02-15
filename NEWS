@@ -101,6 +101,8 @@ IN DEVELOPMENT
     * ``bzr log branch/file`` works for local treeless branches
       (Aaron Bentley, #84247)
 
+    * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
