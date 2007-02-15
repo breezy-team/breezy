@@ -93,7 +93,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         zero_thirteen,
         )
 from bzrlib.tree import Tree
-from bzrlib.workingtree import WorkingTree3, WorkingTreeFormat3
+from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 
 
 class WorkingTree4(WorkingTree3):
@@ -261,14 +261,73 @@ class WorkingTree4(WorkingTree3):
         """Return the id of this trees root"""
         return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
 
-    def _get_row(self, file_id):
-        """Get the dirstate row for file_id."""
+    def _get_block_row_index(self, dirname, basename):
+        """Get the coordinates for a path in the state structure.
+
+        :param dirname: The dirname to lookup.
+        :param basename: The basename to lookup.
+        :return: A tuple describing where the path is located, or should be
+            inserted. The tuple contains four fields: the block index, the row
+            index, anda two booleans are True when the directory is present, and
+            when the entire path is present.  There is no guarantee that either
+            coordinate is currently reachable unless the found field for it is
+            True. For instance, a directory not present in the state may be
+            returned with a value one greater than the current highest block
+            offset. The directory present field will always be True when the
+            path present field is True.
+        """
+        assert not (dirname == '' and basename == ''), 'blackhole lookup error'
         state = self.current_dirstate()
-        fileid_utf8 = file_id.encode('utf8')
-        for row in state._iter_rows():
-            if row[0][3] == fileid_utf8:
-                return row
-        return None, None
+        state._read_dirblocks_if_needed()
+        block_index = bisect_left(state._dirblocks, (dirname, []))
+        if (block_index == len(state._dirblocks) or
+            state._dirblocks[block_index][0] != dirname):
+            # no such directory - return the dir index and 0 for the row.
+            return block_index, 0, False, False
+        block = state._dirblocks[block_index][1] # access the rows only
+        search = ((dirname, basename), [])
+        row_index = bisect_left(block, search)
+        if row_index == len(block) or block[row_index][0][1] != basename:
+            return block_index, row_index, True, False
+        return block_index, row_index, True, True
+
+    def _get_row(self, file_id=None, path=None):
+        """Get the dirstate row for file_id or path.
+
+        If either file_id or path is supplied, it is used as the key to lookup.
+        If both are supplied, the fastest lookup is used, and an error is
+        raised if they do not both point at the same row.
+        
+        :param file_id: An optional unicode file_id to be looked up.
+        :param path: An optional unicode path to be looked up.
+        :return: The dirstate row tuple for path/file_id, or (None, None)
+        """
+        if file_id is None and path is None:
+            raise errors.BzrError('must supply file_id or path')
+        state = self.current_dirstate()
+        state._read_dirblocks_if_needed()
+        if file_id is not None:
+            fileid_utf8 = file_id.encode('utf8')
+        if path is not None:
+            # path lookups are faster
+            if path == '':
+                return state._root_row
+            dirname, basename = os.path.split(path.encode('utf8'))
+            block_index, row_index, dir_present, file_present = \
+                self._get_block_row_index(dirname, basename)
+            if not file_present:
+                return None, None
+            row = state._dirblocks[block_index][1][row_index]
+            if file_id:
+                if row[0][3] != fileid_utf8:
+                    raise BzrError('integrity error ? : mismatching file_id and path')
+            assert row[0][3], 'unversioned row?!?!'
+            return row
+        else:
+            for row in state._iter_rows():
+                if row[0][3] == fileid_utf8:
+                    return row
+            return None, None
 
     def has_id(self, file_id):
         state = self.current_dirstate()
@@ -312,6 +371,163 @@ class WorkingTree4(WorkingTree3):
         else:
             return None
 
+    @needs_tree_write_lock
+    def move(self, from_paths, to_dir=None, after=False, **kwargs):
+        """See WorkingTree.move()."""
+        if not from_paths:
+            return ()
+
+        state = self.current_dirstate()
+
+        # check for deprecated use of signature
+        if to_dir is None:
+            to_dir = kwargs.get('to_name', None)
+            if to_dir is None:
+                raise TypeError('You must supply a target directory')
+            else:
+                symbol_versioning.warn('The parameter to_name was deprecated'
+                                       ' in version 0.13. Use to_dir instead',
+                                       DeprecationWarning)
+
+        assert not isinstance(from_paths, basestring)
+        to_dir_utf8 = to_dir.encode('utf8')
+        to_row_dirname, to_basename = os.path.split(to_dir_utf8)
+        # check destination directory
+        # get the details for it
+        to_row_block_index, to_row_row_index, dir_present, row_present = \
+            self._get_block_row_index(to_row_dirname, to_basename)
+        if not row_present:
+            raise errors.BzrMoveFailedError('', to_dir,
+                errors.NotInWorkingDirectory(to_dir))
+        to_row = state._dirblocks[to_row_block_index][1][to_row_row_index][0]
+        # get a handle on the block itself.
+        to_block_index = state._ensure_block(
+            to_row_block_index, to_row_row_index, to_dir_utf8)
+        to_block = state._dirblocks[to_block_index]
+        to_abs = self.abspath(to_dir)
+        if not isdir(to_abs):
+            raise errors.BzrMoveFailedError('',to_dir,
+                errors.NotADirectory(to_abs))
+
+        if to_row[2] != 'directory':
+            raise errors.BzrMoveFailedError('',to_dir,
+                errors.NotADirectory(to_abs))
+
+        if self._inventory is not None:
+            update_inventory = True
+            inv = self.inventory
+            to_dir_ie = inv[to_dir_id]
+            to_dir_id = to_row[3].decode('utf8')
+        else:
+            update_inventory = False
+
+        # create rename entries and tuples
+        for from_rel in from_paths:
+            # from_rel is 'pathinroot/foo/bar'
+            from_dirname, from_tail = os.path.split(from_rel)
+            from_dirname = from_dirname.encode('utf8')
+            from_row = self._get_row(path=from_rel)
+            if from_row == (None, None):
+                raise errors.BzrMoveFailedError(from_rel,to_dir,
+                    errors.NotVersionedError(path=str(from_rel)))
+
+            from_id = from_row[0][3].decode('utf8')
+            to_rel = pathjoin(to_dir, from_tail)
+            item_to_row = self._get_row(path=to_rel)
+            if item_to_row != (None, None):
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
+                    "Target is already versioned.")
+
+            if from_rel == to_rel:
+                raise errors.BzrMoveFailedError(from_rel, to_rel,
+                    "Source and target are identical.")
+
+            from_missing = not self.has_filename(from_rel)
+            to_missing = not self.has_filename(to_rel)
+            if after:
+                move_file = False
+            else:
+                move_file = True
+            if to_missing:
+                if not move_file:
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
+                        errors.NoSuchFile(path=to_rel,
+                        extra="New file has not been created yet"))
+                elif from_missing:
+                    # neither path exists
+                    raise errors.BzrRenameFailedError(from_rel, to_rel,
+                        errors.PathsDoNotExist(paths=(from_rel, to_rel)))
+            else:
+                if from_missing: # implicitly just update our path mapping
+                    move_file = False
+                else:
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
+                        extra="(Use --after to update the Bazaar id)")
+
+            rollbacks = []
+            def rollback_rename():
+                """A single rename has failed, roll it back."""
+                error = None
+                for rollback in reversed(rollbacks):
+                    try:
+                        rollback()
+                    except e:
+                        error = e
+                if error:
+                    raise error
+
+            # perform the disk move first - its the most likely failure point.
+            from_rel_abs = self.abspath(from_rel)
+            to_rel_abs = self.abspath(to_rel)
+            try:
+                osutils.rename(from_rel_abs, to_rel_abs)
+            except OSError, e:
+                raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
+            rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
+            try:
+                # perform the rename in the inventory next if needed: its easy
+                # to rollback
+                if update_inventory:
+                    # rename the entry
+                    from_entry = inv[from_id]
+                    current_parent = from_entry.parent_id
+                    inv.rename(from_id, to_dir_id, from_tail)
+                    rollbacks.append(
+                        lambda: inv.rename(from_id, current_parent, from_tail))
+                # finally do the rename in the dirstate, which is a little
+                # tricky to rollback, but least likely to need it.
+                basename = from_tail.encode('utf8')
+                old_block_index, old_row_index, dir_present, file_present = \
+                    self._get_block_row_index(from_dirname, basename)
+                old_block = state._dirblocks[old_block_index][1]
+                # remove the old row
+                old_row = old_block.pop(old_row_index)
+                rollbacks.append(lambda:old_block.insert(old_row_index, old_row))
+                # create new row in current block
+                new_row = ((to_block[0],) + old_row[0][1:], old_row[1])
+                insert_position = bisect_left(to_block[1], new_row)
+                to_block[1].insert(insert_position, new_row)
+                rollbacks.append(lambda:to_block[1].pop(insert_position))
+                if new_row[0][2] == 'directory':
+                    import pdb;pdb.set_trace()
+                    # if a directory, rename all the contents of child blocks
+                    # adding rollbacks as each is inserted to remove them and
+                    # restore the original
+                    # TODO: large scale slice assignment.
+                    # setup new list
+                    # save old list region
+                    # move up or down the old region
+                    # add rollback to move the region back
+                    # assign new list to new region
+                    # done
+            except:
+                rollback_rename()
+                raise
+            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            self._dirty = True
+
+        return #rename_tuples
+
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
         self._dirty = True
@@ -320,11 +536,10 @@ class WorkingTree4(WorkingTree3):
     def path2id(self, path):
         """Return the id for path in this tree."""
         state = self.current_dirstate()
-        path_utf8 = os.path.split(path.encode('utf8'))
-        for row, parents in state._iter_rows():
-            if row[0:2] == path_utf8:
-                return row[3].decode('utf8')
-        return None
+        row = self._get_row(path=path)
+        if row == (None, None):
+            return None
+        return row[0][3].decode('utf8')
 
     def read_working_inventory(self):
         """Read the working inventory.

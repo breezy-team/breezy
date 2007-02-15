@@ -250,7 +250,7 @@ class DirState(object):
 
         if kind == 'directory':
            # insert a new dirblock
-           bisect.insort_left(self._dirblocks, (utf8path, []))
+           self._ensure_block(block_index, row_index, utf8path)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def add_deleted(self, fileid_utf8, parents):
@@ -265,6 +265,39 @@ class DirState(object):
         block = self._dirblocks[block_index][1]
         row_index = bisect.insort_left(block, new_row)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def _ensure_block(self, parent_block_index, parent_row_index, dirname):
+        """Enssure a block for dirname exists.
+        
+        This function exists to let callers which know that there is a
+        directory dirname ensure that the block for it exists. This block can
+        fail to exist because of demand loading, or because a directory had no
+        children. In either case it is not an error. It is however an error to
+        call this if there is no parent entry for the directory, and thus the
+        function requires the coordinates of such an entry to be provided.
+
+        The root row is special cased and can be indicated with a parent block
+        and row index of -1
+
+        :param parent_block_index: The index of the block in which dirname's row
+            exists.
+        :param parent_row_index: The index in the parent block where the row
+            exists.
+        :param dirname: The utf8 dirname to ensure there is a block for.
+        :return: The index for the block.
+        """
+        # the basename of the directory must be the end of its full name.
+        if not (parent_block_index == -1 and
+            parent_block_index == -1 and dirname == ''):
+            assert dirname.endswith(
+                self._dirblocks[parent_block_index][1][parent_row_index][0][1])
+        ## In future, when doing partial parsing, this should load and 
+        # populate the entire block.
+        index = bisect.bisect_left(self._dirblocks, (dirname, []))
+        if (index == len(self._dirblocks) or
+            self._dirblocks[index][0] != dirname):
+            self._dirblocks.insert(index, (dirname, []))
+        return index
 
     def _find_dirblock_index(self, dirname):
         """Find the dirblock index for dirname.
@@ -658,7 +691,7 @@ class DirState(object):
         self._root_row = new_rows[0]
         self._dirblocks = [('', [])]
         for row in new_rows[1:]:
-            if row[0] != self._dirblocks[-1][0]:
+            if row[0][0] != self._dirblocks[-1][0]:
                 # new block
                 self._dirblocks.append((row[0][0], []))
             # append the row to the current block

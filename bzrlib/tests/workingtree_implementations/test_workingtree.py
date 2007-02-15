@@ -701,7 +701,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         finally:
             osutils.normalized_filename = orig
 
-    def test_move_deprecated_correct_call_named(self):
+    def test_move_correct_call_named(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
         Test the new API using named parameter"""
@@ -711,7 +711,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('initial commit')
         tree.move(['a1'], to_dir='sub1', after=False)
 
-    def test_move_deprecated_correct_call_unnamed(self):
+    def test_move_correct_call_unnamed(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
         Test the new API using unnamed parameter"""
@@ -733,7 +733,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                           to_this_parameter_does_not_exist='sub1',
                           after=False)
 
-    def test_move_deprecated_deprecated_call(self):
+    def test_move_deprecated_call(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
         Test the new API using deprecated parameter"""
@@ -742,7 +742,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
 
-        #tree.move(['a1'], to_name='sub1', after=False)
         self.callDeprecated(['The parameter to_name was deprecated'
                              ' in version 0.13. Use to_dir instead'],
                             tree.move, ['a1'], to_name='sub1',
