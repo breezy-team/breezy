@@ -310,18 +310,10 @@ class WorkingTree4(WorkingTree3):
             fileid_utf8 = file_id.encode('utf8')
         if path is not None:
             # path lookups are faster
-            if path == '':
-                return state._root_row
-            dirname, basename = os.path.split(path.encode('utf8'))
-            block_index, row_index, dir_present, file_present = \
-                self._get_block_row_index(dirname, basename)
-            if not file_present:
-                return None, None
-            row = state._dirblocks[block_index][1][row_index]
+            row = state.get_row(path)
             if file_id:
                 if row[0][3] != fileid_utf8:
                     raise BzrError('integrity error ? : mismatching file_id and path')
-            assert row[0][3], 'unversioned row?!?!'
             return row
         else:
             for row in state._iter_rows():

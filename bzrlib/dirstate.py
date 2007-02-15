@@ -439,6 +439,53 @@ class DirState(object):
         self._read_header_if_needed()
         return list(self._parents)
 
+    def _get_row(self, path_utf8):
+        """Get the dirstate row for path.
+
+        :param path_utf8: An utf8 path to be looked up.
+        :return: The dirstate row tuple for path, or (None, None)
+        """
+        self._read_dirblocks_if_needed()
+        if path_utf8 == '':
+            return self._root_row
+        dirname, basename = os.path.split(path_utf8)
+        block_index, row_index, dir_present, file_present = \
+            self._get_block_row_index(dirname, basename)
+        if not file_present:
+            return None, None
+        row = self._dirblocks[block_index][1][row_index]
+        assert row[0][3], 'unversioned row?!?!'
+        return row
+
+    def _get_block_row_index(self, dirname, basename):
+        """Get the coordinates for a path in the state structure.
+
+        :param dirname: The utf8 dirname to lookup.
+        :param basename: The utf8 basename to lookup.
+        :return: A tuple describing where the path is located, or should be
+            inserted. The tuple contains four fields: the block index, the row
+            index, anda two booleans are True when the directory is present, and
+            when the entire path is present.  There is no guarantee that either
+            coordinate is currently reachable unless the found field for it is
+            True. For instance, a directory not present in the state may be
+            returned with a value one greater than the current highest block
+            offset. The directory present field will always be True when the
+            path present field is True.
+        """
+        assert not (dirname == '' and basename == ''), 'blackhole lookup error'
+        self._read_dirblocks_if_needed()
+        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
+        if (block_index == len(self._dirblocks) or
+            self._dirblocks[block_index][0] != dirname):
+            # no such directory - return the dir index and 0 for the row.
+            return block_index, 0, False, False
+        block = self._dirblocks[block_index][1] # access the rows only
+        search = ((dirname, basename), [])
+        row_index = bisect.bisect_left(block, search)
+        if row_index == len(block) or block[row_index][0][1] != basename:
+            return block_index, row_index, True, False
+        return block_index, row_index, True, True
+
     @staticmethod
     def initialize(path):
         """Create a new dirstate on path.

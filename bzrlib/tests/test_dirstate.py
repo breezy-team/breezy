@@ -474,18 +474,71 @@ class TestDirstateManipulations(TestCaseWithTransport):
         self.assertEqual(expected_rows, list(state._iter_rows()))
 
 
-class TestGetLines(TestCaseWithTransport):
+class TestCaseWithDirstate(TestCaseWithTransport):
+    """Helper functions for creating Dirstate objects with various content."""
 
-    def test_get_line_with_2_rows(self):
+    def create_empty_dirstate(self):
         state = dirstate.DirState.initialize('dirstate')
+        return state
+
+    def create_dirstate_with_root(self):
+        state = self.create_empty_dirstate()
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         root_row_direntry = ('', '', 'directory', 'a-root-value', 0, packed_stat, '')
         root_row = (root_row_direntry, [])
+        state._set_data([], root_row, [])
+        return state
+
+    def create_dirstate_with_root_and_subdir(self):
+        state = self.create_dirstate_with_root()
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         dirblocks = []
-        # add a file in the root
-        subdir_row = (['', 'subdir', 'directory', 'subdir-id', 0, packed_stat, ''], [])
+        subdir_row = (('', 'subdir', 'directory', 'subdir-id', 0, packed_stat, ''), [])
         dirblocks.append(('', [subdir_row]))
+        state._set_data([], state._root_row, dirblocks)
+        return state
+
+    def create_complex_dirstate(self):
+        """This dirstate contains multiple files and directories.
+
+         /        a-root-value
+         a/       a-dir
+         b/       b-dir
+         c        c-file
+         d        d-file
+         a/e/     e-dir
+         a/f      f-file
+         b/g      g-file
+         b/h\xc3\xa5  h-\xc3\xa5-file  #This is u'\xe5' encoded into utf-8
+
+        # Notice that a/e is an empty directory.
+        """
+        state = dirstate.DirState.initialize('dirstate')
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        root_row_direntry = ('', '', 'directory', 'a-root-value', 0, packed_stat, '')
+        root_row = (root_row_direntry, [])
+        a_row = (('', 'a', 'directory', 'a-dir', 0, packed_stat, ''), [])
+        b_row = (('', 'b', 'directory', 'b-dir', 0, packed_stat, ''), [])
+        c_row = (('', 'c', 'file', 'c-file', 10, packed_stat, null_sha), [])
+        d_row = (('', 'd', 'file', 'd-file', 20, packed_stat, null_sha), [])
+        e_row = (('a', 'e', 'directory', 'e-dir', 0, packed_stat, ''), [])
+        f_row = (('a', 'f', 'file', 'f-file', 30, packed_stat, null_sha), [])
+        g_row = (('b', 'g', 'file', 'g-file', 30, packed_stat, null_sha), [])
+        h_row = (('b', 'h\xc3\xa5', 'file', 'h-\xc3\xa5-file', 40,
+                  packed_stat, null_sha), [])
+        dirblocks = []
+        dirblocks.append(('', [a_row, b_row, c_row, d_row]))
+        dirblocks.append(('a', [e_row, f_row]))
+        dirblocks.append(('b', [g_row, h_row]))
         state._set_data([], root_row, dirblocks)
+        return state
+
+
+class TestGetLines(TestCaseWithDirstate):
+
+    def test_get_line_with_2_rows(self):
+        state = self.create_dirstate_with_root_and_subdir()
         self.assertEqual(['#bazaar dirstate flat format 1\n',
             'adler32: 1283137489\n',
             'num_entries: 2\n',
@@ -498,12 +551,9 @@ class TestGetLines(TestCaseWithTransport):
             state.get_lines())
 
     def test_row_to_line(self):
-        state = dirstate.DirState.initialize('dirstate')
-        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
-        root_row_direntry = ('', '', 'directory', 'a-root-value', 0, packed_stat, '')
-        root_parent_direntries = []
-        root_row = (root_row_direntry, root_parent_direntries)
-        self.assertEqual('\x00\x00d\x00a-root-value\x000\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00', state._row_to_line(root_row))
+        state = self.create_dirstate_with_root()
+        self.assertEqual('\x00\x00d\x00a-root-value\x000\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00',
+                         state._row_to_line(state._root_row))
 
     def test_row_to_line_with_parent(self):
         state = dirstate.DirState.initialize('dirstate')
@@ -550,3 +600,101 @@ class TestGetLines(TestCaseWithTransport):
         state._set_data([], root_row, dirblocks)
         expected_rows = [root_row, subdir_row, afile_row, file_row2]
         self.assertEqual(expected_rows, list(state._iter_rows()))
+
+
+class TestGetBlockRowIndex(TestCaseWithDirstate):
+
+    def assertBlockRowIndexEqual(self, block_index, row_index, dir_present,
+                                 file_present, state, dirname, basename):
+        self.assertEqual((block_index, row_index, dir_present, file_present),
+                         state._get_block_row_index(dirname, basename))
+        if dir_present:
+            block = state._dirblocks[block_index]
+            self.assertEqual(dirname, block[0])
+        if dir_present and file_present:
+            row = state._dirblocks[block_index][1][row_index]
+            self.assertEqual(dirname, row[0][0])
+            self.assertEqual(basename, row[0][1])
+
+    def test_simple_structure(self):
+        state = self.create_dirstate_with_root_and_subdir()
+        self.assertBlockRowIndexEqual(0, 0, True, True, state, '', 'subdir')
+        self.assertBlockRowIndexEqual(0, 0, True, False, state, '', 'bdir')
+        self.assertBlockRowIndexEqual(0, 1, True, False, state, '', 'zdir')
+        self.assertBlockRowIndexEqual(1, 0, False, False, state, 'a', 'foo')
+        self.assertBlockRowIndexEqual(1, 0, False, False, state, 'subdir', 'foo')
+
+    def test_complex_structure_exists(self):
+        state = self.create_complex_dirstate()
+        # Make sure we can find everything that exists
+        self.assertBlockRowIndexEqual(0, 0, True, True, state, '', 'a')
+        self.assertBlockRowIndexEqual(0, 1, True, True, state, '', 'b')
+        self.assertBlockRowIndexEqual(0, 2, True, True, state, '', 'c')
+        self.assertBlockRowIndexEqual(0, 3, True, True, state, '', 'd')
+        self.assertBlockRowIndexEqual(1, 0, True, True, state, 'a', 'e')
+        self.assertBlockRowIndexEqual(1, 1, True, True, state, 'a', 'f')
+        self.assertBlockRowIndexEqual(2, 0, True, True, state, 'b', 'g')
+        self.assertBlockRowIndexEqual(2, 1, True, True, state, 'b', 'h\xc3\xa5')
+
+    def test_complex_structure_missing(self):
+        state = self.create_complex_dirstate()
+        # Make sure things would be inserted in the right locations
+        # '_' comes before 'a'
+        self.assertBlockRowIndexEqual(0, 0, True, False, state, '', '_')
+        self.assertBlockRowIndexEqual(0, 1, True, False, state, '', 'aa')
+        self.assertBlockRowIndexEqual(0, 4, True, False, state, '', 'h\xc3\xa5')
+        self.assertBlockRowIndexEqual(1, 0, False, False, state, '_', 'a')
+        self.assertBlockRowIndexEqual(2, 0, False, False, state, 'aa', 'a')
+        self.assertBlockRowIndexEqual(3, 0, False, False, state, 'bb', 'a')
+        # This would be inserted between a/ and b/
+        self.assertBlockRowIndexEqual(2, 0, False, False, state, 'a/e', 'a')
+        # Put at the end
+        self.assertBlockRowIndexEqual(3, 0, False, False, state, 'e', 'a')
+
+
+class TestGetRow(TestCaseWithDirstate):
+
+    def assertRowEqual(self, dirname, basename, kind, state, path):
+        row = state._get_row(path)
+        if kind is None:
+            self.assertEqual((None, None), row)
+        else:
+            cur = row[0]
+            self.assertEqual((dirname, basename, kind), cur[:3])
+
+    def test_simple_structure(self):
+        state = self.create_dirstate_with_root_and_subdir()
+        self.assertRowEqual('', '', 'directory', state, '')
+        self.assertRowEqual('', 'subdir', 'directory', state, 'subdir')
+        self.assertRowEqual(None, None, None, state, 'missing')
+        self.assertRowEqual(None, None, None, state, 'missing/foo')
+        self.assertRowEqual(None, None, None, state, 'subdir/foo')
+
+    def test_complex_structure_exists(self):
+        state = self.create_complex_dirstate()
+        self.assertRowEqual('', '', 'directory', state, '')
+        self.assertRowEqual('', 'a', 'directory', state, 'a')
+        self.assertRowEqual('', 'b', 'directory', state, 'b')
+        self.assertRowEqual('', 'c', 'file', state, 'c')
+        self.assertRowEqual('', 'd', 'file', state, 'd')
+        self.assertRowEqual('a', 'e', 'directory', state, 'a/e')
+        self.assertRowEqual('a', 'f', 'file', state, 'a/f')
+        self.assertRowEqual('b', 'g', 'file', state, 'b/g')
+        self.assertRowEqual('b', 'h\xc3\xa5', 'file', state, 'b/h\xc3\xa5')
+
+    def test_complex_structure_missing(self):
+        state = self.create_complex_dirstate()
+        self.assertRowEqual(None, None, None, state, '_')
+        self.assertRowEqual(None, None, None, state, '_\xc3\xa5')
+        self.assertRowEqual(None, None, None, state, 'a/b')
+        self.assertRowEqual(None, None, None, state, 'c/d')
+
+    def test_get_row_uninitialized(self):
+        """Calling get_row will load data if it needs to"""
+        state = self.create_dirstate_with_root()
+        state.save()
+        del state
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._header_state)
+        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._dirblock_state)
+        self.assertRowEqual('', '', 'directory', state, '')
