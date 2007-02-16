@@ -237,8 +237,8 @@ class RegistryOption(Option):
         :param converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
         :param value_switches: If true, each possible value is assigned its
-            own switch.  For example, instead of '--format metaweave',
-            '--metaweave' can be used interchangeably.
+            own switch.  For example, instead of '--format knit',
+            '--knit' can be used interchangeably.
         """
         Option.__init__(self, name, help, type=self.convert)
         self.registry = registry

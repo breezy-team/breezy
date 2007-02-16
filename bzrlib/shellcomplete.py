@@ -49,7 +49,7 @@ def shellcomplete_on_options(options, outfile=None):
     for opt in options:
         if opt.short_name:
             outfile.write('"(--%s -%s)"{--%s,-%s}\n'
-                    % (opt.name, opt.short_name, opt.name, opt.short_name))
+                    % (opt.name, opt.short_name(), opt.name, opt.short_name()))
         else:
             outfile.write('--%s\n' % opt.name)
 

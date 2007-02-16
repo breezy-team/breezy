@@ -413,7 +413,7 @@ class TestBranchConfig(TestCaseWithTransport):
 
     def test_config_creates_local(self):
         """Creating a new entry in config uses a local path."""
-        branch = self.make_branch('branch')
+        branch = self.make_branch('branch', format='knit')
         branch.set_push_location('http://foobar')
         locations = config.locations_config_filename()
         local_path = osutils.getcwd().encode('utf8')

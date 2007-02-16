@@ -144,6 +144,7 @@ class TestReportChanges(tests.TestCase):
         self.assertChangesEqual(exe_change=False, modified='kind changed',
                                 executable=(False, True),
                                 kind=('directory', 'file'))
+        self.assertChangesEqual(parent_id=('pid', None))
 
         # Now make sure they all work together
         self.assertChangesEqual(versioned_change='removed',

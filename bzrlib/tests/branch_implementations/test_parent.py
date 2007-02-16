@@ -42,7 +42,7 @@ class TestParent(TestCaseWithTransport):
         url = 'http://bazaar-vcs.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEqual(url, b.get_parent())
-        self.assertEqual(url, b.control_files.get('parent').read().strip('\n'))
+        self.assertEqual(url, b._get_parent_location())
 
         b.set_parent(None)
         self.assertEqual(None, b.get_parent())
@@ -52,15 +52,13 @@ class TestParent(TestCaseWithTransport):
         self.assertEqual(local_path_to_url('../other_branch'), b.get_parent())
         path = local_path_to_url('../yanb')
         b.set_parent(path)
-        self.assertEqual('../yanb',
-            b.control_files.get('parent').read().strip('\n'))
+        self.assertEqual('../yanb', b._get_parent_location())
         self.assertEqual(path, b.get_parent())
 
 
         self.assertRaises(bzrlib.errors.InvalidURL, b.set_parent, u'\xb5')
         b.set_parent(escape(u'\xb5'))
-        self.assertEqual('%C2%B5',
-            b.control_files.get('parent').read().strip('\n'))
+        self.assertEqual('%C2%B5', b._get_parent_location())
 
         self.assertEqual(b.base + '%C2%B5', b.get_parent())
 
@@ -70,7 +68,7 @@ class TestParent(TestCaseWithTransport):
             #       paths as well? Nobody has complained about it.
             pass
         else:
-            b.control_files.put('parent', cStringIO.StringIO('/local/abs/path'))
+            b._set_parent_location('/local/abs/path')
             self.assertEqual('file:///local/abs/path', b.get_parent())
 
     def test_get_invalid_parent(self):
@@ -82,7 +80,7 @@ class TestParent(TestCaseWithTransport):
         # Force the relative path to be something invalid
         # This should attempt to go outside the filesystem
         path = ('../'*(n_dirs+5)) + 'foo'
-        b.control_files.put('parent', cStringIO.StringIO(path))
+        b._set_parent_location(path)
 
         # With an invalid branch parent, just return None
         self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)
