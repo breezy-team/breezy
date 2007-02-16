@@ -134,31 +134,37 @@ def show_tree_status(wt, show_unchanged=None,
                     raise errors.BzrCommandError(str(e))
             else:
                 new = wt
-        _raise_if_nonexistent(specific_files, old, new)
-        delta = new.changes_from(old, want_unchanged=show_unchanged,
-                              specific_files=specific_files)
-        delta.show(to_file,
-                   show_ids=show_ids,
-                   show_unchanged=show_unchanged,
-                   short_status=short)
-        short_status_letter = '?'
-        if not short:
-            short_status_letter = ''
-        list_paths('unknown', new.unknowns(), specific_files, to_file,
-                   short_status_letter)
-        conflict_title = False
-        # show the new conflicts only for now. XXX: get them from the delta.
-        for conflict in new.conflicts():
-            if not short and conflict_title is False:
-                print >> to_file, "conflicts:"
-                conflict_title = True
-            if short:
-                prefix = 'C '
-            else:
-                prefix = ' '
-            print >> to_file, "%s %s" % (prefix, conflict)
-        if new_is_working_tree and show_pending:
-            show_pending_merges(new, to_file, short)
+        old.lock_read()
+        new.lock_read()
+        try:
+            _raise_if_nonexistent(specific_files, old, new)
+            delta = new.changes_from(old, want_unchanged=show_unchanged,
+                                  specific_files=specific_files)
+            delta.show(to_file,
+                       show_ids=show_ids,
+                       show_unchanged=show_unchanged,
+                       short_status=short)
+            short_status_letter = '?'
+            if not short:
+                short_status_letter = ''
+            list_paths('unknown', new.unknowns(), specific_files, to_file,
+                       short_status_letter)
+            conflict_title = False
+            # show the new conflicts only for now. XXX: get them from the delta.
+            for conflict in new.conflicts():
+                if not short and conflict_title is False:
+                    print >> to_file, "conflicts:"
+                    conflict_title = True
+                if short:
+                    prefix = 'C '
+                else:
+                    prefix = ' '
+                print >> to_file, "%s %s" % (prefix, conflict)
+            if new_is_working_tree and show_pending:
+                show_pending_merges(new, to_file, short)
+        finally:
+            old.unlock()
+            new.unlock()
     finally:
         wt.unlock()
 
