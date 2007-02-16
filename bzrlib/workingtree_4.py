@@ -211,12 +211,15 @@ class WorkingTree4(WorkingTree3):
         rows = self._dirstate._iter_rows()
         root_row = rows.next()
         inv = Inventory(root_id=root_row[0][3].decode('utf8'))
+        # we could do this straight out of the dirstate; it might be fast
+        # and should be profiled - RBC 20070216
+        parent_ids = {'' : inv.root.file_id}
         for line in rows:
             dirname, name, kind, fileid_utf8, size, stat, link_or_sha1 = line[0]
             if dirname == '/':
                 # not in this revision tree.
                 continue
-            parent_id = inv[inv.path2id(dirname.decode('utf8'))].file_id
+            parent_id = parent_ids[dirname]
             file_id = fileid_utf8.decode('utf8')
             entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
             if kind == 'file':
@@ -224,6 +227,8 @@ class WorkingTree4(WorkingTree3):
                 #entry.text_size = size
                 #entry.text_sha1 = sha1
                 pass
+            elif kind == 'directory':
+                parent_ids[(dirname + '/' + name).strip('/')] = file_id
             inv.add(entry)
         self._inventory = inv
 
@@ -231,11 +236,12 @@ class WorkingTree4(WorkingTree3):
         #if not path:
         #    path = self.inventory.id2path(file_id)
         #    # now lookup row by path
-        row, parents = self._get_row(file_id=file_id)
+        row, parents = self._get_row(file_id=file_id, path=path)
         assert row is not None, 'what error should this raise'
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
-        path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
+        if path is None:
+            path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
         return self._hashcache.get_sha1(path, stat_value)
 
     def _get_inventory(self):
@@ -808,12 +814,15 @@ class DirStateRevisionTree(Tree):
         root_row = rows.next()
         inv = Inventory(root_id=root_row[0][3].decode('utf8'),
             revision_id=self._revision_id)
+        # we could do this straight out of the dirstate; it might be fast
+        # and should be profiled - RBC 20070216
+        parent_ids = {'' : inv.root.file_id}
         for line in rows:
             revid, kind, dirname, name, size, executable, sha1 = line[1][parent_index]
             if not revid:
                 # not in this revision tree.
                 continue
-            parent_id = inv[inv.path2id(dirname.decode('utf8'))].file_id
+            parent_id = parent_ids[dirname]
             file_id = line[0][3].decode('utf8')
             entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
             entry.revision = revid.decode('utf8')
@@ -821,6 +830,8 @@ class DirStateRevisionTree(Tree):
                 entry.executable = executable
                 entry.text_size = size
                 entry.text_sha1 = sha1
+            elif kind == 'directory':
+                parent_ids[(dirname + '/' + name).strip('/')] = file_id
             inv.add(entry)
         self._inventory = inv
 
