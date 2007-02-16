@@ -227,6 +227,8 @@ class WorkingTree4(WorkingTree3):
         This is relatively expensive: we have to walk the entire dirstate.
         Ideally we would not, and can deprecate this function.
         """
+        #: uncomment to trap on inventory requests.
+        # import pdb;pdb.set_trace()
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
         rows = state._iter_rows()

@@ -560,7 +560,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def has_id(self, file_id):
         # files that have been deleted are excluded
-        inv = self._inventory
+        inv = self.inventory
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)

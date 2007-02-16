@@ -404,28 +404,80 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     """
     if not filenames:
         return None
-    specified_ids = _find_filename_ids_across_trees(filenames, trees, 
-                                                    require_versioned)
-    return _find_children_across_trees(specified_ids, trees)
+    specified_path_ids = _find_ids_across_trees(filenames, trees,
+        require_versioned)
+    return _find_children_across_trees(specified_path_ids, trees)
+#    specified_ids = [id for path, id in _find_path_ids_across_trees(filenames, trees, require_versioned)]
+#    return _find_children_across_trees(specified_ids, trees)
 
-
-def _find_filename_ids_across_trees(filenames, trees, require_versioned):
-    """Find the ids corresponding to specified filenames.
+def find_path_ids_across_trees(filenames, trees, require_versioned=True):
+    """Find the paths and ids corresponding to specified filenames.
     
-    All matches in all trees will be used.
+    All matches in all trees will be used, and all children of matched
+    directories will be included
 
     :param filenames: The filenames to find file_ids for
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
-    at least one tree.
-    :return: a set of file ids for the specified filenames
+        at least one tree.
+    :return: a set of (path, file ids) for the specified filenames and their
+        children. The returned path is the path of the id in the first tree
+        that contains it. This matters when files have been moved 
+    """
+    if not filenames:
+        return set()
+    # This function needs to know the ids for filenames in all trees, then
+    # search for those same files and children in all the other trees.
+    # it is complicated by the same path in two trees being able to have
+    # different ids, which might both be present in both trees.
+    # consider two trees, which have had 'mv foo bar' and 'mv baz foo' done
+    # in this case, a diff of 'foo' should should changes to both the current
+    # 'bar' and the current 'foo' which was baz. Its arguable that if 
+    # the situation is 'mv parent/foo bar' and 'mv baz parent/foo', that 
+    # we should return the current bar and the current parent/foo' - at the 
+    # moment we do, but we loop around all ids and all trees: I*T checks.
+    
+    # Updating this algorithm to be fast in the common case:
+    # nothing has moved, all files have the same id in parent, child and there
+    # are only two trees (or one is working tree and the others are parents).
+    # walk the dirstate. as we find each path, gather the paths of that
+    # id in all trees. add a mapping from the id to the path in those trees.
+    # now lookup children by id, again in all trees; for these trees that
+    # nothing has moved in, the id->path mapping will allow us to find the
+    # parent trivially. To answer 'has anything been moved' in one of the
+    # dirstate parent trees though, we will need to stare harder at it.
+
+    #  Now, given a path index, that is trivial for any one tree, and given
+    #  that we can ask for additional data from a dirstate tree, its a single
+    #  pass, though it will require scanning the entire tree to find paths
+    #  that were at the current location.
+    # ideal results?: There are three things: tree, path, id. Pathologically
+    # we can have completely disjoint ids for each tree; but we cannot have 
+    # disjoin paths for each tree, except if we scan each tree for the 
+    # different ids from other trees.
+
+    specified_path_ids = _find_ids_across_trees(filenames, trees,
+        require_versioned)
+    return _find_path_id_children_across_trees(specified_path_ids, trees)
+
+
+def _find_ids_across_trees(filenames, trees, require_versioned):
+    """Find the ids corresponding to specified filenames.
+    
+    All matches in all trees will be used, but subdirectories are not scanned.
+
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+        at least one tree.
+    :return: a set of (path, file ids) for the specified filenames
     """
     not_versioned = []
     interesting_ids = set()
     for tree_path in filenames:
         not_found = True
         for tree in trees:
-            file_id = tree.inventory.path2id(tree_path)
+            file_id = tree.path2id(tree_path)
             if file_id is not None:
                 interesting_ids.add(file_id)
                 not_found = False
@@ -452,7 +504,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if file_id not in tree:
+                if not tree.has_id(file_id):
                     continue
                 entry = tree.inventory[file_id]
                 for child in getattr(entry, 'children', {}).itervalues():
@@ -494,8 +546,8 @@ class InterTree(InterObject):
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
         """
-        # NB: show_status depends on being able to pass in non-versioned files and
-        # report them as unknown
+        # NB: show_status depends on being able to pass in non-versioned files
+        # and report them as unknown
         trees = (self.source, self.target)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
