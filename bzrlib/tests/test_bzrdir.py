@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ from bzrlib import (
     help_topics,
     symbol_versioning,
     urlutils,
+    workingtree,
     )
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
@@ -39,7 +40,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
-import bzrlib.workingtree as workingtree
+from bzrlib.repofmt import knitrepo, weaverepo
 
 
 class TestDefaultFormat(TestCase):
@@ -70,18 +71,25 @@ class TestFormatRegistry(TestCase):
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir', 
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-            'Format using knits')
+        my_format_registry.register_metadir('knit',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+            'Format using knits',
+            )
         my_format_registry.register_metadir('experimental-knit3', 
-                                            'RepositoryFormatKnit2',
-                                            'Format using knits', 
-                                            tree='WorkingTreeFormat4')
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+            'Format using knits', 
+            tree='WorkingTreeFormat4')
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-            'Transitional format in 0.8.  Slower than knit.', deprecated=True)
-        my_format_registry.register_metadir('experimental-knit2', 
-                                            'RepositoryFormatKnit2',
-            'Experimental successor to knit.  Use at your own risk.')
+        my_format_registry.register_metadir(
+            'experimental-knit2',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
+            'Experimental successor to knit.  Use at your own risk.',
+            )
+        my_format_registry.register_metadir(
+            'branch6',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
+            'Experimental successor to knit.  Use at your own risk.',
+            branch_format='BzrBranchFormat6')
         return my_format_registry
 
     def test_format_registry(self):
@@ -92,20 +100,18 @@ class TestFormatRegistry(TestCase):
         self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('default')
         self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1)
+            knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('knit')
         self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('metaweave')
-        self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormat7)
-        self.assertIsInstance(my_bzrdir.workingtree_format, 
-            workingtree.WorkingTreeFormat3)
+            knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('experimental-knit3')
         self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit2)
+            knitrepo.RepositoryFormatKnit3)
         self.assertIsInstance(my_bzrdir.workingtree_format, 
             workingtree.WorkingTreeFormat4)
+        my_bzrdir = my_format_registry.make_bzrdir('branch6')
+        self.assertIsInstance(my_bzrdir.get_branch_format(),
+                              bzrlib.branch.BzrBranchFormat6)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
@@ -135,13 +141,13 @@ class TestFormatRegistry(TestCase):
         default_factory = bzrdir.format_registry.get('default')
         old_default = [k for k, v in bzrdir.format_registry.iteritems()
                        if v == default_factory and k != 'default'][0]
-        bzrdir.format_registry.set_default_repository('metaweave')
+        bzrdir.format_registry.set_default_repository('experimental-knit2')
         try:
-            self.assertIs(bzrdir.format_registry.get('metaweave'),
+            self.assertIs(bzrdir.format_registry.get('experimental-knit2'),
                           bzrdir.format_registry.get('default'))
             self.assertIs(
                 repository.RepositoryFormat.get_default_format().__class__,
-                repository.RepositoryFormat7)
+                knitrepo.RepositoryFormatKnit2)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 
@@ -504,7 +510,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
         self.assertEqual(repository_base,
-                         dir.get_repository_transport(repository.RepositoryFormat7()).base)
+                         dir.get_repository_transport(weaverepo.RepositoryFormat7()).base)
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,

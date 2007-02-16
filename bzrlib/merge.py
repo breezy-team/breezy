@@ -88,7 +88,8 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None, 
-                 this_tree=None, pb=DummyProgress(), recurse='down'):
+                 this_tree=None, pb=DummyProgress(), change_reporter=None,
+                 recurse='down'):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
@@ -108,6 +109,7 @@ class Merger(object):
         self._pb = pb 
         self.pp = None
         self.recurse = recurse
+        self.change_reporter = change_reporter
 
     def revision_tree(self, revision_id):
         return self.this_branch.repository.revision_tree(revision_id)
@@ -200,20 +202,21 @@ class Merger(object):
         self.other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
-            self.other_rev_id = other_branch.last_revision()
+            self.other_rev_id = self.other_branch.last_revision()
             if self.other_rev_id is None:
-                raise NoCommits(other_branch)
+                raise NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
         elif other_revision[1] is not None:
-            self.other_rev_id = other_branch.get_rev_id(other_revision[1])
+            self.other_rev_id = self.other_branch.get_rev_id(other_revision[1])
             self.other_basis = self.other_rev_id
         else:
             self.other_rev_id = None
-            self.other_basis = other_branch.last_revision()
+            self.other_basis = self.other_branch.last_revision()
             if self.other_basis is None:
-                raise NoCommits(other_branch)
-        if other_branch.base != self.this_branch.base:
-            self.this_branch.fetch(other_branch, last_revision=self.other_basis)
+                raise NoCommits(self.other_branch)
+        if self.other_branch.base != self.this_branch.base:
+            self.this_branch.fetch(self.other_branch,
+                                   last_revision=self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
         """Set 'other' based on a branch and revision id
@@ -282,7 +285,9 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
-        merge = self.merge_type(pb=self._pb, **kwargs)
+        merge = self.merge_type(pb=self._pb,
+                                change_reporter=self.change_reporter,
+                                **kwargs)
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero:
                 note("All changes applied successfully.")
@@ -390,7 +395,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=DummyProgress(), pp=None):
+                 pb=DummyProgress(), pp=None, change_reporter=None):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
@@ -402,6 +407,7 @@ class Merge3Merger(object):
         self.show_base = show_base
         self.pb = pb
         self.pp = pp
+        self.change_reporter = change_reporter
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
 
@@ -430,6 +436,9 @@ class Merge3Merger(object):
                 fs_conflicts = resolve_conflicts(self.tt, child_pb)
             finally:
                 child_pb.finished()
+            if change_reporter is not None:
+                from bzrlib import delta
+                delta.report_changes(self.tt._iter_changes(), change_reporter)
             self.cook_conflicts(fs_conflicts)
             for conflict in self.cooked_conflicts:
                 warning(conflict)
@@ -853,13 +862,14 @@ class WeaveMerger(Merge3Merger):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
-                 reprocess=False):
+                 reprocess=False, change_reporter=None):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp, reprocess=reprocess)
+                                          pb=pb, pp=pp, reprocess=reprocess,
+                                          change_reporter=change_reporter)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree related to this tree.
@@ -966,7 +976,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=DummyProgress()):
+                pb=DummyProgress(),
+                change_reporter=None):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -980,7 +991,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
              stacklevel=2)
         this_tree = this_branch.bzrdir.open_workingtree()
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree, 
-                    pb=pb)
+                    pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids

@@ -49,6 +49,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                          'tree-reference')
         tree.commit('commit reference')
         entry = tree.basis_tree().inventory['sub-tree-root-id']
+        sub_tree = tree.get_nested_tree(entry)
         self.assertEqual(sub_tree.last_revision(), entry.reference_revision)
         
 

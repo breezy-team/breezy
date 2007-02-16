@@ -61,6 +61,7 @@ from bzrlib import (
     inventory,
     tree,
     )
+from bzrlib.branch import Branch
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
@@ -256,12 +257,16 @@ class Commit(object):
                 # this is so that we still consier the master branch
                 # - in a checkout scenario the tree may have no
                 # parents but the branch may do.
-                first_tree_parent = None
-            master_last = self.master_branch.last_revision()
-            if (master_last is not None and
-                master_last != first_tree_parent):
-                raise errors.OutOfDateTree(self.work_tree)
-    
+                first_tree_parent = bzrlib.revision.NULL_REVISION
+            old_revno, master_last = self.master_branch.last_revision_info()
+            if master_last != first_tree_parent:
+                if master_last != bzrlib.revision.NULL_REVISION:
+                    raise errors.OutOfDateTree(self.work_tree)
+            if self.branch.repository.has_revision(first_tree_parent):
+                new_revno = old_revno + 1
+            else:
+                # ghost parents never appear in revision history.
+                new_revno = 1
             if strict:
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
@@ -325,16 +330,19 @@ class Commit(object):
                 # now the master has the revision data
                 # 'commit' to the master first so a timeout here causes the local
                 # branch to be out of date
-                self.master_branch.append_revision(self.rev_id)
+                self.master_branch.set_last_revision_info(new_revno,
+                                                          self.rev_id)
 
             # and now do the commit locally.
-            self.branch.append_revision(self.rev_id)
+            self.branch.set_last_revision_info(new_revno, self.rev_id)
 
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
-            self.reporter.completed(self.branch.revno(), self.rev_id)
+            self.reporter.completed(new_revno, self.rev_id)
+            # old style commit hooks - should be deprecated ? (obsoleted in
+            # 0.15)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny
@@ -343,6 +351,23 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
+            # new style commit hooks:
+            if not self.bound_branch:
+                hook_master = self.branch
+                hook_local = None
+            else:
+                hook_master = self.master_branch
+                hook_local = self.branch
+            # With bound branches, when the master is behind the local branch,
+            # the 'old_revno' and old_revid values here are incorrect.
+            # XXX: FIXME ^. RBC 20060206
+            if self.parents:
+                old_revid = self.parents[0]
+            else:
+                old_revid = bzrlib.revision.NULL_REVISION
+            for hook in Branch.hooks['post_commit']:
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                    self.rev_id)
             self._emit_progress_update()
         finally:
             self._cleanup()
@@ -502,8 +527,8 @@ class Commit(object):
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
         self.parents = self.work_tree.get_parent_ids()
-        self.parent_invs = []
-        for revision in self.parents:
+        self.parent_invs = [self.basis_inv]
+        for revision in self.parents[1:]:
             if self.branch.repository.has_revision(revision):
                 mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)

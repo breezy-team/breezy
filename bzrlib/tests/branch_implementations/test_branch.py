@@ -82,7 +82,13 @@ class TestBranch(TestCaseWithBranch):
 
     def test_append_revisions(self):
         """Test appending more than one revision"""
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+
         br = self.get_branch()
+        br.fetch(wt.branch)
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
@@ -213,6 +219,19 @@ class TestBranch(TestCaseWithBranch):
         branch_d = branch_b.clone(repo_d.bzrdir)
         self.assertEqual(random_parent, branch_d.get_parent())
 
+    def test_copy_content_incomplete(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_branch_and_tree('source')
+        # this gives us an incomplete repository
+        tree.bzrdir.open_repository().copy_content_into(
+            source.branch.repository)
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        tree.bzrdir.open_branch().copy_content_into(source.branch)
+
+
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
         raise TestSkipped('XXX branch sprouting is not yet tested..')
@@ -326,17 +345,6 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
-
-    def test_commit_nicks(self):
-        """Nicknames are committed to the revision"""
-        get_transport(self.get_url()).mkdir('bzr.dev')
-        wt = self.make_branch_and_tree('bzr.dev')
-        branch = wt.branch
-        branch.nick = "My happy branch"
-        wt.commit('My commit respect da nick.')
-        committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
-                         "My happy branch")
 
     def test_create_open_branch_uses_repository(self):
         try:
@@ -588,20 +596,9 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
         branch = self.get_branch()
         branch.set_push_location('foo')
-        local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("[%s]\n"
-                             "push_location = foo\n"
-                             "push_location:policy = norecurse" % local_path,
-                             fn)
-
-    # TODO RBC 20051029 test getting a push location from a branch in a 
-    # recursive section - that is, it appends the branch name.
+        self.assertEqual('foo', branch.get_push_location())
 
 
 class TestFormat(TestCaseWithBranch):
@@ -642,3 +639,52 @@ class TestFormat(TestCaseWithBranch):
                          branch.BranchFormat.find_format(opened_control))
 
 
+class TestBound(TestCaseWithBranch):
+
+    def test_bind_unbind(self):
+        branch = self.make_branch('1')
+        branch2 = self.make_branch('2')
+        try:
+            branch.bind(branch2)
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not support binding')
+        self.assertTrue(branch.unbind())
+        self.assertFalse(branch.unbind())
+        self.assertIs(None, branch.get_bound_location())
+
+    def test_old_bound_location(self):
+        branch = self.make_branch('branch1')
+        try:
+            self.assertIs(None, branch.get_old_bound_location())
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not store old bound locations')
+        branch2 = self.make_branch('branch2')
+        branch.bind(branch2)
+        self.assertIs(None, branch.get_old_bound_location())
+        branch.unbind()
+        self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')
+
+
+class TestStrict(TestCaseWithBranch):
+
+    def test_strict_history(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        try:
+            tree1.branch.set_append_revisions_only(True)
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not support strict history')
+        tree1.commit('empty commit')
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        tree2.commit('empty commit 2')
+        tree1.pull(tree2.branch)
+        tree1.commit('empty commit 3')
+        tree2.commit('empty commit 4')
+        self.assertRaises(errors.DivergedBranches, tree1.pull, tree2.branch)
+        tree2.merge_from_branch(tree1.branch)
+        tree2.commit('empty commit 5')
+        self.assertRaises(errors.AppendRevisionsOnlyViolation, tree1.pull,
+                          tree2.branch)
+        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
+        tree3.merge_from_branch(tree2.branch)
+        tree3.commit('empty commit 6')
+        tree2.pull(tree3.branch)
