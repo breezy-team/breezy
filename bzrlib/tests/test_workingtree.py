@@ -306,16 +306,22 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree.add(['file-a'], ['id-a'])
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
+        rev1_tree.lock_read()
+        self.addCleanup(rev1_tree.unlock)
 
         subtree2 = subtree.bzrdir.sprout('subdir2').open_workingtree()
         self.build_tree(['subdir2/file-b'])
         subtree2.add(['file-b'], ['id-b'])
         rev2 = subtree2.commit('commit in subdir2')
         rev2_tree = subtree2.basis_tree()
+        rev2_tree.lock_read()
+        self.addCleanup(rev2_tree.unlock)
 
         subtree.merge_from_branch(subtree2.branch)
         rev3 = subtree.commit('merge from subdir2')
         rev3_tree = subtree.basis_tree()
+        rev3_tree.lock_read()
+        self.addCleanup(rev3_tree.unlock)
 
         repo = tree.branch.repository
         repo.fetch(subtree.branch.repository, rev3)
@@ -345,6 +351,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('subdir')
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
+        rev1_tree.lock_read()
+        self.addCleanup(rev1_tree.unlock)
 
         tree.branch.pull(subtree.branch)
 
@@ -368,8 +376,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('subdir')
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
+        rev1_tree.lock_read()
+        self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
+        rev2_tree.lock_read()
+        self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)
 

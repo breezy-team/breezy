@@ -711,11 +711,15 @@ class BzrDir(object):
         #       case that the newly sprouted branch is a remote one
         if result_repo is None or result_repo.make_working_trees():
             wt = result.create_workingtree()
-            if wt.inventory.root is None:
-                try:
-                    wt.set_root_id(self.open_workingtree.get_root_id())
-                except errors.NoWorkingTree:
-                    pass
+            wt.lock_write()
+            try:
+                if wt.path2id('') is None:
+                    try:
+                        wt.set_root_id(self.open_workingtree.get_root_id())
+                    except errors.NoWorkingTree:
+                        pass
+            finally:
+                wt.unlock()
         return result
 
 

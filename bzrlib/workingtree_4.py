@@ -213,26 +213,27 @@ class WorkingTree4(WorkingTree3):
         current_row = state._root_row
         current_id = current_row[0][3].decode('utf8')
         inv = Inventory(root_id=current_id)
-        rows.next()
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
-        for line in rows:
-            dirname, name, kind, fileid_utf8, size, stat, link_or_sha1 = line[0]
-            if dirname == '/':
-                # not in this revision tree.
+        for block in state._dirblocks:
+            # block of unversioned files, skip.
+            if block[0] == '/':
                 continue
-            parent_id = parent_ids[dirname]
-            file_id = fileid_utf8.decode('utf8')
-            entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
-            if kind == 'file':
-                #entry.executable = executable
-                #entry.text_size = size
-                #entry.text_sha1 = sha1
-                pass
-            elif kind == 'directory':
-                parent_ids[(dirname + '/' + name).strip('/')] = file_id
-            inv.add(entry)
+            dirname = block[0]
+            parent_id = parent_ids[block[0]]
+            for line in block[1]:
+                _, name, kind, fileid_utf8, size, stat, link_or_sha1 = line[0]
+                file_id = fileid_utf8.decode('utf8')
+                entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
+                if kind == 'file':
+                    #entry.executable = executable
+                    #entry.text_size = size
+                    #entry.text_sha1 = sha1
+                    pass
+                elif kind == 'directory':
+                    parent_ids[(dirname + '/' + name).strip('/')] = file_id
+                inv.add(entry)
         self._inventory = inv
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -825,6 +826,7 @@ class DirStateRevisionTree(Tree):
         parent_rows = iter(sorted(parent_rows, key=lambda x:x[0][2:3]))
         root_row = parent_rows.next()
         inv = Inventory(root_id=root_row[1], revision_id=self._revision_id)
+        inv.root.revision = root_row[1][parent_index][0].decode('utf8')
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}

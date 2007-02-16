@@ -67,7 +67,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             # there should be one fileid in this tree - the root of the tree.
             root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
             self.assertEqual(
-                [(('', '', 'directory', tree.inventory.root.file_id, 0, root_stat_pack, ''), [])],
+                [(('', '', 'directory', tree.path2id(''), 0, root_stat_pack, ''), [])],
                 list(state._iter_rows()))
         check_state()
         state = dirstate.DirState.on_file('dirstate')

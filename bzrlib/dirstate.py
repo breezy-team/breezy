@@ -321,6 +321,7 @@ class DirState(object):
         :param tree: The tree which should provide parent information and
             inventory ids.
         """
+        tree.lock_read()
         # XXX: aka the big ugly.
         result = DirState()
         result._state_file = open(dir_state_filename, 'wb+')
@@ -406,6 +407,7 @@ class DirState(object):
         #lines.append(result._get_ghosts_line([]))
         result._set_data(parent_ids, root_row, dirblocks)
         result.save()
+        tree.unlock()
         return result
 
     def get_ghosts(self):
