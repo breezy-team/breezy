@@ -875,6 +875,16 @@ class DirStateRevisionTree(Tree):
             return None 
         return ie.executable
 
+    def list_files(self, include_root=False):
+        # We use a standard implementation, because DirStateRevisionTree is
+        # dealing with one of the parents of the current state
+        inv = self._get_inventory()
+        entries = inv.iter_entries()
+        if self.inventory.root is not None and not include_root:
+            entries.next()
+        for path, entry in entries:
+            yield path, 'V', entry.kind, entry.file_id, entry
+        
     def lock_read(self):
         """Lock the tree for a set of operations."""
         self._locked += 1
