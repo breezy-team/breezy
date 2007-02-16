@@ -302,6 +302,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # work that merge would do.
 
         subtree = self.make_branch_and_tree('subdir')
+        # writelock the tree so its repository doesn't get readlocked by
+        # the revision tree locks. This works around the bug where we dont
+        # permit lock upgrading.
+        subtree.lock_write()
+        self.addCleanup(subtree.unlock)
         self.build_tree(['subdir/file-a',])
         subtree.add(['file-a'], ['id-a'])
         rev1 = subtree.commit('commit in subdir')
@@ -374,6 +379,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_workingtree()
 
         subtree = self.make_branch_and_tree('subdir')
+        # writelock the tree so its repository doesn't get readlocked by
+        # the revision tree locks. This works around the bug where we dont
+        # permit lock upgrading.
+        subtree.lock_write()
+        self.addCleanup(subtree.unlock)
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()

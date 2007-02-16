@@ -803,6 +803,14 @@ class DirStateRevisionTree(Tree):
     def _file_size(self, entry, stat_value):
         return entry.text_size
 
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are not versioned.
+
+        :return: set of paths.
+        """
+        pred = self.has_filename
+        return set((p for p in paths if not pred(p)))
+
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
         
@@ -915,10 +923,9 @@ class DirStateRevisionTree(Tree):
 
     def path2id(self, path):
         """Return the id for path in this tree."""
-        row = self._dirstate._get_row(path.encode('utf8'))
-        if row == (None, None):
-            return None
-        return row[0][3].decode('utf8')
+        # TODO: if there is no inventory, do an optimistic lookup in the
+        # dirstate by the path; commonly this will work.
+        return self.inventory.path2id(path)
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
