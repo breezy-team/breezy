@@ -51,12 +51,12 @@ class TestRemove(ExternalBase):
             self.assertNotInWorkingTree(f)
 
     def test_command_no_files_specified(self):
-        self.build_tree([])
-        tree = self.make_branch_and_tree('.')
+        tree = self._make_tree([])
 
         (out,err) = self.runbzr(self.cmd, retcode=3)
         self.assertEquals(err.strip(),
-            "bzr: ERROR: Specify one or more files to remove, or use --new.")
+            "bzr: ERROR: Specify one or more files to " + self.cmd +
+            ", or use --new.")
 
         (out,err) = self.runbzr(self.cmd+' --new', retcode=3)
         self.assertEquals(err.strip(),"bzr: ERROR: No matching files.")
@@ -76,22 +76,19 @@ class TestRemove(ExternalBase):
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "a is not versioned.")
 
+    def test_command_on_non_existing_files(self):
+        tree = self._make_tree([a])
         (out,err) = self.runbzr(self.cmd + ' b')
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "b does not exist.")
 
     def test_command_one_file(self):
-        self.build_tree([a])
-        tree = self.make_branch_and_tree('.')
-        tree.add(a)
-        self.assertInWorkingTree(a)
+        tree = self._make_tree([a])
         self.runbzr([self.cmd, a])
         self.assertCommandPerformedOnFiles([a])
 
     def test_command_on_deleted(self):
-        self.runbzr("init")
-        self.build_tree([a])
-        self.runbzr(['add', a])
+        tree = self._make_tree([a])
         self.runbzr(['commit', '-m', 'added a'])
         os.unlink(a)
         self.assertInWorkingTree(a)
@@ -106,8 +103,7 @@ class TestRemove(ExternalBase):
 
     def test_command_with_new_in_dir1(self):
         tree = self._make_tree(files)
-        (out,err) = self.runbzr(self.cmd+' --new %s %s'%(b,c))
-
+        self.runbzr(self.cmd+' --new %s %s'%(b,c))
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
         self.assertEqual(tree.path2id(a), a+_id)
