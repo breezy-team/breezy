@@ -35,7 +35,7 @@ class TestUnversion(ExternalBase):
         self.cmd = 'unversion'
         self.shape = None
 
-    def _make_tree(self,files):
+    def _make_add_and_assert_tree(self,files):
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         for f in files:
@@ -53,7 +53,7 @@ class TestUnversion(ExternalBase):
             self.assertNotInWorkingTree(f)
 
     def test_command_no_files_specified(self):
-        tree = self._make_tree([])
+        tree = self._make_add_and_assert_tree([])
 
         (out,err) = self.runbzr(self.cmd, retcode=3)
         self.assertEquals(err.strip(),
@@ -79,18 +79,18 @@ class TestUnversion(ExternalBase):
         self.assertEquals(err.strip(), "a is not versioned.")
 
     def test_command_on_non_existing_files(self):
-        tree = self._make_tree([a])
+        tree = self._make_add_and_assert_tree([])
         (out,err) = self.runbzr(self.cmd + ' b')
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "b is not versioned.")
 
     def test_command_one_file(self):
-        tree = self._make_tree([a])
+        tree = self._make_add_and_assert_tree([a])
         self.runbzr([self.cmd, a])
         self.assertCommandPerformedOnFiles([a])
 
     def test_command_on_deleted(self):
-        tree = self._make_tree([a])
+        tree = self._make_add_and_assert_tree([a])
         self.runbzr(['commit', '-m', 'added a'])
         os.unlink(a)
         self.assertInWorkingTree(a)
@@ -98,13 +98,13 @@ class TestUnversion(ExternalBase):
         self.assertNotInWorkingTree(a)
 
     def test_command_with_new(self):
-        tree = self._make_tree(files)
+        tree = self._make_add_and_assert_tree(files)
 
         self.runbzr(self.cmd+' --new')
         self.assertCommandPerformedOnFiles(files)
 
     def test_command_with_new_in_dir1(self):
-        tree = self._make_tree(files)
+        tree = self._make_add_and_assert_tree(files)
         self.runbzr(self.cmd+' --new %s %s'%(b,c))
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
@@ -112,7 +112,7 @@ class TestUnversion(ExternalBase):
         self.assertCommandPerformedOnFiles([b,c])
 
     def test_command_with_new_in_dir2(self):
-        tree = self._make_tree(files)
+        tree = self._make_add_and_assert_tree(files)
         self.runbzr(self.cmd+' --new .')
         tree = WorkingTree.open('.')
         self.assertCommandPerformedOnFiles([a])
