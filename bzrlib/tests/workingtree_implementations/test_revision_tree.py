@@ -69,3 +69,17 @@ class TestRevisionTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.set_parent_ids(['a-ghost'], allow_leftmost_as_ghost=True)
         self.assertRaises(errors.NoSuchRevision, tree.revision_tree, 'a-ghost')
+
+    def test_revision_tree_different_root_id(self):
+        """A revision tree might have a very different root."""
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_root_id('one')
+        rev1 = tree.commit('first post')
+        tree.set_root_id('two')
+        try:
+            cached_revision_tree = tree.revision_tree(rev1)
+        except errors.NoSuchRevision:
+            # its ok for a working tree to not cache trees, so just return.
+            return
+        repository_revision_tree = tree.branch.repository.revision_tree(rev1)
+        self.assertTreesEqual(repository_revision_tree, cached_revision_tree)
