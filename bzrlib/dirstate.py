@@ -229,8 +229,7 @@ class DirState(object):
         else:
             size = stat.st_size
             packed_stat = pack_stat(stat)
-        parent_info = [DirState.NULL_PARENT_ROW] * (len(self._parents) -
-                                                    len(self._ghosts))
+        parent_info = self._empty_parent_info()
         if kind == 'file':
             row_data = ((dirname, basename, kind, file_id.encode('utf8'),
                 size, packed_stat, link_or_sha1), parent_info)
@@ -265,6 +264,10 @@ class DirState(object):
         block = self._dirblocks[block_index][1]
         row_index = bisect.insort_left(block, new_row)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def _empty_parent_info(self):
+        return [DirState.NULL_PARENT_ROW] * (len(self._parents) -
+                                                    len(self._ghosts))
 
     def _ensure_block(self, parent_block_index, parent_row_index, dirname):
         """Enssure a block for dirname exists.
@@ -803,15 +806,19 @@ class DirState(object):
         if new_id.__class__ == unicode:
             new_id = new_id.encode('utf8')
         self._read_dirblocks_if_needed()
-        if new_id == self._root_row[0][3]:
-            # the root id is unchanged
-            return
-        if len(path) or len(self._parents):
+        if len(path):
             import pdb;pdb.set_trace()
             # logic not written
             raise NotImplementedError(self.set_path_id)
+        # TODO: check new id is unique
+        if new_id == self._root_row[0][3]:
+            # the root id is unchanged
+            return
         root_info, root_parents = self._root_row
-        self._root_row = (root_info[0:3] + (new_id, ) + root_info[4:7]), root_parents
+        if len(root_parents):
+            self.add_deleted(root_info[3], root_parents)
+        self._root_row = ((root_info[0:3] + (new_id, ) + root_info[4:7]),
+            self._empty_parent_info())
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def set_parent_trees(self, trees, ghosts):

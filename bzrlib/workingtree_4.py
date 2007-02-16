@@ -207,10 +207,13 @@ class WorkingTree4(WorkingTree3):
         This is relatively expensive: we have to walk the entire dirstate.
         Ideally we would not, and can deprecate this function.
         """
-        dirstate = self.current_dirstate()
-        rows = self._dirstate._iter_rows()
-        root_row = rows.next()
-        inv = Inventory(root_id=root_row[0][3].decode('utf8'))
+        state = self.current_dirstate()
+        state._read_dirblocks_if_needed()
+        rows = state._iter_rows()
+        current_row = state._root_row
+        current_id = current_row[0][3].decode('utf8')
+        inv = Inventory(root_id=current_id)
+        rows.next()
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
@@ -809,21 +812,29 @@ class DirStateRevisionTree(Tree):
         assert self._revision_id in self._dirstate.get_parent_ids(), \
             'parent %s has disappeared from %s' % (
             self._revision_id, self._dirstate.get_parent_ids())
+        # separate call for profiling - makes it clear where the costs are.
+        self._dirstate._read_dirblocks_if_needed()
         parent_index = self._dirstate.get_parent_ids().index(self._revision_id)
+        # because the parent tree may look dramatically different to the current
+        # tree, we grab and sort the tree content  all at once, then
+        # deserialise into an inventory.
         rows = self._dirstate._iter_rows()
-        root_row = rows.next()
-        inv = Inventory(root_id=root_row[0][3].decode('utf8'),
-            revision_id=self._revision_id)
+        parent_rows = []
+        for row in rows:
+            parent_rows.append((row[1][parent_index], row[0][3].decode('utf8')))
+        parent_rows = iter(sorted(parent_rows, key=lambda x:x[0][2:3]))
+        root_row = parent_rows.next()
+        inv = Inventory(root_id=root_row[1], revision_id=self._revision_id)
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
-        for line in rows:
-            revid, kind, dirname, name, size, executable, sha1 = line[1][parent_index]
+        for line in parent_rows:
+            revid, kind, dirname, name, size, executable, sha1 = line[0]
             if not revid:
                 # not in this revision tree.
                 continue
             parent_id = parent_ids[dirname]
-            file_id = line[0][3].decode('utf8')
+            file_id = line[1]
             entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
             entry.revision = revid.decode('utf8')
             if kind == 'file':
