@@ -193,6 +193,26 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
 
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are not versioned.
+
+        :return: set of paths.
+        """
+        # TODO: make a generic multi-bisect routine roughly that should list
+        # the paths, then process one half at a time recursively, and feed the
+        # results of each bisect in further still
+        paths = sorted(paths)
+        result = set()
+        state = self.current_dirstate()
+        # TODO we want a paths_to_dirblocks helper I think
+        for path in paths:
+            dirname, basename = os.path.split(path.encode('utf8'))
+            _, _, _, path_is_versioned = state._get_block_row_index(
+                dirname, basename)
+            if path_is_versioned:
+                result.add(path)
+        return result
+
     def flush(self):
         """Write all cached data to disk."""
         if self._control_files._lock_mode != 'w':
