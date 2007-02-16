@@ -62,7 +62,7 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, make_entry
+from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, entry_factory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -221,7 +221,7 @@ class WorkingTree4(WorkingTree3):
                 continue
             parent_id = parent_ids[dirname]
             file_id = fileid_utf8.decode('utf8')
-            entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
+            entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
             if kind == 'file':
                 #entry.executable = executable
                 #entry.text_size = size
@@ -824,7 +824,7 @@ class DirStateRevisionTree(Tree):
                 continue
             parent_id = parent_ids[dirname]
             file_id = line[0][3].decode('utf8')
-            entry = make_entry(kind, name.decode('utf8'), parent_id, file_id)
+            entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
             entry.revision = revid.decode('utf8')
             if kind == 'file':
                 entry.executable = executable

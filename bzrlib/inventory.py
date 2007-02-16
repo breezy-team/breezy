@@ -1301,6 +1301,12 @@ class Inventory(object):
         return self.root is not None and file_id == self.root.file_id
 
 
+entry_factory = {
+    'directory':InventoryDirectory,
+    'file':InventoryFile,
+    'symlink':InventoryLink,
+}
+
 def make_entry(kind, name, parent_id, file_id=None):
     """Create an inventory entry.
 
@@ -1325,14 +1331,11 @@ def make_entry(kind, name, parent_id, file_id=None):
             #       if the error was raised with the full path
             raise errors.InvalidNormalization(name)
 
-    if kind == 'directory':
-        return InventoryDirectory(file_id, name, parent_id)
-    elif kind == 'file':
-        return InventoryFile(file_id, name, parent_id)
-    elif kind == 'symlink':
-        return InventoryLink(file_id, name, parent_id)
-    else:
+    try:
+        factory = entry_factory[kind]
+    except KeyError:
         raise BzrError("unknown kind %r" % kind)
+    return factory(file_id, name, parent_id)
 
 
 _NAME_RE = None
