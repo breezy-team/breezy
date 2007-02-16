@@ -919,6 +919,8 @@ class DirStateRevisionTree(Tree):
         
     def lock_read(self):
         """Lock the tree for a set of operations."""
+        if not self._locked:
+            self._repository.lock_read()
         self._locked += 1
 
     def path2id(self, path):
@@ -934,6 +936,7 @@ class DirStateRevisionTree(Tree):
         if not self._locked:
             self._inventory = None
             self._locked = False
+            self._repository.unlock()
 
     def walkdirs(self, prefix=""):
         # TODO: jam 20070215 This is the cheap way by cheating and using the
