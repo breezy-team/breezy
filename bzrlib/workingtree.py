@@ -1614,19 +1614,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return result
 
     @needs_tree_write_lock
-    def remove(self, files, verbose=False, to_file=None):
+    def remove(self, files, verbose=False, to_file=None, delete_files=False):
         """Remove nominated files from the working inventory..
-
-        This does not remove their text.  This does not run on XXX on what? RBC
 
         TODO: Refuse to remove modified files unless --force is given?
 
         TODO: Do something useful with directories.
 
-        TODO: Should this remove the text or not?  Tough call; not
-        removing may be useful and the user can just use use rm, and
-        is the opposite of add.  Removing it is consistent with most
-        other tools.  Maybe an option.
+        :delete_files: If true, the files will also be delete.
+                       At present recursion is not supported.
         """
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
@@ -1635,11 +1631,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         inv = self.inventory
 
+        # Sort needed when deleting files:
+        # first delete directory content before the directory
+        if delete_files:
+            files = files[:]
+            files.sort(reverse=True)
+
         # do this before any modifications
         for f in files:
             fid = inv.path2id(f)
+            message=None
             if not fid:
-                note("%s is not versioned."%f)
+                message="%s is not versioned."%f
             else:
                 if verbose:
                     # having remove it, it must be either ignored or unknown
@@ -1650,7 +1653,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     textui.show_status(new_status, inv[fid].kind, f,
                                        to_file=to_file)
                 del inv[fid]
-
+            if delete_files:
+                if osutils.lexists(f):
+                    osutils.delete_any(f)
+                else:
+                    message="%s does not exist."%f
+            # print only one message per file.
+            if message is not None:
+                note(message)
         self._write_inventory(inv)
 
     @needs_tree_write_lock

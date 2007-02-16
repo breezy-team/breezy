@@ -2,6 +2,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr remove`` and ``bzr rm`` will now remove the working file.
+      This has been done for consistency with svn and the unix rm command.
+      The old ``remove`` behaviour has been retained in the new command
+      ``bzr unversion``, which will just stop versioning the file,
+      but not delete it.
+      (Marius Kruger, #82602)
+
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
 
@@ -1632,7 +1639,6 @@ bzr 0.7 2006-01-09
 
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
-		   
    
     * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
       is exposed as Branch().control_files. Also this has been altered with the

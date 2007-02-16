@@ -19,6 +19,7 @@ import os
 
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
+from bzrlib import osutils
 
 _id='-id'
 a='a'
@@ -27,11 +28,11 @@ c='b/c'
 files=(a,b,c)
 
 
-class TestRemove(ExternalBase):
+class TestUnversion(ExternalBase):
 
     def __init__(self, methodName='runTest'):
-        super(TestRemove, self).__init__(methodName)
-        self.cmd = 'remove'
+        super(TestUnversion, self).__init__(methodName)
+        self.cmd = 'unversion'
         self.shape = None
 
     def _make_tree(self,files):
@@ -47,7 +48,8 @@ class TestRemove(ExternalBase):
 
     def assertCommandPerformedOnFiles(self,files):
         for f in files:
-            self.failIfExists(f)
+            id=f+_id
+            self.failUnlessExists(f)
             self.assertNotInWorkingTree(f)
 
     def test_command_no_files_specified(self):
@@ -56,13 +58,13 @@ class TestRemove(ExternalBase):
 
         (out,err) = self.runbzr(self.cmd, retcode=3)
         self.assertEquals(err.strip(),
-            "bzr: ERROR: Specify one or more files to remove, or use --new.")
+            "bzr: ERROR: Specify one or more files to unversion, or use --new."
+            )
 
         (out,err) = self.runbzr(self.cmd+' --new', retcode=3)
         self.assertEquals(err.strip(),"bzr: ERROR: No matching files.")
         (out,err) = self.runbzr(self.cmd+' --new .', retcode=3)
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "bzr: ERROR: No matching files.")
+        self.assertEquals(err.strip(),"bzr: ERROR: No matching files.")
 
     def test_command_on_invalid_files(self):
         self.build_tree([a])
@@ -73,12 +75,16 @@ class TestRemove(ExternalBase):
         self.assertEquals(err.strip(), "")
 
         (out,err) = self.runbzr(self.cmd + ' a')
+        #print "out =",out.strip()
+        #print "err =",err.strip()
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "a is not versioned.")
 
         (out,err) = self.runbzr(self.cmd + ' b')
+        #print "out =",out.strip()
+        #print "err =",err.strip()
         self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "b does not exist.")
+        self.assertEquals(err.strip(), "b is not versioned.")
 
     def test_command_one_file(self):
         self.build_tree([a])
@@ -106,8 +112,7 @@ class TestRemove(ExternalBase):
 
     def test_command_with_new_in_dir1(self):
         tree = self._make_tree(files)
-        (out,err) = self.runbzr(self.cmd+' --new %s %s'%(b,c))
-
+        self.runbzr(self.cmd+' --new '+b)
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
         self.assertEqual(tree.path2id(a), a+_id)

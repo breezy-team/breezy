@@ -51,6 +51,7 @@ from bzrlib import (
     osutils,
     progress,
     urlutils,
+    workingtree,
     )
 import bzrlib.branch
 import bzrlib.commands
@@ -1557,12 +1558,41 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.assertEqualDiff(content, open(path, 'r').read())
 
     def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path),path+" does not exist")
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path),path+" exists")
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
+    def assertInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertInWorkingTree(p,tree=tree)
+        else:
+            self.assertIsNot(tree.path2id(path), None,
+                path+' not in working tree.')
+
+    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are not in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertNotInWorkingTree(p,tree=tree)
+        else:
+            self.assertIs(tree.path2id(path), None, path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):

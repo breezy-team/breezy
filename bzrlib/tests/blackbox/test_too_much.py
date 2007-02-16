@@ -521,22 +521,36 @@ class OldTests(ExternalBase):
             runbzr('diff', retcode=1)
             self.assertEquals(self.capture("relpath d2/link1"), "d2/link1\n")
             runbzr(['commit', '-m', '4: retarget of two links'])
-    
-            runbzr('remove d2/link1')
+
+            # unversion
+            runbzr('unversion d2/link1')
             self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '5: remove d2/link1'])
-            # try with the rm alias
+            runbzr(['commit', '-m', '5: unversion d2/link1'])
+            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
+
+            # remove
             runbzr('add d2/link1')
             runbzr(['commit', '-m', '6: add d2/link1'])
-            runbzr('rm d2/link1')
-            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
+            runbzr('remove d2/link1')
+            self.assertEquals(self.capture('unknowns'), '')
+            self.assertTrue(self.capture('status --short d2/link1').find(
+                'd2/link1') >= 0)
             runbzr(['commit', '-m', '7: remove d2/link1'])
-    
+
+            # try with the rm alias
+            os.symlink("TARGET 1", "d2/link1")
+            runbzr('add d2/link1')
+            runbzr(['commit', '-m', '8: add d2/link1'])
+            runbzr('rm d2/link1')
+            self.assertEquals(self.capture('unknowns'), '')
+            self.assertTrue(self.capture('status --short d2/link1').find(
+                'd2/link1') >= 0)
+            runbzr(['commit', '-m', '9: unknown d2/link1'])
+
             os.mkdir("d1")
             runbzr('add d1')
             runbzr('rename d2/link3 d1/link3new')
-            self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
+            runbzr(['commit', '-m', '10: add d1, move/rename link3'])
             
             runbzr(['check'])
             
@@ -574,7 +588,7 @@ class OldTests(ExternalBase):
             self.assert_(listdir_sorted("d2")== [ "link3" ])
             chdir("..")
             
-            runbzr(['export', '-r', '8', 'exp6.tmp'])
+            runbzr(['export', '-r', '10', 'exp6.tmp'])
             chdir("exp6.tmp")
             self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             self.assertEquals(listdir_sorted("d1"), [ "link3new" ])

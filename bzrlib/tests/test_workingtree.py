@@ -63,6 +63,36 @@ class TestTreeLink(TestCaseWithTransport):
         self.assertEqual(TreeLink().kind_character(), '')
 
 
+files=['a','b/','b/c']
+class TestRemove(TestCaseWithTransport):
+    """Tests WorkingTree.remove"""
+
+    def test_remove(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        tree.add(files)
+        self.assertInWorkingTree(files)
+
+        tree.remove(files,delete_files=True)
+
+        self.assertNotInWorkingTree(files)
+        self.failIfExists(files)
+
+        tree.remove([''],delete_files=True)
+        tree.remove(['b'],delete_files=True)
+
+    def test_unversion(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        tree.add(files)
+        self.assertInWorkingTree(files)
+
+        tree.remove(files)
+
+        self.assertNotInWorkingTree(files)
+        self.failUnlessExists(files)
+
+
 class TestDefaultFormat(TestCaseWithTransport):
 
     def test_get_set_default_format(self):
