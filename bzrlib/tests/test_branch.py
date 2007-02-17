@@ -24,10 +24,15 @@ also see this file.
 
 from StringIO import StringIO
 
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    errors,
+    urlutils,
+    )
 import bzrlib.branch
 from bzrlib.branch import (BzrBranch5, 
                            BzrBranchFormat5)
-import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
@@ -76,6 +81,22 @@ class TestBranchFormat5(TestCaseWithTransport):
             self.assertIsDirectory('.bzr/branch/lock/held', t)
         finally:
             branch.unlock()
+
+    def test_set_push_location(self):
+        from bzrlib.config import (locations_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
+        fn = locations_config_filename()
+        branch = self.make_branch('.', format='knit')
+        branch.set_push_location('foo')
+        local_path = urlutils.local_path_from_url(branch.base[:-1])
+        self.assertFileEqual("[%s]\n"
+                             "push_location = foo\n"
+                             "push_location:policy = norecurse" % local_path,
+                             fn)
+
+    # TODO RBC 20051029 test getting a push location from a branch in a
+    # recursive section - that is, it appends the branch name.
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):
@@ -141,10 +162,93 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         bzrlib.branch.BranchFormat.register_format(format)
         # which branch.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrlib.branch.Branch.open, self.get_url())
+        self.make_branch_and_tree('foo')
         # but open_downlevel will work
         self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         bzrlib.branch.BranchFormat.unregister_format(format)
+        self.make_branch_and_tree('bar')
+
+    def test_checkout_format(self):
+        branch = self.make_repository('repository', shared=True)
+        branch = self.make_branch('repository/branch',
+            format='metaweave')
+        tree = branch.create_checkout('checkout')
+        self.assertIs(tree.branch.__class__, _mod_branch.BzrBranch5)
+
+
+class TestBranch6(TestCaseWithTransport):
+
+    def test_creation(self):
+        format = BzrDirMetaFormat1()
+        format.set_branch_format(_mod_branch.BzrBranchFormat6())
+        branch = self.make_branch('a', format=format)
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        branch = self.make_branch('b', format='experimental-branch6')
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        branch = _mod_branch.Branch.open('a')
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+
+    def test_layout(self):
+        branch = self.make_branch('a', format='experimental-branch6')
+        self.failUnlessExists('a/.bzr/branch/last-revision')
+        self.failIfExists('a/.bzr/branch/revision-history')
+
+    def test_config(self):
+        """Ensure that all configuration data is stored in the branch"""
+        branch = self.make_branch('a', format='experimental-branch6')
+        branch.set_parent('http://bazaar-vcs.org')
+        self.failIfExists('a/.bzr/branch/parent')
+        self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
+        branch.set_push_location('sftp://bazaar-vcs.org')
+        config = branch.get_config()._get_branch_data_config()
+        self.assertEqual('sftp://bazaar-vcs.org',
+                         config.get_user_option('push_location'))
+        branch.set_bound_location('ftp://bazaar-vcs.org')
+        self.failIfExists('a/.bzr/branch/bound')
+        self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
+
+    def test_set_revision_history(self):
+        tree = self.make_branch_and_memory_tree('.',
+            format='experimental-branch6')
+        tree.lock_write()
+        try:
+            tree.add('.')
+            tree.commit('foo', rev_id='foo')
+            tree.commit('bar', rev_id='bar')
+            tree.branch.set_revision_history(['foo', 'bar'])
+            tree.branch.set_revision_history(['foo'])
+            self.assertRaises(errors.NotLefthandHistory,
+                              tree.branch.set_revision_history, ['bar'])
+        finally:
+            tree.unlock()
+
+    def test_append_revision(self):
+        tree = self.make_branch_and_tree('branch1',
+            format='experimental-branch6')
+        tree.lock_write()
+        try:
+            tree.add('.')
+            tree.commit('foo', rev_id='foo')
+            tree.commit('bar', rev_id='bar')
+            tree.commit('baz', rev_id='baz')
+            tree.set_last_revision('bar')
+            tree.branch.set_last_revision_info(2, 'bar')
+            tree.commit('qux', rev_id='qux')
+            tree.add_parent_tree_id('baz')
+            tree.commit('qux', rev_id='quxx')
+            tree.branch.set_last_revision_info(0, 'null:')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'bar')
+            tree.branch.append_revision('foo')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'baz')
+            tree.branch.append_revision('bar')
+            tree.branch.append_revision('baz')
+            self.assertRaises(errors.NotLeftParentDescendant,
+                              tree.branch.append_revision, 'quxx')
+        finally:
+            tree.unlock()
 
 
 class TestBranchReference(TestCaseWithTransport):
@@ -171,6 +275,10 @@ class TestHooks(TestCase):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = bzrlib.branch.BranchHooks()
         self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
+        self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
+        self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
+        self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""

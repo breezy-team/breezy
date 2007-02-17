@@ -867,9 +867,11 @@ class SmartTCPServer(object):
 
     def stop_background_thread(self):
         self._should_terminate = True
+        # At one point we would wait to join the threads here, but it looks
+        # like they don't actually exit.  So now we just leave them running
+        # and expect to terminate the process. -- mbp 20070215
         # self._server_socket.close()
-        # we used to join the thread, but it's not really necessary; it will
-        # terminate in time
+        ## sys.stderr.write("waiting for server thread to finish...")
         ## self._server_thread.join()
 
 

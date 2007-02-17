@@ -259,3 +259,53 @@ class TestSerializer(TestCase):
         txt = s_v5.write_revision_to_string(rev)
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
+
+    def test_revision_ids_are_utf8(self):
+        """Parsed revision_ids should all be utf-8 strings, not unicode."""
+        s_v5 = bzrlib.xml5.serializer_v5
+        rev = s_v5.read_revision_from_string(_revision_v5)
+        self.assertIsInstance(rev.revision_id, str)
+        for parent_id in rev.parent_ids:
+            self.assertIsInstance(parent_id, str)
+
+        # ie.revision should either be None or a utf-8 revision id
+        inv = s_v5.read_inventory_from_string(_committed_inv_v5)
+        for path, ie in inv.iter_entries():
+            if ie.revision is None:
+                continue
+            self.assertIsInstance(ie.revision, str)
+
+
+class TestEncodeAndEscape(TestCase):
+    """Whitebox testing of the _encode_and_escape function."""
+
+    def setUp(self):
+        # Keep the cache clear before and after the test
+        bzrlib.xml5._ensure_utf8_re()
+        bzrlib.xml5._clear_cache()
+        self.addCleanup(bzrlib.xml5._clear_cache)
+
+    def test_simple_ascii(self):
+        # _encode_and_escape always appends a final ", because these parameters
+        # are being used in xml attributes, and by returning it now, we have to
+        # do fewer string operations later.
+        val = bzrlib.xml5._encode_and_escape('foo bar')
+        self.assertEqual('foo bar"', val)
+        # The second time should be cached
+        val2 = bzrlib.xml5._encode_and_escape('foo bar')
+        self.assertIs(val2, val)
+
+    def test_ascii_with_xml(self):
+        self.assertEqual('&amp;&apos;&quot;&lt;&gt;"',
+                         bzrlib.xml5._encode_and_escape('&\'"<>'))
+
+    def test_utf8_with_xml(self):
+        # u'\xb5\xe5&\u062c'
+        utf8_str = '\xc2\xb5\xc3\xa5&\xd8\xac'
+        self.assertEqual('&#181;&#229;&amp;&#1580;"',
+                         bzrlib.xml5._encode_and_escape(utf8_str))
+
+    def test_unicode(self):
+        uni_str = u'\xb5\xe5&\u062c'
+        self.assertEqual('&#181;&#229;&amp;&#1580;"',
+                         bzrlib.xml5._encode_and_escape(uni_str))

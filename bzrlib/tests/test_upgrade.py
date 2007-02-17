@@ -26,10 +26,14 @@ import base64
 import os
 import sys
 
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    progress,
+    repository,
+    )
 import bzrlib.branch
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-import bzrlib.repository as repository
 from bzrlib.revision import is_ancestor
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import get_transport
@@ -158,6 +162,28 @@ class TestUpgrade(TestCaseInTempDir):
         self.assertEquals(branch.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+
+    def test_convert_branch5_branch6(self):
+        branch = self.make_branch('branch', format='knit')
+        branch.set_revision_history(['AB', 'CD'])
+        branch.set_parent('file:///EF')
+        branch.set_bound_location('file:///GH')
+        branch.set_push_location('file:///IJ')
+        target = bzrdir.format_registry.make_bzrdir('experimental-branch6')
+        converter = branch.bzrdir._format.get_converter(target)
+        converter.convert(branch.bzrdir, progress.DummyProgress())
+        new_branch = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(new_branch.__class__, _mod_branch.BzrBranch6)
+        self.assertEqual('CD', new_branch.last_revision())
+        self.assertEqual('file:///EF', new_branch.get_parent())
+        self.assertEqual('file:///GH', new_branch.get_bound_location())
+        branch_config = new_branch.get_config()._get_branch_data_config()
+        self.assertEqual('file:///IJ',
+            branch_config.get_user_option('push_location'))
+
+        branch2 = self.make_branch('branch2', format='knit')
+        converter = branch2.bzrdir._format.get_converter(target)
+        converter.convert(branch2.bzrdir, progress.DummyProgress())
 
 
 _upgrade1_template = \

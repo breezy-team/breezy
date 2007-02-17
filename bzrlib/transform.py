@@ -19,6 +19,10 @@ import errno
 from stat import S_ISREG
 
 from bzrlib import bzrdir, errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import delta
+""")
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath)
@@ -903,6 +907,139 @@ class TreeTransform(object):
         self.create_symlink(target, trans_id)
         return trans_id
 
+    def _affected_ids(self):
+        """Return the set of transform ids affected by the transform"""
+        trans_ids = set(self._removed_id)
+        trans_ids.update(self._new_id.keys())
+        trans_ids.update(self._removed_contents)
+        trans_ids.update(self._new_contents.keys())
+        trans_ids.update(self._new_executability.keys())
+        trans_ids.update(self._new_name.keys())
+        trans_ids.update(self._new_parent.keys())
+        return trans_ids
+
+    def _get_file_id_maps(self):
+        """Return mapping of file_ids to trans_ids in the to and from states"""
+        trans_ids = self._affected_ids()
+        from_trans_ids = {}
+        to_trans_ids = {}
+        # Build up two dicts: trans_ids associated with file ids in the
+        # FROM state, vs the TO state.
+        for trans_id in trans_ids:
+            from_file_id = self.tree_file_id(trans_id)
+            if from_file_id is not None:
+                from_trans_ids[from_file_id] = trans_id
+            to_file_id = self.final_file_id(trans_id)
+            if to_file_id is not None:
+                to_trans_ids[to_file_id] = trans_id
+        return from_trans_ids, to_trans_ids
+
+    def _from_file_data(self, from_trans_id, from_versioned, file_id):
+        """Get data about a file in the from (tree) state
+
+        Return a (name, parent, kind, executable) tuple
+        """
+        from_path = self._tree_id_paths.get(from_trans_id)
+        if from_versioned:
+            # get data from working tree if versioned
+            from_entry = self._tree.inventory[file_id]
+            from_name = from_entry.name
+            from_parent = from_entry.parent_id
+        else:
+            from_entry = None
+            if from_path is None:
+                # File does not exist in FROM state
+                from_name = None
+                from_parent = None
+            else:
+                # File exists, but is not versioned.  Have to use path-
+                # splitting stuff
+                from_name = os.path.basename(from_path)
+                tree_parent = self.get_tree_parent(from_trans_id)
+                from_parent = self.tree_file_id(tree_parent)
+        if from_path is not None:
+            from_kind, from_executable, from_stats = \
+                self._tree._comparison_data(from_entry, from_path)
+        else:
+            from_kind = None
+            from_executable = False
+        return from_name, from_parent, from_kind, from_executable
+
+    def _to_file_data(self, to_trans_id, from_trans_id, from_executable):
+        """Get data about a file in the to (target) state
+
+        Return a (name, parent, kind, executable) tuple
+        """
+        to_name = self.final_name(to_trans_id)
+        try:
+            to_kind = self.final_kind(to_trans_id)
+        except NoSuchFile:
+            to_kind = None
+        to_parent = self.final_file_id(self.final_parent(to_trans_id))
+        if to_trans_id in self._new_executability:
+            to_executable = self._new_executability[to_trans_id]
+        elif to_trans_id == from_trans_id:
+            to_executable = from_executable
+        else:
+            to_executable = False
+        return to_name, to_parent, to_kind, to_executable
+
+    def _iter_changes(self):
+        """Produce output in the same format as Tree._iter_changes.
+
+        Will produce nonsensical results if invoked while inventory/filesystem
+        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+
+        This reads the Transform, but only reproduces changes involving a
+        file_id.  Files that are not versioned in either of the FROM or TO
+        states are not reflected.
+        """
+        final_paths = FinalPaths(self)
+        from_trans_ids, to_trans_ids = self._get_file_id_maps()
+        results = []
+        # Now iterate through all active file_ids
+        for file_id in set(from_trans_ids.keys() + to_trans_ids.keys()):
+            modified = False
+            from_trans_id = from_trans_ids.get(file_id)
+            # find file ids, and determine versioning state
+            if from_trans_id is None:
+                from_versioned = False
+                from_trans_id = to_trans_ids[file_id]
+            else:
+                from_versioned = True
+            to_trans_id = to_trans_ids.get(file_id)
+            if to_trans_id is None:
+                to_versioned = False
+                to_trans_id = from_trans_id
+            else:
+                to_versioned = True
+
+            from_name, from_parent, from_kind, from_executable = \
+                self._from_file_data(from_trans_id, from_versioned, file_id)
+
+            to_name, to_parent, to_kind, to_executable = \
+                self._to_file_data(to_trans_id, from_trans_id, from_executable)
+
+            to_path = final_paths.get_path(to_trans_id)
+            if from_kind != to_kind:
+                modified = True
+            elif to_kind in ('file' or 'symlink') and (
+                to_trans_id != from_trans_id or
+                to_trans_id in self._new_contents):
+                modified = True
+            if (not modified and from_versioned == to_versioned and
+                from_parent==to_parent and from_name == to_name and
+                from_executable == to_executable):
+                continue
+            results.append((file_id, to_path, modified,
+                   (from_versioned, to_versioned),
+                   (from_parent, to_parent),
+                   (from_name, to_name),
+                   (from_kind, to_kind),
+                   (from_executable, to_executable)))
+        return iter(sorted(results, key=lambda x:x[1]))
+
+
 def joinpath(parent, child):
     """Join tree-relative paths, handling the tree root specially"""
     if parent is None or parent == "":
@@ -1209,7 +1346,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             _alter_files(working_tree, target_tree, tt, child_pb,
-                         interesting_ids, backups, change_reporter)
+                         interesting_ids, backups)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1219,6 +1356,9 @@ def revert(working_tree, target_tree, filenames, backups=False,
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
+        if change_reporter:
+            change_reporter = delta.ChangeReporter(working_tree.inventory)
+            delta.report_changes(tt._iter_changes(), change_reporter)
         for conflict in conflicts:
             warning(conflict)
         pp.next_phase()
@@ -1231,21 +1371,17 @@ def revert(working_tree, target_tree, filenames, backups=False,
     return conflicts
 
 
-def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups,
-                 report_changes):
-    from bzrlib import delta
+def _alter_files(working_tree, target_tree, tt, pb, interesting_ids,
+                 backups):
     merge_modified = working_tree.merge_modified()
-    change_list = list(target_tree._iter_changes(working_tree,
-        specific_file_ids=interesting_ids, pb=pb))
+    change_list = target_tree._iter_changes(working_tree,
+        specific_file_ids=interesting_ids, pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
     else:
         skip_root = False
     basis_tree = None
     try:
-        if report_changes:
-            change_reporter = delta.ChangeReporter(working_tree.inventory)
-            delta.report_changes(change_list, change_reporter)
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
             if skip_root and file_id[0] is not None and parent[0] is None:

@@ -396,7 +396,8 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     All matches in all trees will be used, and all children of matched
     directories will be used.
 
-    :param filenames: The filenames to find file_ids for
+    :param filenames: The filenames to find file_ids for (if None, returns
+        None)
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
     at least one tree.

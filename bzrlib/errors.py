@@ -778,6 +778,19 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+class NotLeftParentDescendant(BzrError):
+
+    _fmt = "Revision %(old_revision)s is not the left parent of"\
+        " %(new_revision)s, but branch %(branch_location)s expects this"
+
+    internal_error = True
+
+    def __init__(self, branch, old_revision, new_revision):
+        BzrError.__init__(self, branch_location=branch.base,
+                          old_revision=old_revision,
+                          new_revision=new_revision)
+
+
 class NoSuchRevisionSpec(BzrError):
 
     _fmt = "No namespace registered for string: %(spec)r"
@@ -814,6 +827,18 @@ class HistoryMissing(BzrError):
     _fmt = "%(branch)s is missing %(object_type)s {%(object_id)s}"
 
 
+class AppendRevisionsOnlyViolation(BzrError):
+
+    _fmt = 'Operation denied because it would change the main history, '\
+           'which is not permitted by the append_revisions_only setting on'\
+           ' branch "%(location)s".'
+
+    def __init__(self, location):
+       import bzrlib.urlutils as urlutils
+       location = urlutils.unescape_for_display(location, 'ascii')
+       BzrError.__init__(self, location=location)
+
+
 class DivergedBranches(BzrError):
     
     _fmt = "These branches have diverged.  Use the merge command to reconcile them."""
@@ -823,6 +848,16 @@ class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
         self.branch2 = branch2
+
+
+class NotLefthandHistory(BzrError):
+
+    _fmt = "Supplied history does not follow left-hand parents"
+
+    internal_error = True
+
+    def __init__(self, history):
+        BzrError.__init__(self, history=history)
 
 
 class UnrelatedBranches(BzrError):
@@ -1688,6 +1723,7 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+    internal_error = True
 
     def __init__(self, transport):
         self.transport = transport

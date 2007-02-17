@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,10 @@
 
 from cStringIO import StringIO
 
-from bzrlib import revision
+from bzrlib import (
+    osutils,
+    revision,
+    )
 from bzrlib.tree import Tree
 
 
@@ -41,7 +44,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        self._revision_id = revision_id
+        self._revision_id = osutils.safe_revision_id(revision_id)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.

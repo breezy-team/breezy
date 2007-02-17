@@ -2,15 +2,18 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Support for OS Windows 98. Also .bzr.log on any windows system
+      saved in My Documents folder. (Alexander Belchenko)
+
     * ``bzr mv`` enhanced to support already moved files.
       In the past the mv command would have failed if the source file doesn't
       exist. In this situation ``bzr mv`` would now detect that the file has
       already moved and update the repository accordingly, if the target file
       does exist.
       A new option ``--after`` has been added so that if two files already
-      exist, you could notify Bazaar that you have moved a (versioned) file and
-      replaced it with another. Thus in this case ``bzr move --after`` will
-      only update the Bazaar identifier.
+      exist, you could notify Bazaar that you have moved a (versioned) file
+      and replaced it with another. Thus in this case ``bzr move --after``
+      will only update the Bazaar identifier.
       (Steffen Eichenberg, Marius Kruger)
 
     * ``ls`` now works on treeless branches and remote branches.
@@ -19,16 +22,58 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
+    * ``bzr pull --overwrite`` will now correctly overwrite checkouts.
+      (Robert Collins)
+
+    * Files are now allowed to change kind (e.g. from file to symlink).
+      Supported by ``commit``, ``revert`` and ``status``
+      (Aaron Bentley)
+
+    * ``inventory`` and ``unknowns`` hidden in favour of ``ls``
+      (Aaron Bentley)
+
+    * ``bzr help checkouts`` descibes what checkouts are and some possible
+      uses of them. (James Westby, Aaron Bentley)
+
+    * A new ``-d`` option to push, pull and merge overrides the default 
+      directory.  (Martin Pool)
+
+    * Branch format 6: smaller, and potentially faster than format 5.  Supports
+      "append_history_only" mode, where the log view and revnos do not change,
+      except by being added to.  Stores policy settings in
+      ".bzr/branch/branch.conf".
+
+    * append_only branches:  Format 6 branches may be configured so that log
+      view and revnos are always consistent.  Either create the branch using
+      "bzr init --append-revisions-only" or edit the config file as descriped
+      in docs/configuration.txt.
+
+    * rebind: Format 6 branches retain the last-used bind location, so if you
+      "bzr unbind", you can "bzr bind" to bind to the previously-selected
+      bind location.
+
   INTERNALS:
+
+    * Internally revision ids are now passed around as utf-8 bytestrings,
+      rather than treating them as Unicode strings. This has performance
+      benefits for Knits, since we no longer need to decode the revision
+      id for each line of content, nor for each entry in the index. This
+      will also help with the future dirstate format. File-ids should
+      receive the same treatment in the future. (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
-    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
-      whenever the revision history is set. This allows triggering on e.g.
-      push, pull, commit, and so on. Developed for use with the branchrss
-      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+    * Minor performance improvement by not creating a ProgressBar for
+      every KnitIndex we create. (about 90ms for a bzr.dev tree)
+      (John Arbash Meinel)
+
+    * New easier to use Branch hooks facility. There are five initial hooks,
+      all documented in bzrlib.branch.BranchHooks.__init__ - 'set_rh',
+      'post_push', 'post_pull', 'post_commit', 'post_uncommit'. These hooks
+      fire after the matching operation on a branch has taken place, and were
+      originally added for the branchrss plugin. (Robert Collins)
 
     * New method ``Branch.push()`` which should be used when pushing from a
       branch as it makes performance and policy decisions to match the UI
@@ -41,6 +86,28 @@ IN DEVELOPMENT
       repository.
       (Robert Collins, Martin Pool)
 
+    * New Branch.last_revision_info method, this is being done to allow
+      optimization of requests for both the number of revisions and the last
+      revision of a branch with smartservers and potentially future branch
+      formats. (Wouter van Heyst, Robert Collins)
+
+    * Allow 'import bzrlib.plugins.NAME' to work when the plugin NAME has not
+      yet been loaded by load_plugins(). This allows plugins to depend on each
+      other for code reuse without requiring users to perform file-renaming
+      gymnastics. (Robert Collins)
+
+    * New Repository method 'gather_stats' for statistic data collection.
+      This is expected to grow to cover a number of related uses mainly
+      related to bzr info. (Robert Collins)
+
+    * Log formatters are now managed with a registry.  log.register_formatter
+      continues to work, but callers accessed the FORMATTERS dictionary
+      directly will not.
+
+    * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
+      you pass a Unicode string rather than an 8-bit string. Callers need
+      to be updated to encode first. (John Arbash Meinel)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
@@ -49,6 +116,20 @@ IN DEVELOPMENT
 
     * Lock operations no longer hang if they encounter a permission problem.
       (Aaron Bentley)
+
+    * ``bzr push`` can resume a push that was canceled before it finished.
+      Also, it can push even if the target directory exists if you supply
+      the ``--use-existing-dir`` flag.
+      (John Arbash Meinel, #30576, #45504)
+
+    * Fix http proxy authentication when user and an optional
+      password appears in the *_proxy vars. (Vincent Ladeuil,
+      #83954).
+
+    * ``bzr log branch/file`` works for local treeless branches
+      (Aaron Bentley, #84247)
+
+    * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
   TESTING:
 
