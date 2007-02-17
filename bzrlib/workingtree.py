@@ -1319,7 +1319,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 yield stem
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             change_reporter=None):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1340,7 +1341,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
-                                pb=pb)
+                                pb=pb,
+                                change_reporter=change_reporter)
                     if (basis_tree.inventory.root is None and
                         new_basis_tree.inventory.root is not None):
                         self.set_root_id(new_basis_tree.inventory.root.file_id)

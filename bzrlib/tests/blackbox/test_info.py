@@ -150,7 +150,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: %s
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -176,6 +176,7 @@ Revision store:
        branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        bound_tree._format.get_format_description(),      
+       branch3._format.get_format_description(),
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -469,7 +470,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
@@ -479,6 +480,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -519,7 +521,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
@@ -529,6 +531,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -563,7 +566,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -588,6 +591,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -606,7 +610,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch is out of date: missing 1 revision.
@@ -629,6 +633,7 @@ Revision store:
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -646,7 +651,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -670,6 +675,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -692,7 +698,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Working tree is out of date: missing 1 revision.
@@ -719,6 +725,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -736,7 +743,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
@@ -750,6 +757,7 @@ Revision store:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -821,7 +829,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -842,6 +850,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -862,7 +871,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -885,6 +894,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -906,7 +916,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -928,6 +938,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -950,7 +961,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -974,6 +985,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -1045,7 +1057,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -1065,6 +1077,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1144,7 +1157,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: %s
-        branch: Branch format 5
+        branch: %s
     repository: %s
 %s
 In the working tree:
@@ -1166,6 +1179,7 @@ Revision store:
 """ %  (tree_data,
         branch_data,
         lco_tree._format.get_format_description(),
+        lco_tree.branch._format.get_format_description(),
         lco_tree.branch.repository._format.get_format_description(),
         expected_lock_output,
         verbose_info,

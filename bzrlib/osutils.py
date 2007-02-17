@@ -260,6 +260,36 @@ def _win32_abspath(path):
     return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
 
+def _win98_abspath(path):
+    """Return the absolute version of a path.
+    Windows 98 safe implementation (python reimplementation
+    of Win32 API function GetFullPathNameW)
+    """
+    # Corner cases:
+    #   C:\path     => C:/path
+    #   C:/path     => C:/path
+    #   \\HOST\path => //HOST/path
+    #   //HOST/path => //HOST/path
+    #   path        => C:/cwd/path
+    #   /path       => C:/path
+    path = unicode(path)
+    # check for absolute path
+    drive = _nt_splitdrive(path)[0]
+    if drive == '' and path[:2] not in('//','\\\\'):
+        cwd = os.getcwdu()
+        # we cannot simply os.path.join cwd and path
+        # because os.path.join('C:','/path') produce '/path'
+        # and this is incorrect
+        if path[:1] in ('/','\\'):
+            cwd = _nt_splitdrive(cwd)[0]
+            path = path[1:]
+        path = cwd + '\\' + path
+    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+
+if win32utils.winver == 'Windows 98':
+    _win32_abspath = _win98_abspath
+
+
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))

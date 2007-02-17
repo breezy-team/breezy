@@ -26,6 +26,7 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 from bzrlib.tests import (
@@ -314,6 +315,8 @@ class TestWin32Funcs(TestCase):
     def test_abspath(self):
         self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
+        self.assertEqual('//HOST/path', osutils._win32_abspath(r'\\HOST\path'))
+        self.assertEqual('//HOST/path', osutils._win32_abspath('//HOST/path'))
 
     def test_realpath(self):
         self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
@@ -347,11 +350,29 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
         self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
+    def test_win98_abspath(self):
+        # absolute path
+        self.assertEqual('C:/foo', osutils._win98_abspath('C:\\foo'))
+        self.assertEqual('C:/foo', osutils._win98_abspath('C:/foo'))
+        # UNC path
+        self.assertEqual('//HOST/path', osutils._win98_abspath(r'\\HOST\path'))
+        self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
+        # relative path
+        cwd = osutils.getcwd().rstrip('/')
+        drive = osutils._nt_splitdrive(cwd)[0]
+        self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
+        self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
+        # unicode path
+        u = u'\u1234'
+        self.assertEqual(cwd+'/'+u, osutils._win98_abspath(u))
+
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
     """Test win32 functions that create files."""
     
     def test_getcwd(self):
+        if win32utils.winver == 'Windows 98':
+            raise TestSkipped('Windows 98 cannot handle unicode filenames')
         # Make sure getcwd can handle unicode filenames
         try:
             os.mkdir(u'mu-\xb5')

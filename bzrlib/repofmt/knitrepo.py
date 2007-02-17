@@ -183,6 +183,13 @@ class KnitRepository(MetaDirRepository):
         vf = self._revision_store.get_revision_file(self.get_transaction())
         return vf
 
+    def _get_history_vf(self):
+        """Get a versionedfile whose history graph reflects all revisions.
+
+        For knit repositories, this is the revision knit.
+        """
+        return self._get_revision_vf()
+
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""

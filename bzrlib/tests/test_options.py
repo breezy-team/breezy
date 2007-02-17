@@ -168,8 +168,10 @@ class OptionTests(TestCase):
     def test_help(self):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help',
-            repo_module='bzrlib.repofmt.knitrepo')
+        registry.register_metadir('two',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+            'two help',
+            )
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
@@ -191,8 +193,10 @@ class OptionTests(TestCase):
                          [('hello', None, 'GAR', 'fg')])
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help',
-            repo_module='bzrlib.repofmt.knitrepo')
+        registry.register_metadir('two',
+                'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+                'two help',
+                )
         registry.set_default('one')
         opt = option.RegistryOption('format', 'format help', registry,
                                     value_switches=False)
