@@ -1247,6 +1247,7 @@ class BzrBranch(Branch):
     @needs_write_lock
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
             mutter("add {%s} to revision-history" % revision_id)
@@ -1285,6 +1286,7 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1697,8 +1699,9 @@ class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
     def last_revision_info(self):
-        revision_string = self.control_files.get_utf8('last-revision').read()
+        revision_string = self.control_files.get('last-revision').read()
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
 
@@ -1725,6 +1728,7 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -1766,6 +1770,7 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         if len(revision_ids) == 0:
             return
         prev_revno, prev_revision = self.last_revision_info()

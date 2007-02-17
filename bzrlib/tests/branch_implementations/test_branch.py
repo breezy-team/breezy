@@ -111,6 +111,10 @@ class TestBranch(TestCaseWithBranch):
         last = br.last_revision()
         self.assertEqual('rev3', last)
         self.assertIsInstance(last, str)
+        revno, last = br.last_revision_info()
+        self.assertEqual(3, revno)
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
