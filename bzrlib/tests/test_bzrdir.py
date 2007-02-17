@@ -496,6 +496,33 @@ class ChrootedTests(TestCaseWithTransport):
         tree.bzrdir.sprout('tree2')
         self.failUnlessExists('tree2/subtree/file')
 
+    def test_cloning_metadir(self):
+        """Ensure that cloning metadir is suitable"""
+        branch = self.make_branch('branch', format='knit')
+        format = branch.bzrdir.cloning_metadir()
+        self.assertIsInstance(format.workingtree_format,
+        workingtree.WorkingTreeFormat3)
+        branch2 = self.make_branch('branch2', format='experimental-knit3')
+        format2 = branch2.bzrdir.cloning_metadir()
+        self.assertIsInstance(format2.workingtree_format,
+                              workingtree.WorkingTreeFormat4)
+
+    def test_sprout_recursive_treeless(self):
+        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+                                             format='experimental-knit3')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.destroy_workingtree()
+        repo = self.make_repository('repo', shared=True,
+                                    format='experimental-knit3')
+        repo.set_make_working_trees(False)
+        tree.bzrdir.sprout('repo/tree2')
+        self.failUnlessExists('repo/tree2/subtree')
+        self.failIfExists('repo/tree2/subtree/file')
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""

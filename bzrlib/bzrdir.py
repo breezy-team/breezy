@@ -653,16 +653,20 @@ class BzrDir(object):
         return result_format, source_repository
 
     def cloning_metadir(self, basis=None):
-        """Produce a metadir suitable for cloning with"""
-        result_format, repository = self._cloning_metadir(basis)
-        return result_format
+        """Produce a metadir suitable for cloning or sprouting with.
 
-    def checkout_metadir(self):
+        These operations may produce workingtrees (yes, even though they're
+        "cloning" something that doesn't have a tree, so a viable workingtree
+        format must be selected.
+        """
         format, repository = self._cloning_metadir()
-        if format.workingtree_format is None:
+        if format._workingtree_format is None:
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
         return format
+
+    def checkout_metadir(self):
+        return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False,
                recurse='down'):
@@ -740,7 +744,7 @@ class BzrDir(object):
                 entries = wt.iter_reference_entries()
                 recurse_branch = wt.branch
             elif source_branch is not None:
-                entries = source_branch.basis_tree.iter_reference_entries()
+                entries = source_branch.basis_tree().iter_reference_entries()
                 recurse_branch = source_branch
             else:
                 entries = []
