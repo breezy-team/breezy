@@ -1233,7 +1233,7 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            branch = bzrdir.BzrDir.create_branch_convenience(location,
+            branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
                                                              format=format)
         else:
             from bzrlib.transport.local import LocalTransport

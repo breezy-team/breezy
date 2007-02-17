@@ -124,6 +124,9 @@ IN DEVELOPMENT
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
+    * ``bzr init`` works with unicode argument LOCATION.
+      (Alexander Belchenko, #85599)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
