@@ -41,8 +41,8 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_content_types()
-        expected_dirblocks = self.get_all_subdirs_expected(tree)
         tree.lock_read()
+        expected_dirblocks = self.get_all_subdirs_expected(tree)
         # test that its iterable by iterating
         result = []
         for dirinfo, block in tree.walkdirs():
@@ -61,10 +61,10 @@ class TestWalkdirs(TestCaseWithTree):
             
     def test_walkdir_subtree(self):
         tree = self.get_tree_with_subdirs_and_all_content_types()
-        expected_dirblocks = self.get_all_subdirs_expected(tree)[1:]
         # test that its iterable by iterating
         result = []
         tree.lock_read()
+        expected_dirblocks = self.get_all_subdirs_expected(tree)[1:]
         for dirinfo, block in tree.walkdirs('1top-dir'):
             newblock = []
             for row in block:

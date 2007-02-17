@@ -353,7 +353,7 @@ class DirState(object):
         root_parents = []
         for parent_tree in parent_trees:
             root_parents.append((
-                    parent_tree.inventory.root.revision.encode('utf8'),
+                    parent_tree.inventory.root.revision,
                     'directory', '',
                     '',
                     '',
@@ -431,14 +431,12 @@ class DirState(object):
 
     def _get_ghosts_line(self, ghost_ids):
         """Create a line for the state file for ghost information."""
-        return '\0'.join([str(len(ghost_ids))] +
-                         [g.encode('utf8') for g in ghost_ids])
-        
+        return '\0'.join([str(len(ghost_ids))] + ghost_ids)
+
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
-        return '\0'.join([str(len(parent_ids))] +
-                         [p.encode('utf8') for p in parent_ids])
-        
+        return '\0'.join([str(len(parent_ids))] + parent_ids)
+
     def get_parent_ids(self):
         """Return a list of the parent tree ids for the directory state."""
         self._read_header_if_needed()
@@ -450,6 +448,7 @@ class DirState(object):
         :param path_utf8: An utf8 path to be looked up.
         :return: The dirstate row tuple for path, or (None, None)
         """
+        assert isinstance(path_utf8, str), 'path_utf8 is not a str: %s %s' % (type(path), path)
         self._read_dirblocks_if_needed()
         if path_utf8 == '':
             return self._root_row
@@ -497,7 +496,7 @@ class DirState(object):
 
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
-        
+
         :param path: The name of the file for the dirstate.
         :return: A DirState object.
         """
@@ -508,7 +507,7 @@ class DirState(object):
         # persist.
         result = DirState()
         result._state_file = open(path, 'wb+')
-        # a new root directory, with a pack_stat (the x's) that is just noise and will 
+        # a new root directory, with a pack_stat (the x's) that is just noise and will
         # never match the output of base64 encode.
         root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0,
             DirState.NULLSTAT, '')
@@ -536,7 +535,7 @@ class DirState(object):
 
     def _get_output_lines(self, lines):
         """format lines for final output.
-        
+
         :param lines: A sequece of lines containing the parents list and the
             path lines.
         """
@@ -565,21 +564,21 @@ class DirState(object):
     def _parent_info(self, parent_tree, fileid):
         """Generate the parent information for file_id in parent_tree."""
         # FIXME: This is probably expensive - we encode the path that in the
-        # common case will be the same across all parents, twice. 
+        # common case will be the same across all parents, twice.
         # also, id2path is slow in inventory, and we should make that fast.
         try:
             parent_entry = parent_tree.inventory[fileid]
         except errors.NoSuchId:
-            # this parent does not have fileid - return a bogus entry, which 
+            # this parent does not have fileid - return a bogus entry, which
             # will be filtered out on iteration etc.
             # an empty revision id is bogus and safe to put on disk
-            # we make it be a 'file', just because. We give it the 
+            # we make it be a 'file', just because. We give it the
             # deleted file path dirname and basename, 0 size, not executable
             # and no sha1.
             return DirState.NULL_PARENT_ROW
         parent_path = parent_tree.inventory.id2path(fileid)
         dirname, basename = os.path.split(parent_path.encode('utf8'))
-        return (parent_entry.revision.encode('utf8'),
+        return (parent_entry.revision,
             parent_entry.kind,
             # FIXME: set these from the parent
             dirname, basename,
@@ -675,13 +674,13 @@ class DirState(object):
         info = parent_line.split('\0')
         num_parents = int(info[0])
         assert num_parents == len(info)-2, 'incorrect parent info line'
-        self._parents = [p.decode('utf8') for p in info[1:-1]]
+        self._parents = info[1:-1]
 
         ghost_line = self._state_file.readline()
         info = ghost_line.split('\0')
         num_ghosts = int(info[1])
         assert num_ghosts == len(info)-3, 'incorrect ghost info line'
-        self._ghosts = [p.decode('utf8') for p in info[2:-1]]
+        self._ghosts = info[2:-1]
         self._header_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header_if_needed(self):

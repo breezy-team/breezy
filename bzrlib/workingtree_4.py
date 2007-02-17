@@ -312,7 +312,7 @@ class WorkingTree4(WorkingTree3):
             fileid_utf8 = file_id.encode('utf8')
         if path is not None:
             # path lookups are faster
-            row = state._get_row(path)
+            row = state._get_row(path.encode('utf8'))
             if file_id:
                 if row[0][3] != fileid_utf8:
                     raise BzrError('integrity error ? : mismatching file_id and path')
@@ -361,7 +361,7 @@ class WorkingTree4(WorkingTree3):
         """See Mutable.last_revision."""
         parent_ids = self.current_dirstate().get_parent_ids()
         if parent_ids:
-            return parent_ids[0].decode('utf8')
+            return parent_ids[0]
         else:
             return None
 
@@ -548,6 +548,7 @@ class WorkingTree4(WorkingTree3):
 
         WorkingTree4 supplies revision_trees for any basis tree.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         dirstate = self.current_dirstate()
         parent_ids = dirstate.get_parent_ids()
         if revision_id not in parent_ids:
@@ -560,6 +561,7 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
+        new_revision = osutils.safe_revision_id(new_revision)
         parents = self.get_parent_ids()
         if new_revision in (NULL_REVISION, None):
             assert len(parents) < 2, (
@@ -583,6 +585,7 @@ class WorkingTree4(WorkingTree3):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         trees = []
         for revision_id in revision_ids:
             try:
@@ -601,7 +604,7 @@ class WorkingTree4(WorkingTree3):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
-        :param parents_list: A list of (revision_id, tree) tuples. 
+        :param parents_list: A list of (revision_id, tree) tuples.
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
@@ -611,9 +614,10 @@ class WorkingTree4(WorkingTree3):
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
         real_trees = []
         ghosts = []
-        # convert absent trees to the null tree, which we convert back to 
+        # convert absent trees to the null tree, which we convert back to
         # missing on access.
         for rev_id, tree in parents_list:
+            rev_id = osutils.safe_revision_id(rev_id)
             if tree is not None:
                 real_trees.append((rev_id, tree))
             else:
@@ -666,14 +670,14 @@ class WorkingTree4(WorkingTree3):
         paths_to_unversion = set()
         # sketch:
         # check if the root is to be unversioned, if so, assert for now.
-        # make a copy of the _dirblocks data 
+        # make a copy of the _dirblocks data
         # during the copy,
         #  skip paths in paths_to_unversion
         #  skip ids in ids_to_unversion, and add their paths to
         #  paths_to_unversion if they are a directory
         # if there are any un-unversioned ids at the end, raise
         if state._root_row[0][3] in ids_to_unversion:
-            # I haven't written the code to unversion / yet - it should be 
+            # I haven't written the code to unversion / yet - it should be
             # supported.
             raise errors.BzrError('Unversioning the / is not currently supported')
         new_blocks = []
@@ -748,10 +752,11 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
-        
+
         revision_id allows creating a working tree at a different
         revision than the branch is at.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
@@ -787,7 +792,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.
-        
+
         :param a_bzrdir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
@@ -803,7 +808,7 @@ class DirStateRevisionTree(Tree):
 
     def __init__(self, dirstate, revision_id, repository):
         self._dirstate = dirstate
-        self._revision_id = revision_id
+        self._revision_id = osutils.safe_revision_id(revision_id)
         self._repository = repository
         self._inventory = None
         self._locked = 0
@@ -835,7 +840,7 @@ class DirStateRevisionTree(Tree):
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
-        
+
         This is relatively expensive: we have to walk the entire dirstate.
         Ideally we would not, and instead would """
         assert self._locked, 'cannot generate inventory of an unlocked '\
@@ -852,11 +857,12 @@ class DirStateRevisionTree(Tree):
         rows = self._dirstate._iter_rows()
         parent_rows = []
         for row in rows:
-            parent_rows.append((row[1][parent_index], row[0][3].decode('utf8')))
+            parent_rows.append((row[1][parent_index], row[0][3]))
         parent_rows = iter(sorted(parent_rows, key=lambda x:x[0][2:3]))
         root_row = parent_rows.next()
-        inv = Inventory(root_id=root_row[1], revision_id=self._revision_id)
-        inv.root.revision = root_row[1][parent_index][0].decode('utf8')
+        inv = Inventory(root_id=root_row[1].decode('utf8'),
+                        revision_id=self._revision_id)
+        inv.root.revision = root_row[1][parent_index][0]
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
@@ -866,9 +872,9 @@ class DirStateRevisionTree(Tree):
                 # not in this revision tree.
                 continue
             parent_id = parent_ids[dirname]
-            file_id = line[1]
+            file_id = line[1].decode('utf8')
             entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
-            entry.revision = revid.decode('utf8')
+            entry.revision = revid
             if kind == 'file':
                 entry.executable = executable
                 entry.text_size = size
@@ -926,7 +932,7 @@ class DirStateRevisionTree(Tree):
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]
         if ie.kind != "file":
-            return None 
+            return None
         return ie.executable
 
     def list_files(self, include_root=False):
@@ -938,7 +944,7 @@ class DirStateRevisionTree(Tree):
             entries.next()
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
-        
+
     def lock_read(self):
         """Lock the tree for a set of operations."""
         if not self._locked:
