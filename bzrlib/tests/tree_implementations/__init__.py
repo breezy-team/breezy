@@ -181,7 +181,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         # testing.
         file_ids = [u'TREE_ROOT',
                     u'f\xf6-id',
-                    u'b\xe5-r-id',
+                    u'b\xe5r-id',
                     u'b\xe1z-id',
                    ]
         try:

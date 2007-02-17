@@ -133,10 +133,10 @@ class TestTreeShapes(TestCaseWithTree):
         tree = self.get_tree_with_utf8(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')
-        path_and_ids = [(u'', u'TREE_ROOT'),
-                        (u'b\xe5r', u'b\xe5-r-id'),
-                        (u'f\xf6', u'f\xf6-id'),
-                        (u'b\xe5r/b\xe1z', u'b\xe1z-id'),
+        path_and_ids = [(u'', u'TREE_ROOT', None),
+                        (u'b\xe5r', u'b\xe5r-id', u'TREE_ROOT'),
+                        (u'f\xf6', u'f\xf6-id', u'TREE_ROOT'),
+                        (u'b\xe5r/b\xe1z', u'b\xe1z-id', u'b\xe5r-id'),
                        ]
         tree.lock_read()
         try:
@@ -144,22 +144,28 @@ class TestTreeShapes(TestCaseWithTree):
         finally:
             tree.unlock()
 
-        for expected, actual in zip(path_and_ids, path_entries):
-            self.assertEqual(expected[0], actual[0]) # Paths should match
-            self.assertEqual(expected[1], actual[1].file_id)
-            if isinstance(actual[1].file_id, str):
+        for expected, (path, ie) in zip(path_and_ids, path_entries):
+            self.assertEqual(expected[0], path) # Paths should match
+            self.assertIsInstance(path, unicode)
+            self.assertEqual(expected[1], ie.file_id)
+            if isinstance(ie.file_id, str):
                 # file_ids might be plain strings, but only if they are ascii
-                actual[1].file_id.decode('ascii')
+                ie.file_id.decode('ascii')
             else:
-                self.assertIsInstance(actual[1].file_id, unicode)
+                self.assertIsInstance(ie.file_id, unicode)
+            self.assertEqual(expected[2], ie.parent_id)
+            if expected[2] is not None:
+                if isinstance(ie.parent_id, str):
+                    ie.parent_id.decode('ascii')
+                else:
+                    self.assertIsInstance(ie.parent_id, unicode)
             # WorkingTree's return None for the last modified revision
-            if actual[1].revision is not None:
-                self.assertIsInstance(actual[1].revision, str)
-                if expected[0] == '':
+            if ie.revision is not None:
+                self.assertIsInstance(ie.revision, str)
+                if expected[0] != '':
                     # Some trees will preserve the revision id of the tree root,
                     # but not all will
-                    continue
-                self.assertEqual(revision_id, actual[1].revision)
+                    self.assertEqual(revision_id, ie.revision)
         self.assertEqual(len(path_and_ids), len(path_entries))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
@@ -174,11 +180,13 @@ class TestTreeShapes(TestCaseWithTree):
 
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
-        path_and_ids = [(u'', u'TREE_ROOT', None),
-                        (u'b\xe5r', u'b\xe5-r-id', revision_id_1),
-                        (u'f\xf6', u'f\xf6-id', revision_id_1),
-                        (u'b\xe5r/b\xe1z', u'b\xe1z-id', revision_id_1),
-                        (u'b\xe5r/z\xf7z', u'z\xf7z-id', revision_id_2),
+        path_and_ids = [(u'', u'TREE_ROOT', None, None),
+                        (u'b\xe5r', u'b\xe5r-id', u'TREE_ROOT', revision_id_1),
+                        (u'f\xf6', u'f\xf6-id', u'TREE_ROOT', revision_id_1),
+                        (u'b\xe5r/b\xe1z', u'b\xe1z-id', u'b\xe5r-id',
+                            revision_id_1),
+                        (u'b\xe5r/z\xf7z', u'z\xf7z-id', u'b\xe5r-id',
+                            revision_id_2),
                        ]
         tree.lock_read()
         try:
@@ -186,22 +194,29 @@ class TestTreeShapes(TestCaseWithTree):
         finally:
             tree.unlock()
 
-        for expected, actual in zip(path_and_ids, path_entries):
-            self.assertEqual(expected[0], actual[0]) # Paths should match
-            self.assertEqual(expected[1], actual[1].file_id)
-            if isinstance(actual[1].file_id, str):
+        for expected, (path, ie) in zip(path_and_ids, path_entries):
+            self.assertEqual(expected[0], path) # Paths should match
+            self.assertIsInstance(path, unicode)
+            self.assertEqual(expected[1], ie.file_id)
+            if isinstance(ie.file_id, str):
                 # file_ids might be plain strings, but only if they are ascii
-                actual[1].file_id.decode('ascii')
+                ie.file_id.decode('ascii')
             else:
-                self.assertIsInstance(actual[1].file_id, unicode)
+                self.assertIsInstance(ie.file_id, unicode)
+            self.assertEqual(expected[2], ie.parent_id)
+            if expected[2] is not None:
+                if isinstance(ie.parent_id, str):
+                    ie.parent_id.decode('ascii')
+                else:
+                    self.assertIsInstance(ie.parent_id, unicode)
             # WorkingTree's return None for the last modified revision
-            if actual[1].revision is not None:
-                self.assertIsInstance(actual[1].revision, str)
+            if ie.revision is not None:
+                self.assertIsInstance(ie.revision, str)
                 if expected[0] == '':
                     # Some trees will preserve the revision id of the tree root,
                     # but not all will
                     continue
-                self.assertEqual(expected[2], actual[1].revision)
+                self.assertEqual(expected[3], ie.revision)
         self.assertEqual(len(path_and_ids), len(path_entries))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
