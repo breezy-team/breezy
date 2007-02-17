@@ -875,7 +875,7 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, '', None))
+            self._set_root(InventoryDirectory(root_id, u'', None))
         else:
             self.root = None
             self._byid = {}
@@ -970,7 +970,7 @@ class Inventory(object):
             from_dir = self.root
             if (specific_file_ids is None or 
                 self.root.file_id in specific_file_ids):
-                yield '', self.root
+                yield u'', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
 
