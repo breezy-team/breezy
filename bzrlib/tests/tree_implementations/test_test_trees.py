@@ -131,3 +131,7 @@ class TestTreeShapes(TestCaseWithTree):
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_with_utf8(tree)
+
+    def test_tree_with_merged_utf8(self):
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_with_merged_utf8(tree)

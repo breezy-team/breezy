@@ -167,6 +167,11 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
+        self._create_tree_with_utf8(tree)
+        return self.workingtree_to_test_tree(tree)
+
+    def _create_tree_with_utf8(self, tree):
+        """Generate a tree with a utf8 revision and unicode paths."""
         paths = [u'f\xf6',
                  u'b\xe5r/',
                  u'b\xe5r/b\xe1z',
@@ -186,6 +191,17 @@ class TestCaseWithTree(TestCaseWithBzrDir):
             tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
         except errors.NonAsciiRevisionId:
             raise tests.TestSkipped('non-ascii revision ids not supported')
+
+    def get_tree_with_merged_utf8(self, tree):
+        """Generate a tree with utf8 ancestors."""
+        self._create_tree_with_utf8(tree)
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        self.build_tree([u'tree2/b\xe5r/z\xf7z'])
+        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
+
+        tree.merge_from_branch(tree2.branch)
+        tree.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
         return self.workingtree_to_test_tree(tree)
 
 

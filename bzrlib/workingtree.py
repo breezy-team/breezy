@@ -705,7 +705,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+        self._control_files.put_bytes('pending-merges', '\n'.join(merges))
 
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -2133,7 +2133,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         sio.seek(0)
         control_files.put('inventory', sio)
 
-        control_files.put_utf8('pending-merges', '')
+        control_files.put_bytes('pending-merges', '')
         
 
     def initialize(self, a_bzrdir, revision_id=None):
