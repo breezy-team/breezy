@@ -498,6 +498,8 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
+        bzrdir = self.make_bzrdir('bzrdir')
+        bzrdir.cloning_metadir()
         branch = self.make_branch('branch', format='knit')
         format = branch.bzrdir.cloning_metadir()
         self.assertIsInstance(format.workingtree_format,

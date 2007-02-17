@@ -661,6 +661,8 @@ class BzrDir(object):
         """
         format, repository = self._cloning_metadir()
         if format._workingtree_format is None:
+            if repository is None:
+                return format
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
         return format
