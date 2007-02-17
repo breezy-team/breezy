@@ -78,39 +78,41 @@ class Repository(object):
         )
 
     @needs_write_lock
-    def add_inventory(self, revid, inv, parents):
-        """Add the inventory inv to the repository as revid.
+    def add_inventory(self, revision_id, inv, parents):
+        """Add the inventory inv to the repository as revision_id.
         
-        :param parents: The revision ids of the parents that revid
+        :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
 
         returns the sha1 of the serialized inventory.
         """
-        _mod_revision.check_not_reserved_id(revid)
-        assert inv.revision_id is None or inv.revision_id == revid, \
+        revision_id = osutils.safe_revision_id(revision_id)
+        _mod_revision.check_not_reserved_id(revision_id)
+        assert inv.revision_id is None or inv.revision_id == revision_id, \
             "Mismatch between inventory revision" \
-            " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
         assert inv.root is not None
         inv_text = self.serialise_inventory(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
-        self._inventory_add_lines(inv_vf, revid, parents, osutils.split_lines(inv_text))
+        self._inventory_add_lines(inv_vf, revision_id, parents,
+                                  osutils.split_lines(inv_text))
         return inv_sha1
 
-    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+    def _inventory_add_lines(self, inv_vf, revision_id, parents, lines):
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
 
-        inv_vf.add_lines(revid, final_parents, lines)
+        inv_vf.add_lines(revision_id, final_parents, lines)
 
     @needs_write_lock
-    def add_revision(self, rev_id, rev, inv=None, config=None):
-        """Add rev to the revision store as rev_id.
+    def add_revision(self, revision_id, rev, inv=None, config=None):
+        """Add rev to the revision store as revision_id.
 
-        :param rev_id: the revision id to use.
+        :param revision_id: the revision id to use.
         :param rev: The revision object.
         :param inv: The inventory for the revision. if None, it will be looked
                     up in the inventory storer
@@ -118,20 +120,23 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
-        _mod_revision.check_not_reserved_id(rev_id)
+        revision_id = osutils.safe_revision_id(revision_id)
+        # TODO: jam 20070210 Shouldn't we check rev.revision_id and
+        #       rev.parent_ids?
+        _mod_revision.check_not_reserved_id(revision_id)
         if config is not None and config.signature_needed():
             if inv is None:
-                inv = self.get_inventory(rev_id)
+                inv = self.get_inventory(revision_id)
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
-                gpg.GPGStrategy(config), plaintext, rev_id)
-        if not rev_id in self.get_inventory_weave():
+                gpg.GPGStrategy(config), plaintext, revision_id)
+        if not revision_id in self.get_inventory_weave():
             if inv is None:
-                raise errors.WeaveRevisionNotPresent(rev_id,
+                raise errors.WeaveRevisionNotPresent(revision_id,
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(rev_id, inv, rev.parent_ids)
+                self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     @needs_read_lock
@@ -159,6 +164,9 @@ class Repository(object):
         if self._revision_store.text_store.listable():
             return self._revision_store.all_revision_ids(self.get_transaction())
         result = self._all_possible_ids()
+        # TODO: jam 20070210 Ensure that _all_possible_ids returns non-unicode
+        #       ids. (It should, since _revision_store's API should change to
+        #       return utf8 revision_ids)
         return self._eliminate_revisions_not_present(result)
 
     def break_lock(self):
@@ -287,6 +295,7 @@ class Repository(object):
 
         revision_id: only return revision ids included by revision_id.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(other, self).missing_revision_ids(revision_id)
 
     @staticmethod
@@ -305,6 +314,7 @@ class Repository(object):
         This is a destructive operation! Do not use it on existing 
         repositories.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(self, destination).copy_content(revision_id, basis)
 
     def fetch(self, source, revision_id=None, pb=None):
@@ -312,6 +322,7 @@ class Repository(object):
 
         If revision_id is None all content is copied.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return InterRepository.get(source, self).fetch(revision_id=revision_id,
                                                        pb=pb)
 
@@ -329,6 +340,7 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return _CommitBuilder(self, parents, config, timestamp, timezone,
                               committer, revprops, revision_id)
 
@@ -360,6 +372,7 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
+        revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
 
@@ -375,16 +388,26 @@ class Repository(object):
         if not revision_id or not isinstance(revision_id, basestring):
             raise errors.InvalidRevisionId(revision_id=revision_id,
                                            branch=self)
-        return self._revision_store.get_revisions([revision_id],
-                                                  self.get_transaction())[0]
+        return self.get_revisions([revision_id])[0]
+
     @needs_read_lock
     def get_revisions(self, revision_ids):
-        return self._revision_store.get_revisions(revision_ids,
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
+        revs = self._revision_store.get_revisions(revision_ids,
                                                   self.get_transaction())
+        for rev in revs:
+            assert not isinstance(rev.revision_id, unicode)
+            for parent_id in rev.parent_ids:
+                assert not isinstance(parent_id, unicode)
+        return revs
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):
-        rev = self.get_revision(revision_id) 
+        # TODO: jam 20070210 This shouldn't be necessary since get_revision
+        #       would have already do it.
+        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
+        revision_id = osutils.safe_revision_id(revision_id)
+        rev = self.get_revision(revision_id)
         rev_tmp = StringIO()
         # the current serializer..
         self._revision_store._serializer.write_revision(rev, rev_tmp)
@@ -394,6 +417,8 @@ class Repository(object):
     @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
+        # TODO: jam 20070210 get_revision_reconcile should do this for us
+        revision_id = osutils.safe_revision_id(revision_id)
         r = self.get_revision_reconcile(revision_id)
         # weave corruption can lead to absent revision markers that should be
         # present.
@@ -455,6 +480,7 @@ class Repository(object):
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         signature = gpg_strategy.sign(plaintext)
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
@@ -471,7 +497,8 @@ class Repository(object):
         assert self._serializer.support_altered_by_hack, \
             ("fileids_altered_by_revision_ids only supported for branches " 
              "which store inventory as unnested xml, not on %r" % self)
-        selected_revision_ids = set(revision_ids)
+        selected_revision_ids = set(osutils.safe_revision_id(r)
+                                    for r in revision_ids)
         w = self.get_inventory_weave()
         result = {}
 
@@ -541,6 +568,9 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
+        # TODO: jam 20070210 Technically we don't need to sanitize, since all
+        #       called functions must sanitize.
+        revision_id = osutils.safe_revision_id(revision_id)
         return self.deserialise_inventory(
             revision_id, self.get_inventory_xml(revision_id))
 
@@ -550,6 +580,7 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         result = self._serializer.read_inventory_from_string(xml)
         result.root.revision = revision_id
         return result
@@ -560,8 +591,9 @@ class Repository(object):
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
+        revision_id = osutils.safe_revision_id(revision_id)
         try:
-            assert isinstance(revision_id, basestring), type(revision_id)
+            assert isinstance(revision_id, str), type(revision_id)
             iw = self.get_inventory_weave()
             return iw.get_text(revision_id)
         except IndexError:
@@ -571,6 +603,8 @@ class Repository(object):
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
+        # TODO: jam 20070210 Shouldn't this be deprecated / removed?
+        revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
@@ -585,6 +619,7 @@ class Repository(object):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
+        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
@@ -618,7 +653,7 @@ class Repository(object):
             pending = set(self.all_revision_ids())
             required = set([])
         else:
-            pending = set(revision_ids)
+            pending = set(osutils.safe_revision_id(r) for r in revision_ids)
             # special case NULL_REVISION
             if _mod_revision.NULL_REVISION in pending:
                 pending.remove(_mod_revision.NULL_REVISION)
@@ -657,6 +692,7 @@ class Repository(object):
         :param revision_id: The revision id to start with.  All its lefthand
             ancestors will be traversed.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         if revision_id in (None, _mod_revision.NULL_REVISION):
             return
         next_id = revision_id
@@ -710,6 +746,7 @@ class Repository(object):
             return RevisionTree(self, Inventory(root_id=None), 
                                 _mod_revision.NULL_REVISION)
         else:
+            revision_id = osutils.safe_revision_id(revision_id)
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
@@ -737,6 +774,7 @@ class Repository(object):
         """
         if revision_id is None:
             return [None]
+        revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
@@ -751,6 +789,7 @@ class Repository(object):
         - it writes to stdout, it assumes that that is valid etc. Fix
         by creating a new more flexible convenience function.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         tree = self.revision_tree(revision_id)
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
@@ -764,8 +803,9 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
-    def revision_parents(self, revid):
-        return self.get_inventory_weave().parent_names(revid)
+    def revision_parents(self, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
+        return self.get_inventory_weave().parent_names(revision_id)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -785,18 +825,21 @@ class Repository(object):
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
+        revision_id = osutils.safe_revision_id(revision_id)
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @needs_read_lock
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
+        revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.has_signature(revision_id,
                                                   self.get_transaction())
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
         """Return the text for a signature."""
+        revision_id = osutils.safe_revision_id(revision_id)
         return self._revision_store.get_signature_text(revision_id,
                                                        self.get_transaction())
 
@@ -812,6 +855,7 @@ class Repository(object):
         if not revision_ids:
             raise ValueError("revision_ids must be non-empty in %s.check" 
                     % (self,))
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         return self._check(revision_ids)
 
     def _check(self, revision_ids):
@@ -839,6 +883,11 @@ class Repository(object):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
+                    raise errors.NonAsciiRevisionId(method, self)
+            else:
+                try:
+                    revision_id.decode('ascii')
+                except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
 
@@ -1253,6 +1302,9 @@ class InterRepository(InterObject):
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
+            # TODO: jam 20070210 InterRepository is internal enough that it
+            #       should assume revision_ids are already utf-8
+            revision_id = osutils.safe_revision_id(revision_id)
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
             source_ids.pop(0)
@@ -1302,6 +1354,9 @@ class InterSameDataRepository(InterRepository):
             self.target.set_make_working_trees(self.source.make_working_trees())
         except NotImplementedError:
             pass
+        # TODO: jam 20070210 This is fairly internal, so we should probably
+        #       just assert that revision_id is not unicode.
+        revision_id = osutils.safe_revision_id(revision_id)
         # grab the basis available data
         if basis is not None:
             self.target.fetch(basis, revision_id=revision_id)
@@ -1318,6 +1373,8 @@ class InterSameDataRepository(InterRepository):
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, 
                self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -1360,6 +1417,8 @@ class InterWeaveRepo(InterSameDataRepository):
     def copy_content(self, revision_id=None, basis=None):
         """See InterRepository.copy_content()."""
         # weave specific optimised path:
+        # TODO: jam 20070210 Internal, should be an assert, not translate
+        revision_id = osutils.safe_revision_id(revision_id)
         if basis is not None:
             # copy the basis in, then fetch remaining data.
             basis.copy_content_into(self.target, revision_id)
@@ -1402,6 +1461,8 @@ class InterWeaveRepo(InterSameDataRepository):
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -1479,6 +1540,8 @@ class InterKnitRepo(InterSameDataRepository):
         from bzrlib.fetch import KnitRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
         f = KnitRepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
@@ -1537,6 +1600,8 @@ class InterModel1and2(InterRepository):
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import Model1toKnit2Fetcher
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
         f = Model1toKnit2Fetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
@@ -1558,6 +1623,8 @@ class InterModel1and2(InterRepository):
             self.target.set_make_working_trees(self.source.make_working_trees())
         except NotImplementedError:
             pass
+        # TODO: jam 20070210 Internal, assert, don't translate
+        revision_id = osutils.safe_revision_id(revision_id)
         # grab the basis available data
         if basis is not None:
             self.target.fetch(basis, revision_id=revision_id)
@@ -1593,6 +1660,8 @@ class InterKnit1and2(InterKnitRepo):
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, 
                self.target._format)
+        # TODO: jam 20070210 This should be an assert, not a translate
+        revision_id = osutils.safe_revision_id(revision_id)
         f = Knit1to2Fetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
@@ -1780,7 +1849,7 @@ class CommitBuilder(object):
             self._committer = committer
 
         self.new_inventory = Inventory(None)
-        self._new_revision_id = revision_id
+        self._new_revision_id = osutils.safe_revision_id(revision_id)
         self.parents = parents
         self.repository = repository
 

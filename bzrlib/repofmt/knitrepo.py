@@ -20,6 +20,7 @@ from bzrlib import (
     knit,
     lockable_files,
     lockdir,
+    osutils,
     transactions,
     xml5,
     xml6,
@@ -63,6 +64,8 @@ class KnitRepository(MetaDirRepository):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
+        from_revid = osutils.safe_revision_id(from_revid)
+        to_revid = osutils.safe_revision_id(to_revid)
         vf = self._get_revision_vf()
         from_set = set(vf.get_ancestry(from_revid))
         to_set = set(vf.get_ancestry(to_revid))
@@ -90,6 +93,7 @@ class KnitRepository(MetaDirRepository):
         """
         if revision_id is None:
             return [None]
+        revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()
         try:
             return [None] + vf.get_ancestry(revision_id)
@@ -99,6 +103,7 @@ class KnitRepository(MetaDirRepository):
     @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
+        revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
 
     @needs_read_lock
@@ -113,6 +118,7 @@ class KnitRepository(MetaDirRepository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
+        revision_id = osutils.safe_revision_id(revision_id)
         a_weave = self._get_revision_vf()
         entire_graph = a_weave.get_graph()
         if revision_id is None:
@@ -145,7 +151,7 @@ class KnitRepository(MetaDirRepository):
             pending = set(self.all_revision_ids())
             required = set([])
         else:
-            pending = set(revision_ids)
+            pending = set(osutils.safe_revision_id(r) for r in revision_ids)
             # special case NULL_REVISION
             if _mod_revision.NULL_REVISION in pending:
                 pending.remove(_mod_revision.NULL_REVISION)
@@ -193,6 +199,7 @@ class KnitRepository(MetaDirRepository):
         return reconciler
     
     def revision_parents(self, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         return self._get_revision_vf().get_parents(revision_id)
 
 
@@ -238,6 +245,7 @@ class KnitRepository2(KnitRepository):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
 

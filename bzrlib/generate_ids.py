@@ -114,6 +114,7 @@ def gen_revision_id(username, timestamp=None):
     if timestamp is None:
         timestamp = time.time()
 
-    return '-'.join((user_or_email,
-                    osutils.compact_date(timestamp),
-                    unique_chunk))
+    rev_id = u'-'.join((user_or_email,
+                        osutils.compact_date(timestamp),
+                        unique_chunk))
+    return rev_id.encode('utf8')

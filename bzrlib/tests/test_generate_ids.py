@@ -102,6 +102,10 @@ class TestGenRevisionId(tests.TestCase):
         """gen_revision_id should create a revision id matching the regex"""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
         self.assertMatchesRe(regex, revision_id)
+        # It should be a utf8 revision_id, not a unicode one
+        self.assertIsInstance(revision_id, str)
+        # gen_revision_id should always return ascii revision ids.
+        revision_id.decode('ascii')
 
     def test_timestamp(self):
         """passing a timestamp should cause it to be used"""
@@ -123,8 +127,19 @@ class TestGenRevisionId(tests.TestCase):
     def test_gen_revision_id_user(self):
         """If there is no email, fall back to the whole username"""
         tail = r'-\d{14}-[a-z0-9]{16}'
-        self.assertGenRevisionId('joe_bar' + tail,'Joe Bar')
+        self.assertGenRevisionId('joe_bar' + tail, 'Joe Bar')
         self.assertGenRevisionId('joebar' + tail, 'joebar')
         self.assertGenRevisionId('joe_br' + tail, u'Joe B\xe5r')
         self.assertGenRevisionId(r'joe_br_user\+joe_bar_foo-bar.com' + tail,
                                  u'Joe B\xe5r <user+Joe_Bar_Foo-Bar.com>')
+
+    def test_revision_ids_are_ascii(self):
+        """gen_revision_id should always return an ascii revision id."""
+        tail = r'-\d{14}-[a-z0-9]{16}'
+        self.assertGenRevisionId('joe_bar' + tail, 'Joe Bar')
+        self.assertGenRevisionId('joe_bar' + tail, u'Joe Bar')
+        self.assertGenRevisionId('joe@foo' + tail, u'Joe Bar <joe@foo>')
+        # We cheat a little with this one, because email-addresses shouldn't
+        # contain non-ascii characters, but generate_ids should strip them
+        # anyway.
+        self.assertGenRevisionId('joe@f' + tail, u'Joe Bar <joe@f\xb6>')

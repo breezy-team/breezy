@@ -503,12 +503,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._control_files.get_utf8('pending-merges')
+            merges_file = self._control_files.get('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
             for l in merges_file.readlines():
-                parents.append(l.rstrip('\n'))
+                revision_id = osutils.safe_revision_id(l.rstrip('\n'))
+                parents.append(revision_id)
         return parents
 
     @needs_read_lock
@@ -719,6 +720,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         self._check_parents_for_ghosts(revision_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
@@ -732,7 +734,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
-        parent_ids = [rev for (rev, tree) in parents_list]
+        parent_ids = [osutils.safe_revision_id(rev) for (rev, tree) in parents_list]
 
         self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -795,6 +797,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             merger.check_basis(check_clean=True, require_commits=False)
             if to_revision is None:
                 to_revision = branch.last_revision()
+            else:
+                to_revision = osutils.safe_revision_id(to_revision)
             merger.other_rev_id = to_revision
             if merger.other_rev_id is None:
                 raise error.NoCommits(branch)
@@ -1532,6 +1536,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
+        new_revision = osutils.safe_revision_id(new_revision)
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
 
@@ -1560,7 +1565,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
-        inventory.revision_id = revision_id
+        # TODO: jam 20070209 This should be redundant, as the revision_id
+        #       as all callers should have already converted the revision_id to
+        #       utf8
+        inventory.revision_id = osutils.safe_revision_id(revision_id)
         return xml6.serializer_v6.write_inventory_to_string(inventory)
 
     def _cache_basis_inventory(self, new_revision):
@@ -1953,7 +1961,8 @@ class WorkingTree3(WorkingTree):
     def _last_revision(self):
         """See Mutable.last_revision."""
         try:
-            return self._control_files.get_utf8('last-revision').read()
+            return osutils.safe_revision_id(
+                        self._control_files.get('last-revision').read())
         except errors.NoSuchFile:
             return None
 
@@ -2133,6 +2142,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         branch = a_bzrdir.open_branch()
         if revision_id is not None:
+            revision_id = osutils.safe_revision_id(revision_id)
             branch.lock_write()
             try:
                 revision_history = branch.revision_history()
@@ -2224,6 +2234,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
+        else:
+            revision_id = osutils.safe_revision_id(revision_id)
         # WorkingTree3 can handle an inventory which has a unique root id.
         # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
         # those trees. And because there isn't a format bump inbetween, we
