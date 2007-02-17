@@ -126,10 +126,23 @@ class RecordingServer(object):
         self.port = None
 
 
+class TestWithTransport_pycurl(object):
+    """Test case to inherit from if pycurl is present"""
+
+    def _get_pycurl_maybe(self):
+        try:
+            from bzrlib.transport.http._pycurl import PyCurlTransport
+            return PyCurlTransport
+        except errors.DependencyNotPresent:
+            raise TestSkipped('pycurl not present')
+
+    _transport = property(_get_pycurl_maybe)
+
+
 class TestHttpUrls(TestCase):
 
-    # FIXME: Some of these tests should be done for both
-    # implementations
+    # TODO: This should be moved to authorization tests once they
+    # are written.
 
     def test_url_parsing(self):
         f = FakeManager()
@@ -142,45 +155,101 @@ class TestHttpUrls(TestCase):
         self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],
                           f.credentials[0])
 
+
+class TestHttpTransportUrls(object):
+    """Test the http urls.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCase.
+
+    We can't inherit directly from TestCase or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
+        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
         eq = self.assertEqualDiff
-        eq(t.abspath('.'),
-           'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
-        eq(t.abspath('.bzr'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
+        eq(t.abspath('.'), 'http://bazaar-vcs.org/bzr/bzr.dev')
+        eq(t.abspath('foo/bar'), 'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
+        eq(t.abspath('.bzr'), 'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
         eq(t.abspath('.bzr/1//2/./3'),
            'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises(ValueError,
-            t.abspath,
-            '.bzr/')
-        t = HttpTransport_urllib('http://http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises(errors.InvalidURL, t.has, 'foo/bar')
+        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        self.assertRaises(ValueError, t.abspath, '.bzr/')
+        t = self._transport('http://http://bazaar-vcs.org/bzr/bzr.dev/')
+        self.assertRaises((errors.InvalidURL, errors.ConnectionError),
+                          t.has, 'foo/bar')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
-        t = HttpTransport_urllib('http://bzr.ozlabs.org/')
+        t = self._transport('http://bzr.ozlabs.org/')
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
-        server = HttpServer_PyCurl()
+        server = self._server()
         try:
             server.setUp()
             url = server.get_url()
-            self.assertTrue(url.startswith('http+pycurl://'))
+            self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
             server.tearDown()
 
+
+class TestHttpUrls_urllib(TestHttpTransportUrls, TestCase):
+    """Test http urls with urllib"""
+
+    _transport = HttpTransport_urllib
+    _server = HttpServer_urllib
+    _qualified_prefix = 'http+urllib'
+
+
+class TestHttpUrls_pycurl(TestWithTransport_pycurl, TestHttpTransportUrls,
+                          TestCase):
+    """Test http urls with pycurl"""
+
+    _server = HttpServer_PyCurl
+    _qualified_prefix = 'http+pycurl'
+
+    # TODO: This should really be moved into another pycurl
+    # specific test. When https tests will be implemented, take
+    # this one into account.
+    def test_pycurl_without_https_support(self):
+        """Test that pycurl without SSL do not fail with a traceback.
+
+        For the purpose of the test, we force pycurl to ignore
+        https by supplying a fake version_info that do not
+        support it.
+        """
+        try:
+            import pycurl
+        except ImportError:
+            raise TestSkipped('pycurl not present')
+        # Now that we have pycurl imported, we can fake its version_info
+        # This was taken from a windows pycurl without SSL
+        # (thanks to bialix)
+        pycurl.version_info = lambda : (2,
+                                        '7.13.2',
+                                        462082,
+                                        'i386-pc-win32',
+                                        2576,
+                                        None,
+                                        0,
+                                        None,
+                                        ('ftp', 'gopher', 'telnet', 
+                                         'dict', 'ldap', 'http', 'file'),
+                                        None,
+                                        0,
+                                        None)
+        self.assertRaises(errors.DependencyNotPresent, self._transport,
+                          'https://launchpad.net')
 
 class TestHttpConnections(object):
     """Test the http connections.
@@ -245,19 +314,6 @@ class TestHttpConnections(object):
             self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
         finally:
             socket.setdefaulttimeout(default_timeout)
-
-
-class TestWithTransport_pycurl(object):
-    """Test case to inherit from if pycurl is present"""
-
-    def _get_pycurl_maybe(self):
-        try:
-            from bzrlib.transport.http._pycurl import PyCurlTransport
-            return PyCurlTransport
-        except errors.DependencyNotPresent:
-            raise TestSkipped('pycurl not present')
-
-    _transport = property(_get_pycurl_maybe)
 
 
 class TestHttpConnections_urllib(TestHttpConnections, TestCaseWithWebserver):
