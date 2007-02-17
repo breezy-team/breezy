@@ -54,6 +54,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Internally revision ids are now passed around as utf-8 bytestrings,
+      rather than treating them as Unicode strings. This has performance
+      benefits for Knits, since we no longer need to decode the revision
+      id for each line of content, nor for each entry in the index. This
+      will also help with the future dirstate format. File-ids should
+      receive the same treatment in the future. (John Arbash Meinel)
+
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
