@@ -172,18 +172,20 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
-        paths = [u'f\xf6',
+        paths = [u'',
+                 u'f\xf6',
                  u'b\xe5r/',
                  u'b\xe5r/b\xe1z',
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = [u'f\xf6-id',
+        file_ids = [u'TREE_ROOT',
+                    u'f\xf6-id',
                     u'b\xe5-r-id',
                     u'b\xe1z-id',
                    ]
         try:
-            self.build_tree(paths)
+            self.build_tree(paths[1:])
         except UnicodeError:
             raise tests.TestSkipped('filesystem does not support unicode.')
         tree.add(paths, file_ids)
