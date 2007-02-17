@@ -127,3 +127,7 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
+
+    def test_tree_with_utf8(self):
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_with_utf8(tree)

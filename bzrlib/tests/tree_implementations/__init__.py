@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
+    tests,
     transform,
     )
 from bzrlib.transport import get_transport
@@ -163,6 +164,29 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         tt.set_executability(True, trans_id)
         tt.apply()
         return self._convert_tree(tree, converter)
+
+    def get_tree_with_utf8(self, tree):
+        """Generate a tree with a utf8 revision and unicode paths."""
+        paths = [u'f\xf6',
+                 u'b\xe5r/',
+                 u'b\xe5r/b\xe1z',
+                ]
+        # bzr itself does not create unicode file ids, but we want them for
+        # testing.
+        file_ids = [u'f\xf6-id',
+                    u'b\xe5-r-id',
+                    u'b\xe1z-id',
+                   ]
+        try:
+            self.build_tree(paths)
+        except UnicodeError:
+            raise tests.TestSkipped('filesystem does not support unicode.')
+        tree.add(paths, file_ids)
+        try:
+            tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
+        except errors.NonAsciiRevisionId:
+            raise tests.TestSkipped('non-ascii revision ids not supported')
+        return self.workingtree_to_test_tree(tree)
 
 
 class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):

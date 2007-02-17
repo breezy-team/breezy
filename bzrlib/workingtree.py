@@ -1975,7 +1975,7 @@ class WorkingTree3(WorkingTree):
                 pass
             return False
         else:
-            self._control_files.put_utf8('last-revision', revision_id)
+            self._control_files.put_bytes('last-revision', revision_id)
             return True
 
     @needs_tree_write_lock
