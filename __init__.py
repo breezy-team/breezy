@@ -48,7 +48,8 @@ def post_commit(branch, revision_id):
 
 def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
     """This is the post_commit hook that runs after commit."""
-    _emailer.EmailSender(master, new_revid, master.get_config()).send_maybe()
+    _emailer.EmailSender(master, new_revid, master.get_config(),
+                         local_branch=local).send_maybe()
 
 
 def install_hooks():

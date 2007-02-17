@@ -20,6 +20,7 @@ from unittest import TestLoader
 
 from bzrlib import (
     config,
+    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
@@ -52,6 +53,7 @@ with_url_config=("[DEFAULT]\n"
                  "post_commit_url=http://some.fake/url/\n"
                  "post_commit_to=demo@example.com\n"
                  "post_commit_sender=Sample <foo@example.com>\n")
+
 
 class TestGetTo(TestCaseInTempDir):
 
@@ -156,6 +158,55 @@ class TestGetTo(TestCaseInTempDir):
         my_config = self.branch.get_config()
         config_file = StringIO(text)
         (my_config._get_global_config()._get_parser(config_file))
-        return EmailSender(self.branch, 'A', my_config)
+        sender = EmailSender(self.branch, 'A', my_config)
+        # This is usually only done after the EmailSender has locked the branch
+        # and repository during send(), however, for testing, we need to do it
+        # earlier, since send() is not called.
+        sender._setup_revision_and_revno()
+        return sender
 
 
+class TestEmailerWithLocal(tests.TestCaseWithTransport):
+    """Test that Emailer will use a local branch if supplied."""
+
+    def test_local_has_revision(self):
+        master_tree = self.make_branch_and_tree('master')
+        self.build_tree(['master/a'])
+        master_tree.add('a')
+        master_tree.commit('a')
+
+        child_tree = master_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree.branch.bind(master_tree.branch)
+
+        self.build_tree(['child/b'])
+        child_tree.add(['b'])
+        revision_id = child_tree.commit('b')
+
+        sender = EmailSender(master_tree.branch, revision_id,
+                             master_tree.branch.get_config(),
+                             local_branch=child_tree.branch)
+
+        # Make sure we are using the 'local_branch' repository, and not the
+        # remote one.
+        self.assertIs(child_tree.branch.repository, sender.repository)
+
+    def test_local_missing_revision(self):
+        master_tree = self.make_branch_and_tree('master')
+        self.build_tree(['master/a'])
+        master_tree.add('a')
+        master_tree.commit('a')
+
+        child_tree = master_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree.branch.bind(master_tree.branch)
+
+        self.build_tree(['master/c'])
+        master_tree.add(['c'])
+        revision_id = master_tree.commit('c')
+
+        self.failIf(child_tree.branch.repository.has_revision(revision_id))
+        sender = EmailSender(master_tree.branch, revision_id,
+                             master_tree.branch.get_config(),
+                             local_branch=child_tree.branch)
+        # We should be using the master repository here, because the child
+        # repository doesn't contain the revision.
+        self.assertIs(master_tree.branch.repository, sender.repository)

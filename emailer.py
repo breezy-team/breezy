@@ -30,11 +30,20 @@ class EmailSender(object):
 
     _smtplib_implementation = SMTPConnection
 
-    def __init__(self, branch, revision_id, config):
+    def __init__(self, branch, revision_id, config, local_branch=None):
         self.config = config
         self.branch = branch
-        self.revision = self.branch.repository.get_revision(revision_id)
-        self.revno = self.branch.revision_id_to_revno(revision_id)
+        self.repository = branch.repository
+        if (local_branch is not None and
+            local_branch.repository.has_revision(revision_id)):
+            self.repository = local_branch.repository
+        self._revision_id = revision_id
+        self.revision = None
+        self.revno = None
+
+    def _setup_revision_and_revno(self):
+        self.revision = self.repository.get_revision(self._revision_id)
+        self.revno = self.branch.revision_id_to_revno(self._revision_id)
 
     def body(self):
         from bzrlib.log import log_formatter, show_log
@@ -83,13 +92,13 @@ class EmailSender(object):
         revid_new = self.revision.revision_id
         if self.revision.parent_ids:
             revid_old = self.revision.parent_ids[0]
-            tree_new, tree_old = self.branch.repository.revision_trees((revid_new, revid_old))
+            tree_new, tree_old = self.repository.revision_trees((revid_new, revid_old))
         else:
             # revision_trees() doesn't allow None or 'null:' to be passed as a
             # revision. So we need to call revision_tree() twice.
             revid_old = _mod_revision.NULL_REVISION
-            tree_new = self.branch.repository.revision_tree(revid_new)
-            tree_old = self.branch.repository.revision_tree(revid_old)
+            tree_new = self.repository.revision_tree(revid_new)
+            tree_old = self.repository.revision_tree(revid_old)
 
         # We can use a cStringIO because show_diff_trees should only write
         # 8-bit strings. It is an error to write a Unicode string here.
@@ -154,11 +163,19 @@ class EmailSender(object):
         Depending on the configuration, this will either use smtplib, or it
         will call out to the 'mail' program.
         """
-        mailer = self.mailer()
-        if mailer == 'smtplib':
-            self._send_using_smtplib()
-        else:
-            self._send_using_process()
+        self.branch.lock_read()
+        self.repository.lock_read()
+        try:
+            # Do this after we have locked, to make things faster.
+            self._setup_revision_and_revno()
+            mailer = self.mailer()
+            if mailer == 'smtplib':
+                self._send_using_smtplib()
+            else:
+                self._send_using_process()
+        finally:
+            self.repository.unlock()
+            self.branch.unlock()
 
     def _send_using_process(self):
         """Spawn a 'mail' subprocess to send the email."""
