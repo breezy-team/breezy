@@ -133,10 +133,14 @@ class TestTreeShapes(TestCaseWithTree):
         tree = self.get_tree_with_utf8(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')
-        path_and_ids = [(u'', u'TREE_ROOT', None),
-                        (u'b\xe5r', u'b\xe5r-id', u'TREE_ROOT'),
-                        (u'f\xf6', u'f\xf6-id', u'TREE_ROOT'),
-                        (u'b\xe5r/b\xe1z', u'b\xe1z-id', u'b\xe5r-id'),
+        root_id = 'TREE_ROOT'
+        bar_id = u'b\xe5r-id'.encode('utf8')
+        foo_id = u'f\xf6-id'.encode('utf8')
+        baz_id = u'b\xe1z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None),
+                        (u'b\xe5r', bar_id, root_id),
+                        (u'f\xf6', foo_id, root_id),
+                        (u'b\xe5r/b\xe1z', baz_id, bar_id),
                        ]
         tree.lock_read()
         try:
@@ -148,17 +152,10 @@ class TestTreeShapes(TestCaseWithTree):
             self.assertEqual(expected[0], path) # Paths should match
             self.assertIsInstance(path, unicode)
             self.assertEqual(expected[1], ie.file_id)
-            if isinstance(ie.file_id, str):
-                # file_ids might be plain strings, but only if they are ascii
-                ie.file_id.decode('ascii')
-            else:
-                self.assertIsInstance(ie.file_id, unicode)
+            self.assertIsInstance(ie.file_id, str)
             self.assertEqual(expected[2], ie.parent_id)
             if expected[2] is not None:
-                if isinstance(ie.parent_id, str):
-                    ie.parent_id.decode('ascii')
-                else:
-                    self.assertIsInstance(ie.parent_id, unicode)
+                self.assertIsInstance(ie.parent_id, str)
             # WorkingTree's return None for the last modified revision
             if ie.revision is not None:
                 self.assertIsInstance(ie.revision, str)
@@ -180,13 +177,16 @@ class TestTreeShapes(TestCaseWithTree):
 
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
-        path_and_ids = [(u'', u'TREE_ROOT', None, None),
-                        (u'b\xe5r', u'b\xe5r-id', u'TREE_ROOT', revision_id_1),
-                        (u'f\xf6', u'f\xf6-id', u'TREE_ROOT', revision_id_1),
-                        (u'b\xe5r/b\xe1z', u'b\xe1z-id', u'b\xe5r-id',
-                            revision_id_1),
-                        (u'b\xe5r/z\xf7z', u'z\xf7z-id', u'b\xe5r-id',
-                            revision_id_2),
+        root_id = 'TREE_ROOT'
+        bar_id = u'b\xe5r-id'.encode('utf8')
+        foo_id = u'f\xf6-id'.encode('utf8')
+        baz_id = u'b\xe1z-id'.encode('utf8')
+        zez_id = u'z\xf7z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None, None),
+                        (u'b\xe5r', bar_id, root_id, revision_id_1),
+                        (u'f\xf6', foo_id, root_id, revision_id_1),
+                        (u'b\xe5r/b\xe1z', baz_id, bar_id, revision_id_1),
+                        (u'b\xe5r/z\xf7z', zez_id, bar_id, revision_id_2),
                        ]
         tree.lock_read()
         try:
@@ -198,17 +198,10 @@ class TestTreeShapes(TestCaseWithTree):
             self.assertEqual(expected[0], path) # Paths should match
             self.assertIsInstance(path, unicode)
             self.assertEqual(expected[1], ie.file_id)
-            if isinstance(ie.file_id, str):
-                # file_ids might be plain strings, but only if they are ascii
-                ie.file_id.decode('ascii')
-            else:
-                self.assertIsInstance(ie.file_id, unicode)
+            self.assertIsInstance(ie.file_id, str)
             self.assertEqual(expected[2], ie.parent_id)
             if expected[2] is not None:
-                if isinstance(ie.parent_id, str):
-                    ie.parent_id.decode('ascii')
-                else:
-                    self.assertIsInstance(ie.parent_id, unicode)
+                self.assertIsInstance(ie.parent_id, str)
             # WorkingTree's return None for the last modified revision
             if ie.revision is not None:
                 self.assertIsInstance(ie.revision, str)

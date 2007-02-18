@@ -544,11 +544,7 @@ class Repository(object):
                 try:
                     revision_id = unescape_revid_cache[revision_id]
                 except KeyError:
-                    # TODO: jam 20070217 For now, _unescape_xml return Unicode
-                    #       revision ids, once we make file_ids utf8, then it
-                    #       will return utf8 strings instead, and we can get
-                    #       rid of this.
-                    unescaped = osutils.safe_revision_id(unescape(revision_id))
+                    unescaped = unescape(revision_id)
                     unescape_revid_cache[revision_id] = unescaped
                     revision_id = unescaped
 
@@ -2091,7 +2087,7 @@ def _unescaper(match, _map=_unescape_map):
     except KeyError:
         if not code.startswith('#'):
             raise
-        return unichr(int(code[1:]))
+        return unichr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = None

@@ -305,10 +305,10 @@ class TestSerializer(TestCase):
         inv = s_v5.read_inventory_from_string(_inventory_utf8_v5)
         rev_id_1 = u'erik@b\xe5gfors-01'.encode('utf8')
         rev_id_2 = u'erik@b\xe5gfors-02'.encode('utf8')
-        fid_root = u'TRE\xe9_ROOT'
-        fid_bar1 = u'b\xe5r-01'
-        fid_sub = u's\xb5bdir-01'
-        fid_bar2 = u'b\xe5r-02'
+        fid_root = u'TRE\xe9_ROOT'.encode('utf8')
+        fid_bar1 = u'b\xe5r-01'.encode('utf8')
+        fid_sub = u's\xb5bdir-01'.encode('utf8')
+        fid_bar2 = u'b\xe5r-02'.encode('utf8')
         expected = [(u'', fid_root, None, None),
                     (u'b\xe5r', fid_bar1, fid_root, rev_id_1),
                     (u's\xb5bdir', fid_sub, fid_root, rev_id_1),
@@ -323,10 +323,10 @@ class TestSerializer(TestCase):
             self.assertEqual(exp_path, act_path)
             self.assertIsInstance(act_path, unicode)
             self.assertEqual(exp_file_id, act_ie.file_id)
-            self.assertIsInstance(act_ie.file_id, unicode)
+            self.assertIsInstance(act_ie.file_id, str)
             self.assertEqual(exp_parent_id, act_ie.parent_id)
             if exp_parent_id is not None:
-                self.assertIsInstance(act_ie.parent_id, unicode)
+                self.assertIsInstance(act_ie.parent_id, str)
             self.assertEqual(exp_rev_id, act_ie.revision)
             if exp_rev_id is not None:
                 self.assertIsInstance(act_ie.revision, str)

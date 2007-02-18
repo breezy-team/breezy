@@ -230,7 +230,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a"])
 
-        file_id = u'a-f\xedle-id'
+        file_id = u'a-f\xedle-id'.encode('utf8')
         main_wt.add(['a'], [file_id])
         revision_id = u'r\xe9v-a'.encode('utf8')
         try:
