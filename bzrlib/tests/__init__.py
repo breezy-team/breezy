@@ -530,6 +530,22 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
+class FakeStdin(StringIOWrapper):
+    """Simulated stdin for tests only.
+
+    We pretend to be the real stdin by redirecting the fileno method so that
+    getpas.getpass can succeed changing the echo mode of the real stdin. That
+    allows tests to can user inputs without having to implement a
+    full-fledged stdin.
+    """
+
+    fileno = sys.stdin.fileno
+
+    def __init__(self, string, encoding='ascii'):
+        StringIOWrapper.__init__(self, string.encode(encoding))
+        self.encoding = encoding
+
+
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
     

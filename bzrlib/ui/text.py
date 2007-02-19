@@ -27,6 +27,7 @@ import getpass
 
 from bzrlib import (
     progress,
+    osutils,
     )
 """)
 
@@ -63,7 +64,7 @@ class TextUIFactory(CLIUIFactory):
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
-        self.stdout.write(prompt + "? [y/n]:")
+        self.stdout.write(prompt)
         
     @deprecated_method(zero_eight)
     def progress_bar(self):
@@ -71,6 +72,23 @@ class TextUIFactory(CLIUIFactory):
         # this in turn is abstract, and creates either a tty or dots
         # bar depending on what we think of the terminal
         return progress.ProgressBar()
+
+    def get_login(self, prompt='', **kwargs):
+        """Prompt the user for a login (generally on a remote host).
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The user string, return None if the user 
+                 canceled the request.
+        """
+        prompt += ': '
+        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
+        self.prompt(prompt)
+        login = self.stdin.readline()
+        login = login.rstrip('\n')
+        return login
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -82,8 +100,8 @@ class TextUIFactory(CLIUIFactory):
         :return: The password string, return None if the user 
                  canceled the request.
         """
-        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
         prompt += ': '
+        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
         return getpass.getpass(prompt)

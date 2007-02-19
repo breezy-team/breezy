@@ -56,6 +56,21 @@ class UIFactory(object):
         """See UIFactory.nested_progress_bar()."""
         raise NotImplementedError(self.progress_bar)
 
+    def get_login(self, prompt='', **kwargs):
+        """Prompt the user for a login (generally on a remote host).
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+
+        :return: The user string, return None if the user canceled the
+                 request. Note that we do not touch the encoding, users may
+                 have whatever they see fit and the password should be
+                 transported as is. 
+        """
+        raise NotImplementedError(self.progress_bar)
+
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
 
@@ -63,11 +78,14 @@ class UIFactory(object):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user 
-                 canceled the request.
+
+        :return: The password string, return None if the user canceled the
+                 request. Note that we do not touch the encoding, users may
+                 have whatever they see fit and the password should be
+                 transported as is.
         """
         raise NotImplementedError(self.get_password)
-        
+
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
@@ -104,7 +122,7 @@ class CLIUIFactory(UIFactory):
         self.clear_term()
         # FIXME: make a regexp and handle case variations as well.
         while True:
-            self.prompt(prompt)
+            self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
             if line in ('y\n', 'yes\n'):
                 return True
@@ -125,6 +143,9 @@ class SilentUIFactory(CLIUIFactory):
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         return progress.DummyProgress()
+
+    def get_login(self, prompt='', **kwargs):
+        return None
 
     def get_password(self, prompt='', **kwargs):
         return None
