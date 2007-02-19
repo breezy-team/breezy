@@ -74,6 +74,10 @@ class TestUnversion(ExternalBase):
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "")
 
+    def test_command_on_unversioned_files(self):
+        self.build_tree([a])
+        tree = self.make_branch_and_tree('.')
+
         (out,err) = self.runbzr(self.cmd + ' a')
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "a is not versioned.")

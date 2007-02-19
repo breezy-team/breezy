@@ -33,6 +33,14 @@ class TestRemove(TestUnversion):
             self.failIfExists(f)
             self.assertNotInWorkingTree(f)
 
+    def test_command_on_unversioned_files(self):
+        self.build_tree(['a'])
+        tree = self.make_branch_and_tree('.')
+
+        (out,err) = self.runbzr(self.cmd + ' a')
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "deleted a")
+
     def test_command_on_non_existing_files(self):
         tree = self._make_add_and_assert_tree([])
         (out,err) = self.runbzr(self.cmd + ' b')

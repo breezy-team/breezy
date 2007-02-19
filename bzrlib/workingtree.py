@@ -1653,9 +1653,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     textui.show_status(new_status, inv[fid].kind, f,
                                        to_file=to_file)
                 del inv[fid]
+                message="removed %s"%f
             if delete_files:
                 if osutils.lexists(f):
                     osutils.delete_any(f)
+                    message="deleted %s"%f
                 else:
                     message="%s does not exist."%f
             # print only one message per file.
