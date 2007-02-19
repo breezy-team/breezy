@@ -351,16 +351,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         # check precondition to be sure the state does change appropriately.
         self.assertEqual(
-            [(('', '', 'directory', 'TREE_ROOT', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])],
-            list(state._iter_rows()))
+            [(('', '', 'TREE_ROOT'), [('directory', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])],
+            list(state._iter_entries()))
         state.set_path_id('', 'foobarbaz')
         expected_rows = [
-            (('', '', 'directory', 'foobarbaz', 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [])]
-        self.assertEqual(expected_rows, list(state._iter_rows()))
+            (('', '', 'foobarbaz'), [('directory', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])]
+        self.assertEqual(expected_rows, list(state._iter_entries()))
         # should work across save too
         state.save()
         state = dirstate.DirState.on_file('dirstate')
-        self.assertEqual(expected_rows, list(state._iter_rows()))
+        self.assertEqual(expected_rows, list(state._iter_entries()))
 
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.
