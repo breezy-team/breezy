@@ -444,6 +444,7 @@ class LockDir(object):
             self.nonce = token
             self._lock_held = True
             self._locked_via_token = True
+            return token
         else:
             self.wait_lock()
             return self.peek().get('nonce')

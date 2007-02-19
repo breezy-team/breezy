@@ -140,3 +140,33 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             return SmartServerResponse(('yes', ))
         else:
             return SmartServerResponse(('no', ))
+
+
+class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, token):
+        # XXX: this probably should not have a token.
+        if token == '':
+            token = None
+        try:
+            token = repository.lock_write(token=token)
+        except errors.LockContention, e:
+            return SmartServerResponse(('LockContention',))
+        repository.leave_lock_in_place()
+        repository.unlock()
+        if token is None:
+            token = ''
+        return SmartServerResponse(('ok', token))
+
+
+class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, token):
+        try:
+            repository.lock_write(token=token)
+        except errors.TokenMismatch, e:
+            return SmartServerResponse(('TokenMismatch',))
+        repository.dont_leave_lock_in_place()
+        repository.unlock()
+        return SmartServerResponse(('ok',))
+

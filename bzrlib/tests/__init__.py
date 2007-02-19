@@ -1249,6 +1249,17 @@ class TestCase(unittest.TestCase):
                     this_tree=wt_to)
         wt_to.add_parent_tree_id(branch_from.last_revision())
 
+    def reduceLockdirTimeout(self):
+        """Reduce the default lock timeout for the duration of the test, so that
+        if LockContention occurs during a test, it does so quickly.
+
+        Tests that expect to provoke LockContention errors should call this.
+        """
+        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
+        def resetTimeout():
+            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
+        self.addCleanup(resetTimeout)
+        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
 BzrTestBase = TestCase
 

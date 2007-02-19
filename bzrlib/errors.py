@@ -765,7 +765,7 @@ class TokenLockingNotSupported(LockError):
         self.obj = obj
 
 
-class TokenMismatch(LockError):
+class TokenMismatch(LockBroken):
 
     _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
 

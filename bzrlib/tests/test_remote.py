@@ -23,10 +23,14 @@ the object given a transport that supports smartserver rpc operations.
 
 from cStringIO import StringIO
 
-from bzrlib import bzrdir, remote, tests
+from bzrlib import (
+    bzrdir,
+    errors,
+    remote,
+    tests,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import NoSuchRevision
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBzrDir,
@@ -202,7 +206,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch = RemoteBranch(bzrdir, None, _client=client)
 
         self.assertRaises(
-            NoSuchRevision, branch.set_revision_history, ['rev-id'])
+            errors.NoSuchRevision, branch.set_revision_history, ['rev-id'])
 
 
 class TestBranchControlGetBranchConf(tests.TestCase):
@@ -359,7 +363,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         # also check that the right revision is reported in the error
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
             repo.get_revision_graph, revid)
         self.assertEqual(
             [('call2', 'Repository.get_revision_graph', ('///sinhala/', revid))],
@@ -391,3 +395,55 @@ class TestRepositoryIsShared(TestRemoteRepository):
             [('call', 'Repository.is_shared', ('///qwack/',))],
             client._calls)
         self.assertEqual(False, result)
+
+
+class TestRepositoryLockWrite(TestRemoteRepository):
+
+    def test_lock_write(self):
+        responses = [(('ok', 'a token'), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.lock_write()
+        self.assertEqual(
+            [('call', 'Repository.lock_write', ('///quack/',))],
+            client._calls)
+        self.assertEqual('a token', result)
+
+    def test_lock_write_already_locked(self):
+        responses = [(('LockContention', ), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        self.assertRaises(errors.LockContention, repo.lock_write)
+        self.assertEqual(
+            [('call', 'Repository.lock_write', ('///quack/',))],
+            client._calls)
+
+
+class TestRepositoryUnlock(TestRemoteRepository):
+
+    def test_unlock(self):
+        responses = [(('ok', 'a token'), ''),
+                     (('ok',), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        repo.lock_write()
+        repo.unlock()
+        self.assertEqual(
+            [('call', 'Repository.lock_write', ('///quack/',)),
+             ('call', 'Repository.unlock', ('///quack/', 'a token'))],
+            client._calls)
+
+    def test_unlock_wrong_token(self):
+        # If somehow the token is wrong, unlock will raise TokenMismatch.
+        responses = [(('ok', 'a token'), ''),
+                     (('TokenMismatch',), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        repo.lock_write()
+        self.assertRaises(errors.TokenMismatch, repo.unlock)
+
+

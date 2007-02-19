@@ -192,6 +192,7 @@ class RemoteRepository(object):
         self._lock_mode = None
         self._lock_token = None
         self._lock_count = 0
+        self._leave_lock = False
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
@@ -279,17 +280,34 @@ class RemoteRepository(object):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
+            if self._real_repository is not None:
+                self._real_repository.lock_read()
         else:
             self._lock_count += 1
-        self._ensure_real()
-        return self._real_repository.lock_read()
+
+    def _lock_write(self, token):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        if token is None:
+            token = ''
+        response = self._client.call('Repository.lock_write', path, token)
+        if response[0] == 'ok':
+            ok, token = response
+            return token
+        elif response[0] == 'LockContention':
+            raise errors.LockContention('(remote lock)')
+        else:
+            assert False, 'unexpected response code %s' % (response,)
 
     def lock_write(self, token=None):
-        # definately wrong: want to check if there is a real repo
-        # and not thunk through if not
         if not self._lock_mode:
-            self._ensure_real()
-            self._lock_token = self._real_repository.lock_write(token=token)
+            self._lock_token = self._lock_write(token)
+            assert self._lock_token, 'Remote server did not return a token!'
+            if self._real_repository is not None:
+                self._real_repository.lock_write(token=self._lock_token)
+            if token is not None:
+                self._leave_lock = True
+            else:
+                self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
         elif self._lock_mode == 'r':
@@ -299,10 +317,10 @@ class RemoteRepository(object):
         return self._lock_token
 
     def leave_lock_in_place(self):
-        self._real_repository.leave_lock_in_place()
+        self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
-        self._real_repository.dont_leave_lock_in_place()
+        self._leave_lock = False
 
     def _set_real_repository(self, repository):
         """Set the _real_repository for this repository.
@@ -316,17 +334,33 @@ class RemoteRepository(object):
             # acquire the lock with our token.
             self._real_repository.lock_write(self._lock_token)
 
+    def _unlock(self, token):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Repository.unlock', path, token)
+        if response == ('ok',):
+            return
+        elif response[0] == 'TokenMismatch':
+            raise errors.TokenMismatch(token, '(remote token)')
+        else:
+            assert False, 'unexpected response code %s' % (response,)
+
     def unlock(self):
-        # should free cache context.
         self._lock_count -= 1
         if not self._lock_count:
+            mode = self._lock_mode
             self._lock_mode = None
+            if self._real_repository is not None:
+                self._real_repository.unlock()
+            if mode != 'w':
+                return
+            assert self._lock_token, 'Locked, but no token!'
+            token = self._lock_token
             self._lock_token = None
-            return self._real_repository.unlock()
+            if not self._leave_lock:
+                self._unlock(token)
 
     def break_lock(self):
-        # should hand off to the network - or better yet, we should not
-        # allow stale network locks ?
+        # should hand off to the network
         self._ensure_real()
         return self._real_repository.break_lock()
 

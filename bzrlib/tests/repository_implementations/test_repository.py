@@ -508,6 +508,12 @@ class TestRepositoryLocking(TestCaseWithRepository):
         repo.lock_write()
         repo.unlock()
 
+    def test_lock_read_then_unlock(self):
+        # Calling lock_read then unlocking should work without errors.
+        repo = self.make_repository('r')
+        repo.lock_read()
+        repo.unlock()
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

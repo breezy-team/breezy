@@ -37,13 +37,7 @@ from bzrlib.transport import get_transport
 class _TestLockableFiles_mixin(object):
 
     def setUp(self):
-        # Reduce the default timeout, so that if tests fail, they will do so
-        # reasonably quickly.
-        orig_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.reduceLockdirTimeout()
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -142,6 +136,22 @@ class _TestLockableFiles_mixin(object):
                 return
             self.assertRaises(errors.TokenLockingNotSupported,
                               self.lockable.lock_write, token='token')
+        finally:
+            self.lockable.unlock()
+
+    def test_lock_write_returns_token_when_given_token(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            new_lockable = self.get_lockable()
+            token_from_new_lockable = new_lockable.lock_write(token=token)
+            try:
+                self.assertEqual(token, token_from_new_lockable)
+            finally:
+                new_lockable.unlock()
         finally:
             self.lockable.unlock()
 
@@ -386,5 +396,9 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         return None
 
     def test_dont_leave_in_place(self):
+        # See test_lock_write_returns_None_refuses_token.
+        return None
+
+    def test_lock_write_returns_token_when_given_token(self):
         # See test_lock_write_returns_None_refuses_token.
         return None

@@ -467,6 +467,67 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath(''), ))
 
 
+class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.reduceLockdirTimeout()
+
+    def test_lock_write_on_unlocked_repo(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryLockWrite(backing)
+        repository = self.make_repository('.')
+        response = request.execute(backing.local_abspath(''))
+        nonce = repository.control_files._lock.peek().get('nonce')
+        self.assertEqual(SmartServerResponse(('ok', nonce)), response)
+        # The repository is now locked.  Verify that with a new repository
+        # object.
+        new_repo = repository.bzrdir.open_repository()
+        self.assertRaises(errors.LockContention, new_repo.lock_write)
+
+    def test_lock_write_on_locked_repo(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryLockWrite(backing)
+        repository = self.make_repository('.')
+        repository.lock_write()
+        repository.leave_lock_in_place()
+        repository.unlock()
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(
+            SmartServerResponse(('LockContention',)), response)
+
+
+class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.reduceLockdirTimeout()
+
+    def test_unlock_on_locked_repo(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryUnlock(backing)
+        repository = self.make_repository('.')
+        token = repository.lock_write()
+        repository.leave_lock_in_place()
+        repository.unlock()
+        response = request.execute(backing.local_abspath(''), token)
+        self.assertEqual(
+            SmartServerResponse(('ok',)), response)
+        # The repository is now unlocked.  Verify that with a new repository
+        # object.
+        new_repo = repository.bzrdir.open_repository()
+        new_repo.lock_write()
+        new_repo.unlock()
+
+    def test_unlock_on_unlocked_repo(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryUnlock(backing)
+        repository = self.make_repository('.')
+        response = request.execute(backing.local_abspath(''), 'some token')
+        self.assertEqual(
+            SmartServerResponse(('TokenMismatch',)), response)
+
+
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
@@ -505,3 +566,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.is_shared'),
             smart.repository.SmartServerRepositoryIsShared)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.lock_write'),
+            smart.repository.SmartServerRepositoryLockWrite)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.unlock'),
+            smart.repository.SmartServerRepositoryUnlock)

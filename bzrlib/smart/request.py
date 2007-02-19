@@ -283,6 +283,10 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
+    'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
