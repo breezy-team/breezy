@@ -16,6 +16,7 @@
 
 
 from bzrlib import tag
+from bzrlib.tag import BasicTags
 from bzrlib.tests import TestCase
 
 class TestTagSerialization(TestCase):
@@ -27,7 +28,7 @@ class TestTagSerialization(TestCase):
         #
         # This release stores them in bencode as a dictionary from name to
         # target.
-        store = tag.BasicTagStore(branch=None)
+        store = BasicTags(branch=None)
         td = dict(stable='stable-revid', boring='boring-revid')
         packed = store._serialize_tag_dict(td)
         expected = r'd6:boring12:boring-revid6:stable12:stable-revide'

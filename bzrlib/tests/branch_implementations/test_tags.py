@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tags stored within a repository"""
+"""Tags stored within a branch
+
+The tags are actually in the Branch.tags namespace, but these are 
+1:1 with Branch implementations so can be tested from here.
+"""
 
 import os
 import re
@@ -47,27 +51,27 @@ class TestBranchTags(TestCaseWithBranch):
 
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
-        tags = b.get_tag_dict()
+        tags = b.tags.get_tag_dict()
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
         b = self.make_branch('b')
-        b.set_tag('tag-name', 'target-revid-1')
-        b.set_tag('other-name', 'target-revid-2')
+        b.tags.set_tag('tag-name', 'target-revid-1')
+        b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and see they're still there
         b = Branch.open('b')
-        self.assertEqual(b.get_tag_dict(),
+        self.assertEqual(b.tags.get_tag_dict(),
             {'tag-name': 'target-revid-1',
              'other-name': 'target-revid-2',
             })
         # read one at a time
-        result = b.lookup_tag('tag-name')
+        result = b.tags.lookup_tag('tag-name')
         self.assertEqual(result, 'target-revid-1')
 
     def test_no_such_tag(self):
         b = self.make_branch('b')
         try:
-            b.lookup_tag('bosko')
+            b.tags.lookup_tag('bosko')
         except errors.NoSuchTag, e:
             self.assertEquals(e.tag_name, 'bosko')
             self.assertEquals(str(e), 'No such tag: bosko')
@@ -77,9 +81,9 @@ class TestBranchTags(TestCaseWithBranch):
     def test_copy_tags(self):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
-        b1.set_tag('tagname', 'revid')
+        b1.tags.set_tag('tagname', 'revid')
         b1.copy_tags_to(b2)
-        self.assertEquals(b2.lookup_tag('tagname'), 'revid')
+        self.assertEquals(b2.tags.lookup_tag('tagname'), 'revid')
 
     def test_unicode_tag(self):
         b1 = self.make_branch('b')
@@ -87,8 +91,8 @@ class TestBranchTags(TestCaseWithBranch):
         # in anticipation of the planned change to treating revision ids as
         # just 8bit strings
         revid = ('revid' + tag_name).encode('utf-8')
-        b1.set_tag(tag_name, revid)
-        self.assertEquals(b1.lookup_tag(tag_name), revid)
+        b1.tags.set_tag(tag_name, revid)
+        self.assertEquals(b1.tags.lookup_tag(tag_name), revid)
 
 
 class TestUnsupportedTags(TestCaseWithBranch):
@@ -110,10 +114,10 @@ class TestUnsupportedTags(TestCaseWithBranch):
     def test_tag_methods_raise(self):
         b = self.make_branch('b')
         self.assertRaises(errors.TagsNotSupported,
-            b.set_tag, 'foo', 'bar')
+            b.tags.set_tag, 'foo', 'bar')
         self.assertRaises(errors.TagsNotSupported,
-            b.lookup_tag, 'foo')
+            b.tags.lookup_tag, 'foo')
         self.assertRaises(errors.TagsNotSupported,
-            b.set_tag, 'foo', 'bar')
+            b.tags.set_tag, 'foo', 'bar')
 
 

@@ -41,8 +41,8 @@ from bzrlib import (
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.tag import (
-    BasicTagStore,
-    DisabledTagStore,
+    BasicTags,
+    DisabledTags,
     )
 """)
 
@@ -93,11 +93,11 @@ class Branch(object):
     base = None
 
     # override this to set the strategy for storing tags
-    def _make_tag_store(self):
-        return DisabledTagStore(self)
+    def _make_tags(self):
+        return DisabledTags(self)
 
     def __init__(self, *ignored, **ignored_too):
-        self._tag_store = self._make_tag_store()
+        self.tags = self._make_tags()
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -656,21 +656,6 @@ class Branch(object):
             checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
-    def set_tag(self, tag_name, tag_target):
-        self._tag_store.set_tag(tag_name, tag_target)
-
-    def lookup_tag(self, tag_name):
-        return self._tag_store.lookup_tag(tag_name)
-
-    def get_tag_dict(self):
-        return self._tag_store.get_tag_dict()
-
-    def _set_tag_dict(self, new_dict):
-        return self._tag_store._set_tag_dict(new_dict)
-
-    def supports_tags(self):
-        return self._tag_store.supports_tags()
-
     def copy_tags_to(self, to_branch):
         """Copy tags to another branch.
         """
@@ -679,7 +664,7 @@ class Branch(object):
             return
         to_branch.lock_write()
         try:
-            to_branch._set_tag_dict(self.get_tag_dict())
+            to_branch.tags._set_tag_dict(self.tags.get_tag_dict())
         finally:
             to_branch.unlock()
 
@@ -1696,8 +1681,8 @@ class BzrBranchExperimental(BzrBranch5):
     def is_supported(cls):
         return True
 
-    def _make_tag_store(self):
-        return BasicTagStore(self)
+    def _make_tags(self):
+        return BasicTags(self)
 
     @classmethod
     def supports_tags(cls):

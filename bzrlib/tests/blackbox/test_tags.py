@@ -59,34 +59,35 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag', '-d', 'branch', 'NEWTAG')
         self.assertContainsRe(out, 'created tag NEWTAG')
         # tag should be observable through the api
-        self.assertEquals(t.branch.get_tag_dict(), dict(NEWTAG='first-revid'))
+        self.assertEquals(t.branch.tags.get_tag_dict(),
+                dict(NEWTAG='first-revid'))
         # can also create tags using -r
         self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
-        self.assertEquals(t.branch.lookup_tag('tag2'), 'first-revid')
+        self.assertEquals(t.branch.tags.lookup_tag('tag2'), 'first-revid')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')
         t.commit(allow_pointless=True, message='initial commit',
             rev_id='first-revid')
         b1 = t.branch
-        b1.set_tag('tag1', 'first-revid')
+        b1.tags.set_tag('tag1', 'first-revid')
         # branching copies the tag across
         self.run_bzr('branch', 'branch1', 'branch2')
         b2 = Branch.open('branch2')
-        self.assertEquals(b2.lookup_tag('tag1'), 'first-revid')
+        self.assertEquals(b2.tags.lookup_tag('tag1'), 'first-revid')
         # make a new tag and pull it
-        b1.set_tag('tag2', 'twa')
+        b1.tags.set_tag('tag2', 'twa')
         self.run_bzr('pull', '-d', 'branch2', 'branch1')
-        self.assertEquals(b2.lookup_tag('tag2'), 'twa')
+        self.assertEquals(b2.tags.lookup_tag('tag2'), 'twa')
         # make a new tag and push it
-        b1.set_tag('tag3', 'san')
+        b1.tags.set_tag('tag3', 'san')
         self.run_bzr('push', '-d', 'branch1', 'branch2')
-        self.assertEquals(b2.lookup_tag('tag3'), 'san')
+        self.assertEquals(b2.tags.lookup_tag('tag3'), 'san')
         # make a new tag and merge it
         t.commit(allow_pointless=True, message='second commit',
             rev_id='second-revid')
         t2 = WorkingTree.open('branch2')
         t2.commit(allow_pointless=True, message='commit in second')
-        b1.set_tag('tag4', 'second-revid')
+        b1.tags.set_tag('tag4', 'second-revid')
         self.run_bzr('merge', '-d', 'branch2', 'branch1')
-        self.assertEquals(b2.lookup_tag('tag4'), 'second-revid')
+        self.assertEquals(b2.tags.lookup_tag('tag4'), 'second-revid')

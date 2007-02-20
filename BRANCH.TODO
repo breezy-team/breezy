@@ -40,13 +40,14 @@ Done
  - make tag on arbitrary revisions
  - copy tags when cloning the repository
  - copy tags on push and pull
+ - move tag operations onto branch
+ - store tags in bencode format - or nul-delimited
+ - test use of unicode tags
+ - rename TagStore and change to branch.tags
 
 Plan
 ----
 
- - move tag operations onto branch
- - store tags in bencode format - or nul-delimited
- - test use of unicode tags
  - delete tags, and mark as deleted
  - record who set tags, when, why
  - tests that -d accepts urls, etc

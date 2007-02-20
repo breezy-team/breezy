@@ -486,7 +486,7 @@ class RevisionSpec_tag(RevisionSpec):
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
         return RevisionInfo.from_revision_id(branch,
-            branch.lookup_tag(self.spec),
+            branch.tags.lookup_tag(self.spec),
             revs)
 
 SPEC_TYPES.append(RevisionSpec_tag)

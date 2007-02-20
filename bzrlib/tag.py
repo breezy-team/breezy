@@ -14,11 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tag storage"""
+"""Tag strategies.
 
-# NOTE: Don't try to call this 'tags.py', vim seems to get confused about
-# whether it's a tag or source file.
+These are contained within a branch and normally constructed 
+when the branch is opened.  Clients should typically do 
 
+  Branch.tags.add('name', 'value')
+"""
+
+# NOTE: I was going to call this tags.py, but vim seems to think all files
+# called tags* are ctags files... mbp 20070220.
 
 
 from bzrlib import (
@@ -27,16 +32,12 @@ from bzrlib import (
 from bzrlib.util import bencode
 
 
-######################################################################
-# tag storage
-
-
-class _TagStore(object):
+class _Tags(object):
     def __init__(self, branch):
         self.branch = branch
 
 
-class DisabledTagStore(_TagStore):
+class DisabledTags(_Tags):
     """Tag storage that refuses to store anything.
 
     This is used by older formats that can't store tags.
@@ -54,7 +55,7 @@ class DisabledTagStore(_TagStore):
     lookup_tag = _not_supported
 
 
-class BasicTagStore(_TagStore):
+class BasicTags(_Tags):
     """Tag storage in an unversioned branch control file.
     """
 

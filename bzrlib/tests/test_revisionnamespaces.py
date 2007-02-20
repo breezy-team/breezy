@@ -355,7 +355,7 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         self.assertEqual(spec.spec, 'bzr-0.14')
 
     def test_lookup_tag(self):
-        self.tree.branch.set_tag('bzr-0.14', 'r1')
+        self.tree.branch.tags.set_tag('bzr-0.14', 'r1')
         self.assertInHistoryIs(1, 'r1', 'tag:bzr-0.14')
 
     def test_failed_lookup(self):
