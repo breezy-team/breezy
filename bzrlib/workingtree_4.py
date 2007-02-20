@@ -231,32 +231,55 @@ class WorkingTree4(WorkingTree3):
         # import pdb;pdb.set_trace()
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
-        rows = state._iter_rows()
-        current_row = state._root_row
-        current_id = current_row[0][3].decode('utf8')
+        root_key, current_entry = self._get_entry(path='')
+        current_id = root_key[2].decode('utf8')
+        assert current_entry[0][0] == 'directory'
         inv = Inventory(root_id=current_id)
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
         for block in state._dirblocks:
-            # block of unversioned files, skip.
-            if block[0] == '/':
-                continue
             dirname = block[0]
             parent_id = parent_ids[block[0]]
-            for line in block[1]:
-                _, name, kind, fileid_utf8, size, stat, link_or_sha1 = line[0]
-                file_id = fileid_utf8.decode('utf8')
-                entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
+            for key, entry in block[1]:
+                if entry[0][0] in ('absent', 'relocated'):
+                    # a parent tree only entry
+                    continue
+                name = key[1].decode('utf8')
+                file_id = key[2].decode('utf8')
+                kind, link_or_sha1, size, executable, stat = entry[0]
+                inv_entry = entry_factory[kind](file_id, name, parent_id)
                 if kind == 'file':
+                    # not strictly needed: working tree
                     #entry.executable = executable
                     #entry.text_size = size
                     #entry.text_sha1 = sha1
                     pass
                 elif kind == 'directory':
+                    # add this entry to the parent map.
                     parent_ids[(dirname + '/' + name).strip('/')] = file_id
-                inv.add(entry)
+                inv.add(inv_entry)
         self._inventory = inv
+
+    def _get_entry(self, file_id=None, path=None):
+        """Get the dirstate row for file_id or path.
+
+        If either file_id or path is supplied, it is used as the key to lookup.
+        If both are supplied, the fastest lookup is used, and an error is
+        raised if they do not both point at the same row.
+        
+        :param file_id: An optional unicode file_id to be looked up.
+        :param path: An optional unicode path to be looked up.
+        :return: The dirstate row tuple for path/file_id, or (None, None)
+        """
+        if file_id is None and path is None:
+            raise errors.BzrError('must supply file_id or path')
+        state = self.current_dirstate()
+        if file_id is not None:
+            file_id = file_id.encode('utf8')
+        if path is not None:
+            path = path.encode('utf8')
+        return state._get_entry(0, fileid_utf8=file_id, path_utf8=path)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         #if not path:
@@ -291,37 +314,7 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def get_root_id(self):
         """Return the id of this trees root"""
-        return self.current_dirstate()._iter_rows().next()[0][3].decode('utf8')
-
-    def _get_row(self, file_id=None, path=None):
-        """Get the dirstate row for file_id or path.
-
-        If either file_id or path is supplied, it is used as the key to lookup.
-        If both are supplied, the fastest lookup is used, and an error is
-        raised if they do not both point at the same row.
-        
-        :param file_id: An optional unicode file_id to be looked up.
-        :param path: An optional unicode path to be looked up.
-        :return: The dirstate row tuple for path/file_id, or (None, None)
-        """
-        if file_id is None and path is None:
-            raise errors.BzrError('must supply file_id or path')
-        state = self.current_dirstate()
-        state._read_dirblocks_if_needed()
-        if file_id is not None:
-            fileid_utf8 = file_id.encode('utf8')
-        if path is not None:
-            # path lookups are faster
-            row = state._get_row(path.encode('utf8'))
-            if file_id:
-                if row[0][3] != fileid_utf8:
-                    raise BzrError('integrity error ? : mismatching file_id and path')
-            return row
-        else:
-            for row in state._iter_rows():
-                if row[0][3] == fileid_utf8:
-                    return row
-            return None, None
+        return self._get_entry(path='')[0][2].decode('utf8')
 
     def has_id(self, file_id):
         state = self.current_dirstate()
@@ -845,43 +838,43 @@ class DirStateRevisionTree(Tree):
         Ideally we would not, and instead would """
         assert self._locked, 'cannot generate inventory of an unlocked '\
             'dirstate revision tree'
+        # separate call for profiling - makes it clear where the costs are.
+        self._dirstate._read_dirblocks_if_needed()
         assert self._revision_id in self._dirstate.get_parent_ids(), \
             'parent %s has disappeared from %s' % (
             self._revision_id, self._dirstate.get_parent_ids())
-        # separate call for profiling - makes it clear where the costs are.
-        self._dirstate._read_dirblocks_if_needed()
-        parent_index = self._dirstate.get_parent_ids().index(self._revision_id)
-        # because the parent tree may look dramatically different to the current
-        # tree, we grab and sort the tree content  all at once, then
-        # deserialise into an inventory.
-        rows = self._dirstate._iter_rows()
-        parent_rows = []
-        for row in rows:
-            parent_rows.append((row[1][parent_index], row[0][3]))
-        parent_rows = iter(sorted(parent_rows, key=lambda x:x[0][2:3]))
-        root_row = parent_rows.next()
-        inv = Inventory(root_id=root_row[1].decode('utf8'),
-                        revision_id=self._revision_id)
-        inv.root.revision = root_row[1][parent_index][0]
+        parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
+        # This is identical now to the WorkingTree _generate_inventory except
+        # for the tree index use.
+        root_key, current_entry = self._dirstate._get_entry(parent_index, path_utf8='')
+        current_id = root_key[2].decode('utf8')
+        assert current_entry[parent_index][0] == 'directory'
+        inv = Inventory(root_id=current_id, revision_id=self._revision_id)
+        inv.root.revision = current_entry[parent_index][4]
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
-        for line in parent_rows:
-            revid, kind, dirname, name, size, executable, sha1 = line[0]
-            if not revid:
-                # not in this revision tree.
-                continue
-            parent_id = parent_ids[dirname]
-            file_id = line[1].decode('utf8')
-            entry = entry_factory[kind](file_id, name.decode('utf8'), parent_id)
-            entry.revision = revid
-            if kind == 'file':
-                entry.executable = executable
-                entry.text_size = size
-                entry.text_sha1 = sha1
-            elif kind == 'directory':
-                parent_ids[(dirname + '/' + name).strip('/')] = file_id
-            inv.add(entry)
+        for block in self._dirstate._dirblocks:
+            dirname = block[0]
+            parent_id = parent_ids[block[0]]
+            for key, entry in block[1]:
+                if entry[parent_index][0] in ('absent', 'relocated'):
+                    # not this tree
+                    continue
+                name = key[1].decode('utf8')
+                file_id = key[2].decode('utf8')
+                kind, link_or_sha1, size, executable, revid = entry[parent_index]
+                inv_entry = entry_factory[kind](file_id, name, parent_id)
+                inv_entry.revision = revid
+                if kind == 'file':
+                    inv_entry.executable = executable
+                    inv_entry.text_size = size
+                    inv_entry.text_sha1 = link_or_sha1
+                elif kind == 'directory':
+                    parent_ids[(dirname + '/' + name).strip('/')] = file_id
+                else:
+                    raise Exception, kind
+                inv.add(inv_entry)
         self._inventory = inv
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):

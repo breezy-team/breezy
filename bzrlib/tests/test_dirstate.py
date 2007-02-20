@@ -143,6 +143,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         self.assertEqual([], state.get_ghosts())
         # there should be one fileid in this tree - the root of the tree.
         self.assertEqual(expected_result[1], list(state._iter_entries()))
+        state.save()
         state = dirstate.DirState.on_file('dirstate')
         self.assertEqual(expected_result[1], list(state._iter_entries()))
 
@@ -333,18 +334,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1 = self.make_branch_and_memory_tree('tree1')
         tree1.lock_write()
         tree1.add('')
-        revid1 = tree1.commit('foo')
+        revid1 = tree1.commit('foo').encode('utf8')
         root_id = tree1.inventory.root.file_id
         state.set_state_from_inventory(tree1.inventory)
         tree1.unlock()
         self.assertEqual(DirState.IN_MEMORY_UNMODIFIED, state._header_state)
         self.assertEqual(DirState.IN_MEMORY_MODIFIED, state._dirblock_state)
-        expected_rows = [(('', '', 'directory', root_id, 0, DirState.NULLSTAT, ''), [])]
-        self.assertEqual(expected_rows, list(state._iter_rows()))
-        # check we can reopen and have the change preserved.
-        state.save()
-        state = dirstate.DirState.on_file('dirstate')
-        self.assertEqual(expected_rows, list(state._iter_rows()))
+        expected_result = [], [
+            (('', '', root_id), [
+             ('directory', '', 0, False, DirState.NULLSTAT)])]
+        self.check_state_with_reopen(expected_result, state)
 
     def test_set_path_id_no_parents(self):
         """The id of a path can be changed trivally with no parents."""
@@ -387,7 +386,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         self.assertEqual([revid1, revid2, 'ghost-rev'],  state.get_parent_ids())
         # iterating the entire state ensures that the state is parsable.
-        list(state._iter_rows())
+        list(state._iter_entries())
         # be sure that it sets not appends - change it
         state.set_parent_trees(
             ((revid1, tree1.branch.repository.revision_tree(revid1)),
@@ -403,10 +402,12 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # the ghost should be recorded as such by set_parent_trees.
         self.assertEqual(['ghost-rev'], state.get_ghosts())
         self.assertEqual(
-            [(('', '', 'directory', root_id, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', ''), [
-             (revid1, 'directory', '', '', 0, False, ''),
-             (revid2, 'directory', '', '', 0, False, '')])],
-            list(state._iter_rows()))
+            [(('', '', root_id), [
+              ('directory', '', 0, False, DirState.NULLSTAT),
+              ('directory', '', 0, False, revid1),
+              ('directory', '', 0, False, revid2)
+              ])],
+            list(state._iter_entries()))
 
     def test_set_parent_trees_file_missing_from_tree(self):
         # Adding a parent tree may reference files not in the current state.
@@ -434,19 +435,17 @@ class TestDirStateManipulations(TestCaseWithDirState):
              (revid2, tree2.branch.repository.revision_tree(revid2)),
              ), [])
         # check the layout in memory
-        expected_rows = [
-            (('', '', 'directory', root_id, 0, DirState.NULLSTAT, ''),
-             [(revid1.encode('utf8'), 'directory', '', '', 0, False, ''),
-              (revid2.encode('utf8'), 'directory', '', '', 0, False, '')]),
-            (('/', 'RECYCLED.BIN', 'file', 'file-id', 0, DirState.NULLSTAT, ''),
-             [(revid1.encode('utf8'), 'file', '', 'a file', 12, False, '2439573625385400f2a669657a7db6ae7515d371'),
-              (revid2.encode('utf8'), 'file', '', 'a file', 16, False, '542e57dc1cda4af37cb8e55ec07ce60364bb3c7d')])
+        expected_result = [revid1.encode('utf8'), revid2.encode('utf8')], [
+            (('', '', root_id), [
+             ('directory', '', 0, False, DirState.NULLSTAT),
+             ('directory', '', 0, False, revid1.encode('utf8')),
+             ('directory', '', 0, False, revid2.encode('utf8'))]),
+            (('', 'a file', 'file-id'), [
+             ('absent', '', 0, False, ''),
+             ('file', '2439573625385400f2a669657a7db6ae7515d371', 12, False, revid1.encode('utf8')),
+             ('file', '542e57dc1cda4af37cb8e55ec07ce60364bb3c7d', 16, False, revid2.encode('utf8'))])
             ]
-        self.assertEqual(expected_rows, list(state._iter_rows()))
-        # check we can reopen and use the dirstate after setting parent trees.
-        state.save()
-        state = dirstate.DirState.on_file('dirstate')
-        self.assertEqual(expected_rows, list(state._iter_rows()))
+        self.check_state_with_reopen(expected_result, state)
 
     ### add a path via _set_data - so we dont need delta work, just
     # raw data in, and ensure that it comes out via get_lines happily.
@@ -690,7 +689,7 @@ class TestGetEntry(TestCaseWithDirState):
 
     def assertEntryEqual(self, dirname, basename, file_id, state, path, index):
         """Check that the right entry is returned for a request to getEntry."""
-        entry = state._get_entry(path, index)
+        entry = state._get_entry(index, path_utf8=path)
         if file_id is None:
             self.assertEqual((None, None), entry)
         else:
