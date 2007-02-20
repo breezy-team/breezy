@@ -2,9 +2,97 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
-Security: it should be impossible, by default, to access files above the base of
-the backing transport of the SmartServerRequestHandler.  Currently '..' and the
-like are not vetted, however.
+Short-and-sweet implementation of tags for bzr
 
-Similarly, the SmartWSGIApp should also be careful to disallow '..' and the
-like.
+Key features:
+
+Tags are stored in a repository.  Tags are pointers from names to revision
+ids.  Normally there should be a single universal definition for any tag
+name, though reality diverges from this in several important cases,
+including:
+
+ * A new tag has been added in a repository, but not yet propagated to its 
+   mirrors.
+
+There is a single set of tag definitions visible by all operations within
+that repository.  The history of tags is not recorded (though we could
+perhaps record who made the tags and when, just for human reference).
+
+This patch modifies RepositoryFormatKnit2 to add tag support.  This 
+should be ok as this format is marked as experimental, though it has 
+shipped in previous releases.  If people are using it, and use an old 
+client to copy a repository it may lose the tag information.
+
+
+Done
+----
+
+ - method to get tags from a repository - there are none at present
+ - this should return nothing (or None) on old formats, or say that
+   it's not supported
+ - add a new repository format which does have tags 
+ - get a single tag, or complain if it's not defined
+ - add a tag command which tags a revision, by adding an entry into the 
+   repository's tag dictionary
+ - add tag:foo revision spec, and make sure it can be used 
+ - separate tag storage into a strategy object?
+ - raise TagsNotSupported on repositories that don't
+ - make tag on arbitrary revisions
+ - copy tags when cloning the repository
+ - copy tags on push and pull
+
+Plan
+----
+
+ - move tag operations onto branch
+ - store tags in bencode format - or nul-delimited
+ - test use of unicode tags
+ - delete tags, and mark as deleted
+ - record who set tags, when, why
+ - tests that -d accepts urls, etc
+ - copy only selected tags
+ - if tags conflict when copying
+   - return them and give a warning
+   - option to override this and copy anyhow
+ - give a nice message when trying to copy tags if it can't be done
+ - when fetching revisions, also copy tags
+   - give a warning if the tags differ, and don't override them
+   - allow this to be forced
+ - raise an exception if the tag name is unreasonable
+ - refuse to add tags if the tag is already present, but allow it to 
+   be forced
+ - command to show all tags
+ - command to remove a tag
+ - show tags in log
+ - test copying tags between different repository formats?  a 
+   bit hard as there's only one at the moment...
+ - include tags in bundles?
+
+
+Also to do
+----------
+
+Are LockableFiles still really useful, rather than just?  Being lockable is
+perhaps not the point - rather that they have common conventions for how we
+treat our control files...
+
+Split repository.py into separate files for different formats?
+
+Have a single 'Experimental' format containing all work that's not yet
+released?
+
+A single method to get the contents of a (small) file as bytes of utf8 -- on
+Transport, I think, since many Transports can do that more efficiently than
+returning a file-like object.
+
+Keep the lock while constructing the Repository, so that we can call
+things that expect the lock to be held, and avoid taking or releasing it,
+or someone else seeing the half-constructed Repository.
+
+put_bytes_nonatomic may fairly often have the case of writing no content
+(and only creating the file) - we could test for and avoid one roundtrip.
+
+Split builtin commands into separate files, lazily loaded. 
+
+ - Change commands to use a standard Registry.
+ - Register commands lazily.
