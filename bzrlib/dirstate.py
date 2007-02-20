@@ -646,9 +646,10 @@ class DirState(object):
         # linear search through present entries at this path to find the one
         # requested.
         while row_index < len(block) and block[row_index][0][1] == basename:
-            if block[row_index][1][tree_index] not in ('absent', 'relocated'):
+            if block[row_index][1][tree_index][0] not in \
+                       ('absent', 'relocated'):
                 return block_index, row_index, True, True
-            row += 1
+            row_index += 1
         return block_index, row_index, True, False
 
     def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None):
