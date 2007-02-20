@@ -459,9 +459,9 @@ class DirState(object):
 
         :return: The block index, True if the block for the key is present.
         """
-        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
+        block_index = bisect.bisect_left(self._dirblocks, (key[0], []))
         present = (block_index < len(self._dirblocks) and
-            self._dirblocks[block_index][0] == dirname)
+            self._dirblocks[block_index][0] == key[0])
         return block_index, present
 
     def _find_dirblock_index(self, dirname):
@@ -1183,84 +1183,113 @@ class DirState(object):
         # incremental algorithm:
         # two iterators: current data and new data, both in dirblock order. 
         new_iterator = new_inv.iter_entries_by_dir()
-        # we will be modifying the dirstate, so we need a stable iterator. In future we might write one, for now we just clone the state into a list
+        # we will be modifying the dirstate, so we need a stable iterator. In
+        # future we might write one, for now we just clone the state into a
+        # list - which is a shallow copy, so each 
         old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
         current_old = old_iterator.next()
         def advance(iterator):
             try:
-                return old_iterator.next()
+                return iterator.next()
             except StopIteration:
                 return None
         while current_new or current_old:
             # skip entries in old that are not really there
-            if current_old and current_old[1][0] in ('relocated', 'absent'):
+            if current_old and current_old[1][0][0] in ('relocated', 'absent'):
                 current_old = advance(old_iterator)
                 continue
             if current_new:
                 # convert new into dirblock style
-                new_dirname, new_basename = os.path.split(current_new[0].encode('utf8'))
+                new_path_utf8 = current_new[0].encode('utf8')
+                new_dirname, new_basename = os.path.split(new_path_utf8)
                 new_id = current_new[1].file_id.encode('utf8')
                 new_entry_key = (new_dirname, new_basename, new_id)
+            else:
+                # for safety disable variables
+                new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = None
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if not current_old:
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new[1].kind,
-                    executable=current_new[1].executable, id_index=id_index)
+                    num_present_parents, executable=current_new[1].executable,
+                    id_index=id_index, path_utf8=new_path_utf8)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
-                import pdb;pdb.set_trace()
+                self._make_absent(num_present_parents, current_old, id_index)
+                current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
                 # same -  common case
                 # TODO: update the record if anything significant has changed.
-                # the minimal required trigger is if the execute bit has
-                # changed.
-                if current_old[1][0][3] != current_new[1].executable:
-                    import pdb;pdb.set_trace()
+                # the minimal required trigger is if the execute bit or cached
+                # kind has changed.
+                if (current_old[1][0][3] != current_new[1].executable or
+                    current_old[1][0][0] != current_new[1].kind):
+                    self.update_minimal(current_old[0], current_new[1].kind,
+                        num_present_parents,
+                        executable=current_new[1].executable,
+                        id_index=id_index, path_utf8=new_path_utf8)
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
             elif new_entry_key < current_old[0]:
-                # new comes before 
-                import pdb;pdb.set_trace()
+                # new comes before:
+                # add a entry for this and advance new
+                self.update_minimal(new_entry_key, current_new[1].kind,
+                    num_present_parents, executable=current_new[1].executable,
+                    id_index=id_index, path_utf8=new_path_utf8)
+                current_new = advance(new_iterator)
             else:
                 # old comes before:
-                # remove old from the state, advance old
-                # to remove old, we have two conditions.
-                # either its the last reference to this path that we are
-                # removing, or its not. If its the last reference, we remove
-                # the entire row and remove the path from the id mapping. If
-                # its not the last reference, we just set it to absent.
-                last_reference = True
-                for lookup_index in xrange(1, num_present_parents + 1):
-                    if current_old[1][lookup_index] not in ('absent', 'relocated'):
-                        last_reference = False
-                        break
-                if not last_reference:
-                    import pdb;pdb.set_trace()
-                    # common case, theres a parent at this path
-                    current_old[1][0] = DirState.NULL_PARENT_DETAILS
-                else:
-                    # there are no more references at this path
-                    id_index[current_old[0][2]].remove(current_old[0])
-                    # are there others (which will need to be changed
-                    # from relocated to absent for index 0)?
-                    if len(id_index[current_old[0][2]]):
-                        import pdb;pdb.set_trace()
-                    block = self._find_block(current_old[0])
-                    entry_index, present = self._find_entry_index(key, block)
-                    assert present
-                    block.pop(entry_index)
+                self._make_absent(num_present_parents, current_old, id_index)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
-    def update_minimal(self, key, kind, executable=False, fingerprint='',
-        packed_stat=None, size=0, id_index=None):
+    def _make_absent(self, num_present_parents, current_old, id_index):
+        # remove old from the state, advance old
+        # to remove old, we have two conditions:
+        # either its the last reference to this path that we are
+        # removing, or its not. If its the last reference, we remove
+        # the entire row and remove the path from the id mapping. If
+        # its not the last reference, we just set it to absent.
+        last_reference = True
+        for lookup_index in xrange(1, num_present_parents + 1):
+            if current_old[1][lookup_index] not in ('absent', 'relocated'):
+                last_reference = False
+                break
+        if not last_reference:
+            # common case, theres a parent at this path
+            current_old[1][0] = DirState.NULL_PARENT_DETAILS
+        else:
+            # there are no more references at this path
+            id_index[current_old[0][2]].remove(current_old[0])
+            # are there others (which will need to be changed
+            # from relocated to absent for index 0)?
+            for update_key in id_index[current_old[0][2]]:
+                # update the entry for 0 to say absent: there is a parent at
+                # that path, but nothing in this tree for that file id anymore.
+                update_block_index, present = \
+                    self._find_block_index_from_key(update_key)
+                assert present
+                update_entry_index, present = \
+                    self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
+                assert present
+                update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
+                # it must currently be relocated
+                assert update_tree_details[0][0] == 'relocated'
+                update_tree_details[0] = DirState.NULL_PARENT_DETAILS
+            block = self._find_block(current_old[0])
+            entry_index, present = self._find_entry_index(current_old[0], block[1])
+            assert present
+            block[1].pop(entry_index)
+
+    def update_minimal(self, key, kind, num_present_parents, executable=False,
+        fingerprint='', packed_stat=None, size=0, id_index=None,
+        path_utf8=None):
         """Update an entry to the state in tree 0."""
-        self._read_dirblocks_if_needed()
         if key[0:2] == ('', ''):
             block = self._root_entries
         else:
@@ -1269,22 +1298,82 @@ class DirState(object):
             packed_stat = DirState.NULLSTAT
         entry_index, present = self._find_entry_index(key, block)
         new_details = (kind, fingerprint, size, executable, packed_stat)
+        assert id_index, 'need an id index to do updates for now !'
         if not present:
             # new entry, synthesis cross reference here,
-            assert id_index, 'need an id index to generate a new entry'
-            existing_keys = id_index.setdefault(key, set())
+            existing_keys = id_index.setdefault(key[2], set())
             if not existing_keys:
                 # not currently in the state, simplest case
                 new_entry = key, [new_details] + self._empty_parent_info()
             else:
-                import pdb;pdb.set_trace()
+                # present at one or more existing other paths.
+                # grab one of them and use it to generate parent
+                # relocation/absent entries.
+                new_entry = key, [new_details]
+                for other_key in existing_keys:
+                    # change the record at other to be a pointer to this new
+                    # record. The loop looks similar to the change to
+                    # relocations when updating an existing record but its not:
+                    # the test for existing kinds is different: this can be
+                    # factored out to a helper though.
+                    other_block_index, present = self._find_block_index_from_key(other_key)
+                    assert present
+                    other_entry_index, present = self._find_entry_index(other_key, self._dirblocks[other_block_index][1])
+                    assert present
+                    self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
+                        ('relocated', path_utf8, 0, False, '')
 
+                for lookup_index in xrange(1, num_present_parents + 1):
+                    # grab any one entry, use it to find the right path.
+                    # TODO: optimise this to reduce memory use in highly 
+                    # fragmented situations by reusing the relocation
+                    # records.
+                    update_block_index, present = \
+                        self._find_block_index_from_key(other_key)
+                    assert present
+                    update_entry_index, present = \
+                        self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
+                    assert present
+                    update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
+                    if update_details[0] in ('relocated', 'absent'):
+                        # its a pointer or absent in lookup_index's tree, use
+                        # it as is.
+                        new_entry[1].append(update_details)
+                    else:
+                        # we have the right key, make a pointer to it.
+                        pointer_path = os.path.join(other_key[0:2])
+                        new_details.append(('relocated', pointer_path, 0, False, ''))
             block.insert(entry_index, new_entry)
             existing_keys.add(key)
         else:
             # Does the new state matter? 
-            import pdb;pdb.set_trace()
             block[entry_index][1][0] = new_details
+            # parents cannot be affected by what we do.
+            # other occurences of this id can be found 
+            # from the id index.
+            # ---
+            # tree index consistency: All other paths for this id in this tree
+            # index must point to the correct path. We have to loop here because
+            # we may have passed entries in the state with this file id already
+            # that were absent - where parent entries are - and they need to be
+            # converted to relocated.
+            assert path_utf8 is not None
+            for entry_key in id_index.setdefault(key[2], set()):
+                # TODO:PROFILING: It might be faster to just update
+                # rather than checking if we need to, and then overwrite
+                # the one we are located at.
+                if entry_key != key:
+                    # this file id is at a different path in one of the
+                    # other trees, so put absent pointers there
+                    # This is the vertical axis in the matrix, all pointing
+                    # to the real path.
+                    block_index, present = self._find_block_index_from_key(entry_key)
+                    assert present
+                    entry_index, present = self._find_entry_index(entry_key, self._dirblocks[block_index][1])
+                    assert present
+                    self._dirblocks[block_index][1][entry_index][1][0] = \
+                        ('relocated', path_utf8, 0, False, '')
+
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
 

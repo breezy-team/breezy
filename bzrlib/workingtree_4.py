@@ -282,15 +282,13 @@ class WorkingTree4(WorkingTree3):
         return state._get_entry(0, fileid_utf8=file_id, path_utf8=path)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        #if not path:
-        #    path = self.inventory.id2path(file_id)
-        #    # now lookup row by path
-        row, parents = self._get_row(file_id=file_id, path=path)
-        assert row is not None, 'what error should this raise'
+        # check file id is valid unconditionally.
+        entry, parents = self._get_entry(file_id=file_id, path=path)
+        assert entry is not None, 'what error should this raise'
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = (row[0] + '/' + row[1]).strip('/').decode('utf8')
+            path = os.path.join(entry[0][0:2]).decode('utf8')
         return self._hashcache.get_sha1(path, stat_value)
 
     def _get_inventory(self):
@@ -329,9 +327,8 @@ class WorkingTree4(WorkingTree3):
     def id2path(self, fileid):
         state = self.current_dirstate()
         fileid_utf8 = fileid.encode('utf8')
-        for row, parents in state._iter_rows():
-            if row[3] == fileid_utf8:
-                return (row[0] + '/' + row[1]).decode('utf8').strip('/')
+        key, tree_details = state._get_entry(0, fileid_utf8=fileid_utf8)
+        return os.path.join(*key[0:2]).decode('utf8')
 
     @needs_read_lock
     def __iter__(self):
@@ -341,12 +338,13 @@ class WorkingTree4(WorkingTree3):
         and the working file exists.
         """
         result = []
-        for row, parents in self.current_dirstate()._iter_rows():
-            if row[0] == '/':
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('absent', 'relocated'):
+                # not relevant to the working tree
                 continue
-            path = pathjoin(self.basedir, row[0].decode('utf8'), row[1].decode('utf8'))
+            path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
             if osutils.lexists(path):
-                result.append(row[3].decode('utf8'))
+                result.append(key[2].decode('utf8'))
         return iter(result)
 
     @needs_read_lock
@@ -522,11 +520,10 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        state = self.current_dirstate()
-        row = self._get_row(path=path)
-        if row == (None, None):
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
             return None
-        return row[0][3].decode('utf8')
+        return entry[0][2].decode('utf8')
 
     def read_working_inventory(self):
         """Read the working inventory.
