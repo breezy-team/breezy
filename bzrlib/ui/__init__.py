@@ -66,7 +66,7 @@ class UIFactory(object):
 
         :return: The user string, return None if the user canceled the
                  request. Note that we do not touch the encoding, users may
-                 have whatever they see fit and the password should be
+                 have whatever they see fit and the login should be
                  transported as is. 
         """
         raise NotImplementedError(self.get_login)
