@@ -69,7 +69,7 @@ class UIFactory(object):
                  have whatever they see fit and the password should be
                  transported as is. 
         """
-        raise NotImplementedError(self.progress_bar)
+        raise NotImplementedError(self.get_login)
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.

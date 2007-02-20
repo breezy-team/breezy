@@ -534,8 +534,14 @@ class FakeStdin(StringIOWrapper):
     """Simulated stdin for tests only.
 
     We pretend to be the real stdin by redirecting the fileno method so that
-    getpas.getpass can succeed changing the echo mode of the real stdin. That
-    allows tests to can user inputs without having to implement a
+    getpass.getpass can succeed changing the echo mode of the real
+    stdin. More precisely, getpass change the echo mode via tcsetattr which
+    requires a file descriptor, once the user have entered its password the
+    echo mode is restored (this is garanteed by a try-finally). So basically
+    the risk for the tester is to lose ist echo if he attemps to type some
+    characters *while* the echo is disabled.
+
+    That allows tests to can user inputs without having to implement a
     full-fledged stdin.
     """
 
