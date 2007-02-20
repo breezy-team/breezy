@@ -1341,8 +1341,8 @@ class DirState(object):
                         new_entry[1].append(update_details)
                     else:
                         # we have the right key, make a pointer to it.
-                        pointer_path = os.path.join(other_key[0:2])
-                        new_details.append(('relocated', pointer_path, 0, False, ''))
+                        pointer_path = os.path.join(*other_key[0:2])
+                        new_entry[1].append(('relocated', pointer_path, 0, False, ''))
             block.insert(entry_index, new_entry)
             existing_keys.add(key)
         else:
