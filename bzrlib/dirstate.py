@@ -409,7 +409,8 @@ class DirState(object):
             if entry[0][0] != current_dirname:
                 # new block
                 current_block = []
-                self._dirblocks.append((entry[0][0], current_block))
+                current_dirname = entry[0][0]
+                self._dirblocks.append((current_dirname, current_block))
             elif entry[0][0:2] != root_key:
                 # this is not a root entry for a tree
                 current_block = self._dirblocks[-1][1]
