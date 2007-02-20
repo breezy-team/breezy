@@ -317,7 +317,7 @@ class WorkingTree4(WorkingTree3):
     def has_id(self, file_id):
         state = self.current_dirstate()
         fileid_utf8 = file_id.encode('utf8')
-        row, parents = self._get_row(file_id)
+        row, parents = self._get_entry(file_id=file_id)
         if row is None:
             return False
         return osutils.lexists(pathjoin(
