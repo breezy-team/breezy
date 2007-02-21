@@ -1,12 +1,3 @@
-  IMPROVEMENTS:
-
-    * New option ``-d`` for pull and other commands, specifying the
-      branch or tree to operate on rather than the working directory.
-      (Martin Pool)
-
-    * Builtin tags support, created by the ``tag`` command and stored 
-      in the repository.  (Martin Pool)
-
 IN DEVELOPMENT
 
   IMPROVEMENTS:
@@ -43,6 +34,15 @@ IN DEVELOPMENT
 
     * ``bzr help checkouts`` descibes what checkouts are and some possible
       uses of them. (James Westby, Aaron Bentley)
+
+    * New option ``-d`` for pull and other commands, specifying the
+      branch or tree to operate on rather than the working directory.
+      (Martin Pool)
+
+    * Builtin tags support, created and deleted by the ``tag`` command and
+      stored in the branch.  Tags can be accessed with the revisionspec
+      ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
+      at present.  (Martin Pool)
 
   INTERNALS:
 

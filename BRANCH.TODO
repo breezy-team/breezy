@@ -49,21 +49,27 @@ Done
 Plan
 ----
 
- - copy only selected tags
+ - command to show all tags
+ - raise an exception if the tag name is unreasonable
+   - see what happens if non-ascii byte string is given
  - if tags conflict when copying
    - return them and give a warning
    - option to override this and copy anyhow
- - give a nice message when trying to copy tags if it can't be done
- - record who set tags, when, why
- - raise an exception if the tag name is unreasonable
+ - copy only selected tags
  - refuse to add tags if the tag is already present, but allow it to 
    be forced
- - command to show all tags
- - command to remove a tag
+
+
+Later
+-----
+ - record who set tags, when, why
  - show tags in log
- - test copying tags between different repository formats?  a 
+ - test copying tags between different branch formats?  a 
    bit hard as there's only one at the moment...
+   - possibly better based on an InterBranch object
+   - could test between hpss and local branches
  - include tags in bundles?
+   (probably no point as not versioned)
 
 
 Also to do
