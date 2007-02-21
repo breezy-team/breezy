@@ -3177,21 +3177,30 @@ class cmd_tag(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('delete',
+            help='Delete this tag rather than placing it',
+            ),
         'revision',
         ]
 
-    def run(self, tag_name, directory='.', revision=None):
+    def run(self, tag_name, directory='.',
+            revision=None,
+            delete=None):
         branch, relpath = Branch.open_containing(directory)
-        if revision:
-            if len(revision) != 1:
-                raise errors.BzrCommandError(
-                    "Tags can only be placed on a single revision, "
-                    "not on a range")
-            revision_id = revision[0].in_history(branch).rev_id
+        if delete:
+            branch.tags.delete_tag(tag_name)
+            self.outf.write('deleted tag %s' % tag_name)
         else:
-            revision_id = branch.last_revision()
-        branch.tags.set_tag(tag_name, revision_id)
-        self.outf.write('created tag %s' % tag_name)
+            if revision:
+                if len(revision) != 1:
+                    raise errors.BzrCommandError(
+                        "Tags can only be placed on a single revision, "
+                        "not on a range")
+                revision_id = revision[0].in_history(branch).rev_id
+            else:
+                revision_id = branch.last_revision()
+            branch.tags.set_tag(tag_name, revision_id)
+            self.outf.write('created tag %s' % tag_name)
 
 
 # command-line interpretation helper for merge-related commands

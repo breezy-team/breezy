@@ -94,6 +94,25 @@ class TestBranchTags(TestCaseWithBranch):
         b1.tags.set_tag(tag_name, revid)
         self.assertEquals(b1.tags.lookup_tag(tag_name), revid)
 
+    def test_delete_tag(self):
+        b = self.make_branch('b')
+        tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
+        revid = ('revid' + tag_name).encode('utf-8')
+        b.tags.set_tag(tag_name, revid)
+        # now try to delete it
+        b.tags.delete_tag(tag_name)
+        # now you can't look it up
+        self.assertRaises(errors.NoSuchTag,
+            b.tags.lookup_tag, tag_name)
+        # and it's not in the dictionary
+        self.assertEquals(b.tags.get_tag_dict(), {})
+        # and you can't remove it a second time
+        self.assertRaises(errors.NoSuchTag,
+            b.tags.delete_tag, tag_name)
+        # or remove a tag that never existed
+        self.assertRaises(errors.NoSuchTag,
+            b.tags.delete_tag, tag_name + '2')
+
 
 class TestUnsupportedTags(TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
@@ -119,5 +138,5 @@ class TestUnsupportedTags(TestCaseWithBranch):
             b.tags.lookup_tag, 'foo')
         self.assertRaises(errors.TagsNotSupported,
             b.tags.set_tag, 'foo', 'bar')
-
-
+        self.assertRaises(errors.TagsNotSupported,
+            b.tags.delete_tag, 'foo')

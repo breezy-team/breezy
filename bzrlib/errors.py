@@ -1758,7 +1758,7 @@ class NoSuchTag(BzrError):
 
 class TagsNotSupported(BzrError):
 
-    _fmt = "Tags not supported by repository %(repository)s"
+    _fmt = "Tags not supported by %(branch)s; you may be able to use bzr upgrade."
 
-    def __init__(self, repository):
-        self.repository = repository
+    def __init__(self, branch):
+        self.repository = branch

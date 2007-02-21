@@ -53,6 +53,7 @@ class DisabledTags(_Tags):
     get_tag_dict = _not_supported
     _set_tag_dict = _not_supported
     lookup_tag = _not_supported
+    delete_tag = _not_supported
 
 
 class BasicTags(_Tags):
@@ -67,8 +68,6 @@ class BasicTags(_Tags):
 
         Behaviour if the tag is already present is not defined (yet).
         """
-        if isinstance(tag_name, unicode):
-            tag_name = tag_name.encode('utf-8')
         # all done with a write lock held, so this looks atomic
         self.branch.lock_write()
         try:
@@ -80,8 +79,6 @@ class BasicTags(_Tags):
 
     def lookup_tag(self, tag_name):
         """Return the referent string of a tag"""
-        if isinstance(tag_name, unicode):
-            tag_name = tag_name.encode('utf-8')
         td = self.get_tag_dict()
         try:
             return td[tag_name]
@@ -93,6 +90,20 @@ class BasicTags(_Tags):
         try:
             tag_content = self.branch._transport.get_bytes('tags')
             return self._deserialize_tag_dict(tag_content)
+        finally:
+            self.branch.unlock()
+
+    def delete_tag(self, tag_name):
+        """Delete a tag definition.
+        """
+        self.branch.lock_write()
+        try:
+            d = self.get_tag_dict()
+            try:
+                del d[tag_name]
+            except KeyError:
+                raise errors.NoSuchTag(tag_name)
+            self._set_tag_dict(d)
         finally:
             self.branch.unlock()
 
@@ -109,7 +120,9 @@ class BasicTags(_Tags):
             self.branch.unlock()
 
     def _serialize_tag_dict(self, tag_dict):
-        return bencode.bencode(tag_dict)
+        td = dict((k.encode('utf-8'), v)
+                for k,v in tag_dict.items())
+        return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
         """Convert the tag file into a dictionary of tags"""
@@ -118,6 +131,10 @@ class BasicTags(_Tags):
         if tag_content == '':
             return {}
         try:
-            return bencode.bdecode(tag_content)
-        except ValueError:
-            raise ValueError("failed to deserialize tag dictionary %r" % tag_content)
+            r = {}
+            for k, v in bencode.bdecode(tag_content).items():
+                r[k.decode('utf-8')] = v
+            return r
+        except ValueError, e:
+            raise ValueError("failed to deserialize tag dictionary %r: %s"
+                    % (tag_content, e))

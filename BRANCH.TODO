@@ -44,21 +44,17 @@ Done
  - store tags in bencode format - or nul-delimited
  - test use of unicode tags
  - rename TagStore and change to branch.tags
+ - delete tags, and mark as deleted
 
 Plan
 ----
 
- - delete tags, and mark as deleted
- - record who set tags, when, why
- - tests that -d accepts urls, etc
  - copy only selected tags
  - if tags conflict when copying
    - return them and give a warning
    - option to override this and copy anyhow
  - give a nice message when trying to copy tags if it can't be done
- - when fetching revisions, also copy tags
-   - give a warning if the tags differ, and don't override them
-   - allow this to be forced
+ - record who set tags, when, why
  - raise an exception if the tag name is unreasonable
  - refuse to add tags if the tag is already present, but allow it to 
    be forced

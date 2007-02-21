@@ -64,6 +64,8 @@ class TestTagging(TestCaseWithTransport):
         # can also create tags using -r
         self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
         self.assertEquals(t.branch.tags.lookup_tag('tag2'), 'first-revid')
+        # can also delete an existing tag
+        self.run_bzr('tag', '--delete', '-d', 'branch', 'tag2')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')
