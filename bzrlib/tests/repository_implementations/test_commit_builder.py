@@ -56,7 +56,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         # use a unicode revision id to test more corner cases.
         # The repository layer is meant to handle this.
-        revision_id = u'\xc8abc'
+        revision_id = u'\xc8abc'.encode('utf8')
         try:
             try:
                 builder = tree.branch.get_commit_builder([],

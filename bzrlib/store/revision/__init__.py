@@ -28,12 +28,11 @@ lazy_import(globals(), """
 from copy import deepcopy
 import unittest
 
-import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     xml5,
     )
-import bzrlib.store
 """)
 
 from bzrlib.trace import mutter
@@ -127,6 +126,7 @@ class RevisionStore(object):
         
         :return: a signature text.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         self._guard_revision(revision_id, transaction)
         return self._get_signature_text(revision_id, transaction)
 
@@ -145,6 +145,7 @@ class RevisionStore(object):
 
     def has_signature(self, revision_id, transaction):
         """True if the store has a signature for revision_id."""
+        revision_id = osutils.safe_revision_id(revision_id)
         self._guard_revision(revision_id, transaction)
         return self._has_signature(revision_id, transaction)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -269,7 +269,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         self.assertEqual([], wt.get_parent_ids())
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertEqual(['A'], wt.get_parent_ids())
+        parent_ids = wt.get_parent_ids()
+        self.assertEqual(['A'], parent_ids)
+        for parent_id in parent_ids:
+            self.assertIsInstance(parent_id, str)
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
@@ -285,7 +288,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
-        wt.branch.set_revision_history(['A', 'B'])
+        try:
+            wt.branch.set_revision_history(['A', 'B'])
+        except errors.NoSuchRevision, e:
+            self.assertEqual('B', e.revision)
+            raise TestSkipped("Branch format does not permit arbitrary"
+                              " history")
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
         self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')

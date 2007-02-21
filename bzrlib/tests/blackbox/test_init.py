@@ -20,6 +20,9 @@
 import os
 import re
 
+from bzrlib import (
+    branch as _mod_branch,
+    )
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -133,3 +136,14 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
         # rely on SFTPServer get_url() pointing at '.'
         self.run_bzr_error(['Already a branch'], 'init', self.get_url())
+
+    def test_init_append_revisions_only(self):
+        self.run_bzr('init', '--experimental-branch6', 'normal_branch6')
+        branch = _mod_branch.Branch.open('normal_branch6')
+        self.assertEqual(False, branch._get_append_revisions_only())
+        self.run_bzr('init', '--append-revisions-only',
+                     '--experimental-branch6', 'branch6')
+        branch = _mod_branch.Branch.open('branch6')
+        self.assertEqual(True, branch._get_append_revisions_only())
+        self.run_bzr_error(['cannot be set to append-revisions-only'], 'init',
+            '--append-revisions-only', '--knit', 'knit')

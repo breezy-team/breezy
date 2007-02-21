@@ -35,9 +35,22 @@ IN DEVELOPMENT
     * ``bzr help checkouts`` descibes what checkouts are and some possible
       uses of them. (James Westby, Aaron Bentley)
 
-    * New option ``-d`` for pull and other commands, specifying the
-      branch or tree to operate on rather than the working directory.
-      (Martin Pool)
+    * A new ``-d`` option to push, pull and merge overrides the default 
+      directory.  (Martin Pool)
+
+    * Branch format 6: smaller, and potentially faster than format 5.  Supports
+      "append_history_only" mode, where the log view and revnos do not change,
+      except by being added to.  Stores policy settings in
+      ".bzr/branch/branch.conf".
+
+    * append_only branches:  Format 6 branches may be configured so that log
+      view and revnos are always consistent.  Either create the branch using
+      "bzr init --append-revisions-only" or edit the config file as descriped
+      in docs/configuration.txt.
+
+    * rebind: Format 6 branches retain the last-used bind location, so if you
+      "bzr unbind", you can "bzr bind" to bind to the previously-selected
+      bind location.
 
     * Builtin tags support, created and deleted by the ``tag`` command and
       stored in the branch.  Tags can be accessed with the revisionspec
@@ -45,6 +58,13 @@ IN DEVELOPMENT
       at present.  (Martin Pool)
 
   INTERNALS:
+
+    * Internally revision ids are now passed around as utf-8 bytestrings,
+      rather than treating them as Unicode strings. This has performance
+      benefits for Knits, since we no longer need to decode the revision
+      id for each line of content, nor for each entry in the index. This
+      will also help with the future dirstate format. File-ids should
+      receive the same treatment in the future. (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
@@ -106,6 +126,8 @@ IN DEVELOPMENT
 
     * ``bzr log branch/file`` works for local treeless branches
       (Aaron Bentley, #84247)
+
+    * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
   TESTING:
 

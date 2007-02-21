@@ -237,8 +237,6 @@ class cmd_remove_tree(Command):
     this will refuse to run against one.
     """
 
-    hidden = True
-
     takes_args = ['location?']
 
     def run(self, location='.'):
@@ -599,7 +597,8 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id)
+            count = tree_to.pull(branch_from, overwrite, rev_id,
+                delta.ChangeReporter(tree_to.inventory))
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         _copy_tags_maybe(branch_from, branch_to)
@@ -650,20 +649,19 @@ class cmd_push(Command):
             short_name='d',
             type=unicode,
             ),
-            Option('use-existing-dir',
-                   help='By default push will fail if the target'
-                        ' directory exists, but does not already'
-                        ' have a control directory. This flag will'
-                        ' allow push to proceed.'),
-            ]
+        Option('use-existing-dir',
+               help='By default push will fail if the target'
+                    ' directory exists, but does not already'
+                    ' have a control directory. This flag will'
+                    ' allow push to proceed.'),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             create_prefix=False, verbose=False,
-            directory=None,
             use_existing_dir=False,
-            ):
+            directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
         if directory is None:
@@ -1225,8 +1223,11 @@ class cmd_init(Command):
                 value_switches=True,
                 title="Branch Format",
                 ),
+         Option('append-revisions-only',
+                help='Never change revnos or the existing log.'
+                '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None):
+    def run(self, location=None, format=None, append_revisions_only=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1249,7 +1250,8 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+            branch = bzrdir.BzrDir.create_branch_convenience(location,
+                                                             format=format)
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
@@ -1258,8 +1260,14 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             else:
-                existing_bzrdir.create_branch()
+                branch = existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
+        if append_revisions_only:
+            try:
+                branch.set_append_revisions_only(True)
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('This branch format cannot be set'
+                    ' to append-revisions-only.  Try --experimental-branch6')
 
 
 class cmd_init_repository(Command):
@@ -1564,52 +1572,58 @@ class cmd_log(Command):
             dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
-        if revision is None:
-            rev1 = None
-            rev2 = None
-        elif len(revision) == 1:
-            rev1 = rev2 = revision[0].in_history(b).revno
-        elif len(revision) == 2:
-            if revision[1].get_branch() != revision[0].get_branch():
-                # b is taken from revision[0].get_branch(), and
-                # show_log will use its revision_history. Having
-                # different branches will lead to weird behaviors.
+        b.lock_read()
+        try:
+            if revision is None:
+                rev1 = None
+                rev2 = None
+            elif len(revision) == 1:
+                rev1 = rev2 = revision[0].in_history(b).revno
+            elif len(revision) == 2:
+                if revision[1].get_branch() != revision[0].get_branch():
+                    # b is taken from revision[0].get_branch(), and
+                    # show_log will use its revision_history. Having
+                    # different branches will lead to weird behaviors.
+                    raise errors.BzrCommandError(
+                        "Log doesn't accept two revisions in different"
+                        " branches.")
+                if revision[0].spec is None:
+                    # missing begin-range means first revision
+                    rev1 = 1
+                else:
+                    rev1 = revision[0].in_history(b).revno
+
+                if revision[1].spec is None:
+                    # missing end-range means last known revision
+                    rev2 = b.revno()
+                else:
+                    rev2 = revision[1].in_history(b).revno
+            else:
                 raise errors.BzrCommandError(
-                    "Log doesn't accept two revisions in different branches.")
-            if revision[0].spec is None:
-                # missing begin-range means first revision
-                rev1 = 1
-            else:
-                rev1 = revision[0].in_history(b).revno
+                    'bzr log --revision takes one or two values.')
 
-            if revision[1].spec is None:
-                # missing end-range means last known revision
-                rev2 = b.revno()
-            else:
-                rev2 = revision[1].in_history(b).revno
-        else:
-            raise errors.BzrCommandError('bzr log --revision takes one or two values.')
+            # By this point, the revision numbers are converted to the +ve
+            # form if they were supplied in the -ve form, so we can do
+            # this comparison in relative safety
+            if rev1 > rev2:
+                (rev2, rev1) = (rev1, rev2)
 
-        # By this point, the revision numbers are converted to the +ve
-        # form if they were supplied in the -ve form, so we can do
-        # this comparison in relative safety
-        if rev1 > rev2:
-            (rev2, rev1) = (rev1, rev2)
+            if log_format is None:
+                log_format = log.log_formatter_registry.get_default(b)
 
-        if log_format is None:
-            log_format = log.log_formatter_registry.get_default(b)
+            lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            show_timezone=timezone)
 
-        lf = log_format(show_ids=show_ids, to_file=self.outf,
-                        show_timezone=timezone)
-
-        show_log(b,
-                 lf,
-                 file_id,
-                 verbose=verbose,
-                 direction=direction,
-                 start_revision=rev1,
-                 end_revision=rev2,
-                 search=message)
+            show_log(b,
+                     lf,
+                     file_id,
+                     verbose=verbose,
+                     direction=direction,
+                     start_revision=rev1,
+                     end_revision=rev2,
+                     search=message)
+        finally:
+            b.unlock()
 
 
 def get_log_format(long=False, short=False, line=False, default='long'):
@@ -2419,7 +2433,7 @@ class cmd_merge(Command):
                 ' source rather than merging. When this happens,'
                 ' you do not need to commit the result.'),
         Option('directory',
-            help='branch to push from, '
+            help='Branch to merge into, '
                  'rather than the one containing the working directory',
             short_name='d',
             type=unicode,
@@ -2427,14 +2441,16 @@ class cmd_merge(Command):
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False, 
+            show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
+
         if directory is None: directory = u'.'
         tree = WorkingTree.open_containing(directory)[0]
+        change_reporter = delta.ChangeReporter(tree.inventory)
 
         if branch is not None:
             try:
@@ -2443,7 +2459,7 @@ class cmd_merge(Command):
                 pass # Continue on considering this url a Branch
             else:
                 conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                            reprocess, show_base)
+                                         reprocess, show_base, change_reporter)
                 if conflicts == 0:
                     return 0
                 else:
@@ -2507,7 +2523,8 @@ class cmd_merge(Command):
                     show_base=show_base,
                     pull=pull,
                     this_dir=directory,
-                    pb=pb, file_list=interesting_files)
+                    pb=pb, file_list=interesting_files,
+                    change_reporter=change_reporter)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -2961,11 +2978,21 @@ class cmd_bind(Command):
     See "help checkouts" for more information on checkouts.
     """
 
-    takes_args = ['location']
+    takes_args = ['location?']
     takes_options = []
 
     def run(self, location=None):
         b, relpath = Branch.open_containing(u'.')
+        if location is None:
+            try:
+                location = b.get_old_bound_location()
+            except errors.UpgradeRequired:
+                raise errors.BzrCommandError('No location supplied.  '
+                    'This format does not remember old locations.')
+            else:
+                if location is None:
+                    raise errors.BzrCommandError('No location supplied and no '
+                        'previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -3233,7 +3260,8 @@ def _merge_helper(other_revision, base_revision,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
                   pull=False,
-                  pb=DummyProgress()):
+                  pb=DummyProgress(),
+                  change_reporter=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3277,7 +3305,7 @@ def _merge_helper(other_revision, base_revision,
         raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
     try:
         merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
-                                   pb=pb)
+                                   pb=pb, change_reporter=change_reporter)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)

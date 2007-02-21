@@ -1424,10 +1424,10 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
+            if format is None:
+                format = 'default'
             if isinstance(format, basestring):
                 format = bzrdir.format_registry.make_bzrdir(format)
-            elif format is None:
-                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
@@ -1872,7 +1872,20 @@ def test_suite():
             raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
-            suite.addTest(plugin.test_suite())
+            default_encoding = sys.getdefaultencoding()
+            try:
+                plugin_suite = plugin.test_suite()
+            except ImportError, e:
+                bzrlib.trace.warning(
+                    'Unable to test plugin "%s": %s', name, e)
+            else:
+                suite.addTest(plugin_suite)
+            if default_encoding != sys.getdefaultencoding():
+                bzrlib.trace.warning(
+                    'Plugin "%s" tried to reset default encoding to: %s', name,
+                    sys.getdefaultencoding())
+                reload(sys)
+                sys.setdefaultencoding(default_encoding)
     return suite
 
 
