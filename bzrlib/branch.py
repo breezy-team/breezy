@@ -185,6 +185,22 @@ class Branch(object):
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
 
+    def leave_lock_in_place(self):
+        """Tell this branch object not to release the physical lock when this
+        object is unlocked.
+        
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.leave_in_place()
+
+    def dont_leave_lock_in_place(self):
+        """Tell this branch object to release the physical lock when this
+        object is unlocked, even if it didn't originally acquire it.
+
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.dont_leave_in_place()
+
     def abspath(self, name):
         """Return absolute filename for something in the branch
         
@@ -1145,13 +1161,26 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self, token=None):
-        self.repository.lock_write()
+    def lock_write(self, tokens=None):
+        if tokens is not None:
+            branch_token, repo_token = tokens
+        else:
+            branch_token = repo_token = None
+        repo_token = self.repository.lock_write(token=repo_token)
         try:
-            return self.control_files.lock_write(token=token)
+            branch_token = self.control_files.lock_write(token=branch_token)
         except:
             self.repository.unlock()
             raise
+        else:
+            tokens = (branch_token, repo_token)
+            assert tokens == (None, None) or None not in tokens, (
+                'Both branch and repository locks must return tokens, or else '
+                'neither must return tokens.  Got %r.' % (tokens,))
+            if tokens == (None, None):
+                return None
+            else:
+                return tokens
 
     def lock_read(self):
         self.repository.lock_read()

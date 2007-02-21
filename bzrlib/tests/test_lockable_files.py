@@ -239,8 +239,11 @@ class _TestLockableFiles_mixin(object):
                 # tokens.
                 return
             # Relock with a token.
-            self.lockable.lock_write(token=token)
-            self.lockable.unlock()
+            token_from_reentry = self.lockable.lock_write(token=token)
+            try:
+                self.assertEqual(token, token_from_reentry)
+            finally:
+                self.lockable.unlock()
         finally:
             self.lockable.unlock()
         # The lock should be unlocked on disk.  Verify that with a new lock

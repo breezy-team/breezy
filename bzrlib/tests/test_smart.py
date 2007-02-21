@@ -295,6 +295,129 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         self.assertEqual([u'\xc8'], tree.branch.revision_history())
 
 
+class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.reduceLockdirTimeout()
+
+    def test_lock_write_on_unlocked_branch(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        repository = branch.repository
+        response = request.execute(backing.local_abspath(''))
+        branch_nonce = branch.control_files._lock.peek().get('nonce')
+        repository_nonce = repository.control_files._lock.peek().get('nonce')
+        self.assertEqual(
+            SmartServerResponse(('ok', branch_nonce, repository_nonce)),
+            response)
+        # The branch (and associated repository) is now locked.  Verify that
+        # with a new branch object.
+        new_branch = repository.bzrdir.open_branch()
+        self.assertRaises(errors.LockContention, new_branch.lock_write)
+
+    def test_lock_write_on_locked_branch(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        branch.lock_write()
+        branch.leave_lock_in_place()
+        branch.unlock()
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(
+            SmartServerResponse(('LockContention',)), response)
+
+    def test_lock_write_with_tokens_on_locked_branch(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        branch_token, repo_token = branch.lock_write()
+        branch.leave_lock_in_place()
+        branch.repository.leave_lock_in_place()
+        branch.unlock()
+        response = request.execute(backing.local_abspath(''),
+                                   branch_token, repo_token)
+        self.assertEqual(
+            SmartServerResponse(('ok', branch_token, repo_token)), response)
+
+    def test_lock_write_with_mismatched_tokens_on_locked_branch(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        branch_token, repo_token = branch.lock_write()
+        branch.leave_lock_in_place()
+        branch.repository.leave_lock_in_place()
+        branch.unlock()
+        response = request.execute(backing.local_abspath(''),
+                                   branch_token+'xxx', repo_token)
+        self.assertEqual(
+            SmartServerResponse(('TokenMismatch',)), response)
+
+    def test_lock_write_on_locked_repo(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        branch.repository.leave_lock_in_place()
+        branch.repository.unlock()
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(
+            SmartServerResponse(('LockContention',)), response)
+
+
+class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.reduceLockdirTimeout()
+
+    def test_unlock_on_locked_branch_and_repo(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestUnlock(backing)
+        branch = self.make_branch('.')
+        # Lock the branch
+        branch_token, repo_token = branch.lock_write()
+        # Unlock the branch (and repo) object, leaving the physical locks
+        # in place.
+        branch.leave_lock_in_place()
+        branch.repository.leave_lock_in_place()
+        branch.unlock()
+        response = request.execute(backing.local_abspath(''),
+                                   branch_token, repo_token)
+        self.assertEqual(
+            SmartServerResponse(('ok',)), response)
+        # The branch is now unlocked.  Verify that with a new branch
+        # object.
+        new_branch = branch.bzrdir.open_branch()
+        new_branch.lock_write()
+        new_branch.unlock()
+
+    def test_unlock_on_unlocked_branch_unlocked_repo(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestUnlock(backing)
+        branch = self.make_branch('.')
+        response = request.execute(
+            backing.local_abspath(''), 'branch token', 'repo token')
+        self.assertEqual(
+            SmartServerResponse(('TokenMismatch',)), response)
+
+    def test_unlock_on_unlocked_branch_locked_repo(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestUnlock(backing)
+        branch = self.make_branch('.')
+        # Lock the repository.
+        repo_token = branch.repository.lock_write()
+        branch.repository.leave_lock_in_place()
+        branch.repository.unlock()
+        # Issue branch lock_write request on the unlocked branch (with locked
+        # repo).
+        response = request.execute(
+            backing.local_abspath(''), 'branch token', repo_token)
+        self.assertEqual(
+            SmartServerResponse(('TokenMismatch',)), response)
+
+
 class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
 
     def test_no_repository(self):
@@ -359,6 +482,7 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
         self.assertEqual(SmartServerResponse(
             ('nosuchrevision', 'missingrevision', )),
             request.execute(backing.local_abspath(''), 'missingrevision'))
+
 
 class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
 
@@ -537,6 +661,9 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Branch.get_config_file'),
             smart.branch.SmartServerBranchGetConfigFile)
         self.assertEqual(
+            smart.request.request_handlers.get('Branch.lock_write'),
+            smart.branch.SmartServerBranchRequestLockWrite)
+        self.assertEqual(
             smart.request.request_handlers.get('Branch.last_revision_info'),
             smart.branch.SmartServerBranchRequestLastRevisionInfo)
         self.assertEqual(
@@ -545,6 +672,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Branch.set_last_revision'),
             smart.branch.SmartServerBranchRequestSetLastRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.unlock'),
+            smart.branch.SmartServerBranchRequestUnlock)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
             smart.bzrdir.SmartServerRequestFindRepository)

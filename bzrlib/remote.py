@@ -426,12 +426,20 @@ class RemoteBranch(branch.Branch):
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
+            # Give the remote repository the matching real repo.
+            self.repository._set_real_repository(self._real_branch.repository)
+            # Give the branch the remote repository to let fast-pathing happen.
+            self._real_branch.repository = self.repository
         else:
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib api users.
         self._format = RemoteBranchFormat()
         self.base = self.bzrdir.root_transport.base
         self.control_files = RemoteBranchLockableFiles(self.bzrdir, self._client)
+        self._lock_mode = None
+        self._lock_token = None
+        self._lock_count = 0
+        self._leave_lock = False
 
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
@@ -457,17 +465,87 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.lock_read()
 
-    def lock_write(self, token=None):
-        self._ensure_real()
-        return self._real_branch.lock_write(token=token)
+    def _lock_write(self, tokens):
+        if tokens is None:
+            branch_token = repo_token = ''
+        else:
+            branch_token, repo_token = tokens
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Branch.lock_write', path, branch_token,
+                                     repo_token)
+        if response[0] == 'ok':
+            ok, branch_token, repo_token = response
+            return branch_token, repo_token
+        elif response[0] == 'LockContention':
+            raise errors.LockContention('(remote lock)')
+        elif response[0] == 'TokenMismatch':
+            raise errors.TokenMismatch(tokens, '(remote tokens)')
+        else:
+            assert False, 'unexpected response code %s' % (response,)
+            
+    def lock_write(self, tokens=None):
+        if not self._lock_mode:
+            remote_tokens = self._lock_write(tokens)
+            self._lock_token, self._repo_lock_token = remote_tokens
+            assert self._lock_token, 'Remote server did not return a token!'
+            if self._real_branch is not None:
+                self._real_branch.lock_write(tokens=remote_tokens)
+            if tokens is not None:
+                self._leave_lock = True
+            else:
+                # XXX: this case seems to be unreachable; tokens cannot be None.
+                self._leave_lock = False
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        elif self._lock_mode == 'r':
+            raise errors.ReadOnlyTransaction
+        else:
+            if tokens is not None:
+                # Tokens were given to lock_write, and we're relocking, so check
+                # that the given tokens actually match the ones we already have.
+                held_tokens = (self._lock_token, self._repo_lock_token)
+                if tokens != held_tokens:
+                    raise errors.TokenMismatch(str(tokens), str(held_tokens))
+            self._lock_count += 1
+        return self._lock_token, self._repo_lock_token
+
+    def _unlock(self, branch_token, repo_token):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Branch.unlock', path, branch_token,
+                                     repo_token)
+        if response == ('ok',):
+            return
+        elif response[0] == 'TokenMismatch':
+            raise errors.TokenMismatch(token, '(remote token)')
+        else:
+            assert False, 'unexpected response code %s' % (response,)
 
     def unlock(self):
-        self._ensure_real()
-        return self._real_branch.unlock()
+        self._lock_count -= 1
+        if not self._lock_count:
+            mode = self._lock_mode
+            self._lock_mode = None
+            if self._real_branch is not None:
+                self._real_branch.unlock()
+            if mode != 'w':
+                return
+            assert self._lock_token, 'Locked, but no token!'
+            branch_token = self._lock_token
+            repo_token = self._repo_lock_token
+            self._lock_token = None
+            self._repo_lock_token = None
+            if not self._leave_lock:
+                self._unlock(branch_token, repo_token)
 
     def break_lock(self):
         self._ensure_real()
         return self._real_branch.break_lock()
+
+    def leave_lock_in_place(self):
+        self._leave_lock = True
+
+    def dont_leave_lock_in_place(self):
+        self._leave_lock = False
 
     def last_revision_info(self):
         """See Branch.last_revision_info()."""

@@ -240,6 +240,7 @@ class LockableFiles(object):
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
             self._lock_count += 1
+            return token
         else:
             token_from_lock = self._lock.lock_write(token=token)
             #note('write locking %s', self)

@@ -144,7 +144,7 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
 
 class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
 
-    def do_repository_request(self, repository, token):
+    def do_repository_request(self, repository, token=''):
         # XXX: this probably should not have a token.
         if token == '':
             token = None

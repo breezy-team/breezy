@@ -92,3 +92,39 @@ class SmartServerBranchRequestSetLastRevision(SmartServerBranchRequest):
             branch.generate_revision_history(unicode_new_last_revision_id)
         return SmartServerResponse(('ok',))
 
+
+class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
+    
+    def do_with_branch(self, branch, branch_token='', repo_token=''):
+        if branch_token == '':
+            branch_token = None
+        if repo_token == '':
+            repo_token = None
+        tokens = (branch_token, repo_token)
+        if tokens == ('', ''):
+            tokens = None
+        try:
+            branch_token, repo_token = branch.lock_write(tokens=tokens)
+        except errors.LockContention:
+            return SmartServerResponse(('LockContention',))
+        except errors.TokenMismatch:
+            return SmartServerResponse(('TokenMismatch',))
+        branch.repository.leave_lock_in_place()
+        branch.leave_lock_in_place()
+        branch.unlock()
+        return SmartServerResponse(('ok', branch_token, repo_token))
+
+
+class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch, branch_token, repo_token):
+        tokens = branch_token, repo_token
+        try:
+            tokens = branch.lock_write(tokens=tokens)
+        except errors.TokenMismatch:
+            return SmartServerResponse(('TokenMismatch',))
+        branch.repository.dont_leave_lock_in_place()
+        branch.dont_leave_lock_in_place()
+        branch.unlock()
+        return SmartServerResponse(('ok',))
+        
