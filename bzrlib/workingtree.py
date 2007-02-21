@@ -1851,7 +1851,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             basis.lock_read()
             try:
                 to_tree = self.branch.basis_tree()
-                if basis.inventory.root is None:
+                if basis.inventory.root is None and self.inventory.root is None:
                     self.set_root_id(to_tree.inventory.root.file_id)
                 result += merge.merge_inner(
                                       self.branch,

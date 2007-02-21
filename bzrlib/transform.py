@@ -1101,8 +1101,8 @@ def build_tree(tree, wt):
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-    if tree.inventory.root is not None:
-        wt.set_root_id(tree.inventory.root.file_id)
+#    if tree.inventory.root is not None:
+#        wt.set_root_id(tree.inventory.root.file_id)
     tt = TreeTransform(wt)
     divert = set()
     try:

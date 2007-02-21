@@ -220,7 +220,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         self.check_inventory_shape(inv,
                                    ['dir', 'dir/sub', 'dir/sub/file'])
-
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()

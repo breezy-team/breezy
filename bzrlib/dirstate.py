@@ -65,11 +65,14 @@ entry[1][0][4]: packed_stat
 OR (for non tree-0)
 entry[1][1][4]: revision_id
 
-There may be multiple rows at the root, one per id present in the root, so the in memory root row is now:
-_root_entries[0][0]: ''
-_root_entries[0][1]: ''
-_root_entries[0][2]: file_id
-_root_entries[1][0]: The tree data for the current tree for this fileid at /
+There may be multiple rows at the root, one per id present in the root, so the
+in memory root row is now:
+self._dirblocks[0] -> ('', [entry ...]),
+and the entries in there are
+entries[0][0]: ''
+entries[0][1]: ''
+entries[0][2]: file_id
+entries[1][0]: The tree data for the current tree for this fileid at /
 etc.
 
 Kinds:
@@ -262,7 +265,6 @@ class DirState(object):
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
-        self._root_entries = None
         self._state_file=None
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
@@ -298,9 +300,12 @@ class DirState(object):
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
         dirname, basename = os.path.split(utf8path)
+        entry_key = (dirname, basename, file_id.encode('utf8'))
         self._read_dirblocks_if_needed()
-        block_index = self._find_dirblock_index(dirname)
-        if block_index < 0:
+        block_index, present = self._find_block_index_from_key(entry_key)
+        if not present:
+            # TODO: This test is not complete - an empty directory, or a
+            # directory for a parent tree will fool it.
             # some parent path has not been added - its an error to add this
             # child
             raise errors.NotVersionedError(path, str(self))
@@ -312,7 +317,6 @@ class DirState(object):
             size = stat.st_size
             packed_stat = pack_stat(stat)
         parent_info = self._empty_parent_info()
-        entry_key = (dirname, basename, file_id.encode('utf8'))
         if kind == 'file':
             entry_data = entry_key, [
                 (kind, link_or_sha1, size, False, packed_stat),
@@ -327,29 +331,13 @@ class DirState(object):
                 ] + parent_info
         else:
             raise errors.BzrError('unknown kind %r' % kind)
-        entry_index = bisect.bisect_left(block, entry_data)
-        if len(block) > entry_index:
-            assert block[entry_index][0][1] != basename, \
-                "basename %r already added" % basename
+        entry_index, present = self._find_entry_index(entry_key, block)
+        assert not present, "basename %r already added" % basename
         block.insert(entry_index, entry_data)
 
         if kind == 'directory':
            # insert a new dirblock
            self._ensure_block(block_index, entry_index, utf8path)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-
-    def add_deleted(self, fileid_utf8, parents):
-        """Add fileid_utf8 with parents as deleted."""
-        raise Exception, "broken"
-        self._read_dirblocks_if_needed()
-        new_row = self._make_deleted_row(fileid_utf8, parents)
-        block_index = self._find_dirblock_index(new_row[0][0])
-        if block_index < 0:
-            # no deleted block yet.
-            bisect.insort_left(self._dirblocks, (new_row[0][0], []))
-            block_index = self._find_dirblock_index(new_row[0][0])
-        block = self._dirblocks[block_index][1]
-        row_index = bisect.insort_left(block, new_row)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _empty_parent_info(self):
@@ -376,21 +364,21 @@ class DirState(object):
         :param dirname: The utf8 dirname to ensure there is a block for.
         :return: The index for the block.
         """
+        assert dirname != ''
         # the basename of the directory must be the end of its full name.
         if not (parent_block_index == -1 and
             parent_block_index == -1 and dirname == ''):
             assert dirname.endswith(
                 self._dirblocks[parent_block_index][1][parent_row_index][0][1])
-        ## In future, when doing partial parsing, this should load and 
-        # populate the entire block.
-        index = bisect.bisect_left(self._dirblocks, (dirname, []))
-        if (index == len(self._dirblocks) or
-            self._dirblocks[index][0] != dirname):
-            self._dirblocks.insert(index, (dirname, []))
-        return index
+        block_index, present = self._find_block_index_from_key((dirname, '', ''))
+        if not present:
+            ## In future, when doing partial parsing, this should load and 
+            # populate the entire block.
+            self._dirblocks.insert(block_index, (dirname, []))
+        return block_index
 
     def _entries_to_current_state(self, new_entries):
-        """Load new_entries into self._root_entries and self.dirblocks.
+        """Load new_entries into self.dirblocks.
 
         Process new_entries into the current state object, making them the active
         state.
@@ -401,19 +389,20 @@ class DirState(object):
         """
         assert new_entries[0][0][0:2] == ('', ''), \
             "Missing root row %r" % new_entries[0][0]
-        self._root_entries = []
-        self._dirblocks = [('', [])]
-        current_block = self._root_entries
+        # The two blocks here are deliberate: the root block and the 
+        # contents-of-root block.
+        self._dirblocks = [('', []), ('', [])]
+        current_block = self._dirblocks[0][1]
         current_dirname = ''
         root_key = ('', '')
         for entry in new_entries:
             if entry[0][0] != current_dirname:
-                # new block
+                # new block - different dirname
                 current_block = []
                 current_dirname = entry[0][0]
                 self._dirblocks.append((current_dirname, current_block))
-            elif entry[0][0:2] != root_key:
-                # this is not a root entry for a tree
+            elif entry[0][1]:
+                # this is not a root entry for a tree (it has a basename)
                 current_block = self._dirblocks[-1][1]
             # append the entry to the current block
             current_block.append(entry)
@@ -443,40 +432,33 @@ class DirState(object):
         :param key: A dirstate entry key.
         :return: The block tuple.
         """
-        if key[0:2] == ('', ''):
-            return ('', self._root_entries)
-        else:
-            block_index, present = self._find_block_index_from_key(key)
-            if not present:
-                if add_if_missing:
-                    self._dirblocks.insert(block_index, (key[0], []))
-                else:
-                    # some parent path has not been added - its an error to add this
-                    # child
-                    raise errors.NotVersionedError(key[0:2], str(self))
-            return self._dirblocks[block_index]
+        block_index, present = self._find_block_index_from_key(key)
+        if not present:
+            if add_if_missing:
+                self._dirblocks.insert(block_index, (key[0], []))
+            else:
+                # some parent path has not been added - its an error to add this
+                # child
+                raise errors.NotVersionedError(key[0:2], str(self))
+        return self._dirblocks[block_index]
 
     def _find_block_index_from_key(self, key):
         """Find the dirblock index for a key.
 
         :return: The block index, True if the block for the key is present.
         """
-        block_index = bisect.bisect_left(self._dirblocks, (key[0], []))
+        if key[0:2] == ('', ''):
+            return 0, True
+        block_index = bisect.bisect_left(self._dirblocks, (key[0], []), 1)
+        # _right returns one-past-where-key is so we have to subtract
+        # one to use it. we use _right here because there are two
+        # '' blocks - the root, and the contents of root
+        # we always have a minimum of 2 in self._dirblocks: root and
+        # root-contents, and for '', we get 2 back, so this is 
+        # simple and correct:
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
         return block_index, present
-
-    def _find_dirblock_index(self, dirname):
-        """Find the dirblock index for dirname.
-
-        :return: -1 if the dirname is not present, or the index in
-            self._dirblocks for it otherwise.
-        """
-        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
-        if (block_index == len(self._dirblocks) or
-            self._dirblocks[block_index][0] != dirname):
-            return -1
-        return block_index
 
     def _find_entry_index(self, key, block):
         """Find the entry index for a key in a block.
@@ -495,89 +477,20 @@ class DirState(object):
         :param tree: The tree which should provide parent information and
             inventory ids.
         """
+        result = DirState.initialize(dir_state_filename)
         tree.lock_read()
-        # XXX: aka the big ugly.: To fix this, turn it into:
-        # init; set_path_id(root); set_parents(tree.get_parnets); write_inventory(tree.inventory)
-        result = DirState()
-        result._state_file = open(dir_state_filename, 'wb+')
-
-        _encode = base64.encodestring
-
         parent_ids = tree.get_parent_ids()
         num_parents = len(parent_ids)
-        if num_parents > 3:
-            raise ValueError('Cannot handle more than 3 parents')
-
         parent_trees = []
         for parent_id in parent_ids:
-            parent_trees.append(tree.branch.repository.revision_tree(parent_id))
-            parent_trees[-1].lock_read()
-        all_trees = [tree] + parent_trees
-        num_trees = len(all_trees)
+            parent_trees.append((parent_id, tree.branch.repository.revision_tree(parent_id)))
+            parent_trees[-1][1].lock_read()
+        result.set_parent_trees(parent_trees, [])
+        result.set_state_from_inventory(tree.inventory)
 
-        # FIXME: is this utf8 safe?
-
-        to_minikind = DirState._kind_to_minikind
-        to_yesno = DirState._to_yesno
-
-        st = os.lstat(tree.basedir)
-        root_entries = []
-        dirblocks = []
-        for tree_index, tree in enumerate(all_trees):
-            for path, tree_entry in tree.iter_entries_by_dir():
-                dirname, basename = os.path.split(path.encode('utf8'))
-                file_id = tree_entry.file_id.encode('utf8')
-                kind = tree_entry.kind
-                if kind == 'directory':
-                    fingerprint = ''
-                    size = 0
-                    executable = False
-                elif kind == 'symlink':
-                    fingerprint = tree.symlink_target(path)
-                    size = 0
-                    executable = False
-                elif kind == 'file':
-                    fingerprint = tree.get_file_sha1(tree_entry.file_id, path)
-                    size = tree_entry.text_size
-                    executable = tree.is_executable(tree_entry.file_id, path)
-                else:
-                    raise Exception
-
-                key = (dirname, basename, file_id)
-                if (dirname, basename) == ('', ''):
-                    block = root_entries
-                else:
-                    # not a root entry
-                    block_index = bisect.bisect_left(dirblocks, (dirname, []))
-                    if block_index == len(dirblocks) or dirblocks[block_index][0] != dirname:
-                        # no dirblock yet.
-                        dirblocks.insert(block_index, (dirname, []))
-                    block = dirblocks[block_index][1]
-                # find the data for this path within block:
-                entry_index = bisect.bisect_left(block, (key,))
-                if entry_index == len(block) or block[entry_index][0] != key:
-                    # new key in this block, add blank data
-                    block.insert(entry_index, (key, [None] * num_trees))
-                # get the right form of data for this trees type
-                if tree_index == 0:
-                    # current tree
-                    st = os.lstat(tree.abspath(path))
-                    tree_data = pack_stat(st)
-                    if kind == 'file':
-                        size = st.st_size
-                else:
-                    tree_data = tree_entry.revision.encode('utf8')
-                block[entry_index][1][tree_index] = (
-                    kind,
-                    fingerprint,
-                    size,
-                    executable,
-                    tree_data)
-
-        result._set_data(parent_ids, root_entries, dirblocks)
-        result.save()
-        for tree in all_trees:
-            tree.unlock()
+        for revid, parent in parent_trees:
+            parent.unlock()
+        tree.unlock()
         return result
 
     def get_ghosts(self):
@@ -632,26 +545,22 @@ class DirState(object):
             rather it indicates that there are at least some files in some
             tree present there.
         """
-        # looking up the root is not supported, because the root entries exist
-        # outside the used coordinate system
-        assert not (dirname == '' and basename == ''), 'blackhole lookup error'
         self._read_dirblocks_if_needed()
-        block_index = bisect.bisect_left(self._dirblocks, (dirname, []))
-        if (block_index == len(self._dirblocks) or
-            self._dirblocks[block_index][0] != dirname):
+        key = dirname, basename, ''
+        block_index, present = self._find_block_index_from_key(key)
+        if not present:
             # no such directory - return the dir index and 0 for the row.
             return block_index, 0, False, False
         block = self._dirblocks[block_index][1] # access the entries only
-        search = ((dirname, basename),)
-        row_index = bisect.bisect_left(block, search)
+        entry_index, present = self._find_entry_index(key, block)
         # linear search through present entries at this path to find the one
         # requested.
-        while row_index < len(block) and block[row_index][0][1] == basename:
-            if block[row_index][1][tree_index][0] not in \
+        while entry_index < len(block) and block[entry_index][0][1] == basename:
+            if block[entry_index][1][tree_index][0] not in \
                        ('absent', 'relocated'):
-                return block_index, row_index, True, True
-            row_index += 1
-        return block_index, row_index, True, False
+                return block_index, entry_index, True, True
+            entry_index += 1
+        return block_index, entry_index, True, False
 
     def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None):
         """Get the dirstate entry for path in tree tree_index
@@ -671,11 +580,6 @@ class DirState(object):
         if path_utf8 is not None:
             assert path_utf8.__class__ == str, 'path_utf8 is not a str: %s %s' % (type(path_utf8), path_utf8)
             # path lookups are faster
-            if path_utf8 == '':
-                for entry in self._root_entries:
-                    if entry[1][tree_index] not in ('absent', 'relocated'):
-                        return entry
-                raise Exception, 'rootless trees not supported yet'
             dirname, basename = os.path.split(path_utf8)
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, tree_index)
@@ -718,13 +622,14 @@ class DirState(object):
         # persist.
         result = DirState()
         result._state_file = open(path, 'wb+')
+        # root dir and root dir contents with no children.
+        empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
-        root_entries = [(('', '', bzrlib.inventory.ROOT_ID), [
+        empty_tree_dirblocks[0][1].append(
+            (('', '', bzrlib.inventory.ROOT_ID), [
                 ('directory', '', 0, False, DirState.NULLSTAT),
-            ])]
-        root_parents = []
-        empty_tree_dirblocks = [('', [])] # root dir contents - no entries.
-        result._set_data([], root_entries, empty_tree_dirblocks)
+            ]))
+        result._set_data([], empty_tree_dirblocks)
         try:
             result.save()
         except:
@@ -759,26 +664,23 @@ class DirState(object):
             raise Exception
         return (kind, fingerprint, size, executable, tree_data)
 
-    def _iter_entries(self, root_entries=None, dirblocks=None):
+    def _iter_entries(self):
         """Iterate over all the entries in the dirstate.
 
         Each yelt item is an entry in the standard format described in the
         docstring of bzrlib.dirstate.
-
-        :param root_entries: Allows overriding of the root entries to be
-            reported.
-        :param dirblocks: Allows overriding of the source dirblock data.
         """
         self._read_dirblocks_if_needed()
-        if root_entries is None:
-            root_entries = self._root_entries
-        if dirblocks is None:
-            dirblocks = self._dirblocks
-        for entry in root_entries:
-            yield entry
-        for directory in dirblocks:
+        for directory in self._dirblocks:
             for entry in directory[1]:
                 yield entry
+
+    def _get_id_index(self):
+        """Get an id index of self._dirblocks."""
+        id_index = {}
+        for key, tree_details in self._iter_entries():
+            id_index.setdefault(key[2], set()).add(key)
+        return id_index
 
     def _get_output_lines(self, lines):
         """format lines for final output.
@@ -811,9 +713,9 @@ class DirState(object):
     def _read_dirblocks_if_needed(self):
         """Read in all the dirblocks from the file if they are not in memory.
         
-        This populates self._root_entries and self._dirblocks, and sets 
-        self._dirblock_state to IN_MEMORY_UNMODIFIED. It is not currently ready
-        for incremental block loading.
+        This populates self._dirblocks, and sets self._dirblock_state to
+        IN_MEMORY_UNMODIFIED. It is not currently ready for incremental block
+        loading.
         """
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
@@ -969,22 +871,19 @@ class DirState(object):
             self._header_state = DirState.IN_MEMORY_UNMODIFIED
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
-    def _set_data(self, parent_ids, root_entries, dirblocks):
+    def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.
 
         This is an internal function used to completely replace the objects
         in memory state. It puts the dirstate into state 'full-dirty'.
 
         :param parent_ids: A list of parent tree revision ids.
-        :param root_entrie: The root entries: A list of entries, one per fileid found
-            at the root.
         :param dirblocks: A list containing one tuple for each directory in the
             tree. Each tuple contains the directory path and a list of entries 
             found in that directory.
         """
         # our memory copy is now authoritative.
         self._dirblocks = dirblocks
-        self._root_entries = root_entries
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._parents = list(parent_ids)
@@ -1007,21 +906,13 @@ class DirState(object):
             # logic not written
             raise NotImplementedError(self.set_path_id)
         # TODO: check new id is unique
-        entry = self._get_entry(0, path_utf8='')
-        # TODO: version of _get_block_entry_index that works with the root so
-        # we dont look up this twice.
-        index = self._root_entries.index(entry)
-        if new_id == entry[0][2]:
-            # no change
-            return
-        if len(entry[1]) > 1:
-            # TODO: split the record.
-            raise NotImplementedError(self.set_path_id)
-            root_info, root_parents = self._root_entrie
-            if len(root_parents):
-                self.add_deleted(root_info[3], root_parents)
-        # replace the entry:
-        self._root_entries[index] = (('', '', new_id), entry[1])
+        entry = self._get_entry(0, path_utf8=path)
+        # mark the old path absent, and insert a new root path
+        present_parents = len(entry[1]) - 1
+        self._make_absent(entry)
+        id_index = self._get_id_index()
+        self.update_minimal(('', '', new_id), 'directory', present_parents,
+            path_utf8='', id_index=id_index, packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def set_parent_trees(self, trees, ghosts):
@@ -1040,9 +931,6 @@ class DirState(object):
         # all by path in parallel for 'optimal' common-case performance.
         # generate new root row.
         self._read_dirblocks_if_needed()
-        old_roots = self._root_entries
-        root_info = self._root_entries[0]
-        new_parent_count = len(trees)
         # TODO future sketch: Examine the existing parents to generate a change
         # map and then walk the new parent trees only, mapping them into the
         # dirstate. Walk the dirstate at the same time to remove unreferenced
@@ -1177,9 +1065,7 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         # sketch:
         #  generate a byid index of the dirstate
-        id_index = {}
-        for key, tree_details in self._iter_entries():
-            id_index.setdefault(key[2], set()).add(key)
+        id_index = self._get_id_index()
 
         num_present_parents = len(self._parents) - len(self._ghosts)
         # incremental algorithm:
@@ -1297,21 +1183,19 @@ class DirState(object):
             # it must not be absent at the moment
             assert update_tree_details[0][0] != 'absent'
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return last_reference
 
     def update_minimal(self, key, kind, num_present_parents, executable=False,
         fingerprint='', packed_stat=None, size=0, id_index=None,
         path_utf8=None):
         """Update an entry to the state in tree 0."""
-        if key[0:2] == ('', ''):
-            block = self._root_entries
-        else:
-            block = self._find_block(key)[1]
+        block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
         entry_index, present = self._find_entry_index(key, block)
         new_details = (kind, fingerprint, size, executable, packed_stat)
-        assert id_index, 'need an id index to do updates for now !'
+        assert id_index is not None, 'need an id index to do updates for now !'
         if not present:
             # new entry, synthesis cross reference here,
             existing_keys = id_index.setdefault(key[2], set())
@@ -1333,6 +1217,7 @@ class DirState(object):
                     assert present
                     other_entry_index, present = self._find_entry_index(other_key, self._dirblocks[other_block_index][1])
                     assert present
+                    assert path_utf8 is not None
                     self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
                         ('relocated', path_utf8, 0, False, '')
 
@@ -1386,6 +1271,12 @@ class DirState(object):
                     assert present
                     self._dirblocks[block_index][1][entry_index][1][0] = \
                         ('relocated', path_utf8, 0, False, '')
+        # add a containing dirblock if needed.
+        if new_details[0] == 'directory':
+            subdir_key = (os.path.join(*key[0:2]), '', '')
+            block_index, present = self._find_block_index_from_key(subdir_key)
+            if not present:
+                self._dirblocks.insert(block_index, (subdir_key[0], []))
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 

@@ -207,8 +207,8 @@ class WorkingTree4(WorkingTree3):
         # TODO we want a paths_to_dirblocks helper I think
         for path in paths:
             dirname, basename = os.path.split(path.encode('utf8'))
-            _, _, _, path_is_versioned = state._get_block_row_index(
-                dirname, basename)
+            _, _, _, path_is_versioned = state._get_block_entry_index(
+                dirname, basename, 0)
             if path_is_versioned:
                 result.add(path)
         return result
@@ -238,9 +238,13 @@ class WorkingTree4(WorkingTree3):
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
-        for block in state._dirblocks:
+        for block in state._dirblocks[1:]: # skip the root
             dirname = block[0]
-            parent_id = parent_ids[block[0]]
+            try:
+                parent_id = parent_ids[block[0]]
+            except KeyError:
+                # all the paths in this block are not versioned in this tree
+                continue
             for key, entry in block[1]:
                 if entry[0][0] in ('absent', 'relocated'):
                     # a parent tree only entry
@@ -376,25 +380,25 @@ class WorkingTree4(WorkingTree3):
 
         assert not isinstance(from_paths, basestring)
         to_dir_utf8 = to_dir.encode('utf8')
-        to_row_dirname, to_basename = os.path.split(to_dir_utf8)
+        to_entry_dirname, to_basename = os.path.split(to_dir_utf8)
         # check destination directory
         # get the details for it
-        to_row_block_index, to_row_row_index, dir_present, row_present = \
-            state._get_block_row_index(to_row_dirname, to_basename)
-        if not row_present:
+        to_entry_block_index, to_entry_entry_index, dir_present, entry_present = \
+            state._get_block_entry_index(to_entry_dirname, to_basename, 0)
+        if not entry_present:
             raise errors.BzrMoveFailedError('', to_dir,
                 errors.NotInWorkingDirectory(to_dir))
-        to_row = state._dirblocks[to_row_block_index][1][to_row_row_index][0]
+        to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
         # get a handle on the block itself.
         to_block_index = state._ensure_block(
-            to_row_block_index, to_row_row_index, to_dir_utf8)
+            to_entry_block_index, to_entry_entry_index, to_dir_utf8)
         to_block = state._dirblocks[to_block_index]
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
 
-        if to_row[2] != 'directory':
+        if to_entry[1][0][0] != 'directory':
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
 
@@ -402,7 +406,7 @@ class WorkingTree4(WorkingTree3):
             update_inventory = True
             inv = self.inventory
             to_dir_ie = inv[to_dir_id]
-            to_dir_id = to_row[3].decode('utf8')
+            to_dir_id = to_entry[0][2].decode('utf8')
         else:
             update_inventory = False
 
@@ -411,15 +415,15 @@ class WorkingTree4(WorkingTree3):
             # from_rel is 'pathinroot/foo/bar'
             from_dirname, from_tail = os.path.split(from_rel)
             from_dirname = from_dirname.encode('utf8')
-            from_row = self._get_row(path=from_rel)
-            if from_row == (None, None):
+            from_entry = self._get_entry(path=from_rel)
+            if from_entry == (None, None):
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
                     errors.NotVersionedError(path=str(from_rel)))
 
-            from_id = from_row[0][3].decode('utf8')
+            from_id = from_entry[0][2].decode('utf8')
             to_rel = pathjoin(to_dir, from_tail)
-            item_to_row = self._get_row(path=to_rel)
-            if item_to_row != (None, None):
+            item_to_entry = self._get_entry(path=to_rel)
+            if item_to_entry != (None, None):
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
                     "Target is already versioned.")
 
@@ -456,7 +460,8 @@ class WorkingTree4(WorkingTree3):
                 for rollback in reversed(rollbacks):
                     try:
                         rollback()
-                    except e:
+                    except Exception, e:
+                        import pdb;pdb.set_trace()
                         error = e
                 if error:
                     raise error
@@ -482,18 +487,38 @@ class WorkingTree4(WorkingTree3):
                 # finally do the rename in the dirstate, which is a little
                 # tricky to rollback, but least likely to need it.
                 basename = from_tail.encode('utf8')
-                old_block_index, old_row_index, dir_present, file_present = \
-                    state._get_block_row_index(from_dirname, basename)
+                old_block_index, old_entry_index, dir_present, file_present = \
+                    state._get_block_entry_index(from_dirname, basename, 0)
                 old_block = state._dirblocks[old_block_index][1]
+                old_entry_details = old_block[old_entry_index][1]
                 # remove the old row
-                old_row = old_block.pop(old_row_index)
-                rollbacks.append(lambda:old_block.insert(old_row_index, old_row))
+                from_key = old_block[old_entry_index][0]
+                to_key = ((to_block[0],) + from_key[1:3])
+                state._make_absent(old_block[old_entry_index])
+                rollbacks.append(
+                    lambda:state.update_minimal(from_key,
+                        old_entry_details[0][0],
+                        num_present_parents=len(old_entry_details) - 1,
+                        executable=old_entry_details[0][3],
+                        fingerprint=old_entry_details[0][1],
+                        packed_stat=old_entry_details[0][4],
+                        size=old_entry_details[0][2],
+                        id_index=state._get_id_index(),
+                        path_utf8=from_rel.encode('utf8')))
                 # create new row in current block
-                new_row = ((to_block[0],) + old_row[0][1:], old_row[1])
-                insert_position = bisect_left(to_block[1], new_row)
-                to_block[1].insert(insert_position, new_row)
-                rollbacks.append(lambda:to_block[1].pop(insert_position))
-                if new_row[0][2] == 'directory':
+                state.update_minimal(to_key,
+                        old_entry_details[0][0],
+                        num_present_parents=len(old_entry_details) - 1,
+                        executable=old_entry_details[0][3],
+                        fingerprint=old_entry_details[0][1],
+                        packed_stat=old_entry_details[0][4],
+                        size=old_entry_details[0][2],
+                        id_index=state._get_id_index(),
+                        path_utf8=to_rel.encode('utf8'))
+                added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
+                new_entry = to_block[added_entry_index]
+                rollbacks.append(lambda:state._make_absent(new_entry))
+                if new_entry[1][0][0] == 'directory':
                     import pdb;pdb.set_trace()
                     # if a directory, rename all the contents of child blocks
                     # adding rollbacks as each is inserted to remove them and
@@ -662,13 +687,13 @@ class WorkingTree4(WorkingTree3):
         # check if the root is to be unversioned, if so, assert for now.
         # walk the state marking unversioned things as absent.
         # if there are any un-unversioned ids at the end, raise
-        for key, details in state._root_entries:
+        for key, details in state._dirblocks[0][1]:
             if (details[0][0] not in ('absent', 'relocated') and
                 key[2] in ids_to_unversion):
                 # I haven't written the code to unversion / yet - it should be
                 # supported.
                 raise errors.BzrError('Unversioning the / is not currently supported')
-        details_length = len(state._root_entries[0][1])
+        details_length = len(state._dirblocks[0][1][0][1])
         block_index = 0
         while block_index < len(state._dirblocks):
             # process one directory at a time.
@@ -860,9 +885,13 @@ class DirStateRevisionTree(Tree):
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
-        for block in self._dirstate._dirblocks:
+        for block in self._dirstate._dirblocks[1:]: #skip root
             dirname = block[0]
-            parent_id = parent_ids[block[0]]
+            try:
+                parent_id = parent_ids[block[0]]
+            except KeyError:
+                # all the paths in this block are not versioned in this tree
+                continue
             for key, entry in block[1]:
                 if entry[parent_index][0] in ('absent', 'relocated'):
                     # not this tree
