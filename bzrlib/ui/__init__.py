@@ -32,6 +32,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import getpass
+
 from bzrlib import (
     progress,
     )
@@ -55,21 +57,6 @@ class UIFactory(object):
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         raise NotImplementedError(self.progress_bar)
-
-    def get_login(self, prompt='', **kwargs):
-        """Prompt the user for a login (generally on a remote host).
-
-        :param prompt: The prompt to present the user
-        :param kwargs: Arguments which will be expanded into the prompt.
-                       This lets front ends display different things if
-                       they so choose.
-
-        :return: The user string, return None if the user canceled the
-                 request. Note that we do not touch the encoding, users may
-                 have whatever they see fit and the login should be
-                 transported as is. 
-        """
-        raise NotImplementedError(self.get_login)
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -129,6 +116,25 @@ class CLIUIFactory(UIFactory):
             if line in ('n\n', 'no\n'):
                 return False
 
+    def get_non_echoed_password(self, prompt):
+        return getpass.getpass(prompt)
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        prompt += ': '
+        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return self.get_non_echoed_password(prompt)
+
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
 
@@ -143,9 +149,6 @@ class SilentUIFactory(CLIUIFactory):
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         return progress.DummyProgress()
-
-    def get_login(self, prompt='', **kwargs):
-        return None
 
     def get_password(self, prompt='', **kwargs):
         return None

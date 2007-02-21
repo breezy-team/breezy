@@ -24,7 +24,7 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.blackbox import TestUIFactory
+from bzrlib.tests import TestUIFactory
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui

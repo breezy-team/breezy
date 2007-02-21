@@ -30,6 +30,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
+                          TestUIFactory,
                           TestSkipped,
                           )
 from bzrlib.tests.blackbox import ExternalBase
@@ -211,10 +212,10 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertTrue(self.stdin is self.factory_stdin)
 
     def test_ui_factory(self):
-        # each invocation of self.run_bzr_captured should get its own UI
-        # factory, which is an instance of TestUIFactory, with stdout and
-        # stderr attached to the stdout and stderr of the invoked
-        # run_bzr_captured
+        # each invocation of self.run_bzr_captured should get its
+        # own UI factory, which is an instance of TestUIFactory,
+        # with stdin, stdout and stderr attached to the stdin,
+        # stdout and stderr of the invoked run_bzr_captured
         current_factory = bzrlib.ui.ui_factory
         self.run_bzr_captured(['foo'])
         self.failIf(current_factory is self.factory)
@@ -222,7 +223,7 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertNotEqual(sys.stderr, self.factory.stderr)
         self.assertEqual('foo\n', self.factory.stdout.getvalue())
         self.assertEqual('bar\n', self.factory.stderr.getvalue())
-        self.assertIsInstance(self.factory, bzrlib.tests.blackbox.TestUIFactory)
+        self.assertIsInstance(self.factory, TestUIFactory)
 
     def test_working_dir(self):
         self.build_tree(['one/', 'two/'])

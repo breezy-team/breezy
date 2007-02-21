@@ -26,24 +26,13 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import DotsProgressBar, TTYProgressBar, ProgressBarStack
 from bzrlib.tests import (
-    FakeStdin,
+    TestUIFactory,
     StringIOWrapper,
     TestCase,
     )
 from bzrlib.tests.test_progress import _TTYStringIO
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
-
-
-class FakeTextUIFactory(TextUIFactory):
-    """A TextUIFactory with a fake stdin"""
-
-    def __init__(self, stdin, stdout=None, stderr=None):
-        TextUIFactory.__init__(self, stdout=stdout, stderr=stderr)
-        self.stdin = stdin
-        # To ease test writing, we suppose that stdin and stdout use the same
-        # encoding
-        self.stdout.encoding = self.stdin.encoding
 
 
 class UITests(TestCase):
@@ -61,15 +50,9 @@ class UITests(TestCase):
                                                u'Hello\u1234 %(user)s',
                                                user=u'some\u1234'))
         self.assertEqual('', stdout.getvalue())
-        self.assertEqual(None,
-                         self.apply_redirected(None, stdout, stdout,
-                                               ui.get_login,
-                                               u'Who are %(user)s',
-                                               user=u'you'))
-        self.assertEqual('', stdout.getvalue())
 
     def test_text_factory_ascii_password(self):
-        ui = FakeTextUIFactory(FakeStdin('secret\n'), StringIOWrapper())
+        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper())
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -77,8 +60,7 @@ class UITests(TestCase):
                                                    ui.stdout,
                                                    ui.get_password))
             # ': ' is appended to prompt
-            # A '\n' is emitted as echo after the user enter password
-            self.assertEqual(': \n', ui.stdout.getvalue())
+            self.assertEqual(': ', ui.stdout.getvalue())
         finally:
             pb.finished()
 
@@ -88,8 +70,10 @@ class UITests(TestCase):
         We can't predict what encoding users will have for stdin, so we force
         it to utf8 to test that we transport the password correctly.
         """
-        ui = FakeTextUIFactory(FakeStdin(u'baz\u1234', 'utf8'),
-                               StringIOWrapper())
+        ui = TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = 'utf8'
+        ui.stdout.encoding = ui.stdin.encoding
         pb = ui.nested_progress_bar()
         try:
             password = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
@@ -98,39 +82,6 @@ class UITests(TestCase):
                                              user=u'some\u1234')
             # We use StringIO objects, we need to decode them
             self.assertEqual(u'baz\u1234', password.decode('utf8'))
-            self.assertEqual(u'Hello \u1234 some\u1234: \n',
-                             ui.stdout.getvalue().decode('utf8'))
-        finally:
-            pb.finished()
-
-    def test_text_factory_ascii_login(self):
-        ui = FakeTextUIFactory(FakeStdin('itsme\n'), StringIOWrapper())
-        pb = ui.nested_progress_bar()
-        try:
-            self.assertEqual('itsme',
-                             self.apply_redirected(ui.stdin, ui.stdout,
-                                                   ui.stdout,
-                                                   ui.get_login))
-            self.assertEqual(': ', ui.stdout.getvalue())
-        finally:
-            pb.finished()
-
-    def test_text_factory_utf8_login(self):
-        """Test an utf8 password.
-
-        We can't predict what encoding users will have for stdin, so we force
-        it to utf8 to test that we transport the login correctly.
-        """
-        ui = FakeTextUIFactory(FakeStdin(u'metoo\u1234', 'utf8'),
-                               StringIOWrapper())
-        pb = ui.nested_progress_bar()
-        try:
-            login = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
-                                          ui.get_login,
-                                          u'Hello \u1234 %(user)s',
-                                          user=u'some\u1234')
-            # We use StringIO objects, we need to decode them
-            self.assertEqual(u'metoo\u1234', login.decode('utf8'))
             self.assertEqual(u'Hello \u1234 some\u1234: ',
                              ui.stdout.getvalue().decode('utf8'))
         finally:

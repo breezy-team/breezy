@@ -50,6 +50,7 @@ from bzrlib import (
     memorytree,
     osutils,
     progress,
+    ui,
     urlutils,
     )
 import bzrlib.branch
@@ -170,7 +171,7 @@ class ExtendedTestResult(unittest._TextTestResult):
                 revision_id = ''
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
-        self.ui = bzrlib.ui.ui_factory
+        self.ui = ui.ui_factory
         self.num_tests = num_tests
         self.error_count = 0
         self.failure_count = 0
@@ -530,26 +531,69 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class FakeStdin(StringIOWrapper):
-    """Simulated stdin for tests only.
+class TestUIFactory(ui.CLIUIFactory):
+    """A UI Factory for testing.
 
-    We pretend to be the real stdin by redirecting the fileno method so that
-    getpass.getpass can succeed changing the echo mode of the real
-    stdin. More precisely, getpass change the echo mode via tcsetattr which
-    requires a file descriptor, once the user have entered its password the
-    echo mode is restored (this is garanteed by a try-finally). So basically
-    the risk for the tester is to lose ist echo if he attemps to type some
-    characters *while* the echo is disabled.
-
-    That allows tests to can user inputs without having to implement a
-    full-fledged stdin.
+    Hide the progress bar but emit note()s.
+    Redirect stdin.
+    Allows get_password to be tested without real tty attached.
     """
 
-    fileno = sys.stdin.fileno
+    def __init__(self,
+                 stdout=None,
+                 stderr=None,
+                 stdin=None):
+        super(TestUIFactory, self).__init__()
+        if stdin is not None:
+            # We use a StringIOWrapper to be able to test various
+            # encodings, but the user is still responsible to
+            # encode the string and to set the encoding attribute
+            # of StringIOWrapper.
+            self.stdin = StringIOWrapper(stdin)
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
 
-    def __init__(self, string, encoding='ascii'):
-        StringIOWrapper.__init__(self, string.encode(encoding))
-        self.encoding = encoding
+    def clear(self):
+        """See progress.ProgressBar.clear()."""
+
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
+
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
+
+    def finished(self):
+        """See progress.ProgressBar.finished()."""
+
+    def note(self, fmt_string, *args, **kwargs):
+        """See progress.ProgressBar.note()."""
+        self.stdout.write((fmt_string + "\n") % args)
+
+    def progress_bar(self):
+        return self
+
+    def nested_progress_bar(self):
+        return self
+
+    def update(self, message, count=None, total=None):
+        """See progress.ProgressBar.update()."""
+
+    def get_non_echoed_password(self, prompt):
+        """Get password from stdin without trying to handle the echo mode"""
+        if prompt:
+            self.stdout.write(prompt)
+        password = self.stdin.readline()
+        if not password:
+            raise EOFError
+        if password[-1] == '\n':
+            password = password[:-1]
+        return password
 
 
 class TestCase(unittest.TestCase):
@@ -601,10 +645,10 @@ class TestCase(unittest.TestCase):
     def _silenceUI(self):
         """Turn off UI for duration of test"""
         # by default the UI is off; tests can turn it on if they want it.
-        saved = bzrlib.ui.ui_factory
+        saved = ui.ui_factory
         def _restore():
-            bzrlib.ui.ui_factory = saved
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            ui.ui_factory = saved
+        ui.ui_factory = ui.SilentUIFactory()
         self.addCleanup(_restore)
 
     def _ndiff_strings(self, a, b):
@@ -957,8 +1001,6 @@ class TestCase(unittest.TestCase):
         """
         if encoding is None:
             encoding = bzrlib.user_encoding
-        if stdin is not None:
-            stdin = StringIO(stdin)
         stdout = StringIOWrapper()
         stderr = StringIOWrapper()
         stdout.encoding = encoding
@@ -970,11 +1012,8 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
-        old_ui_factory = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = bzrlib.tests.blackbox.TestUIFactory(
-            stdout=stdout,
-            stderr=stderr)
-        bzrlib.ui.ui_factory.stdin = stdin
+        old_ui_factory = ui.ui_factory
+        ui.ui_factory = TestUIFactory(stdin=stdin, stdout=stdout, stderr=stderr)
 
         cwd = None
         if working_dir is not None:
@@ -985,14 +1024,15 @@ class TestCase(unittest.TestCase):
             saved_debug_flags = frozenset(debug.debug_flags)
             debug.debug_flags.clear()
             try:
-                result = self.apply_redirected(stdin, stdout, stderr,
+                result = self.apply_redirected(ui.ui_factory.stdin,
+                                               stdout, stderr,
                                                bzrlib.commands.run_bzr_catch_errors,
                                                argv)
             finally:
                 debug.debug_flags.update(saved_debug_flags)
         finally:
             logger.removeHandler(handler)
-            bzrlib.ui.ui_factory = old_ui_factory
+            ui.ui_factory = old_ui_factory
             if cwd is not None:
                 os.chdir(cwd)
 
