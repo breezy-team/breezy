@@ -132,6 +132,7 @@ class TestFormatRegistry(TestCase):
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 
+
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
 
