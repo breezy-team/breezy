@@ -220,19 +220,19 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqual([], tree.get_parent_ids())
 
 
-class TestWorkingTreeFormat4(TestCaseWithTransport):
+class TestWorkingTreeFormatAB1(TestCaseWithTransport):
     """Tests specific to WorkingTreeFormat3."""
 
     def test_disk_layout(self):
         tree = self.make_branch_and_tree('.', format='experimental-knit3')
         control = tree.bzrdir
         # we want:
-        # format 'Bazaar-NG Working Tree format 4'
+        # format 'Bazaar-NG Working Tree format AB1'
         # inventory = 1 entry for root
         # pending-merges = ''
         # no inventory.basis yet
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar-NG Working Tree format 4',
+        self.assertEqualDiff('Bazaar-NG Working Tree format AB1',
                              t.get('format').read())
         self.assertContainsRe(t.get('inventory').read(), 
                               '<inventory format="7">\n'
@@ -255,7 +255,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     
     def test_incompatible_repo(self):
         control = bzrdir.format_registry.make_bzrdir('knit')
-        control.workingtree_format = workingtree.WorkingTreeFormat4()
+        control.workingtree_format = workingtree.WorkingTreeFormatAB1()
         tree = self.make_branch_and_tree('.', format=control)
         self.assertRaises(errors.RootNotRich, tree.commit)
 

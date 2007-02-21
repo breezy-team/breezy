@@ -78,7 +78,7 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_metadir('experimental-knit3', 
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Format using knits', 
-            tree='WorkingTreeFormat4')
+            tree='WorkingTreeFormatAB1')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
             'experimental-knit2',
@@ -108,7 +108,7 @@ class TestFormatRegistry(TestCase):
         self.assertIsInstance(my_bzrdir.repository_format, 
             knitrepo.RepositoryFormatKnit3)
         self.assertIsInstance(my_bzrdir.workingtree_format, 
-            workingtree.WorkingTreeFormat4)
+            workingtree.WorkingTreeFormatAB1)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
                               bzrlib.branch.BzrBranchFormat6)
@@ -507,7 +507,7 @@ class ChrootedTests(TestCaseWithTransport):
         branch2 = self.make_branch('branch2', format='experimental-knit3')
         format2 = branch2.bzrdir.cloning_metadir()
         self.assertIsInstance(format2.workingtree_format,
-                              workingtree.WorkingTreeFormat4)
+                              workingtree.WorkingTreeFormatAB1)
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
@@ -749,7 +749,7 @@ class NonLocalTests(TestCaseWithTransport):
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit3'))
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
-                              workingtree.WorkingTreeFormat4)
+                              workingtree.WorkingTreeFormatAB1)
 
         self.make_branch('branch-knit2', format='experimental-knit2')
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))

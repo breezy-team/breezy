@@ -2222,13 +2222,13 @@ format_registry.register_metadir('experimental-knit2',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.',
     branch_format='BzrBranchFormat5',
-    tree='WorkingTreeFormat4'
+    tree='WorkingTreeFormat3'
     )
 format_registry.register_metadir('experimental-knit3',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     'Experimental successor to knit2.  Use at your own risk.', 
     branch_format='BzrBranchFormat5',
-    tree='WorkingTreeFormat4')
+    tree='WorkingTreeFormatAB1')
 format_registry.register_metadir('experimental-branch6',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',

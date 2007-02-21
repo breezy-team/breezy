@@ -40,7 +40,7 @@ from bzrlib.tests import (
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeFormat4,
+                                WorkingTreeFormatAB1,
                                 WorkingTreeTestProviderAdapter,
                                 _legacy_formats,
                                 )
@@ -178,7 +178,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         for adapted_test in result:
             # for working tree adapted tests, preserve the tree
             adapted_test.workingtree_to_test_tree = return_parameter
-        default_format = WorkingTreeFormat4()
+        default_format = WorkingTreeFormatAB1()
         revision_tree_test = self._clone_test(
             test,
             default_format._matchingbzrdir, 

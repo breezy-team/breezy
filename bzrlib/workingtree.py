@@ -2121,7 +2121,7 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
-class WorkingTree4(WorkingTree3):
+class WorkingTreeAB1(WorkingTree3):
 
     def _serialize(self, inventory, out_file):
         xml7.serializer_v7.write_inventory(self._inventory, out_file)
@@ -2465,11 +2465,11 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-class WorkingTreeFormat4(WorkingTreeFormat3):
+class WorkingTreeFormatAB1(WorkingTreeFormat3):
     
     """Working tree format that supports unique roots and nested trees"""
 
-    _tree_class = WorkingTree4
+    _tree_class = WorkingTreeAB1
 
     requires_rich_root = True
 
@@ -2485,7 +2485,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format 4"
+        return "Bazaar-NG Working Tree format AB1"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -2498,7 +2498,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 # and not independently creatable, so are not registered.
 __default_format = WorkingTreeFormat3()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat4())
+WorkingTreeFormat.register_format(WorkingTreeFormatAB1())
 WorkingTreeFormat.set_default_format(__default_format)
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
