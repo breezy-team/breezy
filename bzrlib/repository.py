@@ -1018,7 +1018,7 @@ class RepositoryFormat(object):
         # format objects are generally stateless
         return isinstance(other, self.__class__)
 
-    def __neq__(self, other):
+    def __ne__(self, other):
         return not self == other
 
     @classmethod

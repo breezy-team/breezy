@@ -377,8 +377,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     This format was introduced in bzr 0.8.
     """
 
-    def __neq__(self, other):
-        import pdb; pdb.set_trace()
+    def __ne__(self, other):
         return self.__class__ is not other.__class__
 
     def get_format_string(self):

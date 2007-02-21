@@ -1499,6 +1499,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         return True
 
+    def __ne__(self, other):
+        return not self == other
+
     def get_branch_format(self):
         if self._branch_format is None:
             from bzrlib.branch import BranchFormat

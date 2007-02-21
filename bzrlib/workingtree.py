@@ -2232,6 +2232,12 @@ class WorkingTreeFormat(object):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
+    def __eq__(self, other):
+        return self.__class__ is other.__class__
+
+    def __ne__(self, other):
+        return not (self == other)
+
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""

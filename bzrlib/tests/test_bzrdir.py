@@ -23,19 +23,19 @@ import os.path
 from StringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
+    errors,
     help_topics,
+    repository,
     symbol_versioning,
     urlutils,
     workingtree,
     )
 import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
@@ -550,6 +550,22 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         t = dir.transport
         self.assertIsDirectory('branch-lock', t)
+
+    def test_comparison(self):
+        """Equality and inequality behave properly.
+
+        Metadirs should compare equal iff they have the same repo, branch and
+        tree formats.
+        """
+        mydir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(mydir, mydir)
+        self.assertFalse(mydir != mydir)
+        otherdir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(otherdir, mydir)
+        self.assertFalse(otherdir != mydir)
+        otherdir2 = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+        self.assertNotEqual(otherdir2, mydir)
+        self.assertFalse(otherdir2 == mydir)
 
         
 class TestFormat5(TestCaseWithTransport):
