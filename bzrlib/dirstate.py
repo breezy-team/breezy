@@ -667,10 +667,9 @@ class DirState(object):
         :param path_utf8: An utf8 path to be looked up.
         :return: The dirstate entry tuple for path, or (None, None)
         """
-        if path_utf8 is not None:
-            assert path_utf8.__class__ == str, 'path_utf8 is not a str: %s %s' % (type(path_utf8), path_utf8)
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
+            assert path_utf8.__class__ == str, 'path_utf8 is not a str: %s %s' % (type(path_utf8), path_utf8)
             # path lookups are faster
             if path_utf8 == '':
                 for entry in self._root_entries:
@@ -695,7 +694,7 @@ class DirState(object):
                         # look up the real location directly by path
                         return self._get_entry(tree_index,
                             fileid_utf8=fileid_utf8,
-                            path_utf8=entry[1][tree_index][0])
+                            path_utf8=entry[1][tree_index][1])
                     if entry[1][tree_index][0] == 'absent':
                         # not in the tree at all.
                         return None, None
