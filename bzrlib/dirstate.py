@@ -224,6 +224,12 @@ class DirState(object):
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
 
+    # TODO: jam 20070221 Make sure we handle when there are duplicated records
+    #       (like when we remove + add the same path, or we have a rename)
+    # TODO: jam 20070221 Figure out what to do if we have a record that exceeds
+    #       the BISECT_PAGE_SIZE.
+    BISECT_PAGE_SIZE = 4096
+
     NOT_IN_MEMORY = 0
     IN_MEMORY_UNMODIFIED = 1
     IN_MEMORY_MODIFIED = 2
@@ -435,6 +441,19 @@ class DirState(object):
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return '\0'.join(entire_entry)
 
+    def _fields_per_row(self):
+        """How many null separated fields should be in each entry row.
+
+        Each line now has an extra '\n' field which is not used
+        so we just skip over it
+        entry size:
+            3 fields for the key
+            + number of fields per tree_data (5) * tree count
+            + newline
+         """
+        tree_count = 1 + self._num_present_parents()
+        return 3 + 5 * tree_count + 1
+
     def _find_block(self, key, add_if_missing=False):
         """Return the block that key should be present in.
 
@@ -604,6 +623,91 @@ class DirState(object):
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
+
+    def _get_fields_to_entry(self):
+        """Get a function which converts entry fields into a entry record.
+
+        This handles kind, size, and executable, as well as parent records.
+
+        :return: A function which takes a list of fields, and returns an
+            appropriate record for storing in memory.
+        """
+        # This is intentionally unrolled for performance
+        num_present_parents = self._num_present_parents()
+        if num_present_parents == 0:
+            def fields_to_entry_0_parents(fields, _int=int, _tuple=tuple,
+                                          _mini_to_kind=self._minikind_to_kind):
+                path_name_file_id_key = _tuple(fields[:3])
+                return (path_name_file_id_key, [
+                    ( # Current tree
+                        _mini_to_kind[fields[3]], # kind
+                        fields[4],                # fingerprint
+                        _int(fields[5]),          # size
+                        fields[6] == 'y',         # executable
+                        fields[7],                # packed_stat or revision_id
+                    )])
+            return fields_to_entry_0_parents
+        elif num_present_parents == 1:
+            def fields_to_entry_1_parent(fields, _int=int, _tuple=tuple,
+                                         _mini_to_kind=self._minikind_to_kind):
+                path_name_file_id_key = _tuple(fields[:3])
+                return (path_name_file_id_key, [
+                    ( # Current tree
+                        _mini_to_kind[fields[3]], # kind
+                        fields[4],                # fingerprint
+                        _int(fields[5]),          # size
+                        fields[6] == 'y',         # executable
+                        fields[7],                # packed_stat or revision_id
+                    ),
+                    ( # Parent 1
+                        _mini_to_kind[fields[8]], # kind
+                        fields[9],                # fingerprint
+                        _int(fields[10]),         # size
+                        fields[11] == 'y',        # executable
+                        fields[12],               # packed_stat or revision_id
+                    ),
+                    ])
+            return fields_to_entry_1_parent
+        elif num_present_parents == 2:
+            def fields_to_entry_2_parents(fields, _int=int, _tuple=tuple,
+                                          _mini_to_kind=self._minikind_to_kind):
+                path_name_file_id_key = _tuple(fields[:3])
+                return (path_name_file_id_key, [
+                    ( # Current tree
+                        _mini_to_kind[fields[3]], # kind
+                        fields[4],                # fingerprint
+                        _int(fields[5]),          # size
+                        fields[6] == 'y',         # executable
+                        fields[7],                # packed_stat or revision_id
+                    ),
+                    ( # Parent 1
+                        _mini_to_kind[fields[8]], # kind
+                        fields[9],                # fingerprint
+                        _int(fields[10]),         # size
+                        fields[11] == 'y',        # executable
+                        fields[12],               # packed_stat or revision_id
+                    ),
+                    ( # Parent 2
+                        _mini_to_kind[fields[13]],# kind
+                        fields[14],               # fingerprint
+                        _int(fields[15]),         # size
+                        fields[16] == 'y',        # executable
+                        fields[17],               # packed_stat or revision_id
+                    ),
+                    ])
+            return fields_to_entry_2_parents
+        else:
+            def fields_to_entry_n_parents(fields, _int=int, _tuple=tuple,
+                                          _mini_to_kind=self._minikind_to_kind):
+                path_name_file_id_key = _tuple(fields[:3])
+                trees = [(_mini_to_kind[fields[cur]], # kind
+                          fields[cur+1],              # fingerprint
+                          _int(fields[cur+2]),        # size
+                          fields[cur+3] == 'y',       # executable
+                          fields[cur+4],              # stat or revision_id
+                         ) for cur in xrange(3, len(fields)-1, 5)]
+                return path_name_file_id_key, trees
+            return fields_to_entry_n_parents
 
     def get_parent_ids(self):
         """Return a list of the parent tree ids for the directory state."""
@@ -799,6 +903,10 @@ class DirState(object):
         return ('/', 'RECYCLED.BIN', 'file', fileid_utf8, 0, DirState.NULLSTAT,
             ''), parents
 
+    def _num_present_parents(self):
+        """The number of parent entries in each record row."""
+        return len(self._parents) - len(self._ghosts)
+
     @staticmethod
     def on_file(path):
         """Construct a DirState on the file at path path."""
@@ -834,9 +942,9 @@ class DirState(object):
             #  3 fields for the key
             #  + number of fields per tree_data (5) * tree count
             #  + newline
-            num_present_parents = len(self._parents) - len(self._ghosts)
+            num_present_parents = self._num_present_parents()
             tree_count = 1 + num_present_parents
-            entry_size = 3 + 5 * tree_count + 1
+            entry_size = self._fields_per_row()
             expected_field_count = entry_size * self._num_entries
             if len(fields) - cur > expected_field_count:
                 fields = fields[:expected_field_count + cur]
@@ -850,51 +958,10 @@ class DirState(object):
                     field_count - cur, expected_field_count, entry_size,
                     self._num_entries, fields)
 
-            # Fast path the case where there are 1 or 2 parents
-            if num_present_parents == 0:
-                # key, [current tree]
-                entries = [(tuple(fields[pos:pos + 3]), [fields[pos + 3:pos + 8]])
-                    for pos in xrange(cur, field_count, entry_size)]
-            elif num_present_parents == 1:
-                # key,
-                entries = [(tuple(fields[pos:pos + 3]),
-                #   [current tree,             parent 1]
-                    [fields[pos + 3:pos + 8], fields[pos + 8:pos + 13], ])
-                    for pos in xrange(cur, field_count, entry_size)]
-            elif num_present_parents == 2:
-                # key,
-                entries = [(tuple(fields[pos:pos + 3]),
-                #   [current tree,             parent 1, 
-                    [fields[pos + 3:pos + 8], fields[pos + 8:pos + 13],
-                #   parent 2]
-                    fields[pos + 13:pos + 18], ])
-                    for pos in xrange(cur, field_count, entry_size)]
-            else:
-                entries = [(
-                    tuple(fields[pos:pos+3]), #key
-                    tuple([fields[chunk:chunk+5] for 
-                        chunk in xrange(pos + 3, pos+entry_size-1, 5)]))
-                            for pos in xrange(cur, field_count, entry_size)
-                ]
-
-            assert len(entries) == self._num_entries, '%s != %s entries' % (len(entries),
-                self._num_entries)
-
-            def _line_to_entry(line):
-                """Convert freshly read tree details to the final form.
-                
-                This converts size and minikind for use and makes it into a 
-                tuple.
-                """
-                for tree in line[1]:
-                    # convert the minikind to kind
-                    tree[0] = self._minikind_to_kind[tree[0]]
-                    # convert the size to an int
-                    tree[2] = int(tree[2])
-                    tree[3] = tree[3] == 'y'
-                return line[0], map(tuple, line[1])
-            new_entries = map(_line_to_entry, entries)
-            self._entries_to_current_state(new_entries)
+            fields_to_entry = self._get_fields_to_entry()
+            entries = [fields_to_entry(fields[pos:pos+entry_size])
+                       for pos in xrange(cur, field_count, entry_size)]
+            self._entries_to_current_state(entries)
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
