@@ -28,6 +28,7 @@ when the branch is opened.  Clients should typically do
 
 from bzrlib import (
     errors,
+    trace,
     )
 from bzrlib.util import bencode
 
@@ -88,7 +89,13 @@ class BasicTags(_Tags):
     def get_tag_dict(self):
         self.branch.lock_read()
         try:
-            tag_content = self.branch._transport.get_bytes('tags')
+            try:
+                tag_content = self.branch._transport.get_bytes('tags')
+            except errors.NoSuchFile, e:
+                trace.warning('Missing tags file in %s.  '
+                     'This branch was probably created by bzr 0.15pre.  '
+                     'Please create an empty branch/tags file.')
+                return {}
             return self._deserialize_tag_dict(tag_content)
         finally:
             self.branch.unlock()

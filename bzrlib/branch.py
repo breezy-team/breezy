@@ -1036,6 +1036,9 @@ class BzrBranchFormat6(BzrBranchFormat5):
                           a_bzrdir=a_bzrdir,
                           _repository=a_bzrdir.find_repository())
 
+    def supports_tags(self):
+        return True
+
 
 class BranchReferenceFormat(BranchFormat):
     """Bzr branch reference format.
@@ -2009,6 +2012,9 @@ class BzrBranch6(BzrBranch5):
         else:
             revno = self.revision_id_to_revno(revision_id)
         destination.set_last_revision_info(revno, revision_id)
+
+    def _make_tags(self):
+        return BasicTags(self)
 
 
 class BranchTestProviderAdapter(object):
