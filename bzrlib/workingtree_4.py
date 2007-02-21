@@ -283,12 +283,12 @@ class WorkingTree4(WorkingTree3):
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
-        entry, parents = self._get_entry(file_id=file_id, path=path)
-        assert entry is not None, 'what error should this raise'
+        key, details = self._get_entry(file_id=file_id, path=path)
+        assert key is not None, 'what error should this raise'
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = os.path.join(entry[0][0:2]).decode('utf8')
+            path = os.path.join(*key[0:2]).decode('utf8')
         return self._hashcache.get_sha1(path, stat_value)
 
     def _get_inventory(self):
