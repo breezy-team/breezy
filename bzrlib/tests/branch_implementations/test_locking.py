@@ -17,6 +17,8 @@
 """Test locks across all branch implemenations"""
 
 from bzrlib import errors
+from bzrlib.remote import RemoteBranchFormat
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
 
@@ -33,6 +35,9 @@ class TestBranchLocking(TestCaseWithBranch):
         # 'control_files' member. So we should fail gracefully if
         # not there. But assuming it has them lets us test the exact 
         # lock/unlock order.
+        if isinstance(self.branch_format, RemoteBranchFormat):
+            raise TestSkipped(
+                "RemoteBranches don't have 'control_files'.")
         self.locks = []
         b = LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = LockWrapper(self.locks, b.repository, 'r')
