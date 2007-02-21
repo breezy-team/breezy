@@ -3203,6 +3203,29 @@ class cmd_tag(Command):
             self.outf.write('created tag %s' % tag_name)
 
 
+class cmd_tags(Command):
+    """List tags.
+
+    This tag shows a table of tag names and the revisions they reference.
+    """
+
+    takes_options = [
+        Option('directory',
+            help='Branch whose tags should be displayed',
+            short_name='d',
+            type=unicode,
+            ),
+    ]
+
+    @display_command
+    def run(self,
+            directory='.',
+            ):
+        branch, relpath = Branch.open_containing(directory)
+        for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
+            self.outf.write('%-40s %s' % (tag_name, target))
+
+
 # command-line interpretation helper for merge-related commands
 def _merge_helper(other_revision, base_revision,
                   check_clean=True, ignore_zero=False,
