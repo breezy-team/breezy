@@ -340,6 +340,7 @@ class DirState(object):
 
     def add_deleted(self, fileid_utf8, parents):
         """Add fileid_utf8 with parents as deleted."""
+        raise Exception, "broken"
         self._read_dirblocks_if_needed()
         new_row = self._make_deleted_row(fileid_utf8, parents)
         block_index = self._find_dirblock_index(new_row[0][0])
@@ -443,7 +444,7 @@ class DirState(object):
         :return: The block tuple.
         """
         if key[0:2] == ('', ''):
-            return self._root_entries
+            return ('', self._root_entries)
         else:
             block_index, present = self._find_block_index_from_key(key)
             if not present:
@@ -1221,7 +1222,7 @@ class DirState(object):
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
-                self._make_absent(num_present_parents, current_old, id_index)
+                self._make_absent(current_old, id_index)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
                 # same -  common case
@@ -1246,47 +1247,58 @@ class DirState(object):
                 current_new = advance(new_iterator)
             else:
                 # old comes before:
-                self._make_absent(num_present_parents, current_old, id_index)
+                self._make_absent(current_old, id_index)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
-    def _make_absent(self, num_present_parents, current_old, id_index):
-        # remove old from the state, advance old
-        # to remove old, we have two conditions:
-        # either its the last reference to this path that we are
-        # removing, or its not. If its the last reference, we remove
-        # the entire row and remove the path from the id mapping. If
-        # its not the last reference, we just set it to absent.
-        last_reference = True
-        for lookup_index in xrange(1, num_present_parents + 1):
-            if current_old[1][lookup_index] not in ('absent', 'relocated'):
-                last_reference = False
-                break
-        if not last_reference:
-            # common case, theres a parent at this path
-            current_old[1][0] = DirState.NULL_PARENT_DETAILS
-        else:
-            # there are no more references at this path
-            id_index[current_old[0][2]].remove(current_old[0])
-            # are there others (which will need to be changed
-            # from relocated to absent for index 0)?
-            for update_key in id_index[current_old[0][2]]:
-                # update the entry for 0 to say absent: there is a parent at
-                # that path, but nothing in this tree for that file id anymore.
-                update_block_index, present = \
-                    self._find_block_index_from_key(update_key)
-                assert present
-                update_entry_index, present = \
-                    self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
-                assert present
-                update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
-                # it must currently be relocated
-                assert update_tree_details[0][0] == 'relocated'
-                update_tree_details[0] = DirState.NULL_PARENT_DETAILS
+    def _make_absent(self, current_old, id_index=None):
+        """Mark current_old - an entry - as absent for tree 0.
+
+        :param id_index: An index from fileid_utf8 to sets of keys, used by
+            some functions. If provided it will be updated if needed.
+        :return: True if this was the last details entry for they entry key:
+            that is, if the underlying block has had the entry removed, thus
+            shrinking in legnth.
+        """
+        # build up paths that this id will be left at after the change is made,
+        # so we can update their cross references in tree 0
+        all_remaining_keys = set()
+        # Dont check the working tree, because its going.
+        for details in current_old[1][1:]:
+            if details[0] not in ('absent', 'relocated'):
+                all_remaining_keys.add(current_old[0])
+            elif details[0] == 'relocated':
+                # record the key for the real path.
+                all_remaining_keys.add(tuple(os.path.split(details[1])) + tuple(current_old[0][2]))
+            # absent rows are not present at any path.
+        last_reference = current_old[0] not in all_remaining_keys
+        if last_reference:
+            # the current row consists entire of the current item (being marked
+            # absent), and relocated or absent entries for the other trees:
+            # Remove it, its meaningless.
             block = self._find_block(current_old[0])
             entry_index, present = self._find_entry_index(current_old[0], block[1])
             assert present
             block[1].pop(entry_index)
+            # if we have an id_index in use, remove this key from it for this id.
+            if id_index is not None:
+                id_index[current_old[0][2]].remove(current_old[0])
+        # update all remaining keys for this id to record it as absent. The
+        # existing details may either be the record we are making as deleted
+        # (if there were other trees with the id present at this path), or may
+        # be relocations.
+        for update_key in all_remaining_keys:
+            update_block_index, present = \
+                self._find_block_index_from_key(update_key)
+            assert present
+            update_entry_index, present = \
+                self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
+            assert present
+            update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
+            # it must not be absent at the moment
+            assert update_tree_details[0][0] != 'absent'
+            update_tree_details[0] = DirState.NULL_PARENT_DETAILS
+        return last_reference
 
     def update_minimal(self, key, kind, num_present_parents, executable=False,
         fingerprint='', packed_stat=None, size=0, id_index=None,

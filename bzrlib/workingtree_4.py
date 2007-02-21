@@ -660,51 +660,60 @@ class WorkingTree4(WorkingTree3):
         paths_to_unversion = set()
         # sketch:
         # check if the root is to be unversioned, if so, assert for now.
-        # make a copy of the _dirblocks data
-        # during the copy,
-        #  skip paths in paths_to_unversion
-        #  skip ids in ids_to_unversion, and add their paths to
-        #  paths_to_unversion if they are a directory
+        # walk the state marking unversioned things as absent.
         # if there are any un-unversioned ids at the end, raise
-        if state._root_row[0][3] in ids_to_unversion:
-            # I haven't written the code to unversion / yet - it should be
-            # supported.
-            raise errors.BzrError('Unversioning the / is not currently supported')
-        new_blocks = []
-        deleted_rows = []
-        for block in state._dirblocks:
+        for key, details in state._root_entries:
+            if (details[0][0] not in ('absent', 'relocated') and
+                key[2] in ids_to_unversion):
+                # I haven't written the code to unversion / yet - it should be
+                # supported.
+                raise errors.BzrError('Unversioning the / is not currently supported')
+        details_length = len(state._root_entries[0][1])
+        block_index = 0
+        while block_index < len(state._dirblocks):
+            # process one directory at a time.
+            block = state._dirblocks[block_index]
             # first check: is the path one to remove - it or its children
             delete_block = False
             for path in paths_to_unversion:
                 if (block[0].startswith(path) and
                     (len(block[0]) == len(path) or
                      block[0][len(path)] == '/')):
-                    # this path should be deleted
+                    # this entire block should be deleted - its the block for a
+                    # path to unversion; or the child of one
                     delete_block = True
                     break
             # TODO: trim paths_to_unversion as we pass by paths
             if delete_block:
-                # this block is to be deleted. skip it.
+                # this block is to be deleted: process it.
+                # TODO: we can special case the no-parents case and
+                # just forget the whole block.
+                entry_index = 0
+                while entry_index < len(block[1]):
+                    if not state._make_absent(block[1][entry_index]):
+                        entry_index += 1
+                # go to the next block. (At the moment we dont delete empty
+                # dirblocks)
+                block_index += 1
                 continue
-            # copy undeleted rows from within the the block
-            new_blocks.append((block[0], []))
-            new_row = new_blocks[-1][1]
-            for row, row_parents in block[1]:
-                if row[3] not in ids_to_unversion:
-                    new_row.append((row, row_parents))
-                else:
-                    # skip the row, and if its a dir mark its path to be removed
-                    if row[2] == 'directory':
-                        paths_to_unversion.add((row[0] + '/' + row[1]).strip('/'))
-                    if row_parents:
-                        deleted_rows.append((row[3], row_parents))
-                    ids_to_unversion.remove(row[3])
+            entry_index = 0
+            while entry_index < len(block[1]):
+                entry = block[1][entry_index]
+                if (entry[1][0][0] in ('absent', 'relocated') or
+                    # ^ some parent row.
+                    entry[0][2] not in ids_to_unversion):
+                    # ^ not an id to unversion
+                    entry_index += 1
+                    continue
+                if entry[1][0][0] == 'directory':
+                    paths_to_unversion.add(os.path.join(*entry[0][0:2]))
+                if not state._make_absent(entry):
+                    entry_index += 1
+                # we have unversioned this id
+                ids_to_unversion.remove(entry[0][2])
+            block_index += 1
         if ids_to_unversion:
             raise errors.NoSuchId(self, iter(ids_to_unversion).next())
-        state._dirblocks = new_blocks
-        for fileid_utf8, parents in deleted_rows:
-            state.add_deleted(fileid_utf8, parents)
-        state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
         self._dirty = True
         # have to change the legacy inventory too.
         if self._inventory is not None:
@@ -869,6 +878,10 @@ class DirStateRevisionTree(Tree):
                     inv_entry.text_sha1 = link_or_sha1
                 elif kind == 'directory':
                     parent_ids[(dirname + '/' + name).strip('/')] = file_id
+                elif kind == 'symlink':
+                    inv_entry.executable = False
+                    inv_entry.text_size = size
+                    inv_entry.symlink_target = link_or_sha1.decode('utf8')
                 else:
                     raise Exception, kind
                 inv.add(inv_entry)
