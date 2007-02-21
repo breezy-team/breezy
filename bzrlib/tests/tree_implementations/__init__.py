@@ -53,7 +53,7 @@ def return_parameter(something):
 
 def revision_tree_from_workingtree(tree):
     """Create a revision tree from a working tree."""
-    revid = tree.commit('save tree', allow_pointless=True)
+    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
 
 
