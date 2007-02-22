@@ -233,7 +233,7 @@ class Tree(object):
         :param require_versioned: If False, do not raise NotVersionedError if
             an element of paths is not versioned in this tree and all of trees.
         """
-        return find_ids_across_trees(paths, [self] + trees, require_versioned)
+        return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
@@ -568,11 +568,11 @@ class InterTree(InterObject):
         """
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
-        trees = (self.source, self.target)
+        trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
         # target is usually the newer tree:
-        specific_file_ids = self.target.paths2ids(specific_files, [self.source],
+        specific_file_ids = self.target.paths2ids(specific_files, trees,
             require_versioned=require_versioned)
         if specific_files and not specific_file_ids:
             # All files are unversioned, so just return an empty delta
