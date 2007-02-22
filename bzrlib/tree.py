@@ -568,8 +568,9 @@ class InterTree(InterObject):
         trees = (self.source, self.target)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
-        specific_file_ids = find_ids_across_trees(specific_files,
-            trees, require_versioned=require_versioned)
+        # target is usually the newer tree:
+        specific_file_ids = self.target.paths2ids(specific_files, [self.source],
+            require_versioned=require_versioned)
         if specific_files and not specific_file_ids:
             # All files are unversioned, so just return an empty delta
             # _compare_trees would think we want a complete delta

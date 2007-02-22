@@ -143,8 +143,8 @@ def show_tree_status(wt, show_unchanged=None,
         try:
             _raise_if_nonexistent(specific_files, old, new)
             if short:
-                specific_file_ids = tree.find_ids_across_trees(specific_files,
-                    (old, new), require_versioned=False)
+                specific_file_ids = new.paths2ids(specific_files, [old],
+                                                  require_versioned=False)
                 changes = new._iter_changes(old, show_unchanged,
                                             specific_file_ids)
                 reporter = _mod_delta.ChangeReporter(old.inventory,
