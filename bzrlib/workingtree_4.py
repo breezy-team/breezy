@@ -40,6 +40,7 @@ import warnings
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cache_utf8,
     conflicts as _mod_conflicts,
     dirstate,
     errors,
@@ -235,6 +236,10 @@ class WorkingTree4(WorkingTree3):
         current_id = root_key[2]
         assert current_entry[0][0] == 'd' # directory
         inv = Inventory(root_id=current_id)
+        # Turn some things into local variables
+        minikind_to_kind = dirstate.DirState._minikind_to_kind
+        factory = entry_factory
+        utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
@@ -246,15 +251,15 @@ class WorkingTree4(WorkingTree3):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                if entry[0][0] in ('a', 'r'): # absent, relocated
+                minikind, link_or_sha1, size, executable, stat = entry[0]
+                if minikind in ('a', 'r'): # absent, relocated
                     # a parent tree only entry
                     continue
                 name = key[1]
-                name_unicode = name.decode('utf8')
+                name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
-                minikind, link_or_sha1, size, executable, stat = entry[0]
-                kind = dirstate.DirState._minikind_to_kind[minikind]
-                inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
+                kind = minikind_to_kind[minikind]
+                inv_entry = factory[kind](file_id, name_unicode, parent_id)
                 if kind == 'file':
                     # not strictly needed: working tree
                     #entry.executable = executable
@@ -1016,6 +1021,10 @@ class DirStateRevisionTree(Tree):
         assert current_entry[parent_index][0] == 'd'
         inv = Inventory(root_id=current_id, revision_id=self._revision_id)
         inv.root.revision = current_entry[parent_index][4]
+        # Turn some things into local variables
+        minikind_to_kind = dirstate.DirState._minikind_to_kind
+        factory = entry_factory
+        utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ids = {'' : inv.root.file_id}
@@ -1027,15 +1036,15 @@ class DirStateRevisionTree(Tree):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                if entry[parent_index][0] in ('a', 'r'): # absent, relocated
+                minikind, link_or_sha1, size, executable, revid = entry[parent_index]
+                if minikind in ('a', 'r'): # absent, relocated
                     # not this tree
                     continue
                 name = key[1]
-                name_unicode = name.decode('utf8')
+                name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
-                minikind, link_or_sha1, size, executable, revid = entry[parent_index]
-                kind = dirstate.DirState._minikind_to_kind[minikind]
-                inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
+                kind = minikind_to_kind[minikind]
+                inv_entry = factory[kind](file_id, name_unicode, parent_id)
                 inv_entry.revision = revid
                 if kind == 'file':
                     inv_entry.executable = executable
@@ -1046,7 +1055,7 @@ class DirStateRevisionTree(Tree):
                 elif kind == 'symlink':
                     inv_entry.executable = False
                     inv_entry.text_size = size
-                    inv_entry.symlink_target = link_or_sha1.decode('utf8')
+                    inv_entry.symlink_target = utf8_decode(link_or_sha1)[0]
                 else:
                     raise Exception, kind
                 inv.add(inv_entry)
