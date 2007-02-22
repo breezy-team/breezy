@@ -898,20 +898,6 @@ class DirState(object):
                         current_dirname = dirname
                         self._dirblocks.append((current_dirname, current_block))
                         append_entry = current_block.append
-                    elif not dirname and name:
-                        # this is not a root entry for a tree (it has a basename)
-                        # TODO: jam 20070222 This is used to step from root
-                        #       block to contents of root block. We need a
-                        #       custom step, because they both have a path
-                        #       prefix of ''. However this else is only
-                        #       evaluated for the first few rows, and
-                        #       significantly impacts the parsing speed. We
-                        #       need to find a way to avoid this. We could
-                        #       either create an earlier loop which exits when
-                        #       this condition is met, or we find a way to
-                        #       treat "root block" as different than
-                        #       "contents-of-root block".
-                        append_entry = self._dirblocks[-1][1].append
                     # we know current_dirname == dirname, so re-use it to avoid
                     # creating new strings
                     entry = ((current_dirname, name, file_id),
@@ -934,6 +920,19 @@ class DirState(object):
                     assert trailing == '\n'
                     # append the entry to the current block
                     append_entry(entry)
+                # The above loop leaves the "root block" entries mixed with the
+                # "contents-of-root block". But we don't want an if check on
+                # all entries, so instead we just fix it up here.
+                assert self._dirblocks[1] == ('', [])
+                root_block = []
+                contents_of_root_block = []
+                for entry in self._dirblocks[0][1]:
+                    if not entry[0][1]: # This is a root entry
+                        root_block.append(entry)
+                    else:
+                        contents_of_root_block.append(entry)
+                self._dirblocks[0] = ('', root_block)
+                self._dirblocks[1] = ('', contents_of_root_block)
             else:
                 fields_to_entry = self._get_fields_to_entry()
                 entries = [fields_to_entry(fields[pos:pos+entry_size])
