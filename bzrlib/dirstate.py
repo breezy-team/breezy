@@ -870,10 +870,75 @@ class DirState(object):
                     field_count - cur, expected_field_count, entry_size,
                     self._num_entries, fields)
 
-            fields_to_entry = self._get_fields_to_entry()
-            entries = [fields_to_entry(fields[pos:pos+entry_size])
-                       for pos in xrange(cur, field_count, entry_size)]
-            self._entries_to_current_state(entries)
+            if num_present_parents == 1:
+                # Bind external functions to local names
+                _mini_to_kind = DirState._minikind_to_kind
+                _int = int
+                # We access all fields in order, so we can just iterate over
+                # them. Grab an straight iterator over the fields. (We use an
+                # iterator because we don't want to do a lot of additions, nor
+                # do we want to do a lot of slicing)
+                next = iter(fields).next
+                # Move the iterator to the current position
+                for x in xrange(cur):
+                    next()
+                # The two blocks here are deliberate: the root block and the
+                # contents-of-root block.
+                self._dirblocks = [('', []), ('', [])]
+                current_block = self._dirblocks[0][1]
+                current_dirname = ''
+                append_entry = current_block.append
+                for count in xrange(self._num_entries):
+                    dirname = next()
+                    name = next()
+                    file_id = next()
+                    if dirname != current_dirname:
+                        # new block - different dirname
+                        current_block = []
+                        current_dirname = dirname
+                        self._dirblocks.append((current_dirname, current_block))
+                        append_entry = current_block.append
+                    elif not dirname and name:
+                        # this is not a root entry for a tree (it has a basename)
+                        # TODO: jam 20070222 This is used to step from root
+                        #       block to contents of root block. We need a
+                        #       custom step, because they both have a path
+                        #       prefix of ''. However this else is only
+                        #       evaluated for the first few rows, and
+                        #       significantly impacts the parsing speed. We
+                        #       need to find a way to avoid this. We could
+                        #       either create an earlier loop which exits when
+                        #       this condition is met, or we find a way to
+                        #       treat "root block" as different than
+                        #       "contents-of-root block".
+                        append_entry = self._dirblocks[-1][1].append
+                    # we know current_dirname == dirname, so re-use it to avoid
+                    # creating new strings
+                    entry = ((current_dirname, name, file_id),
+                             [(# Current Tree
+                                 _mini_to_kind[next()], # kind
+                                 next(),                # fingerprint
+                                 _int(next()),          # size
+                                 next() == 'y',         # executable
+                                 next(),                # packed_stat or revision_id
+                             ),
+                             ( # Parent 1
+                                 _mini_to_kind[next()], # kind
+                                 next(),                # fingerprint
+                                 _int(next()),          # size
+                                 next() == 'y',         # executable
+                                 next(),                # packed_stat or revision_id
+                             ),
+                             ])
+                    trailing = next()
+                    assert trailing == '\n'
+                    # append the entry to the current block
+                    append_entry(entry)
+            else:
+                fields_to_entry = self._get_fields_to_entry()
+                entries = [fields_to_entry(fields[pos:pos+entry_size])
+                           for pos in xrange(cur, field_count, entry_size)]
+                self._entries_to_current_state(entries)
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
