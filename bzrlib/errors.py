@@ -621,7 +621,10 @@ class PathsDoNotExist(BzrError):
 
 class BadFileKindError(BzrError):
 
-    _fmt = "Cannot operate on %(filename)s of unsupported kind %(kind)s"
+    _fmt = 'Cannot operate on "%(filename)s" of unsupported kind "%(kind)s"'
+
+    def __init__(self, filename, kind):
+        BzrError.__init__(self, filename=filename, kind=kind)
 
 
 class ForbiddenControlFileError(BzrError):
@@ -1720,9 +1723,15 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
         BadInventoryFormat.__init__(self, msg=msg)
 
 
+class RootNotRich(BzrError):
+
+    _fmt = """This operation requires rich root data storage"""
+
+
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+
     internal_error = True
 
     def __init__(self, transport):
@@ -1792,3 +1801,41 @@ class ImportNameCollision(BzrError):
     def __init__(self, name):
         BzrError.__init__(self)
         self.name = name
+
+
+class UnsupportedInventoryKind(BzrError):
+    
+    _fmt = """Unsupported entry kind %(kind)s"""
+
+    def __init__(self, kind):
+        self.kind = kind
+
+
+class BadSubsumeSource(BzrError):
+
+    _fmt = """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
+
+
+class SubsumeTargetNeedsUpgrade(BzrError):
+    
+    _fmt = """Subsume target %(other_tree)s needs to be upgraded."""
+
+    def __init__(self, other_tree):
+        self.other_tree = other_tree
+
+
+class BadReferenceTarget(BzrError):
+
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s.  %(reason)s"
+
+    internal_error = True
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason

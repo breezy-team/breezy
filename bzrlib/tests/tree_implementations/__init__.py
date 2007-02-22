@@ -40,6 +40,7 @@ from bzrlib.tests import (
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (WorkingTreeFormat,
+                                WorkingTreeFormatAB1,
                                 WorkingTreeTestProviderAdapter,
                                 _legacy_formats,
                                 )
@@ -56,7 +57,7 @@ def return_parameter(something):
 
 def revision_tree_from_workingtree(tree):
     """Create a revision tree from a working tree."""
-    revid = tree.commit('save tree', allow_pointless=True)
+    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
 
 
@@ -225,7 +226,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         for adapted_test in result:
             # for working tree adapted tests, preserve the tree
             adapted_test.workingtree_to_test_tree = return_parameter
-        default_format = WorkingTreeFormat.get_default_format()
+        default_format = WorkingTreeFormatAB1()
         revision_tree_test = self._clone_test(
             test,
             default_format._matchingbzrdir, 

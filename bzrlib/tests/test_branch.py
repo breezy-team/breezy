@@ -250,6 +250,38 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
+    def do_checkout_test(self, lightweight=False):
+        tree = self.make_branch_and_tree('source', format='experimental-knit3')
+        subtree = self.make_branch_and_tree('source/subtree', 
+                                            format='experimental-knit3')
+        subsubtree = self.make_branch_and_tree('source/subtree/subsubtree',
+                                               format='experimental-knit3')
+        self.build_tree(['source/subtree/file',
+                         'source/subtree/subsubtree/file'])
+        subsubtree.add('file')
+        subtree.add('file')
+        subtree.add_reference(subsubtree)
+        tree.add_reference(subtree)
+        tree.commit('a revision')
+        subtree.commit('a subtree file')
+        subsubtree.commit('a subsubtree file')
+        tree.branch.create_checkout('target', lightweight=lightweight)
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/subtree')
+        self.failUnlessExists('target/subtree/file')
+        self.failUnlessExists('target/subtree/subsubtree/file')
+        subbranch = _mod_branch.Branch.open('target/subtree/subsubtree')
+        if lightweight:
+            self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
+        else:
+            self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
+
+
+    def test_checkout_with_references(self):
+        self.do_checkout_test()
+
+    def test_light_checkout_with_references(self):
+        self.do_checkout_test(lightweight=True)
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""

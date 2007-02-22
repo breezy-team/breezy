@@ -655,3 +655,19 @@ class TestCommit(TestCaseWithTransport):
         repository.add_inventory = raise_
         self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
+
+    def test_nested_commit(self):
+        """Commit in multiply-nested trees"""
+        tree = self.make_branch_and_tree('.', format='experimental-knit3')
+        subtree = self.make_branch_and_tree('subtree',
+                                            format='experimental-knit3')
+        subsubtree = self.make_branch_and_tree('subtree/subtree',
+                                               format='experimental-knit3')
+        subtree.add_reference(subsubtree)
+        tree.add_reference(subtree)
+        tree.commit('added reference', allow_pointless=False)
+        self.assertIs(subsubtree.last_revision(), None,
+                      'subsubtree was committed')
+        self.assertIsNot(subtree.last_revision(), None,
+                         'subtree was not committed')
+
