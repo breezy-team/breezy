@@ -240,13 +240,14 @@ class WorkingTree4(WorkingTree3):
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
+        inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ids = {'' : inv.root.file_id}
+        parent_ies = {'' : inv.root}
         for block in state._dirblocks[1:]: # skip the root
             dirname = block[0]
             try:
-                parent_id = parent_ids[block[0]]
+                parent_ie = parent_ies[block[0]]
             except KeyError:
                 # all the paths in this block are not versioned in this tree
                 continue
@@ -259,7 +260,8 @@ class WorkingTree4(WorkingTree3):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode, parent_id)
+                inv_entry = factory[kind](file_id, name_unicode,
+                                          parent_ie.file_id)
                 if kind == 'file':
                     # not strictly needed: working tree
                     #entry.executable = executable
@@ -268,8 +270,12 @@ class WorkingTree4(WorkingTree3):
                     pass
                 elif kind == 'directory':
                     # add this entry to the parent map.
-                    parent_ids[(dirname + '/' + name).strip('/')] = file_id
-                inv.add(inv_entry)
+                    parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
+                # These checks cost us around 40ms on a 55k entry tree
+                assert file_id not in inv_byid
+                assert name_unicode not in parent_ie.children
+                inv_byid[file_id] = inv_entry
+                parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
     def _get_entry(self, file_id=None, path=None):
@@ -1025,13 +1031,14 @@ class DirStateRevisionTree(Tree):
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
+        inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ids = {'' : inv.root.file_id}
+        parent_ies = {'' : inv.root}
         for block in self._dirstate._dirblocks[1:]: #skip root
             dirname = block[0]
             try:
-                parent_id = parent_ids[dirname]
+                parent_ie = parent_ies[dirname]
             except KeyError:
                 # all the paths in this block are not versioned in this tree
                 continue
@@ -1044,21 +1051,26 @@ class DirStateRevisionTree(Tree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode, parent_id)
+                inv_entry = factory[kind](file_id, name_unicode,
+                                          parent_ie.file_id)
                 inv_entry.revision = revid
                 if kind == 'file':
                     inv_entry.executable = executable
                     inv_entry.text_size = size
                     inv_entry.text_sha1 = link_or_sha1
                 elif kind == 'directory':
-                    parent_ids[(dirname + '/' + name).strip('/')] = file_id
+                    parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
                     inv_entry.executable = False
                     inv_entry.text_size = size
                     inv_entry.symlink_target = utf8_decode(link_or_sha1)[0]
                 else:
                     raise Exception, kind
-                inv.add(inv_entry)
+                # These checks cost us around 40ms on a 55k entry tree
+                assert file_id not in inv_byid
+                assert name_unicode not in parent_ie.children
+                inv_byid[file_id] = inv_entry
+                parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
