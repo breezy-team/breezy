@@ -242,7 +242,7 @@ class DirState(object):
     NULLSTAT = 'x' * 32
     NULL_PARENT_DETAILS = ('a', '', 0, False, '')
 
-    def __init__(self):
+    def __init__(self, path):
         """Create a  DirState object.
 
         Attributes of note:
@@ -254,6 +254,7 @@ class DirState(object):
             - size of 0
             - a packed state
             - and no sha information.
+        :param path: The path at which the dirstate file on disk should live.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -272,6 +273,7 @@ class DirState(object):
         self._ghosts = []
         self._parents = []
         self._state_file=None
+        self._filename=path
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
@@ -749,8 +751,8 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = DirState()
-        result._state_file = open(path, 'wb+')
+        result = DirState(path)
+        result._state_file = open(result._filename, 'wb+')
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -840,8 +842,8 @@ class DirState(object):
     @staticmethod
     def on_file(path):
         """Construct a DirState on the file at path path."""
-        result = DirState()
-        result._state_file = open(path, 'rb+')
+        result = DirState(path)
+        result._state_file = open(result._filename, 'rb+')
         return result
 
     def _read_dirblocks_if_needed(self):
