@@ -862,6 +862,26 @@ class DirStateRevisionTree(Tree):
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
 
+    def _get_entry(self, file_id=None, path=None):
+        """Get the dirstate row for file_id or path.
+
+        If either file_id or path is supplied, it is used as the key to lookup.
+        If both are supplied, the fastest lookup is used, and an error is
+        raised if they do not both point at the same row.
+        
+        :param file_id: An optional unicode file_id to be looked up.
+        :param path: An optional unicode path to be looked up.
+        :return: The dirstate row tuple for path/file_id, or (None, None)
+        """
+        if file_id is None and path is None:
+            raise errors.BzrError('must supply file_id or path')
+        if file_id is not None:
+            file_id = file_id.encode('utf8')
+        if path is not None:
+            path = path.encode('utf8')
+        parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
+        return self._dirstate._get_entry(parent_index, fileid_utf8=file_id, path_utf8=path)
+
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
 
@@ -983,11 +1003,14 @@ class DirStateRevisionTree(Tree):
             self._repository.lock_read()
         self._locked += 1
 
+    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        # TODO: if there is no inventory, do an optimistic lookup in the
-        # dirstate by the path; commonly this will work.
-        return self.inventory.path2id(path)
+        # lookup by path: faster than splitting and walking the ivnentory.
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
+            return None
+        return entry[0][2].decode('utf8')
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""
