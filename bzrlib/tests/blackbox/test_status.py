@@ -143,17 +143,17 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(wt2)
-        self.assert_(message.startswith("pending merges:\n"))
-        self.assert_(message.endswith("Empty commit 2\n")) 
+        self.assertStartsWith(message, "pending merges:\n")
+        self.assertEndsWith(message, "Empty commit 2\n")
         wt2.commit("merged")
         # must be long to make sure we see elipsis at the end
-        wt.commit("Empty commit 3 " + 
-                   "blah blah blah blah " * 10)
+        wt.commit("Empty commit 3 " +
+                   "blah blah blah blah " * 100)
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(wt2)
-        self.assert_(message.startswith("pending merges:\n"))
+        self.assertStartsWith(message, "pending merges:\n")
         self.assert_("Empty commit 3" in message)
-        self.assert_(message.endswith("...\n")) 
+        self.assertEndsWith(message, "...\n")
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""

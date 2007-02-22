@@ -451,9 +451,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.get_file_byname(self.id2path(file_id))
 
     def get_file_text(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.get_file(file_id).read()
 
     def get_file_byname(self, filename):
@@ -470,6 +472,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         incorrectly attributed to CURRENT_REVISION (but after committing, the
         attribution will be correct).
         """
+        file_id = osutils.safe_file_id(file_id)
         basis = self.basis_tree()
         changes = self._iter_changes(basis, True, [file_id]).next()
         changed_content, kind = changes[2], changes[6]
@@ -519,6 +522,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this is not in the store at all
+        file_id = osutils.safe_file_id(file_id)
         return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
@@ -557,10 +561,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             tree.set_parent_ids([revision_id])
 
     def id2abspath(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.abspath(self.id2path(file_id))
 
     def has_id(self, file_id):
         # files that have been deleted are excluded
+        file_id = osutils.safe_file_id(file_id)
         inv = self.inventory
         if not inv.has_id(file_id):
             return False
@@ -568,6 +574,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
@@ -575,25 +582,30 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     __contains__ = has_id
 
     def get_file_size(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return os.path.getsize(self.id2abspath(file_id))
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
+        file_id = osutils.safe_file_id(file_id)
         if not path:
             path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path, stat_value)
 
     def get_file_mtime(self, file_id, path=None):
+        file_id = osutils.safe_file_id(file_id)
         if not path:
             path = self._inventory.id2path(file_id)
         return os.lstat(self.abspath(path)).st_mtime
 
     if not supports_executable():
         def is_executable(self, file_id, path=None):
+            file_id = osutils.safe_file_id(file_id)
             return self._inventory[file_id].executable
     else:
         def is_executable(self, file_id, path=None):
             if not path:
+                file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -611,6 +623,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if file_id is None:
                 inv.add_path(f, kind=kind)
             else:
+                file_id = osutils.safe_file_id(file_id)
                 inv.add_path(f, kind=kind, file_id=file_id)
         self._write_inventory(inv)
 
@@ -705,7 +718,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+        self._control_files.put_bytes('pending-merges', '\n'.join(merges))
 
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -768,7 +781,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
             for file_id, hash in modified_hashes.iteritems():
-                yield Stanza(file_id=file_id, hash=hash)
+                yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
     @needs_tree_write_lock
@@ -1292,6 +1305,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
+            file_id = osutils.safe_file_id(file_id)
             if self._inventory.has_id(file_id):
                 self._inventory.remove_recursive_id(file_id)
             else:
@@ -1378,6 +1392,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
+        file_id = osutils.safe_file_id(file_id)
         stream = file(self.id2abspath(file_id), 'wb')
         try:
             stream.write(bytes)
@@ -1744,6 +1759,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 DeprecationWarning,
                 stacklevel=3)
             file_id = ROOT_ID
+        else:
+            file_id = osutils.safe_file_id(file_id)
         self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
@@ -2162,7 +2179,7 @@ class WorkingTree3(WorkingTree):
                 pass
             return False
         else:
-            self._control_files.put_utf8('last-revision', revision_id)
+            self._control_files.put_bytes('last-revision', revision_id)
             return True
 
     @needs_tree_write_lock
@@ -2321,7 +2338,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         sio.seek(0)
         control_files.put('inventory', sio)
 
-        control_files.put_utf8('pending-merges', '')
+        control_files.put_bytes('pending-merges', '')
         
 
     def initialize(self, a_bzrdir, revision_id=None):

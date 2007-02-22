@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
+    tests,
     transform,
     )
 from bzrlib.transport import get_transport
@@ -210,6 +211,47 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         tt.new_symlink('symlink',
             root_transaction_id, 'link-target', 'symlink')
         tt.apply()
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_with_utf8(self, tree):
+        """Generate a tree with a utf8 revision and unicode paths."""
+        self._create_tree_with_utf8(tree)
+        return self.workingtree_to_test_tree(tree)
+
+    def _create_tree_with_utf8(self, tree):
+        """Generate a tree with a utf8 revision and unicode paths."""
+        paths = [u'',
+                 u'f\xf6',
+                 u'b\xe5r/',
+                 u'b\xe5r/b\xe1z',
+                ]
+        # bzr itself does not create unicode file ids, but we want them for
+        # testing.
+        file_ids = [u'TREE_ROOT',
+                    u'f\xf6-id',
+                    u'b\xe5r-id',
+                    u'b\xe1z-id',
+                   ]
+        try:
+            self.build_tree(paths[1:])
+        except UnicodeError:
+            raise tests.TestSkipped('filesystem does not support unicode.')
+        tree.add(paths, file_ids)
+        try:
+            tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
+        except errors.NonAsciiRevisionId:
+            raise tests.TestSkipped('non-ascii revision ids not supported')
+
+    def get_tree_with_merged_utf8(self, tree):
+        """Generate a tree with utf8 ancestors."""
+        self._create_tree_with_utf8(tree)
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        self.build_tree([u'tree2/b\xe5r/z\xf7z'])
+        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
+
+        tree.merge_from_branch(tree2.branch)
+        tree.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
         return self.workingtree_to_test_tree(tree)
 
 

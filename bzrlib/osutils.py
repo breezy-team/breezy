@@ -922,6 +922,13 @@ def safe_revision_id(unicode_or_utf8_string):
     return cache_utf8.encode(unicode_or_utf8_string)
 
 
+# TODO: jam 20070217 We start by just re-using safe_revision_id, but ultimately
+#       we want to use a different dictionary cache, because trapping file ids
+#       and revision ids in the same dict seemed to have a noticable effect on
+#       performance.
+safe_file_id = safe_revision_id
+
+
 _platform_normalizes_filenames = False
 if sys.platform == 'darwin':
     _platform_normalizes_filenames = True
