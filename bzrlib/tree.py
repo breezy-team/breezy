@@ -216,7 +216,7 @@ class Tree(object):
         """Return the id for path in this tree."""
         return self._inventory.path2id(path)
 
-    def paths2ids(self, paths, trees=[]):
+    def paths2ids(self, paths, trees=[], require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
         
         Each path is looked up in each this tree and any extras provided in
@@ -224,8 +224,13 @@ class Tree(object):
         of a directory that has been renamed under a provided path in this tree
         are all returned, even if none exist until a provided path in this
         tree, and vice versa.
+
+        :param paths: An iterable of paths to start converting to ids from.
+        :param trees: Additional trees to consider.
+        :param require_versioned: If False, do not raise NotVersionedError if
+            an element of paths is not versioned in this tree and all of trees.
         """
-        return find_ids_across_trees(paths, [self] + trees)
+        return find_ids_across_trees(paths, [self] + trees, require_versioned)
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""

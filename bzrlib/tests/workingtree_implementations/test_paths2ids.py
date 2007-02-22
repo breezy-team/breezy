@@ -23,21 +23,24 @@ find_ids_across_trees.
 
 from operator import attrgetter
 
-from bzrlib import errors, inventory
+from bzrlib import errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestPaths2Ids(TestCaseWithWorkingTree):
 
-    def assertExpectedIds(self, ids, tree, paths, trees=None):
+    def assertExpectedIds(self, ids, tree, paths, trees=None,
+        require_versioned=True):
         """Run paths2ids for tree, and check the result."""
         tree.lock_read()
         if trees:
             map(apply, map(attrgetter('lock_read'), trees))
-            result = tree.paths2ids(paths, trees)
+            result = tree.paths2ids(paths, trees,
+                require_versioned=require_versioned)
             map(apply, map(attrgetter('unlock'), trees))
         else:
-            result = tree.paths2ids(paths)
+            result = tree.paths2ids(paths,
+                require_versioned=require_versioned)
         self.assertEqual(set(ids), result)
         tree.unlock()
 
@@ -130,3 +133,29 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         self.assertExpectedIds(
             ['dir', 'child-moves', 'child-stays', 'child-goes', 'new-child'],
             tree, ['dir'], [basis])
+
+    def test_unversioned_one_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unversioned'])
+        self.assertExpectedIds([], tree, ['unversioned'], require_versioned=False)
+        tree.lock_read()
+        self.assertRaises(errors.PathsNotVersionedError, tree.paths2ids, ['unversioned'])
+        tree.unlock()
+
+    def test_unversioned_multiple_trees(self):
+        # in this test, the path is unversioned in only one tree, but it should
+        # still raise an error.
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('make basis')
+        basis = tree.basis_tree()
+        self.build_tree(['tree/unversioned'])
+        self.assertExpectedIds([], tree, ['unversioned'], [basis],
+            require_versioned=False)
+        tree.lock_read()
+        basis.lock_read()
+        self.assertRaises(errors.PathsNotVersionedError, tree.paths2ids,
+            ['unversioned'], [basis])
+        self.assertRaises(errors.PathsNotVersionedError, basis.paths2ids,
+            ['unversioned'], [tree])
+        basis.unlock()
+        tree.unlock()
