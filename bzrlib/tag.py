@@ -59,6 +59,10 @@ class DisabledTags(_Tags):
     lookup_tag = _not_supported
     delete_tag = _not_supported
 
+    def merge_to(self, to_tags):
+        # we never have anything to copy
+        pass
+
 
 class BasicTags(_Tags):
     """Tag storage in an unversioned branch control file.
@@ -150,3 +154,34 @@ class BasicTags(_Tags):
         except ValueError, e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                     % (tag_content, e))
+
+    def merge_to(self, to_tags, just_warn=False):
+        """Copy tags between repositories if necessary and possible.
+        
+        This method has common command-line behaviour about handling 
+        error cases.
+
+        :param to_tags: Branch to receive these tags
+        :param just_warn: If the destination doesn't support tags and the 
+            source does have tags, just give a warning.  Otherwise, raise
+            TagsNotSupported (default).
+        """
+        if self.branch == to_tags.branch:
+            return
+        if not self.supports_tags():
+            # obviously nothing to copy
+            return
+        td = self.get_tag_dict()
+        if not td:
+            # no tags in the source, and we don't want to clobber anything
+            # that's in the destination
+            return
+        to_tags.branch.lock_write()
+        try:
+            to_tags._set_tag_dict(td)
+        finally:
+            to_tags.branch.unlock()
+
+
+def _merge_tags_if_possible(from_branch, to_branch):
+    from_branch.tags.merge_to(to_branch.tags)

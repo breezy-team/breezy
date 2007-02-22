@@ -46,11 +46,12 @@ Done
  - rename TagStore and change to branch.tags
  - delete tags, and mark as deleted
  - command to show all tags
+ - make the experimental branch format available through a bzrdir format
 
 Plan
 ----
 
- - make the experimental branch format available through a bzrdir format
+ - move merge-tags stuff into pull, push, merge, etc - not in command routines
  - raise an exception if the tag name is unreasonable
    - see what happens if non-ascii byte string is given
  - if tags conflict when copying

@@ -549,6 +549,7 @@ class cmd_pull(Command):
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
             directory=None):
+        from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
         if directory is None:
             directory = u'.'
@@ -601,7 +602,7 @@ class cmd_pull(Command):
                 delta.ChangeReporter(tree_to.inventory))
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
-        _copy_tags_maybe(branch_from, branch_to)
+        _merge_tags_if_possible(branch_from, branch_to)
         note('%d revision(s) pulled.' % (count,))
 
         if verbose:
@@ -664,6 +665,7 @@ class cmd_push(Command):
             directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
+        from bzrlib.tag import _merge_tags_if_possible
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
@@ -798,7 +800,7 @@ class cmd_push(Command):
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
-        _copy_tags_maybe(br_from, br_to)
+        _merge_tags_if_possible(br_from, br_to)
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
@@ -828,6 +830,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
+        from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -878,24 +881,10 @@ class cmd_branch(Command):
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
-            _copy_tags_maybe(br_from, branch)
+            _merge_tags_if_possible(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
-
-
-def _copy_tags_maybe(from_branch, to_branch):
-    """Copy tags between repositories if necessary and possible.
-    
-    This method has common command-line behaviour about handling 
-    error cases.
-    """
-    if not from_branch.tags.supports_tags():
-        # obviously nothing to copy
-        return
-    # TODO: give a warning if the source format supports tags and actually has
-    # tags, but the destination doesn't accept them.
-    from_branch.copy_tags_to(to_branch)
 
 
 class cmd_checkout(Command):
@@ -2445,6 +2434,7 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             ):
+        from bzrlib.tag import _merge_tags_if_possible
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2507,7 +2497,7 @@ class cmd_merge(Command):
 
         # pull tags now... it's a bit inconsistent to do it ahead of copying
         # the history but that's done inside the merge code
-        _copy_tags_maybe(other_branch, tree.branch)
+        _merge_tags_if_possible(other_branch, tree.branch)
 
         if path != "":
             interesting_files = [path]

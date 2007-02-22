@@ -685,17 +685,9 @@ class Branch(object):
             checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
-    def copy_tags_to(self, to_branch):
-        """Copy tags to another branch.
-        """
-        # TODO: Allow for doing a smarter merge, etc
-        if self == to_branch:
-            return
-        to_branch.lock_write()
-        try:
-            to_branch.tags._set_tag_dict(self.tags.get_tag_dict())
-        finally:
-            to_branch.unlock()
+    def supports_tags(self):
+        return self._format.supports_tags()
+
 
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
