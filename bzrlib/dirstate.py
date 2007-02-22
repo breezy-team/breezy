@@ -453,12 +453,18 @@ class DirState(object):
         """
         block_index, present = self._find_block_index_from_key(key)
         if not present:
-            if add_if_missing:
-                self._dirblocks.insert(block_index, (key[0], []))
-            else:
-                # some parent path has not been added - its an error to add this
-                # child
-                raise errors.NotVersionedError(key[0:2], str(self))
+            if not add_if_missing:
+                # check to see if key is versioned itself - we might want to
+                # add it anyway, because dirs with no entries dont get a
+                # dirblock at parse time.
+                # This is an uncommon branch to take: most dirs have children,
+                # and most code works with versioned paths.
+                parent_base, parent_name = os.path.split(key[0])
+                if not self._get_block_entry_index(parent_base, parent_name, 0)[3]:
+                    # some parent path has not been added - its an error to add
+                    # this child
+                    raise errors.NotVersionedError(key[0:2], str(self))
+            self._dirblocks.insert(block_index, (key[0], []))
         return self._dirblocks[block_index]
 
     def _find_block_index_from_key(self, key):
@@ -1221,7 +1227,7 @@ class DirState(object):
                 all_remaining_keys.add(current_old[0])
             elif details[0] == 'relocated':
                 # record the key for the real path.
-                all_remaining_keys.add(tuple(os.path.split(details[1])) + tuple(current_old[0][2]))
+                all_remaining_keys.add(tuple(os.path.split(details[1])) + (current_old[0][2],))
             # absent rows are not present at any path.
         last_reference = current_old[0] not in all_remaining_keys
         if last_reference:
