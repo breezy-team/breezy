@@ -340,10 +340,17 @@ class WorkingTree4(WorkingTree3):
 
     @needs_read_lock
     def id2path(self, fileid):
-        state = self.current_dirstate()
         fileid = osutils.safe_file_id(fileid)
-        key, tree_details = state._get_entry(0, fileid_utf8=fileid)
-        return os.path.join(*key[0:2]).decode('utf8')
+        inv = self._get_inventory()
+        return inv.id2path(fileid)
+        # TODO: jam 20070222 At present dirstate is very slow at id => path,
+        #       while inventory is very fast at it. So for now, just generate
+        #       the inventory and do the id => path check.
+        #       In the future, we want to make dirstate better at id=>path
+        #       checks so that we don't have to create the inventory.
+        # state = self.current_dirstate()
+        # key, tree_details = state._get_entry(0, fileid_utf8=fileid)
+        # return os.path.join(*key[0:2]).decode('utf8')
 
     @needs_read_lock
     def __iter__(self):
