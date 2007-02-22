@@ -560,7 +560,7 @@ class DirState(object):
         if num_present_parents == 0:
             def fields_to_entry_0_parents(fields, _int=int, _tuple=tuple,
                                           _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
                         _mini_to_kind[fields[3]], # kind
@@ -573,7 +573,7 @@ class DirState(object):
         elif num_present_parents == 1:
             def fields_to_entry_1_parent(fields, _int=int, _tuple=tuple,
                                          _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
                         _mini_to_kind[fields[3]], # kind
@@ -594,7 +594,7 @@ class DirState(object):
         elif num_present_parents == 2:
             def fields_to_entry_2_parents(fields, _int=int, _tuple=tuple,
                                           _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
                         _mini_to_kind[fields[3]], # kind
@@ -622,7 +622,7 @@ class DirState(object):
         else:
             def fields_to_entry_n_parents(fields, _int=int, _tuple=tuple,
                                           _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 trees = [(_mini_to_kind[fields[cur]], # kind
                           fields[cur+1],              # fingerprint
                           _int(fields[cur+2]),        # size
