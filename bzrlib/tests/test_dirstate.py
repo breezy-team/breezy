@@ -732,3 +732,33 @@ class TestGetEntry(TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._header_state)
         self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._dirblock_state)
         self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
+
+
+class TestBisect(TestCaseWithTransport):
+    """Test the ability to bisect into the disk format."""
+
+    def create_basic_dirstate(self):
+        """Create a dirstate with a few files and directories.
+
+            a
+            b/
+              c
+              d/
+                e
+            f
+        """
+        tree = self.make_branch_and_tree('tree')
+        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'f']
+        self.build_tree(['tree/' + p for p in paths])
+        tree.add([p.rstrip('/') for p in paths])
+        tree.commit('initial')
+        return dirstate.DirState.from_tree(tree, 'dirstate')
+
+    def test_bisect_each(self):
+        """Find a single record using bisect."""
+        self.create_basic_dirstate()
+        # Use a different object, to make sure nothing is pre-cached in memory.
+        state = dirstate.DirState.on_file('dirstate')
+
+        # Bisect should return the rows for the specified files.
+        self.assertEqual(

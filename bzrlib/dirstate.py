@@ -210,6 +210,158 @@ from bzrlib.osutils import (
     )
 
 
+class _Bisector(object):
+    """This just keeps track of information as we are bisecting."""
+
+
+    def bisect(self):
+        """Start finding the requested files."""
+        # We need the file pointer to be right after the initial header block
+        self._state._read_header_if_needed()
+        # If _dirblock_state was in memory, we should just return info from
+        # there, this function is only meant to handle when we want to read
+        # part of the disk.
+        assert self._state._dirblock_state == DirState.NOT_IN_MEMORY
+
+        # The disk representation is generally info + '\0\n\0' at the end. But
+        # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
+        # Because it means we can sync on the '\n'
+        state_file = self._state._state_file
+        file_size = os.fstat(state_file).st_size
+        #  3 fields for the key
+        #  + number of fields per tree_data (5) * tree count
+        #  + newline
+        entry_size = self._fields_per_row()
+
+        low = self._state._end_of_header
+        high = file_size - 1 # Ignore the final '\0'
+        found = {}
+
+        # Avoid infinite seeking
+        max_count = 30*len(self._path_name_list)
+        count = 0
+        pending = [(low, high, self._path_name_list)]
+
+        page_size = self._page_size
+
+        if num_present_parents == 0:
+            def split_one(info):
+                return (info[1:8],)
+        elif num_present_parents == 1:
+            def split_one(info):
+                return (info[1:8], [info[8:15]])
+        elif num_present_parents == 2:
+            def split_one(info):
+                return (info[1:8], [info[8:15], info[16:22]])
+        else:
+            def split_one(info):
+                return (info[1:8], [info[cur:cur+7]
+                                    for cur in xrange(8, len(info)-1, 7)])
+        def add_one_record(num):
+            info = entries[num].split('\0')
+            record = split_one(info)
+            found[record[0][:2]] = record
+
+        while pending:
+            low, high, cur_files = pending.pop()
+
+            if not cur_files:
+                # No files to look for
+                continue
+
+            if low >= high:
+                # Did not find cur_files, these will be returned as None
+                # However, other logic should probably prevent this from ever
+                # happening.
+                continue
+
+            count += 1
+            if count > max_count:
+                raise errors.BzrError('Too many seeks, most likely a bug.')
+
+            mid = max(low, (low+high-page_size)/2)
+
+            state_file.seek(mid)
+            block = state_file.read(page_size)
+            entries = block.split('\n')
+
+            start = mid
+            after = mid + len(block)
+
+            # Check the first and last entries, in case they are partial, or if
+            # we don't care about the rest of this page
+            first_entry_num = 0
+            first_info = entries[0].split('\0')
+            if len(first_info) < entry_size:
+                # We didn't get the complete first entry
+                # so move start, and grab the next, which
+                # should be a full entry
+                start += len(entries[0])+1
+                first_info = entries[1].split('\0')
+                first_entry_num = 1
+
+            # Find what entries we are looking for, which occur before and
+            # after this first record.
+            first_info_dir_and_name = tuple(first_info[1:3])
+            first_loc = bisect.bisect_left(cur_files, first_info_dir_and_name)
+
+            # These exist before the current location
+            pre = cur_files[:first_loc]
+            # These occur after the current location, which may be in the data
+            # we read, or might be after the last entry
+            middle_files = cur_files[first_loc:]
+            # These are only after the last entry
+            post = []
+
+            if middle_files:
+                # We have something to look for
+
+                # Parse the last entry
+                last_entry_num = len(entries)-1
+                last_info = entries[last_entry_num].split('\0')
+                if len(last_info) < entry_size:
+                    # The very last hunk was not complete,
+                    # read the previous hunk
+                    # TODO: jam 20070217 There may be an edge case if there are
+                    #       not enough entries that were read.
+                    after -= len(entries[-1])
+                    last_entry_num -= 1
+                    last_info = entries[last_entry_num].split('\0')
+
+                last_info_dir_and_name = tuple(last_info[1:3])
+                last_loc = bisect.bisect_right(middle_files, last_info_dir_and_name)
+
+                post = middle_files[last_loc:]
+                middle_files = middle_files[:last_loc]
+
+                if middle_files:
+                    # We have files that should occur in this block
+                    # (>= first, <= last)
+                    # Either we will find them here, or we can mark them as
+                    # missing.
+
+                    # Find out what paths we have
+                    paths = dict((tuple(entries[num].split('\0', 3)[1:3]), num)
+                                 for num in xrange(len(middle_files)))
+
+                    for fname in middle_files:
+                        num = paths.get(fname, None)
+                        if num is not None:
+                            add_one_record(num)
+
+            # Now we have split up everything into pre, middle, and post, and
+            # we have handled everything that fell in 'middle'.
+            # We add 'post' first, so that we prefer to seek towards the
+            # beginning, so that we will tend to go as early as we need, and
+            # then only seek forward after that.
+            if post:
+                pending.append((after, high, post))
+            if pre:
+                pending.append((low, start-1, pre))
+
+        return [found.get(path_key, None) for path_key in self._path_name_list]
+
+
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -269,7 +421,8 @@ class DirState(object):
         self._ghosts = []
         self._parents = []
         self._root_entries = None
-        self._state_file=None
+        self._state_file = None
+        self._end_of_header = None
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
@@ -985,6 +1138,8 @@ class DirState(object):
         assert num_ghosts == len(info)-3, 'incorrect ghost info line'
         self._ghosts = info[2:-1]
         self._header_state = DirState.IN_MEMORY_UNMODIFIED
+        #self._end_of_header = os.fstat(self._state_file.fileno()).st_size
+        self._end_of_header = self._state_file.tell()
 
     def _read_header_if_needed(self):
         """Read the header of the dirstate file if needed."""
