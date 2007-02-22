@@ -60,6 +60,7 @@ Plan
  - copy only selected tags
  - refuse to add tags if the tag is already present, but allow it to 
    be forced
+ - maybe rename merge_to to merge_from (and invert the code)?
 
 
 Later

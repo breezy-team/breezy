@@ -86,6 +86,11 @@ class TestBranchTags(TestCaseWithBranch):
         b1.tags.set_tag('tagname', 'revid')
         b1.tags.merge_to(b2.tags)
         self.assertEquals(b2.tags.lookup_tag('tagname'), 'revid')
+        # if a tag is in the destination and not in the source, it is not
+        # removed when we merge them
+        b2.tags.set_tag('in-destination', 'revid')
+        b1.tags.merge_to(b2.tags)
+        self.assertEquals(b2.tags.lookup_tag('in-destination'), 'revid')
 
     def test_unicode_tag(self):
         b1 = self.make_branch('b')

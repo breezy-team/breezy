@@ -153,13 +153,16 @@ class BasicTags(_Tags):
             return r
         except ValueError, e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
-                    % (tag_content, e))
+                % (tag_content, e))
 
-    def merge_to(self, to_tags, just_warn=False):
+    def merge_to(self, to_tags):
         """Copy tags between repositories if necessary and possible.
         
         This method has common command-line behaviour about handling 
         error cases.
+
+        All new definitions are copied across, except that tags that already
+        exist keep their existing definitions.
 
         :param to_tags: Branch to receive these tags
         :param just_warn: If the destination doesn't support tags and the 
@@ -171,16 +174,25 @@ class BasicTags(_Tags):
         if not self.supports_tags():
             # obviously nothing to copy
             return
-        td = self.get_tag_dict()
-        if not td:
+        source_dict = self.get_tag_dict()
+        if not source_dict:
             # no tags in the source, and we don't want to clobber anything
             # that's in the destination
             return
         to_tags.branch.lock_write()
         try:
-            to_tags._set_tag_dict(td)
+            dest_dict = to_tags.get_tag_dict()
+            result = self._reconcile_tags(source_dict, dest_dict)
+            if result != dest_dict:
+                to_tags._set_tag_dict(result)
         finally:
             to_tags.branch.unlock()
+
+    def _reconcile_tags(self, source_dict, dest_dict):
+        """Return the result of a two-way merge of tags"""
+        result = dict(source_dict)
+        result.update(dest_dict)
+        return result
 
 
 def _merge_tags_if_possible(from_branch, to_branch):
