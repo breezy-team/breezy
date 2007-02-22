@@ -36,6 +36,8 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 # TODO: test that supplying paths with duplication - i.e. foo, foo, foo/bar -
 # does not result in garbage out.
 
+# TODO: Are we meant to raise the precise unversioned paths when some are
+# unversioned - if so, test this.
 
 class TestPaths2Ids(TestCaseWithWorkingTree):
 
@@ -52,6 +54,12 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             result = tree.paths2ids(paths,
                 require_versioned=require_versioned)
         self.assertEqual(set(ids), result)
+        tree.unlock()
+
+    def test_paths_none_result_none(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_read()
+        self.assertEqual(None, tree.paths2ids(None))
         tree.unlock()
 
     def test_find_single_root(self):
@@ -152,13 +160,24 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         self.assertRaises(errors.PathsNotVersionedError, tree.paths2ids, ['unversioned'])
         tree.unlock()
 
-    def test_unversioned_multiple_trees(self):
-        # in this test, the path is unversioned in only one tree, but it should
-        # still raise an error.
+    def test_unversioned_in_one_of_multiple_trees(self):
+        # in this test, the path is unversioned in only one tree, and thus
+        # should not raise an error: it must be unversioned in *all* trees to
+        # error.
         tree = self.make_branch_and_tree('tree')
         tree.commit('make basis')
         basis = tree.basis_tree()
-        self.build_tree(['tree/unversioned'])
+        self.build_tree(['tree/in-one'])
+        tree.add(['in-one'], ['in-one'])
+        self.assertExpectedIds(['in-one'], tree, ['in-one'], [basis])
+
+    def test_unversioned_all_of_multiple_trees(self):
+        # in this test, the path is unversioned in every tree, and thus
+        # should not raise an error: it must be unversioned in *all* trees to
+        # error.
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('make basis')
+        basis = tree.basis_tree()
         self.assertExpectedIds([], tree, ['unversioned'], [basis],
             require_versioned=False)
         tree.lock_read()

@@ -550,6 +550,119 @@ class WorkingTree4(WorkingTree3):
             return None
         return entry[0][2].decode('utf8')
 
+    def paths2ids(self, paths, trees=[], require_versioned=True):
+        """See Tree.paths2ids().
+        
+        This specialisation fast-paths the case where all the trees are in the
+        dirstate.
+        """
+        if paths is None:
+            return None
+        parents = self.get_parent_ids()
+        for tree in trees:
+            if not (isinstance(tree, DirStateRevisionTree) and tree._revision_id in
+                parents):
+                return super(WorkingTree4, self).paths2ids(paths, trees, require_versioned)
+        search_indexes = [0] + [1 + parents.index(tree._revision_id) for tree in trees]
+        # -- make all paths utf8 --
+        paths_utf8 = set()
+        for path in paths:
+            paths_utf8.add(path.encode('utf8'))
+        paths = paths_utf8
+        # -- paths is now a utf8 path set --
+        # -- get the state object and prepare it.
+        state = self.current_dirstate()
+        state._read_dirblocks_if_needed()
+        def _entries_for_path(path):
+            """Return a list with all the entries that match path for all ids.
+            """
+            dirname, basename = os.path.split(path)
+            key = (dirname, basename, '')
+            block_index, present = state._find_block_index_from_key(key)
+            if not present:
+                # the block which should contain path is absent.
+                return []
+            result = []
+            block = state._dirblocks[block_index][1]
+            entry_index, _ = state._find_entry_index(key, block)
+            # we may need to look at multiple entries at this path: walk while the paths match.
+            while (entry_index < len(block) and
+                block[entry_index][0][0:2] == key[0:2]):
+                result.append(block[entry_index])
+                entry_index += 1
+            return result
+        if require_versioned:
+            # -- check all supplied paths are versioned in all search trees. --
+            all_versioned = True
+            for path in paths:
+                path_entries = _entries_for_path(path)
+                if not path_entries:
+                    # this specified path is not present at all: error
+                    all_versioned = False
+                    break
+                found_versioned = False
+                # for each id at this path
+                for entry in path_entries:
+                    # for each tree.
+                    for index in search_indexes:
+                        if entry[1][index][0] != 'absent':
+                            found_versioned = True
+                            # all good: found a versioned cell
+                            break
+                if not found_versioned:
+                    # non of the indexes was not 'absent' at all ids for this
+                    # path.
+                    all_versioned = False
+                    break
+            if not all_versioned:
+                raise errors.PathsNotVersionedError(paths)
+        # -- remove redundancy in supplied paths to prevent over-scanning --
+        search_paths = set()
+        for path in paths:
+            other_paths = paths.difference(set([path]))
+            if not osutils.is_inside_any(other_paths, path):
+                # this is a top level path, we must check it.
+                search_paths.add(path)
+        # sketch: 
+        # for all search_indexs in each path at or under each element of
+        # search_paths, if the detail is relocated: add the id, and add the
+        # relocated path as one to search if its not searched already. If the
+        # detail is not relocated, add the id.
+        searched_paths = set()
+        found_ids = set()
+        def _process_entry(entry):
+            """Look at search_indexes within entry.
+
+            If a specific tree's details are relocated, add the relocation
+            target to search_paths if not searched already. If it is absent, do
+            nothing. Otherwise add the id to found_ids.
+            """
+            for index in search_indexes:
+                if entry[1][index][0] == 'relocated':
+                    if not osutils.is_inside_any(searched_paths, entry[1][index][1]):
+                        search_paths.add(entry[1][index][1])
+                elif entry[1][index][0] != 'absent':
+                    found_ids.add(entry[0][2])
+        while search_paths:
+            current_root = search_paths.pop()
+            searched_paths.add(current_root)
+            # process the entries for this containing directory: the rest will be
+            # found by their parents recursively.
+            root_entries = _entries_for_path(current_root)
+            if not root_entries:
+                # this specified path is not present at all, skip it.
+                continue
+            for entry in root_entries:
+                _process_entry(entry)
+            initial_key = (current_root, '', '')
+            block_index, _ = state._find_block_index_from_key(initial_key)
+            while (block_index < len(state._dirblocks) and
+                osutils.is_inside(current_root, state._dirblocks[block_index][0])):
+                for entry in state._dirblocks[block_index][1]:
+                    _process_entry(entry)
+                block_index += 1
+        return found_ids
+
     def read_working_inventory(self):
         """Read the working inventory.
         
@@ -976,7 +1089,7 @@ class DirStateRevisionTree(Tree):
         return self._repository.get_revision(self._revision_id).parent_ids
 
     def has_filename(self, filename):
-        return bool(self.inventory.path2id(filename))
+        return bool(self.path2id(filename))
 
     def kind(self, file_id):
         return self.inventory[file_id].kind

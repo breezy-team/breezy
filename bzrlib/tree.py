@@ -226,6 +226,9 @@ class Tree(object):
         tree, and vice versa.
 
         :param paths: An iterable of paths to start converting to ids from.
+            Alternatively, if paths is None, no ids should be calculated and None
+            will be returned. This is offered to make calling the api unconditional
+            for code that *might* take a list of files.
         :param trees: Additional trees to consider.
         :param require_versioned: If False, do not raise NotVersionedError if
             an element of paths is not versioned in this tree and all of trees.
