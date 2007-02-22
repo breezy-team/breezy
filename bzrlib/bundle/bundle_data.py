@@ -21,6 +21,9 @@ from cStringIO import StringIO
 import os
 import pprint
 
+from bzrlib import (
+    osutils,
+    )
 import bzrlib.errors
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
@@ -299,7 +302,7 @@ class BundleInfo(object):
 
         def get_rev_id(last_changed, path, kind):
             if last_changed is not None:
-                changed_revision_id = last_changed.decode('utf-8')
+                changed_revision_id = osutils.safe_revision_id(last_changed)
             else:
                 changed_revision_id = revision_id
             bundle_tree.note_last_changed(path, changed_revision_id)
@@ -372,7 +375,9 @@ class BundleInfo(object):
             if not info[1].startswith('file-id:'):
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
-            file_id = info[1][8:]
+            # This will be Unicode because of how the stream is read. Turn it
+            # back into a utf8 file_id
+            file_id = osutils.safe_file_id(info[1][8:])
 
             bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.
