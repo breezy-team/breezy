@@ -27,6 +27,16 @@ from bzrlib import errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
+# TODO: This needs an additional test: do a merge, then do a
+# paths2id(trees=left parent only), and also with (trees=all parents) to check
+# that only the requested trees are considered - i.e. have an unversioned path
+# in the unlisted tree, or an extra file that moves into the selected path but
+# should not be returned
+
+# TODO: test that supplying paths with duplication - i.e. foo, foo, foo/bar -
+# does not result in garbage out.
+
+
 class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def assertExpectedIds(self, ids, tree, paths, trees=None,
