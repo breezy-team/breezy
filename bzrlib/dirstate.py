@@ -403,18 +403,38 @@ class DirState(object):
         current_block = self._dirblocks[0][1]
         current_dirname = ''
         root_key = ('', '')
+        append_entry = current_block.append
         for entry in new_entries:
             if entry[0][0] != current_dirname:
                 # new block - different dirname
                 current_block = []
                 current_dirname = entry[0][0]
                 self._dirblocks.append((current_dirname, current_block))
-            elif entry[0][1]:
-                # this is not a root entry for a tree (it has a basename)
-                current_block = self._dirblocks[-1][1]
+                append_entry = current_block.append
             # append the entry to the current block
-            current_block.append(entry)
-    
+            append_entry(entry)
+        self._split_root_dirblock_into_contents()
+
+    def _split_root_dirblock_into_contents(self):
+        """Split the root dirblocks into root and contents-of-root.
+
+        After parsing by path, we end up with root entries and contents-of-root
+        entries in the same block. This loop splits them out again.
+        """
+        # The above loop leaves the "root block" entries mixed with the
+        # "contents-of-root block". But we don't want an if check on
+        # all entries, so instead we just fix it up here.
+        assert self._dirblocks[1] == ('', [])
+        root_block = []
+        contents_of_root_block = []
+        for entry in self._dirblocks[0][1]:
+            if not entry[0][1]: # This is a root entry
+                root_block.append(entry)
+            else:
+                contents_of_root_block.append(entry)
+        self._dirblocks[0] = ('', root_block)
+        self._dirblocks[1] = ('', contents_of_root_block)
+
     def _entry_to_line(self, entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
         
@@ -920,19 +940,7 @@ class DirState(object):
                     assert trailing == '\n'
                     # append the entry to the current block
                     append_entry(entry)
-                # The above loop leaves the "root block" entries mixed with the
-                # "contents-of-root block". But we don't want an if check on
-                # all entries, so instead we just fix it up here.
-                assert self._dirblocks[1] == ('', [])
-                root_block = []
-                contents_of_root_block = []
-                for entry in self._dirblocks[0][1]:
-                    if not entry[0][1]: # This is a root entry
-                        root_block.append(entry)
-                    else:
-                        contents_of_root_block.append(entry)
-                self._dirblocks[0] = ('', root_block)
-                self._dirblocks[1] = ('', contents_of_root_block)
+                self._split_root_dirblock_into_contents()
             else:
                 fields_to_entry = self._get_fields_to_entry()
                 entries = [fields_to_entry(fields[pos:pos+entry_size])
