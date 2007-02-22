@@ -233,7 +233,7 @@ class WorkingTree4(WorkingTree3):
         state._read_dirblocks_if_needed()
         root_key, current_entry = self._get_entry(path='')
         current_id = root_key[2]
-        assert current_entry[0][0] == 'directory'
+        assert current_entry[0][0] == 'd' # directory
         inv = Inventory(root_id=current_id)
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
@@ -246,13 +246,14 @@ class WorkingTree4(WorkingTree3):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                if entry[0][0] in ('absent', 'relocated'):
+                if entry[0][0] in ('a', 'r'): # absent, relocated
                     # a parent tree only entry
                     continue
                 name = key[1]
                 name_unicode = name.decode('utf8')
                 file_id = key[2]
-                kind, link_or_sha1, size, executable, stat = entry[0]
+                minikind, link_or_sha1, size, executable, stat = entry[0]
+                kind = dirstate.DirState._minikind_to_kind[minikind]
                 inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
                 if kind == 'file':
                     # not strictly needed: working tree
@@ -342,7 +343,7 @@ class WorkingTree4(WorkingTree3):
         """
         result = []
         for key, tree_details in self.current_dirstate()._iter_entries():
-            if tree_details[0][0] in ('absent', 'relocated'):
+            if tree_details[0][0] in ('a', 'r'): # absent, relocated
                 # not relevant to the working tree
                 continue
             path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
@@ -397,7 +398,7 @@ class WorkingTree4(WorkingTree3):
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
 
-        if to_entry[1][0][0] != 'directory':
+        if to_entry[1][0][0] != 'd':
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
 
@@ -494,9 +495,11 @@ class WorkingTree4(WorkingTree3):
                 from_key = old_block[old_entry_index][0]
                 to_key = ((to_block[0],) + from_key[1:3])
                 state._make_absent(old_block[old_entry_index])
+                minikind = old_entry_details[0][0]
+                kind = dirstate.DirState._minikind_to_kind[minikind]
                 rollbacks.append(
                     lambda:state.update_minimal(from_key,
-                        old_entry_details[0][0],
+                        kind,
                         num_present_parents=len(old_entry_details) - 1,
                         executable=old_entry_details[0][3],
                         fingerprint=old_entry_details[0][1],
@@ -506,7 +509,7 @@ class WorkingTree4(WorkingTree3):
                         path_utf8=from_rel.encode('utf8')))
                 # create new row in current block
                 state.update_minimal(to_key,
-                        old_entry_details[0][0],
+                        kind,
                         num_present_parents=len(old_entry_details) - 1,
                         executable=old_entry_details[0][3],
                         fingerprint=old_entry_details[0][1],
@@ -517,7 +520,7 @@ class WorkingTree4(WorkingTree3):
                 added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
                 new_entry = to_block[added_entry_index]
                 rollbacks.append(lambda:state._make_absent(new_entry))
-                if new_entry[1][0][0] == 'directory':
+                if new_entry[1][0][0] == 'd':
                     import pdb;pdb.set_trace()
                     # if a directory, rename all the contents of child blocks
                     # adding rollbacks as each is inserted to remove them and
@@ -604,12 +607,12 @@ class WorkingTree4(WorkingTree3):
                 for entry in path_entries:
                     # for each tree.
                     for index in search_indexes:
-                        if entry[1][index][0] != 'absent':
+                        if entry[1][index][0] != 'a': # absent
                             found_versioned = True
                             # all good: found a versioned cell
                             break
                 if not found_versioned:
-                    # non of the indexes was not 'absent' at all ids for this
+                    # none of the indexes was not 'absent' at all ids for this
                     # path.
                     all_versioned = False
                     break
@@ -637,10 +640,10 @@ class WorkingTree4(WorkingTree3):
             nothing. Otherwise add the id to found_ids.
             """
             for index in search_indexes:
-                if entry[1][index][0] == 'relocated':
+                if entry[1][index][0] == 'r': # relocated
                     if not osutils.is_inside_any(searched_paths, entry[1][index][1]):
                         search_paths.add(entry[1][index][1])
-                elif entry[1][index][0] != 'absent':
+                elif entry[1][index][0] != 'a': # absent
                     found_ids.add(entry[0][2])
         while search_paths:
             current_root = search_paths.pop()
@@ -800,7 +803,7 @@ class WorkingTree4(WorkingTree3):
         # walk the state marking unversioned things as absent.
         # if there are any un-unversioned ids at the end, raise
         for key, details in state._dirblocks[0][1]:
-            if (details[0][0] not in ('absent', 'relocated') and
+            if (details[0][0] not in ('a', 'r') and # absent or relocated
                 key[2] in ids_to_unversion):
                 # I haven't written the code to unversion / yet - it should be
                 # supported.
@@ -836,13 +839,13 @@ class WorkingTree4(WorkingTree3):
             entry_index = 0
             while entry_index < len(block[1]):
                 entry = block[1][entry_index]
-                if (entry[1][0][0] in ('absent', 'relocated') or
+                if (entry[1][0][0] in ('a', 'r') or # absent, relocated
                     # ^ some parent row.
                     entry[0][2] not in ids_to_unversion):
                     # ^ not an id to unversion
                     entry_index += 1
                     continue
-                if entry[1][0][0] == 'directory':
+                if entry[1][0][0] == 'd':
                     paths_to_unversion.add(os.path.join(*entry[0][0:2]))
                 if not state._make_absent(entry):
                     entry_index += 1
@@ -1010,7 +1013,7 @@ class DirStateRevisionTree(Tree):
         # for the tree index use.
         root_key, current_entry = self._dirstate._get_entry(parent_index, path_utf8='')
         current_id = root_key[2]
-        assert current_entry[parent_index][0] == 'directory'
+        assert current_entry[parent_index][0] == 'd'
         inv = Inventory(root_id=current_id, revision_id=self._revision_id)
         inv.root.revision = current_entry[parent_index][4]
         # we could do this straight out of the dirstate; it might be fast
@@ -1024,13 +1027,14 @@ class DirStateRevisionTree(Tree):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                if entry[parent_index][0] in ('absent', 'relocated'):
+                if entry[parent_index][0] in ('a', 'r'): # absent, relocated
                     # not this tree
                     continue
                 name = key[1]
                 name_unicode = name.decode('utf8')
                 file_id = key[2]
-                kind, link_or_sha1, size, executable, revid = entry[parent_index]
+                minikind, link_or_sha1, size, executable, revid = entry[parent_index]
+                kind = dirstate.DirState._minikind_to_kind[minikind]
                 inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
                 inv_entry.revision = revid
                 if kind == 'file':
