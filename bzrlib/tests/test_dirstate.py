@@ -140,6 +140,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         This will check the current state, open the file anew and check it
         again.
         """
+        state.lock_write()
         self.assertEqual(expected_result[0],  state.get_parent_ids())
         # there should be no ghosts in this tree.
         self.assertEqual([], state.get_ghosts())
@@ -148,6 +149,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         state.save()
         state = dirstate.DirState.on_file('dirstate')
         self.assertEqual(expected_result[1], list(state._iter_entries()))
+        state.unlock()
 
 
 class TestTreeToDirState(TestCaseWithDirState):
@@ -157,6 +159,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
         state = dirstate.DirState.from_tree(tree, 'dirstate')
+        state.unlock()
         expected_result = ([], [
             (('', '', tree.path2id('')), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details

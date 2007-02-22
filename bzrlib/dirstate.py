@@ -201,6 +201,7 @@ import zlib
 
 from bzrlib import (
     errors,
+    lock,
     trace,
     )
 import bzrlib.inventory
@@ -272,8 +273,9 @@ class DirState(object):
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
-        self._state_file=None
-        self._filename=path
+        self._state_file = None
+        self._filename = path
+        self._lock_token = None
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
@@ -743,6 +745,10 @@ class DirState(object):
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
+        The object will be write locked when returned to the caller,
+        unless there was an exception in the writing, in which case it
+        will be unlocked.
+
         :param path: The name of the file for the dirstate.
         :return: A DirState object.
         """
@@ -752,7 +758,6 @@ class DirState(object):
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
         result = DirState(path)
-        result._state_file = open(result._filename, 'wb+')
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -760,11 +765,12 @@ class DirState(object):
             (('', '', bzrlib.inventory.ROOT_ID), [
                 ('d', '', 0, False, DirState.NULLSTAT),
             ]))
-        result._set_data([], empty_tree_dirblocks)
+        result.lock_write()
         try:
+            result._set_data([], empty_tree_dirblocks)
             result.save()
         except:
-            result._state_file.close()
+            result.unlock()
             raise
         return result
 
@@ -843,7 +849,6 @@ class DirState(object):
     def on_file(path):
         """Construct a DirState on the file at path path."""
         result = DirState(path)
-        result._state_file = open(result._filename, 'rb+')
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -971,6 +976,9 @@ class DirState(object):
 
     def _read_header_if_needed(self):
         """Read the header of the dirstate file if needed."""
+        # inline this as it will be called a lot
+        if not self._lock_token:
+            raise errors.ObjectNotLocked(self)
         if self._header_state == DirState.NOT_IN_MEMORY:
             self._read_header()
 
@@ -1428,6 +1436,42 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
 
+    def _wipe_state(self):
+        """Forget all state information about the dirstate."""
+        self._header_state = DirState.NOT_IN_MEMORY
+        self._dirblock_state = DirState.NOT_IN_MEMORY
+        self._parents = []
+        self._ghosts = []
+        self._dirblocks = []
+
+    def lock_read(self):
+        """Acquire a read lock on the dirstate"""
+        if self._lock_token is not None:
+            raise errors.LockContention(self._lock_token)
+        self._lock_token = lock.ReadLock(self._filename)
+        self._state_file = open(self._filename, 'rb')
+        self._wipe_state()
+        
+    def lock_write(self):
+        """Acquire a write lock on the dirstate"""
+        if self._lock_token is not None:
+            raise errors.LockContention(self._lock_token)
+        self._lock_token = lock.WriteLock(self._filename)
+        self._state_file = open(self._filename, 'rb+')
+        self._wipe_state()
+
+    def unlock(self):
+        """Drop any locks held on the dirstate"""
+        if self._lock_token is None:
+            raise errors.LockNotHeld(self)
+        self._state_file.close()
+        self._lock_token.unlock()
+        self._lock_token = None
+
+    def _requires_lock(self):
+        """Checks that a lock is currently held by someone on the dirstate"""
+        if not self._lock_token:
+            raise errors.ObjectNotLocked(self)
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""
