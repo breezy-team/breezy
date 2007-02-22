@@ -216,6 +216,17 @@ class Tree(object):
         """Return the id for path in this tree."""
         return self._inventory.path2id(path)
 
+    def paths2ids(self, paths, trees=[]):
+        """Return all the ids that can be reached by walking from paths.
+        
+        Each path is looked up in each this tree and any extras provided in
+        trees, and this is repeated recursively: the children in an extra tree
+        of a directory that has been renamed under a provided path in this tree
+        are all returned, even if none exist until a provided path in this
+        tree, and vice versa.
+        """
+        return find_ids_across_trees(paths, [self] + trees)
+
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
