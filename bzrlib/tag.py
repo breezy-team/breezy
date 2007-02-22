@@ -26,6 +26,8 @@ when the branch is opened.  Clients should typically do
 # called tags* are ctags files... mbp 20070220.
 
 
+from warnings import warn
+
 from bzrlib import (
     errors,
     trace,
@@ -34,6 +36,7 @@ from bzrlib.util import bencode
 
 
 class _Tags(object):
+
     def __init__(self, branch):
         self.branch = branch
 
@@ -92,9 +95,11 @@ class BasicTags(_Tags):
             try:
                 tag_content = self.branch._transport.get_bytes('tags')
             except errors.NoSuchFile, e:
-                trace.warning('Missing tags file in %s.  '
+                # ugly, but only abentley should see this :)
+                trace.warning('No branch/tags file in %s.  '
                      'This branch was probably created by bzr 0.15pre.  '
-                     'Please create an empty branch/tags file.')
+                     'Create an empty file to silence this message.'
+                     % (self.branch, ))
                 return {}
             return self._deserialize_tag_dict(tag_content)
         finally:
@@ -133,7 +138,7 @@ class BasicTags(_Tags):
 
     def _deserialize_tag_dict(self, tag_content):
         """Convert the tag file into a dictionary of tags"""
-        # as a special case to make initialization easy, an empty definition
+        # was a special case to make initialization easy, an empty definition
         # is an empty dictionary
         if tag_content == '':
             return {}

@@ -1015,7 +1015,8 @@ class BzrBranchFormat6(BzrBranchFormat5):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch-name', ''),
-                      ('branch.conf', '')
+                      ('branch.conf', ''),
+                      ('tags', ''),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
