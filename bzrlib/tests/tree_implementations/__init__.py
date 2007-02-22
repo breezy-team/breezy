@@ -200,7 +200,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         ids = [
             '2file',
             '1top-dir',
-            u'0utf\u1234file',
+            u'0utf\u1234file'.encode('utf8'),
             '1file-in-1topdir',
             '0dir-in-1topdir'
             ]
@@ -228,15 +228,21 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
         file_ids = [u'TREE_ROOT',
-                    u'f\xf6-id',
-                    u'b\xe5r-id',
-                    u'b\xe1z-id',
+                    u'f\xf6-id'.encode('utf8'),
+                    u'b\xe5r-id'.encode('utf8'),
+                    u'b\xe1z-id'.encode('utf8'),
                    ]
         try:
             self.build_tree(paths[1:])
         except UnicodeError:
             raise tests.TestSkipped('filesystem does not support unicode.')
-        tree.add(paths, file_ids)
+        if tree.path2id('') is None:
+            # Some trees do not have a root yet.
+            tree.add(paths, file_ids)
+        else:
+            # Some trees will already have a root
+            tree.set_root_id(file_ids[0])
+            tree.add(paths[1:], file_ids[1:])
         try:
             tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
         except errors.NonAsciiRevisionId:
@@ -247,7 +253,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'.encode('utf8')])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)

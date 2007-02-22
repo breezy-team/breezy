@@ -306,7 +306,9 @@ class DirState(object):
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
         dirname, basename = os.path.split(utf8path)
-        entry_key = (dirname, basename, file_id.encode('utf8'))
+        assert file_id.__class__ == str, \
+            "must be a utf8 file_id not %s" % (type(file_id))
+        entry_key = (dirname, basename, file_id)
         self._read_dirblocks_if_needed()
         block_index, present = self._find_block_index_from_key(entry_key)
         if not present:
@@ -756,7 +758,7 @@ class DirState(object):
             id.
         """
         kind = inv_entry.kind
-        tree_data = inv_entry.revision.encode('utf8')
+        tree_data = inv_entry.revision
         assert len(tree_data) > 0, 'empty revision for the inv_entry.'
         if kind == 'directory':
             fingerprint = ''
@@ -966,13 +968,11 @@ class DirState(object):
 
         :param path: The path inside the tree to set - '' is the root, 'foo'
             is the path foo in the root.
-        :param new_id: The new id to assign to the path. If unicode, it will
-            be encoded to utf8. In future this will be deprecated: avoid using
-            unicode ids if possible.
+        :param new_id: The new id to assign to the path. This must be a utf8
+            file id (not unicode, and not None).
         """
         # TODO: start warning here.
-        if new_id.__class__ == unicode:
-            new_id = new_id.encode('utf8')
+        assert new_id.__class__ == str
         self._read_dirblocks_if_needed()
         if len(path):
             import pdb;pdb.set_trace()
@@ -1067,7 +1067,7 @@ class DirState(object):
                 # new entry at this path: by adding the id->path mapping last,
                 # all the mappings are valid and have correct relocation
                 # records where needed. 
-                file_id = entry.file_id.encode('utf8')
+                file_id = entry.file_id
                 path_utf8 = path.encode('utf8')
                 dirname, basename = os.path.split(path_utf8)
                 new_entry_key = (dirname, basename, file_id)
@@ -1165,7 +1165,7 @@ class DirState(object):
                 # convert new into dirblock style
                 new_path_utf8 = current_new[0].encode('utf8')
                 new_dirname, new_basename = os.path.split(new_path_utf8)
-                new_id = current_new[1].file_id.encode('utf8')
+                new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
             else:
                 # for safety disable variables

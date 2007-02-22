@@ -232,7 +232,7 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
         root_key, current_entry = self._get_entry(path='')
-        current_id = root_key[2].decode('utf8')
+        current_id = root_key[2]
         assert current_entry[0][0] == 'directory'
         inv = Inventory(root_id=current_id)
         # we could do this straight out of the dirstate; it might be fast
@@ -249,10 +249,11 @@ class WorkingTree4(WorkingTree3):
                 if entry[0][0] in ('absent', 'relocated'):
                     # a parent tree only entry
                     continue
-                name = key[1].decode('utf8')
-                file_id = key[2].decode('utf8')
+                name = key[1]
+                name_unicode = name.decode('utf8')
+                file_id = key[2]
                 kind, link_or_sha1, size, executable, stat = entry[0]
-                inv_entry = entry_factory[kind](file_id, name, parent_id)
+                inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
                 if kind == 'file':
                     # not strictly needed: working tree
                     #entry.executable = executable
@@ -279,8 +280,6 @@ class WorkingTree4(WorkingTree3):
         if file_id is None and path is None:
             raise errors.BzrError('must supply file_id or path')
         state = self.current_dirstate()
-        if file_id is not None:
-            file_id = file_id.encode('utf8')
         if path is not None:
             path = path.encode('utf8')
         return state._get_entry(0, fileid_utf8=file_id, path_utf8=path)
@@ -316,11 +315,11 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def get_root_id(self):
         """Return the id of this trees root"""
-        return self._get_entry(path='')[0][2].decode('utf8')
+        return self._get_entry(path='')[0][2]
 
     def has_id(self, file_id):
         state = self.current_dirstate()
-        fileid_utf8 = file_id.encode('utf8')
+        file_id = osutils.safe_file_id(file_id)
         row, parents = self._get_entry(file_id=file_id)
         if row is None:
             return False
@@ -330,8 +329,8 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def id2path(self, fileid):
         state = self.current_dirstate()
-        fileid_utf8 = fileid.encode('utf8')
-        key, tree_details = state._get_entry(0, fileid_utf8=fileid_utf8)
+        fileid = osutils.safe_file_id(fileid)
+        key, tree_details = state._get_entry(0, fileid_utf8=fileid)
         return os.path.join(*key[0:2]).decode('utf8')
 
     @needs_read_lock
@@ -348,7 +347,7 @@ class WorkingTree4(WorkingTree3):
                 continue
             path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
             if osutils.lexists(path):
-                result.append(key[2].decode('utf8'))
+                result.append(key[2])
         return iter(result)
 
     @needs_read_lock
@@ -406,7 +405,7 @@ class WorkingTree4(WorkingTree3):
             update_inventory = True
             inv = self.inventory
             to_dir_ie = inv[to_dir_id]
-            to_dir_id = to_entry[0][2].decode('utf8')
+            to_dir_id = to_entry[0][2]
         else:
             update_inventory = False
 
@@ -420,7 +419,7 @@ class WorkingTree4(WorkingTree3):
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
                     errors.NotVersionedError(path=str(from_rel)))
 
-            from_id = from_entry[0][2].decode('utf8')
+            from_id = from_entry[0][2]
             to_rel = pathjoin(to_dir, from_tail)
             item_to_entry = self._get_entry(path=to_rel)
             if item_to_entry != (None, None):
@@ -548,7 +547,7 @@ class WorkingTree4(WorkingTree3):
         entry = self._get_entry(path=path)
         if entry == (None, None):
             return None
-        return entry[0][2].decode('utf8')
+        return entry[0][2]
 
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """See Tree.paths2ids().
@@ -793,8 +792,8 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         state._read_dirblocks_if_needed()
         ids_to_unversion = set()
-        for fileid in file_ids:
-            ids_to_unversion.add(fileid.encode('utf8'))
+        for file_id in file_ids:
+            ids_to_unversion.add(osutils.safe_file_id(file_id))
         paths_to_unversion = set()
         # sketch:
         # check if the root is to be unversioned, if so, assert for now.
@@ -988,8 +987,7 @@ class DirStateRevisionTree(Tree):
         """
         if file_id is None and path is None:
             raise errors.BzrError('must supply file_id or path')
-        if file_id is not None:
-            file_id = file_id.encode('utf8')
+        file_id = osutils.safe_file_id(file_id)
         if path is not None:
             path = path.encode('utf8')
         parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
@@ -1011,7 +1009,7 @@ class DirStateRevisionTree(Tree):
         # This is identical now to the WorkingTree _generate_inventory except
         # for the tree index use.
         root_key, current_entry = self._dirstate._get_entry(parent_index, path_utf8='')
-        current_id = root_key[2].decode('utf8')
+        current_id = root_key[2]
         assert current_entry[parent_index][0] == 'directory'
         inv = Inventory(root_id=current_id, revision_id=self._revision_id)
         inv.root.revision = current_entry[parent_index][4]
@@ -1021,7 +1019,7 @@ class DirStateRevisionTree(Tree):
         for block in self._dirstate._dirblocks[1:]: #skip root
             dirname = block[0]
             try:
-                parent_id = parent_ids[block[0]]
+                parent_id = parent_ids[dirname]
             except KeyError:
                 # all the paths in this block are not versioned in this tree
                 continue
@@ -1029,10 +1027,11 @@ class DirStateRevisionTree(Tree):
                 if entry[parent_index][0] in ('absent', 'relocated'):
                     # not this tree
                     continue
-                name = key[1].decode('utf8')
-                file_id = key[2].decode('utf8')
+                name = key[1]
+                name_unicode = name.decode('utf8')
+                file_id = key[2]
                 kind, link_or_sha1, size, executable, revid = entry[parent_index]
-                inv_entry = entry_factory[kind](file_id, name, parent_id)
+                inv_entry = entry_factory[kind](file_id, name_unicode, parent_id)
                 inv_entry.revision = revid
                 if kind == 'file':
                     inv_entry.executable = executable
@@ -1123,7 +1122,7 @@ class DirStateRevisionTree(Tree):
         entry = self._get_entry(path=path)
         if entry == (None, None):
             return None
-        return entry[0][2].decode('utf8')
+        return entry[0][2]
 
     def unlock(self):
         """Unlock, freeing any cache memory used during the lock."""

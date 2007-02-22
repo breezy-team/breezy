@@ -160,7 +160,7 @@ class TestTreeShapes(TestCaseWithTree):
                 '1top-dir',
                 '1file-in-1topdir',
                 '0dir-in-1topdir',
-                 u'0utf\u1234file',
+                 u'0utf\u1234file'.encode('utf8'),
                 'symlink',
                  ]),
             set(iter(tree)))
@@ -170,7 +170,7 @@ class TestTreeShapes(TestCaseWithTree):
             [('', tree_root, 'directory'),
              ('0file', '2file', 'file'),
              ('1top-dir', '1top-dir', 'directory'),
-             (u'2utf\u1234file', u'0utf\u1234file', 'file'),
+             (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
              ('symlink', 'symlink', 'symlink'),
              ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
              ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
