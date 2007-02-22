@@ -69,14 +69,13 @@ class TestTagMerging(TestCaseInTempDir):
             "%s is expected to support tags but does not" % new_branch)
         # there are no tags in the old one, and we can merge from it into the
         # new one
-        _merge_tags_if_possible(old_branch, new_branch)
+        old_branch.tags.merge_to(new_branch.tags)
         # we couldn't merge tags from the new branch to the old one, but as
         # there are not any yet this isn't a problem
-        _merge_tags_if_possible(new_branch, old_branch)
+        new_branch.tags.merge_to(old_branch.tags)
         # but if there is a tag in the new one, we get a warning when trying
         # to move it back
         new_branch.tags.set_tag(u'\u2040tag', 'revid')
-        _merge_tags_if_possible(old_branch, new_branch)
+        old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
-            _merge_tags_if_possible, new_branch, old_branch)
-
+            new_branch.tags.merge_to, old_branch.tags)

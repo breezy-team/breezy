@@ -78,11 +78,13 @@ class TestBranchTags(TestCaseWithBranch):
         else:
             self.fail("didn't get expected exception")
 
-    def test_copy_tags(self):
+    def test_merge_tags(self):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
+        # if there are tags in the source and not the destination, then they
+        # just go across
         b1.tags.set_tag('tagname', 'revid')
-        b1.copy_tags_to(b2)
+        b1.tags.merge_to(b2.tags)
         self.assertEquals(b2.tags.lookup_tag('tagname'), 'revid')
 
     def test_unicode_tag(self):
@@ -113,6 +115,12 @@ class TestBranchTags(TestCaseWithBranch):
         self.assertRaises(errors.NoSuchTag,
             b.tags.delete_tag, tag_name + '2')
 
+    def test_merge_empty_tags(self):
+        # you can merge tags between two instances, since neither have tags
+        b1 = self.make_branch('b1')
+        b2 = self.make_branch('b2')
+        b1.tags.merge_to(b2.tags)
+
 
 class TestUnsupportedTags(TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
@@ -140,3 +148,9 @@ class TestUnsupportedTags(TestCaseWithBranch):
             b.tags.set_tag, 'foo', 'bar')
         self.assertRaises(errors.TagsNotSupported,
             b.tags.delete_tag, 'foo')
+
+    def test_merge_empty_tags(self):
+        # you can merge tags between two instances, since neither have tags
+        b1 = self.make_branch('b1')
+        b2 = self.make_branch('b2')
+        b1.tags.merge_to(b2.tags)
