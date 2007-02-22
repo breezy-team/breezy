@@ -89,8 +89,19 @@ class TestBranchTags(TestCaseWithBranch):
         # if a tag is in the destination and not in the source, it is not
         # removed when we merge them
         b2.tags.set_tag('in-destination', 'revid')
-        b1.tags.merge_to(b2.tags)
+        result = b1.tags.merge_to(b2.tags)
+        self.assertEquals(result, [])
         self.assertEquals(b2.tags.lookup_tag('in-destination'), 'revid')
+        # if there's a conflicting tag, it's reported -- the command line
+        # interface will say "these tags couldn't be copied"
+        b1.tags.set_tag('conflicts', 'revid-1')
+        b2.tags.set_tag('conflicts', 'revid-2')
+        result = b1.tags.merge_to(b2.tags)
+        self.assertEquals(result,
+            [('conflicts', 'revid-1', 'revid-2')])
+        # and it keeps the same value
+        self.assertEquals(b2.tags.lookup_tag('conflicts'), 'revid-2')
+
 
     def test_unicode_tag(self):
         b1 = self.make_branch('b')

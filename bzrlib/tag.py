@@ -168,6 +168,9 @@ class BasicTags(_Tags):
         :param just_warn: If the destination doesn't support tags and the 
             source does have tags, just give a warning.  Otherwise, raise
             TagsNotSupported (default).
+
+        :returns: A list of tags that conflicted, each of which is 
+            (tagname, source_target, dest_target).
         """
         if self.branch == to_tags.branch:
             return
@@ -182,17 +185,34 @@ class BasicTags(_Tags):
         to_tags.branch.lock_write()
         try:
             dest_dict = to_tags.get_tag_dict()
-            result = self._reconcile_tags(source_dict, dest_dict)
+            result, conflicts = self._reconcile_tags(source_dict, dest_dict)
             if result != dest_dict:
                 to_tags._set_tag_dict(result)
         finally:
             to_tags.branch.unlock()
+        return conflicts
 
     def _reconcile_tags(self, source_dict, dest_dict):
-        """Return the result of a two-way merge of tags"""
-        result = dict(source_dict)
-        result.update(dest_dict)
-        return result
+        """Do a two-way merge of two tag dictionaries.
+
+        only in source => source value
+        only in destination => destination value
+        same definitions => that
+        different definitions => keep destination value, give a warning
+
+        :returns: (result_dict,
+            [(conflicting_tag, source_target, dest_target)])
+        """
+        conflicts = []
+        result = dict(dest_dict) # copy
+        for name, target in source_dict.items():
+            if name not in result:
+                result[name] = target
+            elif result[name] == target:
+                pass
+            else:
+                conflicts.append((name, target, result[name]))
+        return result, conflicts
 
 
 def _merge_tags_if_possible(from_branch, to_branch):

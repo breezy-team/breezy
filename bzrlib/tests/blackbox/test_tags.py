@@ -100,5 +100,7 @@ class TestTagging(TestCaseWithTransport):
         tagname = u'\u30d0zaar'
         b1.tags.set_tag(tagname, 'revid-1')
         out, err = self.run_bzr('tags', '-d', 'branch1')
-        self.assertEquals(err, '')
+        self.assertEquals(err, '') 
 
+    def test_merge_conflicting_tags(self):
+        pass

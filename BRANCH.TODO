@@ -47,6 +47,7 @@ Done
  - delete tags, and mark as deleted
  - command to show all tags
  - make the experimental branch format available through a bzrdir format
+ - if tag already exists, don't overwrite it
 
 Plan
 ----
@@ -57,7 +58,6 @@ Plan
  - if tags conflict when copying
    - return them and give a warning
    - option to override this and copy anyhow
- - copy only selected tags
  - refuse to add tags if the tag is already present, but allow it to 
    be forced
  - maybe rename merge_to to merge_from (and invert the code)?
@@ -65,6 +65,7 @@ Plan
 
 Later
 -----
+ - copy only selected tags
  - record who set tags, when, why
  - show tags in log
  - test copying tags between different branch formats?  a 
