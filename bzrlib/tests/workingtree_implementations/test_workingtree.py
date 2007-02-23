@@ -594,6 +594,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # XXX: jam 20070222 currently DirStateRevisionTree fail if you change the
         #      WorkingTree underneath them before they are accessed. So
         #      instead, let's go back to the repository for now.
+        # base = tree.basis_tree()
         base = tree.branch.repository.revision_tree(tree.last_revision())
         bzrdir.BzrDir.open("mine").sprout("other")
         file('other/bloo', 'wb').write('two')
