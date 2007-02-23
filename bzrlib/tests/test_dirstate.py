@@ -979,12 +979,45 @@ class TestBisect(TestCaseWithTransport):
         self.addCleanup(state.unlock)
         self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                          state._dirblock_state)
+        # This is code is only really tested if we actually have to make more
+        # than one read, so set the page size to something smaller.
+        # We want it to contain about 2.2 records, so that we have a couple
+        # records that we can read per attempt
+        state._bisect_page_size = 200
+        return tree, state, expected
+
+    def create_duplicated_dirstate(self):
+        """Create a dirstate with a deleted and added entries.
+
+        This grabs a basic_dirstate, and then removes and re adds every entry
+        with a new file id.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        # Now we will just remove and add every file so we get an extra entry
+        # per entry. Unversion in reverse order so we handle subdirs
+        tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
+        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
+                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
+        # We will replace the 'dirstate' file underneath 'state', but that is
+        # okay as lock as we unlock 'state' first.
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            # But we need to leave state in a read-lock because we already have
+            # a cleanup scheduled
+            state.lock_read()
+        state._bisect_page_size = 150
         return tree, state, expected
 
     def assertBisect(self, expected, state, paths):
         """Assert that bisecting for paths returns the right result.
 
-        :param expected: The list of entries we expect.
+        :param expected: The list of extracted entries.
         :param state: The DirState object.
         :param paths: A list of paths, these will automatically be split into
                       (dir, name) tuples, and sorted according to how _bisect
@@ -992,40 +1025,96 @@ class TestBisect(TestCaseWithTransport):
         """
         dir_names = sorted(osutils.split(p) for p in paths)
         result = state._bisect(dir_names)
-        self.assertEqual(expected, result)
+        # For now, results are just returned in whatever order we read them.
+        # We could sort by (dir, name, file_id) or something like that, but in
+        # the end it would still be fairly arbitrary, and we don't want the
+        # extra overhead if we can avoid it.
+        for expected_entries, actual_entries in zip(expected, result):
+            if expected_entries is not None:
+                expected_entries.sort()
+            if actual_entries is not None:
+                actual_entries.sort()
+            self.assertEqual(expected_entries, actual_entries)
+        self.assertEqual(len(expected), len(result))
 
     def test_bisect_each(self):
         """Find a single record using bisect."""
         tree, state, expected = self.create_basic_dirstate()
 
         # Bisect should return the rows for the specified files.
-        self.assertBisect([expected['']], state, [''])
-        self.assertBisect([expected['a']], state, ['a'])
-        self.assertBisect([expected['b']], state, ['b'])
-        self.assertBisect([expected['b/c']], state, ['b/c'])
-        self.assertBisect([expected['b/d']], state, ['b/d'])
-        self.assertBisect([expected['b/d/e']], state, ['b/d/e'])
-        self.assertBisect([expected['f']], state, ['f'])
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
 
     def test_bisect_multi(self):
         """Bisect can be used to find multiple records at the same time."""
         tree, state, expected = self.create_basic_dirstate()
         # Bisect should be capable of finding multiple entries at the same time
-        self.assertBisect([expected['a'], expected['b'], expected['f']],
-                         state, ['a', 'b', 'f'])
+        self.assertBisect([[expected['a']], [expected['b']], [expected['f']]],
+                          state, ['a', 'b', 'f'])
         # ('', 'f') sorts before the others
-        self.assertBisect([expected['f'], expected['b/d'], expected['b/d/e']],
-                         state, ['b/d', 'b/d/e', 'f'])
+        self.assertBisect([[expected['f']], [expected['b/d']],
+                           [expected['b/d/e']]],
+                          state, ['b/d', 'b/d/e', 'f'])
 
-    def test_bisect_split_pages(self):
-        """Test bisect when crossing page boundaries"""
+    def test_bisect_one_page(self):
+        """Test bisect when there is only 1 page to read"""
         tree, state, expected = self.create_basic_dirstate()
-        # Make sure we can't read all the records in a single page, but also
-        # that we *can* read a singe entry in the page size.
-        state._bisect_page_size = 100
-        # Bisect should be capable of finding multiple entries at the same time
-        self.assertBisect([expected['a'], expected['b'], expected['f']],
-                         state, ['a', 'b', 'f'])
+        state._bisect_page_size = 5000
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
+        self.assertBisect([[expected['a']], [expected['b']], [expected['f']]],
+                          state, ['a', 'b', 'f'])
         # ('', 'f') sorts before the others
-        self.assertBisect([expected['f'], expected['b/d'], expected['b/d/e']],
-                         state, ['b/d', 'b/d/e', 'f'])
+        self.assertBisect([[expected['f']], [expected['b/d']],
+                           [expected['b/d/e']]],
+                          state, ['b/d', 'b/d/e', 'f'])
+
+    def test_bisect_duplicate_paths(self):
+        """When bisecting for a path, handle multiple entries."""
+        tree, state, expected = self.create_duplicated_dirstate()
+
+        # Update the expected dictionary.
+        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
+            orig = expected[path]
+            path2 = path + '2'
+            # This record was deleted in the current tree
+            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
+                                        orig[1][1]])
+            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
+            # And didn't exist in the basis tree
+            expected[path2] = (new_key, [orig[1][0],
+                                         dirstate.DirState.NULL_PARENT_DETAILS])
+
+        # Now make sure that both records are properly returned.
+        self.assertBisect([[expected['a'], expected['a2']]], state, 'a')
+
+    def test_bisect_page_size_too_small(self):
+        """We should raise an error if we detect a field longer than page_size.
+
+        This is a safety check, since we know we are reading in pages, and we
+        expect to fit at least slightly more than 1 record per page.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        state._bisect_page_size = 50
+        self.assertRaises(errors.BisectPageSizeTooSmall,
+                          state._bisect, [('b', 'e')])
+
+    def test_bisect_missing(self):
+        """Test that bisect return None if it cannot find a path."""
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisect([None], state, ['foo'])
+        self.assertBisect([None], state, ['b/foo'])
+        self.assertBisect([None], state, ['bar/foo'])
+
+        self.assertBisect([[expected['a']], None, [expected['b/d']]],
+                          state, ['a', 'foo', 'b/d'])

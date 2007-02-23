@@ -235,7 +235,8 @@ class DirState(object):
     # TODO: jam 20070221 Make sure we handle when there are duplicated records
     #       (like when we remove + add the same path, or we have a rename)
     # TODO: jam 20070221 Figure out what to do if we have a record that exceeds
-    #       the BISECT_PAGE_SIZE.
+    #       the BISECT_PAGE_SIZE. For now, we just have to make it large enough
+    #       that we are sure a single record will always fit.
     BISECT_PAGE_SIZE = 4096
 
     NOT_IN_MEMORY = 0
@@ -374,28 +375,31 @@ class DirState(object):
         # Because it means we can sync on the '\n'
         state_file = self._state_file
         file_size = os.fstat(state_file.fileno()).st_size
-        # Because of the extra \0 we should have one extra field
-        entry_field_count = self._fields_per_row() + 1
+        # We end up with 2 extra fields, we should have a trailing '\n' to
+        # ensure that we read the whole record, and we should have a precursur
+        # '' which ensures that we start after the previous '\n'
+        entry_field_count = self._fields_per_entry() + 1
+        # print '\nfield_count:', entry_field_count
 
         low = self._end_of_header
         high = file_size - 1 # Ignore the final '\0'
-        # Map from (
+        # Map from (dir, name) => entry
         found = {}
 
         # Avoid infinite seeking
         max_count = 30*len(dir_name_list)
         count = 0
+        # pending is a list of places to look.
+        # each entry is a tuple of low, high, dir_names
+        #   low -> the first byte offset to read (inclusive)
+        #   high -> the last byte offset (inclusive)
+        #   dir_names -> The list of (dir, name) pairs that should be found in
+        #                the [low, high] range
         pending = [(low, high, dir_name_list)]
 
-        page_size = self.BISECT_PAGE_SIZE
+        page_size = self._bisect_page_size
 
         fields_to_entry = self._get_fields_to_entry()
-        def add_one_record(num):
-            info = entries[num].split('\0')
-            # We have to offset by 1 because we are syncing on the earlier '\n'
-            # rather than the '\0'
-            record = fields_to_entry(info[1:])
-            found[(record[0][0], record[0][1])] = record
 
         while pending:
             low, high, cur_files = pending.pop()
@@ -414,37 +418,64 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
+            # print low, high, cur_files
+
             mid = max(low, (low+high-page_size)/2)
 
             state_file.seek(mid)
-            block = state_file.read(page_size)
-            entries = block.split('\n')
+            # limit the read size, so we don't end up reading data that we have
+            # already read.
+            read_size = min(page_size, (high-mid)+1)
+            block = state_file.read(read_size)
 
             start = mid
             after = mid + len(block)
+            entries = block.split('\n')
+
+            if len(entries) < 2:
+                # We didn't find a '\n', so we cannot have found any records.
+                # So put this range back and try again. But we know we have to
+                # increase the page size, because a single read did not contain
+                # a record break (so records must be larger than page_size)
+                raise errors.BisectPageSizeTooSmall(page_size)
 
             # Check the first and last entries, in case they are partial, or if
             # we don't care about the rest of this page
             first_entry_num = 0
-            first_info = entries[0].split('\0')
-            if len(first_info) < entry_field_count:
+            first_fields = entries[0].split('\0')
+            if len(first_fields) < entry_field_count:
                 # We didn't get the complete first entry
                 # so move start, and grab the next, which
                 # should be a full entry
                 start += len(entries[0])+1
-                first_info = entries[1].split('\0')
+                first_fields = entries[1].split('\0')
                 first_entry_num = 1
 
-            # Find what entries we are looking for, which occur before and
-            # after this first record.
-            first_info_dir_and_name = (first_info[1], first_info[2])
-            first_loc = bisect.bisect_left(cur_files, first_info_dir_and_name)
+            if len(first_fields) <= 2:
+                # We didn't even get a filename here... what do we do?
+                # For now, just fall over
+                raise errors.BisectPageSizeTooSmall(page_size)
+            else:
+                # Find what entries we are looking for, which occur before and
+                # after this first record.
+                first_dir_name = (first_fields[1], first_fields[2])
+                first_loc = bisect.bisect_left(cur_files, first_dir_name)
 
-            # These exist before the current location
-            pre = cur_files[:first_loc]
-            # These occur after the current location, which may be in the data
-            # we read, or might be after the last entry
-            middle_files = cur_files[first_loc:]
+                # These exist before the current location
+                pre = cur_files[:first_loc]
+                # These occur after the current location, which may be in the
+                # data we read, or might be after the last entry
+                middle_files = cur_files[first_loc:]
+
+                if len(first_fields) < entry_field_count:
+                    # We didn't actually get a full record, so just mark
+                    # everything as pending and continue
+                    if middle_files:
+                        pending.append((start, high, middle_files))
+                    if pre:
+                        pending.append((low, start-1, pre))
+                    continue
+
             # These are only after the last entry
             post = []
 
@@ -453,19 +484,18 @@ class DirState(object):
 
                 # Parse the last entry
                 last_entry_num = len(entries)-1
-                last_info = entries[last_entry_num].split('\0')
-                if len(last_info) < entry_field_count:
+                last_fields = entries[last_entry_num].split('\0')
+                if len(last_fields) < entry_field_count:
                     # The very last hunk was not complete,
                     # read the previous hunk
                     # TODO: jam 20070217 There may be an edge case if there are
                     #       not enough entries that were read.
                     after -= len(entries[-1])
                     last_entry_num -= 1
-                    last_info = entries[last_entry_num].split('\0')
+                    last_fields = entries[last_entry_num].split('\0')
 
-                last_info_dir_and_name = (last_info[1], last_info[2])
-                last_loc = bisect.bisect_right(middle_files,
-                                               last_info_dir_and_name)
+                last_dir_name = (last_fields[1], last_fields[2])
+                last_loc = bisect.bisect_right(middle_files, last_dir_name)
 
                 post = middle_files[last_loc:]
                 middle_files = middle_files[:last_loc]
@@ -476,21 +506,30 @@ class DirState(object):
                     # Either we will find them here, or we can mark them as
                     # missing.
 
-                    # Find out what paths we have
-                    # TODO: jam 20070223 There should be faster ways of doing
-                    #       this, but in the short term this should work
-                    #       Also, consider that we already parsed the
-                    #       first_info and last_info, so we don't need to split
-                    #       them again.
-                    paths = dict((tuple(entries[num].split('\0', 3)[1:3]), num)
-                        for num in xrange(first_entry_num+1, last_entry_num))
-                    paths[first_info_dir_and_name] = first_entry_num
-                    paths[last_info_dir_and_name] = last_entry_num
+                    if middle_files[0] == first_dir_name:
+                        # We might need to go before this location
+                        pre.append(middle_files[0])
+                    if middle_files[-1] == last_dir_name:
+                        post.insert(0, middle_files[-1])
 
-                    for fname in middle_files:
-                        num = paths.get(fname, None)
-                        if num is not None:
-                            add_one_record(num)
+                    # Find out what paths we have
+                    paths = {first_dir_name:[first_fields],
+                             last_dir_name:[last_fields]}
+                    for num in xrange(first_entry_num+1, last_entry_num):
+                        # TODO: jam 20070223 We are already splitting here, so
+                        #       shouldn't we just split the whole thing rather
+                        #       than doing the split again in add_one_record?
+                        fields = entries[num].split('\0')
+                        dir_name = (fields[1], fields[2])
+                        paths.setdefault(dir_name, []).append(fields)
+
+                    for dir_name in middle_files:
+                        for fields in paths.get(dir_name, []):
+                            # offset by 1 because of the opening '\0'
+                            # consider changing fields_to_entry to avoid the
+                            # extra list slice
+                            entry = fields_to_entry(fields[1:])
+                            found.setdefault(dir_name, []).append(entry)
 
             # Now we have split up everything into pre, middle, and post, and
             # we have handled everything that fell in 'middle'.
@@ -502,9 +541,7 @@ class DirState(object):
             if pre:
                 pending.append((low, start-1, pre))
 
-        return [found.get(path_key, None) for path_key in dir_name_list]
-
-
+        return [found.get(dir_name, None) for dir_name in dir_name_list]
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
@@ -612,7 +649,7 @@ class DirState(object):
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return '\0'.join(entire_entry)
 
-    def _fields_per_row(self):
+    def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
         Each line now has an extra '\n' field which is not used
@@ -1047,7 +1084,7 @@ class DirState(object):
             #  + newline
             num_present_parents = self._num_present_parents()
             tree_count = 1 + num_present_parents
-            entry_size = self._fields_per_row()
+            entry_size = self._fields_per_entry()
             expected_field_count = entry_size * self._num_entries
             if len(fields) - cur > expected_field_count:
                 fields = fields[:expected_field_count + cur]
