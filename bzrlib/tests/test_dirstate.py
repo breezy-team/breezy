@@ -19,7 +19,6 @@
 import os
 
 from bzrlib import dirstate, errors
-from bzrlib.dirstate import DirState
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
 
@@ -380,13 +379,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree1.unlock()
         expected_result = [], [
             (('', '', root_id), [
-             ('d', '', 0, False, DirState.NULLSTAT)])]
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
         state = dirstate.DirState.initialize('dirstate')
         try:
             state.set_state_from_inventory(inv)
-            self.assertEqual(DirState.IN_MEMORY_UNMODIFIED,
+            self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                              state._header_state)
-            self.assertEqual(DirState.IN_MEMORY_MODIFIED,
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._dirblock_state)
         except:
             state.unlock()
@@ -474,7 +473,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.assertEqual(['ghost-rev'], state.get_ghosts())
             self.assertEqual(
                 [(('', '', root_id), [
-                  ('d', '', 0, False, DirState.NULLSTAT),
+                  ('d', '', 0, False, dirstate.DirState.NULLSTAT),
                   ('d', '', 0, False, revid1),
                   ('d', '', 0, False, revid2)
                   ])],
@@ -508,7 +507,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # check the layout in memory
         expected_result = [revid1.encode('utf8'), revid2.encode('utf8')], [
             (('', '', root_id), [
-             ('d', '', 0, False, DirState.NULLSTAT),
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT),
              ('d', '', 0, False, revid1.encode('utf8')),
              ('d', '', 0, False, revid2.encode('utf8'))
              ]),
