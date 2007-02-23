@@ -1827,7 +1827,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 pass
             else:
                 try:
-                    inv = xml6.serializer_v6.read_inventory_from_string(xml)
+                    inv = xml7.serializer_v7.read_inventory_from_string(xml)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
