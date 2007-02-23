@@ -284,6 +284,19 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         lock_and_compare_all_current_dirstate(tree, 'lock_write')
         lock_and_compare_all_current_dirstate(tree, 'lock_write')
 
+    def test_constructing_invalid_interdirstate_raises(self):
+        tree = self.make_workingtree()
+        rev_id = tree.commit('first post')
+        rev_id2 = tree.commit('second post')
+        rev_tree = tree.branch.repository.revision_tree(rev_id)
+        # Exception is not a great thing to raise, but this test is 
+        # very short, and code is used to sanity check other tests, so 
+        # a full error object is YAGNI.
+        self.assertRaises(
+            Exception, workingtree_4.InterDirStateTree, rev_tree, tree)
+        self.assertRaises(
+            Exception, workingtree_4.InterDirStateTree, tree, rev_tree)
+
     def test_revtree_to_revtree_not_interdirstate(self):
         # we should not get a dirstate optimiser for two repository sourced
         # revtrees. we can't prove a negative, so we dont do exhaustive tests

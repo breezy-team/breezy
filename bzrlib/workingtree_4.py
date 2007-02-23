@@ -1235,15 +1235,55 @@ class DirStateRevisionTree(Tree):
 class InterDirStateTree(InterTree):
     """Fast path optimiser for changes_from with dirstate trees."""
 
+    def __init__(self, source, target):
+        super(InterDirStateTree, self).__init__(source, target)
+        if not InterDirStateTree.is_compatible(source, target):
+            raise Exception, "invalid source %r and target %r" % (source, target)
+
     @staticmethod
-    def revision_tree_from_workingtree(tree):
-        """Create a revision tree from a working tree."""
-        revid = tree.commit('save tree', allow_pointless=True)
-        return tree.branch.repository.revision_tree(revid)
-    _from_tree_converter = revision_tree_from_workingtree
+    def make_source_parent_tree(source, target):
+        """Change the source tree into a parent of the target."""
+        revid = source.commit('record tree')
+        target.branch.repository.fetch(source.branch.repository, revid)
+        target.set_parent_ids([revid])
+        return target.basis_tree(), target
     _matching_from_tree_format = WorkingTreeFormat4()
     _matching_to_tree_format = WorkingTreeFormat4()
-    _to_tree_converter = staticmethod(lambda x: x)
+    _test_mutable_trees_to_test_trees = make_source_parent_tree
+
+    @needs_read_lock
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False, include_root=False):
+        """Return the changes from source to target.
+
+        :return: A TreeDelta.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+        """
+        # NB: show_status depends on being able to pass in non-versioned files
+        # and report them as unknown
+        trees = (self.source,)
+        if extra_trees is not None:
+            trees = trees + tuple(extra_trees)
+        # target is usually the newer tree:
+        specific_file_ids = self.target.paths2ids(specific_files, trees,
+            require_versioned=require_versioned)
+        from bzrlib import delta
+        if specific_files and not specific_file_ids:
+            # All files are unversioned, so just return an empty delta
+            # _compare_trees would think we want a complete delta
+            return delta.TreeDelta()
+        return delta._compare_trees(self.source, self.target, want_unchanged,
+            specific_file_ids, include_root)
 
     @staticmethod
     def is_compatible(source, target):
