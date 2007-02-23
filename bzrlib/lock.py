@@ -96,7 +96,7 @@ try:
 
         def __init__(self, filename):
             # standard IO errors get exposed directly.
-            self._open(filename, 'wb')
+            self._open(filename, 'rb+')
             try:
                 self.filename = realpath(filename)
                 if self.filename in self.open_locks:
@@ -176,7 +176,7 @@ except ImportError:
 
         class _w32c_WriteLock(_w32c_FileLock):
             def __init__(self, filename):
-                _w32c_FileLock._lock(self, filename, 'wb',
+                _w32c_FileLock._lock(self, filename, 'rb+',
                                      LOCK_EX + LOCK_NB)
 
 
@@ -211,7 +211,7 @@ except ImportError:
 
             class _msvc_WriteLock(_msvc_FileLock):
                 def __init__(self, filename):
-                    _msvc_lock(self._open(filename, 'wb'), self.LOCK_EX)
+                    _msvc_lock(self._open(filename, 'rb+'), self.LOCK_EX)
 
 
             def _msvc_lock(f, flags):

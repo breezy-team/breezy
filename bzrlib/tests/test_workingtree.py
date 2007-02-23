@@ -250,7 +250,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # correctly and last-revision file becomes present.
         # manually make a dirstate toc check the format is as desired.
         state = dirstate.DirState.on_file(t.local_abspath('dirstate'))
-        self.assertEqual([], state.get_parent_ids())
+        state.lock_read()
+        try:
+            self.assertEqual([], state.get_parent_ids())
+        finally:
+            state.unlock()
 
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
