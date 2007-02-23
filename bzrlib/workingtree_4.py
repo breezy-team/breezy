@@ -378,6 +378,24 @@ class WorkingTree4(WorkingTree3):
         else:
             return None
 
+    def lock_read(self):
+        super(WorkingTree4, self).lock_read()
+        if self._dirstate is None:
+            self.current_dirstate()
+            self._dirstate.lock_read()
+
+    def lock_tree_write(self):
+        super(WorkingTree4, self).lock_tree_write()
+        if self._dirstate is None:
+            self.current_dirstate()
+            self._dirstate.lock_write()
+
+    def lock_write(self):
+        super(WorkingTree4, self).lock_write()
+        if self._dirstate is None:
+            self.current_dirstate()
+            self._dirstate.lock_write()
+
     @needs_tree_write_lock
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         """See WorkingTree.move()."""
@@ -790,6 +808,8 @@ class WorkingTree4(WorkingTree3):
             if self._control_files._lock_mode == 'w':
                 if self._dirty:
                     self.flush()
+            if self._dirstate is not None:
+                self._dirstate.unlock()
             self._dirstate = None
             self._inventory = None
         # reverse order of locking.
@@ -925,7 +945,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')
-        dirstate.DirState.initialize(local_path)
+        state = dirstate.DirState.initialize(local_path)
+        state.unlock()
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
@@ -969,6 +990,7 @@ class DirStateRevisionTree(Tree):
         self._repository = repository
         self._inventory = None
         self._locked = 0
+        self._dirstate_locked = False
 
     def annotate_iter(self, file_id):
         """See Tree.annotate_iter"""
@@ -1145,6 +1167,9 @@ class DirStateRevisionTree(Tree):
         """Lock the tree for a set of operations."""
         if not self._locked:
             self._repository.lock_read()
+            if self._dirstate._lock_token is None:
+                self._dirstate.lock_read()
+                self._dirstate_locked = True
         self._locked += 1
 
     @needs_read_lock
@@ -1162,7 +1187,10 @@ class DirStateRevisionTree(Tree):
         self._locked -=1
         if not self._locked:
             self._inventory = None
-            self._locked = False
+            self._locked = 0
+            if self._dirstate_locked:
+                self._dirstate.unlock()
+                self._dirstate_locked = False
             self._repository.unlock()
 
     def walkdirs(self, prefix=""):

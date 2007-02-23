@@ -1462,7 +1462,7 @@ class DirState(object):
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
         self._lock_token = lock.ReadLock(self._filename)
-        self._state_file = open(self._filename, 'rb')
+        self._state_file = self._lock_token.f
         self._wipe_state()
 
     def lock_write(self):
@@ -1470,14 +1470,14 @@ class DirState(object):
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
         self._lock_token = lock.WriteLock(self._filename)
-        self._state_file = open(self._filename, 'rb+')
+        self._state_file = self._lock_token.f
         self._wipe_state()
 
     def unlock(self):
         """Drop any locks held on the dirstate"""
         if self._lock_token is None:
             raise errors.LockNotHeld(self)
-        self._state_file.close()
+        self._state_file = None
         self._lock_token.unlock()
         self._lock_token = None
 
