@@ -1122,6 +1122,11 @@ class TestBisect(TestCaseWithTransport):
         self.assertBisect([[expected['']]], state, [''])
         self.assertBisect([[expected['a'], expected['a2']]], state, ['a'])
         self.assertBisect([[expected['b'], expected['b2']]], state, ['b'])
+        self.assertBisect([[expected['b/c'], expected['b/c2']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d'], expected['b/d2']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e'], expected['b/d/e2']]],
+                          state, ['b/d/e'])
+        self.assertBisect([[expected['f'], expected['f2']]], state, ['f'])
 
     def test_bisect_page_size_too_small(self):
         """If the page size is too small, we will auto increase it."""

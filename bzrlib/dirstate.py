@@ -379,7 +379,6 @@ class DirState(object):
         # ensure that we read the whole record, and we should have a precursur
         # '' which ensures that we start after the previous '\n'
         entry_field_count = self._fields_per_entry() + 1
-        # print '\nfield_count:', entry_field_count
 
         low = self._end_of_header
         high = file_size - 1 # Ignore the final '\0'
@@ -418,8 +417,6 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
-            # print low, high, cur_files
-
             mid = max(low, (low+high-page_size)/2)
 
             state_file.seek(mid)
@@ -429,7 +426,6 @@ class DirState(object):
             block = state_file.read(read_size)
 
             start = mid
-            after = mid + len(block)
             entries = block.split('\n')
 
             if len(entries) < 2:
@@ -462,6 +458,7 @@ class DirState(object):
             else:
                 # Find what entries we are looking for, which occur before and
                 # after this first record.
+                after = start
                 first_dir_name = (first_fields[1], first_fields[2])
                 first_loc = bisect.bisect_left(cur_files, first_dir_name)
 
@@ -469,22 +466,10 @@ class DirState(object):
                 pre = cur_files[:first_loc]
                 # These occur after the current location, which may be in the
                 # data we read, or might be after the last entry
-                middle_files = cur_files[first_loc:]
+                post = cur_files[first_loc:]
 
-                if len(first_fields) < entry_field_count:
-                    # We didn't actually get a full record, so just mark
-                    # everything as pending and continue
-                    if middle_files:
-                        pending.append((start, high, middle_files))
-                    if pre:
-                        pending.append((low, start-1, pre))
-                    continue
-
-            # These are only after the last entry
-            post = []
-
-            if middle_files:
-                # We have something to look for
+            if post and len(first_fields) >= entry_field_count:
+                # We have files after the first entry
 
                 # Parse the last entry
                 last_entry_num = len(entries)-1
@@ -492,17 +477,17 @@ class DirState(object):
                 if len(last_fields) < entry_field_count:
                     # The very last hunk was not complete,
                     # read the previous hunk
-                    # TODO: jam 20070217 There may be an edge case if there are
-                    #       not enough entries that were read.
-                    after -= len(entries[-1])
+                    after = mid + len(block) - len(entries[-1])
                     last_entry_num -= 1
                     last_fields = entries[last_entry_num].split('\0')
+                else:
+                    after = mid + len(block)
 
                 last_dir_name = (last_fields[1], last_fields[2])
-                last_loc = bisect.bisect_right(middle_files, last_dir_name)
+                last_loc = bisect.bisect_right(post, last_dir_name)
 
-                post = middle_files[last_loc:]
-                middle_files = middle_files[:last_loc]
+                middle_files = post[:last_loc]
+                post = post[last_loc:]
 
                 if middle_files:
                     # We have files that should occur in this block
@@ -512,13 +497,16 @@ class DirState(object):
 
                     if middle_files[0] == first_dir_name:
                         # We might need to go before this location
-                        pre.append(middle_files[0])
+                        pre.append(first_dir_name)
                     if middle_files[-1] == last_dir_name:
-                        post.insert(0, middle_files[-1])
+                        post.insert(0, last_dir_name)
 
                     # Find out what paths we have
-                    paths = {first_dir_name:[first_fields],
-                             last_dir_name:[last_fields]}
+                    paths = {first_dir_name:[first_fields]}
+                    # last_dir_name might == first_dir_name so we need to be
+                    # careful if we should append rather than overwrite
+                    if last_entry_num != first_entry_num:
+                        paths.setdefault(last_dir_name, []).append(last_fields)
                     for num in xrange(first_entry_num+1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
