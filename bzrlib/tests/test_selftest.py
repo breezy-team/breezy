@@ -363,7 +363,7 @@ class TestTreeProviderAdapter(TestCase):
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
-        self.assertEqual(5, len(tests))
+        self.assertEqual(4, len(tests))
         default_format = WorkingTreeFormatAB1
         self.assertEqual(tests[0].workingtree_format, formats[0][0])
         self.assertEqual(tests[0].bzrdir_format, formats[0][1])

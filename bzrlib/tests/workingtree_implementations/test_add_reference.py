@@ -16,8 +16,13 @@
 
 import os
 
-from bzrlib import errors, tests, workingtree
+from bzrlib import errors, tests, workingtree, workingtree_4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
+
+TREES_NOT_SUPPORTING_REFERENCES = (workingtree.WorkingTree2,
+                                   workingtree.WorkingTree3,
+                                   workingtree_4.WorkingTree4)
+
 
 class TestBasisInventory(TestCaseWithWorkingTree):
 
@@ -36,8 +41,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         try:
             tree.add_reference(sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in (workingtree.WorkingTree2,
-                                      workingtree.WorkingTree3)
+            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
             raise tests.TestSkipped('Tree format does not support references')
         return tree, sub_tree
 
@@ -64,8 +68,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in (workingtree.WorkingTree2, 
-                                      workingtree.WorkingTree3)
+            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
             raise tests.TestSkipped('Tree format does not support references')
 
     def test_root_present(self):
@@ -76,8 +79,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in (workingtree.WorkingTree2, 
-                                      workingtree.WorkingTree3)
+            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
             raise tests.TestSkipped('Tree format does not support references')
 
     def test_add_non_subtree(self):
@@ -88,8 +90,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
                               sibling)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in (workingtree.WorkingTree2, 
-                                      workingtree.WorkingTree3)
+            assert tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES
             raise tests.TestSkipped('Tree format does not support references')
 
     def test_get_nested_tree(self):
