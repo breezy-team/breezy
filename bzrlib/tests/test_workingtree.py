@@ -21,7 +21,7 @@ import os
 from bzrlib import dirstate, ignores
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib import bzrdir, conflicts, errors, workingtree
+from bzrlib import bzrdir, conflicts, errors, workingtree, workingtree_4
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
@@ -31,6 +31,7 @@ from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.tree import InterTree
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
@@ -233,7 +234,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree.WorkingTreeFormat4().initialize(control)
+        tree = workingtree_4.WorkingTreeFormat4().initialize(control)
         # we want:
         # format 'Bazaar Working Tree format 4'
         # stat-cache = ??
@@ -271,13 +272,15 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
-    def make_workingtree(self):
-        url = self.get_url()
+    def make_workingtree(self, relpath=''):
+        url = self.get_url(relpath)
+        if relpath:
+            self.build_tree([relpath + '/'])
         dir = bzrdir.BzrDirMetaFormat1().initialize(url)
         repo = dir.create_repository()
         branch = dir.create_branch()
         try:
-            return workingtree.WorkingTreeFormat4().initialize(dir)
+            return workingtree_4.WorkingTreeFormat4().initialize(dir)
         except errors.NotLocalUrl:
             raise TestSkipped('Not a local URL')
 
@@ -310,41 +313,48 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(['subdir/file-a',])
         subtree.add(['file-a'], ['id-a'])
         rev1 = subtree.commit('commit in subdir')
-        rev1_tree = subtree.basis_tree()
-        rev1_tree.lock_read()
-        self.addCleanup(rev1_tree.unlock)
 
         subtree2 = subtree.bzrdir.sprout('subdir2').open_workingtree()
         self.build_tree(['subdir2/file-b'])
         subtree2.add(['file-b'], ['id-b'])
         rev2 = subtree2.commit('commit in subdir2')
-        rev2_tree = subtree2.basis_tree()
-        rev2_tree.lock_read()
-        self.addCleanup(rev2_tree.unlock)
 
+        subtree.flush()
         subtree.merge_from_branch(subtree2.branch)
         rev3 = subtree.commit('merge from subdir2')
-        rev3_tree = subtree.basis_tree()
-        rev3_tree.lock_read()
-        self.addCleanup(rev3_tree.unlock)
 
         repo = tree.branch.repository
         repo.fetch(subtree.branch.repository, rev3)
         # will also pull the others...
 
+        # create repository based revision trees
+        rev1_revtree = subtree.branch.repository.revision_tree(rev1)
+        rev2_revtree = subtree2.branch.repository.revision_tree(rev2)
+        rev3_revtree = subtree.branch.repository.revision_tree(rev3)
         # tree doesn't contain a text merge yet but we'll just
         # set the parents as if a merge had taken place. 
         # this should cause the tree data to be folded into the 
         # dirstate.
         tree.set_parent_trees([
-            (rev1, rev1_tree),
-            (rev2, rev2_tree),
-            (rev3, rev3_tree), ])
+            (rev1, rev1_revtree),
+            (rev2, rev2_revtree),
+            (rev3, rev3_revtree), ])
+
+        # create tree-sourced revision trees
+        rev1_tree = tree.revision_tree(rev1)
+        rev1_tree.lock_read()
+        self.addCleanup(rev1_tree.unlock)
+        rev2_tree = tree.revision_tree(rev2)
+        rev2_tree.lock_read()
+        self.addCleanup(rev2_tree.unlock)
+        rev3_tree = tree.revision_tree(rev3)
+        rev3_tree.lock_read()
+        self.addCleanup(rev3_tree.unlock)
 
         # now we should be able to get them back out
-        self.assertTreesEqual(tree.revision_tree(rev1), rev1_tree)
-        self.assertTreesEqual(tree.revision_tree(rev2), rev2_tree)
-        self.assertTreesEqual(tree.revision_tree(rev3), rev3_tree)
+        self.assertTreesEqual(rev1_revtree, rev1_tree)
+        self.assertTreesEqual(rev2_revtree, rev2_tree)
+        self.assertTreesEqual(rev3_revtree, rev3_tree)
 
     def test_dirstate_doesnt_read_parents_from_repo_when_setting(self):
         """Setting parent trees on a dirstate working tree takes
@@ -387,10 +397,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
+        rev1_tree.inventory
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
+        rev2_tree.inventory
         self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)
@@ -466,6 +478,128 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         lock_and_compare_all_current_dirstate(tree, 'lock_tree_write')
         lock_and_compare_all_current_dirstate(tree, 'lock_write')
         lock_and_compare_all_current_dirstate(tree, 'lock_write')
+
+    def test_revtree_to_revtree_not_interdirstate(self):
+        # we should not get a dirstate optimiser for two repository sourced
+        # revtrees. we can't prove a negative, so we dont do exhaustive tests
+        # of all formats; though that could be written in the future it doesn't
+        # seem well worth it.
+        tree = self.make_workingtree()
+        rev_id = tree.commit('first post')
+        rev_id2 = tree.commit('second post')
+        rev_tree = tree.branch.repository.revision_tree(rev_id)
+        rev_tree2 = tree.branch.repository.revision_tree(rev_id2)
+        optimiser = InterTree.get(rev_tree, rev_tree2)
+        self.assertIsInstance(optimiser, InterTree)
+        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        optimiser = InterTree.get(rev_tree2, rev_tree)
+        self.assertIsInstance(optimiser, InterTree)
+        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+
+    def test_revtree_not_in_dirstate_to_dirstate_not_interdirstate(self):
+        # we should not get a dirstate optimiser when the revision id for of
+        # the source is not in the dirstate of the target.
+        tree = self.make_workingtree()
+        rev_id = tree.commit('first post')
+        rev_id2 = tree.commit('second post')
+        rev_tree = tree.branch.repository.revision_tree(rev_id)
+        tree.lock_read()
+        optimiser = InterTree.get(rev_tree, tree)
+        self.assertIsInstance(optimiser, InterTree)
+        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        optimiser = InterTree.get(tree, rev_tree)
+        self.assertIsInstance(optimiser, InterTree)
+        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        tree.unlock()
+
+    def test_empty_basis_to_dirstate_tree(self):
+        # we should get a InterDirStateTree for doing
+        # 'changes_from' from the first basis dirstate revision tree to a
+        # WorkingTree4.
+        tree = self.make_workingtree()
+        tree.lock_read()
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        optimiser = InterTree.get(basis_tree, tree)
+        tree.unlock()
+        basis_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_nonempty_basis_to_dirstate_tree(self):
+        # we should get a InterDirStateTree for doing
+        # 'changes_from' from a non-null basis dirstate revision tree to a
+        # WorkingTree4.
+        tree = self.make_workingtree()
+        tree.commit('first post')
+        tree.lock_read()
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        optimiser = InterTree.get(basis_tree, tree)
+        tree.unlock()
+        basis_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_empty_basis_revtree_to_dirstate_tree(self):
+        # we should get a InterDirStateTree for doing
+        # 'changes_from' from an empty repository based rev tree to a
+        # WorkingTree4.
+        tree = self.make_workingtree()
+        tree.lock_read()
+        basis_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        basis_tree.lock_read()
+        optimiser = InterTree.get(basis_tree, tree)
+        tree.unlock()
+        basis_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_nonempty_basis_revtree_to_dirstate_tree(self):
+        # we should get a InterDirStateTree for doing
+        # 'changes_from' from a non-null repository based rev tree to a
+        # WorkingTree4.
+        tree = self.make_workingtree()
+        tree.commit('first post')
+        tree.lock_read()
+        basis_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        basis_tree.lock_read()
+        optimiser = InterTree.get(basis_tree, tree)
+        tree.unlock()
+        basis_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_tree_to_basis_in_other_tree(self):
+        # we should get a InterDirStateTree when
+        # the source revid is in the dirstate object of the target and
+        # the dirstates are different. This is largely covered by testing
+        # with repository revtrees, so is just for extra confidence.
+        tree = self.make_workingtree('a')
+        tree.commit('first post')
+        tree2 = self.make_workingtree('b')
+        tree2.pull(tree.branch)
+        basis_tree = tree.basis_tree()
+        tree2.lock_read()
+        basis_tree.lock_read()
+        optimiser = InterTree.get(basis_tree, tree2)
+        tree2.unlock()
+        basis_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_merged_revtree_to_tree(self):
+        # we should get a InterDirStateTree when
+        # the source tree is a merged tree present in the dirstate of target.
+        tree = self.make_workingtree('a')
+        tree.commit('first post')
+        tree.commit('tree 1 commit 2')
+        tree2 = self.make_workingtree('b')
+        tree2.pull(tree.branch)
+        tree2.commit('tree 2 commit 2')
+        tree.merge_from_branch(tree2.branch)
+        second_parent_tree = tree.revision_tree(tree.get_parent_ids()[1])
+        second_parent_tree.lock_read()
+        tree.lock_read()
+        optimiser = InterTree.get(second_parent_tree, tree)
+        tree.unlock()
+        second_parent_tree.unlock()
+        self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

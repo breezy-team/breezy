@@ -50,6 +50,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    revisiontree,
     textui,
     transform,
     urlutils,
@@ -82,6 +83,7 @@ from bzrlib.osutils import (
     )
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
+from bzrlib.tree import InterTree
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
@@ -1200,3 +1202,36 @@ class DirStateRevisionTree(Tree):
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
                     pending.append((dir[0], dir[4]))
+
+
+class InterDirStateTree(InterTree):
+    """Fast path optimiser for changes_from with dirstate trees."""
+
+    @staticmethod
+    def revision_tree_from_workingtree(tree):
+        """Create a revision tree from a working tree."""
+        revid = tree.commit('save tree', allow_pointless=True)
+        return tree.branch.repository.revision_tree(revid)
+    _from_tree_converter = revision_tree_from_workingtree
+    _matching_from_tree_format = WorkingTreeFormat4()
+    _matching_to_tree_format = WorkingTreeFormat4()
+    _to_tree_converter = staticmethod(lambda x: x)
+
+    @staticmethod
+    def is_compatible(source, target):
+        # the target must be a dirstate working tree
+        if not isinstance(target, WorkingTree4):
+            return False
+        # the source must be a revtreee or dirstate rev tree.
+        if not isinstance(source,
+            (revisiontree.RevisionTree, DirStateRevisionTree)):
+            return False
+        # the source revid must be in the target dirstate
+        if not (source._revision_id == NULL_REVISION or
+            source._revision_id in target.get_parent_ids()):
+            # TODO: what about ghosts? it may well need to 
+            # check for them explicitly.
+            return False
+        return True
+
+InterTree.register_optimiser(InterDirStateTree)
