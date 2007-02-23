@@ -998,6 +998,19 @@ class TestBisect(TestCaseWithTransport):
         tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
         tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
                  ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
+
+        # Update the expected dictionary.
+        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
+            orig = expected[path]
+            path2 = path + '2'
+            # This record was deleted in the current tree
+            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
+                                        orig[1][1]])
+            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
+            # And didn't exist in the basis tree
+            expected[path2] = (new_key, [orig[1][0],
+                                         dirstate.DirState.NULL_PARENT_DETAILS])
+
         # We will replace the 'dirstate' file underneath 'state', but that is
         # okay as lock as we unlock 'state' first.
         state.unlock()
@@ -1011,7 +1024,29 @@ class TestBisect(TestCaseWithTransport):
             # But we need to leave state in a read-lock because we already have
             # a cleanup scheduled
             state.lock_read()
-        state._bisect_page_size = 150
+        return tree, state, expected
+
+    def create_renamed_dirstate(self):
+        """Create a dirstate with a few internal renames.
+
+        This takes the basic dirstate, and moves the paths around.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        tree.rename_one('a', 'b/g')
+
+        old_a = expected['a']
+        expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
+        expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
+                                                ('r', 'a', 0, False, '')])
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            state.lock_read()
         return tree, state, expected
 
     def assertBisect(self, expected, state, paths):
@@ -1083,20 +1118,10 @@ class TestBisect(TestCaseWithTransport):
         """When bisecting for a path, handle multiple entries."""
         tree, state, expected = self.create_duplicated_dirstate()
 
-        # Update the expected dictionary.
-        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
-            orig = expected[path]
-            path2 = path + '2'
-            # This record was deleted in the current tree
-            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
-                                        orig[1][1]])
-            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
-            # And didn't exist in the basis tree
-            expected[path2] = (new_key, [orig[1][0],
-                                         dirstate.DirState.NULL_PARENT_DETAILS])
-
         # Now make sure that both records are properly returned.
-        self.assertBisect([[expected['a'], expected['a2']]], state, 'a')
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a'], expected['a2']]], state, ['a'])
+        self.assertBisect([[expected['b'], expected['b2']]], state, ['b'])
 
     def test_bisect_page_size_too_small(self):
         """We should raise an error if we detect a field longer than page_size.
@@ -1118,3 +1143,11 @@ class TestBisect(TestCaseWithTransport):
 
         self.assertBisect([[expected['a']], None, [expected['b/d']]],
                           state, ['a', 'foo', 'b/d'])
+
+    def test_bisect_rename(self):
+        """Check that we find a renamed row."""
+        tree, state, expected = self.create_renamed_dirstate()
+
+        # Search for the pre and post renamed entries
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b/g']]], state, ['b/g'])
