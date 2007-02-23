@@ -29,10 +29,6 @@ class RevisionTree(Tree):
     """Tree viewing a previous revision.
 
     File text can be retrieved from the text store.
-
-    TODO: Some kind of `__repr__` method, but a good one
-           probably means knowing the branch and revision number,
-           or at least passing a description to the constructor.
     """
     
     def __init__(self, branch, inv, revision_id):
@@ -144,6 +140,10 @@ class RevisionTree(Tree):
 
     def lock_read(self):
         self._repository.lock_read()
+
+    def __repr__(self):
+        return '<%s instance at %x, rev_id=%r>' % (
+            self.__class__.__name__, id(self), self._revision_id)
 
     def unlock(self):
         self._repository.unlock()
