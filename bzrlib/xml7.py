@@ -26,8 +26,7 @@ class Serializer_v7(xml6.Serializer_v6):
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
     format_num = '7'
 
-    def _unpack_entry(self, elt, none_parents):
-        assert none_parents is True
+    def _unpack_entry(self, elt):
         kind = elt.tag
         if not kind in self.supported_kinds:
             raise AssertionError('unsupported entry kind %s' % kind)
@@ -40,6 +39,6 @@ class Serializer_v7(xml6.Serializer_v6):
             return inventory.TreeReference(file_id, name, parent_id, revision,
                                            reference_revision)
         else:
-            return xml6.Serializer_v6._unpack_entry(self, elt, none_parents)
+            return xml6.Serializer_v6._unpack_entry(self, elt)
 
 serializer_v7 = Serializer_v7()

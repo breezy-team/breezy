@@ -47,7 +47,7 @@ class Serializer_v6(xml5.Serializer_v5):
             revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e, none_parents=True)
+            ie = self._unpack_entry(e)
             inv.add(ie)
         return inv
 

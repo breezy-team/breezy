@@ -57,7 +57,7 @@ entry[1][0]: The current tree
 entry[1][1]: The second tree
 
 For an entry for a tree, we have (using tree 0 - current tree) to demonstrate:
-entry[1][0][0]: kind
+entry[1][0][0]: minikind
 entry[1][0][1]: fingerprint
 entry[1][0][2]: size
 entry[1][0][3]: executable
@@ -201,6 +201,7 @@ import zlib
 
 from bzrlib import (
     errors,
+    lock,
     trace,
     )
 import bzrlib.inventory
@@ -240,9 +241,9 @@ class DirState(object):
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = 'x' * 32
-    NULL_PARENT_DETAILS = ('absent', '', 0, False, '')
+    NULL_PARENT_DETAILS = ('a', '', 0, False, '')
 
-    def __init__(self):
+    def __init__(self, path):
         """Create a  DirState object.
 
         Attributes of note:
@@ -254,6 +255,7 @@ class DirState(object):
             - size of 0
             - a packed state
             - and no sha information.
+        :param path: The path at which the dirstate file on disk should live.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -271,7 +273,9 @@ class DirState(object):
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
-        self._state_file=None
+        self._state_file = None
+        self._filename = path
+        self._lock_token = None
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
@@ -306,7 +310,9 @@ class DirState(object):
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
         dirname, basename = os.path.split(utf8path)
-        entry_key = (dirname, basename, file_id.encode('utf8'))
+        assert file_id.__class__ == str, \
+            "must be a utf8 file_id not %s" % (type(file_id))
+        entry_key = (dirname, basename, file_id)
         self._read_dirblocks_if_needed()
         block_index, present = self._find_block_index_from_key(entry_key)
         if not present:
@@ -323,17 +329,18 @@ class DirState(object):
             size = stat.st_size
             packed_stat = pack_stat(stat)
         parent_info = self._empty_parent_info()
+        minikind = DirState._kind_to_minikind[kind]
         if kind == 'file':
             entry_data = entry_key, [
-                (kind, link_or_sha1, size, False, packed_stat),
+                (minikind, link_or_sha1, size, False, packed_stat),
                 ] + parent_info
         elif kind == 'directory':
             entry_data = entry_key, [
-                (kind, '', 0, False, packed_stat),
+                (minikind, '', 0, False, packed_stat),
                 ] + parent_info
         elif kind == 'symlink':
             entry_data = entry_key, [
-                (kind, link_or_sha1, size, False, packed_stat),
+                (minikind, link_or_sha1, size, False, packed_stat),
                 ] + parent_info
         else:
             raise errors.BzrError('unknown kind %r' % kind)
@@ -401,18 +408,38 @@ class DirState(object):
         current_block = self._dirblocks[0][1]
         current_dirname = ''
         root_key = ('', '')
+        append_entry = current_block.append
         for entry in new_entries:
             if entry[0][0] != current_dirname:
                 # new block - different dirname
                 current_block = []
                 current_dirname = entry[0][0]
                 self._dirblocks.append((current_dirname, current_block))
-            elif entry[0][1]:
-                # this is not a root entry for a tree (it has a basename)
-                current_block = self._dirblocks[-1][1]
+                append_entry = current_block.append
             # append the entry to the current block
-            current_block.append(entry)
-    
+            append_entry(entry)
+        self._split_root_dirblock_into_contents()
+
+    def _split_root_dirblock_into_contents(self):
+        """Split the root dirblocks into root and contents-of-root.
+
+        After parsing by path, we end up with root entries and contents-of-root
+        entries in the same block. This loop splits them out again.
+        """
+        # The above loop leaves the "root block" entries mixed with the
+        # "contents-of-root block". But we don't want an if check on
+        # all entries, so instead we just fix it up here.
+        assert self._dirblocks[1] == ('', [])
+        root_block = []
+        contents_of_root_block = []
+        for entry in self._dirblocks[0][1]:
+            if not entry[0][1]: # This is a root entry
+                root_block.append(entry)
+            else:
+                contents_of_root_block.append(entry)
+        self._dirblocks[0] = ('', root_block)
+        self._dirblocks[1] = ('', contents_of_root_block)
+
     def _entry_to_line(self, entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
         
@@ -420,12 +447,12 @@ class DirState(object):
         """
         entire_entry = list(entry[0])
         for tree_number, tree_data in enumerate(entry[1]):
-            # (kind, fingerprint, size, executable, tree_specific_string)
+            # (minikind, fingerprint, size, executable, tree_specific_string)
             entire_entry.extend(tree_data)
             # 3 for the key, 5 for the fields per tree.
             tree_offset = 3 + tree_number * 5
-            # kind
-            entire_entry[tree_offset + 0] = DirState._kind_to_minikind[tree_data[0]]
+            # minikind
+            entire_entry[tree_offset + 0] = tree_data[0]
             # size
             entire_entry[tree_offset + 2] = str(tree_data[2])
             # executable
@@ -501,21 +528,31 @@ class DirState(object):
 
         :param tree: The tree which should provide parent information and
             inventory ids.
+        :return: a DirState object which is currently locked for writing.
+            (it was locked by DirState.initialize)
         """
         result = DirState.initialize(dir_state_filename)
-        tree.lock_read()
-        parent_ids = tree.get_parent_ids()
-        num_parents = len(parent_ids)
-        parent_trees = []
-        for parent_id in parent_ids:
-            parent_trees.append((parent_id, tree.branch.repository.revision_tree(parent_id)))
-            parent_trees[-1][1].lock_read()
-        result.set_parent_trees(parent_trees, [])
-        result.set_state_from_inventory(tree.inventory)
-
-        for revid, parent in parent_trees:
-            parent.unlock()
-        tree.unlock()
+        try:
+            tree.lock_read()
+            try:
+                parent_ids = tree.get_parent_ids()
+                num_parents = len(parent_ids)
+                parent_trees = []
+                for parent_id in parent_ids:
+                    parent_tree = tree.branch.repository.revision_tree(parent_id)
+                    parent_trees.append((parent_id, parent_tree))
+                    parent_tree.lock_read()
+                result.set_parent_trees(parent_trees, [])
+                result.set_state_from_inventory(tree.inventory)
+            finally:
+                for revid, parent_tree in parent_trees:
+                    parent_tree.unlock()
+                tree.unlock()
+        except:
+            # The caller won't have a chance to unlock this, so make sure we
+            # cleanup ourselves
+            result.unlock()
+            raise
         return result
 
     def get_ghosts(self):
@@ -548,7 +585,7 @@ class DirState(object):
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
 
-        This handles kind, size, and executable, as well as parent records.
+        This handles size and executable, as well as parent records.
 
         :return: A function which takes a list of fields, and returns an
             appropriate record for storing in memory.
@@ -556,12 +593,11 @@ class DirState(object):
         # This is intentionally unrolled for performance
         num_present_parents = self._num_present_parents()
         if num_present_parents == 0:
-            def fields_to_entry_0_parents(fields, _int=int, _tuple=tuple,
-                                          _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+            def fields_to_entry_0_parents(fields, _int=int):
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
-                        _mini_to_kind[fields[3]], # kind
+                        fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
                         fields[6] == 'y',         # executable
@@ -569,19 +605,18 @@ class DirState(object):
                     )])
             return fields_to_entry_0_parents
         elif num_present_parents == 1:
-            def fields_to_entry_1_parent(fields, _int=int, _tuple=tuple,
-                                         _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+            def fields_to_entry_1_parent(fields, _int=int):
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
-                        _mini_to_kind[fields[3]], # kind
+                        fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
                         fields[6] == 'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
                     ( # Parent 1
-                        _mini_to_kind[fields[8]], # kind
+                        fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
                         fields[11] == 'y',        # executable
@@ -590,26 +625,25 @@ class DirState(object):
                     ])
             return fields_to_entry_1_parent
         elif num_present_parents == 2:
-            def fields_to_entry_2_parents(fields, _int=int, _tuple=tuple,
-                                          _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
+            def fields_to_entry_2_parents(fields, _int=int):
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
                     ( # Current tree
-                        _mini_to_kind[fields[3]], # kind
+                        fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
                         fields[6] == 'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
                     ( # Parent 1
-                        _mini_to_kind[fields[8]], # kind
+                        fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
                         fields[11] == 'y',        # executable
                         fields[12],               # packed_stat or revision_id
                     ),
                     ( # Parent 2
-                        _mini_to_kind[fields[13]],# kind
+                        fields[13],               # minikind
                         fields[14],               # fingerprint
                         _int(fields[15]),         # size
                         fields[16] == 'y',        # executable
@@ -618,10 +652,9 @@ class DirState(object):
                     ])
             return fields_to_entry_2_parents
         else:
-            def fields_to_entry_n_parents(fields, _int=int, _tuple=tuple,
-                                          _mini_to_kind=self._minikind_to_kind):
-                path_name_file_id_key = _tuple(fields[:3])
-                trees = [(_mini_to_kind[fields[cur]], # kind
+            def fields_to_entry_n_parents(fields, _int=int):
+                path_name_file_id_key = (fields[0], fields[1], fields[2])
+                trees = [(fields[cur],                # minikind
                           fields[cur+1],              # fingerprint
                           _int(fields[cur+2]),        # size
                           fields[cur+3] == 'y',       # executable
@@ -667,7 +700,7 @@ class DirState(object):
         # requested.
         while entry_index < len(block) and block[entry_index][0][1] == basename:
             if block[entry_index][1][tree_index][0] not in \
-                       ('absent', 'relocated'):
+                       ('a', 'r'): # absent, relocated
                 return block_index, entry_index, True, True
             entry_index += 1
         return block_index, entry_index, True, False
@@ -696,7 +729,7 @@ class DirState(object):
             if not file_present:
                 return None, None
             entry = self._dirblocks[block_index][1][entry_index]
-            assert entry[0][2] and entry[1][tree_index][0] not in ('absent', 'relocated'), 'unversioned entry?!?!'
+            assert entry[0][2] and entry[1][tree_index][0] not in ('a', 'r'), 'unversioned entry?!?!'
             if fileid_utf8:
                 if entry[0][2] != fileid_utf8:
                     raise BzrError('integrity error ? : mismatching tree_index, file_id and path')
@@ -704,12 +737,12 @@ class DirState(object):
         else:
             for entry in self._iter_entries():
                 if entry[0][2] == fileid_utf8:
-                    if entry[1][tree_index][0] == 'relocated':
+                    if entry[1][tree_index][0] == 'r': # relocated
                         # look up the real location directly by path
                         return self._get_entry(tree_index,
                             fileid_utf8=fileid_utf8,
                             path_utf8=entry[1][tree_index][1])
-                    if entry[1][tree_index][0] == 'absent':
+                    if entry[1][tree_index][0] == 'a': # absent
                         # not in the tree at all.
                         return None, None
                     return entry
@@ -722,6 +755,10 @@ class DirState(object):
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
+        The object will be write locked when returned to the caller,
+        unless there was an exception in the writing, in which case it
+        will be unlocked.
+
         :param path: The name of the file for the dirstate.
         :return: A DirState object.
         """
@@ -730,20 +767,20 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = DirState()
-        result._state_file = open(path, 'wb+')
+        result = DirState(path)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
         empty_tree_dirblocks[0][1].append(
             (('', '', bzrlib.inventory.ROOT_ID), [
-                ('directory', '', 0, False, DirState.NULLSTAT),
+                ('d', '', 0, False, DirState.NULLSTAT),
             ]))
-        result._set_data([], empty_tree_dirblocks)
+        result.lock_write()
         try:
+            result._set_data([], empty_tree_dirblocks)
             result.save()
         except:
-            result._state_file.close()
+            result.unlock()
             raise
         return result
 
@@ -756,7 +793,8 @@ class DirState(object):
             id.
         """
         kind = inv_entry.kind
-        tree_data = inv_entry.revision.encode('utf8')
+        minikind = DirState._kind_to_minikind[kind]
+        tree_data = inv_entry.revision
         assert len(tree_data) > 0, 'empty revision for the inv_entry.'
         if kind == 'directory':
             fingerprint = ''
@@ -772,7 +810,7 @@ class DirState(object):
             executable = inv_entry.executable
         else:
             raise Exception
-        return (kind, fingerprint, size, executable, tree_data)
+        return (minikind, fingerprint, size, executable, tree_data)
 
     def _iter_entries(self):
         """Iterate over all the entries in the dirstate.
@@ -819,9 +857,11 @@ class DirState(object):
 
     @staticmethod
     def on_file(path):
-        """Construct a DirState on the file at path path."""
-        result = DirState()
-        result._state_file = open(path, 'rb+')
+        """Construct a DirState on the file at path path.
+
+        :return: An unlocked DirState object, associated with the given path.
+        """
+        result = DirState(path)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -868,10 +908,61 @@ class DirState(object):
                     field_count - cur, expected_field_count, entry_size,
                     self._num_entries, fields)
 
-            fields_to_entry = self._get_fields_to_entry()
-            entries = [fields_to_entry(fields[pos:pos+entry_size])
-                       for pos in xrange(cur, field_count, entry_size)]
-            self._entries_to_current_state(entries)
+            if num_present_parents == 1:
+                # Bind external functions to local names
+                _int = int
+                # We access all fields in order, so we can just iterate over
+                # them. Grab an straight iterator over the fields. (We use an
+                # iterator because we don't want to do a lot of additions, nor
+                # do we want to do a lot of slicing)
+                next = iter(fields).next
+                # Move the iterator to the current position
+                for x in xrange(cur):
+                    next()
+                # The two blocks here are deliberate: the root block and the
+                # contents-of-root block.
+                self._dirblocks = [('', []), ('', [])]
+                current_block = self._dirblocks[0][1]
+                current_dirname = ''
+                append_entry = current_block.append
+                for count in xrange(self._num_entries):
+                    dirname = next()
+                    name = next()
+                    file_id = next()
+                    if dirname != current_dirname:
+                        # new block - different dirname
+                        current_block = []
+                        current_dirname = dirname
+                        self._dirblocks.append((current_dirname, current_block))
+                        append_entry = current_block.append
+                    # we know current_dirname == dirname, so re-use it to avoid
+                    # creating new strings
+                    entry = ((current_dirname, name, file_id),
+                             [(# Current Tree
+                                 next(),                # minikind
+                                 next(),                # fingerprint
+                                 _int(next()),          # size
+                                 next() == 'y',         # executable
+                                 next(),                # packed_stat or revision_id
+                             ),
+                             ( # Parent 1
+                                 next(),                # minikind
+                                 next(),                # fingerprint
+                                 _int(next()),          # size
+                                 next() == 'y',         # executable
+                                 next(),                # packed_stat or revision_id
+                             ),
+                             ])
+                    trailing = next()
+                    assert trailing == '\n'
+                    # append the entry to the current block
+                    append_entry(entry)
+                self._split_root_dirblock_into_contents()
+            else:
+                fields_to_entry = self._get_fields_to_entry()
+                entries = [fields_to_entry(fields[pos:pos+entry_size])
+                           for pos in xrange(cur, field_count, entry_size)]
+                self._entries_to_current_state(entries)
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
@@ -898,6 +989,9 @@ class DirState(object):
 
     def _read_header_if_needed(self):
         """Read the header of the dirstate file if needed."""
+        # inline this as it will be called a lot
+        if not self._lock_token:
+            raise errors.ObjectNotLocked(self)
         if self._header_state == DirState.NOT_IN_MEMORY:
             self._read_header()
 
@@ -966,13 +1060,11 @@ class DirState(object):
 
         :param path: The path inside the tree to set - '' is the root, 'foo'
             is the path foo in the root.
-        :param new_id: The new id to assign to the path. If unicode, it will
-            be encoded to utf8. In future this will be deprecated: avoid using
-            unicode ids if possible.
+        :param new_id: The new id to assign to the path. This must be a utf8
+            file id (not unicode, and not None).
         """
         # TODO: start warning here.
-        if new_id.__class__ == unicode:
-            new_id = new_id.encode('utf8')
+        assert new_id.__class__ == str
         self._read_dirblocks_if_needed()
         if len(path):
             import pdb;pdb.set_trace()
@@ -1041,7 +1133,7 @@ class DirState(object):
         # one: the current tree
         for entry in self._iter_entries():
             # skip entries not in the current tree
-            if entry[1][0][0] in ('absent', 'relocated'):
+            if entry[1][0][0] in ('a', 'r'): # absent, relocated
                 continue
             by_path[entry[0]] = [entry[1][0]] + \
                 [DirState.NULL_PARENT_DETAILS] * parent_count
@@ -1067,7 +1159,7 @@ class DirState(object):
                 # new entry at this path: by adding the id->path mapping last,
                 # all the mappings are valid and have correct relocation
                 # records where needed. 
-                file_id = entry.file_id.encode('utf8')
+                file_id = entry.file_id
                 path_utf8 = path.encode('utf8')
                 dirname, basename = os.path.split(path_utf8)
                 new_entry_key = (dirname, basename, file_id)
@@ -1082,7 +1174,7 @@ class DirState(object):
                         # other trees, so put absent pointers there
                         # This is the vertical axis in the matrix, all pointing
                         # tot he real path.
-                        by_path[entry_key][tree_index] = ('relocated', path_utf8, 0, False, '')
+                        by_path[entry_key][tree_index] = ('r', path_utf8, 0, False, '')
                 # by path consistency: Insert into an existing path record (trivial), or 
                 # add a new one with relocation pointers for the other tree indexes.
                 if new_entry_key in id_index[file_id]:
@@ -1106,13 +1198,13 @@ class DirState(object):
                             # fragmented situations by reusing the relocation
                             # records.
                             a_key = iter(id_index[file_id]).next()
-                            if by_path[a_key][lookup_index][0] in ('relocated', 'absent'):
+                            if by_path[a_key][lookup_index][0] in ('r', 'a'):
                                 # its a pointer or missing statement, use it as is.
                                 new_details.append(by_path[a_key][lookup_index])
                             else:
                                 # we have the right key, make a pointer to it.
                                 real_path = ('/'.join(a_key[0:2])).strip('/')
-                                new_details.append(('relocated', real_path, 0, False, ''))
+                                new_details.append(('r', real_path, 0, False, ''))
                     new_details.append(self._inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
@@ -1158,14 +1250,15 @@ class DirState(object):
                 return None
         while current_new or current_old:
             # skip entries in old that are not really there
-            if current_old and current_old[1][0][0] in ('relocated', 'absent'):
+            if current_old and current_old[1][0][0] in ('r', 'a'):
+                # relocated or absent
                 current_old = advance(old_iterator)
                 continue
             if current_new:
                 # convert new into dirblock style
                 new_path_utf8 = current_new[0].encode('utf8')
                 new_dirname, new_basename = os.path.split(new_path_utf8)
-                new_id = current_new[1].file_id.encode('utf8')
+                new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
             else:
                 # for safety disable variables
@@ -1187,8 +1280,9 @@ class DirState(object):
                 # TODO: update the record if anything significant has changed.
                 # the minimal required trigger is if the execute bit or cached
                 # kind has changed.
+                kind = DirState._minikind_to_kind[current_old[1][0][0]]
                 if (current_old[1][0][3] != current_new[1].executable or
-                    current_old[1][0][0] != current_new[1].kind):
+                    kind != current_new[1].kind):
                     self.update_minimal(current_old[0], current_new[1].kind,
                         num_present_parents,
                         executable=current_new[1].executable,
@@ -1223,9 +1317,9 @@ class DirState(object):
         all_remaining_keys = set()
         # Dont check the working tree, because its going.
         for details in current_old[1][1:]:
-            if details[0] not in ('absent', 'relocated'):
+            if details[0] not in ('a', 'r'): # absent, relocated
                 all_remaining_keys.add(current_old[0])
-            elif details[0] == 'relocated':
+            elif details[0] == 'r': # relocated
                 # record the key for the real path.
                 all_remaining_keys.add(tuple(os.path.split(details[1])) + (current_old[0][2],))
             # absent rows are not present at any path.
@@ -1254,7 +1348,7 @@ class DirState(object):
             assert present
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
             # it must not be absent at the moment
-            assert update_tree_details[0][0] != 'absent'
+            assert update_tree_details[0][0] != 'a' # absent
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return last_reference
@@ -1267,7 +1361,8 @@ class DirState(object):
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
         entry_index, present = self._find_entry_index(key, block)
-        new_details = (kind, fingerprint, size, executable, packed_stat)
+        minikind = DirState._kind_to_minikind[kind]
+        new_details = (minikind, fingerprint, size, executable, packed_stat)
         assert id_index is not None, 'need an id index to do updates for now !'
         if not present:
             # new entry, synthesis cross reference here,
@@ -1292,7 +1387,7 @@ class DirState(object):
                     assert present
                     assert path_utf8 is not None
                     self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
-                        ('relocated', path_utf8, 0, False, '')
+                        ('r', path_utf8, 0, False, '')
 
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
@@ -1306,14 +1401,14 @@ class DirState(object):
                         self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
                     assert present
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
-                    if update_details[0] in ('relocated', 'absent'):
+                    if update_details[0] in ('r', 'a'): # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
                         # it as is.
                         new_entry[1].append(update_details)
                     else:
                         # we have the right key, make a pointer to it.
                         pointer_path = os.path.join(*other_key[0:2])
-                        new_entry[1].append(('relocated', pointer_path, 0, False, ''))
+                        new_entry[1].append(('r', pointer_path, 0, False, ''))
             block.insert(entry_index, new_entry)
             existing_keys.add(key)
         else:
@@ -1343,9 +1438,9 @@ class DirState(object):
                     entry_index, present = self._find_entry_index(entry_key, self._dirblocks[block_index][1])
                     assert present
                     self._dirblocks[block_index][1][entry_index][1][0] = \
-                        ('relocated', path_utf8, 0, False, '')
+                        ('r', path_utf8, 0, False, '')
         # add a containing dirblock if needed.
-        if new_details[0] == 'directory':
+        if new_details[0] == 'd':
             subdir_key = (os.path.join(*key[0:2]), '', '')
             block_index, present = self._find_block_index_from_key(subdir_key)
             if not present:
@@ -1354,6 +1449,42 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
 
+    def _wipe_state(self):
+        """Forget all state information about the dirstate."""
+        self._header_state = DirState.NOT_IN_MEMORY
+        self._dirblock_state = DirState.NOT_IN_MEMORY
+        self._parents = []
+        self._ghosts = []
+        self._dirblocks = []
+
+    def lock_read(self):
+        """Acquire a read lock on the dirstate"""
+        if self._lock_token is not None:
+            raise errors.LockContention(self._lock_token)
+        self._lock_token = lock.ReadLock(self._filename)
+        self._state_file = self._lock_token.f
+        self._wipe_state()
+
+    def lock_write(self):
+        """Acquire a write lock on the dirstate"""
+        if self._lock_token is not None:
+            raise errors.LockContention(self._lock_token)
+        self._lock_token = lock.WriteLock(self._filename)
+        self._state_file = self._lock_token.f
+        self._wipe_state()
+
+    def unlock(self):
+        """Drop any locks held on the dirstate"""
+        if self._lock_token is None:
+            raise errors.LockNotHeld(self)
+        self._state_file = None
+        self._lock_token.unlock()
+        self._lock_token = None
+
+    def _requires_lock(self):
+        """Checks that a lock is currently held by someone on the dirstate"""
+        if not self._lock_token:
+            raise errors.ObjectNotLocked(self)
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""

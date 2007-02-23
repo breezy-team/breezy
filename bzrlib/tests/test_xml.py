@@ -143,6 +143,35 @@ _expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
 </inventory>
 """
 
+_revision_utf8_v5 = """<revision committer="Erik B&#229;gfors &lt;erik@foo.net&gt;"
+    inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
+    revision_id="erik@b&#229;gfors-02"
+    timestamp="1125907235.212"
+    timezone="36000">
+<message>Include &#181;nicode characters
+</message>
+<parents>
+<revision_ref revision_id="erik@b&#229;gfors-01"/>
+</parents>
+</revision>
+"""
+
+_inventory_utf8_v5 = """<inventory file_id="TRE&#233;_ROOT" format="5"
+                                   revision_id="erik@b&#229;gfors-02">
+<file file_id="b&#229;r-01"
+      name="b&#229;r" parent_id="TRE&#233;_ROOT"
+      revision="erik@b&#229;gfors-01"/>
+<directory name="s&#181;bdir"
+           file_id="s&#181;bdir-01"
+           parent_id="TRE&#233;_ROOT"
+           revision="erik@b&#229;gfors-01"/>
+<file executable="yes" file_id="b&#229;r-02"
+      name="b&#229;r" parent_id="s&#181;bdir-01"
+      revision="erik@b&#229;gfors-02"/>
+</inventory>
+"""
+
+
 class TestSerializer(TestCase):
     """Test XML serialization"""
     def test_canned_inventory(self):
@@ -327,17 +356,46 @@ class TestSerializer(TestCase):
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
         s_v5 = bzrlib.xml5.serializer_v5
-        rev = s_v5.read_revision_from_string(_revision_v5)
+        rev = s_v5.read_revision_from_string(_revision_utf8_v5)
+        self.assertEqual('erik@b\xc3\xa5gfors-02', rev.revision_id)
         self.assertIsInstance(rev.revision_id, str)
+        self.assertEqual(['erik@b\xc3\xa5gfors-01'], rev.parent_ids)
         for parent_id in rev.parent_ids:
             self.assertIsInstance(parent_id, str)
+        self.assertEqual(u'Include \xb5nicode characters\n', rev.message)
+        self.assertIsInstance(rev.message, unicode)
 
         # ie.revision should either be None or a utf-8 revision id
-        inv = s_v5.read_inventory_from_string(_committed_inv_v5)
-        for path, ie in inv.iter_entries():
-            if ie.revision is None:
-                continue
-            self.assertIsInstance(ie.revision, str)
+        inv = s_v5.read_inventory_from_string(_inventory_utf8_v5)
+        rev_id_1 = u'erik@b\xe5gfors-01'.encode('utf8')
+        rev_id_2 = u'erik@b\xe5gfors-02'.encode('utf8')
+        fid_root = u'TRE\xe9_ROOT'.encode('utf8')
+        fid_bar1 = u'b\xe5r-01'.encode('utf8')
+        fid_sub = u's\xb5bdir-01'.encode('utf8')
+        fid_bar2 = u'b\xe5r-02'.encode('utf8')
+        expected = [(u'', fid_root, None, None),
+                    (u'b\xe5r', fid_bar1, fid_root, rev_id_1),
+                    (u's\xb5bdir', fid_sub, fid_root, rev_id_1),
+                    (u's\xb5bdir/b\xe5r', fid_bar2, fid_sub, rev_id_2),
+                   ]
+        self.assertEqual(rev_id_2, inv.revision_id)
+        self.assertIsInstance(inv.revision_id, str)
+
+        actual = list(inv.iter_entries_by_dir())
+        for ((exp_path, exp_file_id, exp_parent_id, exp_rev_id),
+             (act_path, act_ie)) in zip(expected, actual):
+            self.assertEqual(exp_path, act_path)
+            self.assertIsInstance(act_path, unicode)
+            self.assertEqual(exp_file_id, act_ie.file_id)
+            self.assertIsInstance(act_ie.file_id, str)
+            self.assertEqual(exp_parent_id, act_ie.parent_id)
+            if exp_parent_id is not None:
+                self.assertIsInstance(act_ie.parent_id, str)
+            self.assertEqual(exp_rev_id, act_ie.revision)
+            if exp_rev_id is not None:
+                self.assertIsInstance(act_ie.revision, str)
+
+        self.assertEqual(len(expected), len(actual))
 
 
 class TestEncodeAndEscape(TestCase):

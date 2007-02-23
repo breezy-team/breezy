@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import errors
+from bzrlib import errors, tests, workingtree_4
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 
@@ -248,6 +248,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_no_content(tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([], list(tree2._iter_changes(tree1)))
 
     def added(self, tree, file_id):
@@ -270,6 +274,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
             
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([self.added(tree2, 'root-id'),
                           self.added(tree2, 'a-id'), 
                           self.added(tree2, 'b-id'), 
@@ -282,6 +290,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([self.added(tree2, 'a-id')],
                          list(tree2._iter_changes(tree1, 
                                                  specific_file_ids=['a-id'])))
@@ -294,6 +306,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([self.added(tree2, 'a-id'),
                           self.added(tree2, 'c-id')],
                          list(tree2._iter_changes(tree1, 
@@ -314,6 +330,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     (entry.parent_id, None),
                     (entry.name, None), (entry.kind, None), 
                     (entry.executable, None))
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([self.added(tree1, 'empty-root-id'), 
                           deleted('root-id'), deleted('a-id'), 
                           deleted('b-id'), deleted('c-id')],
@@ -325,6 +345,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_2(tree2)
         root_id = tree1.inventory.root.file_id
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([('a-id', 'a', True, (True, True), 
                           (root_id, root_id), ('a', 'a'), 
                           ('file', 'file'), (False, False))], 
@@ -335,6 +359,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_3(tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([('c-id', 'b/c', False, (True, True), 
                           ('b-id', 'b-id'), ('c', 'c'), ('file', 'file'), 
                           (False, True))], list(tree2._iter_changes(tree1)))
@@ -345,6 +373,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_4(tree2)
         root_id = tree1.inventory.root.file_id
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([('a-id', 'd', False, (True, True), 
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                           (False, False))], list(tree2._iter_changes(tree1)))
@@ -355,6 +387,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
         root_id = tree1.inventory.root.file_id
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([('a-id', 'd', True, (True, True), 
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                            (False, False))], list(tree2._iter_changes(tree1)))
@@ -365,6 +401,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_6(tree2)
         root_id = tree1.inventory.root.file_id
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertEqual([('c-id', 'e', False, (True, True), 
                           ('b-id', root_id), ('c', 'e'), ('file', 'file'), 
                           (False, True))], list(tree2._iter_changes(tree1)))
@@ -376,20 +416,24 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
         root_id = tree1.inventory.root.file_id
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         def unchanged(file_id):
             entry = tree1.inventory[file_id]
             parent = entry.parent_id
             name = entry.name
             kind = entry.kind
             executable = entry.executable
-            return (file_id, tree1.id2path(file_id), False, (True, True), 
-                   (parent, parent), (name, name), (kind, kind), 
+            return (file_id, tree1.id2path(file_id), False, (True, True),
+                   (parent, parent), (name, name), (kind, kind),
                    (executable, executable))
         self.assertEqual([unchanged(root_id), unchanged('b-id'),
-                          ('a-id', 'd', True, (True, True), 
+                          ('a-id', 'd', True, (True, True),
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                           (False, False)), unchanged('c-id')],
-                         list(tree2._iter_changes(tree1, 
+                         list(tree2._iter_changes(tree1,
                                                  include_unchanged=True)))
 
     def test_compare_subtrees(self):
@@ -398,7 +442,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.set_root_id('root-id')
         subtree1 = self.make_branch_and_tree('1/sub')
         subtree1.set_root_id('subtree-id')
-        tree1.add_reference(subtree1)
+        try:
+            tree1.add_reference(subtree1)
+        except errors.UnsupportedOperation:
+            self.assertIsInstance(tree1, workingtree_4.WorkingTree4)
+            raise tests.TestSkipped('Tree does not support references')
 
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id('root-id')

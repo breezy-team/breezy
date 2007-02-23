@@ -2100,7 +2100,13 @@ _unescape_map = {
 
 
 def _unescaper(match, _map=_unescape_map):
-    return _map[match.group(1)]
+    code = match.group(1)
+    try:
+        return _map[code]
+    except KeyError:
+        if not code.startswith('#'):
+            raise
+        return unichr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = None

@@ -302,11 +302,38 @@ class TestSafeRevisionId(TestCase):
     def test_bad_utf8_string(self):
         # This check may eventually go away
         self.assertRaises(BzrBadParameterNotUnicode,
-                          osutils.safe_utf8, '\xbb\xbb')
+                          osutils.safe_revision_id, '\xbb\xbb')
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
         self.assertEqual(None, osutils.safe_revision_id(None))
+
+
+class TestSafeFileId(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_file_id(f))
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_file_id(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae',
+                         osutils.safe_file_id(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae',
+                         osutils.safe_file_id('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        # This check may eventually go away
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_file_id, '\xbb\xbb')
+
+    def test_none(self):
+        """Currently, None is a valid revision_id"""
+        self.assertEqual(None, osutils.safe_file_id(None))
 
 
 class TestWin32Funcs(TestCase):

@@ -22,6 +22,7 @@ See MutableTree for more details.
 
 from bzrlib import (
     errors,
+    osutils,
     tree,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -93,6 +94,7 @@ class MutableTree(tree.Tree):
             ids = [None] * len(files)
         else:
             assert(len(ids) == len(files))
+            ids = [osutils.safe_file_id(file_id) for file_id in ids]
 
         if kinds is None:
             kinds = [None] * len(files)

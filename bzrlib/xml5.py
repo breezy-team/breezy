@@ -281,6 +281,8 @@ class Serializer_v5(Serializer):
         """
         assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
+        root_id = _get_utf8_or_ascii(root_id)
+
         format = elt.get('format')
         if format is not None:
             if format != '5':
@@ -292,12 +294,12 @@ class Serializer_v5(Serializer):
         inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)
-            if ie.parent_id == ROOT_ID:
+            if ie.parent_id is None:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
-    def _unpack_entry(self, elt, none_parents=False):
+    def _unpack_entry(self, elt):
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
@@ -305,17 +307,9 @@ class Serializer_v5(Serializer):
         get_cached = _get_utf8_or_ascii
 
         parent_id = elt.get('parent_id')
-        if parent_id is None and not none_parents:
-            parent_id = ROOT_ID
-        # TODO: jam 20060817 At present, caching file ids costs us too 
-        #       much time. It slows down overall read performances from
-        #       approx 500ms to 700ms. And doesn't improve future reads.
-        #       it might be because revision ids and file ids are mixing.
-        #       Consider caching *just* the file ids, for a limited period
-        #       of time.
-        #parent_id = get_cached(parent_id)
-        #file_id = get_cached(elt.get('file_id'))
-        file_id = elt.get('file_id')
+        if parent_id is not None:
+            parent_id = get_cached(parent_id)
+        file_id = get_cached(elt.get('file_id'))
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,

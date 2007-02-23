@@ -27,7 +27,8 @@ class TestWalkdirs(TestCaseWithTree):
             [
              ('0file', '0file', 'file', None, '2file', 'file'),
              ('1top-dir', '1top-dir', 'directory', None, '1top-dir', 'directory'),
-             (u'2utf\u1234file', u'2utf\u1234file', 'file', None, u'0utf\u1234file', 'file'),
+             (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
+                                     u'0utf\u1234file'.encode('utf8'), 'file'),
              ('symlink', 'symlink', 'symlink', None, 'symlink', 'symlink')
             ]),
             (('1top-dir', '1top-dir'),
