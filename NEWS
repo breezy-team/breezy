@@ -124,6 +124,10 @@ IN DEVELOPMENT
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
+    * Bazaar now looks for user-installed plugins before looking for site-wide
+      plugins.
+      (Jonathan Lange)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
