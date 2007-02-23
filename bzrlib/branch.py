@@ -1923,7 +1923,9 @@ class BranchTestProviderAdapter(object):
 
 class PullResult(object):
 
-    pass
+    def __int__(self):
+        # somewhat deprecated: pull used to return the change in revno
+        return self.new_revno - self.old_revno
 
 
 class BranchCheckResult(object):

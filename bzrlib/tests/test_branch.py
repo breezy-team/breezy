@@ -37,6 +37,7 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     BzrBranch5,
     BzrBranchFormat5,
+    PullResult,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
                            BzrDir, BzrDirFormat)
@@ -300,3 +301,17 @@ class TestHooks(TestCase):
         hooks = BranchHooks()
         hooks.install_hook('set_rh', None)
         self.assertEqual(hooks['set_rh'], [None])
+
+
+class TestPullResult(TestCase):
+
+    def test_pull_result_to_int(self):
+        # to support old code, the pull result can be used as an int
+        r = PullResult()
+        r.old_revno = 10
+        r.new_revno = 20
+        # this usage of results is not recommended for new code (because it
+        # doesn't describe very well what happened), but for api stability
+        # it's still supported
+        a = "%d revisions pulled" % r
+        self.assertEqual(a, "10 revisions pulled")
