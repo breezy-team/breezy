@@ -597,19 +597,19 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id,
+            result = tree_to.pull(branch_from, overwrite, rev_id,
                 delta.ChangeReporter(tree_to.inventory))
         else:
-            count = branch_to.pull(branch_from, overwrite, rev_id)
-        note('%d revision(s) pulled.' % (count,))
+            result = branch_to.pull(branch_from, overwrite, rev_id)
 
-        if verbose:
+        if result.old_revid == result.new_revid:
+            note('No revisions to pull.')
+        elif verbose:
+            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            if old_rh != new_rh:
-                # Something changed
-                from bzrlib.log import show_changed_revisions
-                show_changed_revisions(branch_to, old_rh, new_rh,
-                                       to_file=self.outf)
+            show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
+        else:
+            note('Now on revision %d.' % result.new_revno)
 
 
 class cmd_push(Command):
@@ -3228,9 +3228,13 @@ def _merge_helper(other_revision, base_revision,
             return 0
         if file_list is None:
             if pull and merger.base_rev_id == merger.this_rev_id:
-                count = merger.this_tree.pull(merger.this_branch,
+                # FIXME: deduplicate with pull
+                result = merger.this_tree.pull(merger.this_branch,
                         False, merger.other_rev_id)
-                note('%d revision(s) pulled.' % (count,))
+                if result.old_revid == result.new_revid:
+                    note('No revisions to pull.')
+                else:
+                    note('Now on revision %d.' % result.new_revno)
                 return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 
