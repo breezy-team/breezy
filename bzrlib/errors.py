@@ -163,18 +163,6 @@ class AlreadyBuilding(BzrError):
     _fmt = "The tree builder is already building a tree."
 
 
-class BisectPageSizeTooSmall(BzrError):
-
-    _fmt = ("The dirstate bisect page size %(size)s is too small."
-            " We were unable to read an entire record.")
-
-    internal_error = True
-
-    def __init__(self, size):
-        BzrError.__init__(self)
-        self.size = size
-
-
 class BzrCheckError(BzrError):
     
     _fmt = "Internal check failed: %(message)s"

@@ -437,7 +437,9 @@ class DirState(object):
                 # So put this range back and try again. But we know we have to
                 # increase the page size, because a single read did not contain
                 # a record break (so records must be larger than page_size)
-                raise errors.BisectPageSizeTooSmall(page_size)
+                page_size *= 2
+                pending.append((low, high, cur_files))
+                continue
 
             # Check the first and last entries, in case they are partial, or if
             # we don't care about the rest of this page
@@ -453,8 +455,10 @@ class DirState(object):
 
             if len(first_fields) <= 2:
                 # We didn't even get a filename here... what do we do?
-                # For now, just fall over
-                raise errors.BisectPageSizeTooSmall(page_size)
+                # Try a large page size and repeat this query
+                page_size *= 2
+                pending.append((low, high, cur_files))
+                continue
             else:
                 # Find what entries we are looking for, which occur before and
                 # after this first record.

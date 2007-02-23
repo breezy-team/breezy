@@ -1124,15 +1124,16 @@ class TestBisect(TestCaseWithTransport):
         self.assertBisect([[expected['b'], expected['b2']]], state, ['b'])
 
     def test_bisect_page_size_too_small(self):
-        """We should raise an error if we detect a field longer than page_size.
-
-        This is a safety check, since we know we are reading in pages, and we
-        expect to fit at least slightly more than 1 record per page.
-        """
+        """If the page size is too small, we will auto increase it."""
         tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 50
-        self.assertRaises(errors.BisectPageSizeTooSmall,
-                          state._bisect, [('b', 'e')])
+        self.assertBisect([None], state, ['b/e'])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
 
     def test_bisect_missing(self):
         """Test that bisect return None if it cannot find a path."""
