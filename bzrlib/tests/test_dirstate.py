@@ -18,8 +18,11 @@
 
 import os
 
-from bzrlib import dirstate, errors
-from bzrlib.dirstate import DirState
+from bzrlib import (
+    dirstate,
+    errors,
+    osutils,
+    )
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
 
@@ -31,13 +34,13 @@ from bzrlib.tests import TestCaseWithTransport
 # test unicode parents, non unicode parents
 # test all change permutations in one and two parents.
 # i.e. file in parent 1, dir in parent 2, symlink in tree.
-# test that renames in the tree result in correct parent paths 
+# test that renames in the tree result in correct parent paths
 # Test get state from a file, then asking for lines.
 # write a smaller state, and check the file has been truncated.
 # add a entry when its in state deleted
 # revision attribute for root entries.
 # test that utf8 strings are preserved in _row_to_line
-# test parent manipulation 
+# test parent manipulation
 # test parents that are null in save : i.e. no record in the parent tree for this.
 # todo: _set_data records ghost parents.
 # TESTS to write:
@@ -190,7 +193,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         expected_result = ([], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -202,7 +205,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
         expected_result = ([rev_id], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -217,7 +220,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree.merge_from_branch(tree2.branch)
         expected_result = ([rev_id, rev_id2], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
               ('d', '', 0, False, rev_id2), # second parent details
              ])])
@@ -231,7 +234,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         self.build_tree(['tree/unknown'])
         expected_result = ([], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -248,7 +251,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree = self.get_tree_with_a_file()
         expected_result = ([], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
             (('', 'a file', 'a file id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
@@ -266,12 +269,13 @@ class TestTreeToDirState(TestCaseWithDirState):
         self.build_tree_contents([('tree/a file', 'new content\n')])
         expected_result = ([rev_id], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
              ]),
             (('', 'a file', 'a file id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
-              ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False, rev_id), # first parent
+              ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
+               rev_id), # first parent
              ]),
             ])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -292,14 +296,16 @@ class TestTreeToDirState(TestCaseWithDirState):
         self.build_tree_contents([('tree/a file', 'new content\n')])
         expected_result = ([rev_id, rev_id2], [
             (('', '', tree.path2id('')), # common details
-             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
               ('d', '', 0, False, rev_id2), # second parent details
              ]),
             (('', 'a file', 'a file id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
-              ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False, rev_id), # first parent
-              ('f', '314d796174c9412647c3ce07dfb5d36a94e72958', 14, False, rev_id2), # second parent
+              ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
+               rev_id), # first parent
+              ('f', '314d796174c9412647c3ce07dfb5d36a94e72958', 14, False,
+               rev_id2), # second parent
              ]),
             ])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -336,8 +342,8 @@ class TestDirStateOnFile(TestCaseWithDirState):
         try:
             # doing a save should work here as there have been no changes.
             state.save()
-            # TODO: stat it and check it hasn't changed; may require waiting for
-            # the state accuracy window.
+            # TODO: stat it and check it hasn't changed; may require waiting
+            # for the state accuracy window.
         finally:
             state.unlock()
 
@@ -377,12 +383,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree1.unlock()
         expected_result = [], [
             (('', '', root_id), [
-             ('d', '', 0, False, DirState.NULLSTAT)])]
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
         state = dirstate.DirState.initialize('dirstate')
         try:
             state.set_state_from_inventory(inv)
-            self.assertEqual(DirState.IN_MEMORY_UNMODIFIED, state._header_state)
-            self.assertEqual(DirState.IN_MEMORY_MODIFIED, state._dirblock_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
         except:
             state.unlock()
             raise
@@ -396,11 +404,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             # check precondition to be sure the state does change appropriately.
             self.assertEqual(
-                [(('', '', 'TREE_ROOT'), [('d', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])],
+                [(('', '', 'TREE_ROOT'), [('d', '', 0, False,
+                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])],
                 list(state._iter_entries()))
             state.set_path_id('', 'foobarbaz')
             expected_rows = [
-                (('', '', 'foobarbaz'), [('d', '', 0, False, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])]
+                (('', '', 'foobarbaz'), [('d', '', 0, False,
+                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])]
             self.assertEqual(expected_rows, list(state._iter_entries()))
             # should work across save too
             state.save()
@@ -438,7 +448,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
                  (revid2, tree2.branch.repository.revision_tree(revid2)),
                  ('ghost-rev', None)),
                 ['ghost-rev'])
-            # check we can reopen and use the dirstate after setting parent trees.
+            # check we can reopen and use the dirstate after setting parent
+            # trees.
             state.save()
         finally:
             state.unlock()
@@ -466,7 +477,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.assertEqual(['ghost-rev'], state.get_ghosts())
             self.assertEqual(
                 [(('', '', root_id), [
-                  ('d', '', 0, False, DirState.NULLSTAT),
+                  ('d', '', 0, False, dirstate.DirState.NULLSTAT),
                   ('d', '', 0, False, revid1),
                   ('d', '', 0, False, revid2)
                   ])],
@@ -476,7 +487,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_parent_trees_file_missing_from_tree(self):
         # Adding a parent tree may reference files not in the current state.
-        # they should get listed just once by id, even if they are in two  
+        # they should get listed just once by id, even if they are in two
         # separate trees.
         # set_parent_trees is a slow but important api to support.
         tree1 = self.make_branch_and_memory_tree('tree1')
@@ -500,13 +511,17 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # check the layout in memory
         expected_result = [revid1.encode('utf8'), revid2.encode('utf8')], [
             (('', '', root_id), [
-             ('d', '', 0, False, DirState.NULLSTAT),
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT),
              ('d', '', 0, False, revid1.encode('utf8')),
-             ('d', '', 0, False, revid2.encode('utf8'))]),
+             ('d', '', 0, False, revid2.encode('utf8'))
+             ]),
             (('', 'a file', 'file-id'), [
              ('a', '', 0, False, ''),
-             ('f', '2439573625385400f2a669657a7db6ae7515d371', 12, False, revid1.encode('utf8')),
-             ('f', '542e57dc1cda4af37cb8e55ec07ce60364bb3c7d', 16, False, revid2.encode('utf8'))])
+             ('f', '2439573625385400f2a669657a7db6ae7515d371', 12, False,
+              revid1.encode('utf8')),
+             ('f', '542e57dc1cda4af37cb8e55ec07ce60364bb3c7d', 16, False,
+              revid2.encode('utf8'))
+             ])
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -534,10 +549,10 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
-             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
             (('', 'a file', 'a file id'), [
-             ('f', '1'*20, 19, False, dirstate.pack_stat(stat)), # current tree details
+             ('f', '1'*20, 19, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         try:
@@ -577,10 +592,10 @@ class TestDirStateManipulations(TestCaseWithDirState):
         stat = os.lstat('a dir')
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
-             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
             (('', 'a dir', 'a dir id'), [
-             ('d', '', 0, False, dirstate.pack_stat(stat)), # current tree details
+             ('d', '', 0, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
@@ -608,10 +623,10 @@ class TestDirStateManipulations(TestCaseWithDirState):
         stat = os.lstat('a link')
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
-             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
             (('', 'a link', 'a link id'), [
-             ('l', 'target', 6, False, dirstate.pack_stat(stat)), # current tree details
+             ('l', 'target', 6, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
@@ -637,13 +652,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
         filestat = os.lstat('a dir/a file')
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
-             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree details
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
             (('', 'a dir', 'a dir id'), [
-             ('d', '', 0, False, dirstate.pack_stat(dirstat)), # current tree details
+             ('d', '', 0, False, dirstate.pack_stat(dirstat)), # current tree
              ]),
             (('a dir', 'a file', 'a file id'), [
-             ('f', '1'*20, 25, False, dirstate.pack_stat(filestat)), # current tree details
+             ('f', '1'*20, 25, False,
+              dirstate.pack_stat(filestat)), # current tree details
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
@@ -677,8 +693,8 @@ class TestGetLines(TestCaseWithDirState):
                 '\x00\x00a-root-value\x00'
                 'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
                 '\x00subdir\x00subdir-id\x00'
-                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'],
-                state.get_lines())
+                'd\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00\n\x00'
+                ], state.get_lines())
         finally:
             state.unlock()
 
@@ -686,7 +702,8 @@ class TestGetLines(TestCaseWithDirState):
         state = self.create_dirstate_with_root()
         try:
             self.assertEqual(
-                '\x00\x00a-root-value\x00d\x00\x000\x00n\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk',
+                '\x00\x00a-root-value\x00d\x00\x000\x00n'
+                '\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk',
                 state._entry_to_line(state._dirblocks[0][1][0]))
         finally:
             state.unlock()
@@ -695,7 +712,8 @@ class TestGetLines(TestCaseWithDirState):
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         root_entry = ('', '', 'a-root-value'), [
             ('d', '', 0, False, packed_stat), # current tree details
-            ('a', 'dirname/basename', 0, False, ''), # first: a pointer to the current location
+             # first: a pointer to the current location
+            ('a', 'dirname/basename', 0, False, ''),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -713,7 +731,8 @@ class TestGetLines(TestCaseWithDirState):
         root_entry = ('', '', 'a-root-value'), [
             ('d', '', 0, False, packed_stat), # current tree details
             ('d', '', 0, False, 'rev_id'), # first parent details
-            ('a', 'dirname/basename', 0, False, ''), # second: a pointer to the current location
+             # second: a pointer to the current location
+            ('a', 'dirname/basename', 0, False, ''),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -751,7 +770,8 @@ class TestGetLines(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             state._set_data([], dirblocks)
-            expected_entries = [root_entries[0], subdir_entry, afile_entry, file_entry2]
+            expected_entries = [root_entries[0], subdir_entry, afile_entry,
+                                file_entry2]
             self.assertEqual(expected_entries, list(state._iter_entries()))
         finally:
             state.unlock()
@@ -778,7 +798,8 @@ class TestGetBlockRowIndex(TestCaseWithDirState):
         self.assertBlockRowIndexEqual(1, 0, True, False, state, '', 'bdir', 0)
         self.assertBlockRowIndexEqual(1, 1, True, False, state, '', 'zdir', 0)
         self.assertBlockRowIndexEqual(2, 0, False, False, state, 'a', 'foo', 0)
-        self.assertBlockRowIndexEqual(2, 0, False, False, state, 'subdir', 'foo', 0)
+        self.assertBlockRowIndexEqual(2, 0, False, False, state,
+                                      'subdir', 'foo', 0)
 
     def test_complex_structure_exists(self):
         state = self.create_complex_dirstate()
@@ -792,7 +813,8 @@ class TestGetBlockRowIndex(TestCaseWithDirState):
         self.assertBlockRowIndexEqual(2, 0, True, True, state, 'a', 'e', 0)
         self.assertBlockRowIndexEqual(2, 1, True, True, state, 'a', 'f', 0)
         self.assertBlockRowIndexEqual(3, 0, True, True, state, 'b', 'g', 0)
-        self.assertBlockRowIndexEqual(3, 1, True, True, state, 'b', 'h\xc3\xa5', 0)
+        self.assertBlockRowIndexEqual(3, 1, True, True, state,
+                                      'b', 'h\xc3\xa5', 0)
 
     def test_complex_structure_missing(self):
         state = self.create_complex_dirstate()
@@ -802,7 +824,8 @@ class TestGetBlockRowIndex(TestCaseWithDirState):
         self.assertBlockRowIndexEqual(0, 0, True, True, state, '', '', 0)
         self.assertBlockRowIndexEqual(1, 0, True, False, state, '', '_', 0)
         self.assertBlockRowIndexEqual(1, 1, True, False, state, '', 'aa', 0)
-        self.assertBlockRowIndexEqual(1, 4, True, False, state, '', 'h\xc3\xa5', 0)
+        self.assertBlockRowIndexEqual(1, 4, True, False, state,
+                                      '', 'h\xc3\xa5', 0)
         self.assertBlockRowIndexEqual(2, 0, False, False, state, '_', 'a', 0)
         self.assertBlockRowIndexEqual(3, 0, False, False, state, 'aa', 'a', 0)
         self.assertBlockRowIndexEqual(4, 0, False, False, state, 'bb', 'a', 0)
@@ -843,7 +866,8 @@ class TestGetEntry(TestCaseWithDirState):
         self.assertEntryEqual('a', 'e', 'e-dir', state, 'a/e', 0)
         self.assertEntryEqual('a', 'f', 'f-file', state, 'a/f', 0)
         self.assertEntryEqual('b', 'g', 'g-file', state, 'b/g', 0)
-        self.assertEntryEqual('b', 'h\xc3\xa5', 'h-\xc3\xa5-file', state, 'b/h\xc3\xa5', 0)
+        self.assertEntryEqual('b', 'h\xc3\xa5', 'h-\xc3\xa5-file', state,
+                              'b/h\xc3\xa5', 0)
 
     def test_complex_structure_missing(self):
         state = self.create_complex_dirstate()
@@ -864,8 +888,272 @@ class TestGetEntry(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
-            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._header_state)
-            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._dirblock_state)
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
             self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
         finally:
             state.unlock()
+
+
+class TestBisect(TestCaseWithTransport):
+    """Test the ability to bisect into the disk format."""
+
+    def create_basic_dirstate(self):
+        """Create a dirstate with a few files and directories.
+
+            a
+            b/
+              c
+              d/
+                e
+            f
+        """
+        tree = self.make_branch_and_tree('tree')
+        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'f']
+        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id']
+        self.build_tree(['tree/' + p for p in paths])
+        tree.set_root_id('TREE_ROOT')
+        tree.add([p.rstrip('/') for p in paths], file_ids)
+        tree.commit('initial', rev_id='rev-1')
+        revision_id = 'rev-1'
+        # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
+        t = self.get_transport().clone('tree')
+        a_text = t.get_bytes('a')
+        a_sha = osutils.sha_string(a_text)
+        a_len = len(a_text)
+        # b_packed_stat = dirstate.pack_stat(os.stat('tree/b'))
+        # c_packed_stat = dirstate.pack_stat(os.stat('tree/b/c'))
+        c_text = t.get_bytes('b/c')
+        c_sha = osutils.sha_string(c_text)
+        c_len = len(c_text)
+        # d_packed_stat = dirstate.pack_stat(os.stat('tree/b/d'))
+        # e_packed_stat = dirstate.pack_stat(os.stat('tree/b/d/e'))
+        e_text = t.get_bytes('b/d/e')
+        e_sha = osutils.sha_string(e_text)
+        e_len = len(e_text)
+        # f_packed_stat = dirstate.pack_stat(os.stat('tree/f'))
+        f_text = t.get_bytes('f')
+        f_sha = osutils.sha_string(f_text)
+        f_len = len(f_text)
+        null_stat = dirstate.DirState.NULLSTAT
+        expected = {
+            '':(('', '', 'TREE_ROOT'), [
+                  ('d', '', 0, False, null_stat),
+                  ('d', '', 0, False, revision_id),
+                ]),
+            'a':(('', 'a', 'a-id'), [
+                   ('f', '', 0, False, null_stat),
+                   ('f', a_sha, a_len, False, revision_id),
+                 ]),
+            'b':(('', 'b', 'b-id'), [
+                  ('d', '', 0, False, null_stat),
+                  ('d', '', 0, False, revision_id),
+                 ]),
+            'b/c':(('b', 'c', 'c-id'), [
+                    ('f', '', 0, False, null_stat),
+                    ('f', c_sha, c_len, False, revision_id),
+                   ]),
+            'b/d':(('b', 'd', 'd-id'), [
+                    ('d', '', 0, False, null_stat),
+                    ('d', '', 0, False, revision_id),
+                   ]),
+            'b/d/e':(('b/d', 'e', 'e-id'), [
+                      ('f', '', 0, False, null_stat),
+                      ('f', e_sha, e_len, False, revision_id),
+                     ]),
+            'f':(('', 'f', 'f-id'), [
+                  ('f', '', 0, False, null_stat),
+                  ('f', f_sha, f_len, False, revision_id),
+                 ]),
+        }
+        state = dirstate.DirState.from_tree(tree, 'dirstate')
+        try:
+            state.save()
+        finally:
+            state.unlock()
+        # Use a different object, to make sure nothing is pre-cached in memory.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        self.addCleanup(state.unlock)
+        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                         state._dirblock_state)
+        # This is code is only really tested if we actually have to make more
+        # than one read, so set the page size to something smaller.
+        # We want it to contain about 2.2 records, so that we have a couple
+        # records that we can read per attempt
+        state._bisect_page_size = 200
+        return tree, state, expected
+
+    def create_duplicated_dirstate(self):
+        """Create a dirstate with a deleted and added entries.
+
+        This grabs a basic_dirstate, and then removes and re adds every entry
+        with a new file id.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        # Now we will just remove and add every file so we get an extra entry
+        # per entry. Unversion in reverse order so we handle subdirs
+        tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
+        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
+                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
+
+        # Update the expected dictionary.
+        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
+            orig = expected[path]
+            path2 = path + '2'
+            # This record was deleted in the current tree
+            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
+                                        orig[1][1]])
+            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
+            # And didn't exist in the basis tree
+            expected[path2] = (new_key, [orig[1][0],
+                                         dirstate.DirState.NULL_PARENT_DETAILS])
+
+        # We will replace the 'dirstate' file underneath 'state', but that is
+        # okay as lock as we unlock 'state' first.
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            # But we need to leave state in a read-lock because we already have
+            # a cleanup scheduled
+            state.lock_read()
+        return tree, state, expected
+
+    def create_renamed_dirstate(self):
+        """Create a dirstate with a few internal renames.
+
+        This takes the basic dirstate, and moves the paths around.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        tree.rename_one('a', 'b/g')
+
+        old_a = expected['a']
+        expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
+        expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
+                                                ('r', 'a', 0, False, '')])
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            state.lock_read()
+        return tree, state, expected
+
+    def assertBisect(self, expected, state, paths):
+        """Assert that bisecting for paths returns the right result.
+
+        :param expected: The list of extracted entries.
+        :param state: The DirState object.
+        :param paths: A list of paths, these will automatically be split into
+                      (dir, name) tuples, and sorted according to how _bisect
+                      requires.
+        """
+        dir_names = sorted(osutils.split(p) for p in paths)
+        result = state._bisect(dir_names)
+        # For now, results are just returned in whatever order we read them.
+        # We could sort by (dir, name, file_id) or something like that, but in
+        # the end it would still be fairly arbitrary, and we don't want the
+        # extra overhead if we can avoid it.
+        for expected_entries, actual_entries in zip(expected, result):
+            if expected_entries is not None:
+                expected_entries.sort()
+            if actual_entries is not None:
+                actual_entries.sort()
+            self.assertEqual(expected_entries, actual_entries)
+        self.assertEqual(len(expected), len(result))
+
+    def test_bisect_each(self):
+        """Find a single record using bisect."""
+        tree, state, expected = self.create_basic_dirstate()
+
+        # Bisect should return the rows for the specified files.
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
+
+    def test_bisect_multi(self):
+        """Bisect can be used to find multiple records at the same time."""
+        tree, state, expected = self.create_basic_dirstate()
+        # Bisect should be capable of finding multiple entries at the same time
+        self.assertBisect([[expected['a']], [expected['b']], [expected['f']]],
+                          state, ['a', 'b', 'f'])
+        # ('', 'f') sorts before the others
+        self.assertBisect([[expected['f']], [expected['b/d']],
+                           [expected['b/d/e']]],
+                          state, ['b/d', 'b/d/e', 'f'])
+
+    def test_bisect_one_page(self):
+        """Test bisect when there is only 1 page to read"""
+        tree, state, expected = self.create_basic_dirstate()
+        state._bisect_page_size = 5000
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
+        self.assertBisect([[expected['a']], [expected['b']], [expected['f']]],
+                          state, ['a', 'b', 'f'])
+        # ('', 'f') sorts before the others
+        self.assertBisect([[expected['f']], [expected['b/d']],
+                           [expected['b/d/e']]],
+                          state, ['b/d', 'b/d/e', 'f'])
+
+    def test_bisect_duplicate_paths(self):
+        """When bisecting for a path, handle multiple entries."""
+        tree, state, expected = self.create_duplicated_dirstate()
+
+        # Now make sure that both records are properly returned.
+        self.assertBisect([[expected['']]], state, [''])
+        self.assertBisect([[expected['a'], expected['a2']]], state, ['a'])
+        self.assertBisect([[expected['b'], expected['b2']]], state, ['b'])
+        self.assertBisect([[expected['b/c'], expected['b/c2']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d'], expected['b/d2']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e'], expected['b/d/e2']]],
+                          state, ['b/d/e'])
+        self.assertBisect([[expected['f'], expected['f2']]], state, ['f'])
+
+    def test_bisect_page_size_too_small(self):
+        """If the page size is too small, we will auto increase it."""
+        tree, state, expected = self.create_basic_dirstate()
+        state._bisect_page_size = 50
+        self.assertBisect([None], state, ['b/e'])
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b']]], state, ['b'])
+        self.assertBisect([[expected['b/c']]], state, ['b/c'])
+        self.assertBisect([[expected['b/d']]], state, ['b/d'])
+        self.assertBisect([[expected['b/d/e']]], state, ['b/d/e'])
+        self.assertBisect([[expected['f']]], state, ['f'])
+
+    def test_bisect_missing(self):
+        """Test that bisect return None if it cannot find a path."""
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisect([None], state, ['foo'])
+        self.assertBisect([None], state, ['b/foo'])
+        self.assertBisect([None], state, ['bar/foo'])
+
+        self.assertBisect([[expected['a']], None, [expected['b/d']]],
+                          state, ['a', 'foo', 'b/d'])
+
+    def test_bisect_rename(self):
+        """Check that we find a renamed row."""
+        tree, state, expected = self.create_renamed_dirstate()
+
+        # Search for the pre and post renamed entries
+        self.assertBisect([[expected['a']]], state, ['a'])
+        self.assertBisect([[expected['b/g']]], state, ['b/g'])

@@ -214,6 +214,10 @@ from bzrlib.osutils import (
     )
 
 
+class _Bisector(object):
+    """This just keeps track of information as we are bisecting."""
+
+
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -231,7 +235,8 @@ class DirState(object):
     # TODO: jam 20070221 Make sure we handle when there are duplicated records
     #       (like when we remove + add the same path, or we have a rename)
     # TODO: jam 20070221 Figure out what to do if we have a record that exceeds
-    #       the BISECT_PAGE_SIZE.
+    #       the BISECT_PAGE_SIZE. For now, we just have to make it large enough
+    #       that we are sure a single record will always fit.
     BISECT_PAGE_SIZE = 4096
 
     NOT_IN_MEMORY = 0
@@ -276,6 +281,8 @@ class DirState(object):
         self._state_file = None
         self._filename = path
         self._lock_token = None
+        self._end_of_header = None
+        self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
         """Add a path to be tracked.
@@ -352,6 +359,181 @@ class DirState(object):
            # insert a new dirblock
            self._ensure_block(block_index, entry_index, utf8path)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def _bisect(self, dir_name_list):
+        """Bisect through the disk structure for specific rows."""
+        self._requires_lock()
+        # We need the file pointer to be right after the initial header block
+        self._read_header_if_needed()
+        # If _dirblock_state was in memory, we should just return info from
+        # there, this function is only meant to handle when we want to read
+        # part of the disk.
+        assert self._dirblock_state == DirState.NOT_IN_MEMORY
+
+        # The disk representation is generally info + '\0\n\0' at the end. But
+        # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
+        # Because it means we can sync on the '\n'
+        state_file = self._state_file
+        file_size = os.fstat(state_file.fileno()).st_size
+        # We end up with 2 extra fields, we should have a trailing '\n' to
+        # ensure that we read the whole record, and we should have a precursur
+        # '' which ensures that we start after the previous '\n'
+        entry_field_count = self._fields_per_entry() + 1
+
+        low = self._end_of_header
+        high = file_size - 1 # Ignore the final '\0'
+        # Map from (dir, name) => entry
+        found = {}
+
+        # Avoid infinite seeking
+        max_count = 30*len(dir_name_list)
+        count = 0
+        # pending is a list of places to look.
+        # each entry is a tuple of low, high, dir_names
+        #   low -> the first byte offset to read (inclusive)
+        #   high -> the last byte offset (inclusive)
+        #   dir_names -> The list of (dir, name) pairs that should be found in
+        #                the [low, high] range
+        pending = [(low, high, dir_name_list)]
+
+        page_size = self._bisect_page_size
+
+        fields_to_entry = self._get_fields_to_entry()
+
+        while pending:
+            low, high, cur_files = pending.pop()
+
+            if not cur_files:
+                # No files to look for
+                continue
+
+            if low >= high:
+                # Did not find cur_files, these will be returned as None
+                # However, other logic should probably prevent this from ever
+                # happening.
+                continue
+
+            count += 1
+            if count > max_count:
+                raise errors.BzrError('Too many seeks, most likely a bug.')
+
+            mid = max(low, (low+high-page_size)/2)
+
+            state_file.seek(mid)
+            # limit the read size, so we don't end up reading data that we have
+            # already read.
+            read_size = min(page_size, (high-mid)+1)
+            block = state_file.read(read_size)
+
+            start = mid
+            entries = block.split('\n')
+
+            if len(entries) < 2:
+                # We didn't find a '\n', so we cannot have found any records.
+                # So put this range back and try again. But we know we have to
+                # increase the page size, because a single read did not contain
+                # a record break (so records must be larger than page_size)
+                page_size *= 2
+                pending.append((low, high, cur_files))
+                continue
+
+            # Check the first and last entries, in case they are partial, or if
+            # we don't care about the rest of this page
+            first_entry_num = 0
+            first_fields = entries[0].split('\0')
+            if len(first_fields) < entry_field_count:
+                # We didn't get the complete first entry
+                # so move start, and grab the next, which
+                # should be a full entry
+                start += len(entries[0])+1
+                first_fields = entries[1].split('\0')
+                first_entry_num = 1
+
+            if len(first_fields) <= 2:
+                # We didn't even get a filename here... what do we do?
+                # Try a large page size and repeat this query
+                page_size *= 2
+                pending.append((low, high, cur_files))
+                continue
+            else:
+                # Find what entries we are looking for, which occur before and
+                # after this first record.
+                after = start
+                first_dir_name = (first_fields[1], first_fields[2])
+                first_loc = bisect.bisect_left(cur_files, first_dir_name)
+
+                # These exist before the current location
+                pre = cur_files[:first_loc]
+                # These occur after the current location, which may be in the
+                # data we read, or might be after the last entry
+                post = cur_files[first_loc:]
+
+            if post and len(first_fields) >= entry_field_count:
+                # We have files after the first entry
+
+                # Parse the last entry
+                last_entry_num = len(entries)-1
+                last_fields = entries[last_entry_num].split('\0')
+                if len(last_fields) < entry_field_count:
+                    # The very last hunk was not complete,
+                    # read the previous hunk
+                    after = mid + len(block) - len(entries[-1])
+                    last_entry_num -= 1
+                    last_fields = entries[last_entry_num].split('\0')
+                else:
+                    after = mid + len(block)
+
+                last_dir_name = (last_fields[1], last_fields[2])
+                last_loc = bisect.bisect_right(post, last_dir_name)
+
+                middle_files = post[:last_loc]
+                post = post[last_loc:]
+
+                if middle_files:
+                    # We have files that should occur in this block
+                    # (>= first, <= last)
+                    # Either we will find them here, or we can mark them as
+                    # missing.
+
+                    if middle_files[0] == first_dir_name:
+                        # We might need to go before this location
+                        pre.append(first_dir_name)
+                    if middle_files[-1] == last_dir_name:
+                        post.insert(0, last_dir_name)
+
+                    # Find out what paths we have
+                    paths = {first_dir_name:[first_fields]}
+                    # last_dir_name might == first_dir_name so we need to be
+                    # careful if we should append rather than overwrite
+                    if last_entry_num != first_entry_num:
+                        paths.setdefault(last_dir_name, []).append(last_fields)
+                    for num in xrange(first_entry_num+1, last_entry_num):
+                        # TODO: jam 20070223 We are already splitting here, so
+                        #       shouldn't we just split the whole thing rather
+                        #       than doing the split again in add_one_record?
+                        fields = entries[num].split('\0')
+                        dir_name = (fields[1], fields[2])
+                        paths.setdefault(dir_name, []).append(fields)
+
+                    for dir_name in middle_files:
+                        for fields in paths.get(dir_name, []):
+                            # offset by 1 because of the opening '\0'
+                            # consider changing fields_to_entry to avoid the
+                            # extra list slice
+                            entry = fields_to_entry(fields[1:])
+                            found.setdefault(dir_name, []).append(entry)
+
+            # Now we have split up everything into pre, middle, and post, and
+            # we have handled everything that fell in 'middle'.
+            # We add 'post' first, so that we prefer to seek towards the
+            # beginning, so that we will tend to go as early as we need, and
+            # then only seek forward after that.
+            if post:
+                pending.append((after, high, post))
+            if pre:
+                pending.append((low, start-1, pre))
+
+        return [found.get(dir_name, None) for dir_name in dir_name_list]
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
@@ -459,7 +641,7 @@ class DirState(object):
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return '\0'.join(entire_entry)
 
-    def _fields_per_row(self):
+    def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
         Each line now has an extra '\n' field which is not used
@@ -894,7 +1076,7 @@ class DirState(object):
             #  + newline
             num_present_parents = self._num_present_parents()
             tree_count = 1 + num_present_parents
-            entry_size = self._fields_per_row()
+            entry_size = self._fields_per_entry()
             expected_field_count = entry_size * self._num_entries
             if len(fields) - cur > expected_field_count:
                 fields = fields[:expected_field_count + cur]
@@ -986,6 +1168,7 @@ class DirState(object):
         assert num_ghosts == len(info)-3, 'incorrect ghost info line'
         self._ghosts = info[2:-1]
         self._header_state = DirState.IN_MEMORY_UNMODIFIED
+        self._end_of_header = self._state_file.tell()
 
     def _read_header_if_needed(self):
         """Read the header of the dirstate file if needed."""

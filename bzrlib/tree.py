@@ -87,10 +87,10 @@ class Tree(object):
             include_root=include_root
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False, 
+    def _iter_changes(self, from_tree, include_unchanged=False,
                      specific_file_ids=None, pb=None):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(from_tree, self, include_unchanged, 
+        return intertree._iter_changes(include_unchanged,
                                        specific_file_ids, pb)
     
     def conflicts(self):
@@ -596,28 +596,29 @@ class InterTree(InterObject):
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids, include_root)
 
-    def _iter_changes(self, from_tree, to_tree, include_unchanged, 
-                      specific_file_ids, pb):
+    def _iter_changes(self, include_unchanged=False,
+                      specific_file_ids=None, pb=None):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
         (file_id, path, changed_content, versioned, parent, name, kind,
          executable)
 
-        Path is relative to the to_tree.  changed_content is True if the file's
-        content has changed.  This includes changes to its kind, and to
+        Path is relative to the target tree.  changed_content is True if the
+        file's content has changed.  This includes changes to its kind, and to
         a symlink's target.
 
         versioned, parent, name, kind, executable are tuples of (from, to).
         If a file is missing in a tree, its kind is None.
 
-        Iteration is done in parent-to-child order, relative to the to_tree.
+        Iteration is done in parent-to-child order, relative to the target
+        tree.
         """
         to_paths = {}
-        from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
@@ -633,7 +634,7 @@ class InterTree(InterObject):
                 from_name = from_entry.name
                 from_parent = from_entry.parent_id
                 from_kind, from_executable, from_stat = \
-                    from_tree._comparison_data(from_entry, from_path)
+                    self.source._comparison_data(from_entry, from_path)
                 entry_count += 1
             else:
                 from_versioned = False
@@ -643,25 +644,25 @@ class InterTree(InterObject):
                 from_executable = None
             versioned = (from_versioned, True)
             to_kind, to_executable, to_stat = \
-                to_tree._comparison_data(to_entry, to_path)
+                self.target._comparison_data(to_entry, to_path)
             kind = (from_kind, to_kind)
             if kind[0] != kind[1]:
                 changed_content = True
             elif from_kind == 'file':
-                from_size = from_tree._file_size(from_entry, from_stat)
-                to_size = to_tree._file_size(to_entry, to_stat)
+                from_size = self.source._file_size(from_entry, from_stat)
+                to_size = self.target._file_size(to_entry, to_stat)
                 if from_size != to_size:
                     changed_content = True
-                elif (from_tree.get_file_sha1(file_id, from_path, from_stat) !=
-                    to_tree.get_file_sha1(file_id, to_path, to_stat)):
+                elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
+                    self.target.get_file_sha1(file_id, to_path, to_stat)):
                     changed_content = True
             elif from_kind == 'symlink':
-                if (from_tree.get_symlink_target(file_id) != 
-                    to_tree.get_symlink_target(file_id)):
+                if (self.source.get_symlink_target(file_id) != 
+                    self.target.get_symlink_target(file_id)):
                     changed_content = True
             elif from_kind == 'tree-reference':
-                if (from_tree.get_reference_revision(from_entry, from_path) !=
-                    to_tree.get_reference_revision(to_entry, to_path)):
+                if (self.source.get_reference_revision(from_entry, from_path)
+                    != self.target.get_reference_revision(to_entry, to_path)):
                     changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
@@ -679,7 +680,7 @@ class InterTree(InterObject):
                 to_path = ''
             else:
                 if from_entry.parent_id not in to_paths:
-                    get_to_path(from_tree.inventory[from_entry.parent_id])
+                    get_to_path(self.source.inventory[from_entry.parent_id])
                 to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
                                            from_entry.name)
             to_paths[from_entry.file_id] = to_path
@@ -697,7 +698,7 @@ class InterTree(InterObject):
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)
             from_kind, from_executable, stat_value = \
-                from_tree._comparison_data(from_entry, path)
+                self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
             changed_content = True
