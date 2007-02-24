@@ -1072,6 +1072,28 @@ class TestBisect(TestCaseWithTransport):
             self.assertEqual(expected_entries, actual_entries)
         self.assertEqual(len(expected), len(result))
 
+    def assertBisectDirBlocks(self, expected_map, entries, state, paths):
+        """Assert that bisecting for dirbblocks returns the right result.
+
+        :param expected: A map from path => expected values
+        :param entries: A nested list of paths we expect to be returned.
+            Something like [['a', 'b', 'f'], ['b/c', 'b/d']]
+        :param state: The DirState object.
+        :param paths: A list of directories
+        """
+        result = state._bisect_dirblocks(paths)
+        # For now, results are just returned in whatever order we read them.
+        # We could sort by (dir, name, file_id) or something like that, but in
+        for subentries, actual in zip(entries, result):
+            if subentries is None:
+                expected = None
+            else:
+                expected = sorted(expected_map[e] for e in subentries)
+            if actual is not None:
+                actual.sort()
+            self.assertEqual(expected, actual)
+        self.assertEqual(len(entries), len(result))
+
     def test_bisect_each(self):
         """Find a single record using bisect."""
         tree, state, expected = self.create_basic_dirstate()
@@ -1157,3 +1179,28 @@ class TestBisect(TestCaseWithTransport):
         # Search for the pre and post renamed entries
         self.assertBisect([[expected['a']]], state, ['a'])
         self.assertBisect([[expected['b/g']]], state, ['b/g'])
+
+    def test_bisect_dirblocks(self):
+        tree, state, expected = self.create_duplicated_dirstate()
+        self.assertBisectDirBlocks(expected,
+            [['', 'a', 'a2', 'b', 'b2', 'f', 'f2']], state, [''])
+        self.assertBisectDirBlocks(expected,
+            [['b/c', 'b/c2', 'b/d', 'b/d2']], state, ['b'])
+        self.assertBisectDirBlocks(expected,
+            [['b/d/e', 'b/d/e2']], state, ['b/d'])
+        self.assertBisectDirBlocks(expected,
+            [['', 'a', 'a2', 'b', 'b2', 'f', 'f2'],
+             ['b/c', 'b/c2', 'b/d', 'b/d2'],
+             ['b/d/e', 'b/d/e2'],
+            ], state, ['', 'b', 'b/d'])
+
+    def test_bisect_dirblocks_missing(self):
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisectDirBlocks(expected, [['b/d/e'], None],
+            state, ['b/d', 'b/e'])
+        # Files don't show up in this search
+        self.assertBisectDirBlocks(expected, [None], state, ['a'])
+        self.assertBisectDirBlocks(expected, [None], state, ['b/c'])
+        self.assertBisectDirBlocks(expected, [None], state, ['c'])
+        self.assertBisectDirBlocks(expected, [None], state, ['b/d/e'])
+        self.assertBisectDirBlocks(expected, [None], state, ['f'])
