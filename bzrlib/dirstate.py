@@ -361,7 +361,12 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _bisect(self, dir_name_list):
-        """Bisect through the disk structure for specific rows."""
+        """Bisect through the disk structure for specific rows.
+
+        :param dir_name_list: A list of (dir, name) pairs.
+        :return: A dict mapping (dir, name) => entry for found entries. Missing
+                 entries will not be in the map.
+        """
         self._requires_lock()
         # We need the file pointer to be right after the initial header block
         self._read_header_if_needed()
@@ -530,7 +535,7 @@ class DirState(object):
         # Consider that we may want to return the directory entries in sorted
         # order. For now, we just return them in whatever order we found them,
         # and leave it up to the caller if they care if it is ordered or not.
-        return [found.get(dir_name, None) for dir_name in dir_name_list]
+        return found
 
     def _bisect_dirblocks(self, dir_list):
         """Bisect through the disk structure to find entries in given dirs.
@@ -539,7 +544,7 @@ class DirState(object):
         differs from _bisect, which only finds individual entries.
 
         :param dir_list: An sorted list of directory names ['', 'dir', 'foo'].
-        :return: The contents of each directory.
+        :return: A map from dir => entries_for_dir
         """
         # TODO: jam 20070223 A lot of the bisecting logic could be shared
         #       between this and _bisect. It would require parameterizing the
@@ -709,8 +714,7 @@ class DirState(object):
             if pre:
                 pending.append((low, start-1, pre))
 
-        return [found.get(cur_dir, None) for cur_dir in dir_list]
-
+        return found
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
