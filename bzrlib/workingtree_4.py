@@ -612,6 +612,17 @@ class WorkingTree4(WorkingTree3):
         # -- paths is now a utf8 path set --
         # -- get the state object and prepare it.
         state = self.current_dirstate()
+        if False and (state._dirblock_state == dirstate.DirState.NOT_IN_MEMORY
+            and '' not in paths):
+            paths2ids = self._paths2ids_using_bisect
+        else:
+            paths2ids = self._paths2ids_in_memory
+        return paths2ids(paths, search_indexes,
+                         require_versioned=require_versioned)
+
+    def _paths2ids_in_memory(self, paths, search_indexes,
+                             require_versioned=True):
+        state = self.current_dirstate()
         state._read_dirblocks_if_needed()
         def _entries_for_path(path):
             """Return a list with all the entries that match path for all ids.
@@ -701,6 +712,26 @@ class WorkingTree4(WorkingTree3):
                 for entry in state._dirblocks[block_index][1]:
                     _process_entry(entry)
                 block_index += 1
+        return found_ids
+
+    def _paths2ids_using_bisect(self, paths, search_indexes,
+                                require_versioned=True):
+        state = self.current_dirstate()
+        found_ids = set()
+
+        split_paths = sorted(osutils.split(p) for p in paths)
+        found = state._bisect_recursive(split_paths)
+
+        if require_versioned:
+            found_dir_names = set(dir_name_id[:2] for dir_name_id in found)
+            for dir_name in split_paths:
+                if dir_name not in found_dir_names:
+                    raise errors.PathsNotVersionedError(paths)
+
+        for dir_name_id, trees_info in found.iteritems():
+            for index in search_indexes:
+                if trees_info[index][0] not in ('r', 'a'):
+                    found_ids.add(dir_name_id[2])
         return found_ids
 
     def read_working_inventory(self):

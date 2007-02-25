@@ -1300,8 +1300,9 @@ class DirState(object):
         """
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
-            # the _state_file pointer will be positioned at the start of the 
-            # dirblocks.
+            # move the _state_file pointer to after the header (in case bisect
+            # has been called in the mean time)
+            self._state_file.seek(self._end_of_header)
             text = self._state_file.read()
             # TODO: check the adler checksums. adler_measured = zlib.adler32(text)
 
