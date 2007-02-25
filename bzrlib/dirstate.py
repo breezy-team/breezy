@@ -1505,10 +1505,9 @@ class DirState(object):
         # TODO: check new id is unique
         entry = self._get_entry(0, path_utf8=path)
         # mark the old path absent, and insert a new root path
-        present_parents = len(entry[1]) - 1
         self._make_absent(entry)
         id_index = self._get_id_index()
-        self.update_minimal(('', '', new_id), 'directory', present_parents,
+        self.update_minimal(('', '', new_id), 'd',
             path_utf8='', id_index=id_index, packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
@@ -1664,7 +1663,6 @@ class DirState(object):
         #  generate a byid index of the dirstate
         id_index = self._get_id_index()
 
-        num_present_parents = len(self._parents) - len(self._ghosts)
         # incremental algorithm:
         # two iterators: current data and new data, both in dirblock order. 
         new_iterator = new_inv.iter_entries_by_dir()
@@ -1692,6 +1690,8 @@ class DirState(object):
                 new_dirname, new_basename = os.path.split(new_path_utf8)
                 new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
+                current_new_minikind = \
+                    DirState._kind_to_minikind[current_new[1].kind]
             else:
                 # for safety disable variables
                 new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = None
@@ -1699,8 +1699,8 @@ class DirState(object):
             # we make both end conditions explicit
             if not current_old:
                 # old is finished: insert current_new into the state.
-                self.update_minimal(new_entry_key, current_new[1].kind,
-                    num_present_parents, executable=current_new[1].executable,
+                self.update_minimal(new_entry_key, current_new_minikind,
+                    executable=current_new[1].executable,
                     id_index=id_index, path_utf8=new_path_utf8)
                 current_new = advance(new_iterator)
             elif not current_new:
@@ -1712,11 +1712,9 @@ class DirState(object):
                 # TODO: update the record if anything significant has changed.
                 # the minimal required trigger is if the execute bit or cached
                 # kind has changed.
-                kind = DirState._minikind_to_kind[current_old[1][0][0]]
                 if (current_old[1][0][3] != current_new[1].executable or
-                    kind != current_new[1].kind):
-                    self.update_minimal(current_old[0], current_new[1].kind,
-                        num_present_parents,
+                    current_old[1][0][0] != current_new_minikind):
+                    self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
                         id_index=id_index, path_utf8=new_path_utf8)
                 # both sides are dealt with, move on
@@ -1725,8 +1723,8 @@ class DirState(object):
             elif new_entry_key < current_old[0]:
                 # new comes before:
                 # add a entry for this and advance new
-                self.update_minimal(new_entry_key, current_new[1].kind,
-                    num_present_parents, executable=current_new[1].executable,
+                self.update_minimal(new_entry_key, current_new_minikind,
+                    executable=current_new[1].executable,
                     id_index=id_index, path_utf8=new_path_utf8)
                 current_new = advance(new_iterator)
             else:
@@ -1785,15 +1783,30 @@ class DirState(object):
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return last_reference
 
-    def update_minimal(self, key, kind, num_present_parents, executable=False,
-        fingerprint='', packed_stat=None, size=0, id_index=None,
-        path_utf8=None):
-        """Update an entry to the state in tree 0."""
+    def update_minimal(self, key, minikind, executable=False, fingerprint='',
+                       packed_stat=None, size=0, id_index=None, path_utf8=None):
+        """Update an entry to the state in tree 0.
+
+        This will either create a new entry at 'key' or update an existing one.
+        It also makes sure that any other records which might mention this are
+        updated as well.
+
+        :param key: (dir, name, file_id) for the new entry
+        :param minikind: The type for the entry ('f' == 'file', 'd' ==
+                'directory'), etc.
+        :param executable: Should the executable bit be set?
+        :param fingerprint: Simple fingerprint for new entry.
+        :param packed_stat: packed stat value for new entry.
+        :param size: Size information for new entry
+        :param id_index: A mapping from file_id => key, as returned by
+                self._get_id_index
+        :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
+                extra computation.
+        """
         block = self._find_block(key)[1]
         if packed_stat is None:
             packed_stat = DirState.NULLSTAT
         entry_index, present = self._find_entry_index(key, block)
-        minikind = DirState._kind_to_minikind[kind]
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         assert id_index is not None, 'need an id index to do updates for now !'
         if not present:
@@ -1821,6 +1834,7 @@ class DirState(object):
                     self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
                         ('r', path_utf8, 0, False, '')
 
+                num_present_parents = self._num_present_parents()
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
                     # TODO: optimise this to reduce memory use in highly 

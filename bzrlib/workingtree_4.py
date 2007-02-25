@@ -524,13 +524,14 @@ class WorkingTree4(WorkingTree3):
                 # remove the old row
                 from_key = old_block[old_entry_index][0]
                 to_key = ((to_block[0],) + from_key[1:3])
+                # We must grab old_entry_details here, because _make_absent
+                # will mark this record as absent and destroy any info we used
+                # to have
                 minikind = old_entry_details[0][0]
-                kind = dirstate.DirState._minikind_to_kind[minikind]
                 state._make_absent(old_block[old_entry_index])
                 rollbacks.append(
                     lambda:state.update_minimal(from_key,
-                        kind,
-                        num_present_parents=len(old_entry_details) - 1,
+                        minikind,
                         executable=old_entry_details[0][3],
                         fingerprint=old_entry_details[0][1],
                         packed_stat=old_entry_details[0][4],
@@ -539,8 +540,7 @@ class WorkingTree4(WorkingTree3):
                         path_utf8=from_rel.encode('utf8')))
                 # create new row in current block
                 state.update_minimal(to_key,
-                        kind,
-                        num_present_parents=len(old_entry_details) - 1,
+                        minikind,
                         executable=old_entry_details[0][3],
                         fingerprint=old_entry_details[0][1],
                         packed_stat=old_entry_details[0][4],
