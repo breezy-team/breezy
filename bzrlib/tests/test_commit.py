@@ -554,6 +554,14 @@ class TestCommit(TestCaseWithTransport):
         timestamp_1ms = round(timestamp, 3)
         self.assertEqual(timestamp_1ms, timestamp)
 
+    def assertBasisTreeKind(self, kind, tree, file_id):
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            self.assertEqual(kind, basis.kind(file_id))
+        finally:
+            basis.unlock()
+
     def test_commit_kind_changes(self):
         if not osutils.has_symlinks():
             raise tests.TestSkipped('Test requires symlink support')
@@ -561,43 +569,43 @@ class TestCommit(TestCaseWithTransport):
         os.symlink('target', 'name')
         tree.add('name', 'a-file-id')
         tree.commit('Added a symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         os.unlink('name')
         self.build_tree(['name'])
         tree.commit('Changed symlink to file')
-        self.assertEqual('file', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
 
         os.unlink('name')
         os.symlink('target', 'name')
         tree.commit('file to symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         os.unlink('name')
         os.mkdir('name')
         tree.commit('symlink to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
         os.rmdir('name')
         os.symlink('target', 'name')
         tree.commit('directory to symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         # prepare for directory <-> file tests
         os.unlink('name')
         os.mkdir('name')
         tree.commit('symlink to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
         os.rmdir('name')
         self.build_tree(['name'])
         tree.commit('Changed directory to file')
-        self.assertEqual('file', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
 
         os.unlink('name')
         os.mkdir('name')
         tree.commit('file to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
     def test_commit_unversioned_specified(self):
         """Commit should raise if specified files isn't in basis or worktree"""
