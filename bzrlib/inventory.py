@@ -829,7 +829,8 @@ class TreeReference(InventoryEntry):
     
     kind = 'tree-reference'
     
-    def __init__(self, file_id, name, parent_id, revision, reference_revision):
+    def __init__(self, file_id, name, parent_id, revision=None,
+                 reference_revision=None):
         InventoryEntry.__init__(self, file_id, name, parent_id)
         self.revision = revision
         self.reference_revision = reference_revision
@@ -1363,6 +1364,7 @@ entry_factory = {
     'directory':InventoryDirectory,
     'file':InventoryFile,
     'symlink':InventoryLink,
+    'tree-reference': TreeReference
 }
 
 def make_entry(kind, name, parent_id, file_id=None):

@@ -111,8 +111,34 @@ class MutableTree(tree.Tree):
         self._gather_kinds(files, kinds)
         self._add(files, ids, kinds)
 
+    def add_reference(self, sub_tree):
+        """Add a TreeReference to the tree, pointing at sub_tree"""
+        raise errors.UnsupportedOperation(self.add_reference, self)
+
+    def _add_reference(self, sub_tree):
+        """Standard add_reference implementation, for use by subclasses"""
+        try:
+            sub_tree_path = self.relpath(sub_tree.basedir)
+        except errors.PathNotChild:
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                            'Target not inside tree.')
+        sub_tree_id = sub_tree.get_root_id()
+        if sub_tree_id == self.get_root_id():
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                     'Trees have the same root id.')
+        if sub_tree_id in self.inventory:
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                            'Root id already present in tree')
+        self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+
     def _add(self, files, ids, kinds):
-        """Helper function for add - updates the inventory."""
+        """Helper function for add - updates the inventory.
+
+        :param files: sequence of pathnames, relative to the tree root
+        :param ids: sequence of suggested ids for the files (may be None)
+        :param kinds: sequence of  inventory kinds of the files (i.e. may
+            contain "tree-reference")
+        """
         raise NotImplementedError(self._add)
 
     @needs_write_lock

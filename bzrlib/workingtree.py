@@ -636,10 +636,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 inv.add_path(f, kind=kind, file_id=file_id)
         self._write_inventory(inv)
 
-    def add_reference(self, sub_tree):
-        """Add a TreeReference to the tree, pointing at sub_tree"""
-        raise errors.UnsupportedOperation(self.add_reference, self)
-
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
@@ -2359,24 +2355,7 @@ class WorkingTreeAB1(WorkingTree3):
         return kind
 
     def add_reference(self, sub_tree):
-        try:
-            sub_tree_path = self.relpath(sub_tree.basedir)
-        except errors.PathNotChild:
-            raise errors.BadReferenceTarget(self, sub_tree, 
-                                            'Target not inside tree.')
-        parent_id = self.path2id(osutils.dirname(sub_tree_path))
-        name = osutils.basename(sub_tree_path)
-        sub_tree_id = sub_tree.get_root_id()
-        if sub_tree_id == self.get_root_id():
-            raise errors.BadReferenceTarget(self, sub_tree, 
-                                     'Trees have the same root id.')
-        if sub_tree_id in self.inventory:
-            raise errors.BadReferenceTarget(self, sub_tree, 
-                                            'Root id already present in tree')
-        entry = TreeReference(sub_tree_id, name, parent_id, None, 
-                              None)
-        self.inventory.add(entry)
-        self._write_inventory(self.inventory)
+        return self._add_reference(sub_tree)
 
     def get_nested_tree(self, entry, path=None):
         if path is None:
