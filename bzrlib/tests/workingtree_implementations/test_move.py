@@ -319,3 +319,16 @@ class TestMove(TestCaseWithWorkingTree):
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
+
+    def test_move_directory(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'a/c/', 'a/c/d', 'e/'])
+        tree.add(['a', 'a/b', 'a/c', 'a/c/d', 'e'],
+                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        tree.move(['a'], 'e')
+        self.assertTreeLayout([('', root_id), ('e', 'e-id'), ('e/a', 'a-id'),
+                               ('e/a/b', 'b-id'), ('e/a/c', 'c-id'),
+                               ('e/a/c/d', 'd-id')], tree)

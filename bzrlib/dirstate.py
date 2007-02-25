@@ -304,7 +304,7 @@ class DirState(object):
         # add it.
         #------- copied from bzrlib.inventory.make_entry
         # --- normalized_filename wants a unicode basename only, so get one.
-        dirname, basename = os.path.split(path)
+        dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be
         # able to change the implementation at runtime for tests.
         norm_name, can_access = osutils.normalized_filename(basename)
@@ -317,7 +317,7 @@ class DirState(object):
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
-        dirname, basename = os.path.split(utf8path)
+        dirname, basename = osutils.split(utf8path)
         assert file_id.__class__ == str, \
             "must be a utf8 file_id not %s" % (type(file_id))
         entry_key = (dirname, basename, file_id)
@@ -917,7 +917,7 @@ class DirState(object):
                 # dirblock at parse time.
                 # This is an uncommon branch to take: most dirs have children,
                 # and most code works with versioned paths.
-                parent_base, parent_name = os.path.split(key[0])
+                parent_base, parent_name = osutils.split(key[0])
                 if not self._get_block_entry_index(parent_base, parent_name, 0)[3]:
                     # some parent path has not been added - its an error to add
                     # this child
@@ -1154,7 +1154,7 @@ class DirState(object):
         if path_utf8 is not None:
             assert path_utf8.__class__ == str, 'path_utf8 is not a str: %s %s' % (type(path_utf8), path_utf8)
             # path lookups are faster
-            dirname, basename = os.path.split(path_utf8)
+            dirname, basename = osutils.split(path_utf8)
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, tree_index)
             if not file_present:
@@ -1595,7 +1595,7 @@ class DirState(object):
                 # records where needed. 
                 file_id = entry.file_id
                 path_utf8 = path.encode('utf8')
-                dirname, basename = os.path.split(path_utf8)
+                dirname, basename = osutils.split(path_utf8)
                 new_entry_key = (dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
@@ -1688,7 +1688,7 @@ class DirState(object):
             if current_new:
                 # convert new into dirblock style
                 new_path_utf8 = current_new[0].encode('utf8')
-                new_dirname, new_basename = os.path.split(new_path_utf8)
+                new_dirname, new_basename = osutils.split(new_path_utf8)
                 new_id = current_new[1].file_id
                 new_entry_key = (new_dirname, new_basename, new_id)
                 current_new_minikind = \
@@ -1750,7 +1750,7 @@ class DirState(object):
                 all_remaining_keys.add(current_old[0])
             elif details[0] == 'r': # relocated
                 # record the key for the real path.
-                all_remaining_keys.add(tuple(os.path.split(details[1])) + (current_old[0][2],))
+                all_remaining_keys.add(tuple(osutils.split(details[1])) + (current_old[0][2],))
             # absent rows are not present at any path.
         last_reference = current_old[0] not in all_remaining_keys
         if last_reference:
@@ -1850,7 +1850,7 @@ class DirState(object):
                         new_entry[1].append(update_details)
                     else:
                         # we have the right key, make a pointer to it.
-                        pointer_path = os.path.join(*other_key[0:2])
+                        pointer_path = osutils.pathjoin(*other_key[0:2])
                         new_entry[1].append(('r', pointer_path, 0, False, ''))
             block.insert(entry_index, new_entry)
             existing_keys.add(key)
@@ -1884,7 +1884,7 @@ class DirState(object):
                         ('r', path_utf8, 0, False, '')
         # add a containing dirblock if needed.
         if new_details[0] == 'd':
-            subdir_key = (os.path.join(*key[0:2]), '', '')
+            subdir_key = (osutils.pathjoin(*key[0:2]), '', '')
             block_index, present = self._find_block_index_from_key(subdir_key)
             if not present:
                 self._dirblocks.insert(block_index, (subdir_key[0], []))

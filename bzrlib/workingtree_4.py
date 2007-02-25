@@ -414,6 +414,7 @@ class WorkingTree4(WorkingTree3):
         assert not isinstance(from_paths, basestring)
         to_dir_utf8 = to_dir.encode('utf8')
         to_entry_dirname, to_basename = os.path.split(to_dir_utf8)
+        id_index = state._get_id_index()
         # check destination directory
         # get the details for it
         to_entry_block_index, to_entry_entry_index, dir_present, entry_present = \
@@ -443,11 +444,37 @@ class WorkingTree4(WorkingTree3):
         else:
             update_inventory = False
 
+        rollbacks = []
+        def move_one(old_entry, from_path_utf8, minikind, executable,
+                     fingerprint, packed_stat, size,
+                     to_block, to_key, to_path_utf8):
+            state._make_absent(old_entry)
+            from_key = old_entry[0]
+            rollbacks.append(
+                lambda:state.update_minimal(from_key,
+                    minikind,
+                    executable=executable,
+                    fingerprint=fingerprint,
+                    packed_stat=packed_stat,
+                    size=size,
+                    path_utf8=from_path_utf8))
+            state.update_minimal(to_key,
+                    minikind,
+                    executable=executable,
+                    fingerprint=fingerprint,
+                    packed_stat=packed_stat,
+                    size=size,
+                    path_utf8=to_path_utf8)
+            added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
+            new_entry = to_block[1][added_entry_index]
+            rollbacks.append(lambda:state._make_absent(new_entry))
+
         # create rename entries and tuples
         for from_rel in from_paths:
             # from_rel is 'pathinroot/foo/bar'
-            from_dirname, from_tail = os.path.split(from_rel)
-            from_dirname = from_dirname.encode('utf8')
+            from_rel_utf8 = from_rel.encode('utf8')
+            from_dirname, from_tail = osutils.split(from_rel)
+            from_dirname, from_tail_utf8 = osutils.split(from_rel_utf8)
             from_entry = self._get_entry(path=from_rel)
             if from_entry == (None, None):
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
@@ -455,6 +482,7 @@ class WorkingTree4(WorkingTree3):
 
             from_id = from_entry[0][2]
             to_rel = pathjoin(to_dir, from_tail)
+            to_rel_utf8 = pathjoin(to_dir_utf8, from_tail_utf8)
             item_to_entry = self._get_entry(path=to_rel)
             if item_to_entry != (None, None):
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
@@ -520,50 +548,70 @@ class WorkingTree4(WorkingTree3):
                         lambda: inv.rename(from_id, current_parent, from_tail))
                 # finally do the rename in the dirstate, which is a little
                 # tricky to rollback, but least likely to need it.
-                basename = from_tail.encode('utf8')
                 old_block_index, old_entry_index, dir_present, file_present = \
-                    state._get_block_entry_index(from_dirname, basename, 0)
+                    state._get_block_entry_index(from_dirname, from_tail_utf8, 0)
                 old_block = state._dirblocks[old_block_index][1]
-                old_entry_details = old_block[old_entry_index][1]
+                old_entry = old_block[old_entry_index]
+                from_key, old_entry_details = old_entry
+                cur_details = old_entry_details[0]
                 # remove the old row
-                from_key = old_block[old_entry_index][0]
                 to_key = ((to_block[0],) + from_key[1:3])
-                # We must grab old_entry_details here, because _make_absent
-                # will mark this record as absent and destroy any info we used
-                # to have
-                minikind = old_entry_details[0][0]
-                state._make_absent(old_block[old_entry_index])
-                rollbacks.append(
-                    lambda:state.update_minimal(from_key,
-                        minikind,
-                        executable=old_entry_details[0][3],
-                        fingerprint=old_entry_details[0][1],
-                        packed_stat=old_entry_details[0][4],
-                        size=old_entry_details[0][2],
-                        path_utf8=from_rel.encode('utf8')))
-                # create new row in current block
-                state.update_minimal(to_key,
-                        minikind,
-                        executable=old_entry_details[0][3],
-                        fingerprint=old_entry_details[0][1],
-                        packed_stat=old_entry_details[0][4],
-                        size=old_entry_details[0][2],
-                        path_utf8=to_rel.encode('utf8'))
-                added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
-                new_entry = to_block[1][added_entry_index]
-                rollbacks.append(lambda:state._make_absent(new_entry))
-                if new_entry[1][0][0] == 'd':
-                    import pdb;pdb.set_trace()
-                    # if a directory, rename all the contents of child blocks
-                    # adding rollbacks as each is inserted to remove them and
-                    # restore the original
-                    # TODO: large scale slice assignment.
-                    # setup new list
-                    # save old list region
-                    # move up or down the old region
-                    # add rollback to move the region back
-                    # assign new list to new region
-                    # done
+                minikind = cur_details[0]
+                move_one(old_entry, from_path_utf8=from_rel_utf8,
+                         minikind=minikind,
+                         executable=cur_details[3],
+                         fingerprint=cur_details[1],
+                         packed_stat=cur_details[4],
+                         size=cur_details[2],
+                         to_block=to_block,
+                         to_key=to_key,
+                         to_path_utf8=to_rel_utf8)
+
+                if minikind == 'd':
+                    def update_dirblock(from_dir, to_key, to_dir_utf8):
+                        """all entries in this block need updating.
+
+                        TODO: This is pretty ugly, and doesn't support
+                        reverting, but it works.
+                        """
+                        assert from_dir != '', "renaming root not supported"
+                        from_key = (from_dir, '')
+                        from_block_idx, present = \
+                            state._find_block_index_from_key(from_key)
+                        if not present:
+                            # This is the old record, if it isn't present, then
+                            # there is theoretically nothing to update.
+                            # (Unless it isn't present because of lazy loading,
+                            # but we don't do that yet)
+                            return
+                        from_block = state._dirblocks[from_block_idx]
+                        to_block_index, to_entry_index, _, _ = \
+                            state._get_block_entry_index(to_key[0], to_key[1], 0)
+                        to_block_index = state._ensure_block(
+                            to_block_index, to_entry_index, to_dir_utf8)
+                        to_block = state._dirblocks[to_block_index]
+                        for entry in from_block[1]:
+                            assert entry[0][0] == from_dir
+                            cur_details = entry[1][0]
+                            to_key = (to_dir_utf8, entry[0][1], entry[0][2])
+                            from_path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+                            to_path_utf8 = osutils.pathjoin(to_dir_utf8, entry[0][1])
+                            minikind = cur_details[0]
+                            move_one(entry, from_path_utf8=from_path_utf8,
+                                     minikind=minikind,
+                                     executable=cur_details[3],
+                                     fingerprint=cur_details[1],
+                                     packed_stat=cur_details[4],
+                                     size=cur_details[2],
+                                     to_block=to_block,
+                                     to_key=to_key,
+                                     to_path_utf8=to_rel_utf8)
+                            if minikind == 'd':
+                                # We need to move all the children of this
+                                # entry
+                                update_dirblock(from_path_utf8, to_key,
+                                                to_path_utf8)
+                    update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
             except:
                 rollback_rename()
                 raise
