@@ -399,22 +399,12 @@ class WorkingTree4(WorkingTree3):
             self._dirstate.lock_write()
 
     @needs_tree_write_lock
-    def move(self, from_paths, to_dir=None, after=False, **kwargs):
+    def move(self, from_paths, to_dir, after=False):
         """See WorkingTree.move()."""
         if not from_paths:
             return ()
 
         state = self.current_dirstate()
-
-        # check for deprecated use of signature
-        if to_dir is None:
-            to_dir = kwargs.get('to_name', None)
-            if to_dir is None:
-                raise TypeError('You must supply a target directory')
-            else:
-                symbol_versioning.warn('The parameter to_name was deprecated'
-                                       ' in version 0.13. Use to_dir instead',
-                                       DeprecationWarning)
 
         assert not isinstance(from_paths, basestring)
         to_dir_utf8 = to_dir.encode('utf8')
