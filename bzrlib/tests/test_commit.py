@@ -223,28 +223,40 @@ class TestCommit(TestCaseWithTransport):
         wt.move(['hello'], 'a')
         r2 = 'test@rev-2'
         wt.commit('two', rev_id=r2, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/hello', 'b'])
+        finally:
+            wt.unlock()
 
         wt.move(['b'], 'a')
         r3 = 'test@rev-3'
         wt.commit('three', rev_id=r3, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'a/b'])
-        self.check_inventory_shape(b.repository.get_revision_inventory(r3),
-                                   ['a', 'a/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/hello', 'a/b'])
+            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+                                       ['a', 'a/hello', 'a/b'])
+        finally:
+            wt.unlock()
 
         wt.move(['a/hello'], 'a/b')
         r4 = 'test@rev-4'
         wt.commit('four', rev_id=r4, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/b/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/b/hello', 'a/b'])
+        finally:
+            wt.unlock()
 
         inv = b.repository.get_revision_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
-        
+
     def test_removed_commit(self):
         """Commit with a removed file"""
         wt = self.make_branch_and_tree('.')
