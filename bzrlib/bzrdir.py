@@ -1510,9 +1510,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
     repository_format = property(__return_repository_format, __set_repository_format)
 
 
-# register BzrDirMetaFormat1 as a control format. Our only
-# concrete control format (BzrDirFormat is an abstract one).
-BzrDirFormat.register_control_format(BzrDirMetaFormat1)
+# Register bzr control format
+BzrDirFormat.register_control_format(BzrDirFormat)
 
 # Register bzr formats
 BzrDirFormat.register_format(BzrDirFormat4())
