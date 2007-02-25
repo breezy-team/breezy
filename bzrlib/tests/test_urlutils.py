@@ -20,7 +20,7 @@ import os
 import re
 import sys
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils, urlutils, win32utils
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -506,6 +506,9 @@ class TestCwdToURL(TestCaseInTempDir):
         self.assertEndsWith(url, '/mytest')
 
     def test_non_ascii(self):
+        if win32utils.winver == 'Windows 98':
+            raise TestSkipped('Windows 98 cannot handle unicode filenames')
+
         try:
             os.mkdir(u'dod\xe9')
         except UnicodeError:

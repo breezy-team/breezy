@@ -40,7 +40,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import string
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -48,7 +47,9 @@ from tempfile import (
 import unicodedata
 
 from bzrlib import (
+    cache_utf8,
     errors,
+    win32utils,
     )
 """)
 
@@ -257,6 +258,36 @@ def _win32_fixdrive(path):
 def _win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+
+
+def _win98_abspath(path):
+    """Return the absolute version of a path.
+    Windows 98 safe implementation (python reimplementation
+    of Win32 API function GetFullPathNameW)
+    """
+    # Corner cases:
+    #   C:\path     => C:/path
+    #   C:/path     => C:/path
+    #   \\HOST\path => //HOST/path
+    #   //HOST/path => //HOST/path
+    #   path        => C:/cwd/path
+    #   /path       => C:/path
+    path = unicode(path)
+    # check for absolute path
+    drive = _nt_splitdrive(path)[0]
+    if drive == '' and path[:2] not in('//','\\\\'):
+        cwd = os.getcwdu()
+        # we cannot simply os.path.join cwd and path
+        # because os.path.join('C:','/path') produce '/path'
+        # and this is incorrect
+        if path[:1] in ('/','\\'):
+            cwd = _nt_splitdrive(cwd)[0]
+            path = path[1:]
+        path = cwd + '\\' + path
+    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+
+if win32utils.winver == 'Windows 98':
+    _win32_abspath = _win98_abspath
 
 
 def _win32_realpath(path):
@@ -777,7 +808,18 @@ def has_symlinks():
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
-    for ch in string.whitespace:
+    # string.whitespace can include '\xa0' in certain locales, because it is
+    # considered "non-breaking-space" as part of ISO-8859-1. But it
+    # 1) Isn't a breaking whitespace
+    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
+    #    separators
+    # 3) '\xa0' isn't unicode safe since it is >128.
+
+    # This should *not* be a unicode set of characters in case the source
+    # string is not a Unicode string. We can auto-up-cast the characters since
+    # they are ascii, but we don't want to auto-up-cast the string in case it
+    # is utf-8
+    for ch in ' \t\n\r\v\f':
         if ch in s:
             return True
     else:
@@ -843,6 +885,50 @@ def safe_unicode(unicode_or_utf8_string):
         raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
+def safe_utf8(unicode_or_utf8_string):
+    """Coerce unicode_or_utf8_string to a utf8 string.
+
+    If it is a str, it is returned.
+    If it is Unicode, it is encoded into a utf-8 string.
+    """
+    if isinstance(unicode_or_utf8_string, str):
+        # TODO: jam 20070209 This is overkill, and probably has an impact on
+        #       performance if we are dealing with lots of apis that want a
+        #       utf-8 revision id
+        try:
+            # Make sure it is a valid utf-8 string
+            unicode_or_utf8_string.decode('utf-8')
+        except UnicodeDecodeError:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        return unicode_or_utf8_string
+    return unicode_or_utf8_string.encode('utf-8')
+
+
+def safe_revision_id(unicode_or_utf8_string):
+    """Revision ids should now be utf8, but at one point they were unicode.
+
+    This is the same as safe_utf8, except it uses the cached encode functions
+    to save a little bit of performance.
+    """
+    if unicode_or_utf8_string is None:
+        return None
+    if isinstance(unicode_or_utf8_string, str):
+        # TODO: jam 20070209 Eventually just remove this check.
+        try:
+            utf8_str = cache_utf8.get_cached_utf8(unicode_or_utf8_string)
+        except UnicodeDecodeError:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        return utf8_str
+    return cache_utf8.encode(unicode_or_utf8_string)
+
+
+# TODO: jam 20070217 We start by just re-using safe_revision_id, but ultimately
+#       we want to use a different dictionary cache, because trapping file ids
+#       and revision ids in the same dict seemed to have a noticable effect on
+#       performance.
+safe_file_id = safe_revision_id
+
+
 _platform_normalizes_filenames = False
 if sys.platform == 'darwin':
     _platform_normalizes_filenames = True
@@ -890,8 +976,7 @@ else:
 def terminal_width():
     """Return estimated terminal width."""
     if sys.platform == 'win32':
-        import bzrlib.win32console
-        return bzrlib.win32console.get_console_size()[0]
+        return win32utils.get_console_size()[0]
     width = 0
     try:
         import struct, fcntl, termios
@@ -912,6 +997,19 @@ def terminal_width():
 
 
 def supports_executable():
+    return sys.platform != "win32"
+
+
+def supports_posix_readonly():
+    """Return True if 'readonly' has POSIX semantics, False otherwise.
+
+    Notably, a win32 readonly file cannot be deleted, unlike POSIX where the
+    directory controls creation/deletion, etc.
+
+    And under win32, readonly means that the directory itself cannot be
+    deleted.  The contents of a readonly directory can be changed, unlike POSIX
+    where files in readonly directories cannot be added, deleted or renamed.
+    """
     return sys.platform != "win32"
 
 

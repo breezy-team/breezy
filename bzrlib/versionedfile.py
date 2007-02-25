@@ -26,6 +26,7 @@ import unittest
 
 from bzrlib import (
     errors,
+    osutils,
     tsort,
     revision,
     ui,
@@ -96,6 +97,8 @@ class VersionedFile(object):
         :param sha1: The sha1 of the full text.
         :param delta: The delta instructions. See get_delta for details.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         if self.has_version(version_id):
             raise errors.RevisionAlreadyPresent(version_id, self)
@@ -138,6 +141,8 @@ class VersionedFile(object):
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts)
 
@@ -151,6 +156,8 @@ class VersionedFile(object):
         
         This takes the same parameters as add_lines.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
                                            parent_texts)
@@ -204,6 +211,8 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
+        new_version_id = osutils.safe_revision_id(new_version_id)
+        old_version_id = osutils.safe_revision_id(old_version_id)
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -220,7 +229,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version, new_parents):
+    def fix_parents(self, version_id, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -228,10 +237,12 @@ class VersionedFile(object):
         the parents list must be a superset of the current
         list.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
         self._check_write_ok()
-        return self._fix_parents(version, new_parents)
+        return self._fix_parents(version_id, new_parents)
 
-    def _fix_parents(self, version, new_parents):
+    def _fix_parents(self, version_id, new_parents):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
 
@@ -243,7 +254,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_delta)
 
-    def get_deltas(self, versions):
+    def get_deltas(self, version_ids):
         """Get multiple deltas at once for constructing versions.
         
         :return: dict(version_id:(delta_parent, sha1, noeol, delta))
@@ -251,8 +262,8 @@ class VersionedFile(object):
         version_id is the version_id created by that delta.
         """
         result = {}
-        for version in versions:
-            result[version] = self.get_delta(version)
+        for version_id in version_ids:
+            result[version_id] = self.get_delta(version_id)
         return result
 
     def get_sha1(self, version_id):
@@ -325,7 +336,7 @@ class VersionedFile(object):
             for version in self.versions():
                 result[version] = self.get_parents(version)
         else:
-            pending = set(version_ids)
+            pending = set(osutils.safe_revision_id(v) for v in version_ids)
             while pending:
                 version = pending.pop()
                 if version in result:
@@ -657,6 +668,7 @@ class InterVersionedFile(InterObject):
             # None cannot be in source.versions
             return set(self.source.versions())
         else:
+            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
             if ignore_missing:
                 return set(self.source.versions()).intersection(set(version_ids))
             else:

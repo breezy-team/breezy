@@ -42,10 +42,10 @@ class Serializer_v6(xml5.Serializer_v5):
                                                    % format)
         revision_id = elt.get('revision_id')
         if revision_id is not None:
-            revision_id = cache_utf8.get_cached_unicode(revision_id)
+            revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e, none_parents=True)
+            ie = self._unpack_entry(e)
             inv.add(ie)
         return inv
 

@@ -39,7 +39,8 @@ from bzrlib.transport import (_CoalescedOffset,
                               Transport,
                               )
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transport.local import LocalTransport
+from bzrlib.transport.local import (LocalTransport,
+                                    EmulatedWin32LocalTransport)
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -553,3 +554,16 @@ class TestLocalTransports(TestCase):
         self.assertEquals(t.base, here_url)
 
 
+class TestWin32LocalTransport(TestCase):
+
+    def test_unc_clone_to_root(self):
+        # Win32 UNC path like \\HOST\path
+        # clone to root should stop at least at \\HOST part
+        # not on \\
+        t = EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
+        for i in xrange(4):
+            t = t.clone('..')
+        self.assertEquals(t.base, 'file://HOST/')
+        # make sure we reach the root
+        t = t.clone('..')
+        self.assertEquals(t.base, 'file://HOST/')

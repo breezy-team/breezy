@@ -569,6 +569,12 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        # prevent hooks affecting tests
+        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self.addCleanup(self._restoreHooks)
+        # this list of hooks must be kept in sync with the defaults
+        # in branch.py
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -834,6 +840,9 @@ class TestCase(unittest.TestCase):
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
+
+    def _restoreHooks(self):
+        bzrlib.branch.Branch.hooks = self._preserved_hooks
 
     def tearDown(self):
         self._runCleanups()
@@ -1415,10 +1424,10 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
+            if format is None:
+                format = 'default'
             if isinstance(format, basestring):
                 format = bzrdir.format_registry.make_bzrdir(format)
-            elif format is None:
-                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
@@ -1760,6 +1769,7 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
@@ -1861,7 +1871,20 @@ def test_suite():
             raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
-            suite.addTest(plugin.test_suite())
+            default_encoding = sys.getdefaultencoding()
+            try:
+                plugin_suite = plugin.test_suite()
+            except ImportError, e:
+                bzrlib.trace.warning(
+                    'Unable to test plugin "%s": %s', name, e)
+            else:
+                suite.addTest(plugin_suite)
+            if default_encoding != sys.getdefaultencoding():
+                bzrlib.trace.warning(
+                    'Plugin "%s" tried to reset default encoding to: %s', name,
+                    sys.getdefaultencoding())
+                reload(sys)
+                sys.setdefaultencoding(default_encoding)
     return suite
 
 
