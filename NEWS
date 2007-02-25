@@ -22,12 +22,12 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
-    * HTTP redirections are now taken into account when a branch is accessed
-      for the first time. A message is issued at each redirection to inform
-      the user. In the past, http redirections were silently followed for
-      each request which signifanctly degrade performances. The http
-      redirections are not followed anymore by default.
-      (Vincent Ladeuil)
+    * HTTP redirections are now taken into account when a branch (or a
+      bundle) is accessed for the first time. A message is issued at each
+      redirection to inform the user. In the past, http redirections were
+      silently followed for each request which signifanctly degrade
+      performances. The http redirections are not followed anymore by
+      default.  (Vincent Ladeuil)
 
     * ``bzr pull --overwrite`` will now correctly overwrite checkouts.
       (Robert Collins)

@@ -58,7 +58,11 @@ from bzrlib.symbol_versioning import (
         zero_eight,
         zero_eleven,
         )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import (
+    note,
+    mutter,
+    warning,
+    )
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -1042,6 +1046,47 @@ def get_transport(base):
 
     # The default handler is the filesystem handler, stored as protocol None
     return _try_transport_factories(base, _protocol_handlers[None])[0]
+
+
+def do_catching_redirections(action, transport, redirected, exception):
+    """Execute an action with given transport catching redirections.
+
+    This is a facility provided for callers needing to follow redirections
+    silently. The silent is relative: it is the caller responsability to
+    inform the user about each redirection or only inform the user of a user
+    via the exception parameter.
+
+    :param action: A callable, what the caller want to do while catching
+                  redirections.
+    :param transport: The initial transport used.
+    :param redirected: A callable receiving the redirected transport and the 
+                  RedirectRequested exception.
+    :param exception: The exception raised if too much redirections occur.
+
+    :return: Whatever 'action' returns
+    """
+    MAX_REDIRECTIONS = 8
+
+    t = transport
+    # If a loop occurs, there is little we can do. So we don't try to detect
+    # them, just getting out if too much redirections occurs. The solution
+    # is outside: where the loop is defined.
+    for redirections in range(MAX_REDIRECTIONS):
+        try:
+            return action(t)
+        except errors.RedirectRequested, e:
+            redirection_notice = '%s is%s redirected to %s' % (
+                e.get_source_url(), e.permanently, e.get_target_url())
+            t = redirected(t, e, redirection_notice)
+    else:
+        # Loop exited without resolving redirect ? Either the user has kept
+        # a very very very old reference or a loop occured in the
+        # redirections.  Nothing we can cure here: tell the user. Note that
+        # as the user has been informed about each redirection (it is the
+        # caller responsibility to do that in redirected via the provided
+        # redirection_notice), there is no need to issue an additional error
+        # message.
+        raise exception
 
 
 def _try_transport_factories(base, factory_list):

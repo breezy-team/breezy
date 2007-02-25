@@ -59,7 +59,10 @@ from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 from bzrlib.weave import Weave
 """)
 
@@ -501,8 +504,6 @@ class BzrDir(object):
         t = get_transport(base)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
-    MAX_REDIRECTIONS = 8
-
     @staticmethod
     def open_from_transport(transport, _unsupported=False):
         """Open a bzrdir within a particular directory.
@@ -510,41 +511,32 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
-        initial_base = transport.base
-        # If a loop occurs, there is little we can do. So we
-        # don't try to detect them, just getting out if too much
-        # redirections occurs. The solution is outside: where the
-        # loop is defined.
-        for redirections in range(BzrDir.MAX_REDIRECTIONS):
-            try:
-                format = BzrDirFormat.find_format(transport)
-                break
-            except errors.RedirectRequested, e:
-                qualified_source = e.get_source_url()
-                relpath = transport.relpath(qualified_source)
-                if not e.target.endswith(relpath):
-                    # Not redirected to a branch-format, not a branch
-                    raise errors.NotBranchError(path=e.target)
-                target = e.target[:-len(relpath)]
-                note('%s is%s redirected to %s',
-                     transport.base, e.permanently, target)
-                # Let's try with a new transport
-                qualified_target = e.get_target_url()[:-len(relpath)]
-                # FIXME: If 'transport' have a qualifier, this should
-                # be applied again to the new transport *iff* the
-                # schemes used are the same. It's a bit tricky to
-                # verify, so I'll punt for now
-                # -- vila20070212
-                transport = get_transport(target)
-        else:
-            # Loop exited without resolving redirect ? Either the
-            # user has kept a very very very old reference to a
-            # branch or a loop occured in the redirections.
-            # Nothing we can cure here: tell the user. Note that
-            # as the user has been informed about each
-            # redirection, there is no need to issue an
-            # additional error message.
-            raise errors.NotBranchError(path=initial_base)
+        base = transport.base
+
+        def find_format(transport):
+            return transport, BzrDirFormat.find_format(transport)
+
+        def redirected(transport, e, redirection_notice):
+            qualified_source = e.get_source_url()
+            relpath = transport.relpath(qualified_source)
+            if not e.target.endswith(relpath):
+                # Not redirected to a branch-format, not a branch
+                raise errors.NotBranchError(path=e.target)
+            target = e.target[:-len(relpath)]
+            note('%s is%s redirected to %s',
+                 transport.base, e.permanently, target)
+            # Let's try with a new transport
+            qualified_target = e.get_target_url()[:-len(relpath)]
+            # FIXME: If 'transport' have a qualifier, this should
+            # be applied again to the new transport *iff* the
+            # schemes used are the same. It's a bit tricky to
+            # verify, so I'll punt for now
+            # -- vila20070212
+            return get_transport(target)
+
+        transport, format = do_catching_redirections(
+            find_format, transport, redirected, errors.NotBranchError(base))
+
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 

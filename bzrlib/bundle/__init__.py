@@ -21,8 +21,12 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle import serializer as _serializer
-from bzrlib.transport import get_transport as _get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 """)
+from bzrlib.trace import note
 
 
 def read_bundle_from_url(url):
@@ -42,8 +46,19 @@ def read_bundle_from_url(url):
     # Some transports cannot detect that we are trying to read a
     # directory until we actually issue read() on the handle.
     try:
-        t = _get_transport(url)
-        f = t.get(filename)
+        transport = get_transport(url)
+
+        def get_bundle(transport):
+            return transport.get(filename)
+
+        def redirected_transport(transport, exception, redirection_notice):
+            note(redirection_notice)
+            return get_transport(exception.get_target_url())
+
+        f = do_catching_redirections(get_bundle, transport,
+                                     redirected_transport,
+                                     errors.NotABundle(str(url)))
+
         return _serializer.read_bundle(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
