@@ -1420,8 +1420,11 @@ class TestBreakLock(TestCaseWithBzrDir):
         bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\ny\n")
         try:
             tree.bzrdir.break_lock()
-        except NotImplementedError:
+        except (NotImplementedError, errors.LockActive):
             # bzrdir does not support break_lock
+            # or one of the locked objects (currently only tree does this)
+            # raised a LockActive because we do still have a live locked
+            # object.
             tree.unlock()
             return
         self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())

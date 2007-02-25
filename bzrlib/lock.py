@@ -38,7 +38,7 @@ import errno
 import os
 import sys
 
-from bzrlib.errors import LockError
+from bzrlib.errors import LockError, LockContention
 from bzrlib.osutils import realpath
 from bzrlib.trace import mutter
 
@@ -100,8 +100,8 @@ try:
             try:
                 self.filename = realpath(filename)
                 if self.filename in self.open_locks:
-                    self._clear_f() 
-                    raise LockError("Lock already held.")
+                    self._clear_f()
+                    raise LockContention("Lock already held.")
                 # reserve a slot for this lock - even if the lockf call fails, 
                 # at thisi point unlock() will be called, because self.f is set.
                 # TODO: make this fully threadsafe, if we decide we care.

@@ -46,6 +46,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.InstallFailed([None])
         self.assertEqual("Could not install revisions:\nNone", str(error))
 
+    def test_lock_active(self):
+        error = errors.LockActive("lock description")
+        self.assertEqualDiff("The lock for 'lock description' is in use and "
+            "cannot be broken.",
+            str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
