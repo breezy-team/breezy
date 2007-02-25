@@ -70,19 +70,23 @@ class TestBreakLock(ExternalBase):
 
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.
+        # however, we dont test breaking the working tree because we 
+        # cannot accurately do so right now: the dirstate lock is held 
+        # by an os lock, and we need to spawn a separate process to lock it
+        # thne kill -9 it.
         # sketch of test:
-        # lock the lot:
-        self.wt.lock_write()
+        # lock most of the dir:
+        self.wt.branch.lock_write()
         self.master_branch.lock_write()
         # run the break-lock
         # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
-        self.run_bzr('break-lock', 'checkout', stdin="y\ny\ny\ny\ny\n")
+        self.run_bzr('break-lock', 'checkout', stdin="y\ny\ny\ny\n")
         # a new tree instance should be lockable
-        wt = bzrlib.workingtree.WorkingTree.open('checkout')
-        wt.lock_write()
-        wt.unlock()
+        branch = bzrlib.branch.Branch.open('checkout')
+        branch.lock_write()
+        branch.unlock()
         # and a new instance of the master branch 
-        mb = wt.branch.get_master_branch()
+        mb = branch.get_master_branch()
         mb.lock_write()
         mb.unlock()
         self.assertRaises(errors.LockBroken, self.wt.unlock)
