@@ -603,14 +603,11 @@ class cmd_pull(Command):
         else:
             result = branch_to.pull(branch_from, overwrite, rev_id)
 
-        if result.old_revid == result.new_revid:
-            note('No revisions to pull.')
-        elif verbose:
+        result.report(self.outf)
+        if verbose:
             from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
             show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
-        else:
-            note('Now on revision %d.' % result.new_revno)
 
 
 class cmd_push(Command):

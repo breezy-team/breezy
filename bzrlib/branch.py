@@ -2076,6 +2076,13 @@ class PullResult(_Result):
         # DEPRECATED: pull used to return the change in revno
         return self.new_revno - self.old_revno
 
+    def report(self, to_file):
+        if self.old_revid == self.new_revid:
+            to_file.write('No revisions to pull.\n')
+        else:
+            to_file.write('Now on revision %d.\n' % self.new_revno)
+        self._show_tag_conficts(to_file)
+
 
 class PushResult(_Result):
     """Describes the result of a Branch.push operation"""

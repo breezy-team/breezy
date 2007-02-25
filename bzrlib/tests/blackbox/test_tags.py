@@ -105,6 +105,7 @@ class TestTagging(TestCaseWithTransport):
             u'^\u30d0zaar  *revid-1'.encode('utf-8'))
 
     def test_conflicting_tags(self):
+        # setup two empty branches with different tags
         t1 = self.make_branch_and_tree('one')
         t2 = self.make_branch_and_tree('two')
         b1 = t1.branch
@@ -112,6 +113,11 @@ class TestTagging(TestCaseWithTransport):
         tagname = u'\u30d0zaar'
         b1.tags.set_tag(tagname, 'revid1')
         b2.tags.set_tag(tagname, 'revid2')
+        # push should give a warning about the tags
         out, err = self.run_bzr('push', '-d', 'one', 'two', encoding='utf-8')
+        self.assertContainsRe(out,
+                'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        # pull should give a warning about the tags
+        out, err = self.run_bzr('pull', '-d', 'one', 'two', encoding='utf-8')
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
