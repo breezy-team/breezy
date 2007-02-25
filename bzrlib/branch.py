@@ -1413,13 +1413,13 @@ class BzrBranch(Branch):
             if overwrite:
                 self.set_revision_history(source.revision_history())
             result.new_revno, result.new_revid = self.last_revision_info()
+            if _hook_master:
+                result.master = _hook_master
+                result.local = self
+            else:
+                result.master = self
+                result.local = None
             if _run_hooks:
-                if _hook_master:
-                    result.master = _hook_master
-                    result.local = self
-                else:
-                    result.master = self
-                    result.local = None
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
         finally:
@@ -1445,9 +1445,12 @@ class BzrBranch(Branch):
         :param _run_hooks: Private parameter - allow disabling of
             hooks, used when pushing to a master branch.
         """
+        result = PushResult()
+        result.source = self
+        result.target = target
         target.lock_write()
         try:
-            old_count, old_tip = target.last_revision_info()
+            result.old_revno, result.old_revid = target.last_revision_info()
             try:
                 target.update_revisions(self, stop_revision)
             except DivergedBranches:
@@ -1455,19 +1458,19 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 target.set_revision_history(self.revision_history())
-            new_count, new_tip = target.last_revision_info()
+            result.new_revno, result.new_revid = target.last_revision_info()
+            if _hook_master:
+                result.master = _hook_master
+                result.local = target
+            else:
+                result.master = target
+                result.local = None
             if _run_hooks:
-                if _hook_master:
-                    _hook_local = target
-                else:
-                    _hook_master = target
-                    _hook_local = None
                 for hook in Branch.hooks['post_push']:
-                    hook(self, _hook_local, _hook_master, old_count, old_tip,
-                        new_count, new_tip)
-            return new_count - old_count
+                    hook(result)
         finally:
             target.unlock()
+        return result
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -1924,7 +1927,14 @@ class BranchTestProviderAdapter(object):
 class PullResult(object):
 
     def __int__(self):
-        # somewhat deprecated: pull used to return the change in revno
+        # DEPRECATED: pull used to return the change in revno
+        return self.new_revno - self.old_revno
+
+
+class PushResult(object):
+
+    def __int__(self):
+        # DEPRECATED: push used to return the change in revno
         return self.new_revno - self.old_revno
 
 
