@@ -785,8 +785,8 @@ class DirState(object):
                                                     len(self._ghosts))
 
     def _ensure_block(self, parent_block_index, parent_row_index, dirname):
-        """Enssure a block for dirname exists.
-        
+        """Ensure a block for dirname exists.
+
         This function exists to let callers which know that there is a
         directory dirname ensure that the block for it exists. This block can
         fail to exist because of demand loading, or because a directory had no
@@ -804,7 +804,10 @@ class DirState(object):
         :param dirname: The utf8 dirname to ensure there is a block for.
         :return: The index for the block.
         """
-        assert dirname != ''
+        if dirname == '' and parent_row_index == 0 and parent_block_index == 0:
+            # This is the signature of the root row, and the
+            # contents-of-root row is always index 1
+            return 1
         # the basename of the directory must be the end of its full name.
         if not (parent_block_index == -1 and
             parent_block_index == -1 and dirname == ''):
@@ -1739,7 +1742,7 @@ class DirState(object):
             some functions. If provided it will be updated if needed.
         :return: True if this was the last details entry for they entry key:
             that is, if the underlying block has had the entry removed, thus
-            shrinking in legnth.
+            shrinking in length.
         """
         # build up paths that this id will be left at after the change is made,
         # so we can update their cross references in tree 0

@@ -24,6 +24,7 @@ WorkingTree.open(dir).
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -484,15 +485,15 @@ class WorkingTree4(WorkingTree3):
             rollbacks = []
             def rollback_rename():
                 """A single rename has failed, roll it back."""
-                error = None
+                exc_info = None
                 for rollback in reversed(rollbacks):
                     try:
                         rollback()
                     except Exception, e:
                         import pdb;pdb.set_trace()
-                        error = e
-                if error:
-                    raise error
+                        exc_info = sys.exc_info()
+                if exc_info:
+                    raise exc_info[0], exc_info[1], exc_info[2]
 
             # perform the disk move first - its the most likely failure point.
             from_rel_abs = self.abspath(from_rel)
@@ -546,7 +547,7 @@ class WorkingTree4(WorkingTree3):
                         id_index=state._get_id_index(),
                         path_utf8=to_rel.encode('utf8'))
                 added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
-                new_entry = to_block[added_entry_index]
+                new_entry = to_block[1][added_entry_index]
                 rollbacks.append(lambda:state._make_absent(new_entry))
                 if new_entry[1][0][0] == 'd':
                     import pdb;pdb.set_trace()

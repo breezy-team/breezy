@@ -17,6 +17,10 @@
 
 """Tests for interface conformance of 'workingtree.put_mkdir'"""
 
+from bzrlib import (
+    errors,
+    )
+
 from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
@@ -79,3 +83,105 @@ class TestMove(TestCaseWithWorkingTree):
             if not isinstance(self.workingtree_format, WorkingTreeFormat4):
                 raise
 
+    def test_move_target_not_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'])
+
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['a'], 'not-a-dir')
+
+    def test_move_non_existent(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/'])
+        tree.add(['a'])
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['not-a-file'], 'a')
+
+    def test_move_target_not_versioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'b'])
+        tree.add(['b'])
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['b'], 'a')
+
+    # TODO: jam 20070225 What about a test when the target is now a directory,
+    #       but in the past it was a file. Theoretically WorkingTree should
+    #       notice the kind change.
+
+    def test_move_unversioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'b'])
+        tree.add(['a'])
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['b'], 'a')
+
+    def test_move_multi_unversioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'b', 'c', 'd'])
+        tree.add(['a', 'c', 'd'])
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['c', 'b', 'd'], 'a')
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['b', 'c', 'd'], 'a')
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['c', 'd', 'b'], 'a')
+
+    def get_tree_layout(self, tree):
+        """Get the (path, file_id) pairs for the current tree."""
+        tree.lock_read()
+        try:
+            return [(path, ie.file_id) for path, ie
+                    in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+
+    def assertTreeLayout(self, expected, tree):
+        """Check that the tree has the correct layout."""
+        actual = self.get_tree_layout(tree)
+        self.assertEqual(expected, actual)
+
+    def test_move_subdir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        root_id = tree.get_root_id()
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+                               ('b/c', 'c-id')], tree)
+        a_contents = tree.get_file_text('a-id')
+        tree.move(['a'], 'b')
+        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id'),
+                               ('b/c', 'c-id')], tree)
+        self.failIfExists('a')
+        self.failUnlessExists('b/a')
+        self.check_file_contents('b/a', a_contents)
+
+    def test_move_parent_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        root_id = tree.get_root_id()
+        c_contents = tree.get_file_text('c-id')
+        tree.move(['b/c'], '')
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+                               ('c', 'c-id')], tree)
+        self.failIfExists('b/c')
+        self.failUnlessExists('c')
+        self.check_file_contents('c', c_contents)
+
+    def dont_test(self):
+        self.run_bzr('mv', 'a', 'b')
+        self.assertMoved('a','b')
+
+        self.run_bzr('mv', 'b', 'subdir')
+        self.assertMoved('b','subdir/b')
+
+        self.run_bzr('mv', 'subdir/b', 'a')
+        self.assertMoved('subdir/b','a')
+
+        self.run_bzr('mv', 'a', 'c', 'subdir')
+        self.assertMoved('a','subdir/a')
+        self.assertMoved('c','subdir/c')
+
+        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+        self.assertMoved('subdir/a','subdir/newa')
