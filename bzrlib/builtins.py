@@ -664,7 +664,6 @@ class cmd_push(Command):
             directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        from bzrlib.tag import _merge_tags_if_possible
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
@@ -799,10 +798,7 @@ class cmd_push(Command):
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
         if push_result is not None:
-            if push_result.old_revid == push_result.new_revid:
-                note('No new revisions to push.\n')
-            else:
-                note('Pushed up to revision %d.' % push_result.new_revno)
+            push_result.report(self.outf)
         elif verbose:
             new_rh = br_to.revision_history()
             if old_rh != new_rh:

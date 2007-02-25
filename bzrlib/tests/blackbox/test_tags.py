@@ -104,5 +104,14 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out,
             u'^\u30d0zaar  *revid-1'.encode('utf-8'))
 
-    def test_merge_conflicting_tags(self):
-        pass
+    def test_conflicting_tags(self):
+        t1 = self.make_branch_and_tree('one')
+        t2 = self.make_branch_and_tree('two')
+        b1 = t1.branch
+        b2 = t2.branch
+        tagname = u'\u30d0zaar'
+        b1.tags.set_tag(tagname, 'revid1')
+        b2.tags.set_tag(tagname, 'revid2')
+        out, err = self.run_bzr('push', '-d', 'one', 'two', encoding='utf-8')
+        self.assertContainsRe(out,
+                'Conflicting tags:\n.*' + tagname.encode('utf-8'))

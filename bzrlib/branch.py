@@ -2059,18 +2059,38 @@ class BranchTestProviderAdapter(object):
 ######################################################################
 # results of operations
 
-class PullResult(object):
+
+class _Result(object):
+
+    def _show_tag_conficts(self, to_file):
+        if not getattr(self, 'tag_conflicts', None):
+            return
+        to_file.write('Conflicting tags:\n')
+        for name, value1, value2 in self.tag_conflicts:
+            to_file.write('    %s\n' % (name, ))
+
+
+class PullResult(_Result):
 
     def __int__(self):
         # DEPRECATED: pull used to return the change in revno
         return self.new_revno - self.old_revno
 
 
-class PushResult(object):
+class PushResult(_Result):
+    """Describes the result of a Branch.push operation"""
 
     def __int__(self):
         # DEPRECATED: push used to return the change in revno
         return self.new_revno - self.old_revno
+
+    def report(self, to_file):
+        """Write a human-readable description of the result."""
+        if self.old_revid == self.new_revid:
+            to_file.write('No new revisions to push.\n')
+        else:
+            to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+        self._show_tag_conficts(to_file)
 
 
 class BranchCheckResult(object):
