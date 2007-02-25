@@ -80,12 +80,14 @@ class TestPush(ExternalBase):
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
-        out = self.run_bzr('push')
+        out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
-        self.assertEquals(('Using saved location: %s\n' 
-                           % (local_path_from_url(path),)
-                          , 'All changes applied successfully.\n'
-                            'Pushed up to revision 2.\n'), out)
+        self.assertEquals(out,
+                          'Using saved location: %s\n' 
+                          'Pushed up to revision 2.\n'
+                          % local_path_from_url(path))
+        self.assertEqual(err,
+                         'All changes applied successfully.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
