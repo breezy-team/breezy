@@ -48,13 +48,23 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_add_reference(self):
         self.make_nested_trees()
         tree = workingtree.WorkingTree.open('tree')
-        self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
-        self.assertEqual(tree.inventory['sub-tree-root-id'].kind, 
-                         'tree-reference')
-        tree.commit('commit reference')
-        entry = tree.basis_tree().inventory['sub-tree-root-id']
-        sub_tree = tree.get_nested_tree(entry)
-        self.assertEqual(sub_tree.last_revision(), entry.reference_revision)
+        tree.lock_write()
+        try:
+            self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
+            self.assertEqual(tree.inventory['sub-tree-root-id'].kind,
+                             'tree-reference')
+            tree.commit('commit reference')
+            basis = tree.basis_tree()
+            basis.lock_read()
+            try:
+                entry = basis.inventory['sub-tree-root-id']
+                sub_tree = tree.get_nested_tree(entry)
+                self.assertEqual(sub_tree.last_revision(),
+                                 entry.reference_revision)
+            finally:
+                basis.unlock()
+        finally:
+            tree.unlock()
         
 
     def test_add_reference_same_root(self):
@@ -95,10 +105,15 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_get_nested_tree(self):
         tree, sub_tree = self.make_nested_trees()
-        sub_tree2 = tree.get_nested_tree(tree.inventory['sub-tree-root-id'])
-        self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
-        sub_tree2 = tree.get_nested_tree(tree.inventory['sub-tree-root-id'],
-                                         'sub-tree')
+        tree.lock_read()
+        try:
+            sub_tree2 = tree.get_nested_tree(
+                tree.inventory['sub-tree-root-id'])
+            self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+            sub_tree2 = tree.get_nested_tree(
+                tree.inventory['sub-tree-root-id'], 'sub-tree')
+        finally:
+            tree.unlock()
 
     def test_iter_nested_trees(self):
         tree, sub_tree = self.make_nested_trees()
