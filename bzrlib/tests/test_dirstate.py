@@ -1032,12 +1032,26 @@ class TestBisect(TestCaseWithTransport):
         This takes the basic dirstate, and moves the paths around.
         """
         tree, state, expected = self.create_basic_dirstate()
+        # Rename a file
         tree.rename_one('a', 'b/g')
+        # And a directory
+        tree.rename_one('b/d', 'h')
 
         old_a = expected['a']
         expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
         expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
                                                 ('r', 'a', 0, False, '')])
+        old_d = expected['b/d']
+        expected['b/d'] = (old_d[0], [('r', 'h', 0, False, ''), old_d[1][1]])
+        expected['h'] = (('', 'h', 'd-id'), [old_d[1][0],
+                                             ('r', 'b/d', 0, False, '')])
+
+        old_e = expected['b/d/e']
+        expected['b/d/e'] = (old_e[0], [('r', 'h/e', 0, False, ''),
+                             old_e[1][1]])
+        expected['h/e'] = (('h', 'e', 'e-id'), [old_e[1][0],
+                                                ('r', 'b/d/e', 0, False, '')])
+
         state.unlock()
         try:
             new_state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -1082,7 +1096,7 @@ class TestBisect(TestCaseWithTransport):
     def assertBisectDirBlocks(self, expected_map, map_keys, state, paths):
         """Assert that bisecting for dirbblocks returns the right result.
 
-        :param expected: A map from path => expected values
+        :param expected_map: A map from key => expected values
         :param map_keys: A nested list of paths we expect to be returned.
             Something like [['a', 'b', 'f'], ['b/c', 'b/d']]
         :param state: The DirState object.
@@ -1099,6 +1113,27 @@ class TestBisect(TestCaseWithTransport):
             expected[path] = sorted(expected_map[k] for k in keys)
         for path in result:
             result[path].sort()
+
+        self.assertEqual(expected, result)
+
+    def assertBisectRecursive(self, expected_map, map_keys, state, paths):
+        """Assert the return value of a recursive bisection.
+
+        :param expected_map: A map from key => entry value
+        :param map_keys: A list of paths we expect to be returned.
+            Something like ['a', 'b', 'f', 'b/d', 'b/d2']
+        :param state: The DirState object.
+        :param paths: A list of files and directories. It will be broken up
+            into (dir, name) pairs and sorted before calling _bisect_recursive.
+        """
+        expected = {}
+        for key in map_keys:
+            entry = expected_map[key]
+            dir_name_id, trees_info = entry
+            expected[dir_name_id] = trees_info
+
+        dir_names = sorted(osutils.split(p) for p in paths)
+        result = state._bisect_recursive(dir_names)
 
         self.assertEqual(expected, result)
 
@@ -1185,6 +1220,12 @@ class TestBisect(TestCaseWithTransport):
         # Search for the pre and post renamed entries
         self.assertBisect(expected, [['a']], state, ['a'])
         self.assertBisect(expected, [['b/g']], state, ['b/g'])
+        self.assertBisect(expected, [['b/d']], state, ['b/d'])
+        self.assertBisect(expected, [['h']], state, ['h'])
+
+        # What about b/d/e? shouldn't that also get 2 directory entries?
+        self.assertBisect(expected, [['b/d/e']], state, ['b/d/e'])
+        self.assertBisect(expected, [['h/e']], state, ['h/e'])
 
     def test_bisect_dirblocks(self):
         tree, state, expected = self.create_duplicated_dirstate()
@@ -1210,3 +1251,42 @@ class TestBisect(TestCaseWithTransport):
         self.assertBisectDirBlocks(expected, [None], state, ['c'])
         self.assertBisectDirBlocks(expected, [None], state, ['b/d/e'])
         self.assertBisectDirBlocks(expected, [None], state, ['f'])
+
+    def test_bisect_recursive_each(self):
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisectRecursive(expected, ['a'], state, ['a'])
+        self.assertBisectRecursive(expected, ['b/c'], state, ['b/c'])
+        self.assertBisectRecursive(expected, ['b/d/e'], state, ['b/d/e'])
+        self.assertBisectRecursive(expected, ['b/d', 'b/d/e'],
+                                   state, ['b/d'])
+        self.assertBisectRecursive(expected, ['b', 'b/c', 'b/d', 'b/d/e'],
+                                   state, ['b'])
+        self.assertBisectRecursive(expected, ['', 'a', 'b', 'f', 'b/c',
+                                              'b/d', 'b/d/e'],
+                                   state, [''])
+
+    def test_bisect_recursive_multiple(self):
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisectRecursive(expected, ['a', 'b/c'], state, ['a', 'b/c'])
+        self.assertBisectRecursive(expected, ['b/d', 'b/d/e'],
+                                   state, ['b/d', 'b/d/e'])
+
+    def test_bisect_recursive_missing(self):
+        tree, state, expected = self.create_basic_dirstate()
+        self.assertBisectRecursive(expected, [], state, ['d'])
+        self.assertBisectRecursive(expected, [], state, ['b/e'])
+        self.assertBisectRecursive(expected, [], state, ['g'])
+        self.assertBisectRecursive(expected, ['a'], state, ['a', 'g'])
+
+    def test_bisect_recursive_renamed(self):
+        tree, state, expected = self.create_renamed_dirstate()
+
+        # Looking for either renamed item should find the other
+        self.assertBisectRecursive(expected, ['a', 'b/g'], state, ['a'])
+        self.assertBisectRecursive(expected, ['a', 'b/g'], state, ['b/g'])
+        # Looking in the containing directory should find the rename target,
+        # and anything in a subdir of the renamed target.
+        self.assertBisectRecursive(expected, ['a', 'b', 'b/c', 'b/d',
+                                              'b/d/e', 'b/g', 'h', 'h/e'],
+                                   state, ['b'])
+

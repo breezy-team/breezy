@@ -716,6 +716,70 @@ class DirState(object):
 
         return found
 
+    def _bisect_recursive(self, dir_name_list):
+        """Bisect for entries for all paths and their children.
+
+        This will use bisect to find all records for the supplied paths. It
+        will then continue to bisect for any records which are marked as
+        directories. (and renames?)
+
+        :param paths: A sorted list of (dir, name) pairs
+             eg: [('', 'a'), ('', 'f'), ('a/b', 'c')]
+        :return: A dictionary mapping (dir, name, file_id) => [tree_info]
+        """
+        # Map from (dir, name, file_id) => [tree_info]
+        found = {}
+
+        found_dir_names = set()
+
+        # Directories that have been read
+        processed_dirs = set()
+        # Get the ball rolling with the first bisect for all entries.
+        newly_found = self._bisect(dir_name_list)
+
+        while newly_found:
+            # Directories that need to be read
+            pending_dirs = set()
+            paths_to_search = set()
+            for entry_list in newly_found.itervalues():
+                for dir_name_id, trees_info in entry_list:
+                    found[dir_name_id] = trees_info
+                    found_dir_names.add(dir_name_id[:2])
+                    is_dir = False
+                    for tree_info in trees_info:
+                        minikind = tree_info[0]
+                        if minikind == 'd':
+                            if is_dir:
+                                # We already processed this one as a directory,
+                                # we don't need to do the extra work again.
+                                continue
+                            subdir, name, file_id = dir_name_id
+                            path = osutils.pathjoin(subdir, name)
+                            is_dir = True
+                            if path not in processed_dirs:
+                                pending_dirs.add(path)
+                        elif minikind == 'r':
+                            # Rename, we need to directly search the target
+                            # which is contained in the fingerprint column
+                            dir_name = osutils.split(tree_info[1])
+                            if dir_name[0] in pending_dirs:
+                                # This entry will be found in the dir search
+                                continue
+                            # TODO: We need to check if this entry has
+                            #       already been found. Otherwise we might be
+                            #       hitting infinite recursion.
+                            if dir_name not in found_dir_names:
+                                paths_to_search.add(dir_name)
+            # Now we have a list of paths to look for directly, and
+            # directory blocks that need to be read.
+            # newly_found is mixing the keys between (dir, name) and path
+            # entries, but that is okay, because we only really care about the
+            # targets.
+            newly_found = self._bisect(sorted(paths_to_search))
+            newly_found.update(self._bisect_dirblocks(sorted(pending_dirs)))
+            processed_dirs.update(pending_dirs)
+        return found
+
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
                                                     len(self._ghosts))
