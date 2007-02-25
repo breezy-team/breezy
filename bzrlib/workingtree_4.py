@@ -1050,6 +1050,10 @@ class DirStateRevisionTree(Tree):
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
 
+    def _get_parent_index(self):
+        """Return the index in the dirstate referenced by this tree."""
+        return self._dirstate.get_parent_ids().index(self._revision_id) + 1
+
     def _get_entry(self, file_id=None, path=None):
         """Get the dirstate row for file_id or path.
 
@@ -1066,7 +1070,7 @@ class DirStateRevisionTree(Tree):
         file_id = osutils.safe_file_id(file_id)
         if path is not None:
             path = path.encode('utf8')
-        parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
+        parent_index = self._get_parent_index()
         return self._dirstate._get_entry(parent_index, fileid_utf8=file_id, path_utf8=path)
 
     def _generate_inventory(self):
@@ -1156,6 +1160,17 @@ class DirStateRevisionTree(Tree):
 
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))
+
+    def get_symlink_target(self, file_id):
+        entry = self._get_entry(file_id=file_id)
+        parent_index = self._get_parent_index()
+        if entry[1][parent_index][0] != 'l':
+            return None
+        else:
+            # At present, none of the tree implementations supports non-ascii
+            # symlink targets. So we will just assume that the dirstate path is
+            # correct.
+            return entry[1][parent_index][1]
 
     def get_revision_id(self):
         """Return the revision id for this tree."""

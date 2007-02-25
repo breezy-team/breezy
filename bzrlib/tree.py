@@ -183,6 +183,16 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 
+    def get_symlink_target(self, file_id):
+        """Get the target for a given file_id.
+
+        It is assumed that the caller already knows that file_id is referencing
+        a symlink.
+        :param file_id: Handle for the symlink entry.
+        :return: The path the symlink points to.
+        """
+        raise NotImplementedError(self.get_symlink_target)
+
     def annotate_iter(self, file_id):
         """Return an iterator of revision_id, line tuples
 
