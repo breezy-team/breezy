@@ -17,8 +17,11 @@
 
 """Tests for interface conformance of 'workingtree.put_mkdir'"""
 
+import os
+
 from bzrlib import (
     errors,
+    osutils,
     )
 
 from bzrlib.workingtree_4 import WorkingTreeFormat4
@@ -153,8 +156,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id'),
                                ('b/c', 'c-id')], tree)
         self.failIfExists('a')
-        self.failUnlessExists('b/a')
-        self.check_file_contents('b/a', a_contents)
+        self.assertFileEqual(a_contents, 'b/a')
 
     def test_move_parent_dir(self):
         tree = self.make_branch_and_tree('.')
@@ -166,8 +168,115 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('c', 'c-id')], tree)
         self.failIfExists('b/c')
-        self.failUnlessExists('c')
-        self.check_file_contents('c', c_contents)
+        self.assertFileEqual(c_contents, 'c')
+
+    def test_move_fail_consistent(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/a', 'c'])
+        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        root_id = tree.get_root_id()
+        # Target already exists
+        self.assertRaises(errors.RenameFailedFilesExist,
+                          tree.move, ['c', 'a'], 'b')
+        # 'c' may or may not have been moved, but either way the tree should
+        # maintain a consistent state.
+        if osutils.lexists('c'):
+            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+                                   ('c', 'c-id')], tree)
+        else:
+            self.failUnlessExists('b/c')
+            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+                                   ('b/c', 'c-id')], tree)
+
+    def test_move_onto_self(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['b/', 'b/a'])
+        tree.add(['b', 'b/a'], ['b-id', 'a-id'])
+
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['b/a'], 'b')
+
+    def test_move_onto_self_root(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'], ['a-id'])
+
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['a'], 'a')
+
+    def test_move_after(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        root_id = tree.get_root_id()
+        os.rename('a', 'b/a')
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree)
+        # We don't need after=True as long as source is missing and target
+        # exists.
+        tree.move(['a'], 'b')
+        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+                              tree)
+
+    def test_move_after_with_after(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        root_id = tree.get_root_id()
+        os.rename('a', 'b/a')
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree)
+        # Passing after=True should work as well
+        tree.move(['a'], 'b', after=True)
+        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+                              tree)
+
+    def test_move_after_no_target(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        root_id = tree.get_root_id()
+
+        # Passing after when the file hasn't been move raises an exception
+        self.assertRaises(errors.BzrMoveFailedError,
+                          tree.move, ['a'], 'b', after=True)
+
+    def test_move_after_source_and_dest(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/a'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        root_id = tree.get_root_id()
+
+        # TODO: jam 20070225 I would usually use 'rb', but assertFileEqual
+        #       uses 'r'.
+        a_file = open('a', 'r')
+        try:
+            a_text = a_file.read()
+        finally:
+            a_file.close()
+        ba_file = open('b/a', 'r')
+        try:
+            ba_text = ba_file.read()
+        finally:
+            ba_file.close()
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree)
+        self.assertRaises(errors.RenameFailedFilesExist,
+                          tree.move, ['a'], 'b', after=False)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree)
+        self.assertFileEqual(a_text, 'a')
+        self.assertFileEqual(ba_text, 'b/a')
+        # But you can pass after=True
+        tree.move(['a'], 'b', after=True)
+        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+                              tree)
+        # But it shouldn't actually move anything
+        self.assertFileEqual(a_text, 'a')
+        self.assertFileEqual(ba_text, 'b/a')
 
     def dont_test(self):
         self.run_bzr('mv', 'a', 'b')

@@ -478,7 +478,7 @@ class WorkingTree4(WorkingTree3):
             else:
                 if from_missing: # implicitly just update our path mapping
                     move_file = False
-                else:
+                elif not after:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel,
                         extra="(Use --after to update the Bazaar id)")
 
@@ -496,12 +496,13 @@ class WorkingTree4(WorkingTree3):
                     raise exc_info[0], exc_info[1], exc_info[2]
 
             # perform the disk move first - its the most likely failure point.
-            from_rel_abs = self.abspath(from_rel)
-            to_rel_abs = self.abspath(to_rel)
-            try:
-                osutils.rename(from_rel_abs, to_rel_abs)
-            except OSError, e:
-                raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
+            if move_file:
+                from_rel_abs = self.abspath(from_rel)
+                to_rel_abs = self.abspath(to_rel)
+                try:
+                    osutils.rename(from_rel_abs, to_rel_abs)
+                except OSError, e:
+                    raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
             rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
             try:
                 # perform the rename in the inventory next if needed: its easy
