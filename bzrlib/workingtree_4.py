@@ -503,7 +503,7 @@ class WorkingTree4(WorkingTree3):
                     osutils.rename(from_rel_abs, to_rel_abs)
                 except OSError, e:
                     raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
-            rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
+                rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
             try:
                 # perform the rename in the inventory next if needed: its easy
                 # to rollback
@@ -524,9 +524,9 @@ class WorkingTree4(WorkingTree3):
                 # remove the old row
                 from_key = old_block[old_entry_index][0]
                 to_key = ((to_block[0],) + from_key[1:3])
-                state._make_absent(old_block[old_entry_index])
                 minikind = old_entry_details[0][0]
                 kind = dirstate.DirState._minikind_to_kind[minikind]
+                state._make_absent(old_block[old_entry_index])
                 rollbacks.append(
                     lambda:state.update_minimal(from_key,
                         kind,
