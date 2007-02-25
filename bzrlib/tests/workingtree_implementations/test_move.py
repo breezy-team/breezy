@@ -249,6 +249,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.move(['a'], 'b')
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree.basis_tree())
 
     def test_move_after_with_after(self):
         tree = self.make_branch_and_tree('.')
@@ -264,6 +266,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.move(['a'], 'b', after=True)
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree.basis_tree())
 
     def test_move_after_no_target(self):
         tree = self.make_branch_and_tree('.')
@@ -275,6 +279,8 @@ class TestMove(TestCaseWithWorkingTree):
         # Passing after when the file hasn't been move raises an exception
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'b', after=True)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree.basis_tree())
 
     def test_move_after_source_and_dest(self):
         tree = self.make_branch_and_tree('.')
@@ -308,6 +314,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.move(['a'], 'b', after=True)
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree.basis_tree())
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
