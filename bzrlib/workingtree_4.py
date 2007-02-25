@@ -342,18 +342,22 @@ class WorkingTree4(WorkingTree3):
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
     @needs_read_lock
-    def id2path(self, fileid):
-        fileid = osutils.safe_file_id(fileid)
-        inv = self._get_inventory()
-        return inv.id2path(fileid)
-        # TODO: jam 20070222 At present dirstate is very slow at id => path,
-        #       while inventory is very fast at it. So for now, just generate
-        #       the inventory and do the id => path check.
-        #       In the future, we want to make dirstate better at id=>path
-        #       checks so that we don't have to create the inventory.
-        # state = self.current_dirstate()
-        # key, tree_details = state._get_entry(0, fileid_utf8=fileid)
-        # return os.path.join(*key[0:2]).decode('utf8')
+    def id2path(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
+        state = self.current_dirstate()
+        possible_dir_name_ids = state._get_id_index().get(file_id, None)
+        if not possible_dir_name_ids:
+            return None
+        for dir_name_id in possible_dir_name_ids:
+            (block_index, entry_index, dir_present,
+             file_present) = state._get_block_entry_index(dir_name_id[0],
+                                                          dir_name_id[1], 0)
+            if file_present:
+                entry = state._dirblocks[block_index][1][entry_index]
+                assert entry[1][0][0] not in ('a', 'r')
+                path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+                return path_utf8.decode('utf8')
+        return None
 
     @needs_read_lock
     def __iter__(self):
@@ -536,7 +540,6 @@ class WorkingTree4(WorkingTree3):
                         fingerprint=old_entry_details[0][1],
                         packed_stat=old_entry_details[0][4],
                         size=old_entry_details[0][2],
-                        id_index=state._get_id_index(),
                         path_utf8=from_rel.encode('utf8')))
                 # create new row in current block
                 state.update_minimal(to_key,
@@ -545,7 +548,6 @@ class WorkingTree4(WorkingTree3):
                         fingerprint=old_entry_details[0][1],
                         packed_stat=old_entry_details[0][4],
                         size=old_entry_details[0][2],
-                        id_index=state._get_id_index(),
                         path_utf8=to_rel.encode('utf8'))
                 added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
                 new_entry = to_block[1][added_entry_index]

@@ -418,3 +418,19 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.unlock()
         second_parent_tree.unlock()
         self.assertIsInstance(optimiser, workingtree_4.InterDirStateTree)
+
+    def test_id2path(self):
+        tree = self.make_workingtree('tree')
+        self.build_tree(['tree/a'])
+        tree.add(['a'], ['a-id'])
+        self.assertEqual(u'a', tree.id2path('a-id'))
+        self.assertIs(None, tree.id2path('a'))
+        tree.commit('a')
+
+        tree.rename_one('a', u'b\xb5rry')
+        self.assertEqual(u'b\xb5rry', tree.id2path('a-id'))
+        tree.commit(u'b\xb5rry')
+        tree.unversion(['a-id'])
+        self.assertEqual(None, tree.id2path('a-id'))
+        self.assertEqual(None, tree.id2path('b-id'))
+

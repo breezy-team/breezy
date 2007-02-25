@@ -281,6 +281,7 @@ class DirState(object):
         self._state_file = None
         self._filename = path
         self._lock_token = None
+        self._id_index = None
         self._end_of_header = None
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
@@ -1162,7 +1163,8 @@ class DirState(object):
             assert entry[0][2] and entry[1][tree_index][0] not in ('a', 'r'), 'unversioned entry?!?!'
             if fileid_utf8:
                 if entry[0][2] != fileid_utf8:
-                    raise BzrError('integrity error ? : mismatching tree_index, file_id and path')
+                    raise errors.BzrError('integrity error ? : mismatching'
+                                          ' tree_index, file_id and path')
             return entry
         else:
             for entry in self._iter_entries():
@@ -1255,10 +1257,12 @@ class DirState(object):
 
     def _get_id_index(self):
         """Get an id index of self._dirblocks."""
-        id_index = {}
-        for key, tree_details in self._iter_entries():
-            id_index.setdefault(key[2], set()).add(key)
-        return id_index
+        if self._id_index is None:
+            id_index = {}
+            for key, tree_details in self._iter_entries():
+                id_index.setdefault(key[2], set()).add(key)
+            self._id_index = id_index
+        return self._id_index
 
     def _get_output_lines(self, lines):
         """format lines for final output.
@@ -1506,9 +1510,8 @@ class DirState(object):
         entry = self._get_entry(0, path_utf8=path)
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
-        id_index = self._get_id_index()
         self.update_minimal(('', '', new_id), 'd',
-            path_utf8='', id_index=id_index, packed_stat=entry[1][0][4])
+            path_utf8='', packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def set_parent_trees(self, trees, ghosts):
@@ -1649,6 +1652,7 @@ class DirState(object):
         self._ghosts = list(ghosts)
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._id_index = id_index
 
     def set_state_from_inventory(self, new_inv):
         """Set new_inv as the current state. 
@@ -1660,9 +1664,6 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         # sketch:
-        #  generate a byid index of the dirstate
-        id_index = self._get_id_index()
-
         # incremental algorithm:
         # two iterators: current data and new data, both in dirblock order. 
         new_iterator = new_inv.iter_entries_by_dir()
@@ -1701,11 +1702,11 @@ class DirState(object):
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    id_index=id_index, path_utf8=new_path_utf8)
+                    path_utf8=new_path_utf8)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
-                self._make_absent(current_old, id_index)
+                self._make_absent(current_old)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
                 # same -  common case
@@ -1716,7 +1717,7 @@ class DirState(object):
                     current_old[1][0][0] != current_new_minikind):
                     self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
-                        id_index=id_index, path_utf8=new_path_utf8)
+                        path_utf8=new_path_utf8)
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
@@ -1725,19 +1726,17 @@ class DirState(object):
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    id_index=id_index, path_utf8=new_path_utf8)
+                    path_utf8=new_path_utf8)
                 current_new = advance(new_iterator)
             else:
                 # old comes before:
-                self._make_absent(current_old, id_index)
+                self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
-    def _make_absent(self, current_old, id_index=None):
+    def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
 
-        :param id_index: An index from fileid_utf8 to sets of keys, used by
-            some functions. If provided it will be updated if needed.
         :return: True if this was the last details entry for they entry key:
             that is, if the underlying block has had the entry removed, thus
             shrinking in length.
@@ -1763,8 +1762,8 @@ class DirState(object):
             assert present
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
-            if id_index is not None:
-                id_index[current_old[0][2]].remove(current_old[0])
+            if self._id_index is not None:
+                self._id_index[current_old[0][2]].remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
         # existing details may either be the record we are making as deleted
         # (if there were other trees with the id present at this path), or may
@@ -1784,7 +1783,7 @@ class DirState(object):
         return last_reference
 
     def update_minimal(self, key, minikind, executable=False, fingerprint='',
-                       packed_stat=None, size=0, id_index=None, path_utf8=None):
+                       packed_stat=None, size=0, path_utf8=None):
         """Update an entry to the state in tree 0.
 
         This will either create a new entry at 'key' or update an existing one.
@@ -1798,8 +1797,6 @@ class DirState(object):
         :param fingerprint: Simple fingerprint for new entry.
         :param packed_stat: packed stat value for new entry.
         :param size: Size information for new entry
-        :param id_index: A mapping from file_id => key, as returned by
-                self._get_id_index
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
                 extra computation.
         """
@@ -1808,7 +1805,7 @@ class DirState(object):
             packed_stat = DirState.NULLSTAT
         entry_index, present = self._find_entry_index(key, block)
         new_details = (minikind, fingerprint, size, executable, packed_stat)
-        assert id_index is not None, 'need an id index to do updates for now !'
+        id_index = self._get_id_index()
         if not present:
             # new entry, synthesis cross reference here,
             existing_keys = id_index.setdefault(key[2], set())
