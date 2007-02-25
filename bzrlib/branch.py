@@ -821,6 +821,8 @@ class BranchHooks(dict):
         self['set_rh'] = []
         # invoked after a push operation completes.
         # the api signature is
+        # (push_result)
+        # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
         # where local is the local branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
@@ -829,6 +831,8 @@ class BranchHooks(dict):
         self['post_push'] = []
         # invoked after a pull operation completes.
         # the api signature is
+        # (pull_result)
+        # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
         # where local is the local branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
