@@ -36,8 +36,13 @@ class TestPush(TestCaseWithBranch):
         other.commit('my change', rev_id='M1', allow_pointless=True)
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
-        mine.branch.push(other.branch)
+        result = mine.branch.push(other.branch)
         self.assertEqual(['P1', 'P2'], other.branch.revision_history())
+        # result object contains some structured data
+        self.assertEqual(result.old_revid, 'M1')
+        self.assertEqual(result.new_revid, 'P2')
+        # and it can be treated as an integer for compatibility
+        self.assertEqual(int(result), 0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -143,22 +148,22 @@ class TestPushHook(TestCaseWithBranch):
         self.hook_calls = []
         TestCaseWithBranch.setUp(self)
 
-    def capture_post_push_hook(self, source, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+    def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
         
         The call is logged, as is some state of the two branches.
         """
-        if local:
-            local_locked = local.is_locked()
-            local_base = local.base
+        if result.local:
+            local_locked = result.local.is_locked()
+            local_base = result.local.base
         else:
             local_locked = None
             local_base = None
         self.hook_calls.append(
-            ('post_push', source, local_base, master.base, old_revno, old_revid,
-             new_revno, new_revid, source.is_locked(), local_locked,
-             master.is_locked()))
+            ('post_push', result.source, local_base, result.master.base,
+             result.old_revno, result.old_revid,
+             result.new_revno, result.new_revid, result.source.is_locked(), local_locked,
+             result.master.is_locked()))
 
     def test_post_push_empty_history(self):
         target = self.make_branch('target')

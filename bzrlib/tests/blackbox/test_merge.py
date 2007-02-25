@@ -267,7 +267,7 @@ class TestMerge(ExternalBase):
         self.pullable_branch()
         os.chdir('a')
         (out, err) = self.run_bzr('merge', '--pull', '../b')
-        self.assertContainsRe(err, '1 revision\\(s\\) pulled')
+        self.assertContainsRe(err, 'Now on revision 2\\.')
         tree_a = WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 

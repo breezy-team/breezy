@@ -106,6 +106,10 @@ IN DEVELOPMENT
       you pass a Unicode string rather than an 8-bit string. Callers need
       to be updated to encode first. (John Arbash Meinel)
 
+    * Branch.push, pull, merge now return Result objects with information
+      about what happened, rather than a scattering of various methods.  These
+      are also passed to the post hooks.  (Martin Pool)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the

@@ -598,20 +598,19 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id,
+            result = tree_to.pull(branch_from, overwrite, rev_id,
                 delta.ChangeReporter(tree_to.inventory))
         else:
-            count = branch_to.pull(branch_from, overwrite, rev_id)
-        _merge_tags_if_possible(branch_from, branch_to)
-        note('%d revision(s) pulled.' % (count,))
+            result = branch_to.pull(branch_from, overwrite, rev_id)
 
-        if verbose:
+        if result.old_revid == result.new_revid:
+            note('No revisions to pull.')
+        elif verbose:
+            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            if old_rh != new_rh:
-                # Something changed
-                from bzrlib.log import show_changed_revisions
-                show_changed_revisions(branch_to, old_rh, new_rh,
-                                       to_file=self.outf)
+            show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
+        else:
+            note('Now on revision %d.' % result.new_revno)
 
 
 class cmd_push(Command):
@@ -682,9 +681,6 @@ class cmd_push(Command):
         to_transport = transport.get_transport(location)
         location_url = to_transport.base
 
-        old_rh = []
-        count = 0
-
         br_to = repository_to = dir_to = None
         try:
             dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -704,9 +700,10 @@ class cmd_push(Command):
             else:
                 # Found a branch, so we must have found a repository
                 repository_to = br_to.repository
-
+        push_result = None
         old_rh = []
         if dir_to is None:
+            # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
             try:
@@ -753,7 +750,8 @@ class cmd_push(Command):
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
-            count = br_to.last_revision_info()[0]
+            # TODO: Some more useful message about what was copied
+            note('Created new branch.')
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -772,7 +770,7 @@ class cmd_push(Command):
             repository_to.fetch(br_from.repository,
                                 revision_id=last_revision_id)
             br_to = br_from.clone(dir_to, revision_id=last_revision_id)
-            count = len(br_to.revision_history())
+            note('Created new branch.')
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
         else: # We have a valid to branch
@@ -787,29 +785,35 @@ class cmd_push(Command):
                 except errors.NotLocalUrl:
                     warning('This transport does not update the working '
                             'tree of: %s' % (br_to.base,))
-                    count = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
-                    count = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite)
                 else:
                     tree_to.lock_write()
                     try:
-                        count = br_from.push(tree_to.branch, overwrite)
+                        push_result = br_from.push(tree_to.branch, overwrite)
                         tree_to.update()
                     finally:
                         tree_to.unlock()
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
-        _merge_tags_if_possible(br_from, br_to)
-        note('%d revision(s) pushed.' % (count,))
-
-        if verbose:
+        if push_result is not None:
+            if push_result.old_revid == push_result.new_revid:
+                note('No new revisions to push.\n')
+            else:
+                note('Pushed up to revision %d.' % push_result.new_revno)
+        elif verbose:
             new_rh = br_to.revision_history()
             if old_rh != new_rh:
                 # Something changed
                 from bzrlib.log import show_changed_revisions
                 show_changed_revisions(br_to, old_rh, new_rh,
                                        to_file=self.outf)
+        else:
+            # we probably did a clone rather than a push, so a message was
+            # emitted above
+            pass
 
 
 class cmd_branch(Command):
@@ -3307,9 +3311,13 @@ def _merge_helper(other_revision, base_revision,
             return 0
         if file_list is None:
             if pull and merger.base_rev_id == merger.this_rev_id:
-                count = merger.this_tree.pull(merger.this_branch,
+                # FIXME: deduplicate with pull
+                result = merger.this_tree.pull(merger.this_branch,
                         False, merger.other_rev_id)
-                note('%d revision(s) pulled.' % (count,))
+                if result.old_revid == result.new_revid:
+                    note('No revisions to pull.')
+                else:
+                    note('Now on revision %d.' % result.new_revno)
                 return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 

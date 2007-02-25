@@ -407,6 +407,8 @@ class Branch(object):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
+
+        :returns: PullResult instance
         """
         raise NotImplementedError(self.pull)
 
@@ -848,6 +850,8 @@ class BranchHooks(dict):
         self['set_rh'] = []
         # invoked after a push operation completes.
         # the api signature is
+        # (push_result)
+        # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
         # where local is the local branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
@@ -856,6 +860,8 @@ class BranchHooks(dict):
         self['post_push'] = []
         # invoked after a pull operation completes.
         # the api signature is
+        # (pull_result)
+        # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
         # where local is the local branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
@@ -1433,9 +1439,11 @@ class BzrBranch(Branch):
         :param _run_hooks: Private parameter - allow disabling of
             hooks, used when pushing to a master branch.
         """
+        result = PullResult()
+        result.source = source
         source.lock_read()
         try:
-            old_count, old_tip = self.last_revision_info()
+            result.old_revno, result.old_revid = self.last_revision_info()
             try:
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
@@ -1443,19 +1451,19 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 self.set_revision_history(source.revision_history())
-            new_count, new_tip = self.last_revision_info()
+            result.new_revno, result.new_revid = self.last_revision_info()
+            if _hook_master:
+                result.master = _hook_master
+                result.local = self
+            else:
+                result.master = self
+                result.local = None
             if _run_hooks:
-                if _hook_master:
-                    _hook_local = self
-                else:
-                    _hook_master = self
-                    _hook_local = None
                 for hook in Branch.hooks['post_pull']:
-                    hook(source, _hook_local, _hook_master, old_count, old_tip,
-                        new_count, new_tip)
-            return new_count - old_count
+                    hook(result)
         finally:
             source.unlock()
+        return result
 
     def _get_parent_location(self):
         _locs = ['parent', 'pull', 'x-pull']
@@ -1476,9 +1484,12 @@ class BzrBranch(Branch):
         :param _run_hooks: Private parameter - allow disabling of
             hooks, used when pushing to a master branch.
         """
+        result = PushResult()
+        result.source = self
+        result.target = target
         target.lock_write()
         try:
-            old_count, old_tip = target.last_revision_info()
+            result.old_revno, result.old_revid = target.last_revision_info()
             try:
                 target.update_revisions(self, stop_revision)
             except DivergedBranches:
@@ -1486,19 +1497,19 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 target.set_revision_history(self.revision_history())
-            new_count, new_tip = target.last_revision_info()
+            result.new_revno, result.new_revid = target.last_revision_info()
+            if _hook_master:
+                result.master = _hook_master
+                result.local = target
+            else:
+                result.master = target
+                result.local = None
             if _run_hooks:
-                if _hook_master:
-                    _hook_local = target
-                else:
-                    _hook_master = target
-                    _hook_local = None
                 for hook in Branch.hooks['post_push']:
-                    hook(self, _hook_local, _hook_master, old_count, old_tip,
-                        new_count, new_tip)
-            return new_count - old_count
+                    hook(result)
         finally:
             target.unlock()
+        return result
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -2043,6 +2054,23 @@ class BranchTestProviderAdapter(object):
         return result
 
 
+######################################################################
+# results of operations
+
+class PullResult(object):
+
+    def __int__(self):
+        # DEPRECATED: pull used to return the change in revno
+        return self.new_revno - self.old_revno
+
+
+class PushResult(object):
+
+    def __int__(self):
+        # DEPRECATED: push used to return the change in revno
+        return self.new_revno - self.old_revno
+
+
 class BranchCheckResult(object):
     """Results of checking branch consistency.
 
@@ -2061,17 +2089,6 @@ class BranchCheckResult(object):
         note('checked branch %s format %s',
              self.branch.base,
              self.branch._format)
-
-
-######################################################################
-# predicates
-
-
-@deprecated_function(zero_eight)
-def is_control_file(*args, **kwargs):
-    """See bzrlib.workingtree.is_control_file."""
-    from bzrlib import workingtree
-    return workingtree.is_control_file(*args, **kwargs)
 
 
 class Converter5to6(object):

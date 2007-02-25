@@ -300,7 +300,8 @@ class TestPull(ExternalBase):
         output = self.run_bzr('pull', '../bundle')
         self.assertEqual('', output[0])
         self.assertEqual(' M  a\nAll changes applied successfully.\n'
-                         '1 revision(s) pulled.\n', output[1])
+                         'Now on revision 2.\n',
+                         output[1])
 
         self.assertEqualDiff(tree_a.branch.revision_history(),
                              tree_b.branch.revision_history())
@@ -315,4 +316,4 @@ class TestPull(ExternalBase):
         # it is legal to attempt to pull an already-merged bundle
         output = self.run_bzr('pull', '../bundle')
         self.assertEqual('', output[0])
-        self.assertEqual('0 revision(s) pulled.\n', output[1])
+        self.assertEqual('No revisions to pull.\n', output[1])
