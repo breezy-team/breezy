@@ -124,6 +124,9 @@ IN DEVELOPMENT
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
+    * Invalid proxy env variables should not cause a traceback.
+      (Vincent Ladeuil, #87765)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
