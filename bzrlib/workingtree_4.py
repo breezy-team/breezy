@@ -1398,9 +1398,7 @@ class InterDirStateTree(InterTree):
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
             # TODO: handle extra trees in the dirstate.
-        if (extra_trees or
-            # TODO: handle specific files
-            specific_files):
+        if extra_trees:
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned):

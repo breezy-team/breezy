@@ -143,7 +143,7 @@ def show_tree_status(wt, show_unchanged=None,
         try:
             _raise_if_nonexistent(specific_files, old, new)
             if short:
-                changes = new._iter_changes(old, show_unchanged, specific_file,
+                changes = new._iter_changes(old, show_unchanged, specific_files,
                     require_versioned=False)
                 reporter = _mod_delta.ChangeReporter(old.inventory,
                     output_file=to_file)
