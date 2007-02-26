@@ -1731,10 +1731,14 @@ class SmartTCPTransport(SmartTransport):
     def __init__(self, url):
         _scheme, _username, _password, _host, _port, _path = \
             transport.split_url(url)
-        try:
-            _port = int(_port)
-        except (ValueError, TypeError), e:
-            raise errors.InvalidURL(path=url, extra="invalid port %s" % _port)
+        if _port is None:
+            _port = 4155
+        else:
+            try:
+                _port = int(_port)
+            except (ValueError, TypeError), e:
+                raise errors.InvalidURL(
+                    path=url, extra="invalid port %s" % _port)
         medium = SmartTCPClientMedium(_host, _port)
         super(SmartTCPTransport, self).__init__(url, medium=medium)
 
