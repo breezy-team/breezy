@@ -1405,7 +1405,10 @@ class InterDirStateTree(InterTree):
                 require_versioned):
                 yield f
             return
-        assert (self.source._revision_id in self.target.get_parent_ids())
+        assert (self.source._revision_id in self.target.get_parent_ids()), \
+                "revision {%s} is not stored in {%s}, but %s " \
+                "can only be used for trees stored in the dirstate" \
+                % (self.source._revision_id, self.target, self._iter_changes)
         parents = self.target.get_parent_ids()
         target_index = 0
         source_index = 1 + parents.index(self.source._revision_id)
