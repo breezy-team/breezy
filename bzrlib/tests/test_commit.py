@@ -539,9 +539,13 @@ class TestCommit(TestCaseWithTransport):
         tree.commit('added a, b')
         tree.remove(['a', 'b'])
         tree.commit('removed a', specific_files='a')
-        basis = tree.basis_tree().inventory
-        self.assertIs(None, basis.path2id('a'))
-        self.assertFalse(basis.path2id('b') is None)
+        basis = tree.basis_tree()
+        tree.lock_read()
+        try:
+            self.assertIs(None, basis.path2id('a'))
+            self.assertFalse(basis.path2id('b') is None)
+        finally:
+            tree.unlock()
 
     def test_commit_saves_1ms_timestamp(self):
         """Passing in a timestamp is saved with 1ms resolution"""
