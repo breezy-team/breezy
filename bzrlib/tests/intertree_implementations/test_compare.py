@@ -322,6 +322,21 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (None, entry.name), (None, entry.kind),
                 (None, entry.executable))
 
+    def content_changed(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        path = tree.id2path(file_id)
+        return (file_id, path, True, (True, True), (entry.parent_id, entry.parent_id),
+                (entry.name, entry.name), (entry.kind, entry.kind),
+                (entry.executable, entry.executable))
+
+    def kind_changed(self, from_tree, to_tree, file_id):
+        old_entry = from_tree.inventory[file_id]
+        new_entry = to_tree.inventory[file_id]
+        path = to_tree.id2path(file_id)
+        return (file_id, path, True, (True, True), (old_entry.parent_id, new_entry.parent_id),
+                (old_entry.name, new_entry.name), (old_entry.kind, new_entry.kind),
+                (old_entry.executable, new_entry.executable))
+
     def deleted(self, tree, file_id):
         entry = tree.inventory[file_id]
         path = tree.id2path(file_id)
@@ -329,11 +344,21 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (entry.name, None), (entry.kind, None),
                 (entry.executable, None))
 
+    def unchanged(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        parent = entry.parent_id
+        name = entry.name
+        kind = entry.kind
+        executable = entry.executable
+        return (file_id, tree.id2path(file_id), False, (True, True),
+               (parent, parent), (name, name), (kind, kind),
+               (executable, executable))
+
     def unversioned(self, tree, path):
         """Create an unversioned result."""
         _, basename = os.path.split(path)
         kind = file_kind(tree.abspath(path))
-        return (None, path, False, (False, False), (None, None),
+        return (None, path, True, (False, False), (None, None),
                 (None, basename), (None, kind),
                 (None, False))
 
@@ -492,25 +517,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.addCleanup(tree1.unlock)
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
-        def unchanged(file_id):
-            entry = tree1.inventory[file_id]
-            parent = entry.parent_id
-            name = entry.name
-            kind = entry.kind
-            executable = entry.executable
-            return (file_id, tree1.id2path(file_id), False, (True, True),
-                   (parent, parent), (name, name), (kind, kind),
-                   (executable, executable))
-        self.assertEqual(sorted([unchanged(root_id), unchanged('b-id'),
-                          ('a-id', 'd', True, (True, True),
-                          (root_id, root_id), ('a', 'd'), ('file', 'file'),
-                          (False, False)), unchanged('c-id')]),
-                         self.do_iter_changes(tree1, tree2, include_unchanged=True))
+        self.assertEqual(sorted([self.unchanged(tree1, root_id),
+            unchanged(tree1, 'b-id'), ('a-id', 'd', True, (True, True),
+            (root_id, root_id), ('a', 'd'), ('file', 'file'),
+            (False, False)), unchanged(tree1, 'c-id')]),
+            self.do_iter_changes(tree1, tree2, include_unchanged=True))
 
     def _todo_test_unversioned_paths_in_tree(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        self.build_tree(['tree2/file', 'tree2/dir'])
+        self.build_tree(['tree2/file', 'tree2/dir/'])
         # try:
         os.symlink('target', 'tree2/link')
         links_supported = True
@@ -534,7 +550,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def _todo_test_unversioned_paths_in_tree_specific_files(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        self.build_tree(['tree2/file', 'tree2/dir'])
+        self.build_tree(['tree2/file', 'tree2/dir/'])
         # try:
         os.symlink('target', 'tree2/link')
         links_supported = True
@@ -557,3 +573,92 @@ class TestIterChanges(TestCaseWithTwoTrees):
         expected = sorted(expected)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
             specific_files=specific_files))
+
+    def make_trees_with_symlinks(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree1/fromfile', 'tree1/fromdir/'])
+        self.build_tree(['tree2/tofile', 'tree2/todir/', 'tree2/unknown'])
+        # try:
+        os.symlink('original', 'tree1/changed')
+        os.symlink('original', 'tree1/removed')
+        os.symlink('original', 'tree1/tofile')
+        os.symlink('original', 'tree1/todir')
+        # we make the unchanged link point at unknown to catch incorrect
+        # symlink-following code in the specified_files test.
+        os.symlink('unknown', 'tree1/unchanged')
+        os.symlink('new',      'tree2/added')
+        os.symlink('new',      'tree2/changed')
+        os.symlink('new',      'tree2/fromfile')
+        os.symlink('new',      'tree2/fromdir')
+        os.symlink('unknown', 'tree2/unchanged')
+        from_paths_and_ids = [
+            'fromdir',
+            'fromfile',
+            'changed',
+            'removed',
+            'todir',
+            'tofile',
+            'unchanged',
+            ]
+        to_paths_and_ids = [
+            'added',
+            'fromdir',
+            'fromfile',
+            'changed',
+            'todir',
+            'tofile',
+            'unchanged',
+            ]
+        tree1.add(from_paths_and_ids, from_paths_and_ids)
+        tree2.add(to_paths_and_ids, to_paths_and_ids)
+        # except ???:
+        #   raise TestSkipped('OS does not support symlinks')
+        #   links_supported = False
+        return self.mutable_trees_to_test_trees(tree1, tree2)
+
+    def _disabled_test_versioned_symlinks(self):
+        tree1, tree2 = self.make_trees_with_symlinks()
+        root_id = tree1.path2id('')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = [
+            self.unchanged(tree1, tree1.path2id('')),
+            self.added(tree2, 'added'),
+            self.content_changed(tree2, 'changed'),
+            self.kind_changed(tree1, tree2, 'fromdir'),
+            self.kind_changed(tree1, tree2, 'fromfile'),
+            self.deleted(tree1, 'removed'),
+            self.unchanged(tree2, 'unchanged'),
+            self.unversioned(tree2, 'unknown'),
+            self.kind_changed(tree1, tree2, 'todir'),
+            self.kind_changed(tree1, tree2, 'tofile'),
+            ]
+        expected = sorted(expected)
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2, include_unchanged=True))
+
+    def _disabled_test_versioned_symlinks_specific_files(self):
+        tree1, tree2 = self.make_trees_with_symlinks()
+        root_id = tree1.path2id('')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = [
+            self.added(tree2, 'added'),
+            self.content_changed(tree2, 'changed'),
+            self.kind_changed(tree1, tree2, 'fromdir'),
+            self.kind_changed(tree1, tree2, 'fromfile'),
+            self.deleted(tree1, 'removed'),
+            self.kind_changed(tree1, tree2, 'todir'),
+            self.kind_changed(tree1, tree2, 'tofile'),
+            ]
+        expected = sorted(expected)
+        # we should get back just the changed links. We pass in 'unchanged' to
+        # make sure that it is correctly not returned - and neither is the
+        # unknown path 'unknown' which it points at.
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
+            specific_files=['added', 'changed', 'fromdir', 'fromfile',
+            'removed', 'unchanged', 'todir', 'tofile']))

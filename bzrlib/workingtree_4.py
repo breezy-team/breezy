@@ -1560,32 +1560,35 @@ class InterDirStateTree(InterTree):
                     old_path = os.path.join(*entry[0][0:2])
                     result.removed.append((old_path, entry[0][2], dirstate.DirState._minikind_to_kind[source_details[0]]))
                 # use the kind from disk.
-                elif source_details[0] != path_info[2][0]:
-                    # different kind
-                    import pdb;pdb.set_trace()
-                    print "kind change"
                 else:
-                    # same kind
+                    # source and target are both versioned and disk file is present.
                     if path_info[2][0] == 'd':
-                        # directories have no fingerprint
-                        content_change = False
-                        executable_change = False
-                    elif path_info[2][0] == 'f':
-                        # has it changed? fast path: size, slow path: sha1.
-                        executable_change = source_details[3] != bool(
-                            stat.S_ISREG(path_info[3].st_mode)
-                            and stat.S_IEXEC & path_info[3].st_mode)
-                        if source_details[2] != path_info[3].st_size:
+                        if source_details[0][0] != 'd':
                             content_change = True
                         else:
-                            # maybe the same. Get the hash
-                            new_hash = self.target._hashcache.get_sha1(path, path_info[3])
-                            content_change = (new_hash != source_details[1])
-                    elif path_info[2][0] == 'l':
-                        import pdb;pdb.set_trace()
-                        print "link"
+                            # directories have no fingerprint
+                            content_change = False
+                    elif path_info[2][0] == 'f':
+                        if source_details[0][0] != 'f':
+                            content_change = True
+                        else:
+                            # has it changed? fast path: size, slow path: sha1.
+                            if source_details[2] != path_info[3].st_size:
+                                content_change = True
+                            else:
+                                # maybe the same. Get the hash
+                                new_hash = self.target._hashcache.get_sha1(path, path_info[3])
+                                content_change = (new_hash != source_details[1])
+                    elif path_info[2][0] == 's':
+                        if source_details[0][0] != 'l':
+                            content_change = True
+                        else:
+                            # TODO: check symlink supported for windows users and grab
+                            # from target state here.
+                            content_change = os.readlink(path_info[4]) != source_details[1]
+                        target_exec = False
                     else:
-                        raise Exception, "unknown minikind"
+                        raise Exception, "unknown kind %s" % path_info[2]
                     # parent id is the entry for the path in the target tree
                     # TODO: the target is the same for an entire directory: cache em.
                     source_parent_id = state._get_entry(source_index, path_utf8=old_dirname)[0][2]
