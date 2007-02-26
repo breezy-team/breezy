@@ -84,8 +84,8 @@ def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
-    # search the bzrlib installed dir before anything else.
-    path.insert(0, os.path.dirname(plugins.__file__))
+    # search the plugin path before the bzrlib installed dir
+    path.append(os.path.dirname(plugins.__file__))
     plugins.__path__ = path
     return path
 
