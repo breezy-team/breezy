@@ -124,6 +124,9 @@ IN DEVELOPMENT
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
 
+    * Searching location of CA bundle for PyCurl in env variable (CURL_CA_BUNDLE),
+      and on win32 along the PATH. (Alexander Belchenko, #82086)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
