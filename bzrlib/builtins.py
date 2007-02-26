@@ -3251,7 +3251,7 @@ class cmd_tags(Command):
             ):
         branch, relpath = Branch.open_containing(directory)
         for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
-            self.outf.write('%-40s %s' % (tag_name, target))
+            self.outf.write('%-40s %s\n' % (tag_name, target))
 
 
 # command-line interpretation helper for merge-related commands

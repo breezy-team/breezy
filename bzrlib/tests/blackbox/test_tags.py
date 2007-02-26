@@ -107,7 +107,7 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tags', '-d', 'branch1', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out,
-            u'^\u30d0zaar  *revid-1'.encode('utf-8'))
+            u'^\u30d0zaar  *revid-1\n'.encode('utf-8'))
 
     def test_conflicting_tags(self):
         # setup two empty branches with different tags
