@@ -1736,9 +1736,24 @@ class InterDirStateTree(InterTree):
                         import pdb;pdb.set_trace()
                         print 'unversioned dir'
                     else:
-                        # entry referring to missing dir.
-                        import pdb;pdb.set_trace()
-                        print 'missing dir'
+                        # directory data refers to paths not covered by the dirblock.
+                        # this has two possibilities:
+                        # A) it is versioned but empty, so there is no block for it
+                        # B) it is not versioned.
+                        # in either case it was processed by the containing directories walk:
+                        # if it is root/foo, when we walked root we emitted it,
+                        # or if we ere given root/foo to walk specifically, we
+                        # emitted it when checking the walk-root entries 
+                        # advance the iterator and loop - we dont need to emit it.
+                        try:
+                            current_dir_info = dir_iterator.next()
+                            # convert the unicode relpaths in the dir index to uf8 for
+                            # comparison with dirstate data.
+                            # TODO: keep the utf8 version around for giving to the caller.
+                            current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
+                                [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
+                        except StopIteration:
+                            current_dir_info = None
                 entry_index = 0
                 if current_block and entry_index < len(current_block[1]):
                     current_entry = current_block[1][entry_index]

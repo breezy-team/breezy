@@ -475,6 +475,20 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           (False, True))],
                          self.do_iter_changes(tree1, tree2))
 
+    def test_empty_dir(self):
+        """an empty dir should not cause glitches to surrounding files."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        # the pathname is chosen to fall between 'a' and 'b'.
+        self.build_tree(['1/a-empty/', '2/a-empty/'])
+        tree1.add(['a-empty'], ['a-empty'])
+        tree2.add(['a-empty'], ['a-empty'])
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        expected = []
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
     def test_file_rename(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
@@ -528,7 +542,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.missing('c-id', 'b/c', 'b-id', 'file'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
-
 
     def test_unchanged_with_renames_and_modifications(self):
         """want_unchanged should generate a list of unchanged entries."""
