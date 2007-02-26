@@ -43,6 +43,7 @@ from bzrlib import (
     bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
+    delta,
     dirstate,
     errors,
     generate_ids,
@@ -179,6 +180,43 @@ class WorkingTree4(WorkingTree3):
             state.add(f, file_id, kind, None, '')
         self._dirty = True
 
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        # if the dirstate is locked by an active process, reject the break lock
+        # call.
+        try:
+            if self._dirstate is None:
+                clear = True
+            else:
+                clear = False
+            state = self._current_dirstate()
+            if state._lock_token is not None:
+                # we already have it locked. sheese, cant break our own lock.
+                raise errors.LockActive(self.basedir)
+            else:
+                try:
+                    # try for a write lock - need permission to get one anyhow
+                    # to break locks.
+                    state.lock_write()
+                except errors.LockContention:
+                    # oslocks fail when a process is still live: fail.
+                    # TODO: get the locked lockdir info and give to the user to
+                    # assist in debugging.
+                    raise errors.LockActive(self.basedir)
+                else:
+                    state.unlock()
+        finally:
+            if clear:
+                self._dirstate = None
+        self._control_files.break_lock()
+        self.branch.break_lock()
+
     def current_dirstate(self):
         """Return the current dirstate object. 
 
@@ -186,10 +224,16 @@ class WorkingTree4(WorkingTree3):
         testing.
 
         :raises errors.NotWriteLocked: when not in a lock. 
-            XXX: This should probably be errors.NotLocked.
         """
         if not self._control_files._lock_count:
             raise errors.ObjectNotLocked(self)
+        return self._current_dirstate()
+
+    def _current_dirstate(self):
+        """Internal function that does not check lock status.
+        
+        This is needed for break_lock which also needs the dirstate.
+        """
         if self._dirstate is not None:
             return self._dirstate
         local_path = self.bzrdir.get_workingtree_transport(None
@@ -678,7 +722,7 @@ class WorkingTree4(WorkingTree3):
                 entry_index += 1
             return result
         if require_versioned:
-            # -- check all supplied paths are versioned in all search trees. --
+            # -- check all supplied paths are versioned in a search tree. --
             all_versioned = True
             for path in paths:
                 path_entries = _entries_for_path(path)
@@ -1332,39 +1376,416 @@ class InterDirStateTree(InterTree):
     _matching_to_tree_format = WorkingTreeFormat4()
     _test_mutable_trees_to_test_trees = make_source_parent_tree
 
-    @needs_read_lock
-    def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+    def _iter_changes(self, include_unchanged=False,
+                      specific_files=None, pb=None, extra_trees=[],
+                      require_versioned=True):
         """Return the changes from source to target.
 
-        :return: A TreeDelta.
+        :return: An iterator that yields tuples. See InterTree._iter_changes
+            for details.
         :param specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
             trees (including optional extra_trees) are used, and all children of
             matched directories are included.
-        :param want_unchanged: An optional boolean requesting the inclusion of
+        :param include_unchanged: An optional boolean requesting the inclusion of
             unchanged entries in the result.
         :param extra_trees: An optional list of additional trees to use when
             mapping the contents of specific_files (paths) to file_ids.
-        :param require_versioned: An optional boolean (defaults to False). When
-            supplied and True all the 'specific_files' must be versioned, or
-            a PathsNotVersionedError will be thrown.
+        :param require_versioned: If True, all files in specific_files must be
+            versioned in one of source, target, extra_trees or
+            PathsNotVersionedError is raised.
         """
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
-        trees = (self.source,)
-        if extra_trees is not None:
-            trees = trees + tuple(extra_trees)
-        # target is usually the newer tree:
-        specific_file_ids = self.target.paths2ids(specific_files, trees,
-            require_versioned=require_versioned)
-        from bzrlib import delta
-        if specific_files and not specific_file_ids:
-            # All files are unversioned, so just return an empty delta
-            # _compare_trees would think we want a complete delta
-            return delta.TreeDelta()
-        return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids, include_root)
+            # TODO: handle extra trees in the dirstate.
+        if (extra_trees or
+            # TODO: handle specific files
+            specific_files):
+            for f in super(InterDirStateTree, self)._iter_changes(
+                include_unchanged, specific_files, pb, extra_trees,
+                require_versioned):
+                yield f
+            return
+        assert (self.source._revision_id in self.target.get_parent_ids())
+        parents = self.target.get_parent_ids()
+        target_index = 0
+        source_index = 1 + parents.index(self.source._revision_id)
+        # -- make all specific_files utf8 --
+        if specific_files:
+            specific_files_utf8 = set()
+            for path in specific_files:
+                specific_files_utf8.add(path.encode('utf8'))
+            specific_files = specific_files_utf8
+        else:
+            specific_files = set([''])
+        # -- specific_files is now a utf8 path set --
+        # -- get the state object and prepare it.
+        state = self.target.current_dirstate()
+        state._read_dirblocks_if_needed()
+        def _entries_for_path(path):
+            """Return a list with all the entries that match path for all ids.
+            """
+            dirname, basename = os.path.split(path)
+            key = (dirname, basename, '')
+            block_index, present = state._find_block_index_from_key(key)
+            if not present:
+                # the block which should contain path is absent.
+                return []
+            result = []
+            block = state._dirblocks[block_index][1]
+            entry_index, _ = state._find_entry_index(key, block)
+            # we may need to look at multiple entries at this path: walk while the specific_files match.
+            while (entry_index < len(block) and
+                block[entry_index][0][0:2] == key[0:2]):
+                result.append(block[entry_index])
+                entry_index += 1
+            return result
+        if require_versioned:
+            # -- check all supplied paths are versioned in a search tree. --
+            all_versioned = True
+            for path in specific_files:
+                path = path.encode('utf8')
+                path_entries = _entries_for_path(path)
+                if not path_entries:
+                    # this specified path is not present at all: error
+                    all_versioned = False
+                    break
+                found_versioned = False
+                # for each id at this path
+                for entry in path_entries:
+                    # for each tree.
+                    for index in source_index, target_index:
+                        if entry[1][index][0] != 'a': # absent
+                            found_versioned = True
+                            # all good: found a versioned cell
+                            break
+                if not found_versioned:
+                    # none of the indexes was not 'absent' at all ids for this
+                    # path.
+                    all_versioned = False
+                    break
+            if not all_versioned:
+                raise errors.PathsNotVersionedError(paths)
+        # -- remove redundancy in supplied specific_files to prevent over-scanning --
+        search_specific_files = set()
+        for path in specific_files:
+            other_specific_files = specific_files.difference(set([path]))
+            if not osutils.is_inside_any(other_specific_files, path):
+                # this is a top level path, we must check it.
+                search_specific_files.add(path)
+        # sketch: 
+        # compare source_index and target_index at or under each element of search_specific_files.
+        # follow the following comparison table. Note that we only want to do diff operations when
+        # the target is fdl because thats when the walkdirs logic will have exposed the pathinfo 
+        # for the target.
+        # cases:
+        # 
+        # Source | Target | disk | action
+        #   r    | fdl    |      | add source to search, add id path move and perform
+        #        |        |      | diff check on source-target
+        #   r    | fdl    |  a   | dangling file that was present in the basis. 
+        #        |        |      | ???
+        #   r    |  a     |      | add source to search
+        #   r    |  a     |  a   | 
+        #   r    |  r     |      | this path is present in a non-examined tree, skip.
+        #   r    |  r     |  a   | this path is present in a non-examined tree, skip.
+        #   a    | fdl    |      | add new id
+        #   a    | fdl    |  a   | dangling locally added file, skip
+        #   a    |  a     |      | not present in either tree, skip
+        #   a    |  a     |  a   | not present in any tree, skip
+        #   a    |  r     |      | not present in either tree at this path, skip as it
+        #        |        |      | may not be selected by the users list of paths.
+        #   a    |  r     |  a   | not present in either tree at this path, skip as it
+        #        |        |      | may not be selected by the users list of paths.
+        #  fdl   | fdl    |      | content in both: diff them
+        #  fdl   | fdl    |  a   | deleted locally, but not unversioned - show as deleted ?
+        #  fdl   |  a     |      | unversioned: output deleted id for now
+        #  fdl   |  a     |  a   | unversioned and deleted: output deleted id
+        #  fdl   |  r     |      | relocated in this tree, so add target to search.
+        #        |        |      | Dont diff, we will see an r,fd; pair when we reach
+        #        |        |      | this id at the other path.
+        #  fdl   |  r     |  a   | relocated in this tree, so add target to search.
+        #        |        |      | Dont diff, we will see an r,fd; pair when we reach
+        #        |        |      | this id at the other path.
+
+        # for all search_indexs in each path at or under each element of
+        # search_specific_files, if the detail is relocated: add the id, and add the
+        # relocated path as one to search if its not searched already. If the
+        # detail is not relocated, add the id.
+        searched_specific_files = set()
+        def _process_entry(entry, path_info):
+            """Compare an entry and real disk to generate delta information.
+
+            :param path_info: top_relpath, basename, kind, lstat, abspath for
+                the path of entry. If None, then the path is considered absent.
+                (Perhaps we should pass in a concrete entry for this ?)
+            """
+            # TODO: when a parent has been renamed, dont emit path renames for children,
+            source_details = entry[1][source_index]
+            target_details = entry[1][target_index]
+            if source_details[0] in 'rfdl' and target_details[0] in 'fdl':
+                # claimed content in both: diff
+                #   r    | fdl    |      | add source to search, add id path move and perform
+                #        |        |      | diff check on source-target
+                #   r    | fdl    |  a   | dangling file that was present in the basis. 
+                #        |        |      | ???
+                if source_details[0] in 'r':
+                    # add the source to the search path to find any children it
+                    # has.  TODO ? : only add if it is a container ?
+                    if not osutils.is_inside_any(searched_specific_files, source_details[1]):
+                        search_specific_files.add(source_details[1])
+                    # generate the old path; this is needed for stating later
+                    # as well.
+                    old_path = source_details[1]
+                    old_dirname, old_basename = os.path.split(old_path)
+                    path = os.path.join(*entry[0][0:2])
+                    old_entry = state._get_entry(source_index, path_utf8=old_path)
+                    # update the source details variable to be the real
+                    # location.
+                    source_details = old_entry[1][source_index]
+                else:
+                    old_path = path = os.path.join(*entry[0][0:2])
+                    old_dirname, old_basename = entry[0][0:2]
+                if path_info is None:
+                    # the file is missing on disk, show as removed.
+                    print "missing file"
+                    old_path = os.path.join(*entry[0][0:2])
+                    result.removed.append((old_path, entry[0][2], dirstate.DirState._minikind_to_kind[source_details[0]]))
+                # use the kind from disk.
+                elif source_details[0] != path_info[2][0]:
+                    # different kind
+                    import pdb;pdb.set_trace()
+                    print "kind change"
+                else:
+                    # same kind
+                    if path_info[2][0] == 'd':
+                        # directories have no fingerprint
+                        content_change = False
+                        executable_change = False
+                    elif path_info[2][0] == 'f':
+                        # has it changed? fast path: size, slow path: sha1.
+                        executable_change = source_details[3] != bool(
+                            stat.S_ISREG(path_info[3].st_mode)
+                            and stat.S_IEXEC & path_info[3].st_mode)
+                        if source_details[2] != path_info[3].st_size:
+                            content_change = True
+                        else:
+                            # maybe the same. Get the hash
+                            new_hash = self.target._hashcache.get_sha1(path, path_info[3])
+                            content_change = (new_hash != source_details[1])
+                    elif path_info[2][0] == 'l':
+                        import pdb;pdb.set_trace()
+                        print "link"
+                    else:
+                        raise Exception, "unknown minikind"
+                    # parent id is the entry for the path in the target tree
+                    # TODO: the target is the same for an entire directory: cache em.
+                    source_parent_id = state._get_entry(source_index, path_utf8=old_dirname)[0][2]
+                    if source_parent_id == entry[0][2]:
+                        source_parent_id = None
+                    target_parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                    if target_parent_id == entry[0][2]:
+                        target_parent_id = None
+                    source_exec = source_details[3]
+                    target_exec = bool(
+                        stat.S_ISREG(path_info[3].st_mode)
+                        and stat.S_IEXEC & path_info[3].st_mode)
+                    return ((entry[0][2], path, content_change, (True, True), (source_parent_id, target_parent_id), (old_basename, entry[0][1]), (dirstate.DirState._minikind_to_kind[source_details[0]], path_info[2]), (source_exec, target_exec)),)
+            elif source_details[0] in 'a' and target_details[0] in 'fdl':
+                # looks like a new file
+                if path_info is not None:
+                    path = os.path.join(*entry[0][0:2])
+                    # parent id is the entry for the path in the target tree
+                    # TODO: these are the same for an entire directory: cache em.
+                    parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                    if parent_id == entry[0][2]:
+                        parent_id = None
+                    # basename
+                    new_executable = bool(
+                        stat.S_ISREG(path_info[3].st_mode)
+                        and stat.S_IEXEC & path_info[3].st_mode)
+                    return ((entry[0][2], path, True, (False, True), (None, parent_id), (None, entry[0][1]), (None, path_info[2]), (None, new_executable)),)
+                else:
+                    # but its not on disk: we deliberately treat this as just
+                    # never-present. (Why ?! - RBC 20070224)
+                    pass
+            elif source_details[0] in 'fdl' and target_details[0] in 'a':
+                # unversioned, possibly, or possibly not deleted: we dont care.
+                # if its still on disk, *and* theres no other entry at this
+                # path [we dont know this in this routine at the moment -
+                # perhaps we should change this - then it would be an unknown.
+                old_path = os.path.join(*entry[0][0:2])
+                # parent id is the entry for the path in the target tree
+                parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
+                if parent_id == entry[0][2]:
+                    parent_id = None
+                return ((entry[0][2], old_path, True, (True, False), (parent_id, None), (entry[0][1], None), (dirstate.DirState._minikind_to_kind[source_details[0]], None), (source_details[3], None)),)
+            elif source_details[0] in 'fdl' and target_details[0] in 'r':
+                # a rename; could be a true rename, or a rename inherited from
+                # a renamed parent. TODO: handle this efficiently. Its not
+                # common case to rename dirs though, so a correct but slow
+                # implementation will do.
+                if not osutils.is_inside_any(searched_specific_files, target_details[1]):
+                    search_specific_files.add(target_details[1])
+            else:
+                import pdb;pdb.set_trace()
+            return ()
+        while search_specific_files:
+            # TODO: the pending list should be lexically sorted?
+            current_root = search_specific_files.pop()
+            searched_specific_files.add(current_root)
+            # process the entries for this containing directory: the rest will be
+            # found by their parents recursively.
+            root_entries = _entries_for_path(current_root)
+            root_abspath = self.target.abspath(current_root)
+            try:
+                root_stat = os.lstat(root_abspath)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    # TODO: this directory does not exist in target. Should we
+                    # consider it missing and diff, or should we just skip? For
+                    # now, skip.
+                    continue
+                else:
+                    # some other random error: hand it up.
+                    raise
+            root_dir_info = ('', current_root,
+                osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
+                root_abspath)
+            #
+            if not root_entries:
+                # this specified path is not present at all, skip it.
+                continue
+            for entry in root_entries:
+                for result in _process_entry(entry, root_dir_info):
+                    # this check should probably be outside the loop: one
+                    # 'iterate two trees' api, and then _iter_changes filters
+                    # unchanged pairs. - RBC 20070226
+                    if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                        yield result
+            dir_iterator = osutils.walkdirs(root_abspath, prefix=current_root)
+            initial_key = (current_root, '', '')
+            block_index, _ = state._find_block_index_from_key(initial_key)
+            if block_index == 0:
+                # we have processed the total root already, but because the
+                # initial key matched it we sould skip it here.
+                block_index +=1
+            current_dir_info = dir_iterator.next()
+            if current_dir_info[0][0] == '':
+                # remove .bzr from iteration
+                bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
+                assert current_dir_info[1][bzr_index][0] == '.bzr'
+                del current_dir_info[1][bzr_index]
+            # convert the unicode relpaths in the dir index to uf8 for
+            # comparison with dirstate data.
+            # TODO: keep the utf8 version around for giving to the caller.
+            current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
+                [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
+            # walk until both the directory listing and the versioned metadata
+            # are exhausted. TODO: reevaluate this, perhaps we should stop when
+            # the versioned data runs out.
+            if (block_index < len(state._dirblocks) and
+                osutils.is_inside(current_root, state._dirblocks[block_index][0])):
+                current_block = state._dirblocks[block_index]
+            else:
+                current_block = None
+            while (current_dir_info is not None or
+                current_block is not None):
+                if current_dir_info and current_block and current_dir_info[0][0] != current_block[0]:
+                    if current_block[0] < current_dir_info[0][0]:
+                        # extra dir on disk: pass for now? should del from info ?
+                        import pdb;pdb.set_trace()
+                        print 'unversioned dir'
+                    else:
+                        # entry referring to missing dir.
+                        import pdb;pdb.set_trace()
+                        print 'missing dir'
+                entry_index = 0
+                if current_block and entry_index < len(current_block[1]):
+                    current_entry = current_block[1][entry_index]
+                else:
+                    current_entry = None
+                advance_entry = True
+                path_index = 0
+                if current_dir_info and path_index < len(current_dir_info[1]):
+                    current_path_info = current_dir_info[1][path_index]
+                else:
+                    current_path_info = None
+                advance_path = True
+                while (current_entry is not None or
+                    current_path_info is not None):
+                    if current_entry is None:
+                        # no more entries: yield current_pathinfo as an
+                        # unversioned file: its not the same as a path in any
+                        # tree in the dirstate.
+                        new_executable = bool(
+                            stat.S_ISREG(current_path_info[3].st_mode)
+                            and stat.S_IEXEC & current_path_info[3].st_mode)
+                        yield (None, current_path_info[0], True, (False, False), (None, None), (None, current_path_info[1]), (None, current_path_info[2]), (None, new_executable))
+                    elif current_path_info is None:
+                        # no path is fine: the per entry code will handle it.
+                        for result in _process_entry(current_entry, current_path_info):
+                            # this check should probably be outside the loop: one
+                            # 'iterate two trees' api, and then _iter_changes filters
+                            # unchanged pairs. - RBC 20070226
+                            if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                                yield result
+                    elif current_entry[0][1] != current_path_info[1]:
+                        if current_path_info[1] < current_entry[0][1]:
+                            # extra file on disk: pass for now
+                            import pdb;pdb.set_trace()
+                            print 'unversioned file'
+                        else:
+                            # entry referring to file not present on disk.
+                            # advance the entry only, after processing.
+                            for result in _process_entry(current_entry, None):
+                                # this check should probably be outside the loop: one
+                                # 'iterate two trees' api, and then _iter_changes filters
+                                # unchanged pairs. - RBC 20070226
+                                if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                                    yield result
+                            advance_path = False
+                    else:
+                        for result in _process_entry(current_entry, current_path_info):
+                            # this check should probably be outside the loop: one
+                            # 'iterate two trees' api, and then _iter_changes filters
+                            # unchanged pairs. - RBC 20070226
+                            if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                                yield result
+                    if advance_entry and current_entry is not None:
+                        entry_index += 1
+                        if entry_index < len(current_block[1]):
+                            current_entry = current_block[1][entry_index]
+                        else:
+                            current_entry = None
+                    else:
+                        advance_entry = True # reset the advance flaga
+                    if advance_path and current_path_info is not None:
+                        path_index += 1
+                        if path_index < len(current_dir_info[1]):
+                            current_path_info = current_dir_info[1][path_index]
+                        else:
+                            current_path_info = None
+                    else:
+                        advance_path = True # reset the advance flagg.
+                if current_block is not None:
+                    block_index += 1
+                    if (block_index < len(state._dirblocks) and
+                        osutils.is_inside(current_root, state._dirblocks[block_index][0])):
+                        current_block = state._dirblocks[block_index]
+                    else:
+                        current_block = None
+                if current_dir_info is not None:
+                    try:
+                        current_dir_info = dir_iterator.next()
+                        # convert the unicode relpaths in the dir index to uf8 for
+                        # comparison with dirstate data.
+                        # TODO: keep the utf8 version around for giving to the caller.
+                        current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
+                            [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
+                    except StopIteration:
+                        current_dir_info = None
+
 
     @staticmethod
     def is_compatible(source, target):

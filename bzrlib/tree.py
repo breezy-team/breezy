@@ -88,10 +88,11 @@ class Tree(object):
             )
 
     def _iter_changes(self, from_tree, include_unchanged=False,
-                     specific_file_ids=None, pb=None):
+                     specific_files=None, pb=None, extra_trees=None,
+                     require_versioned=True):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(include_unchanged,
-                                       specific_file_ids, pb)
+        return intertree._iter_changes(include_unchanged, specific_files, pb,
+            extra_trees, require_versioned)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -595,10 +596,11 @@ class InterTree(InterObject):
             # _compare_trees would think we want a complete delta
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids, include_root)
+            specific_files, include_root, extra_trees=extra_trees)
 
     def _iter_changes(self, include_unchanged=False,
-                      specific_file_ids=None, pb=None):
+                      specific_files=None, pb=None, extra_trees=[],
+                      require_versioned=True):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
@@ -614,7 +616,20 @@ class InterTree(InterObject):
 
         Iteration is done in parent-to-child order, relative to the target
         tree.
+
+        There is no guarantee that all paths are in sorted order: the
+        requirement to expand the search due to renames may result in children
+        that should be found early being found late in the search, after
+        lexically later results have been returned.
+        :param require_versioned: Raise errors.PathsNotVersionedError if a
+            path in the specific_files list is not versioned in one of
+            source, target or extra_trees.
         """
+        lookup_trees = [self.source]
+        if extra_trees:
+             lookup_trees.extend(extra_trees)
+        specific_file_ids = self.target.paths2ids(specific_files,
+            lookup_trees, require_versioned=require_versioned)
         to_paths = {}
         from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))

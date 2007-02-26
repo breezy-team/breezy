@@ -200,14 +200,14 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         include_root=False)
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
-                   include_root):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
+                   include_root, extra_trees=None):
     delta = TreeDelta()
     # mutter('start compare_trees')
 
     for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in new_tree._iter_changes(old_tree, want_unchanged, 
-                                               specific_file_ids):
+         executable) in new_tree._iter_changes(old_tree, want_unchanged,
+            specific_files, extra_trees=extra_trees):
         if not include_root and (None, None) == parent_id:
             continue
         fully_present = tuple((versioned[x] and kind[x] is not None) for

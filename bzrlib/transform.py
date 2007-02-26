@@ -1340,13 +1340,12 @@ def revert(working_tree, target_tree, filenames, backups=False,
     target_tree.lock_read()
     tt = TreeTransform(working_tree, pb)
     try:
-        interesting_ids = find_interesting(working_tree, target_tree, filenames)
         pp = ProgressPhase("Revert phase", 3, pb)
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             _alter_files(working_tree, target_tree, tt, child_pb,
-                         interesting_ids, backups)
+                         filenames, backups)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1371,11 +1370,11 @@ def revert(working_tree, target_tree, filenames, backups=False,
     return conflicts
 
 
-def _alter_files(working_tree, target_tree, tt, pb, interesting_ids,
+def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                  backups):
     merge_modified = working_tree.merge_modified()
     change_list = target_tree._iter_changes(working_tree,
-        specific_file_ids=interesting_ids, pb=pb)
+        specific_files=specific_files, pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
     else:
