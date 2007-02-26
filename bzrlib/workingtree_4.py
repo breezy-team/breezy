@@ -1754,6 +1754,7 @@ class InterDirStateTree(InterTree):
                                 [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
                         except StopIteration:
                             current_dir_info = None
+                    continue
                 entry_index = 0
                 if current_block and entry_index < len(current_block[1]):
                     current_entry = current_block[1][entry_index]
