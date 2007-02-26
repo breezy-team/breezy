@@ -360,6 +360,8 @@ class DirState(object):
            # insert a new dirblock
            self._ensure_block(block_index, entry_index, utf8path)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        if self._id_index:
+            self._id_index.setdefault(entry_key[2], set()).add(entry_key)
 
     def _bisect(self, dir_name_list):
         """Bisect through the disk structure for specific rows.
@@ -1167,16 +1169,17 @@ class DirState(object):
                                           ' tree_index, file_id and path')
             return entry
         else:
-            for entry in self._iter_entries():
-                if entry[0][2] == fileid_utf8:
-                    if entry[1][tree_index][0] == 'r': # relocated
-                        # look up the real location directly by path
-                        return self._get_entry(tree_index,
-                            fileid_utf8=fileid_utf8,
-                            path_utf8=entry[1][tree_index][1])
-                    if entry[1][tree_index][0] == 'a': # absent
-                        # not in the tree at all.
-                        return None, None
+            possible_keys = self._get_id_index().get(fileid_utf8, None)
+            if not possible_keys:
+                return None, None
+            for key in possible_keys:
+                (block_index, entry_index, dir_present,
+                 file_present) = self._get_block_entry_index(key[0], key[1],
+                                                             tree_index)
+                if file_present:
+                    entry = self._dirblocks[block_index][1][entry_index]
+                    assert entry[1][tree_index][0] not in ('a', 'r')
+                    assert key == entry[0]
                     return entry
             return None, None
 
@@ -1490,6 +1493,7 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._parents = list(parent_ids)
+        self._id_index = None
 
     def set_path_id(self, path, new_id):
         """Change the id of path to new_id in the current working tree.
@@ -1513,6 +1517,8 @@ class DirState(object):
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        if self._id_index is not None:
+            self._id_index.setdefault(new_id, set()).add(entry[0])
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
@@ -1733,6 +1739,7 @@ class DirState(object):
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._id_index = None
 
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.

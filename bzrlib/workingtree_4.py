@@ -346,18 +346,11 @@ class WorkingTree4(WorkingTree3):
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         possible_dir_name_ids = state._get_id_index().get(file_id, None)
-        if not possible_dir_name_ids:
+        entry = self._get_entry(file_id=file_id)
+        if entry == (None, None):
             return None
-        for dir_name_id in possible_dir_name_ids:
-            (block_index, entry_index, dir_present,
-             file_present) = state._get_block_entry_index(dir_name_id[0],
-                                                          dir_name_id[1], 0)
-            if file_present:
-                entry = state._dirblocks[block_index][1][entry_index]
-                assert entry[1][0][0] not in ('a', 'r')
-                path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-                return path_utf8.decode('utf8')
-        return None
+        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+        return path_utf8.decode('utf8')
 
     @needs_read_lock
     def __iter__(self):

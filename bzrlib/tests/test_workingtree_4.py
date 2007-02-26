@@ -421,16 +421,18 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_id2path(self):
         tree = self.make_workingtree('tree')
-        self.build_tree(['tree/a'])
+        self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ['a-id'])
         self.assertEqual(u'a', tree.id2path('a-id'))
         self.assertIs(None, tree.id2path('a'))
         tree.commit('a')
+        tree.add(['b'], ['b-id'])
 
         tree.rename_one('a', u'b\xb5rry')
         self.assertEqual(u'b\xb5rry', tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
         tree.unversion(['a-id'])
         self.assertEqual(None, tree.id2path('a-id'))
-        self.assertEqual(None, tree.id2path('b-id'))
+        self.assertEqual('b', tree.id2path('b-id'))
+        self.assertEqual(None, tree.id2path('c-id'))
 
