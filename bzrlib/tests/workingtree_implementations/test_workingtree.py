@@ -562,7 +562,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(master_tree.branch.revision_history(),
             tree.branch.revision_history())
 
-    def test_merge_modified(self):
+    def test_merge_modified_detects_corruption(self):
+        # FIXME: This doesn't really test that it works; also this is not
+        # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree('master')
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)

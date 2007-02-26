@@ -470,10 +470,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
-    def get_symlink_target(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
-        return os.readlink(self.abspath(self.id2path(file_id)))
-
     @needs_read_lock
     def annotate_iter(self, file_id):
         """See Tree.annotate_iter
@@ -848,6 +844,40 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         finally:
             pb.finished()
         return conflicts
+
+    @needs_read_lock
+    def merge_modified(self):
+        try:
+            hashfile = self._control_files.get('merge-hashes')
+        except errors.NoSuchFile:
+            return {}
+        merge_hashes = {}
+        try:
+            if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+                raise errors.MergeModifiedFormatError()
+        except StopIteration:
+            raise errors.MergeModifiedFormatError()
+        for s in RioReader(hashfile):
+            file_id = s.get("file_id")
+            if file_id not in self.inventory:
+                continue
+            hash = s.get("hash")
+            if hash == self.get_file_sha1(file_id):
+                merge_hashes[file_id] = hash
+        return merge_hashes
+
+    @needs_write_lock
+    def mkdir(self, path, file_id=None):
+        """See MutableTree.mkdir()."""
+        if file_id is None:
+            file_id = generate_ids.gen_file_id(os.path.basename(path))
+        os.mkdir(self.abspath(path))
+        self.add(path, file_id, 'directory')
+        return file_id
+
+    def get_symlink_target(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
+        return os.readlink(self.id2abspath(file_id))
 
     @needs_write_lock
     def subsume(self, other_tree):
