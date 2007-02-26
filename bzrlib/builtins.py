@@ -3234,6 +3234,14 @@ def _merge_helper(other_revision, base_revision,
                                      " type %s." % merge_type)
     if reprocess and show_base:
         raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
+    # TODO: jam 20070226 We should really lock these trees earlier. However, we
+    #       only want to take out a lock_tree_write() if we don't have to pull
+    #       any ancestry. But merge might fetch ancestry in the middle, in
+    #       which case we would need a lock_write().
+    #       Because we cannot upgrade locks, for now we live with the fact that
+    #       the tree will be locked multiple times during a merge. (Maybe
+    #       read-only some of the time, but it means things will get read
+    #       multiple times.)
     try:
         merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
                                    pb=pb, change_reporter=change_reporter)

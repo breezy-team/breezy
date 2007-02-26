@@ -170,6 +170,10 @@ class Merger(object):
         interesting_ids = set()
         for path in file_list:
             found_id = False
+            # TODO: jam 20070226 The trees are not locked at this time,
+            #       wouldn't it make merge faster if it locks everything in the
+            #       beginning? It locks at do_merge time, but this happens
+            #       before that.
             for tree in (self.this_tree, self.base_tree, self.other_tree):
                 file_id = tree.path2id(path)
                 if file_id is not None:

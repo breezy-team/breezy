@@ -159,7 +159,10 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a/b/'])
         tree_a.add('b', 'b-id')
         tree_a.commit('added b')
-        base_tree = tree_a.basis_tree()
+        # basis_tree() is only guaranteed to be valid as long as it is actually
+        # the basis tree. This mutates the tree after grabbing basis, so go to
+        # the repository.
+        base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
         tree_z = tree_a.bzrdir.sprout('z').open_workingtree()
         self.build_tree(['a/b/c'])
         tree_a.add('b/c')
@@ -183,7 +186,10 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree_contents([('tree_a/file', 'content_1')])
         tree_a.add('file')
         tree_a.commit('commit base')
-        base_tree = tree_a.basis_tree()
+        # basis_tree() is only guaranteed to be valid as long as it is actually
+        # the basis tree. This mutates the tree after grabbing basis, so go to
+        # the repository.
+        base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_a/file', 'content_2')])
         tree_a.commit('commit other')
