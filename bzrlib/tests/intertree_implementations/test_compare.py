@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import errors
+from bzrlib.osutils import file_kind
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 # TODO: test diff unversioned dir that exists
@@ -28,7 +29,6 @@ from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 # TODO: test that renaming a directory x-> does not emit a rename for the child
 #        x/a -> y/a when a supplied_files argument gives either 'x/' or 'y/a'
 #        -> that is, when the renamed parent is not processed by the function.
-# TODO: include unknowns in the diff output.
 # TODO: include dangling in the diff output.
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
@@ -319,15 +319,23 @@ class TestIterChanges(TestCaseWithTwoTrees):
         entry = tree.inventory[file_id]
         path = tree.id2path(file_id)
         return (file_id, path, True, (False, True), (None, entry.parent_id),
-                (None, entry.name), (None, entry.kind), 
+                (None, entry.name), (None, entry.kind),
                 (None, entry.executable))
 
     def deleted(self, tree, file_id):
         entry = tree.inventory[file_id]
         path = tree.id2path(file_id)
         return (file_id, path, True, (True, False), (entry.parent_id, None),
-                (entry.name, None), (entry.kind, None), 
+                (entry.name, None), (entry.kind, None),
                 (entry.executable, None))
+
+    def unversioned(self, tree, path):
+        """Create an unversioned result."""
+        _, basename = os.path.split(path)
+        kind = file_kind(tree.abspath(path))
+        return (None, path, False, (False, False), (None, None),
+                (None, basename), (None, kind),
+                (None, False))
 
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
@@ -498,3 +506,54 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                           (False, False)), unchanged('c-id')]),
                          self.do_iter_changes(tree1, tree2, include_unchanged=True))
+
+    def _todo_test_unversioned_paths_in_tree(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree2/file', 'tree2/dir'])
+        # try:
+        os.symlink('target', 'tree2/link')
+        links_supported = True
+        # except ???:
+        #   links_supported = False
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        root_id = tree1.path2id('')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = [
+            self.unversioned(tree2, 'file'),
+            self.unversioned(tree2, 'dir'),
+            ]
+        if links_supported:
+            expected.append(self.unversioned(tree2, 'link'))
+        expected = sorted(expected)
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def _todo_test_unversioned_paths_in_tree_specific_files(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree2/file', 'tree2/dir'])
+        # try:
+        os.symlink('target', 'tree2/link')
+        links_supported = True
+        # except ???:
+        #   links_supported = False
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        root_id = tree1.path2id('')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = [
+            self.unversioned(tree2, 'file'),
+            self.unversioned(tree2, 'dir'),
+            ]
+        specific_files=['file', 'dir']
+        if links_supported:
+            expected.append(self.unversioned(tree2, 'link'))
+            specific_files.append('link')
+        expected = sorted(expected)
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
+            specific_files=specific_files))

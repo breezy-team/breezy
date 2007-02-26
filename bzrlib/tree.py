@@ -673,7 +673,7 @@ class InterTree(InterObject):
                     self.target.get_file_sha1(file_id, to_path, to_stat)):
                     changed_content = True
             elif from_kind == 'symlink':
-                if (self.source.get_symlink_target(file_id) != 
+                if (self.source.get_symlink_target(file_id) !=
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
             parent = (from_parent, to_entry.parent_id)
@@ -681,7 +681,7 @@ class InterTree(InterObject):
             executable = (from_executable, to_executable)
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
-            if (changed_content is not False or versioned[0] != versioned[1] 
+            if (changed_content is not False or versioned[0] != versioned[1]
                 or parent[0] != parent[1] or name[0] != name[1] or 
                 executable[0] != executable[1] or include_unchanged):
                 yield (file_id, to_path, changed_content, versioned, parent,
