@@ -308,6 +308,25 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1.unlock()
             tree2.unlock()
 
+    def make_tree_with_special_names(self):
+        """Create a tree with filenames chosen to exercise the walk order."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        from_paths = ['b-ar', 'b-foo', 'b-zar',
+                   'bar', 'bfoo','bzar',
+                   'b/', 'b/ar', 'b/foo/', 'b/zar',
+                   'b/foo-a', 'b/foo-z',
+                   'b/fooa', 'b/fooz',
+                   'b/foo/a', 'b/foo/z',
+                  ]
+        self.build_tree(['tree2/' + p for p in from_paths])
+        paths_no_slashes = [p.strip('/') for p in from_paths]
+        path_ids = [p.replace('/', '_') + '-id' for p in paths_no_slashes]
+        tree2.add(paths_no_slashes, path_ids)
+        tree2.commit('initial', rev_id='rev-1')
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        return (tree1, tree2, paths_no_slashes, path_ids)
+
     def test_compare_empty_trees(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
@@ -700,3 +719,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
             specific_files=['added', 'changed', 'fromdir', 'fromfile',
             'removed', 'unchanged', 'todir', 'tofile']))
+
+    def test_tree_with_special_names(self):
+        tree1, tree2, paths, path_ids = self.make_tree_with_special_names()
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = sorted(self.added(tree2, f_id) for f_id in path_ids)
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))

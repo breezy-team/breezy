@@ -319,7 +319,8 @@ class WorkingTree4(WorkingTree3):
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 # These checks cost us around 40ms on a 55k entry tree
-                assert file_id not in inv_byid
+                assert file_id not in inv_byid, ('file_id %s already in'
+                    ' inventory as %s' % (file_id, inv_byid[file_id]))
                 assert name_unicode not in parent_ie.children
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
