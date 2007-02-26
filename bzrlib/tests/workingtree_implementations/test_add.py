@@ -62,6 +62,20 @@ class TestAdd(TestCaseWithWorkingTree):
         # And the entry should not have been added.
         self.assertTreeLayout([('', root_id), ('a', 'an-id')], tree)
 
+    def test_add_old_id(self):
+        """We can add an old id, as long as it doesn't exist now."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b'])
+        tree.add(['a'], ['an-id'])
+        tree.commit('first', rev_id='rev-1')
+        root_id = tree.get_root_id()
+        # And the entry should not have been added.
+        tree.unversion(['an-id'])
+        tree.add(['b'], ['an-id'])
+        self.assertTreeLayout([('', root_id), ('b', 'an-id')], tree)
+        self.assertTreeLayout([('', root_id), ('a', 'an-id')],
+                              tree.basis_tree())
+
     def test_add_one_list(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['one'])
