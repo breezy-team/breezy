@@ -17,6 +17,7 @@
 """Tests for the InterTree.compare() function."""
 
 import os
+import shutil
 
 from bzrlib import errors
 from bzrlib.osutils import file_kind
@@ -337,6 +338,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (old_entry.name, new_entry.name), (old_entry.kind, new_entry.kind),
                 (old_entry.executable, new_entry.executable))
 
+    def missing(self, file_id, path, parent_id, kind):
+        _, basename = os.path.split(path)
+        return (file_id, path, True, (True, True), (parent_id, parent_id),
+            (basename, basename), (kind, None), (False, False))
+
     def deleted(self, tree, file_id):
         entry = tree.inventory[file_id]
         path = tree.id2path(file_id)
@@ -505,6 +511,25 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           (False, True))],
                          self.do_iter_changes(tree1, tree2))
 
+    def test_missing_in_target(self):
+        """Test with the target files versioned but absent from disk."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        os.unlink('2/a')
+        shutil.rmtree('2/b')
+        # TODO ? have a symlink here?
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        root_id = tree1.path2id('')
+        expected = sorted([
+            self.missing('a-id', 'a', root_id, 'file'),
+            self.missing('b-id', 'b', root_id, 'directory'),
+            self.missing('c-id', 'b/c', 'b-id', 'file'),
+            ])
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+
     def test_unchanged_with_renames_and_modifications(self):
         """want_unchanged should generate a list of unchanged entries."""
         tree1 = self.make_branch_and_tree('1')
@@ -518,9 +543,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertEqual(sorted([self.unchanged(tree1, root_id),
-            unchanged(tree1, 'b-id'), ('a-id', 'd', True, (True, True),
+            self.unchanged(tree1, 'b-id'), ('a-id', 'd', True, (True, True),
             (root_id, root_id), ('a', 'd'), ('file', 'file'),
-            (False, False)), unchanged(tree1, 'c-id')]),
+            (False, False)), self.unchanged(tree1, 'c-id')]),
             self.do_iter_changes(tree1, tree2, include_unchanged=True))
 
     def _todo_test_unversioned_paths_in_tree(self):

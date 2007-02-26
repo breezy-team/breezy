@@ -2506,9 +2506,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat3()
+__default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat4())
+WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.

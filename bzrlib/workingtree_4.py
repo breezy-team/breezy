@@ -1556,18 +1556,20 @@ class InterDirStateTree(InterTree):
                     old_dirname, old_basename = entry[0][0:2]
                 if path_info is None:
                     # the file is missing on disk, show as removed.
-                    print "missing file"
                     old_path = os.path.join(*entry[0][0:2])
-                    result.removed.append((old_path, entry[0][2], dirstate.DirState._minikind_to_kind[source_details[0]]))
-                # use the kind from disk.
+                    content_change = True
+                    target_kind = None
+                    target_exec = False
                 else:
                     # source and target are both versioned and disk file is present.
+                    target_kind = path_info[2]
                     if path_info[2][0] == 'd':
                         if source_details[0][0] != 'd':
                             content_change = True
                         else:
                             # directories have no fingerprint
                             content_change = False
+                        target_exec = False
                     elif path_info[2][0] == 'f':
                         if source_details[0][0] != 'f':
                             content_change = True
@@ -1579,6 +1581,9 @@ class InterDirStateTree(InterTree):
                                 # maybe the same. Get the hash
                                 new_hash = self.target._hashcache.get_sha1(path, path_info[3])
                                 content_change = (new_hash != source_details[1])
+                        target_exec = bool(
+                            stat.S_ISREG(path_info[3].st_mode)
+                            and stat.S_IEXEC & path_info[3].st_mode)
                     elif path_info[2][0] == 's':
                         if source_details[0][0] != 'l':
                             content_change = True
@@ -1589,25 +1594,22 @@ class InterDirStateTree(InterTree):
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
-                    # parent id is the entry for the path in the target tree
-                    # TODO: the target is the same for an entire directory: cache em.
-                    source_parent_id = state._get_entry(source_index, path_utf8=old_dirname)[0][2]
-                    if source_parent_id == entry[0][2]:
-                        source_parent_id = None
-                    target_parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
-                    if target_parent_id == entry[0][2]:
-                        target_parent_id = None
-                    source_exec = source_details[3]
-                    target_exec = bool(
-                        stat.S_ISREG(path_info[3].st_mode)
-                        and stat.S_IEXEC & path_info[3].st_mode)
-                    path_unicode = path.decode('utf8')
-                    return ((entry[0][2], path_unicode, content_change,
-                            (True, True),
-                            (source_parent_id, target_parent_id),
-                            (old_basename, entry[0][1]),
-                            (dirstate.DirState._minikind_to_kind[source_details[0]], path_info[2]),
-                            (source_exec, target_exec)),)
+                # parent id is the entry for the path in the target tree
+                # TODO: the target is the same for an entire directory: cache em.
+                source_parent_id = state._get_entry(source_index, path_utf8=old_dirname)[0][2]
+                if source_parent_id == entry[0][2]:
+                    source_parent_id = None
+                target_parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                if target_parent_id == entry[0][2]:
+                    target_parent_id = None
+                source_exec = source_details[3]
+                path_unicode = path.decode('utf8')
+                return ((entry[0][2], path_unicode, content_change,
+                        (True, True),
+                        (source_parent_id, target_parent_id),
+                        (old_basename, entry[0][1]),
+                        (dirstate.DirState._minikind_to_kind[source_details[0]], target_kind),
+                        (source_exec, target_exec)),)
             elif source_details[0] in 'a' and target_details[0] in 'fdl':
                 # looks like a new file
                 if path_info is not None:
