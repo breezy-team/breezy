@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import errors
+from bzrlib import errors, tests, workingtree_4
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 # TODO: test diff unversioned dir that exists
@@ -498,3 +498,32 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                           (False, False)), unchanged('c-id')]),
                          self.do_iter_changes(tree1, tree2, include_unchanged=True))
+
+    def test_compare_subtrees(self):
+        """want_unchanged should generate a list of unchanged entries."""
+        tree1 = self.make_branch_and_tree('1')
+        tree1.set_root_id('root-id')
+        subtree1 = self.make_branch_and_tree('1/sub')
+        subtree1.set_root_id('subtree-id')
+        try:
+            tree1.add_reference(subtree1)
+        except errors.UnsupportedOperation:
+            self.assertIsInstance(tree1, workingtree_4.WorkingTree4)
+            raise tests.TestSkipped('Tree does not support references')
+
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id('root-id')
+        subtree2 = self.make_to_branch_and_tree('2/sub')
+        subtree2.set_root_id('subtree-id')
+        tree2.add_reference(subtree2)
+        self.assertEqual([], list(tree2._iter_changes(tree1)))
+        subtree1.commit('commit', rev_id='commit-a')
+        self.assertEqual([('subtree-id',
+                           'sub',
+                           True,
+                           (True, True),
+                           ('root-id', 'root-id'),
+                           ('sub', 'sub'),
+                           ('tree-reference', 'tree-reference'),
+                           (False, False))], 
+                         list(tree2._iter_changes(tree1)))

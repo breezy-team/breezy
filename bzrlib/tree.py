@@ -157,8 +157,17 @@ class Tree(object):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)
 
+    def iter_reference_entries(self):
+        for path, entry in self.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                yield path, entry
+
     def kind(self, file_id):
         raise NotImplementedError("subclasses must implement kind")
+
+    def get_reference_revision(self, entry, path=None):
+        raise NotImplementedError("subclasses must implement "
+                                  "get_reference_revision")
 
     def _comparison_data(self, entry, path):
         """Return a tuple of kind, executable, stat_value for a file.
@@ -676,6 +685,10 @@ class InterTree(InterObject):
                 if (self.source.get_symlink_target(file_id) != 
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
+            elif from_kind == 'tree-reference':
+                if (self.source.get_reference_revision(from_entry, from_path)
+                    != self.target.get_reference_revision(to_entry, to_path)):
+                    changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
             executable = (from_executable, to_executable)

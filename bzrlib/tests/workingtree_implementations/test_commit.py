@@ -198,6 +198,18 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertFalse(wt.has_filename('b/c'))
         self.assertFalse(wt.has_filename('d'))
         wt.unlock()
+
+    def test_commit_move_new(self):
+        wt = self.make_branch_and_tree('first')
+        wt.commit('first')
+        wt2 = wt.bzrdir.sprout('second').open_workingtree()
+        self.build_tree(['second/name1'])
+        wt2.add('name1', 'name1-id')
+        wt2.commit('second')
+        wt.merge_from_branch(wt2.branch)
+        wt.rename_one('name1', 'name2')
+        wt.commit('third')
+        wt.path2id('name1-id')
         
 
 class TestCommitProgress(TestCaseWithWorkingTree):

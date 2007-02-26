@@ -1067,6 +1067,9 @@ class RepositoryFormat(object):
         # format objects are generally stateless
         return isinstance(other, self.__class__)
 
+    def __ne__(self, other):
+        return not self == other
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the repository object in a_bzrdir.
@@ -1256,6 +1259,12 @@ format_registry.register_lazy(
     'RepositoryFormatKnit2',
     )
 
+format_registry.register_lazy(
+    'Bazaar Knit Repository Format 3\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatKnit3',
+    )
+
 
 class InterRepository(InterObject):
     """This class represents operations taking place between two repositories.
@@ -1334,10 +1343,12 @@ class InterSameDataRepository(InterRepository):
             return False
         if not isinstance(target, Repository):
             return False
-        if source._format.rich_root_data == target._format.rich_root_data:
-            return True
-        else:
+        if source._format.rich_root_data != target._format.rich_root_data:
             return False
+        if source._serializer != target._serializer:
+            return False
+        else:
+            return True 
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):
@@ -1972,6 +1983,14 @@ class CommitBuilder(object):
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+
+    def modified_reference(self, file_id, file_parents):
+        """Record the modification of a reference.
 
         :param file_id: The file_id of the link to record.
         :param file_parents: The per-file parent revision ids.

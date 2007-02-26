@@ -644,7 +644,7 @@ class Branch(object):
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = weaverepo.RepositoryFormat7()
         else:
-            format = self.repository.bzrdir.cloning_metadir()
+            format = self.repository.bzrdir.checkout_metadir()
             format.branch_format = self._format
         return format
 
@@ -664,7 +664,8 @@ class Branch(object):
         except errors.FileExists:
             pass
         if lightweight:
-            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            format = self._get_checkout_format()
+            checkout = format.initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()
@@ -675,7 +676,23 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        return checkout.create_workingtree(revision_id)
+        tree = checkout.create_workingtree(revision_id)
+        for path, entry in tree.iter_reference_entries():
+            path = tree.id2path(entry.file_id)
+            reference_parent = self.reference_parent(entry.file_id, path)
+            reference_parent.create_checkout(tree.abspath(path),
+                                             entry.reference_revision,
+                                             lightweight)
+        return tree
+
+    def reference_parent(self, file_id, path):
+        """Return the parent branch for a tree-reference file_id
+        :param file_id: The file_id of the tree reference
+        :param path: The path of the file_id in the tree
+        :return: A branch associated with the file_id
+        """
+        # FIXME should provide multiple branches, based on config
+        return Branch.open(self.bzrdir.root_transport.clone(path).base)
 
 
 class BranchFormat(object):

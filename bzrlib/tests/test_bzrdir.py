@@ -23,19 +23,19 @@ import os.path
 from StringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
+    errors,
     help_topics,
+    repository,
     symbol_versioning,
     urlutils,
     workingtree,
     )
 import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
@@ -75,6 +75,10 @@ class TestFormatRegistry(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
+        my_format_registry.register_metadir('experimental-knit3', 
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+            'Format using knits', 
+            tree='WorkingTreeFormatAB1')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
             'experimental-knit2',
@@ -100,6 +104,11 @@ class TestFormatRegistry(TestCase):
         my_bzrdir = my_format_registry.make_bzrdir('knit')
         self.assertIsInstance(my_bzrdir.repository_format, 
             knitrepo.RepositoryFormatKnit1)
+        my_bzrdir = my_format_registry.make_bzrdir('experimental-knit3')
+        self.assertIsInstance(my_bzrdir.repository_format, 
+            knitrepo.RepositoryFormatKnit3)
+        self.assertIsInstance(my_bzrdir.workingtree_format, 
+            workingtree.WorkingTreeFormatAB1)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
                               bzrlib.branch.BzrBranchFormat6)
@@ -476,6 +485,46 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
                           transport)
 
+    def test_sprout_recursive(self):
+        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+                                             format='experimental-knit3')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.sprout('tree2')
+        self.failUnlessExists('tree2/subtree/file')
+
+    def test_cloning_metadir(self):
+        """Ensure that cloning metadir is suitable"""
+        bzrdir = self.make_bzrdir('bzrdir')
+        bzrdir.cloning_metadir()
+        branch = self.make_branch('branch', format='knit')
+        format = branch.bzrdir.cloning_metadir()
+        self.assertIsInstance(format.workingtree_format,
+        workingtree.WorkingTreeFormat3)
+        branch2 = self.make_branch('branch2', format='experimental-knit3')
+        format2 = branch2.bzrdir.cloning_metadir()
+        self.assertIsInstance(format2.workingtree_format,
+                              workingtree.WorkingTreeFormatAB1)
+
+    def test_sprout_recursive_treeless(self):
+        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+                                             format='experimental-knit3')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.destroy_workingtree()
+        repo = self.make_repository('repo', shared=True,
+                                    format='experimental-knit3')
+        repo.set_make_working_trees(False)
+        tree.bzrdir.sprout('repo/tree2')
+        self.failUnlessExists('repo/tree2/subtree')
+        self.failIfExists('repo/tree2/subtree/file')
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""
@@ -501,6 +550,22 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         t = dir.transport
         self.assertIsDirectory('branch-lock', t)
+
+    def test_comparison(self):
+        """Equality and inequality behave properly.
+
+        Metadirs should compare equal iff they have the same repo, branch and
+        tree formats.
+        """
+        mydir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(mydir, mydir)
+        self.assertFalse(mydir != mydir)
+        otherdir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(otherdir, mydir)
+        self.assertFalse(otherdir != mydir)
+        otherdir2 = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+        self.assertNotEqual(otherdir2, mydir)
+        self.assertFalse(otherdir2 == mydir)
 
         
 class TestFormat5(TestCaseWithTransport):
@@ -676,6 +741,21 @@ class NonLocalTests(TestCaseWithTransport):
                           result.open_workingtree)
         result.open_branch()
         result.open_repository()
+
+    def test_checkout_metadir(self):
+        # checkout_metadir has reasonable working tree format even when no
+        # working tree is present
+        self.make_branch('branch-knit3', format='experimental-knit3')
+        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit3'))
+        checkout_format = my_bzrdir.checkout_metadir()
+        self.assertIsInstance(checkout_format.workingtree_format,
+                              workingtree.WorkingTreeFormatAB1)
+
+        self.make_branch('branch-knit2', format='experimental-knit2')
+        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
+        checkout_format = my_bzrdir.checkout_metadir()
+        self.assertIsInstance(checkout_format.workingtree_format,
+                              workingtree.WorkingTreeFormat3)
 
 
 class TestRemoteSFTP(test_sftp_transport.TestCaseWithSFTPServer):

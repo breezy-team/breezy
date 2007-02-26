@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
+    bzrdir,
     errors,
     graph,
     knit,
@@ -24,6 +25,7 @@ from bzrlib import (
     transactions,
     xml5,
     xml6,
+    xml7,
     )
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -250,6 +252,15 @@ class KnitRepository2(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class KnitRepository3(KnitRepository2):
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+                 control_store, text_store):
+        KnitRepository2.__init__(self, _format, a_bzrdir, control_files,
+                                 _revision_store, control_store, text_store)
+        self._serializer = xml7.serializer_v7
+
+
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
     """Bzr repository knit format (generalized). 
 
@@ -374,6 +385,9 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     This format was introduced in bzr 0.8.
     """
 
+    def __ne__(self, other):
+        return self.__class__ is not other.__class__
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
@@ -404,6 +418,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
     """
     
     rich_root_data = True
+    repository_class = KnitRepository2
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -437,9 +452,55 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository2(_format=self,
-                               a_bzrdir=a_bzrdir,
-                               control_files=control_files,
-                               _revision_store=_revision_store,
-                               control_store=control_store,
-                               text_store=text_store)
+        return self.repository_class(_format=self,
+                                     a_bzrdir=a_bzrdir,
+                                     control_files=control_files,
+                                     _revision_store=_revision_store,
+                                     control_store=control_store,
+                                     text_store=text_store)
+
+
+class RepositoryFormatKnit3(RepositoryFormatKnit2):
+    """Bzr repository knit format 2.
+
+    THIS FORMAT IS EXPERIMENTAL
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+     - support for recording full info about the tree root
+     - support for recording tree-references
+    """
+
+    repository_class = KnitRepository3
+    support_tree_reference = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('experimental-knit3')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        RepositoryFormatKnit2.check_conversion_target(self, target_format)
+        if not getattr(target_format, 'support_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Knit Repository Format 3\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 3"
+
+
