@@ -1148,7 +1148,7 @@ class DirState(object):
         If either file_id or path is supplied, it is used as the key to lookup.
         If both are supplied, the fastest lookup is used, and an error is
         raised if they do not both point at the same row.
-        
+
         :param tree_index: The index of the tree we wish to locate this path
             in. If the path is present in that tree, the entry containing its
             details is returned, otherwise (None, None) is returned
@@ -1173,6 +1173,7 @@ class DirState(object):
                                           ' tree_index, file_id and path')
             return entry
         else:
+            assert fileid_utf8 is not None
             possible_keys = self._get_id_index().get(fileid_utf8, None)
             if not possible_keys:
                 return None, None
@@ -1182,8 +1183,21 @@ class DirState(object):
                                                              tree_index)
                 if file_present:
                     entry = self._dirblocks[block_index][1][entry_index]
+                    # _get_block_entry_index only returns entries that are not
+                    # absent in the current tree. _get_id_index will return
+                    # both locations for a renamed file.  It is possible that a
+                    # new file was added at the same location that the old file
+                    # was renamed away. So _get_block_entry_index will actually
+                    # match the new file, skipping the fact that the real entry
+                    # we want is the rename. By just continuing here, we should
+                    # find the record at the target location, because
+                    # _get_id_index should return all locations.
+                    if entry[0][2] != fileid_utf8:
+                        continue
                     assert entry[1][tree_index][0] not in ('a', 'r')
-                    assert key == entry[0]
+                    assert key == entry[0], ('We were told that %s would be at'
+                            ' %s, %s, but we found %s' % (key, block_index,
+                                                          entry_index, entry))
                     return entry
             return None, None
 

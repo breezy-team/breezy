@@ -389,7 +389,6 @@ class WorkingTree4(WorkingTree3):
     def id2path(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
-        possible_dir_name_ids = state._get_id_index().get(file_id, None)
         entry = self._get_entry(file_id=file_id)
         if entry == (None, None):
             return None
