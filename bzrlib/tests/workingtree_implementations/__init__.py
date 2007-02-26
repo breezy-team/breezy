@@ -49,6 +49,7 @@ class TestCaseWithWorkingTree(TestCaseWithBzrDir):
 def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
+        'bzrlib.tests.workingtree_implementations.test_add',
         'bzrlib.tests.workingtree_implementations.test_basis_inventory',
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',

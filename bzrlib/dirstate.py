@@ -324,11 +324,15 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         block_index, present = self._find_block_index_from_key(entry_key)
         if not present:
-            # TODO: This test is not complete - an empty directory, or a
-            # directory for a parent tree will fool it.
-            # some parent path has not been added - its an error to add this
-            # child
-            raise errors.NotVersionedError(path, str(self))
+            # The block where we want to put the file is not present. But it
+            # might be because the directory was empty, or not loaded yet. Look
+            # for a parent entry, if not found, raise NotVersionedError
+            parent_dir, parent_base = osutils.split(dirname)
+            parent_block_idx, parent_entry_idx, _, parent_present = \
+                self._get_block_entry_index(parent_dir, parent_base, 0)
+            if not parent_present:
+                raise errors.NotVersionedError(path, str(self))
+            self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
         block = self._dirblocks[block_index][1]
         if stat is None:
             size = 0
