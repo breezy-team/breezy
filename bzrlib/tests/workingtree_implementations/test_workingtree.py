@@ -569,6 +569,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
+    def test_merge_modified(self):
+        # merge_modified stores a map from file id to hash
+        tree = self.make_branch_and_tree('tree')
+        d = {'file-id': osutils.sha_string('hello')}
+        self.build_tree_contents([('tree/somefile', 'hello')])
+        tree.lock_write()
+        try:
+            tree.add(['somefile'], ['file-id'])
+            tree.set_merge_modified(d)
+            mm = tree.merge_modified()
+            self.assertEquals(mm, d)
+        finally:
+            tree.unlock()
+        mm = tree.merge_modified()
+        self.assertEquals(mm, d)
+
     def test_conflicts(self):
         from bzrlib.tests.test_conflicts import example_conflicts
         tree = self.make_branch_and_tree('master')
