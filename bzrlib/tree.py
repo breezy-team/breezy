@@ -163,7 +163,8 @@ class Tree(object):
                 yield path, entry
 
     def kind(self, file_id):
-        raise NotImplementedError("subclasses must implement kind")
+        raise NotImplementedError("Tree subclass %s must implement kind"
+            % self.__class__.__name__)
 
     def get_reference_revision(self, entry, path=None):
         raise NotImplementedError("Tree subclass %s must implement "

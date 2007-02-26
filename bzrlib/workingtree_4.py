@@ -442,6 +442,7 @@ class WorkingTree4(WorkingTree3):
                 result.append(key[2])
         return iter(result)
 
+    @needs_read_lock
     def kind(self, file_id):
         # The kind of a file is whatever it actually is on disk, except that 
         # tree-references need to be reported as such rather than as the
@@ -1337,6 +1338,10 @@ class DirStateRevisionTree(Tree):
         if ie.kind != "file":
             return None
         return ie.executable
+
+    @needs_read_lock
+    def kind(self, file_id):
+        return self.inventory[file_id].kind
 
     def list_files(self, include_root=False):
         # We use a standard implementation, because DirStateRevisionTree is
