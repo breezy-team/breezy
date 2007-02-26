@@ -59,13 +59,6 @@ class TestGetCAPath(TestCaseInTempDir):
         self._make_file()
         self.assertEqual('foo.bar', ca_bundle.get_ca_path(use_cache=False))
 
-    def test_in_cwd(self):
-        if sys.platform != 'win32':
-            raise TestSkipped('Searching in cwd implemented only for win32')
-        self._make_file()
-        shouldbe = os.path.join(os.getcwd(), 'curl-ca-bundle.crt')
-        self.assertEqual(shouldbe, ca_bundle.get_ca_path(use_cache=False))
-        
     def test_in_path(self):
         if sys.platform != 'win32':
             raise TestSkipped('Searching in PATH implemented only for win32')

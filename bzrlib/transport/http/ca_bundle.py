@@ -48,15 +48,18 @@ def get_ca_path(use_cache=True):
     #      3. Windows System directory (e.g. C:\windows\system32)
     #      4. Windows Directory (e.g. C:\windows)
     #      5. all directories along %PATH%
-    # bialix: Windows directories usually listed in PATH env variable
+    #
+    # NOTES:
+    #   bialix: Windows directories usually listed in PATH env variable
+    #   j-a-meinel: bzr should not look in current working dir
 
     path = os.environ.get('CURL_CA_BUNDLE')
     if not path and sys.platform == 'win32':
-        dirs = [os.path.realpath(os.path.dirname(sys.argv[0])),     # app dir
-                os.getcwd()]                                        # cwd
+        dirs = [os.path.realpath(os.path.dirname(sys.argv[0]))]     # app dir
         paths = os.environ.get('PATH')
         if paths:
-            dirs.extend(paths.split(os.pathsep))
+            paths = [i for i in paths.split(os.pathsep) if i]
+            dirs.extend(paths)
         for d in dirs:
             fname = os.path.join(d, "curl-ca-bundle.crt")
             if os.path.isfile(fname):
