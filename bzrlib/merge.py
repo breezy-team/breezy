@@ -171,7 +171,7 @@ class Merger(object):
         for path in file_list:
             found_id = False
             for tree in (self.this_tree, self.base_tree, self.other_tree):
-                file_id = tree.inventory.path2id(path)
+                file_id = tree.path2id(path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     found_id = True
