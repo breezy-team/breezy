@@ -121,3 +121,7 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('pull', '-d', 'one', 'two', encoding='utf-8')
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        # merge should give a warning about the tags -- not implemented yet
+        ## out, err = self.run_bzr('merge', '-d', 'one', 'two', encoding='utf-8')
+        ## self.assertContainsRe(out,
+        ##         'Conflicting tags:\n.*' + tagname.encode('utf-8'))
