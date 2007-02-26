@@ -1398,8 +1398,11 @@ class InterDirStateTree(InterTree):
         """
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
-            # TODO: handle extra trees in the dirstate.
-        if extra_trees:
+        # TODO: handle extra trees in the dirstate.
+        # TODO: handle comparisons as an empty tree as a different special
+        # case? mbp 20070226
+        if extra_trees or (self.source._revision_id == NULL_REVISION):
+            # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned):
