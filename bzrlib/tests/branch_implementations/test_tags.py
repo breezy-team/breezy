@@ -67,6 +67,9 @@ class TestBranchTags(TestCaseWithBranch):
         # read one at a time
         result = b.tags.lookup_tag('tag-name')
         self.assertEqual(result, 'target-revid-1')
+        # and try has_tag
+        self.assertTrue(b.tags.has_tag('tag-name'))
+        self.assertFalse(b.tags.has_tag('imaginary'))
 
     def test_no_such_tag(self):
         b = self.make_branch('b')

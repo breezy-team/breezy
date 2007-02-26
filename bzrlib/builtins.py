@@ -3181,39 +3181,54 @@ class cmd_tag(Command):
 
     Tags are stored in the branch.  Tags are copied from one branch to another
     along when you branch, push, pull or merge.
+
+    It is an error to give a tag name that already exists unless you pass 
+    --force, in which case the tag is moved to point to the new revision.
     """
 
     takes_args = ['tag_name']
     takes_options = [
+        Option('delete',
+            help='Delete this tag rather than placing it.',
+            ),
         Option('directory',
-            help='branch in which to place the tag',
+            help='Branch in which to place the tag.',
             short_name='d',
             type=unicode,
             ),
-        Option('delete',
-            help='Delete this tag rather than placing it',
+        Option('force',
+            help='Replace existing tags',
             ),
         'revision',
         ]
 
-    def run(self, tag_name, directory='.',
+    def run(self, tag_name,
+            delete=None,
+            directory='.',
+            force=None,
             revision=None,
-            delete=None):
+            ):
         branch, relpath = Branch.open_containing(directory)
-        if delete:
-            branch.tags.delete_tag(tag_name)
-            self.outf.write('deleted tag %s' % tag_name)
-        else:
-            if revision:
-                if len(revision) != 1:
-                    raise errors.BzrCommandError(
-                        "Tags can only be placed on a single revision, "
-                        "not on a range")
-                revision_id = revision[0].in_history(branch).rev_id
+        branch.lock_write()
+        try:
+            if delete:
+                branch.tags.delete_tag(tag_name)
+                self.outf.write('Deleted tag %s.\n' % tag_name)
             else:
-                revision_id = branch.last_revision()
-            branch.tags.set_tag(tag_name, revision_id)
-            self.outf.write('created tag %s' % tag_name)
+                if revision:
+                    if len(revision) != 1:
+                        raise errors.BzrCommandError(
+                            "Tags can only be placed on a single revision, "
+                            "not on a range")
+                    revision_id = revision[0].in_history(branch).rev_id
+                else:
+                    revision_id = branch.last_revision()
+                if (not force) and branch.tags.has_tag(tag_name):
+                    raise errors.TagAlreadyExists(tag_name)
+                branch.tags.set_tag(tag_name, revision_id)
+                self.outf.write('Created tag %s.\n' % tag_name)
+        finally:
+            branch.unlock()
 
 
 class cmd_tags(Command):

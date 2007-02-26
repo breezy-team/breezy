@@ -1797,3 +1797,11 @@ class TagsNotSupported(BzrError):
 
     def __init__(self, branch):
         self.branch = branch
+
+        
+class TagAlreadyExists(BzrError):
+
+    _fmt = "Tag %(tag_name)s already exists."
+
+    def __init__(self, tag_name):
+        self.tag_name = tag_name

@@ -40,6 +40,9 @@ class _Tags(object):
     def __init__(self, branch):
         self.branch = branch
 
+    def has_tag(self, tag_name):
+        return self.get_tag_dict().has_key(tag_name)
+
 
 class DisabledTags(_Tags):
     """Tag storage that refuses to store anything.

@@ -57,7 +57,7 @@ class TestTagging(TestCaseWithTransport):
             rev_id='first-revid')
         # make a tag through the command line
         out, err = self.run_bzr('tag', '-d', 'branch', 'NEWTAG')
-        self.assertContainsRe(out, 'created tag NEWTAG')
+        self.assertContainsRe(out, 'Created tag NEWTAG.')
         # tag should be observable through the api
         self.assertEquals(t.branch.tags.get_tag_dict(),
                 dict(NEWTAG='first-revid'))
@@ -65,7 +65,12 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
         self.assertEquals(t.branch.tags.lookup_tag('tag2'), 'first-revid')
         # can also delete an existing tag
-        self.run_bzr('tag', '--delete', '-d', 'branch', 'tag2')
+        out, err = self.run_bzr('tag', '--delete', '-d', 'branch', 'tag2')
+        # cannot replace an existing tag normally
+        out, err = self.run_bzr('tag', '-d', 'branch', 'NEWTAG', retcode=3)
+        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
+        # ... but can if you use --force
+        out, err = self.run_bzr('tag', '-d', 'branch', 'NEWTAG', '--force')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')
