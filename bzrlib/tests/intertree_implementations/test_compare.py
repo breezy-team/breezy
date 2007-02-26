@@ -33,6 +33,11 @@ from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
 # TODO: test require_versioned
+# TODO: explicitly test specific_files listing a non-dir, and listing a symlink
+#       (it should not follow the link)
+# TODO: test specific_files when the target tree has a file and the source a
+#       dir with children, same id and same path. 
+# TODO: test specific_files with a new unversioned path.
 
 class TestCompare(TestCaseWithTwoTrees):
 

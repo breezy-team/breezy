@@ -1640,18 +1640,16 @@ class InterDirStateTree(InterTree):
                 root_stat = os.lstat(root_abspath)
             except OSError, e:
                 if e.errno == errno.ENOENT:
-                    # TODO: this directory does not exist in target. Should we
-                    # consider it missing and diff, or should we just skip? For
-                    # now, skip.
-                    continue
+                    # the path does not exist: let _process_entry know that.
+                    root_dir_info = None
                 else:
                     # some other random error: hand it up.
                     raise
-            root_dir_info = ('', current_root,
-                osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
-                root_abspath)
-            #
-            if not root_entries:
+            else:
+                root_dir_info = ('', current_root,
+                    osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
+                    root_abspath)
+            if not root_entries and not root_dir_info:
                 # this specified path is not present at all, skip it.
                 continue
             for entry in root_entries:
@@ -1668,17 +1666,27 @@ class InterDirStateTree(InterTree):
                 # we have processed the total root already, but because the
                 # initial key matched it we sould skip it here.
                 block_index +=1
-            current_dir_info = dir_iterator.next()
-            if current_dir_info[0][0] == '':
-                # remove .bzr from iteration
-                bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
-                assert current_dir_info[1][bzr_index][0] == '.bzr'
-                del current_dir_info[1][bzr_index]
-            # convert the unicode relpaths in the dir index to uf8 for
-            # comparison with dirstate data.
-            # TODO: keep the utf8 version around for giving to the caller.
-            current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
-                [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
+            try:
+                current_dir_info = dir_iterator.next()
+            except OSError, e:
+                if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                    # there may be directories in the inventory even though
+                    # this path is not a file on disk: so mark it as end of
+                    # iterator
+                    current_dir_info = None
+                else:
+                    raise
+            else:
+                if current_dir_info[0][0] == '':
+                    # remove .bzr from iteration
+                    bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
+                    assert current_dir_info[1][bzr_index][0] == '.bzr'
+                    del current_dir_info[1][bzr_index]
+                # convert the unicode relpaths in the dir index to uf8 for
+                # comparison with dirstate data.
+                # TODO: keep the utf8 version around for giving to the caller.
+                current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
+                    [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
             # walk until both the directory listing and the versioned metadata
             # are exhausted. TODO: reevaluate this, perhaps we should stop when
             # the versioned data runs out.
