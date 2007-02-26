@@ -3179,9 +3179,8 @@ class cmd_tag(Command):
     (--revision) option can be given -rtag:X, where X is any previously
     created tag.
 
-    Tags are stored in the repository, and apply to all branches stored
-    in the repository.  Tags are copied from one branch to another along
-    when you branch, push, pull or merge.
+    Tags are stored in the branch.  Tags are copied from one branch to another
+    along when you branch, push, pull or merge.
     """
 
     takes_args = ['tag_name']
