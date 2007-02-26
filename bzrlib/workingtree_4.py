@@ -389,6 +389,8 @@ class WorkingTree4(WorkingTree3):
     def id2path(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
+        # XXX: possible_dir_name_ids is unused - is this just called for
+        # side-effects? mbp 20070226
         possible_dir_name_ids = state._get_id_index().get(file_id, None)
         entry = self._get_entry(file_id=file_id)
         if entry == (None, None):
@@ -1078,7 +1080,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             control_files.unlock()
             wt.unlock()
         return wt
-
 
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.

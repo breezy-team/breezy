@@ -470,6 +470,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_symlink_target(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
+        return os.readlink(self.abspath(self.id2path(file_id)))
+
     @needs_read_lock
     def annotate_iter(self, file_id):
         """See Tree.annotate_iter
