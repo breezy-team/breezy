@@ -1530,6 +1530,9 @@ class DirState(object):
             raise NotImplementedError(self.set_path_id)
         # TODO: check new id is unique
         entry = self._get_entry(0, path_utf8=path)
+        if entry[0][2] == new_id:
+            # Nothing to change.
+            return
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
         self.update_minimal(('', '', new_id), 'd',
