@@ -51,6 +51,17 @@ class TestAdd(TestCaseWithWorkingTree):
 
         self.assertTreeLayout([('', root_id), ('one', 'one-id')], tree)
 
+    def test_add_existing_id(self):
+        """Adding an entry with a pre-existing id raises DuplicateFileId"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b'])
+        tree.add(['a'], ['an-id'])
+        self.assertRaises(errors.DuplicateFileId,
+                          tree.add, ['b'], ['an-id'])
+        root_id = tree.get_root_id()
+        # And the entry should not have been added.
+        self.assertTreeLayout([('', root_id), ('a', 'an-id')], tree)
+
     def test_add_one_list(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['one'])

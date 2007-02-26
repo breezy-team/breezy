@@ -320,6 +320,13 @@ class DirState(object):
         dirname, basename = osutils.split(utf8path)
         assert file_id.__class__ == str, \
             "must be a utf8 file_id not %s" % (type(file_id))
+        # Make sure the file_id does not exist in this tree
+        file_id_entry = self._get_entry(0, fileid_utf8=file_id)
+        if file_id_entry != (None, None):
+            path = osutils.pathjoin(file_id_entry[0][0], file_id_entry[0][1])
+            kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
+            info = '%s:%s' % (kind, path)
+            raise errors.DuplicateFileId(file_id, info)
         entry_key = (dirname, basename, file_id)
         self._read_dirblocks_if_needed()
         block_index, present = self._find_block_index_from_key(entry_key)

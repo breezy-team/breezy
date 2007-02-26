@@ -1095,7 +1095,8 @@ class Inventory(object):
         Returns the new entry object.
         """
         if entry.file_id in self._byid:
-            raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
+            raise errors.DuplicateFileId(entry.file_id,
+                                         self._byid[entry.file_id])
 
         if entry.parent_id is None:
             assert self.root is None and len(self._byid) == 0
