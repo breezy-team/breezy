@@ -2087,40 +2087,46 @@ class BzrDirFormatRegistry(registry.Registry):
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
-    def register_metadir(self, key, repo, help, native=True, deprecated=False,
-                         branch_format=None, tree='WorkingTreeFormat3'):
+    def register_metadir(self, key,
+             repository_format, help, native=True, deprecated=False,
+             branch_format=None,
+             tree_format=None):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
         by the Repository format.
 
-        :param repo: The fully-qualified repository format class name as a
-        string.
+        :param repository_format: The fully-qualified repository format class
+            name as a string.
+        :param branch_format: Fully-qualified branch format class name as
+            a string.
+        :param tree_format: Fully-qualified tree format class name as
+            a string.
         """
         # This should be expanded to support setting WorkingTree and Branch
         # formats, once BzrDirMetaFormat1 supports that.
-        def helper():
-            import bzrlib.branch
-            import bzrlib.repository
-            import bzrlib.workingtree
-            tree_format = getattr(bzrlib.workingtree, tree)
-            mod_name, repo_factory_name = repo.rsplit('.', 1)
+        def _load(full_name):
+            mod_name, factory_name = full_name.rsplit('.', 1)
             try:
                 mod = __import__(mod_name, globals(), locals(),
-                        [repo_factory_name])
+                        [factory_name])
             except ImportError, e:
-                raise ImportError('failed to load repository %s: %s'
-                    % (repo, e))
+                raise ImportError('failed to load %s: %s' % (full_name, e))
             try:
-                repo_format_class = getattr(mod, repo_factory_name)
+                factory = getattr(mod, factory_name)
             except AttributeError:
-                raise AttributeError('no repository format %r in module %r' 
-                    % (repo, mod))
+                raise AttributeError('no factory %s in module %r'
+                    % (full_name, mod))
+            return factory()
+
+        def helper():
             bd = BzrDirMetaFormat1()
-            bd.workingtree_format = tree_format()
-            bd.repository_format = repo_format_class()
             if branch_format is not None:
-                bd.set_branch_format(getattr(bzrlib.branch, branch_format)())
+                bd.set_branch_format(_load(branch_format))
+            if tree_format is not None:
+                bd.workingtree_format = _load(tree_format)
+            if repository_format is not None:
+                bd.repository_format = _load(repository_format)
             return bd
         self.register(key, helper, help, native, deprecated)
 
@@ -2216,7 +2222,7 @@ format_registry.register('weave', BzrDirFormat6,
 format_registry.register_metadir('knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended.',
-    branch_format='BzrBranchFormat5')
+    branch_format='bzrlib.branch.BzrBranchFormat5')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
@@ -2225,16 +2231,24 @@ format_registry.register_metadir('metaweave',
 format_registry.register_metadir('experimental-knit2',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.',
-    branch_format='BzrBranchFormat5',
-    tree='WorkingTreeFormat3'
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3'
     )
 format_registry.register_metadir('experimental-knit3',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     'Experimental successor to knit2.  Use at your own risk.', 
-    branch_format='BzrBranchFormat5',
-    tree='WorkingTreeFormatAB1')
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormatAB1')
 format_registry.register_metadir('experimental-branch6',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',
-    branch_format='BzrBranchFormat6',
-    tree='WorkingTreeFormat3')
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3')
+
+format_registry.register_metadir('experimental-reference-dirstate',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+    help='Experimental: dirstate working tree, Branch6, and reference-tree '
+    'support.  Proposed default for bzr 0.15',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    )

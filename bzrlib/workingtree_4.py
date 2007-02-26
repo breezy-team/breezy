@@ -105,10 +105,12 @@ class WorkingTree4(WorkingTree3):
     """This is the Format 4 working tree.
 
     This differs from WorkingTree3 by:
-     - having a consolidated internal dirstate.
-     - not having a regular inventory attribute.
+     - Having a consolidated internal dirstate, stored in a
+       randomly-accessible sorted file on disk.
+     - Not having a regular inventory attribute.  One can be synthesized 
+       on demand but this is expensive and should be avoided.
 
-    This is new in bzr TODO FIXME SETMEBEFORE MERGE.
+    This is new in bzr 0.15.
     """
 
     def __init__(self, basedir,
@@ -180,6 +182,14 @@ class WorkingTree4(WorkingTree3):
             state.add(f, file_id, kind, None, '')
         self._dirty = True
 
+    @needs_tree_write_lock
+    def add_reference(self, sub_tree):
+        # use standard implementation, which calls back to self._add
+        # 
+        # So we don't store the reference_revision in the working dirstate,
+        # it's just recorded at the moment of commit. 
+        self._add_reference(sub_tree)
+
     def break_lock(self):
         """Break a lock if one is present from another instance.
 
@@ -217,6 +227,14 @@ class WorkingTree4(WorkingTree3):
         self._control_files.break_lock()
         self.branch.break_lock()
 
+    def _comparison_data(self, entry, path):
+        kind, executable, stat_value = \
+            WorkingTree3._comparison_data(self, entry, path)
+        # it looks like a plain directory, but it's really a reference
+        if kind == 'directory' and entry.kind == 'tree-reference':
+            kind = 'tree-reference'
+        return kind, executable, stat_value
+
     def current_dirstate(self):
         """Return the current dirstate object. 
 
@@ -225,8 +243,7 @@ class WorkingTree4(WorkingTree3):
 
         :raises errors.NotWriteLocked: when not in a lock. 
         """
-        if not self._control_files._lock_count:
-            raise errors.ObjectNotLocked(self)
+        self._must_be_locked()
         return self._current_dirstate()
 
     def _current_dirstate(self):
@@ -357,6 +374,7 @@ class WorkingTree4(WorkingTree3):
         """Get the inventory for the tree. This is only valid within a lock."""
         if self._inventory is not None:
             return self._inventory
+        self._must_be_locked()
         self._generate_inventory()
         return self._inventory
 
@@ -370,6 +388,15 @@ class WorkingTree4(WorkingTree3):
         This implementation requests the ids list from the dirstate file.
         """
         return self.current_dirstate().get_parent_ids()
+
+    def get_reference_revision(self, entry, path=None):
+        # referenced tree's revision is whatever's currently there
+        return self.get_nested_tree(entry, path).last_revision()
+
+    def get_nested_tree(self, entry, path=None):
+        if path is None:
+            path = self.id2path(entry.file_id)
+        return WorkingTree.open(self.abspath(path))
 
     @needs_read_lock
     def get_root_id(self):
@@ -414,6 +441,21 @@ class WorkingTree4(WorkingTree3):
             if osutils.lexists(path):
                 result.append(key[2])
         return iter(result)
+
+    def kind(self, file_id):
+        # The kind of a file is whatever it actually is on disk, except that 
+        # tree-references need to be reported as such rather than as the
+        # directiories
+        #
+        # TODO: Possibly we should check that the directory still really
+        # contains a subtree, at least during commit? mbp 20070227
+        kind = WorkingTree3.kind(self, file_id)
+        if kind == 'directory':
+            # TODO: ask the dirstate not the inventory -- mbp 20060227
+            entry = self.inventory[file_id]
+            if entry.kind == 'tree-reference':
+                kind = 'tree-reference'
+        return kind
 
     @needs_read_lock
     def _last_revision(self):
@@ -658,6 +700,10 @@ class WorkingTree4(WorkingTree3):
             self._dirty = True
 
         return #rename_tuples
+
+    def _must_be_locked(self):
+        if not self._control_files._lock_count:
+            raise errors.ObjectNotLocked(self)
 
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
@@ -1033,6 +1079,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - uses a LockDir to guard access to it.
     """
 
+    supports_tree_reference = True
+
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree format 4\n"
@@ -1093,6 +1141,13 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                            _bzrdir=a_bzrdir,
                            _control_files=control_files)
 
+    def __get_matchingbzrdir(self):
+        # please test against something that will let us do tree references
+        return bzrdir.format_registry.make_bzrdir(
+            'experimental-reference-dirstate')
+
+    _matchingbzrdir = property(__get_matchingbzrdir)
+
 
 class DirStateRevisionTree(Tree):
     """A revision tree pulling the inventory from a dirstate."""
@@ -1112,7 +1167,6 @@ class DirStateRevisionTree(Tree):
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def _comparison_data(self, entry, path):
-        """See Tree._comparison_data."""
         if entry is None:
             return None, False, None
         # trust the entry as RevisionTree does, but this may not be
@@ -1156,8 +1210,11 @@ class DirStateRevisionTree(Tree):
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
 
+        (So this is only called the first time the inventory is requested for
+        this tree; it then remains in memory.)
+
         This is relatively expensive: we have to walk the entire dirstate.
-        Ideally we would not, and instead would """
+        """
         assert self._locked, 'cannot generate inventory of an unlocked '\
             'dirstate revision tree'
         # separate call for profiling - makes it clear where the costs are.
@@ -1189,7 +1246,7 @@ class DirStateRevisionTree(Tree):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                minikind, link_or_sha1, size, executable, revid = entry[parent_index]
+                minikind, fingerprint, size, executable, revid = entry[parent_index]
                 if minikind in ('a', 'r'): # absent, relocated
                     # not this tree
                     continue
@@ -1203,15 +1260,18 @@ class DirStateRevisionTree(Tree):
                 if kind == 'file':
                     inv_entry.executable = executable
                     inv_entry.text_size = size
-                    inv_entry.text_sha1 = link_or_sha1
+                    inv_entry.text_sha1 = fingerprint
                 elif kind == 'directory':
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
                     inv_entry.executable = False
                     inv_entry.text_size = size
-                    inv_entry.symlink_target = utf8_decode(link_or_sha1)[0]
+                    inv_entry.symlink_target = utf8_decode(fingerprint)[0]
+                elif kind == 'tree-reference':
+                    inv_entry.reference_revision = fingerprint
                 else:
-                    raise Exception, kind
+                    raise AssertionError("cannot convert entry %r into an InventoryEntry"
+                            % entry)
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid
                 assert name_unicode not in parent_ie.children
@@ -1271,9 +1331,6 @@ class DirStateRevisionTree(Tree):
 
     def has_filename(self, filename):
         return bool(self.path2id(filename))
-
-    def kind(self, file_id):
-        return self.inventory[file_id].kind
 
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]

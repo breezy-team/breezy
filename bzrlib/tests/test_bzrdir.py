@@ -78,7 +78,7 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_metadir('experimental-knit3', 
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Format using knits', 
-            tree='WorkingTreeFormatAB1')
+            tree_format='bzrlib.workingtree.WorkingTreeFormatAB1')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
             'experimental-knit2',
@@ -89,7 +89,7 @@ class TestFormatRegistry(TestCase):
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='BzrBranchFormat6')
+            branch_format='bzrlib.branch.BzrBranchFormat6')
         return my_format_registry
 
     def test_format_registry(self):

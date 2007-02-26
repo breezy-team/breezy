@@ -677,6 +677,9 @@ class ReadOnlyError(LockError):
 
     _fmt = "A write attempt was made in a read only transaction on %(obj)s"
 
+    # TODO: There should also be an error indicating that you need a write
+    # lock and don't have any lock at all... mbp 20070226
+
     def __init__(self, obj):
         self.obj = obj
 

@@ -40,23 +40,35 @@ class TestReference(TestCaseWithTree):
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
-        self.skip_if_no_reference(work_tree)
-        subtree = self.make_branch_and_tree('wt/subtree')
-        subtree.set_root_id('sub-root')
-        subtree.commit('foo', rev_id='sub-1')
-        work_tree.add_reference(subtree)
+        work_tree.lock_write()
+        try:
+            self.skip_if_no_reference(work_tree)
+            subtree = self.make_branch_and_tree('wt/subtree')
+            subtree.set_root_id('sub-root')
+            subtree.commit('foo', rev_id='sub-1')
+            work_tree.add_reference(subtree)
+        finally:
+            work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
         return tree
 
     def test_get_reference_revision(self):
         tree = self.create_nested()
-        entry = tree.inventory['sub-root']
+        tree.lock_read()
+        try:
+            entry = tree.inventory['sub-root']
+        finally:
+            tree.unlock()
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision(entry, path))
 
     def test_iter_reference_entries(self):
         tree = self.create_nested()
-        entry = tree.inventory['sub-root']
+        tree.lock_read()
+        try:
+            entry = tree.inventory['sub-root']
+        finally:
+            tree.unlock()
         self.assertEqual([entry], [e for p, e in
                                    tree.iter_reference_entries()])

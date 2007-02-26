@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             basis.lock_read()
             try:
                 entry = basis.inventory['sub-tree-root-id']
+                self.assertEqual(entry.kind, 'tree-reference')
                 sub_tree = tree.get_nested_tree(entry)
                 self.assertEqual(sub_tree.last_revision(),
                                  entry.reference_revision)
@@ -65,7 +66,6 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 basis.unlock()
         finally:
             tree.unlock()
-        
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')

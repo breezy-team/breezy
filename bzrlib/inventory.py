@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1361,9 +1361,9 @@ class Inventory(object):
 
 
 entry_factory = {
-    'directory':InventoryDirectory,
-    'file':InventoryFile,
-    'symlink':InventoryLink,
+    'directory': InventoryDirectory,
+    'file': InventoryFile,
+    'symlink': InventoryLink,
     'tree-reference': TreeReference
 }
 

@@ -86,6 +86,8 @@ Kinds:
     sha1 value.
 'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
     link target.
+'t' is a reference to a nested subtree; the fingerprint is the referenced
+    revision.
 
 
 --- Format 1 had the following different definition: ---
@@ -226,8 +228,14 @@ class DirState(object):
     specific, and if it is how we detect/parameterise that.
     """
 
-    _kind_to_minikind = {'absent':'a', 'file':'f', 'directory':'d', 'relocated':'r', 'symlink':'l'}
-    _minikind_to_kind = {'a':'absent', 'f':'file', 'd':'directory', 'l':'symlink', 'r':'relocated'}
+    _kind_to_minikind = {'absent':'a', 'file':'f', 'directory':'d', 'relocated':'r',
+            'symlink': 'l',
+            'tree-reference': 't',
+        }
+    _minikind_to_kind = {'a':'absent', 'f':'file', 'd':'directory', 'l':'symlink',
+            'r': 'relocated',
+            't': 'tree-reference',
+        }
     _to_yesno = {True:'y', False: 'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
@@ -285,17 +293,20 @@ class DirState(object):
         self._end_of_header = None
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
-    def add(self, path, file_id, kind, stat, link_or_sha1):
+    def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
 
         :param path: The path within the dirstate - '' is the root, 'foo' is the
             path foo within the root, 'foo/bar' is the path bar within foo 
             within the root.
         :param file_id: The file id of the path being added.
-        :param kind: The kind of the path.
+        :param kind: The kind of the path, as a string like 'file', 
+            'directory', etc.
         :param stat: The output of os.lstate for the path.
-        :param link_or_sha1: The sha value of the file, or the target of a
-            symlink. '' for directories.
+        :param fingerprint: The sha value of the file,
+            or the target of a symlink,
+            or the referenced revision id for tree-references,
+            or '' for directories.
         """
         # adding a file:
         # find the block its in. 
@@ -340,7 +351,7 @@ class DirState(object):
         minikind = DirState._kind_to_minikind[kind]
         if kind == 'file':
             entry_data = entry_key, [
-                (minikind, link_or_sha1, size, False, packed_stat),
+                (minikind, fingerprint, size, False, packed_stat),
                 ] + parent_info
         elif kind == 'directory':
             entry_data = entry_key, [
@@ -348,7 +359,11 @@ class DirState(object):
                 ] + parent_info
         elif kind == 'symlink':
             entry_data = entry_key, [
-                (minikind, link_or_sha1, size, False, packed_stat),
+                (minikind, fingerprint, size, False, packed_stat),
+                ] + parent_info
+        elif kind == 'tree-reference':
+            entry_data = entry_key, [
+                (minikind, fingerprint, 0, False, packed_stat),
                 ] + parent_info
         else:
             raise errors.BzrError('unknown kind %r' % kind)
@@ -1243,8 +1258,12 @@ class DirState(object):
             fingerprint = inv_entry.text_sha1 or ''
             size = inv_entry.text_size or 0
             executable = inv_entry.executable
+        elif kind == 'tree-reference':
+            fingerprint = inv_entry.reference_revision or ''
+            size = 0
+            executable = False
         else:
-            raise Exception
+            raise Exception("can't pack %s" % inv_entry)
         return (minikind, fingerprint, size, executable, tree_data)
 
     def _iter_entries(self):

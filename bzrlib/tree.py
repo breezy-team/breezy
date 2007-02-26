@@ -166,8 +166,9 @@ class Tree(object):
         raise NotImplementedError("subclasses must implement kind")
 
     def get_reference_revision(self, entry, path=None):
-        raise NotImplementedError("subclasses must implement "
-                                  "get_reference_revision")
+        raise NotImplementedError("Tree subclass %s must implement "
+                                  "get_reference_revision"
+            % self.__class__.__name__)
 
     def _comparison_data(self, entry, path):
         """Return a tuple of kind, executable, stat_value for a file.
@@ -634,102 +635,115 @@ class InterTree(InterObject):
             path in the specific_files list is not versioned in one of
             source, target or extra_trees.
         """
-        lookup_trees = [self.source]
-        if extra_trees:
-             lookup_trees.extend(extra_trees)
-        specific_file_ids = self.target.paths2ids(specific_files,
-            lookup_trees, require_versioned=require_versioned)
-        to_paths = {}
-        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids))
-        from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids))
-        num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
-        entry_count = 0
-        for to_path, to_entry in to_entries_by_dir:
-            file_id = to_entry.file_id
-            to_paths[file_id] = to_path
-            entry_count += 1
-            changed_content = False
-            from_path, from_entry = from_data.get(file_id, (None, None))
-            from_versioned = (from_entry is not None)
-            if from_entry is not None:
-                from_versioned = True
-                from_name = from_entry.name
-                from_parent = from_entry.parent_id
-                from_kind, from_executable, from_stat = \
-                    self.source._comparison_data(from_entry, from_path)
+        # this must return a sequence rather than a list so that it can hold a
+        # read-lock for the whole time.
+        #
+        # TODO: this really only needs to lock the trees not the branches, so
+        # could do with lock_tree_read() -- mbp 20070227
+        result = []
+        self.source.lock_read()
+        self.target.lock_read()
+        try:
+            lookup_trees = [self.source]
+            if extra_trees:
+                 lookup_trees.extend(extra_trees)
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
+            to_paths = {}
+            from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
+                specific_file_ids=specific_file_ids))
+            from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
+            to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
+                specific_file_ids=specific_file_ids))
+            num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
+            entry_count = 0
+            for to_path, to_entry in to_entries_by_dir:
+                file_id = to_entry.file_id
+                to_paths[file_id] = to_path
                 entry_count += 1
-            else:
-                from_versioned = False
-                from_kind = None
-                from_parent = None
-                from_name = None
-                from_executable = None
-            versioned = (from_versioned, True)
-            to_kind, to_executable, to_stat = \
-                self.target._comparison_data(to_entry, to_path)
-            kind = (from_kind, to_kind)
-            if kind[0] != kind[1]:
+                changed_content = False
+                from_path, from_entry = from_data.get(file_id, (None, None))
+                from_versioned = (from_entry is not None)
+                if from_entry is not None:
+                    from_versioned = True
+                    from_name = from_entry.name
+                    from_parent = from_entry.parent_id
+                    from_kind, from_executable, from_stat = \
+                        self.source._comparison_data(from_entry, from_path)
+                    entry_count += 1
+                else:
+                    from_versioned = False
+                    from_kind = None
+                    from_parent = None
+                    from_name = None
+                    from_executable = None
+                versioned = (from_versioned, True)
+                to_kind, to_executable, to_stat = \
+                    self.target._comparison_data(to_entry, to_path)
+                kind = (from_kind, to_kind)
+                if kind[0] != kind[1]:
+                    changed_content = True
+                elif from_kind == 'file':
+                    from_size = self.source._file_size(from_entry, from_stat)
+                    to_size = self.target._file_size(to_entry, to_stat)
+                    if from_size != to_size:
+                        changed_content = True
+                    elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
+                        self.target.get_file_sha1(file_id, to_path, to_stat)):
+                        changed_content = True
+                elif from_kind == 'symlink':
+                    if (self.source.get_symlink_target(file_id) != 
+                        self.target.get_symlink_target(file_id)):
+                        changed_content = True
+                elif from_kind == 'tree-reference':
+                    if (self.source.get_reference_revision(from_entry, from_path)
+                        != self.target.get_reference_revision(to_entry, to_path)):
+                        changed_content = True 
+                parent = (from_parent, to_entry.parent_id)
+                name = (from_name, to_entry.name)
+                executable = (from_executable, to_executable)
+                if pb is not None:
+                    pb.update('comparing files', entry_count, num_entries)
+                if (changed_content is not False or versioned[0] != versioned[1] 
+                    or parent[0] != parent[1] or name[0] != name[1] or 
+                    executable[0] != executable[1] or include_unchanged):
+                    result.append((file_id, to_path, changed_content, versioned, parent,
+                           name, kind, executable))
+            def get_to_path(from_entry):
+                if from_entry.parent_id is None:
+                    to_path = ''
+                else:
+                    if from_entry.parent_id not in to_paths:
+                        get_to_path(self.source.inventory[from_entry.parent_id])
+                    to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
+                                               from_entry.name)
+                to_paths[from_entry.file_id] = to_path
+                return to_path
+
+            for path, from_entry in from_entries_by_dir:
+                file_id = from_entry.file_id
+                if file_id in to_paths:
+                    continue
+                to_path = get_to_path(from_entry)
+                entry_count += 1
+                if pb is not None:
+                    pb.update('comparing files', entry_count, num_entries)
+                versioned = (True, False)
+                parent = (from_entry.parent_id, None)
+                name = (from_entry.name, None)
+                from_kind, from_executable, stat_value = \
+                    self.source._comparison_data(from_entry, path)
+                kind = (from_kind, None)
+                executable = (from_executable, None)
                 changed_content = True
-            elif from_kind == 'file':
-                from_size = self.source._file_size(from_entry, from_stat)
-                to_size = self.target._file_size(to_entry, to_stat)
-                if from_size != to_size:
-                    changed_content = True
-                elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
-                    self.target.get_file_sha1(file_id, to_path, to_stat)):
-                    changed_content = True
-            elif from_kind == 'symlink':
-                if (self.source.get_symlink_target(file_id) != 
-                    self.target.get_symlink_target(file_id)):
-                    changed_content = True
-            elif from_kind == 'tree-reference':
-                if (self.source.get_reference_revision(from_entry, from_path)
-                    != self.target.get_reference_revision(to_entry, to_path)):
-                    changed_content = True 
-            parent = (from_parent, to_entry.parent_id)
-            name = (from_name, to_entry.name)
-            executable = (from_executable, to_executable)
-            if pb is not None:
-                pb.update('comparing files', entry_count, num_entries)
-            if (changed_content is not False or versioned[0] != versioned[1] 
-                or parent[0] != parent[1] or name[0] != name[1] or 
-                executable[0] != executable[1] or include_unchanged):
-                yield (file_id, to_path, changed_content, versioned, parent,
-                       name, kind, executable)
+                # the parent's path is necessarily known at this point.
+                result.append((file_id, to_path, changed_content, versioned, parent,
+                      name, kind, executable))
+        finally:
+            self.source.unlock()
+            self.target.unlock()
+        return result
 
-        def get_to_path(from_entry):
-            if from_entry.parent_id is None:
-                to_path = ''
-            else:
-                if from_entry.parent_id not in to_paths:
-                    get_to_path(self.source.inventory[from_entry.parent_id])
-                to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
-                                           from_entry.name)
-            to_paths[from_entry.file_id] = to_path
-            return to_path
-
-        for path, from_entry in from_entries_by_dir:
-            file_id = from_entry.file_id
-            if file_id in to_paths:
-                continue
-            to_path = get_to_path(from_entry)
-            entry_count += 1
-            if pb is not None:
-                pb.update('comparing files', entry_count, num_entries)
-            versioned = (True, False)
-            parent = (from_entry.parent_id, None)
-            name = (from_entry.name, None)
-            from_kind, from_executable, stat_value = \
-                self.source._comparison_data(from_entry, path)
-            kind = (from_kind, None)
-            executable = (from_executable, None)
-            changed_content = True
-            # the parent's path is necessarily known at this point.
-            yield(file_id, to_path, changed_content, versioned, parent,
-                  name, kind, executable)
 
 
 # This was deprecated before 0.12, but did not have an official warning
