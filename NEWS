@@ -52,7 +52,17 @@ IN DEVELOPMENT
       "bzr unbind", you can "bzr bind" to bind to the previously-selected
       bind location.
 
+    * Bazaar now looks for user-installed plugins before looking for site-wide
+      plugins. (Jonathan Lange)
+
   INTERNALS:
+
+    * Internally revision ids and file ids are now passed around as utf-8
+      bytestrings, rather than treating them as Unicode strings. This has
+      performance benefits for Knits, since we no longer need to decode the
+      revision id for each line of content, nor for each entry in the index.
+      This will also help with the future dirstate format.
+      (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
@@ -109,7 +119,7 @@ IN DEVELOPMENT
       (John Arbash Meinel, #30576, #45504)
 
     * Fix http proxy authentication when user and an optional
-      password appears in the *_proxy vars. (Vincent Ladeuil,
+      password appears in the ``*_proxy`` vars. (Vincent Ladeuil,
       #83954).
 
     * ``bzr log branch/file`` works for local treeless branches

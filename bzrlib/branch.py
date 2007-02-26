@@ -378,6 +378,7 @@ class Branch(object):
         """Given a revision id, return its revno"""
         if revision_id is None:
             return 0
+        revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -580,6 +581,7 @@ class Branch(object):
         """
         new_history = self.revision_history()
         if revision_id is not None:
+            revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
@@ -1245,6 +1247,7 @@ class BzrBranch(Branch):
     @needs_write_lock
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
             mutter("add {%s} to revision-history" % revision_id)
@@ -1257,12 +1260,13 @@ class BzrBranch(Branch):
 
         This performs the actual writing to disk.
         It is intended to be called by BzrBranch5.set_revision_history."""
-        self.control_files.put_utf8(
+        self.control_files.put_bytes(
             'revision-history', '\n'.join(history))
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        rev_history = [osutils.safe_revision_id(r) for r in rev_history]
         self._write_revision_history(rev_history)
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
@@ -1282,13 +1286,14 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
-        decode_utf8 = cache_utf8.decode
-        history = [decode_utf8(l.rstrip('\r\n')) for l in
+        get_cached_utf8 = cache_utf8.get_cached_utf8
+        history = [get_cached_utf8(l.rstrip('\r\n')) for l in
                 self.control_files.get('revision-history').readlines()]
         return history
 
@@ -1338,6 +1343,7 @@ class BzrBranch(Branch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
+        revision_id = osutils.safe_revision_id(revision_id)
         self.set_revision_history(self._lefthand_history(revision_id,
             last_rev, other_branch))
 
@@ -1351,6 +1357,8 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     # if there are no commits, we're done.
                     return
+            else:
+                stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = self.last_revision()
@@ -1500,7 +1508,6 @@ class BzrBranch(Branch):
                     raise bzrlib.errors.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
                         "use bzrlib.urlutils.escape")
-                    
             url = urlutils.relative_url(self.base, url)
         self._set_parent_location(url)
 
@@ -1509,7 +1516,7 @@ class BzrBranch(Branch):
             self.control_files._transport.delete('parent')
         else:
             assert isinstance(url, str)
-            self.control_files.put('parent', StringIO(url + '\n'))
+            self.control_files.put_bytes('parent', url + '\n')
 
     @deprecated_function(zero_nine)
     def tree_config(self):
@@ -1692,8 +1699,9 @@ class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
     def last_revision_info(self):
-        revision_string = self.control_files.get_utf8('last-revision').read()
+        revision_string = self.control_files.get('last-revision').read()
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
 
@@ -1716,10 +1724,11 @@ class BzrBranch6(BzrBranch5):
         if revision_id is None:
             revision_id = 'null:'
         out_string = '%d %s\n' % (revno, revision_id)
-        self.control_files.put_utf8('last-revision', out_string)
+        self.control_files.put_bytes('last-revision', out_string)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = osutils.safe_revision_id(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -1761,6 +1770,7 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
+        revision_ids = [osutils.safe_revision_id(r) for r in revision_ids]
         if len(revision_ids) == 0:
             return
         prev_revno, prev_revision = self.last_revision_info()

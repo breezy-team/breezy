@@ -95,6 +95,27 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
         self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
 
+    def test_revision_ids_are_utf8(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+
+        br = self.get_branch()
+        br.fetch(wt.branch)
+        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        rh = br.revision_history()
+        self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
+        for revision_id in rh:
+            self.assertIsInstance(revision_id, str)
+        last = br.last_revision()
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
+        revno, last = br.last_revision_info()
+        self.assertEqual(3, revno)
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
+
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
         get_transport(self.get_url()).mkdir('b1')

@@ -105,6 +105,9 @@ if __name__ == '__main__':
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
     sys.stdout.flush()
+    if bzrlib.trace._trace_file:
+        # this is also _bzr_log
+        bzrlib.trace._trace_file.flush()
     # stderr isn't buffered
     os._exit(exit_val)
 else:
