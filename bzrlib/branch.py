@@ -2134,6 +2134,9 @@ class Converter5to6(object):
         new_branch.set_bound_location(branch.get_bound_location())
         new_branch.set_push_location(branch.get_push_location())
 
+        # New branch has no tags by default
+        new_branch.tags._set_tag_dict({})
+
         # Copying done; now update target format
         new_branch.control_files.put_utf8('format',
             format.get_format_string())
