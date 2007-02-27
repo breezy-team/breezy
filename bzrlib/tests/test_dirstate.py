@@ -16,6 +16,7 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
+import bisect
 import os
 
 from bzrlib import (
@@ -24,7 +25,7 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 # TODO:
@@ -1290,3 +1291,48 @@ class TestBisect(TestCaseWithTransport):
                                               'b/d/e', 'b/g', 'h', 'h/e'],
                                    state, ['b'])
 
+
+class TestBisectSplit(TestCase):
+    """Test that bisect_split() returns the expected values.
+
+    bisect_split is intended to work like bisect.bisect_left() except it splits
+    the path by directory sections, rather than using a raw comparison.
+    """
+
+    def assertBisect(self, paths, split_paths, key, *args):
+        """Assert that bisect_split works like bisect_left on the split paths.
+
+        :param paths: The plain list of paths. It should be split sorted
+        :param split_paths: A list of split paths sorted identical to paths.
+        :param key: The path we are bisecting for.
+        """
+        bisect_split_idx = dirstate.bisect_split(paths, key, *args)
+        bisect_left_idx = bisect.bisect_left(split_paths, key.split('/'),
+                                             *args)
+        self.assertEqual(bisect_left_idx, bisect_split_idx,
+                         'bisect_split disagreed. %s != %s'
+                         ' for key %s'
+                         % (bisect_left_idx, bisect_split_idx, key)
+                         )
+
+    def test_simple(self):
+        """In the simple case it works just like bisect_left"""
+        paths = ['', 'a', 'b', 'c', 'd']
+        split_paths = [[''], ['a'], ['b'], ['c'], ['d']]
+        for path in paths:
+            self.assertBisect(paths, split_paths, path)
+
+    def test_involved(self):
+        """This is where bisect_left diverges slightly."""
+        paths = ['', 'a',
+                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                 'a-a', 'a-z',
+                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
+                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
+                 'z-a', 'z-z',
+                ]
+        split_paths = [p.split('/') for p in paths]
+        self.assertEqual(split_paths, sorted(split_paths))
+        for path in paths:
+            self.assertBisect(paths, split_paths, path)

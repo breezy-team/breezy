@@ -1964,6 +1964,30 @@ class DirState(object):
         if not self._lock_token:
             raise errors.ObjectNotLocked(self)
 
+
+def bisect_split(a, x, lo=0, hi=None):
+    """Return the index where to insert item x in list a, assuming a is sorted.
+
+    The return value i is such that all e in a[:i] have e < x, and all e in
+    a[i:] have e >= x.  So if x already appears in the list, i points just
+    before the leftmost x already there.
+
+    Optional args lo (default 0) and hi (default len(a)) bound the
+    slice of a to be searched.
+
+    The one trick is that we compare entries by spliting them into directory
+    path chunks, rather than by individual strings.
+    """
+    if hi is None:
+        hi = len(a)
+    x_split = x.split('/')
+    while lo < hi:
+        mid = (lo+hi)//2
+        if a[mid].split('/') < x_split: lo = mid+1
+        else: hi = mid
+    return lo
+
+
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
@@ -1976,4 +2000,3 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     return _encode(_pack('>llllll'
         , st.st_size, st.st_mtime, st.st_ctime
         , st.st_dev, st.st_ino, st.st_mode))[:-1]
-
