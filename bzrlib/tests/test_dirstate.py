@@ -1299,14 +1299,14 @@ class TestBisectSplit(TestCase):
     the path by directory sections, rather than using a raw comparison.
     """
 
-    def assertBisect(self, paths, split_paths, key, *args):
+    def assertBisect(self, paths, split_paths, key, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
 
         :param paths: The plain list of paths. It should be split sorted
         :param split_paths: A list of split paths sorted identical to paths.
         :param key: The path we are bisecting for.
         """
-        bisect_split_idx = dirstate.bisect_split(paths, key, *args)
+        bisect_split_idx = dirstate.bisect_split(paths, key, *args, **kwargs)
         bisect_left_idx = bisect.bisect_left(split_paths, key.split('/'),
                                              *args)
         self.assertEqual(bisect_left_idx, bisect_split_idx,
@@ -1321,6 +1321,15 @@ class TestBisectSplit(TestCase):
         split_paths = [[''], ['a'], ['b'], ['c'], ['d']]
         for path in paths:
             self.assertBisect(paths, split_paths, path)
+        self.assertBisect(paths, split_paths, '_')
+        self.assertBisect(paths, split_paths, 'aa')
+        self.assertBisect(paths, split_paths, 'bb')
+        self.assertBisect(paths, split_paths, 'cc')
+        self.assertBisect(paths, split_paths, 'dd')
+        self.assertBisect(paths, split_paths, 'a/a')
+        self.assertBisect(paths, split_paths, 'b/b')
+        self.assertBisect(paths, split_paths, 'c/c')
+        self.assertBisect(paths, split_paths, 'd/d')
 
     def test_involved(self):
         """This is where bisect_left diverges slightly."""
@@ -1336,3 +1345,19 @@ class TestBisectSplit(TestCase):
         self.assertEqual(split_paths, sorted(split_paths))
         for path in paths:
             self.assertBisect(paths, split_paths, path)
+
+    def test_involved_cached(self):
+        """This is where bisect_left diverges slightly."""
+        paths = ['', 'a',
+                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                 'a-a', 'a-z',
+                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
+                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
+                 'z-a', 'z-z',
+                ]
+        cache = {}
+        split_paths = [p.split('/') for p in paths]
+        self.assertEqual(split_paths, sorted(split_paths))
+        for path in paths:
+            self.assertBisect(paths, split_paths, path, cache=cache)

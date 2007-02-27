@@ -1965,7 +1965,7 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def bisect_split(a, x, lo=0, hi=None):
+def bisect_split(a, x, lo=0, hi=None, cache={}):
     """Return the index where to insert item x in list a, assuming a is sorted.
 
     The return value i is such that all e in a[:i] have e < x, and all e in
@@ -1980,10 +1980,21 @@ def bisect_split(a, x, lo=0, hi=None):
     """
     if hi is None:
         hi = len(a)
+    try:
+        x_split = cache[x]
+    except KeyError:
+        x_split = x.split('/')
+        cache[x] = x_split
     x_split = x.split('/')
     while lo < hi:
         mid = (lo+hi)//2
-        if a[mid].split('/') < x_split: lo = mid+1
+        cur = a[mid]
+        try:
+            cur_split = cache[cur]
+        except KeyError:
+            cur_split = cur.split('/')
+            cache[cur] = cur_split
+        if cur_split < x_split: lo = mid+1
         else: hi = mid
     return lo
 
