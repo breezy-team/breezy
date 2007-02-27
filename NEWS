@@ -52,14 +52,20 @@ IN DEVELOPMENT
       "bzr unbind", you can "bzr bind" to bind to the previously-selected
       bind location.
 
+    * The bzr:// transport now has a well-known port number, 4155, which it will
+      use by default.  (Andrew Bennetts, Martin Pool)
+
+    * Bazaar now looks for user-installed plugins before looking for site-wide
+      plugins. (Jonathan Lange)
+
   INTERNALS:
 
-    * Internally revision ids are now passed around as utf-8 bytestrings,
-      rather than treating them as Unicode strings. This has performance
-      benefits for Knits, since we no longer need to decode the revision
-      id for each line of content, nor for each entry in the index. This
-      will also help with the future dirstate format. File-ids should
-      receive the same treatment in the future. (John Arbash Meinel)
+    * Internally revision ids and file ids are now passed around as utf-8
+      bytestrings, rather than treating them as Unicode strings. This has
+      performance benefits for Knits, since we no longer need to decode the
+      revision id for each line of content, nor for each entry in the index.
+      This will also help with the future dirstate format.
+      (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
@@ -116,13 +122,16 @@ IN DEVELOPMENT
       (John Arbash Meinel, #30576, #45504)
 
     * Fix http proxy authentication when user and an optional
-      password appears in the *_proxy vars. (Vincent Ladeuil,
+      password appears in the ``*_proxy`` vars. (Vincent Ladeuil,
       #83954).
 
     * ``bzr log branch/file`` works for local treeless branches
       (Aaron Bentley, #84247)
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
+
+    * Searching location of CA bundle for PyCurl in env variable (CURL_CA_BUNDLE),
+      and on win32 along the PATH. (Alexander Belchenko, #82086)
 
     * ``bzr init`` works with unicode argument LOCATION.
       (Alexander Belchenko, #85599)

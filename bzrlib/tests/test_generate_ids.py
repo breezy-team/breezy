@@ -26,7 +26,19 @@ from bzrlib import (
 
 class TestFileIds(tests.TestCase):
     """Test functions which generate file ids"""
-    
+
+    def assertGenFileId(self, regex, filename):
+        """gen_file_id should create a file id matching the regex.
+
+        The file id should be ascii, and should be an 8-bit string
+        """
+        file_id = generate_ids.gen_file_id(filename)
+        self.assertContainsRe(file_id, '^'+regex+'$')
+        # It should be a utf8 file_id, not a unicode one
+        self.assertIsInstance(file_id, str)
+        # gen_file_id should always return ascii file ids.
+        file_id.decode('ascii')
+
     def test_gen_file_id(self):
         gen_file_id = generate_ids.gen_file_id
 
@@ -43,7 +55,7 @@ class TestFileIds(tests.TestCase):
         # we remove unicode characters, and still don't end up with a 
         # hidden file id
         self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
-        
+
         # Our current method of generating unique ids adds 33 characters
         # plus an serial number (log10(N) characters)
         # to the end of the filename. We now restrict the filename portion to
@@ -59,6 +71,13 @@ class TestFileIds(tests.TestCase):
         fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
         self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
         self.failUnless(len(fid) < 60)
+
+    def test_file_ids_are_ascii(self):
+        tail = r'-\d{14}-[a-z0-9]{16}-\d+'
+        self.assertGenFileId('foo' + tail, 'foo')
+        self.assertGenFileId('foo' + tail, u'foo')
+        self.assertGenFileId('bar' + tail, u'bar')
+        self.assertGenFileId('br' + tail, u'b\xe5r')
 
     def test__next_id_suffix_sets_suffix(self):
         generate_ids._gen_file_id_suffix = None
