@@ -592,16 +592,18 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_compare_subtrees(self):
         """want_unchanged should generate a list of unchanged entries."""
         tree1 = self.make_branch_and_tree('1')
+        if not tree1.supports_tree_reference():
+            raise tests.TestSkipped('Tree %s does not support references'
+                % (tree1,))
         tree1.set_root_id('root-id')
         subtree1 = self.make_branch_and_tree('1/sub')
         subtree1.set_root_id('subtree-id')
-        try:
-            tree1.add_reference(subtree1)
-        except errors.UnsupportedOperation:
-            self.assertIsInstance(tree1, workingtree_4.WorkingTree4)
-            raise tests.TestSkipped('Tree does not support references')
+        tree1.add_reference(subtree1)
 
         tree2 = self.make_to_branch_and_tree('2')
+        if not tree2.supports_tree_reference():
+            raise tests.TestSkipped('Tree %s does not support references'
+                % (tree2,))
         tree2.set_root_id('root-id')
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
