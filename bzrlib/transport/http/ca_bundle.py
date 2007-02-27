@@ -58,7 +58,8 @@ def get_ca_path(use_cache=True):
         dirs = [os.path.realpath(os.path.dirname(sys.argv[0]))]     # app dir
         paths = os.environ.get('PATH')
         if paths:
-            paths = [i for i in paths.split(os.pathsep) if i]
+            # don't include the cwd in the search
+            paths = [i for i in paths.split(os.pathsep) if i not in ('', '.')]
             dirs.extend(paths)
         for d in dirs:
             fname = os.path.join(d, "curl-ca-bundle.crt")
