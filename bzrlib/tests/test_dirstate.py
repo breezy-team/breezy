@@ -1292,44 +1292,59 @@ class TestBisect(TestCaseWithTransport):
                                    state, ['b'])
 
 
-class TestBisectSplit(TestCase):
-    """Test that bisect_split() returns the expected values.
+class TestBisectDirblock(TestCase):
+    """Test that bisect_dirblock() returns the expected values.
 
-    bisect_split is intended to work like bisect.bisect_left() except it splits
-    the path by directory sections, rather than using a raw comparison.
+    bisect_dirblock is intended to work like bisect.bisect_left() except it
+    knows it is working on dirblocks and that dirblocks are sorted by ('path',
+    'to', 'foo') chunks rather than by raw 'path/to/foo'.
     """
 
-    def assertBisect(self, paths, split_paths, key, *args, **kwargs):
+    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
 
-        :param paths: The plain list of paths. It should be split sorted
-        :param split_paths: A list of split paths sorted identical to paths.
-        :param key: The path we are bisecting for.
+        :param dirblocks: A list of (path, [info]) pairs.
+        :param split_dirblocks: A list of ((split, path), [info]) pairs.
+        :param path: The path we are indexing.
+
+        All other arguments will be passed along.
         """
-        bisect_split_idx = dirstate.bisect_split(paths, key, *args, **kwargs)
-        bisect_left_idx = bisect.bisect_left(split_paths, key.split('/'),
+        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path,
+                                                 *args, **kwargs)
+        split_dirblock = (path.split('/'), [])
+        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
                                              *args)
         self.assertEqual(bisect_left_idx, bisect_split_idx,
                          'bisect_split disagreed. %s != %s'
                          ' for key %s'
-                         % (bisect_left_idx, bisect_split_idx, key)
+                         % (bisect_left_idx, bisect_split_idx, path)
                          )
+
+    def paths_to_dirblocks(self, paths):
+        """Convert a list of paths into dirblock form.
+
+        Also, ensure that the paths are in proper sorted order.
+        """
+        dirblocks = [(path, []) for path in paths]
+        split_dirblocks = [(path.split('/'), []) for path in paths]
+        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
+        return dirblocks, split_dirblocks
 
     def test_simple(self):
         """In the simple case it works just like bisect_left"""
         paths = ['', 'a', 'b', 'c', 'd']
-        split_paths = [[''], ['a'], ['b'], ['c'], ['d']]
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
         for path in paths:
-            self.assertBisect(paths, split_paths, path)
-        self.assertBisect(paths, split_paths, '_')
-        self.assertBisect(paths, split_paths, 'aa')
-        self.assertBisect(paths, split_paths, 'bb')
-        self.assertBisect(paths, split_paths, 'cc')
-        self.assertBisect(paths, split_paths, 'dd')
-        self.assertBisect(paths, split_paths, 'a/a')
-        self.assertBisect(paths, split_paths, 'b/b')
-        self.assertBisect(paths, split_paths, 'c/c')
-        self.assertBisect(paths, split_paths, 'd/d')
+            self.assertBisect(dirblocks, split_dirblocks, path)
+        self.assertBisect(dirblocks, split_dirblocks, '_')
+        self.assertBisect(dirblocks, split_dirblocks, 'aa')
+        self.assertBisect(dirblocks, split_dirblocks, 'bb')
+        self.assertBisect(dirblocks, split_dirblocks, 'cc')
+        self.assertBisect(dirblocks, split_dirblocks, 'dd')
+        self.assertBisect(dirblocks, split_dirblocks, 'a/a')
+        self.assertBisect(dirblocks, split_dirblocks, 'b/b')
+        self.assertBisect(dirblocks, split_dirblocks, 'c/c')
+        self.assertBisect(dirblocks, split_dirblocks, 'd/d')
 
     def test_involved(self):
         """This is where bisect_left diverges slightly."""
@@ -1341,10 +1356,9 @@ class TestBisectSplit(TestCase):
                  'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
                  'z-a', 'z-z',
                 ]
-        split_paths = [p.split('/') for p in paths]
-        self.assertEqual(split_paths, sorted(split_paths))
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
         for path in paths:
-            self.assertBisect(paths, split_paths, path)
+            self.assertBisect(dirblocks, split_dirblocks, path)
 
     def test_involved_cached(self):
         """This is where bisect_left diverges slightly."""
@@ -1357,7 +1371,7 @@ class TestBisectSplit(TestCase):
                  'z-a', 'z-z',
                 ]
         cache = {}
-        split_paths = [p.split('/') for p in paths]
-        self.assertEqual(split_paths, sorted(split_paths))
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
         for path in paths:
-            self.assertBisect(paths, split_paths, path, cache=cache)
+            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
+

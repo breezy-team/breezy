@@ -294,7 +294,7 @@ class WorkingTree4(WorkingTree3):
         for block in state._dirblocks[1:]: # skip the root
             dirname = block[0]
             try:
-                parent_ie = parent_ies[block[0]]
+                parent_ie = parent_ies[dirname]
             except KeyError:
                 # all the paths in this block are not versioned in this tree
                 continue
