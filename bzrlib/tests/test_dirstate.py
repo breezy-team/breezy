@@ -686,7 +686,7 @@ class TestGetLines(TestCaseWithDirState):
     def test_get_line_with_2_rows(self):
         state = self.create_dirstate_with_root_and_subdir()
         try:
-            self.assertEqual(['#bazaar dirstate flat format 2\n',
+            self.assertEqual(['#bazaar dirstate flat format 3\n',
                 'adler32: -1327947603\n',
                 'num_entries: 2\n',
                 '0\x00\n\x00'

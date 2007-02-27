@@ -286,6 +286,7 @@ class DirState(object):
         self._lock_token = None
         self._id_index = None
         self._end_of_header = None
+        self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
     def add(self, path, file_id, kind, stat, link_or_sha1):
@@ -948,7 +949,8 @@ class DirState(object):
         """
         if key[0:2] == ('', ''):
             return 0, True
-        block_index = bisect_dirblock(self._dirblocks, key[0], 1)
+        block_index = bisect_dirblock(self._dirblocks, key[0], 1,
+                                      cache=self._split_path_cache)
         # _right returns one-past-where-key is so we have to subtract
         # one to use it. we use _right here because there are two
         # '' blocks - the root, and the contents of root
@@ -1971,6 +1973,7 @@ class DirState(object):
         self._state_file = None
         self._lock_token.unlock()
         self._lock_token = None
+        self._split_path_cache = {}
 
     def _requires_lock(self):
         """Checks that a lock is currently held by someone on the dirstate"""
