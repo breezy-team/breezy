@@ -1546,31 +1546,32 @@ class InterDirStateTree(InterTree):
                     # as well.
                     old_path = source_details[1]
                     old_dirname, old_basename = os.path.split(old_path)
-                    path = os.path.join(*entry[0][0:2])
+                    path = os.path.join(entry[0][0], entry[0][1])
                     old_entry = state._get_entry(source_index, path_utf8=old_path)
                     # update the source details variable to be the real
                     # location.
                     source_details = old_entry[1][source_index]
                 else:
-                    old_path = path = os.path.join(*entry[0][0:2])
-                    old_dirname, old_basename = entry[0][0:2]
+                    old_dirname = entry[0][0]
+                    old_basename = entry[0][1]
+                    old_path = path = os.path.join(old_dirname, old_basename)
                 if path_info is None:
                     # the file is missing on disk, show as removed.
-                    old_path = os.path.join(*entry[0][0:2])
+                    old_path = os.path.join(entry[0][0], entry[0][1])
                     content_change = True
                     target_kind = None
                     target_exec = False
                 else:
                     # source and target are both versioned and disk file is present.
                     target_kind = path_info[2]
-                    if path_info[2][0] == 'd':
+                    if target_kind == 'directory':
                         if source_details[0][0] != 'd':
                             content_change = True
                         else:
                             # directories have no fingerprint
                             content_change = False
                         target_exec = False
-                    elif path_info[2][0] == 'f':
+                    elif target_kind == 'file':
                         if source_details[0][0] != 'f':
                             content_change = True
                         else:
@@ -1584,7 +1585,7 @@ class InterDirStateTree(InterTree):
                         target_exec = bool(
                             stat.S_ISREG(path_info[3].st_mode)
                             and stat.S_IEXEC & path_info[3].st_mode)
-                    elif path_info[2][0] == 's':
+                    elif target_kind == 'symlink':
                         if source_details[0][0] != 'l':
                             content_change = True
                         else:
@@ -1690,14 +1691,21 @@ class InterDirStateTree(InterTree):
                     # this check should probably be outside the loop: one
                     # 'iterate two trees' api, and then _iter_changes filters
                     # unchanged pairs. - RBC 20070226
-                    if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                    if (include_unchanged
+                        or result[2]                    # content change
+                        or result[3][0] != result[3][1] # versioned status
+                        or result[4][0] != result[4][1] # parent id
+                        or result[5][0] != result[5][1] # name
+                        or result[6][0] != result[6][1] # kind
+                        or result[7][0] != result[7][1] # executable
+                        ):
                         yield result
             dir_iterator = osutils.walkdirs(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
             if block_index == 0:
                 # we have processed the total root already, but because the
-                # initial key matched it we sould skip it here.
+                # initial key matched it we should skip it here.
                 block_index +=1
             try:
                 current_dir_info = dir_iterator.next()
@@ -1783,7 +1791,14 @@ class InterDirStateTree(InterTree):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
-                            if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                            if (include_unchanged
+                                or result[2]                    # content change
+                                or result[3][0] != result[3][1] # versioned status
+                                or result[4][0] != result[4][1] # parent id
+                                or result[5][0] != result[5][1] # name
+                                or result[6][0] != result[6][1] # kind
+                                or result[7][0] != result[7][1] # executable
+                                ):
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
@@ -1797,7 +1812,14 @@ class InterDirStateTree(InterTree):
                                 # this check should probably be outside the loop: one
                                 # 'iterate two trees' api, and then _iter_changes filters
                                 # unchanged pairs. - RBC 20070226
-                                if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                                if (include_unchanged
+                                    or result[2]                    # content change
+                                    or result[3][0] != result[3][1] # versioned status
+                                    or result[4][0] != result[4][1] # parent id
+                                    or result[5][0] != result[5][1] # name
+                                    or result[6][0] != result[6][1] # kind
+                                    or result[7][0] != result[7][1] # executable
+                                    ):
                                     yield result
                             advance_path = False
                     else:
@@ -1805,7 +1827,14 @@ class InterDirStateTree(InterTree):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
-                            if include_unchanged or result[2] or True in map(lambda x:x[0]!=x[1], result[3:8]):
+                            if (include_unchanged
+                                or result[2]                    # content change
+                                or result[3][0] != result[3][1] # versioned status
+                                or result[4][0] != result[4][1] # parent id
+                                or result[5][0] != result[5][1] # name
+                                or result[6][0] != result[6][1] # kind
+                                or result[7][0] != result[7][1] # executable
+                                ):
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
@@ -1833,11 +1862,18 @@ class InterDirStateTree(InterTree):
                 if current_dir_info is not None:
                     try:
                         current_dir_info = dir_iterator.next()
-                        # convert the unicode relpaths in the dir index to uf8 for
+                        # convert the unicode relpaths in the dir index to utf8 for
                         # comparison with dirstate data.
-                        # TODO: keep the utf8 version around for giving to the caller.
-                        current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
-                            [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
+                        # TODO: keep the unicode version around for giving to the caller.
+                        #       We could also use cached_utf8.encode() which
+                        #       maintains utf8=>unicode and unicode=>utf8 maps.
+                        # TODO: change this to a plain tuple assignment rather
+                        #       than doing slicing, since it should be faster.
+                        #       (unless the size of the line is dynamic)
+                        utf8_relpath = current_dir_info[0][0].encode('utf8')
+                        current_dir_info = ((utf8_relpath, current_dir_info[0][1]),
+                            [(line[0].encode('utf8'), line[1].encode('utf8'))
+                              + line[2:] for line in current_dir_info[1]])
                     except StopIteration:
                         current_dir_info = None
 
