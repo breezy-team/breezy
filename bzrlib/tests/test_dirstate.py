@@ -898,6 +898,37 @@ class TestGetEntry(TestCaseWithDirState):
             state.unlock()
 
 
+class TestDirstateSortOrder(TestCaseWithTransport):
+    """Test that DirState adds entries in the right order."""
+
+    def test_add_sorting(self):
+        """Add entries in lexicographical order, we get path sorted order."""
+        dirs = ['a', 'a-a', 'a-z',
+                'a/a', 'a/a-a', 'a/a-z', 'a/a/a', 'a/a/z',
+                'a/z', 'a/z-a', 'a/z-z', 'a/z/a', 'a/z/z',
+                'z',
+               ]
+        null_sha = ''
+        state = dirstate.DirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+
+        fake_stat = os.stat('dirstate')
+        for d in dirs:
+            d_id = d.replace('/', '_')+'-id'
+            file_path = d + '/f'
+            file_id = file_path.replace('/', '_')+'-id'
+            state.add(d, d_id, 'directory', fake_stat, null_sha)
+            state.add(file_path, file_id, 'file', fake_stat, null_sha)
+
+        expected = ['', '', 'a',
+                'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                'a-a', 'a-z', 'z',
+               ]
+        dirblock_names = [d[0] for d in state._dirblocks]
+        self.assertEqual(expected, dirblock_names)
+
+
 class TestBisect(TestCaseWithTransport):
     """Test the ability to bisect into the disk format."""
 
