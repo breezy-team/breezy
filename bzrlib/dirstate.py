@@ -203,11 +203,11 @@ import zlib
 
 from bzrlib import (
     errors,
+    inventory,
     lock,
+    osutils,
     trace,
     )
-import bzrlib.inventory
-from bzrlib import osutils
 from bzrlib.osutils import (
     pathjoin,
     sha_file,
@@ -256,6 +256,9 @@ class DirState(object):
     NULLSTAT = 'x' * 32
     NULL_PARENT_DETAILS = ('a', '', 0, False, '')
 
+    HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
+    HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
+
     def __init__(self, path):
         """Create a  DirState object.
 
@@ -291,6 +294,7 @@ class DirState(object):
         self._lock_token = None
         self._id_index = None
         self._end_of_header = None
+        self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
     def add(self, path, file_id, kind, stat, fingerprint):
@@ -313,7 +317,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        #------- copied from bzrlib.inventory.make_entry
+        #------- copied from inventory.make_entry
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be
@@ -331,15 +335,26 @@ class DirState(object):
         dirname, basename = osutils.split(utf8path)
         assert file_id.__class__ == str, \
             "must be a utf8 file_id not %s" % (type(file_id))
+        # Make sure the file_id does not exist in this tree
+        file_id_entry = self._get_entry(0, fileid_utf8=file_id)
+        if file_id_entry != (None, None):
+            path = osutils.pathjoin(file_id_entry[0][0], file_id_entry[0][1])
+            kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
+            info = '%s:%s' % (kind, path)
+            raise errors.DuplicateFileId(file_id, info)
         entry_key = (dirname, basename, file_id)
         self._read_dirblocks_if_needed()
         block_index, present = self._find_block_index_from_key(entry_key)
         if not present:
-            # TODO: This test is not complete - an empty directory, or a
-            # directory for a parent tree will fool it.
-            # some parent path has not been added - its an error to add this
-            # child
-            raise errors.NotVersionedError(path, str(self))
+            # The block where we want to put the file is not present. But it
+            # might be because the directory was empty, or not loaded yet. Look
+            # for a parent entry, if not found, raise NotVersionedError
+            parent_dir, parent_base = osutils.split(dirname)
+            parent_block_idx, parent_entry_idx, _, parent_present = \
+                self._get_block_entry_index(parent_dir, parent_base, 0)
+            if not parent_present:
+                raise errors.NotVersionedError(path, str(self))
+            self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
         block = self._dirblocks[block_index][1]
         if stat is None:
             size = 0
@@ -949,7 +964,8 @@ class DirState(object):
         """
         if key[0:2] == ('', ''):
             return 0, True
-        block_index = bisect.bisect_left(self._dirblocks, (key[0], []), 1)
+        block_index = bisect_dirblock(self._dirblocks, key[0], 1,
+                                      cache=self._split_path_cache)
         # _right returns one-past-where-key is so we have to subtract
         # one to use it. we use _right here because there are two
         # '' blocks - the root, and the contents of root
@@ -1159,7 +1175,7 @@ class DirState(object):
         If either file_id or path is supplied, it is used as the key to lookup.
         If both are supplied, the fastest lookup is used, and an error is
         raised if they do not both point at the same row.
-        
+
         :param tree_index: The index of the tree we wish to locate this path
             in. If the path is present in that tree, the entry containing its
             details is returned, otherwise (None, None) is returned
@@ -1184,6 +1200,7 @@ class DirState(object):
                                           ' tree_index, file_id and path')
             return entry
         else:
+            assert fileid_utf8 is not None
             possible_keys = self._get_id_index().get(fileid_utf8, None)
             if not possible_keys:
                 return None, None
@@ -1193,8 +1210,21 @@ class DirState(object):
                                                              tree_index)
                 if file_present:
                     entry = self._dirblocks[block_index][1][entry_index]
+                    # _get_block_entry_index only returns entries that are not
+                    # absent in the current tree. _get_id_index will return
+                    # both locations for a renamed file.  It is possible that a
+                    # new file was added at the same location that the old file
+                    # was renamed away. So _get_block_entry_index will actually
+                    # match the new file, skipping the fact that the real entry
+                    # we want is the rename. By just continuing here, we should
+                    # find the record at the target location, because
+                    # _get_id_index should return all locations.
+                    if entry[0][2] != fileid_utf8:
+                        continue
                     assert entry[1][tree_index][0] not in ('a', 'r')
-                    assert key == entry[0]
+                    assert key == entry[0], ('We were told that %s would be at'
+                            ' %s, %s, but we found %s' % (key, block_index,
+                                                          entry_index, entry))
                     return entry
             return None, None
 
@@ -1222,7 +1252,7 @@ class DirState(object):
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
         empty_tree_dirblocks[0][1].append(
-            (('', '', bzrlib.inventory.ROOT_ID), [
+            (('', '', inventory.ROOT_ID), [
                 ('d', '', 0, False, DirState.NULLSTAT),
             ]))
         result.lock_write()
@@ -1292,7 +1322,7 @@ class DirState(object):
         :param lines: A sequece of lines containing the parents list and the
             path lines.
         """
-        output_lines = ['#bazaar dirstate flat format 2\n']
+        output_lines = [DirState.HEADER_FORMAT_3]
         lines.append('') # a final newline
         inventory_text = '\0\n\0'.join(lines)
         output_lines.append('adler32: %s\n' % (zlib.adler32(inventory_text),))
@@ -1420,6 +1450,11 @@ class DirState(object):
                 entries = [fields_to_entry(fields[pos:pos+entry_size])
                            for pos in xrange(cur, field_count, entry_size)]
                 self._entries_to_current_state(entries)
+            # To convert from format 2  => format 3
+            # self._dirblocks = sorted(self._dirblocks,
+            #                          key=lambda blk:blk[0].split('/'))
+            # To convert from format 3 => format 2
+            # self._dirblocks = sorted(self._dirblocks)
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
@@ -1463,7 +1498,7 @@ class DirState(object):
         and their ids. Followed by a newline.
         """
         header = self._state_file.readline()
-        assert header == '#bazaar dirstate flat format 2\n', \
+        assert header == DirState.HEADER_FORMAT_3, \
             'invalid header line: %r' % (header,)
         adler_line = self._state_file.readline()
         assert adler_line.startswith('adler32: '), 'missing adler32 checksum'
@@ -1531,6 +1566,9 @@ class DirState(object):
             raise NotImplementedError(self.set_path_id)
         # TODO: check new id is unique
         entry = self._get_entry(0, path_utf8=path)
+        if entry[0][2] == new_id:
+            # Nothing to change.
+            return
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
         self.update_minimal(('', '', new_id), 'd',
@@ -1785,7 +1823,7 @@ class DirState(object):
             # Remove it, its meaningless.
             block = self._find_block(current_old[0])
             entry_index, present = self._find_entry_index(current_old[0], block[1])
-            assert present
+            assert present, 'could not find entry for %s' % (current_old,)
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
@@ -1797,10 +1835,10 @@ class DirState(object):
         for update_key in all_remaining_keys:
             update_block_index, present = \
                 self._find_block_index_from_key(update_key)
-            assert present
+            assert present, 'could not find block for %s' % (update_key,)
             update_entry_index, present = \
                 self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
-            assert present
+            assert present, 'could not find entry for %s' % (update_key,)
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
             # it must not be absent at the moment
             assert update_tree_details[0][0] != 'a' # absent
@@ -1850,9 +1888,14 @@ class DirState(object):
                     # the test for existing kinds is different: this can be
                     # factored out to a helper though.
                     other_block_index, present = self._find_block_index_from_key(other_key)
-                    assert present
-                    other_entry_index, present = self._find_entry_index(other_key, self._dirblocks[other_block_index][1])
-                    assert present
+                    if not present:
+                        import pdb; pdb.set_trace()
+                    assert present, 'could not find block for %s' % (other_key,)
+                    other_entry_index, present = self._find_entry_index(other_key,
+                                            self._dirblocks[other_block_index][1])
+                    if not present:
+                        import pdb; pdb.set_trace()
+                    assert present, 'could not find entry for %s' % (other_key,)
                     assert path_utf8 is not None
                     self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
                         ('r', path_utf8, 0, False, '')
@@ -1865,10 +1908,10 @@ class DirState(object):
                     # records.
                     update_block_index, present = \
                         self._find_block_index_from_key(other_key)
-                    assert present
+                    assert present, 'could not find block for %s' % (other_key,)
                     update_entry_index, present = \
                         self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
-                    assert present
+                    assert present, 'could not find entry for %s' % (other_key,)
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
                     if update_details[0] in ('r', 'a'): # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
@@ -1949,11 +1992,44 @@ class DirState(object):
         self._state_file = None
         self._lock_token.unlock()
         self._lock_token = None
+        self._split_path_cache = {}
 
     def _requires_lock(self):
         """Checks that a lock is currently held by someone on the dirstate"""
         if not self._lock_token:
             raise errors.ObjectNotLocked(self)
+
+
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+    """Return the index where to insert dirname into the dirblocks.
+
+    The return value idx is such that all directories blocks in dirblock[:idx]
+    have names < dirname, and all blocks in dirblock[idx:] have names >=
+    dirname.
+
+    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
+    slice of a to be searched.
+    """
+    if hi is None:
+        hi = len(dirblocks)
+    try:
+        dirname_split = cache[dirname]
+    except KeyError:
+        dirname_split = dirname.split('/')
+        cache[dirname] = dirname_split
+    while lo < hi:
+        mid = (lo+hi)//2
+        # Grab the dirname for the current dirblock
+        cur = dirblocks[mid][0]
+        try:
+            cur_split = cache[cur]
+        except KeyError:
+            cur_split = cur.split('/')
+            cache[cur] = cur_split
+        if cur_split < dirname_split: lo = mid+1
+        else: hi = mid
+    return lo
+
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""
@@ -1967,4 +2043,3 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     return _encode(_pack('>llllll'
         , st.st_size, st.st_mtime, st.st_ctime
         , st.st_dev, st.st_ino, st.st_mode))[:-1]
-

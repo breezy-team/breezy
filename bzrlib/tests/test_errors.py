@@ -30,6 +30,11 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_duplicate_file_id(self):
+        error = errors.DuplicateFileId('a_file_id', 'foo')
+        self.assertEqualDiff('File id {a_file_id} already exists in inventory'
+                             ' as foo', str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "

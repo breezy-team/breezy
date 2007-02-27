@@ -16,6 +16,7 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
+import bisect
 import os
 
 from bzrlib import (
@@ -24,7 +25,7 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 # TODO:
@@ -685,7 +686,7 @@ class TestGetLines(TestCaseWithDirState):
     def test_get_line_with_2_rows(self):
         state = self.create_dirstate_with_root_and_subdir()
         try:
-            self.assertEqual(['#bazaar dirstate flat format 2\n',
+            self.assertEqual(['#bazaar dirstate flat format 3\n',
                 'adler32: -1327947603\n',
                 'num_entries: 2\n',
                 '0\x00\n\x00'
@@ -895,6 +896,37 @@ class TestGetEntry(TestCaseWithDirState):
             self.assertEntryEqual('', '', 'a-root-value', state, '', 0)
         finally:
             state.unlock()
+
+
+class TestDirstateSortOrder(TestCaseWithTransport):
+    """Test that DirState adds entries in the right order."""
+
+    def test_add_sorting(self):
+        """Add entries in lexicographical order, we get path sorted order."""
+        dirs = ['a', 'a-a', 'a-z',
+                'a/a', 'a/a-a', 'a/a-z', 'a/a/a', 'a/a/z',
+                'a/z', 'a/z-a', 'a/z-z', 'a/z/a', 'a/z/z',
+                'z',
+               ]
+        null_sha = ''
+        state = dirstate.DirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+
+        fake_stat = os.stat('dirstate')
+        for d in dirs:
+            d_id = d.replace('/', '_')+'-id'
+            file_path = d + '/f'
+            file_id = file_path.replace('/', '_')+'-id'
+            state.add(d, d_id, 'directory', fake_stat, null_sha)
+            state.add(file_path, file_id, 'file', fake_stat, null_sha)
+
+        expected = ['', '', 'a',
+                'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                'a-a', 'a-z', 'z',
+               ]
+        dirblock_names = [d[0] for d in state._dirblocks]
+        self.assertEqual(expected, dirblock_names)
 
 
 class TestBisect(TestCaseWithTransport):
@@ -1289,4 +1321,88 @@ class TestBisect(TestCaseWithTransport):
         self.assertBisectRecursive(expected, ['a', 'b', 'b/c', 'b/d',
                                               'b/d/e', 'b/g', 'h', 'h/e'],
                                    state, ['b'])
+
+
+class TestBisectDirblock(TestCase):
+    """Test that bisect_dirblock() returns the expected values.
+
+    bisect_dirblock is intended to work like bisect.bisect_left() except it
+    knows it is working on dirblocks and that dirblocks are sorted by ('path',
+    'to', 'foo') chunks rather than by raw 'path/to/foo'.
+    """
+
+    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
+        """Assert that bisect_split works like bisect_left on the split paths.
+
+        :param dirblocks: A list of (path, [info]) pairs.
+        :param split_dirblocks: A list of ((split, path), [info]) pairs.
+        :param path: The path we are indexing.
+
+        All other arguments will be passed along.
+        """
+        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path,
+                                                 *args, **kwargs)
+        split_dirblock = (path.split('/'), [])
+        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
+                                             *args)
+        self.assertEqual(bisect_left_idx, bisect_split_idx,
+                         'bisect_split disagreed. %s != %s'
+                         ' for key %s'
+                         % (bisect_left_idx, bisect_split_idx, path)
+                         )
+
+    def paths_to_dirblocks(self, paths):
+        """Convert a list of paths into dirblock form.
+
+        Also, ensure that the paths are in proper sorted order.
+        """
+        dirblocks = [(path, []) for path in paths]
+        split_dirblocks = [(path.split('/'), []) for path in paths]
+        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
+        return dirblocks, split_dirblocks
+
+    def test_simple(self):
+        """In the simple case it works just like bisect_left"""
+        paths = ['', 'a', 'b', 'c', 'd']
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+        self.assertBisect(dirblocks, split_dirblocks, '_')
+        self.assertBisect(dirblocks, split_dirblocks, 'aa')
+        self.assertBisect(dirblocks, split_dirblocks, 'bb')
+        self.assertBisect(dirblocks, split_dirblocks, 'cc')
+        self.assertBisect(dirblocks, split_dirblocks, 'dd')
+        self.assertBisect(dirblocks, split_dirblocks, 'a/a')
+        self.assertBisect(dirblocks, split_dirblocks, 'b/b')
+        self.assertBisect(dirblocks, split_dirblocks, 'c/c')
+        self.assertBisect(dirblocks, split_dirblocks, 'd/d')
+
+    def test_involved(self):
+        """This is where bisect_left diverges slightly."""
+        paths = ['', 'a',
+                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                 'a-a', 'a-z',
+                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
+                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
+                 'z-a', 'z-z',
+                ]
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+
+    def test_involved_cached(self):
+        """This is where bisect_left diverges slightly."""
+        paths = ['', 'a',
+                 'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
+                 'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
+                 'a-a', 'a-z',
+                 'z', 'z/a/a', 'z/a/z', 'z/a-a', 'z/a-z',
+                 'z/z', 'z/z/a', 'z/z/z', 'z/z-a', 'z/z-z',
+                 'z-a', 'z-z',
+                ]
+        cache = {}
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
 

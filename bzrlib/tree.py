@@ -746,7 +746,6 @@ class InterTree(InterObject):
         return result
 
 
-
 # This was deprecated before 0.12, but did not have an official warning
 @symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
 def RevisionTree(*args, **kwargs):

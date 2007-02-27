@@ -32,7 +32,11 @@ class TestCommitBuilder(TestCaseWithRepository):
 
     def record_root(self, builder, tree):
         if builder.record_root_entry is True:
-            ie = tree.inventory.root
+            tree.lock_read()
+            try:
+                ie = tree.inventory.root
+            finally:
+                tree.unlock()
             parent_tree = tree.branch.repository.revision_tree(None)
             parent_invs = []
             builder.record_entry_contents(ie, parent_invs, '', tree)
@@ -86,13 +90,17 @@ class TestCommitBuilder(TestCaseWithRepository):
             raise tests.TestSkipped('Format requires root')
         self.build_tree(['foo'])
         tree.add('foo', 'foo-id')
-        entry = tree.inventory['foo-id']
-        builder = tree.branch.get_commit_builder([])
-        self.callDeprecated(['Root entry should be supplied to'
-            ' record_entry_contents, as of bzr 0.10.'],
-            builder.record_entry_contents, entry, [], 'foo', tree)
-        builder.finish_inventory()
-        rev_id = builder.commit('foo bar')
+        tree.lock_write()
+        try:
+            entry = tree.inventory['foo-id']
+            builder = tree.branch.get_commit_builder([])
+            self.callDeprecated(['Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.'],
+                builder.record_entry_contents, entry, [], 'foo', tree)
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar')
+        finally:
+            tree.unlock()
 
     def test_commit(self):
         tree = self.make_branch_and_tree(".")

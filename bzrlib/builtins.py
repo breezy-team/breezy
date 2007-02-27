@@ -2440,8 +2440,20 @@ class cmd_merge(Command):
             merge_type = _mod_merge.Merge3Merger
 
         if directory is None: directory = u'.'
+        # XXX: jam 20070225 WorkingTree should be locked before you extract its
+        #      inventory. Because merge is a mutating operation, it really
+        #      should be a lock_write() for the whole cmd_merge operation.
+        #      However, cmd_merge open's its own tree in _merge_helper, which
+        #      means if we lock here, the later lock_write() will always block.
+        #      Either the merge helper code should be updated to take a tree,
+        #      or the ChangeReporter should be updated to not require an
+        #      inventory. (What about tree.merge_from_branch?)
         tree = WorkingTree.open_containing(directory)[0]
-        change_reporter = delta.ChangeReporter(tree.inventory)
+        tree.lock_read()
+        try:
+            change_reporter = delta.ChangeReporter(tree.inventory)
+        finally:
+            tree.unlock()
 
         if branch is not None:
             try:
@@ -3267,6 +3279,14 @@ def _merge_helper(other_revision, base_revision,
                                      " type %s." % merge_type)
     if reprocess and show_base:
         raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
+    # TODO: jam 20070226 We should really lock these trees earlier. However, we
+    #       only want to take out a lock_tree_write() if we don't have to pull
+    #       any ancestry. But merge might fetch ancestry in the middle, in
+    #       which case we would need a lock_write().
+    #       Because we cannot upgrade locks, for now we live with the fact that
+    #       the tree will be locked multiple times during a merge. (Maybe
+    #       read-only some of the time, but it means things will get read
+    #       multiple times.)
     try:
         merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
                                    pb=pb, change_reporter=change_reporter)

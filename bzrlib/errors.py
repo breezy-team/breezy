@@ -1383,6 +1383,16 @@ class MissingText(BzrError):
         self.file_id = file_id
 
 
+class DuplicateFileId(BzrError):
+
+    _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
+
+    def __init__(self, file_id, entry):
+        BzrError.__init__(self)
+        self.file_id = file_id
+        self.entry = entry
+
+
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"

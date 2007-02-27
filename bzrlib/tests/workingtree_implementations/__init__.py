@@ -1,6 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# Authors: Robert Collins <robert.collins@canonical.com>
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,6 +50,7 @@ def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_add_reference',
+        'bzrlib.tests.workingtree_implementations.test_add',
         'bzrlib.tests.workingtree_implementations.test_basis_inventory',
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
@@ -72,6 +71,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_put_file',
         'bzrlib.tests.workingtree_implementations.test_readonly',
         'bzrlib.tests.workingtree_implementations.test_read_working_inventory',
+        'bzrlib.tests.workingtree_implementations.test_rename_one',
         'bzrlib.tests.workingtree_implementations.test_revision_tree',
         'bzrlib.tests.workingtree_implementations.test_set_root_id',
         'bzrlib.tests.workingtree_implementations.test_smart_add',
