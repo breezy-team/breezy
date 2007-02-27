@@ -52,6 +52,9 @@ IN DEVELOPMENT
       "bzr unbind", you can "bzr bind" to bind to the previously-selected
       bind location.
 
+    * The bzr:// transport now has a well-known port number, 4155, which it will
+      use by default.  (Andrew Bennetts, Martin Pool)
+
     * Bazaar now looks for user-installed plugins before looking for site-wide
       plugins. (Jonathan Lange)
 
