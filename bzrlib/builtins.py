@@ -3154,8 +3154,7 @@ class cmd_serve(Command):
             server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
         else:
             if port is None:
-                # port 4155 is the default port for bzr, registered with IANA.
-                port = 4155
+                port = smart.BZR_DEFAULT_PORT
                 host = '127.0.0.1'
             else:
                 if ':' in port:

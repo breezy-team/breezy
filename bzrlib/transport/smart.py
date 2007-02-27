@@ -223,6 +223,10 @@ for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
 del scheme
 
 
+# Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_PORT = 4155
+
+
 def _recv_tuple(from_file):
     req_line = from_file.readline()
     return _decode_tuple(req_line)
@@ -1732,7 +1736,7 @@ class SmartTCPTransport(SmartTransport):
         _scheme, _username, _password, _host, _port, _path = \
             transport.split_url(url)
         if _port is None:
-            _port = 4155
+            _port = BZR_DEFAULT_PORT
         else:
             try:
                 _port = int(_port)
