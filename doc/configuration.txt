@@ -6,10 +6,10 @@ Information on how to configure Bazaar.
 
 Location of configuration file
 ==============================
-Each user gets a pair of configurations files in $HOME/.bazaar. The first
-one, named bazaar.conf, includes default configuration options. The other
-file, locations.conf, contains configuration information for specific
-branch locations.
+Each user gets a pair of configurations files in ``$HOME/.bazaar``. The first
+one, named ``bazaar.conf``, includes default configuration options. The other
+file, ``locations.conf``, contains configuration information for specific
+branch locations.  These files are sometimes referred to as ``ini files``.
 
 General Format
 ==============
@@ -25,15 +25,15 @@ Bazaar when parsing ini files.
 Section Headers
 ---------------
 A section header is a word enclosed in brackets that starts at the begining
-of a line, typical section headers look like this::
+of a line.  A typical section headers look like this::
 
     [DEFAULT]
 
 The only valid section header for bazaar.conf is [DEFAULT], which is case
-senstive. The default section provides for setting variables which can be
+sensitive. The default section provides for setting variables which can be
 overridden with the branch config file.
 
-For locations.conf, the variables from the section with the longest matching
+For ``locations.conf``, the variables from the section with the longest matching
 section header are used to the exclusion of other potentially valid section
 headers. A section header uses the path for the branch as the section
 header. Some examples include::
@@ -47,8 +47,7 @@ Section Variables
 -----------------
 
 A section variable resides within a section. A section variable contains a
-variable name, an equals sign and a value and generally takes the following
-form::
+variable name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
     check_signatures = require
@@ -87,12 +86,12 @@ would be ``sftp://example.com/location/branch1``.
 The main configuration file, bazaar.conf
 ----------------------------------------
 
-The main configuration file, $HOME/.bazaar/bazaar.conf, only allows one
-section called '''[DEFAULT]'''. This default section contains the default
+The main configuration file, ``$HOME/.bazaar/bazaar.conf``, only allows one
+section called ``[DEFAULT]``. This default section contains the default
 configuration options for all branches. The default section can be
-overriden by providing a branch specific section in locations.conf.
+overriden by providing a branch specific section in ``locations.conf``.
 
-A typical bazaar.conf section often looks like the following::
+A typical ``bazaar.conf`` section often looks like the following::
 
     [DEFAULT]
     email             = John Doe <jdoe@isp.com>
@@ -100,11 +99,11 @@ A typical bazaar.conf section often looks like the following::
     check_signatures  = check-available
     create_signatures = when-required
 
-$HOME/.bazaar/locations.conf allows one to specify overriding settings for a
+``$HOME/.bazaar/locations.conf`` allows one to specify overriding settings for a
 specific branch. The format is almost identical to the default section in
 bazaar.conf with one significant change: The section header, instead of
 saying default, will be the path to a branch that you wish to override a
-value for. The ? and * wildcards are supported::
+value for. The '?' and '*' wildcards are supported::
 
     [/home/jdoe/branches/nethack]
     email = Nethack Admin <nethack@nethack.com>
@@ -116,7 +115,7 @@ value for. The ? and * wildcards are supported::
     [http://bazaar-vcs.org/bzr/*]
     check_signatures  = require
 
-Common Variable options
+Common Variable Options
 =======================
 
 email
@@ -130,14 +129,14 @@ editor
 ------
 The path of the editor that you wish to use if *bzr commit* is run without
 a commit log message. This setting is trumped by the environment variable
-$BZR_EDITOR, and overrides $VISUAL and $EDITOR.
+``$BZR_EDITOR``, and overrides ``$VISUAL`` and ``$EDITOR``.
 
 check_signatures
 ----------------
 Defines the behavior for signatures.
 
 require
-    the gnupg signature for revisions must be present and must be valid
+    The gnupg signature for revisions must be present and must be valid.
 
 ignore
     Do not check gnupg signatures of revisions. 
@@ -145,39 +144,38 @@ ignore
 check-available
     (default) If gnupg signatures for revisions are present, check them.
     Bazaar will fail if it finds a bad signature, but will not fail if
-    no signature is present
+    no signature is present.
 
 create_signatures
 -----------------
-Defines the behaviour of signing revisions. Has three possible values:
-always, never and when-requied.
+Defines the behaviour of signing revisions.
 
 always
-    sign every new revision that is committed
+    Sign every new revision that is committed.
 
 when-required
     (default) Sign newly committed revisions only when the branch requires
-    signed revisions
+    signed revisions.
 
 never
-    Refuse to sign newly committed revisions, even if the branch requires signatures
+    Refuse to sign newly committed revisions, even if the branch requires signatures.
 
 recurse
 -------
-Only useful in locations.conf. Defines whether or not the configuration for
+Only useful in ``locations.conf``. Defines whether or not the configuration for
 this section applies to subdirectories:
 
 true
-    (default) This section applies to subdirectories as well
+    (default) This section applies to subdirectories.
 
 false
     This section only applies to the branch at this directory and not
-    branches 
+    branches below it. 
 
 gpg_signing_command
 -------------------
 (Default: "gpg"). Which program should be used to sign and check revisions.
-example::
+For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
@@ -186,34 +184,33 @@ Branch 6 Options
 ================
 
 These options apply only to branches that use the "experimental-branch6"
-format.  They are usually set in .bzr/branch/branch.conf automatically, but
-may be manually set in locations.conf or bazaar.conf
+format.  They are usually set in ``.bzr/branch/branch.conf`` automatically, but
+may be manually set in ``locations.conf`` or ``bazaar.conf``.
 
 append_revisions_only
 ---------------------
-If set to "True", then revisions can only be appended to the log, not removed.
-A branch with this setting enabled can only pull from another branch if the
-other branch's log is a longer version of its own.
-
-This is normally set by ``bzr init --append-revisions-only``.
+If set to "true" then revisions can only be appended to the log, not
+removed.  A branch with this setting enabled can only pull from
+another branch if the other branch's log is a longer version of its
+own.  This is normally set by ``bzr init --append-revisions-only``.
 
 parent_location
 ---------------
 If present, the location of the default branch for pull or merge.
-
-This is normally set by ``pull --remember`` or ``merge --remember``
+This option is normally set by ``pull --remember`` or ``merge
+--remember``
 
 push_location
 -------------
-If present, the location of the default branch for push.  This is normally
-set by ``push --remember``.
+If present, the location of the default branch for push.  This option
+is normally set by ``push --remember``.
 
 bound_location
 --------------
-The location that commits should go to when acting as a checkout.  (Normally
-set by ``bind``)
+The location that commits should go to when acting as a checkout.
+This option is normally set by ``bind``.
 
 bound
 -----
 If set to "True", the branch should act as a checkout, and push each commit to
-the bound_location.  (Normally set by ``bind``/``unbind``.)
+the bound_location.  This option is normally set by ``bind``/``unbind``.

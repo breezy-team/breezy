@@ -13,7 +13,7 @@ using Bazaar_, the distributed version control system, in a centralized
 manner. Bazaar_ is designed to be very flexible and allows several
 different workflows, from fully decentralized to mostly centralized.  The
 workflow used here is meant to ease a new user into more advanced usage of
-Bazaar_, and allows them to work in a mix of centralized and decentralized
+Bazaar_, and allow them to work in a mix of centralized and decentralized
 operations.
 
 In general, this document is meant for users coming from a background of
@@ -87,16 +87,19 @@ called ``centralhost``. Again, we will use a
   % bzr init-repo --no-trees sftp://centralhost/srv/bzr/
 
 You can think of this step as similar to setting up a new cvsroot, or
-subversion repository.
+subversion repository.  The {{{--no-trees}}} option tells bzr to not
+populate the directory with a working tree.  This is appropriate since
+no one will be making changes directly in the branches within the
+central repository.
 
 
-Versioning an existing project
-==============================
+Placing an existing project into Bazaar
+=======================================
 
 Now that we have a repository, let's create a versioned project. Most of
 the time, you will already have some code that you are working with,
 that you now want to version using Bazaar_. If the code was originally
-in source control, there are many ways to convert the project to Bazaar_
+in source control there are many ways to convert the project to Bazaar_
 without losing any history. However, this is outside the scope of this
 document. See `Tracking Upstream`_ for some possibilities (section
 "Converting and keeping history").
@@ -112,8 +115,8 @@ Developer 1: Creating the first revision
 ----------------------------------------
 
 So first, we want to create a branch in our remote Repository, where we
-will want to host the project.  Let's assume we have a project named
-"sigil" that we want to start versioning.
+want to host the project.  Let's assume we have a project named
+"sigil" that we want to put under version control.
 
 ::
 
@@ -141,7 +144,7 @@ working on.
   % bzr commit -m "Initial import of Sigil"
 
 
-In the example above, we created an empty branch (the ``/sigil`` branch)
+In the previous section, we created an empty branch (the ``/sigil`` branch)
 on ``centralhost``, and then checkout out this empty branch onto our
 workstation to add files from our existing project.
 There are many ways to setup your working directory, but the steps above
@@ -170,7 +173,7 @@ Now that two people both have a checkout of
 the checkouts will be out of date with the current version.
 At commit time, Bazaar_ will inform the user of this and prevent them from
 committing. To get up to date, use ``bzr update`` to update the
-tree with the remote changes. This may require resolving conflicts, if the
+tree with the remote changes. This may require resolving conflicts if the
 same files have been modified.
 
 
@@ -211,12 +214,12 @@ We now have a place to make any fixes we need to ``doodle``. And we would
 not interrupt people who are working on other parts of the code.  Because
 we have a checkout, any commits made in the ``~/work/sigil/doodle-fixes/``
 will also show up on ``centralhost``. [#nestedbranches]_ It is also
-possible to have 2 developers collaborate on one of these branches, just
+possible to have two developers collaborate on one of these branches, just
 like they would have collaborated on the ``dev`` branch. [#cbranch]_
 
 .. [#nestedbranches] It may look odd to have a branch in a subdirectory of
    another branch. This is just fine, and you can think of it as a
-   heirarchial namespace. Where the nested branch is derived from the
+   hierarchical namespace where the nested branch is derived from the
    outer branch.
 
 .. [#cbranch] When using lots of independent branches, having to retype
@@ -226,7 +229,11 @@ like they would have collaborated on the ``dev`` branch. [#cbranch]_
    Which is designed to take a base branch, create a new public branch,
    and create a checkout of that branch, all with much less typing.
    Configuring ``cbranch`` is outside the scope of this document, but the
-   final commands look like ``bzr cbranch dev my-feature-branch``
+   final commands are similar to:
+
+::
+
+   % bzr cbranch dev my-feature-branch
 
 .. _bzrtools: https://launchpad.net/products/bzrtools
 
@@ -275,7 +282,8 @@ location. This can be done with::
                sftp://centralhost/srv/bzr/sigil/user-b
 
 This gives each developer their own branch to work on. And, they can
-easily create a new feature branch for themselves with just[#cbranch]_::
+easily create a new feature branch for themselves with just [#cbranch]_
+::
 
   % bzr branch sftp://centralhost/srv/bzr/sigil/user-a \
                sftp://centralhost/srv/bzr/sigil/user-a/feature 
@@ -289,20 +297,20 @@ Glossary
 Shared Repository
 -----------------
 
-Bazaar_ has the concept of a "Shared Repository". This is similar to the
-concept of other RCS's repository. Such as in Subversion, where you have a
-remote repository, which is where all of the history is stored, and
-locally you don't have any history information, only a checkout of the
-working tree files. Note that "Shared" in this context means shared
-between branches. It *may* be shared between people, but standalone
-branches can also be shared between people.
+Bazaar_ has the concept of a "Shared Repository". This is similar to
+the concept of a repository in other RCSs. For example, in Subversion
+you have a remote repository, which is where all of the history is
+stored, and locally you don't have any history information, only a
+checkout of the working tree files. Note that "Shared" in this context
+means shared between branches. It *may* be shared between people, but
+standalone branches can also be shared between people.
 
 In Bazaar_ terms, a "Shared Repository" is a location where multiple
-branches can **share** their revision history information. Because Bazaar_
-wants to support decentralized workflows, it is possible for every branch
-to maintain its own revision history information. But this is often
-inefficient, since related branches share history, and they might as well
-share the storage as well.
+branches can **share** their revision history information. In order to
+support decentralized workflows, it is possible for every branch to
+maintain its own revision history information. But this is often
+inefficient, since related branches share history, and they might as
+well share the storage as well.
 
 
 .. 
