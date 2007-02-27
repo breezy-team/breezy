@@ -249,6 +249,7 @@ class DirState(object):
     NULL_PARENT_DETAILS = ('a', '', 0, False, '')
 
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
+    HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
     def __init__(self, path):
         """Create a  DirState object.
@@ -1300,7 +1301,7 @@ class DirState(object):
         :param lines: A sequece of lines containing the parents list and the
             path lines.
         """
-        output_lines = [DirState.HEADER_FORMAT_2]
+        output_lines = [DirState.HEADER_FORMAT_3]
         lines.append('') # a final newline
         inventory_text = '\0\n\0'.join(lines)
         output_lines.append('adler32: %s\n' % (zlib.adler32(inventory_text),))
@@ -1428,6 +1429,11 @@ class DirState(object):
                 entries = [fields_to_entry(fields[pos:pos+entry_size])
                            for pos in xrange(cur, field_count, entry_size)]
                 self._entries_to_current_state(entries)
+            # To convert from format 2  => format 3
+            # self._dirblocks = sorted(self._dirblocks,
+            #                          key=lambda blk:blk[0].split('/'))
+            # To convert from format 3 => format 2
+            # self._dirblocks = sorted(self._dirblocks)
             self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header(self):
@@ -1471,7 +1477,7 @@ class DirState(object):
         and their ids. Followed by a newline.
         """
         header = self._state_file.readline()
-        assert header == DirState.HEADER_FORMAT_2, \
+        assert header == DirState.HEADER_FORMAT_3, \
             'invalid header line: %r' % (header,)
         adler_line = self._state_file.readline()
         assert adler_line.startswith('adler32: '), 'missing adler32 checksum'
