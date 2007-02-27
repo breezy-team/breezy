@@ -28,12 +28,12 @@ that accompanies this documentation is able to use the servers underlying
 protocol as a dumb server.  This is the first stage high performance server
 functionality to be delivered.
 
-The current high performance server provides read only access by default for
-security. To enable read-write access, run it with --allow-writes. When using
-the SSH access method, bzr automatically runs with with the --allow-writes
-option.
+The current high performance server provides read-only access by
+default for security. To enable read-write access, run it with
+``--allow-writes``. When using the SSH access method, bzr
+automatically runs with with the ``--allow-writes`` option.
 
-It can be configured to run in three different ways:
+The server can be configured to run in three different ways:
 
 SSH
 ---
@@ -42,26 +42,27 @@ Using Bazaar over SSH requires no special configuration on the server::
 
     BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
 
-The `BZR_REMOTE_PATH` environment variable adjusts how `bzr` will be invoked on
+The ``BZR_REMOTE_PATH`` environment variable adjusts how `bzr` will be invoked on
 the remote system.  By default, just `bzr` will be invoked, which requires the
 `bzr` executable to be on the default search path.
 
-The `bzr+ssh://` URL scheme only supports absolute paths from the root of the
-filesystem.  Future versions are expected to support `~` in the same way as
-`sftp://` URLs.
+The ``bzr+ssh://`` URL scheme only supports absolute paths from the root of the
+filesystem.  Future versions are expected to support ``~`` in the same way as
+``sftp://`` URLs.
 
 inetd
 -----
 
-This example shows how to run `bzr` with a dedicated user `bzruser` for a shared
-repository in `/srv/bzr/repo` which has a branch at `/srv/bzr/repo/branchname`
+This example shows how to run `bzr` with a dedicated user `bzruser`
+for a shared repository in ``/srv/bzr/repo`` which has a branch at
+``/srv/bzr/repo/branchname``.
 
 Running a Bazaar server from inetd requires an inetd.conf entry::
 
     1234  stream  tcp  nowait  bzruser  /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
 
 When running client commands, the URL you supply is a `bzr://` URL relative to
-the `--directory` option given in inetd.conf::
+the ``--directory`` option given in inetd.conf::
 
     bzr log bzr://host:1234/branchname
 
@@ -69,8 +70,8 @@ Dedicated
 ---------
 
 This mode has the same path and URL behaviour as the inetd mode.  To run as a
-specific, you should use `su` or login as that user.  This example runs bzr
-serve on `localhost` port `1234`.
+specific user, you should use ``su`` or login as that user.  This example runs ``bzr
+serve`` on `localhost` port `1234`.
 
 server::
 
