@@ -729,7 +729,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             specific_files=['added', 'changed', 'fromdir', 'fromfile',
             'removed', 'unchanged', 'todir', 'tofile']))
 
-    def test_tree_with_special_names(self):
+    def _disabled_test_tree_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_tree_with_special_names()
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
