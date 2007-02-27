@@ -1,5 +1,5 @@
 #    builder.py -- Classes for building packages
-#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006, 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -170,9 +170,15 @@ class DebBuild(object):
     shutil.move(changes.filename(), result)
     mutter("Moving all files given in %s", changes.filename())
     for file in files:
-      mutter("Moving %s to %s", file['name'], result)
-      shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
-                  result)
+      filename = os.path.join(self._properties.build_dir(), file['name'])
+      mutter("Moving %s to %s", filename, result)
+      try:
+        shutil.move(filename, result)
+      except IOError, e:
+        if e.errno <> 2:
+          raise
+        raise DebianError("The file " + filename + " is described in the " +
+                          ".changes file, but is not present on disk")
 
   def tag_release(self):
     #TODO decide what command should be able to remove a tag notice

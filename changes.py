@@ -1,5 +1,5 @@
 #    changes.py -- Abstraction of .changes files
-#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006, 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -55,9 +55,9 @@ class DebianChanges(deb822.Changes):
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
     if dir is not None:
       changes = os.path.join(dir,changes)
-    mutter("Looking for %s", changes)    
+    mutter("Looking for %s", changes)
     if not os.path.exists(changes):
-      raise DebianError("Could not find "+package)
+      raise DebianError("Could not find .changes file: %s" % changes)
     fp = open(changes)
     super(DebianChanges, self).__init__(fp)
     self._filename = changes
