@@ -312,29 +312,49 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Create a tree with filenames chosen to exercise the walk order."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        from_paths = ['b-ar/', 'b-ar/a',
-                      'b-foo/', 'b-foo/a',
-                      'b-zar/', 'b-zar/a',
-                      'bar/', 'bar/a',
-                      'bfoo/', 'bfoo/a',
-                      'bzar/', 'bzar/a',
-                      'b/', 'b/a',
-                      'b/ar/', 'b/ar/a',
-                      'b/foo/', 'b/foo/a',
-                      'b/zar/', 'b/zar/a',
-                      'b/foo-a/', 'b/foo-a/a',
-                      'b/foo-z/', 'b/foo-z/a',
-                      'b/fooa/', 'b/fooa/a',
-                      'b/fooz/', 'b/fooz/a',
-                      'b/foo/z/', 'b/foo/z/a',
-                     ]
-        self.build_tree(['tree2/' + p for p in from_paths])
-        paths_no_slashes = [p.strip('/') for p in from_paths]
-        path_ids = [p.replace('/', '_') + '-id' for p in paths_no_slashes]
-        tree2.add(paths_no_slashes, path_ids)
+        paths, path_ids = self._create_special_names(tree2, 'tree2')
         tree2.commit('initial', rev_id='rev-1')
         tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        return (tree1, tree2, paths_no_slashes, path_ids)
+        return (tree1, tree2, paths, path_ids)
+
+    def make_trees_with_special_names(self):
+        """Both trees will use the special names.
+
+        But the contents will differ for each file.
+        """
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        paths, path_ids = self._create_special_names(tree1, 'tree1')
+        paths, path_ids = self._create_special_names(tree2, 'tree2')
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        return (tree1, tree2, paths, path_ids)
+
+    def _create_special_names(self, tree, base_path):
+        """Create a tree with paths that expose differences in sort orders."""
+        # Each directory will have a single file named 'f' inside
+        dirs = ['a',
+                'a-a',
+                'a/a',
+                'a/a-a',
+                'a/a/a',
+                'a/a/a-a',
+                'a/a/a/a',
+                'a/a/a/a-a',
+                'a/a/a/a/a',
+               ]
+        with_slashes = []
+        paths = []
+        path_ids = []
+        for d in dirs:
+            with_slashes.append(base_path + '/' + d + '/')
+            with_slashes.append(base_path + '/' + d + '/f')
+            paths.append(d)
+            paths.append(d+'/f')
+            path_ids.append(d.replace('/', '_') + '-id')
+            path_ids.append(d.replace('/', '_') + '_f-id')
+        self.build_tree(with_slashes)
+        tree.add(paths, path_ids)
+        return paths, path_ids
 
     def test_compare_empty_trees(self):
         tree1 = self.make_branch_and_tree('1')
@@ -736,4 +756,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         expected = sorted(self.added(tree2, f_id) for f_id in path_ids)
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_trees_with_special_names(self):
+        tree1, tree2, paths, path_ids = self.make_trees_with_special_names()
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
+                          if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
