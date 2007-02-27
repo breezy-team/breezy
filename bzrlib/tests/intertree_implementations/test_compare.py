@@ -312,13 +312,22 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Create a tree with filenames chosen to exercise the walk order."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        from_paths = ['b-ar', 'b-foo', 'b-zar',
-                   'bar', 'bfoo','bzar',
-                   'b/', 'b/ar', 'b/foo/', 'b/zar',
-                   'b/foo-a', 'b/foo-z',
-                   'b/fooa', 'b/fooz',
-                   'b/foo/a', 'b/foo/z',
-                  ]
+        from_paths = ['b-ar/', 'b-ar/a',
+                      'b-foo/', 'b-foo/a',
+                      'b-zar/', 'b-zar/a',
+                      'bar/', 'bar/a',
+                      'bfoo/', 'bfoo/a',
+                      'bzar/', 'bzar/a',
+                      'b/', 'b/a',
+                      'b/ar/', 'b/ar/a',
+                      'b/foo/', 'b/foo/a',
+                      'b/zar/', 'b/zar/a',
+                      'b/foo-a/', 'b/foo-a/a',
+                      'b/foo-z/', 'b/foo-z/a',
+                      'b/fooa/', 'b/fooa/a',
+                      'b/fooz/', 'b/fooz/a',
+                      'b/foo/z/', 'b/foo/z/a',
+                     ]
         self.build_tree(['tree2/' + p for p in from_paths])
         paths_no_slashes = [p.strip('/') for p in from_paths]
         path_ids = [p.replace('/', '_') + '-id' for p in paths_no_slashes]
