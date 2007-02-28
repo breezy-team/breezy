@@ -97,10 +97,6 @@ class InventoryEntry(object):
     (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
-    >>> i.add(InventoryFile('2323', 'bye.c', '123'))
-    Traceback (most recent call last):
-    ...
-    BzrError: inventory already contains entry with id {2323}
     >>> i.add(InventoryFile('2324', 'bye.c', '123'))
     InventoryFile('2324', 'bye.c', parent_id='123', sha1=None, len=None)
     >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
