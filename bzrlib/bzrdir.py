@@ -562,7 +562,11 @@ class BzrDir(object):
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
                 pass
-            new_t = a_transport.clone('..')
+            try:
+                new_t = a_transport.clone('..')
+            except errors.InvalidURLJoin:
+                # reached the root, whatever that may be
+                raise errors.NotBranchError(path=url)
             if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)

@@ -59,7 +59,10 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
         try:
             revision_graph = repository.get_revision_graph(decoded_revision_id)
         except errors.NoSuchRevision:
-            return SmartServerResponse(('nosuchrevision', revision_id))
+            # Note that we return an empty body, rather than omitting the body.
+            # This way the client knows that it can always expect to find a body
+            # in the response for this method, even in the error case.
+            return SmartServerResponse(('nosuchrevision', revision_id), '')
 
         for revision, parents in revision_graph.items():
             lines.append(' '.join([revision,] + parents))

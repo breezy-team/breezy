@@ -89,10 +89,10 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end A -----------
 
-        d1 = main_branch.bzrdir.clone('branch1')
-        b1 = d1.open_branch()
+        bt1 = self.make_branch_and_tree('branch1')
+        bt1.pull(main_branch)
+        b1 = bt1.branch
         self.build_tree(["branch1/d"])
-        bt1 = d1.open_workingtree()
         bt1.add(['d'], ['file-d'])
         bt1.commit("branch1, Commit one", rev_id="rev-E")
 
@@ -103,9 +103,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end B -----------
 
-        d2 = main_branch.bzrdir.clone('branch2')
-        branch2_branch = d2.open_branch()
-        bt2 = d2.open_workingtree()
+        bt2 = self.make_branch_and_tree('branch2')
+        bt2.pull(main_branch)
+        branch2_branch = bt2.branch
         set_executability(bt2, 'b', True)
         bt2.commit("branch2, Commit one", rev_id="rev-J")
 
@@ -248,9 +248,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             # This is not a known error condition
             raise
 
-        branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
+        branch2_wt = self.make_branch_and_tree('branch2')
+        branch2_wt.pull(main_branch)
+        branch2_bzrdir = branch2_wt.bzrdir
         branch2_branch = branch2_bzrdir.open_branch()
-        branch2_wt = branch2_bzrdir.open_workingtree()
         set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 

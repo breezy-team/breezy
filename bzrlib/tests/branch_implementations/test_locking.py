@@ -17,6 +17,9 @@
 """Test locks across all branch implemenations"""
 
 from bzrlib import errors
+from bzrlib.branch import BzrBranchFormat4
+from bzrlib.remote import RemoteBranchFormat
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
 
@@ -33,6 +36,9 @@ class TestBranchLocking(TestCaseWithBranch):
         # 'control_files' member. So we should fail gracefully if
         # not there. But assuming it has them lets us test the exact 
         # lock/unlock order.
+        if isinstance(self.branch_format, RemoteBranchFormat):
+            raise TestSkipped(
+                "RemoteBranches don't have 'control_files'.")
         self.locks = []
         b = LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = LockWrapper(self.locks, b.repository, 'r')
@@ -415,5 +421,35 @@ class TestBranchLocking(TestCaseWithBranch):
         # Now the branch is unlocked.  Test this by locking it (without tokens).
         branch.lock_write()
         branch.unlock()
+
+    def test_lock_read_then_unlock(self):
+        # Calling lock_read then unlocking should work without errors.
+        branch = self.make_branch('b')
+        branch.lock_read()
+        branch.unlock()
+
+    def test_lock_write_locks_repo_too(self):
+        if isinstance(self.branch_format, BzrBranchFormat4):
+            # Branch format 4 is combined with the repository, so this test
+            # doesn't apply.
+            return
+        branch = self.make_branch('b')
+        branch = branch.bzrdir.open_branch()
+        branch.lock_write()
+        try:
+            # Now the branch.repository is locked, so we can't lock it with a new
+            # repository without a token.
+            new_repo = branch.bzrdir.open_repository()
+            self.assertRaises(errors.LockContention, new_repo.lock_write)
+            # We can call lock_write on the original repository object though,
+            # because it is already locked.
+            branch.repository.lock_write()
+            branch.repository.unlock()
+        finally:
+            branch.unlock()
+
+    #def test_lock_read_locks_repo_too(self):
+    #    branch = self.make_branch('b')
+
 
 

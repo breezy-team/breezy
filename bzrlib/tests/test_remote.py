@@ -123,6 +123,34 @@ class FakeClient(SmartClient):
         return result[0], FakeProtocol(result[1])
 
 
+class TestBzrDirOpenBranch(tests.TestCase):
+
+    def test_branch_present(self):
+        client = FakeClient([(('ok', ''), ), (('ok', ''), )])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        result = bzrdir.open_branch()
+        self.assertEqual(
+            [('call', 'BzrDir.open_branch', ('///quack/',)),
+             ('call', 'BzrDir.find_repository', ('///quack/',))],
+            client._calls)
+        self.assertIsInstance(result, RemoteBranch)
+        self.assertEqual(bzrdir, result.bzrdir)
+
+    def test_branch_missing(self):
+        client = FakeClient([(('nobranch',), )])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
+        self.assertEqual(
+            [('call', 'BzrDir.open_branch', ('///quack/',))],
+            client._calls)
+
+
 class TestBranchLastRevisionInfo(tests.TestCase):
 
     def test_empty_branch(self):
@@ -164,49 +192,85 @@ class TestBranchSetLastRevision(tests.TestCase):
     def test_set_empty(self):
         # set_revision_history([]) is translated to calling
         # Branch.set_last_revision(path, '') on the wire.
-        client = FakeClient([(('ok',), )])
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision
+            (('ok',), ),
+            # unlock
+            (('ok',), )])
         transport = MemoryTransport()
         transport.mkdir('branch')
         transport = transport.clone('branch')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
-
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        branch.lock_write()
+        client._calls = []
         result = branch.set_revision_history([])
         self.assertEqual(
-            [('call', 'Branch.set_last_revision', ('///branch/', ''))],
+            [('call', 'Branch.set_last_revision',
+                ('///branch/', 'branch token', 'repo token', ''))],
             client._calls)
+        branch.unlock()
         self.assertEqual(None, result)
 
     def test_set_nonempty(self):
         # set_revision_history([rev-id1, ..., rev-idN]) is translated to calling
         # Branch.set_last_revision(path, rev-idN) on the wire.
-        client = FakeClient([(('ok',), )])
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision
+            (('ok',), ),
+            # unlock
+            (('ok',), )])
         transport = MemoryTransport()
         transport.mkdir('branch')
         transport = transport.clone('branch')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
 
         result = branch.set_revision_history(['rev-id1', 'rev-id2'])
         self.assertEqual(
-            [('call', 'Branch.set_last_revision', ('///branch/', 'rev-id2'))],
+            [('call', 'Branch.set_last_revision',
+                ('///branch/', 'branch token', 'repo token', 'rev-id2'))],
             client._calls)
+        branch.unlock()
         self.assertEqual(None, result)
 
     def test_no_such_revision(self):
         # A response of 'NoSuchRevision' is translated into an exception.
-        client = FakeClient([(('NoSuchRevision', 'rev-id'), )])
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision
+            (('NoSuchRevision', 'rev-id'), ),
+            # unlock
+            (('ok',), )])
         transport = MemoryTransport()
         transport.mkdir('branch')
         transport = transport.clone('branch')
 
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
+        branch._ensure_real = lambda: None
+        branch.lock_write()
+        client._calls = []
 
         self.assertRaises(
             errors.NoSuchRevision, branch.set_revision_history, ['rev-id'])
+        branch.unlock()
 
 
 class TestBranchControlGetBranchConf(tests.TestCase):
@@ -445,5 +509,21 @@ class TestRepositoryUnlock(TestRemoteRepository):
             responses, transport_path)
         repo.lock_write()
         self.assertRaises(errors.TokenMismatch, repo.unlock)
+
+
+class TestRepositoryHasRevision(TestRemoteRepository):
+
+    def test_none(self):
+        # repo.has_revision(None) should not cause any traffic.
+        transport_path = 'quack'
+        responses = None
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+
+        # The null revision is always there, so has_revision(None) == True.
+        self.assertEqual(True, repo.has_revision(None))
+
+        # The remote repo shouldn't be accessed.
+        self.assertEqual([], client._calls)
 
 
