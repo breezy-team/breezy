@@ -289,7 +289,12 @@ class TestRepository(TestCaseWithRepository):
             # not all repository formats understand being shared, or
             # may only be shared in some circumstances.
             return
-        made_repo.set_make_working_trees(False)
+        try:
+            made_repo.set_make_working_trees(False)
+        except NotImplementedError:
+            if made_repo.make_working_trees():
+                # this repository always makes working trees.
+                return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
         made_repo.has_revision('foo')

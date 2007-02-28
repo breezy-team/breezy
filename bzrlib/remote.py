@@ -23,7 +23,7 @@ from urlparse import urlparse
 from bzrlib import branch, errors, repository
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
-from bzrlib.config import BranchConfig
+from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.revision import NULL_REVISION
@@ -818,4 +818,10 @@ class RemoteBranchConfig(BranchConfig):
     def username(self):
         self.branch._ensure_real()
         return self.branch._real_branch.get_config().username()
+
+    def _get_branch_data_config(self):
+        self.branch._ensure_real()
+        if self._branch_data_config is None:
+            self._branch_data_config = TreeConfig(self.branch._real_branch)
+        return self._branch_data_config
 
