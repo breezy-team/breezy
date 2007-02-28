@@ -1715,7 +1715,7 @@ class InterDirStateTree(InterTree):
                         or result[7][0] != result[7][1] # executable
                         ):
                         yield result
-            dir_iterator = osutils.walkdirs(root_abspath, prefix=current_root)
+            dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
             if block_index == 0:
@@ -1738,11 +1738,6 @@ class InterDirStateTree(InterTree):
                     bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
                     assert current_dir_info[1][bzr_index][0] == '.bzr'
                     del current_dir_info[1][bzr_index]
-                # convert the unicode relpaths in the dir index to uf8 for
-                # comparison with dirstate data.
-                # TODO: keep the utf8 version around for giving to the caller.
-                current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
-                    [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
             # walk until both the directory listing and the versioned metadata
             # are exhausted. TODO: reevaluate this, perhaps we should stop when
             # the versioned data runs out.
@@ -1770,11 +1765,6 @@ class InterDirStateTree(InterTree):
                         # advance the iterator and loop - we dont need to emit it.
                         try:
                             current_dir_info = dir_iterator.next()
-                            # convert the unicode relpaths in the dir index to uf8 for
-                            # comparison with dirstate data.
-                            # TODO: keep the utf8 version around for giving to the caller.
-                            current_dir_info = ((current_dir_info[0][0].encode('utf8'), current_dir_info[0][1]),
-                                [(line[0].encode('utf8'), line[1].encode('utf8')) + line[2:] for line in current_dir_info[1]])
                         except StopIteration:
                             current_dir_info = None
                     continue
@@ -1877,18 +1867,6 @@ class InterDirStateTree(InterTree):
                 if current_dir_info is not None:
                     try:
                         current_dir_info = dir_iterator.next()
-                        # convert the unicode relpaths in the dir index to utf8 for
-                        # comparison with dirstate data.
-                        # TODO: keep the unicode version around for giving to the caller.
-                        #       We could also use cached_utf8.encode() which
-                        #       maintains utf8=>unicode and unicode=>utf8 maps.
-                        # TODO: change this to a plain tuple assignment rather
-                        #       than doing slicing, since it should be faster.
-                        #       (unless the size of the line is dynamic)
-                        utf8_relpath = current_dir_info[0][0].encode('utf8')
-                        current_dir_info = ((utf8_relpath, current_dir_info[0][1]),
-                            [(line[0].encode('utf8'), line[1].encode('utf8'))
-                              + line[2:] for line in current_dir_info[1]])
                     except StopIteration:
                         current_dir_info = None
 
