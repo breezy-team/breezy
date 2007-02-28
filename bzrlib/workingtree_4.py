@@ -1611,9 +1611,10 @@ class InterDirStateTree(InterTree):
                     if source_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         source_parent_id = None
-                    last_source_parent[0] = old_dirname
-                    last_source_parent[1] = source_parent_id
-                    last_source_parent[2] = source_parent_entry
+                    else:
+                        last_source_parent[0] = old_dirname
+                        last_source_parent[1] = source_parent_id
+                        last_source_parent[2] = source_parent_entry
 
                 new_dirname = entry[0][0]
                 if new_dirname == last_target_parent[0]:
@@ -1627,9 +1628,10 @@ class InterDirStateTree(InterTree):
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         target_parent_id = None
-                    last_target_parent[0] = new_dirname
-                    last_target_parent[1] = target_parent_id
-                    last_target_parent[2] = target_parent_entry
+                    else:
+                        last_target_parent[0] = new_dirname
+                        last_target_parent[1] = target_parent_id
+                        last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
                 path_unicode = path.decode('utf8')
