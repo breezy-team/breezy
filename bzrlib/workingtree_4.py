@@ -1771,26 +1771,56 @@ class InterDirStateTree(InterTree):
             else:
                 current_block = None
             while (current_dir_info is not None or
-                current_block is not None):
-                if current_dir_info and current_block and current_dir_info[0][0] != current_block[0]:
-                    if current_block[0] < current_dir_info[0][0]:
-                        # extra dir on disk: pass for now? should del from info ?
-                        import pdb;pdb.set_trace()
-                        print 'unversioned dir'
-                    else:
-                        # directory data refers to paths not covered by the dirblock.
+                   current_block is not None):
+                if (current_dir_info and current_block
+                    and current_dir_info[0][0] != current_block[0]):
+                    if current_dir_info[0][0] < current_block[0] :
+                        # import pdb; pdb.set_trace()
+                        # print 'unversioned dir'
+                        # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
                         # B) it is not versioned.
                         # in either case it was processed by the containing directories walk:
                         # if it is root/foo, when we walked root we emitted it,
                         # or if we ere given root/foo to walk specifically, we
-                        # emitted it when checking the walk-root entries 
+                        # emitted it when checking the walk-root entries
                         # advance the iterator and loop - we dont need to emit it.
                         try:
                             current_dir_info = dir_iterator.next()
                         except StopIteration:
                             current_dir_info = None
+                    else:
+                        # We have a dirblock entry for this location, but there
+                        # is no filesystem path for this. This is most likely
+                        # because a directory was removed from the disk.
+                        # We don't have to report the missing directory,
+                        # because that should have already been handled, but we
+                        # need to handle all of the files that are contained
+                        # within.
+                        for current_entry in current_block[1]:
+                            # entry referring to file not present on disk.
+                            # advance the entry only, after processing.
+                            for result in _process_entry(current_entry, None):
+                                # this check should probably be outside the loop: one
+                                # 'iterate two trees' api, and then _iter_changes filters
+                                # unchanged pairs. - RBC 20070226
+                                if (include_unchanged
+                                    or result[2]                    # content change
+                                    or result[3][0] != result[3][1] # versioned status
+                                    or result[4][0] != result[4][1] # parent id
+                                    or result[5][0] != result[5][1] # name
+                                    or result[6][0] != result[6][1] # kind
+                                    or result[7][0] != result[7][1] # executable
+                                    ):
+                                    yield result
+                        block_index +=1
+                        if (block_index < len(state._dirblocks) and
+                            osutils.is_inside(current_root,
+                                              state._dirblocks[block_index][0])):
+                            current_block = state._dirblocks[block_index]
+                        else:
+                            current_block = None
                     continue
                 entry_index = 0
                 if current_block and entry_index < len(current_block[1]):

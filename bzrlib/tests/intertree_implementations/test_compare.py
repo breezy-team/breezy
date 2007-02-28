@@ -788,3 +788,30 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.content_changed(tree2, 'c-id'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_trees_with_missing_dir(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree1/b/', 'tree1/b/c',
+                         'tree1/b/d/', 'tree1/b/d/e', 'tree1/f/', 'tree1/f/g',
+                         'tree2/a', 'tree2/f/', 'tree2/f/g'])
+        tree1.add(['a', 'b', 'b/c', 'b/d/', 'b/d/e', 'f', 'f/g'],
+                  ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id', 'g-id'])
+        tree2.add(['a', 'f', 'f/g'], ['a-id', 'f-id', 'g-id'])
+
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        # We should notice that 'b' and all its children are missing
+        expected = sorted([
+            self.content_changed(tree2, 'a-id'),
+            self.content_changed(tree2, 'g-id'),
+            self.deleted(tree1, 'b-id'),
+            self.deleted(tree1, 'c-id'),
+            self.deleted(tree1, 'd-id'),
+            self.deleted(tree1, 'e-id'),
+            ])
+
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
