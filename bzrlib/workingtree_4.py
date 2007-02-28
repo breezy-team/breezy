@@ -1372,6 +1372,7 @@ class InterDirStateTree(InterTree):
         target.branch.repository.fetch(source.branch.repository, revid)
         target.set_parent_ids([revid])
         return target.basis_tree(), target
+
     _matching_from_tree_format = WorkingTreeFormat4()
     _matching_to_tree_format = WorkingTreeFormat4()
     _test_mutable_trees_to_test_trees = make_source_parent_tree
@@ -1597,12 +1598,26 @@ class InterDirStateTree(InterTree):
                         raise Exception, "unknown kind %s" % path_info[2]
                 # parent id is the entry for the path in the target tree
                 # TODO: the target is the same for an entire directory: cache em.
-                source_parent_id = state._get_entry(source_index, path_utf8=old_dirname)[0][2]
+                source_parent_entry = state._get_entry(source_index,
+                                                       path_utf8=old_dirname)
+                source_parent_id = source_parent_entry[0][2]
                 if source_parent_id == entry[0][2]:
+                    # This is the root, so the parent is None
                     source_parent_id = None
-                target_parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
-                if target_parent_id == entry[0][2]:
-                    target_parent_id = None
+                if (old_dirname == entry[0][0]
+                    and source_parent_entry[1][target_index][0] not in ('r', 'a')):
+                    # We don't need to do another lookup. Because we know that
+                    # the target parent is at the same path, and since the
+                    # target parent entry is not renamed or absent, that means
+                    # it is the same directory.
+                    target_parent_id = source_parent_id
+                else:
+                    target_parent_entry = state._get_entry(target_index,
+                                                           path_utf8=entry[0][0])
+                    target_parent_id = target_parent_entry[0][2]
+                    if target_parent_id == entry[0][2]:
+                        # This is the root, so the parent is None
+                        target_parent_id = None
                 source_exec = source_details[3]
                 path_unicode = path.decode('utf8')
                 return ((entry[0][2], path_unicode, content_change,
