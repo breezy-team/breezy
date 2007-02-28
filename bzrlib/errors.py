@@ -1781,3 +1781,20 @@ class ImportNameCollision(BzrError):
     def __init__(self, name):
         BzrError.__init__(self)
         self.name = name
+
+
+class NoMergeSource(BzrError):
+    """Raise if no merge source was specified for a merge directive"""
+
+    _fmt = "A merge directive must provide either a bundle or a public"\
+        "branch location."
+
+
+class PatchMissing(BzrError):
+    """Raise a patch type was specified but no patch supplied"""
+
+    _fmt = "patch_type was %(patch_type)s, but no patch was supplied."
+
+    def __init__(self, patch_type):
+        BzrError.__init__(self)
+        self.patch_type = patch_type
