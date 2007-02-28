@@ -158,3 +158,17 @@ class TestPullHook(TestCaseWithBranch):
              2, rev2, True, None, True)
             ],
             self.hook_calls)
+
+    def test_pull_overwrite(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('message 1')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('message 2', rev_id='rev2a')
+        tree_b.commit('message 2', rev_id='rev2b')
+        try:
+            tree_a.pull(tree_b.branch)
+        except:
+            pass
+        tree_a.branch.pull(tree_a.branch, overwrite=True,
+                           stop_revision='rev2b')
+        self.assertEqual(tree_a.branch.last_revision(), 'rev2b')
