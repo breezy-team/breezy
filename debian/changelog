@@ -5,8 +5,11 @@ bzr-builddeb (0.15~dev0) UNRELEASED; urgency=low
   * Install the plugin in .../plugins/builddeb instead of
     .../plugins/bzr-builddeb, as the latter is not a valid python identifier
     as is now required by bzr.
+  * Export the package build to the correct directory name, using the upstream
+    version rather than the full version. This removes a warning from
+    dpkg-source when building and Closes: #409981. Thanks to James Vega.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 27 Feb 2007 20:17:09 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 28 Feb 2007 19:16:28 +0000
 
 bzr-builddeb (0.14) UNRELEASED; urgency=low
 

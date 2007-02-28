@@ -46,9 +46,9 @@ class BuildProperties(object):
   def source_dir(self, relative=True):
     if relative:
       return os.path.join(self.build_dir(),
-                        self.package()+"-"+self.full_version())
+                        self.package()+"-"+self.upstream_version())
     else:
-      return self.package()+"-"+self.full_version()
+      return self.package()+"-"+self.upstream_version()
 
   def tarball_dir(self):
     return self._tarball_dir
