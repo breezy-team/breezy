@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1083,27 +1083,27 @@ def walkdirs(top, prefix=""):
     pending = []
     _directory = _directory_kind
     _listdir = os.listdir
-    pending = [(prefix, "", _directory, None, top)]
+    pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         dirblock = []
         currentdir = pending.pop()
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+        relroot = currentdir[0]
         top = currentdir[4]
-        if currentdir[0]:
-            relroot = currentdir[0] + '/'
+        if relroot:
+            relprefix = relroot + u'/'
         else:
-            relroot = ""
+            relprefix = ""
+        top_slash = top + u'/'
         for name in sorted(_listdir(top)):
-            abspath = top + '/' + name
+            abspath = top_slash + name
             statvalue = lstat(abspath)
-            dirblock.append((relroot + name, name,
+            dirblock.append((relprefix + name, name,
                 file_kind_from_stat_mode(statvalue.st_mode),
                 statvalue, abspath))
-        yield (currentdir[0], top), dirblock
+        yield (relroot, top), dirblock
         # push the user specified dirs from dirblock
-        for dir in reversed(dirblock):
-            if dir[2] == _directory:
-                pending.append(dir)
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
 def _walkdirs_utf8(top, prefix=""):
@@ -1112,27 +1112,39 @@ def _walkdirs_utf8(top, prefix=""):
     This yields the same information as walkdirs() only each entry is yielded
     in utf-8. On platforms which have a filesystem encoding of utf8 the paths
     are returned as exact byte-strings.
+
+    :return: yields a tuple of (dir_info, [file_info])
+        dir_info is (utf8_relpath, path-from-top)
+        file_info is (utf8_relpath, utf8_name, kind, lstat, path-from-top)
+        if top is an absolute path, path-from-top is also an absolute path.
+        path-from-top might be unicode or utf8, but it is the correct path to
+        pass to os functions to affect the file in question. (such as os.lstat)
+    """
+    fs_encoding = sys.getfilesystemencoding()
+    if (sys.platform == 'win32' or
+        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
+        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
+    else:
+        return _walkdirs_fs_utf8(top, prefix=prefix)
+
+
+def _walkdirs_fs_utf8(top, prefix=""):
+    """See _walkdirs_utf8.
+
+    This sub-function is called when we know the filesystem is already in utf8
+    encoding. So we don't need to transcode filenames.
     """
     _lstat = os.lstat
     pending = []
     _directory = _directory_kind
     _listdir = os.listdir
     _kind_from_mode = file_kind_from_stat_mode
-    if sys.platform == 'win32':
-        # We need to do the listdir using unicode paths, and then encode them
-        # into utf8.
-        assert False, 'not supported yet'
-    if sys.getfilesystemencoding() not in ('UTF-8', 'US-ASCII',
-                                           'ANSI_X3.4-1968'): # ascii
-        assert False, 'not supported yet'
     # TODO: make these assert instead
     if isinstance(top, unicode):
         top = top.encode('utf8')
     if isinstance(prefix, unicode):
         prefix = prefix.encode('utf8')
 
-    # The in-memory dirblocks should always have a prefix ending in '/'
-    # unless the prefix is '' then it should not have a trailing slash
     pending = [(prefix, top)]
     while pending:
         relroot, top = pending.pop()
@@ -1147,27 +1159,50 @@ def _walkdirs_utf8(top, prefix=""):
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
-            dirblock.append((rel_prefix + name, name, kind, statvalue, abspath))
+            dirblock.append((rel_prefix + name, name,
+                             kind, statvalue, abspath))
 
-        # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-        ## In list/generator comprehension form. On a 55k entry tree, this form
-        ## takes 1.75s versus 1.8s. So it is saving approx 50ms. Not a huge
-        ## savings, and may not be worth the complexity. And on smaller trees,
-        ## I've seen 115ms here versus 102ms in the for loop. So it isn't
-        ## always a win. This is just left for posterity.
-        # dirblock = [(rel_prefix + name, # relpath
-        #              name,           # basename
-        #              _kind_from_mode(statvalue.st_mode), # kind
-        #              statvalue,      # stat
-        #              abspath)        # path on disk
-        #                for name, abspath, statvalue in
-        #                    ((name, abspath, _lstat(abspath))
-        #                     for name, abspath in
-        #                     ((name, top_slash + name)
-        #                      for name in sorted(_listdir(top))
-        #                     )
-        #                    )
-        #            ]
+        yield (relroot, top), dirblock
+        # push the user specified dirs from dirblock
+        pending.extend((d[0], d[4])
+                       for d in reversed(dirblock)
+                       if d[2] == _directory)
+
+
+def _walkdirs_unicode_to_utf8(top, prefix=""):
+    """See _walkdirs_utf8
+
+    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
+    Unicode paths.
+    This is currently the fallback code path when the filesystem encoding is
+    not UTF-8. It may be better to implement an alternative so that we can
+    safely handle paths that are not properly decodable in the current
+    encoding.
+    """
+    _utf8_encode = codecs.getencoder('utf8')
+    _lstat = os.lstat
+    pending = []
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = file_kind_from_stat_mode
+
+    pending = [(safe_utf8(prefix), safe_unicode(top))]
+    while pending:
+        relroot, top = pending.pop()
+        if relroot == '':
+            rel_prefix = ''
+        else:
+            rel_prefix = relroot + '/'
+        top_slash = top + u'/'
+        # In plain for loop form
+        dirblock = []
+        for name in sorted(_listdir(top)):
+            name_utf8 = _utf8_encode(name)[0]
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode)
+            dirblock.append((rel_prefix + name_utf8, name_utf8,
+                             kind, statvalue, abspath))
         yield (relroot, top), dirblock
         # push the user specified dirs from dirblock
         pending.extend((d[0], d[4])
