@@ -800,6 +800,15 @@ class RemoteBranch(branch.Branch):
         self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision)
 
+    @needs_read_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        self._ensure_real()
+        self._real_branch.push(
+            target, overwrite=overwrite, stop_revision=stop_revision)
+
+    def is_locked(self):
+        return self._lock_count >= 1
+
 
 class RemoteWorkingTree(object):
 
