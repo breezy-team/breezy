@@ -99,9 +99,14 @@ IN DEVELOPMENT
       This is expected to grow to cover a number of related uses mainly
       related to bzr info. (Robert Collins)
 
-    * Log formatters are now managed with a registry.  log.register_formatter
-      continues to work, but callers accessed the FORMATTERS dictionary
-      directly will not.
+    * Log formatters are now managed with a registry.
+      ``log.register_formatter`` continues to work, but callers accessing
+      the FORMATTERS dictionary directly will not.
+
+    * Allow a start message to be passed to the ``edit_commit_message``
+      function.  This will be placed in the message offered to the user
+      for editing above the separator. It allows a template commit message
+      to be used more easily. (James Westby)
 
     * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
       you pass a Unicode string rather than an 8-bit string. Callers need
