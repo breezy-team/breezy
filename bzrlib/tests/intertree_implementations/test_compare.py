@@ -767,3 +767,24 @@ class TestIterChanges(TestCaseWithTwoTrees):
         expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_trees_with_unknown(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree1/c',
+                         'tree2/a', 'tree2/b', 'tree2/c'])
+        tree1.add(['a', 'c'], ['a-id', 'c-id'])
+        tree2.add(['a', 'c'], ['a-id', 'c-id'])
+
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+
+        # We should ignore the fact that 'b' exists in tree-2
+        expected = sorted([
+            self.content_changed(tree2, 'a-id'),
+            self.content_changed(tree2, 'c-id'),
+            ])
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))

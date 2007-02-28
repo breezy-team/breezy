@@ -1813,7 +1813,12 @@ class InterDirStateTree(InterTree):
                         new_executable = bool(
                             stat.S_ISREG(current_path_info[3].st_mode)
                             and stat.S_IEXEC & current_path_info[3].st_mode)
-                        yield (None, current_path_info[0], True, (False, False), (None, None), (None, current_path_info[1]), (None, current_path_info[2]), (None, new_executable))
+                        yield (None, current_path_info[0], True,
+                               (False, False),
+                               (None, None),
+                               (None, current_path_info[1]),
+                               (None, current_path_info[2]),
+                               (None, new_executable))
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):
@@ -1831,9 +1836,11 @@ class InterDirStateTree(InterTree):
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
-                            # extra file on disk: pass for now
-                            import pdb;pdb.set_trace()
-                            print 'unversioned file'
+                            # extra file on disk: pass for now, but only
+                            # increment the path, not the entry
+                            # import pdb; pdb.set_trace()
+                            # print 'unversioned file'
+                            advance_entry = False
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
