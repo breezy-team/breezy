@@ -32,6 +32,7 @@ from builder import (remove_dir,
                      remove_bzrbuilddeb_dir,
                      remove_debian_dir,
                      DebBuild,
+                     DebNativeBuild,
                      )
 import errors
 from properties import BuildProperties
@@ -117,7 +118,9 @@ class BuilderTestCase(TestCaseWithTransport):
   """A class that helps with the testing of builders."""
 
   package_name = 'test'
-  package_version = '0.1'
+  package_version = Version('0.1-1')
+  upstream_version = property(lambda self: \
+                              self.package_version.upstream_version)
 
   def __init__(self, *args, **kwargs):
     self.basedir = 'base'
@@ -126,8 +129,8 @@ class BuilderTestCase(TestCaseWithTransport):
     self.result_dir = join(self.basedir, 'result')
     self.branch_dir = join(self.basedir, 'branch')
     self.source_dir = join(self.build_dir,
-                           self.package_name + '-' + self.package_version)
-    self.tarball_name = self.package_name + '_' + self.package_version + \
+                           self.package_name + '-' + self.upstream_version)
+    self.tarball_name = self.package_name + '_' + self.upstream_version + \
                         '.orig.tar.gz'
     super(BuilderTestCase, self).__init__(*args, **kwargs)
 
@@ -240,6 +243,9 @@ Files:
       f = open(join(self.build_dir, filename), 'wb')
       f.close()
 
+  def get_builder(self, version=None, wt=None):
+    raise NotImplementedError("You must provide this method in the subclass")
+
 class TestDefaultBuilder(BuilderTestCase):
   """Test the default builder (full source, non-native)"""
 
@@ -293,16 +299,17 @@ class TestDefaultBuilder(BuilderTestCase):
 
   def test__tarball_name_native(self):
     """Test the correct upstream tarball name for native package."""
-    builder = self.get_builder()
+    version = '0.1'
+    builder = self.get_builder(version)
     self.assertEqual(builder._tarball_name(),
-                     self.package_name+'_'+self.package_version+'.orig.tar.gz')
+                     self.package_name+'_' + version + '.orig.tar.gz')
 
   def test__tarball_name_non_native(self):
     """Test the correct upstream tarball name for non-native package."""
-    version = '0.1-1'
-    builder = self.get_builder(version)
+    builder = self.get_builder()
     self.assertEqual(builder._tarball_name(),
-                     self.package_name+'_0.1.orig.tar.gz')
+                     self.package_name + '_' + self.upstream_version + \
+                     '.orig.tar.gz')
 
   def test__find_tarball_present(self):
     """Test that _find_tarball returns the correct path if present."""
@@ -443,4 +450,59 @@ class TestDefaultBuilder(BuilderTestCase):
     builder = self.get_builder()
     self.make_changes_file()
     self.assertRaises(errors.DebianError, builder.move_result, self.result_dir)
+
+
+class TestNativeBuilder(BuilderTestCase):
+  """Test the native builder."""
+
+  package_version = Version('0.1')
+
+  def get_builder(self, wt=None, version=None):
+    """Returns a native builder."""
+    if wt is None:
+      (wt, branch) = self._make_branch()
+    changelog = self.make_changelog(version=version)
+    properties = self.make_properties(changelog, False)
+    return DebNativeBuild(properties, wt)
+
+  def test_export_creates_source_dir(self):
+    """Test that the source dir is created by export."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(self.source_dir)
+
+  def test_export_has_correct_contents_in_source_dir(self):
+    """Test that the exported source dir has the correct contents."""
+    wt = self.make_branch_and_tree(self.basedir)
+    self.build_tree(['a', 'b'])
+    wt.add(['a', 'b'])
+    wt.commit('commit one')
+    self.build_tree(['c', 'd'])
+    wt.add(['c'])
+    wt.remove(['b'])
+    builder = self.get_builder(wt=wt)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(join(self.source_dir, 'a'))
+    self.failIfExists(join(self.source_dir, 'b'))
+    self.failUnlessExists(join(self.source_dir, 'c'))
+    self.failIfExists(join(self.source_dir, 'd'))
+
+  def test_export_removes_builddeb_dir(self):
+    """Test that the builddeb dir is removed from the export."""
+    wt = self.make_branch_and_tree(self.basedir)
+    files = ['a', '.bzr-builddeb/', '.bzr-builddeb/default.conf']
+    self.build_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    builder = self.get_builder(wt=wt)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(join(self.source_dir, 'a'))
+    self.failIfExists(join(self.source_dir, '.bzr-builddeb'))
+
 
