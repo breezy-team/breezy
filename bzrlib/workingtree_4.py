@@ -1519,6 +1519,11 @@ class InterDirStateTree(InterTree):
         # detail is not relocated, add the id.
         searched_specific_files = set()
         NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
+        # Using a list so that we can access the values and change them in
+        # nested scope. Each one is [path, file_id, entry]
+        last_source_parent = [None, None, None]
+        last_target_parent = [None, None, None]
+
         def _process_entry(entry, path_info):
             """Compare an entry and real disk to generate delta information.
 
@@ -1597,27 +1602,35 @@ class InterDirStateTree(InterTree):
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
                 # parent id is the entry for the path in the target tree
-                # TODO: the target is the same for an entire directory: cache em.
-                source_parent_entry = state._get_entry(source_index,
-                                                       path_utf8=old_dirname)
-                source_parent_id = source_parent_entry[0][2]
-                if source_parent_id == entry[0][2]:
-                    # This is the root, so the parent is None
-                    source_parent_id = None
-                if (old_dirname == entry[0][0]
-                    and source_parent_entry[1][target_index][0] not in ('r', 'a')):
-                    # We don't need to do another lookup. Because we know that
-                    # the target parent is at the same path, and since the
-                    # target parent entry is not renamed or absent, that means
-                    # it is the same directory.
-                    target_parent_id = source_parent_id
+                if old_dirname == last_source_parent[0]:
+                    source_parent_id = last_source_parent[1]
                 else:
+                    source_parent_entry = state._get_entry(source_index,
+                                                           path_utf8=old_dirname)
+                    source_parent_id = source_parent_entry[0][2]
+                    if source_parent_id == entry[0][2]:
+                        # This is the root, so the parent is None
+                        source_parent_id = None
+                    last_source_parent[0] = old_dirname
+                    last_source_parent[1] = source_parent_id
+                    last_source_parent[2] = source_parent_entry
+
+                new_dirname = entry[0][0]
+                if new_dirname == last_target_parent[0]:
+                    target_parent_id = last_target_parent[1]
+                else:
+                    # TODO: We don't always need to do the lookup, because the
+                    #       parent entry will be the same as the source entry.
                     target_parent_entry = state._get_entry(target_index,
-                                                           path_utf8=entry[0][0])
+                                                           path_utf8=new_dirname)
                     target_parent_id = target_parent_entry[0][2]
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         target_parent_id = None
+                    last_target_parent[0] = new_dirname
+                    last_target_parent[1] = target_parent_id
+                    last_target_parent[2] = target_parent_entry
+
                 source_exec = source_details[3]
                 path_unicode = path.decode('utf8')
                 return ((entry[0][2], path_unicode, content_change,
