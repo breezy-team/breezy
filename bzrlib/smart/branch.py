@@ -39,6 +39,26 @@ class SmartServerBranchRequest(SmartServerRequest):
         return self.do_with_branch(branch, *args)
 
 
+class SmartServerLockedBranchRequest(SmartServerBranchRequest):
+    """Base class for handling common branch request logic for requests that
+    need a write lock.
+    """
+
+    def do_with_branch(self, branch, branch_token, repo_token, *args):
+        """Execute a request for a branch.
+
+        A write lock will be acquired with the given tokens for the branch and
+        repository locks.  The lock will be released once the request is
+        processed.  The physical lock state won't be changed.
+        """
+        # XXX: write a test for LockContention
+        branch.lock_write(tokens=(branch_token, repo_token))
+        try:
+            return self.do_with_locked_branch(branch, *args)
+        finally:
+            branch.unlock()
+
+
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
     
     def do_with_branch(self, branch):
@@ -79,9 +99,9 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
             ('ok', str(revno), last_revision.encode('utf8')))
 
 
-class SmartServerBranchRequestSetLastRevision(SmartServerBranchRequest):
+class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
     
-    def do_with_branch(self, branch, new_last_revision_id):
+    def do_with_locked_branch(self, branch, new_last_revision_id):
         unicode_new_last_revision_id = new_last_revision_id.decode('utf-8')  # XXX test
         if new_last_revision_id == '':
             branch.set_revision_history([])

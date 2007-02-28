@@ -220,7 +220,7 @@ class TestRepository(TestCaseWithRepository):
         # fetch with a default limit (grab everything)
         f = bzrdir.BzrDirMetaFormat1()
         f._repository_format = repository.RepositoryFormatKnit2()
-        os.mkdir('b')
+        get_transport(self.get_url()).mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         repo = b_bzrdir.create_repository()
         repo.fetch(tree_a.branch.repository,
@@ -273,7 +273,7 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('revision 1', rev_id='1')
         source = self.make_repository('source')
         # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source)
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         self.assertFalse(source.has_revision('2'))
         target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
@@ -663,7 +663,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
 
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
-        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = repository.Repository.open(repo_url)
         reported_wrong = False
         try:
             if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
@@ -676,7 +677,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
 
     def test_corrupt_revision_get_revision_reconcile(self):
-        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = repository.Repository.open(repo_url)
         repo.get_revision_reconcile('ghost')
 
 

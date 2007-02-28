@@ -240,7 +240,7 @@ class LockableFiles(object):
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
             self._lock_count += 1
-            return token
+            return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
             #note('write locking %s', self)
@@ -248,6 +248,9 @@ class LockableFiles(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.WriteTransaction())
+            # XXX: add test for the case that requires self._token_from_lock:
+            # token = x.lock_write(); assert(x.lock_write() == token)
+            self._token_from_lock = token_from_lock
             return token_from_lock
 
     def lock_read(self):
