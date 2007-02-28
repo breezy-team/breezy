@@ -29,7 +29,7 @@ system you can probably just use the debian packages. The other way is to
 branch it in to ``~/.bazaar/plugins/bzr-builddeb``, i.e::
 
   bzr branch http://jameswestby.net/bzr/bzr-builddeb/ \
-    ~/.bazaar/plugins/bzr-buildeb
+    ~/.bazaar/plugins/buildeb
 
 This will give you a ``bzr builddeb`` command (alias ``bd``).
 

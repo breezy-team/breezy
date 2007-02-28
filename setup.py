@@ -29,8 +29,8 @@ setup(name="bzr-builddeb",
       author_email="jw+debian@jameswestby.net",
       license = "GNU GPL v2",
       url="http://jameswestby.net/bzr/bzr-builddeb/",
-      packages=['bzrlib.plugins.bzr-builddeb'],
-      package_dir={'bzrlib.plugins.bzr-builddeb': '.'},
+      packages=['bzrlib.plugins.builddeb'],
+      package_dir={'bzrlib.plugins.builddeb': '.'},
       scripts=['bzr-buildpackage'],
       data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
 
