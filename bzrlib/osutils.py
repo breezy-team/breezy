@@ -1106,6 +1106,75 @@ def walkdirs(top, prefix=""):
                 pending.append(dir)
 
 
+def _walkdirs_utf8(top, prefix=""):
+    """Yield data about all the directories in a tree.
+
+    This yields the same information as walkdirs() only each entry is yielded
+    in utf-8. On platforms which have a filesystem encoding of utf8 the paths
+    are returned as exact byte-strings.
+    """
+    _lstat = os.lstat
+    pending = []
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = file_kind_from_stat_mode
+    if sys.platform == 'win32':
+        # We need to do the listdir using unicode paths, and then encode them
+        # into utf8.
+        assert False, 'not supported yet'
+    if sys.getfilesystemencoding() not in ('UTF-8', 'US-ASCII',
+                                           'ANSI_X3.4-1968'): # ascii
+        assert False, 'not supported yet'
+    # TODO: make these assert instead
+    if isinstance(top, unicode):
+        top = top.encode('utf8')
+    if isinstance(prefix, unicode):
+        prefix = prefix.encode('utf8')
+
+    # The in-memory dirblocks should always have a prefix ending in '/'
+    # unless the prefix is '' then it should not have a trailing slash
+    pending = [(prefix, top)]
+    while pending:
+        relroot, top = pending.pop()
+        if relroot == '':
+            rel_prefix = ''
+        else:
+            rel_prefix = relroot + '/'
+        top_slash = top + '/'
+        # In plain for loop form
+        dirblock = []
+        for name in sorted(_listdir(top)):
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode)
+            dirblock.append((rel_prefix + name, name, kind, statvalue, abspath))
+
+        # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+        ## In list/generator comprehension form. On a 55k entry tree, this form
+        ## takes 1.75s versus 1.8s. So it is saving approx 50ms. Not a huge
+        ## savings, and may not be worth the complexity. And on smaller trees,
+        ## I've seen 115ms here versus 102ms in the for loop. So it isn't
+        ## always a win. This is just left for posterity.
+        # dirblock = [(rel_prefix + name, # relpath
+        #              name,           # basename
+        #              _kind_from_mode(statvalue.st_mode), # kind
+        #              statvalue,      # stat
+        #              abspath)        # path on disk
+        #                for name, abspath, statvalue in
+        #                    ((name, abspath, _lstat(abspath))
+        #                     for name, abspath in
+        #                     ((name, top_slash + name)
+        #                      for name in sorted(_listdir(top))
+        #                     )
+        #                    )
+        #            ]
+        yield (relroot, top), dirblock
+        # push the user specified dirs from dirblock
+        pending.extend((d[0], d[4])
+                       for d in reversed(dirblock)
+                       if d[2] == _directory)
+
+
 def copy_tree(from_path, to_path, handlers={}):
     """Copy all of the entries in from_path into to_path.
 
