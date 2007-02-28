@@ -1396,6 +1396,8 @@ class InterDirStateTree(InterTree):
             versioned in one of source, target, extra_trees or
             PathsNotVersionedError is raised.
         """
+        utf8_decode = cache_utf8._utf8_decode
+        _minikind_to_kind = dirstate.DirState._minikind_to_kind
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
             # TODO: handle extra trees in the dirstate.
@@ -1537,26 +1539,31 @@ class InterDirStateTree(InterTree):
             else:
                 source_details = entry[1][source_index]
             target_details = entry[1][target_index]
-            if source_details[0] in 'rfdl' and target_details[0] in 'fdl':
+            source_minikind = source_details[0]
+            target_minikind = target_details[0]
+            if source_minikind in 'fdlr' and target_minikind in 'fdl':
                 # claimed content in both: diff
                 #   r    | fdl    |      | add source to search, add id path move and perform
                 #        |        |      | diff check on source-target
-                #   r    | fdl    |  a   | dangling file that was present in the basis. 
+                #   r    | fdl    |  a   | dangling file that was present in the basis.
                 #        |        |      | ???
-                if source_details[0] in 'r':
+                if source_minikind in 'r':
                     # add the source to the search path to find any children it
                     # has.  TODO ? : only add if it is a container ?
-                    if not osutils.is_inside_any(searched_specific_files, source_details[1]):
+                    if not osutils.is_inside_any(searched_specific_files,
+                                                 source_details[1]):
                         search_specific_files.add(source_details[1])
                     # generate the old path; this is needed for stating later
                     # as well.
                     old_path = source_details[1]
                     old_dirname, old_basename = os.path.split(old_path)
                     path = os.path.join(entry[0][0], entry[0][1])
-                    old_entry = state._get_entry(source_index, path_utf8=old_path)
+                    old_entry = state._get_entry(source_index,
+                                                 path_utf8=old_path)
                     # update the source details variable to be the real
                     # location.
                     source_details = old_entry[1][source_index]
+                    source_minikind = source_details[0]
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
@@ -1571,14 +1578,14 @@ class InterDirStateTree(InterTree):
                     # source and target are both versioned and disk file is present.
                     target_kind = path_info[2]
                     if target_kind == 'directory':
-                        if source_details[0][0] != 'd':
+                        if source_minikind != 'd':
                             content_change = True
                         else:
                             # directories have no fingerprint
                             content_change = False
                         target_exec = False
                     elif target_kind == 'file':
-                        if source_details[0][0] != 'f':
+                        if source_minikind != 'f':
                             content_change = True
                         else:
                             # has it changed? fast path: size, slow path: sha1.
@@ -1586,18 +1593,20 @@ class InterDirStateTree(InterTree):
                                 content_change = True
                             else:
                                 # maybe the same. Get the hash
-                                new_hash = self.target._hashcache.get_sha1(path, path_info[3])
+                                new_hash = self.target._hashcache.get_sha1(
+                                                            path, path_info[3])
                                 content_change = (new_hash != source_details[1])
                         target_exec = bool(
                             stat.S_ISREG(path_info[3].st_mode)
                             and stat.S_IEXEC & path_info[3].st_mode)
                     elif target_kind == 'symlink':
-                        if source_details[0][0] != 'l':
+                        if source_minikind != 'l':
                             content_change = True
                         else:
-                            # TODO: check symlink supported for windows users and grab
-                            # from target state here.
-                            content_change = os.readlink(path_info[4]) != source_details[1]
+                            # TODO: check symlink supported for windows users
+                            # and grab from target state here.
+                            link_target = os.readlink(path_info[4])
+                            content_change = (link_target != source_details[1])
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
@@ -1634,14 +1643,14 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                path_unicode = path.decode('utf8')
+                path_unicode = utf8_decode(path)[0]
                 return ((entry[0][2], path_unicode, content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
                         (old_basename, entry[0][1]),
-                        (dirstate.DirState._minikind_to_kind[source_details[0]], target_kind),
+                        (_minikind_to_kind[source_minikind], target_kind),
                         (source_exec, target_exec)),)
-            elif source_details[0] in 'a' and target_details[0] in 'fdl':
+            elif source_minikind in 'a' and target_minikind in 'fdl':
                 # looks like a new file
                 if path_info is not None:
                     path = os.path.join(*entry[0][0:2])
@@ -1654,7 +1663,7 @@ class InterDirStateTree(InterTree):
                     new_executable = bool(
                         stat.S_ISREG(path_info[3].st_mode)
                         and stat.S_IEXEC & path_info[3].st_mode)
-                    path_unicode = path.decode('utf8')
+                    path_unicode = utf8_decode(path)[0]
                     return ((entry[0][2], path_unicode, True,
                             (False, True),
                             (None, parent_id),
@@ -1665,7 +1674,7 @@ class InterDirStateTree(InterTree):
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
                     pass
-            elif source_details[0] in 'fdl' and target_details[0] in 'a':
+            elif source_minikind in 'fdl' and target_minikind in 'a':
                 # unversioned, possibly, or possibly not deleted: we dont care.
                 # if its still on disk, *and* theres no other entry at this
                 # path [we dont know this in this routine at the moment -
@@ -1675,14 +1684,14 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                old_path_unicode = old_path.decode('utf8')
+                old_path_unicode = utf8_decode(old_path)[0]
                 return ((entry[0][2], old_path_unicode, True,
                         (True, False),
                         (parent_id, None),
                         (entry[0][1], None),
-                        (dirstate.DirState._minikind_to_kind[source_details[0]], None),
+                        (_minikind_to_kind[source_minikind], None),
                         (source_details[3], None)),)
-            elif source_details[0] in 'fdl' and target_details[0] in 'r':
+            elif source_minikind in 'fdl' and target_minikind in 'r':
                 # a rename; could be a true rename, or a rename inherited from
                 # a renamed parent. TODO: handle this efficiently. Its not
                 # common case to rename dirs though, so a correct but slow
