@@ -24,6 +24,7 @@ but this depends on the transport.
 
 import cStringIO
 import os
+import re
 import sys
 from tempfile import TemporaryFile
 
@@ -353,3 +354,20 @@ s: both\\\"
         self.assertEqual(u'foo: %s\n' % uni_data, child_text)
         new_child = rio.read_stanza_unicode(child_text.splitlines(True))
         self.assertEqual(uni_data, new_child.get('foo'))
+
+    def mail_munge(self, lines):
+        new_lines = []
+        for line in lines:
+            line = re.sub('([^\r])\n', '\\1\r\n', line)
+            new_lines.append(line)
+        return new_lines
+
+    def test_patch_rio(self):
+        stanza = Stanza(data='#\n\r\\r ', space=' ' * 255)
+        lines = rio.to_patch_lines(stanza)
+        for line in lines:
+            self.assertContainsRe(line, '^# ')
+        lines = self.mail_munge(lines)
+        new_stanza = rio.read_patch_stanza(lines)
+        self.assertEqual('#\n\r\\r ', new_stanza.get('data'))
+        self.assertEqual(' '* 255, new_stanza.get('space'))

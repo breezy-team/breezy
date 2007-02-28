@@ -315,3 +315,27 @@ def read_stanza_unicode(unicode_iter):
         return stanza
     else:     # didn't see any content
         return None    
+
+def to_patch_lines(stanza):
+    lines = []
+    for pline in stanza.to_lines():
+        for line in pline.split('\n')[:-1]:
+            line = re.sub('\\\\', '\\\\\\\\', line)
+            lines.append('# ' + re.sub('\r', '\\\\r', line + '\n'))
+    return lines
+
+def _patch_stanza_iter(line_iter):
+    map = {'\\\\': '\\',
+           '\\r' : '\r' }
+    def mapget(match):
+        return map[match.group(0)]
+
+    for line in line_iter:
+        assert line.startswith('# ')
+        line = line[2:]
+        line = re.sub('\r', '', line)
+        line = re.sub('\\\\.', mapget, line)
+        yield line
+
+def read_patch_stanza(line_iter):
+    return read_stanza(_patch_stanza_iter(line_iter))
