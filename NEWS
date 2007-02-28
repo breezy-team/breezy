@@ -141,6 +141,9 @@ IN DEVELOPMENT
     * ``bzr init`` works with unicode argument LOCATION.
       (Alexander Belchenko, #85599)
 
+    * Correctly handles mutiple permanent http redirections.
+     (Vincent Ladeuil, #88780)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
