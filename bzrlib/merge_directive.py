@@ -9,8 +9,9 @@ from bzrlib.bundle import serializer as bundle_serializer
 
 class MergeDirective(object):
 
-    def __init__(self, revision, testament_sha1, submit_location, patch=None,
-                 patch_type=None, public_location=None):
+    def __init__(self, revision, testament_sha1, time, timezone,
+                 submit_location, patch=None, patch_type=None,
+                 public_location=None):
         assert patch_type in (None, 'diff', 'bundle')
         if patch_type != 'bundle' and public_location is None:
             raise errors.NoMergeSource()
@@ -18,6 +19,8 @@ class MergeDirective(object):
             raise errors.PatchMissing(patch_type)
         self.revision = revision
         self.testament_sha1 = testament_sha1
+        self.time = time
+        self.timezone = timezone
         self.submit_location = submit_location
         self.patch = patch
         self.patch_type = patch_type
@@ -38,6 +41,8 @@ class MergeDirective(object):
             patch_type = 'diff'
         else:
             patch_type = 'bundle'
+        time, timezone = bundle_serializer.unpack_highres_date(
+            stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision', 'testament_sha1', 'submit_location',
                     'public_location'):
@@ -45,10 +50,13 @@ class MergeDirective(object):
                 kwargs[key] = stanza.get(key)
             except KeyError:
                 pass
-        return MergeDirective(patch_type=patch_type, patch=patch, **kwargs)
+        return MergeDirective(time=time, timezone=timezone,
+                              patch_type=patch_type, patch=patch, **kwargs)
 
     def to_lines(self):
-        stanza = rio.Stanza(revision=self.revision,
+        timestamp = bundle_serializer.format_highres_date(self.time,
+                                                          self.timezone)
+        stanza = rio.Stanza(revision=self.revision, timestamp=timestamp,
                             submit_location=self.submit_location,
                             testament_sha1=self.testament_sha1)
         for key in ('public_location',):
