@@ -430,32 +430,35 @@ class cmd_inventory(Command):
             raise errors.BzrCommandError('invalid kind specified')
 
         work_tree, file_list = tree_files(file_list)
+        work_tree.lock_read()
+        try:
+            if revision is not None:
+                if len(revision) > 1:
+                    raise errors.BzrCommandError(
+                        'bzr inventory --revision takes exactly one revision'
+                        ' identifier')
+                revision_id = revision[0].in_history(work_tree.branch).rev_id
+                tree = work_tree.branch.repository.revision_tree(revision_id)
 
-        if revision is not None:
-            if len(revision) > 1:
-                raise errors.BzrCommandError('bzr inventory --revision takes'
-                                             ' exactly one revision identifier')
-            revision_id = revision[0].in_history(work_tree.branch).rev_id
-            tree = work_tree.branch.repository.revision_tree(revision_id)
-                        
-            # We include work_tree as well as 'tree' here
-            # So that doing '-r 10 path/foo' will lookup whatever file
-            # exists now at 'path/foo' even if it has been renamed, as
-            # well as whatever files existed in revision 10 at path/foo
-            trees = [tree, work_tree]
-        else:
-            tree = work_tree
-            trees = [tree]
+                extra_trees = [work_tree]
+                tree.lock_read()
+            else:
+                tree = work_tree
+                extra_trees = []
 
-        if file_list is not None:
-            file_ids = _mod_tree.find_ids_across_trees(file_list, trees,
-                                                      require_versioned=True)
-            # find_ids_across_trees may include some paths that don't
-            # exist in 'tree'.
-            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                             for file_id in file_ids if file_id in tree)
-        else:
-            entries = tree.inventory.entries()
+            if file_list is not None:
+                file_ids = tree.paths2ids(file_list, trees=extra_trees,
+                                          require_versioned=True)
+                # find_ids_across_trees may include some paths that don't
+                # exist in 'tree'.
+                entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                                 for file_id in file_ids if file_id in tree)
+            else:
+                entries = tree.inventory.entries()
+        finally:
+            tree.unlock()
+            if tree is not work_tree:
+                work_tree.unlock()
 
         for path, entry in entries:
             if kind and kind != entry.kind:

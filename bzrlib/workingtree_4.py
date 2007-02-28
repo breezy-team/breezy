@@ -671,7 +671,7 @@ class WorkingTree4(WorkingTree3):
 
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """See Tree.paths2ids().
-        
+
         This specialisation fast-paths the case where all the trees are in the
         dirstate.
         """
