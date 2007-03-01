@@ -36,11 +36,12 @@ class TestSetRootId(TestCaseWithWorkingTree):
     def test_set_and_read_unicode(self):
         tree = self.make_branch_and_tree('a-tree')
         # setting the root id allows it to be read via get_root_id.
+        root_id = u'\xe5n-id'.encode('utf8')
         tree.lock_write()
         try:
             old_id = tree.get_root_id()
-            tree.set_root_id(u'\xe5n id')
-            self.assertEqual(u'\xe5n id', tree.get_root_id())
+            tree.set_root_id(root_id)
+            self.assertEqual(root_id, tree.get_root_id())
             # set root id should not have triggered a flush of the tree,
             # so check a new tree sees the old state.
             reference_tree = tree.bzrdir.open_workingtree()
@@ -50,8 +51,8 @@ class TestSetRootId(TestCaseWithWorkingTree):
         # having unlocked the tree, the value should have been 
         # preserved into the next lock, which is an implicit read
         # lock around the get_root_id call.
-        self.assertEqual(u'\xe5n id', tree.get_root_id())
+        self.assertEqual(root_id, tree.get_root_id())
         # and if we get a new working tree instance, then the value
         # should still be retained
         tree = tree.bzrdir.open_workingtree()
-        self.assertEqual(u'\xe5n id', tree.get_root_id())
+        self.assertEqual(root_id, tree.get_root_id())
