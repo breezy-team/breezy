@@ -748,7 +748,7 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, list)
+    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
