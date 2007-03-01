@@ -40,11 +40,13 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.revisiontree import RevisionTree
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeFormatAB1,
-                                WorkingTreeTestProviderAdapter,
-                                _legacy_formats,
-                                )
+from bzrlib.workingtree import (
+    WorkingTreeFormat,
+    WorkingTreeFormat3,
+    WorkingTreeFormatAB1,
+    WorkingTreeTestProviderAdapter,
+    _legacy_formats,
+    )
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,
@@ -274,7 +276,9 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         for adapted_test in result:
             # for working tree adapted tests, preserve the tree
             adapted_test.workingtree_to_test_tree = return_parameter
-        default_format = WorkingTreeFormatAB1()
+        # this is the default in that it's used to test the generic InterTree
+        # code.
+        default_format = WorkingTreeFormat3()
         revision_tree_test = self._clone_test(
             test,
             default_format._matchingbzrdir, 
@@ -282,6 +286,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             RevisionTree.__name__)
         revision_tree_test.workingtree_to_test_tree = revision_tree_from_workingtree
         result.addTest(revision_tree_test)
+        # also explicity test WorkingTree4 against everything
         dirstate_format = WorkingTreeFormat4()
         dirstate_revision_tree_test = self._clone_test(
             test,

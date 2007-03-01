@@ -354,7 +354,7 @@ class TestTreeProviderAdapter(TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.workingtree import WorkingTreeFormat, WorkingTreeFormatAB1
+        from bzrlib.workingtree import WorkingTreeFormat, WorkingTreeFormat3
         input_test = TestTreeProviderAdapter(
             "test_adapted_tests")
         server1 = "a"
@@ -364,7 +364,9 @@ class TestTreeProviderAdapter(TestCase):
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(4, len(tests))
-        default_format = WorkingTreeFormatAB1
+        # this must match the default format setp up in
+        # TreeTestProviderAdapter.adapt
+        default_format = WorkingTreeFormat3
         self.assertEqual(tests[0].workingtree_format, formats[0][0])
         self.assertEqual(tests[0].bzrdir_format, formats[0][1])
         self.assertEqual(tests[0].transport_server, server1)

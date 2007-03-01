@@ -36,9 +36,11 @@ from bzrlib.tests.tree_implementations import (
     TestCaseWithTree,
     )
 from bzrlib.tree import InterTree
-from bzrlib.workingtree import (WorkingTreeFormatAB1,
-                                WorkingTreeTestProviderAdapter,
-                                )
+from bzrlib.workingtree import (
+    WorkingTreeFormat3,
+    WorkingTreeFormatAB1,
+    WorkingTreeTestProviderAdapter,
+    )
 
 
 def return_provided_trees(source, target):
@@ -89,7 +91,7 @@ def test_suite():
     # load the tests of the infrastructure for these tests
     result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.intertree_implementations']))
 
-    default_tree_format = WorkingTreeFormatAB1()
+    default_tree_format = WorkingTreeFormat3()
     test_intertree_implementations = [
         'bzrlib.tests.intertree_implementations.test_compare',
         ]
