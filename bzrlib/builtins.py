@@ -24,6 +24,7 @@ import codecs
 import errno
 import sys
 import tempfile
+import time
 
 import bzrlib
 from bzrlib import (
@@ -36,6 +37,7 @@ from bzrlib import (
     ignores,
     log,
     merge as _mod_merge,
+    merge_directive,
     osutils,
     repository,
     symbol_versioning,
@@ -3163,6 +3165,23 @@ class cmd_serve(Command):
             raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
 
+
+class cmd_merge_directive(Command):
+    """Generate a merge directive auto-merge tools."""
+
+    def run(self):
+        branch = Branch.open('.')
+        submit_branch = branch.get_submit_branch()
+        public_branch = branch.get_config().get_user_option('public_branch')
+        if public_branch is not None:
+            public_branch = Branch.open(public_branch)
+        if submit_branch is None:
+            submit_branch = branch.get_parent()
+        directive = merge_directive.MergeDirective.from_objects(
+            branch.repository, branch.last_revision(), time.time(),
+            osutils.local_time_offset(), submit_branch,
+            public_branch=public_branch)
+        self.outf.writelines(directive.to_lines())
 
 # command-line interpretation helper for merge-related commands
 def _merge_helper(other_revision, base_revision,
