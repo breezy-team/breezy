@@ -126,3 +126,14 @@ class TestCommitBuilder(TestCaseWithRepository):
         # the RevisionTree api.
         self.assertEqual(rev_id, rev_tree.get_revision_id())
         self.assertEqual([], rev_tree.get_parent_ids())
+
+    def test_root_entry_has_revision(self):
+        # test the root revision created and put in the basis
+        # has the right rev id.
+        tree = self.make_branch_and_tree('.')
+        rev_id = tree.commit('message')
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
+        self.assertEqual(rev_id, basis_tree.inventory.root.revision)
+

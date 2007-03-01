@@ -1071,7 +1071,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt._new_tree()
         wt.lock_tree_write()
         try:
-            #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
             wt.flush()
             basis = wt.basis_tree()

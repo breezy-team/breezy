@@ -361,8 +361,7 @@ class TestRepository(TestCaseWithRepository):
     def test_root_entry_has_revision(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('message', rev_id='rev_id')
-        self.assertEqual('rev_id', tree.basis_tree().inventory.root.revision)
-        rev_tree = tree.branch.repository.revision_tree(tree.get_parent_ids()[0])
+        rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
     def DISABLED_DELETE_OR_FIX_BEFORE_MERGE_test_create_basis_inventory(self):
