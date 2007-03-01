@@ -1446,14 +1446,22 @@ class cmd_deleted(Command):
     @display_command
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
-        old = tree.basis_tree()
-        for path, ie in old.inventory.iter_entries():
-            if not tree.has_id(ie.file_id):
-                self.outf.write(path)
-                if show_ids:
-                    self.outf.write(' ')
-                    self.outf.write(ie.file_id)
-                self.outf.write('\n')
+        tree.lock_read()
+        try:
+            old = tree.basis_tree()
+            old.lock_read()
+            try:
+                for path, ie in old.inventory.iter_entries():
+                    if not tree.has_id(ie.file_id):
+                        self.outf.write(path)
+                        if show_ids:
+                            self.outf.write(' ')
+                            self.outf.write(ie.file_id)
+                        self.outf.write('\n')
+            finally:
+                old.unlock()
+        finally:
+            tree.unlock()
 
 
 class cmd_modified(Command):
