@@ -168,6 +168,11 @@ class WorkingTree4(WorkingTree3):
             f = f.strip('/')
             assert '//' not in f
             assert '..' not in f
+            if self.path2id(f):
+                # special case tree root handling.
+                if f == '' and self.path2id(f) == ROOT_ID:
+                    state.set_path_id('', generate_ids.gen_file_id(f))
+                continue
             if file_id is None:
                 file_id = generate_ids.gen_file_id(f)
             # deliberately add the file with no cached stat or sha1
@@ -238,6 +243,14 @@ class WorkingTree4(WorkingTree3):
         if kind == 'directory' and entry.kind == 'tree-reference':
             kind = 'tree-reference'
         return kind, executable, stat_value
+
+    @needs_write_lock
+    def commit(self, message=None, revprops=None, *args, **kwargs):
+        # mark the tree as dirty post commit - commit
+        # can change the current versioned list by doing deletes.
+        result = WorkingTree3.commit(self, message, revprops, *args, **kwargs)
+        self._make_dirty(reset_inventory=True)
+        return result
 
     def current_dirstate(self):
         """Return the current dirstate object. 
@@ -506,7 +519,7 @@ class WorkingTree4(WorkingTree3):
             state._get_block_entry_index(to_entry_dirname, to_basename, 0)
         if not entry_present:
             raise errors.BzrMoveFailedError('', to_dir,
-                errors.NotInWorkingDirectory(to_dir))
+                errors.NotVersionedError(to_dir))
         to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
         # get a handle on the block itself.
         to_block_index = state._ensure_block(

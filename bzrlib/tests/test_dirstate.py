@@ -75,6 +75,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         state = self.create_empty_dirstate()
         try:
             state._set_data([], dirblocks)
+            state._validate()
         except:
             state.unlock()
             raise
@@ -146,6 +147,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         dirblocks.append(('a', [e_entry, f_entry]))
         dirblocks.append(('b', [g_entry, h_entry]))
         state = dirstate.DirState.initialize('dirstate')
+        state._validate()
         try:
             state._set_data([], dirblocks)
         except:
@@ -197,6 +199,7 @@ class TestTreeToDirState(TestCaseWithDirState):
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
+        state._validate()
         self.check_state_with_reopen(expected_result, state)
 
     def test_1_parents_empty_to_dirstate(self):
@@ -211,6 +214,7 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
+        state._validate()
 
     def test_2_parents_empty_to_dirstate(self):
         # create a parent by doing a commit
@@ -227,6 +231,7 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
+        state._validate()
 
     def test_empty_unknowns_are_ignored_to_dirstate(self):
         """We should be able to create a dirstate for an empty tree."""
@@ -418,6 +423,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
+        state._validate()
         state.lock_read()
         try:
             self.assertEqual(expected_rows, list(state._iter_entries()))
@@ -432,6 +438,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         mt.commit('foo', rev_id='parent-revid')
         rt = mt.branch.repository.revision_tree('parent-revid')
         state = dirstate.DirState.initialize('dirstate')
+        state._validate()
         try:
             state.set_parent_trees([('parent-revid', rt)], ghosts=[])
             state.set_path_id('', 'foobarbaz')
@@ -486,7 +493,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 ['ghost-rev'])
             # check we can reopen and use the dirstate after setting parent
             # trees.
+            state._validate()
             state.save()
+            state._validate()
         finally:
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
@@ -645,6 +654,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
+        state._validate()
         try:
             self.assertEqual(expected_entries, list(state._iter_entries()))
         finally:

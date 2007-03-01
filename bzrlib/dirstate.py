@@ -228,7 +228,11 @@ class DirState(object):
     specific, and if it is how we detect/parameterise that.
     """
 
-    _kind_to_minikind = {'absent':'a', 'file':'f', 'directory':'d', 'relocated':'r',
+    _kind_to_minikind = {
+            'absent':'a',
+            'file':'f',
+            'directory':'d',
+            'relocated':'r',
             'symlink': 'l',
             'tree-reference': 't',
         }
@@ -342,10 +346,19 @@ class DirState(object):
             kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
             info = '%s:%s' % (kind, path)
             raise errors.DuplicateFileId(file_id, info)
-        entry_key = (dirname, basename, file_id)
-        self._read_dirblocks_if_needed()
-        block_index, present = self._find_block_index_from_key(entry_key)
-        if not present:
+        first_key = (dirname, basename, '')
+        block_index, present = self._find_block_index_from_key(first_key)
+        if present:
+            # check the path is not in the tree
+            block = self._dirblocks[block_index][1]
+            entry_index, _ = self._find_entry_index(first_key, block)
+            while (entry_index < len(block) and 
+                block[entry_index][0][0:2] == first_key[0:2]):
+                if block[entry_index][1][0][0] not in 'ar':
+                    # this path is in the dirstate in the current tree.
+                    raise Exception, "adding already added path!"
+                entry_index += 1
+        else:
             # The block where we want to put the file is not present. But it
             # might be because the directory was empty, or not loaded yet. Look
             # for a parent entry, if not found, raise NotVersionedError
@@ -356,6 +369,7 @@ class DirState(object):
                 raise errors.NotVersionedError(path, str(self))
             self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
         block = self._dirblocks[block_index][1]
+        entry_key = (dirname, basename, file_id)
         if stat is None:
             size = 0
             packed_stat = DirState.NULLSTAT
@@ -1205,27 +1219,30 @@ class DirState(object):
             if not possible_keys:
                 return None, None
             for key in possible_keys:
-                (block_index, entry_index, dir_present,
-                 file_present) = self._get_block_entry_index(key[0], key[1],
-                                                             tree_index)
-                if file_present:
+                block_index, present = \
+                    self._find_block_index_from_key(key)
+                # strange, probably indicates an out of date
+                # id index - for now, allow this.
+                if not present:
+                    continue
+                # WARNING: DO not change this code to use _get_block_entry_index
+                # as that function is not suitable: it does not use the key
+                # to lookup, and thus the wront coordinates are returned.
+                block = self._dirblocks[block_index][1]
+                entry_index, present = self._find_entry_index(key, block)
+                if present:
                     entry = self._dirblocks[block_index][1][entry_index]
-                    # _get_block_entry_index only returns entries that are not
-                    # absent in the current tree. _get_id_index will return
-                    # both locations for a renamed file.  It is possible that a
-                    # new file was added at the same location that the old file
-                    # was renamed away. So _get_block_entry_index will actually
-                    # match the new file, skipping the fact that the real entry
-                    # we want is the rename. By just continuing here, we should
-                    # find the record at the target location, because
-                    # _get_id_index should return all locations.
-                    if entry[0][2] != fileid_utf8:
-                        continue
-                    assert entry[1][tree_index][0] not in ('a', 'r')
-                    assert key == entry[0], ('We were told that %s would be at'
-                            ' %s, %s, but we found %s' % (key, block_index,
-                                                          entry_index, entry))
-                    return entry
+                    if entry[1][tree_index][0] in 'fdl':
+                        # this is the result we are looking for: the  
+                        # real home of this file_id in this tree.
+                        return entry
+                    if entry[1][tree_index][0] == 'a':
+                        # there is no home for this entry in this tree
+                        return None, None
+                    assert entry[1][tree_index][0] == 'r'
+                    real_path = entry[1][tree_index][1]
+                    return self._get_entry(tree_index, fileid_utf8=fileid_utf8,
+                        path_utf8=real_path)
             return None, None
 
     @staticmethod
@@ -1824,8 +1841,6 @@ class DirState(object):
             # Remove it, its meaningless.
             block = self._find_block(current_old[0])
             entry_index, present = self._find_entry_index(current_old[0], block[1])
-            if not present:
-                import pdb;pdb.set_trace()
             assert present, 'could not find entry for %s' % (current_old,)
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
@@ -1978,9 +1993,6 @@ class DirState(object):
             assert self._dirblocks[1][0] == '', \
                     "dirblocks missing root directory:\n" + \
                     pformat(dirblocks)
-        assert self._dirblocks[0][0] == '', \
-                "dirblocks don't start with root block:\n" + \
-                pformat(dirblocks)
         assert self._dirblocks[1:] == sorted(self._dirblocks[1:]), \
                 "dirblocks are not in sorted order:\n" + \
                 pformat(self._dirblocks)

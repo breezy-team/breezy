@@ -111,8 +111,6 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv', 'hello.txt', 'sub2')
         self.assertMoved('hello.txt','sub2/hello.txt')
 
-        tree.read_working_inventory()
-
         self.build_tree(['sub1/'])
         tree.add(['sub1'])
         self.run_bzr('mv', 'sub2/hello.txt', 'sub1')
@@ -129,7 +127,6 @@ class TestMove(TestCaseWithTransport):
         os.chdir('sub1/sub2')
         self.run_bzr('mv', '../hello.txt', '.')
         self.failUnlessExists('./hello.txt')
-        tree.read_working_inventory()
 
         os.chdir('..')
         self.run_bzr('mv', 'sub2/hello.txt', '.')
