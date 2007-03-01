@@ -326,9 +326,16 @@ def to_patch_lines(stanza, max_width=72):
             while len(line) > 0:
                 partline = line[:max_rio_width]
                 line = line[max_rio_width:]
+                partline = re.sub('\r', '\\\\r', partline)
+                blank_line = False
                 if len(line) > 0:
                     partline += '\\'
-                lines.append('# ' + re.sub('\r', '\\\\r', partline+ '\n'))
+                elif re.search(' $', partline):
+                    partline += '\\'
+                    blank_line = True
+                lines.append('# ' + partline + '\n')
+                if blank_line:
+                    lines.append('# \n')
     return lines
 
 def _patch_stanza_iter(line_iter):
@@ -340,7 +347,7 @@ def _patch_stanza_iter(line_iter):
 
     last_line = None
     for line in line_iter:
-        assert line.startswith('# ')
+        assert line.startswith('#')
         line = line[2:]
         line = re.sub('\r', '', line)
         line = re.sub('\\\\(.|\n)', mapget, line)

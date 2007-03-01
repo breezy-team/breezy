@@ -359,6 +359,7 @@ s: both\\\"
         new_lines = []
         for line in lines:
             line = re.sub('([^\r])\n', '\\1\r\n', line)
+            line = re.sub(' *\r\n', '\r\n', line)
             new_lines.append(line)
         return new_lines
 
