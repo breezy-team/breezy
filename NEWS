@@ -151,6 +151,9 @@ IN DEVELOPMENT
     * ``bzr init`` works with unicode argument LOCATION.
       (Alexander Belchenko, #85599)
 
+    * Raise DependencyNotPresent if pycurl do not support https. (Vincent
+      Ladeuil, #85305)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
