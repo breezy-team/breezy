@@ -1236,7 +1236,7 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            branch = bzrdir.BzrDir.create_branch_convenience(location,
+            branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
                                                              format=format)
         else:
             from bzrlib.transport.local import LocalTransport
@@ -2335,7 +2335,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
-        print "it sure does!"
+        print "It sure does!"
 
 
 class cmd_find_merge_base(Command):
@@ -3136,7 +3136,8 @@ class cmd_serve(Command):
         Option('port',
                help='listen for connections on nominated port of the form '
                     '[hostname:]portnumber. Passing 0 as the port number will '
-                    'result in a dynamically allocated port.',
+                    'result in a dynamically allocated port. Default port is '
+                    '4155.',
                type=str),
         Option('directory',
                help='serve contents of directory',
@@ -3159,16 +3160,19 @@ class cmd_serve(Command):
         t = get_transport(url)
         if inet:
             server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
-        elif port is not None:
-            if ':' in port:
-                host, port = port.split(':')
-            else:
+        else:
+            if port is None:
+                port = smart.BZR_DEFAULT_PORT
                 host = '127.0.0.1'
-            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            else:
+                if ':' in port:
+                    host, port = port.split(':')
+                else:
+                    host = '127.0.0.1'
+                port = int(port)
+            server = smart.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', server.port
             sys.stdout.flush()
-        else:
-            raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
 
 

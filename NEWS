@@ -57,14 +57,21 @@ IN DEVELOPMENT
       ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
       at present.  (Martin Pool)
 
+    * The bzr:// transport now has a well-known port number, 4155, which it will
+      use by default.  (Andrew Bennetts, Martin Pool)
+
+    * Bazaar now looks for user-installed plugins before looking for site-wide
+      plugins. (Jonathan Lange)
+
+>>>>>>> MERGE-SOURCE
   INTERNALS:
 
-    * Internally revision ids are now passed around as utf-8 bytestrings,
-      rather than treating them as Unicode strings. This has performance
-      benefits for Knits, since we no longer need to decode the revision
-      id for each line of content, nor for each entry in the index. This
-      will also help with the future dirstate format. File-ids should
-      receive the same treatment in the future. (John Arbash Meinel)
+    * Internally revision ids and file ids are now passed around as utf-8
+      bytestrings, rather than treating them as Unicode strings. This has
+      performance benefits for Knits, since we no longer need to decode the
+      revision id for each line of content, nor for each entry in the index.
+      This will also help with the future dirstate format.
+      (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
@@ -98,9 +105,14 @@ IN DEVELOPMENT
       This is expected to grow to cover a number of related uses mainly
       related to bzr info. (Robert Collins)
 
-    * Log formatters are now managed with a registry.  log.register_formatter
-      continues to work, but callers accessed the FORMATTERS dictionary
-      directly will not.
+    * Log formatters are now managed with a registry.
+      ``log.register_formatter`` continues to work, but callers accessing
+      the FORMATTERS dictionary directly will not.
+
+    * Allow a start message to be passed to the ``edit_commit_message``
+      function.  This will be placed in the message offered to the user
+      for editing above the separator. It allows a template commit message
+      to be used more easily. (James Westby)
 
     * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
       you pass a Unicode string rather than an 8-bit string. Callers need
@@ -125,13 +137,19 @@ IN DEVELOPMENT
       (John Arbash Meinel, #30576, #45504)
 
     * Fix http proxy authentication when user and an optional
-      password appears in the *_proxy vars. (Vincent Ladeuil,
+      password appears in the ``*_proxy`` vars. (Vincent Ladeuil,
       #83954).
 
     * ``bzr log branch/file`` works for local treeless branches
       (Aaron Bentley, #84247)
 
     * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
+
+    * Searching location of CA bundle for PyCurl in env variable (CURL_CA_BUNDLE),
+      and on win32 along the PATH. (Alexander Belchenko, #82086)
+
+    * ``bzr init`` works with unicode argument LOCATION.
+      (Alexander Belchenko, #85599)
 
   TESTING:
 
@@ -285,6 +303,8 @@ bzr 0.14rc1  2007-01-16
 
     * Allow plugins import from zip archives.
       (Alexander Belchenko, #68124)
+
+    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
 
 
 bzr 0.13  2006-12-05
