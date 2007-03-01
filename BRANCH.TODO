@@ -8,5 +8,3 @@ like are not vetted, however.
 
 Similarly, the SmartWSGIApp should also be careful to disallow '..' and the
 like.
-
-Write tests for bug #88780.

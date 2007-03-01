@@ -25,9 +25,13 @@ IN DEVELOPMENT
     * HTTP redirections are now taken into account when a branch (or a
       bundle) is accessed for the first time. A message is issued at each
       redirection to inform the user. In the past, http redirections were
-      silently followed for each request which signifanctly degrade
+      silently followed for each request which significantly degraded the
       performances. The http redirections are not followed anymore by
-      default.  (Vincent Ladeuil)
+      default, instead a RedirectRequested exception is raised. For bzrlib
+      users needing to follow http redirections anyway,
+      bzrlib.transport.do_catching_redirections provide an easy transition
+      path.  
+      (Vincent Ladeuil)
 
     * ``bzr pull --overwrite`` will now correctly overwrite checkouts.
       (Robert Collins)
