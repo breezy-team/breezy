@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -100,22 +100,24 @@ class TestPullHook(TestCaseWithBranch):
         self.hook_calls = []
         TestCaseWithBranch.setUp(self)
 
-    def capture_post_pull_hook(self, source, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+    def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
         
         The call is logged, as is some state of the two branches.
         """
-        if local:
-            local_locked = local.is_locked()
-            local_base = local.base
+        if result.local_branch:
+            local_locked = result.local_branch.is_locked()
+            local_base = result.local_branch.base
         else:
             local_locked = None
             local_base = None
         self.hook_calls.append(
-            ('post_pull', source, local_base, master.base, old_revno, old_revid,
-             new_revno, new_revid, source.is_locked(), local_locked,
-             master.is_locked()))
+            ('post_pull', result.source_branch, local_base,
+             result.master_branch.base, result.old_revno,
+             result.old_revid,
+             result.new_revno, result.new_revid,
+             result.source_branch.is_locked(), local_locked,
+             result.master_branch.is_locked()))
 
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')

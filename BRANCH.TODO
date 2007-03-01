@@ -2,9 +2,3 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
-Security: it should be impossible, by default, to access files above the base of
-the backing transport of the SmartServerRequestHandler.  Currently '..' and the
-like are not vetted, however.
-
-Similarly, the SmartWSGIApp should also be careful to disallow '..' and the
-like.
