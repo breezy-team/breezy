@@ -82,8 +82,8 @@ class MergeDirective(object):
             if not public_branch.repository.has_revision(revision_id):
                 raise errors.PublicBranchOutOfDate(public_location,
                                                    revision_id)
-            else:
-                public_location = None
+        else:
+            public_location = None
         t = testament.StrictTestament3.from_revision(repository, revision_id)
         if patch_type is None:
             patch = None
@@ -104,7 +104,7 @@ class MergeDirective(object):
                                              ancestor_id)
         return MergeDirective(revision_id, t.as_sha1(), time, timezone,
                               submit_location, patch, patch_type,
-                              public_branch)
+                              public_location)
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):

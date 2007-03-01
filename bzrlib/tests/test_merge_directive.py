@@ -81,4 +81,5 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         md3 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
             patch_type=None, public_branch=branch_c)
+        md3.to_lines()
         self.assertIs(None, md3.patch)
