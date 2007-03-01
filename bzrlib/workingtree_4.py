@@ -1712,7 +1712,13 @@ class InterDirStateTree(InterTree):
                 # implementation will do.
                 if not osutils.is_inside_any(searched_specific_files, target_details[1]):
                     search_specific_files.add(target_details[1])
+            elif source_minikind in 'r' and target_minikind in 'r':
+                # neither of the selected trees contain this file,
+                # so skip over it. This is not currently directly tested, but
+                # is indirectly via test_too_much.TestCommands.test_conflicts.
+                pass
             else:
+                print "*******", source_minikind, target_minikind
                 import pdb;pdb.set_trace()
             return ()
         while search_specific_files:
