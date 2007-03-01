@@ -241,7 +241,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
 
         repo = main_wt.branch.repository
         file_ids = repo.fileids_altered_by_revision_ids([revision_id])
-        root_id = main_wt.basis_tree().inventory.root.file_id
+        root_id = main_wt.basis_tree().path2id('')
         if root_id in file_ids:
             self.assertEqual({file_id:set([revision_id]),
                               root_id:set([revision_id])
