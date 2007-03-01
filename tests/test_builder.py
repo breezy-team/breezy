@@ -344,6 +344,21 @@ class TestDefaultBuilder(BuilderTestCase):
     builder.export()
     self.failUnlessExists(join(self.build_dir, self.tarball_name))
 
+  def test_export_use_existing_doesnt_copy_tarball(self):
+    """Test that the tarball is not copied in to the build dir.
+    
+    If use_existing is given then the tarball should not be copied.
+    This is currently checked by just not creating the one in the orig_dir
+    and checking that it doesn't barf. It might be better to use a checksum
+    or similar to make it more robust.
+    
+    This might not be the desired behaviour, but add a test for it
+    either way."""
+    builder = self.get_builder()
+    builder.prepare()
+    builder.export(use_existing=True)
+    self.failIfExists(join(self.build_dir, self.tarball_name))
+
   def test_export_creates_source_dir(self):
     """Test that the source dir is created on export."""
     builder = self.get_builder()
