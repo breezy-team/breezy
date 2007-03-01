@@ -1109,6 +1109,14 @@ class TestDirStateGetSha1(TestCaseWithDirState):
         digest = state.get_sha1_for_entry(entry, abspath='a')
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
 
+    def test_get_sha1_from_entry_dir(self):
+        state = Sha1InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        self.build_tree(['a/'])
+        state.add('a', 'a-id', 'directory', None, '')
+        entry = state._get_entry(0, path_utf8='a')
+        self.assertIs(None, state.get_sha1_for_entry(entry, 'a'))
+
 
 class TestPackStat(TestCaseWithTransport):
 

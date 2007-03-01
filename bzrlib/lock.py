@@ -87,7 +87,7 @@ try:
         def _clear_f(self):
             """Clear the self.f attribute cleanly."""
             self.f.close()
-            del self.f 
+            del self.f
 
 
     class _fcntl_WriteLock(_fcntl_FileLock):
@@ -97,17 +97,22 @@ try:
         def __init__(self, filename):
             # standard IO errors get exposed directly.
             self._open(filename, 'rb+')
+            self.filename = realpath(filename)
+            if self.filename in self.open_locks:
+                self._clear_f()
+                raise LockContention("Lock already held.")
+            # reserve a slot for this lock - even if the lockf call fails,
+            # at thisi point unlock() will be called, because self.f is set.
+            # TODO: make this fully threadsafe, if we decide we care.
+            self.open_locks[self.filename] = self.filename
             try:
-                self.filename = realpath(filename)
-                if self.filename in self.open_locks:
-                    self._clear_f()
-                    raise LockContention("Lock already held.")
-                # reserve a slot for this lock - even if the lockf call fails, 
-                # at thisi point unlock() will be called, because self.f is set.
-                # TODO: make this fully threadsafe, if we decide we care.
-                self.open_locks[self.filename] = self.filename
-                fcntl.lockf(self.f, fcntl.LOCK_EX)
+                # LOCK_NB will cause IOError to be raised if we can't grab a
+                # lock right away.
+                fcntl.lockf(self.f, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError, e:
+                if e.errno in (errno.EAGAIN, errno.EACCES):
+                    # We couldn't grab the lock
+                    self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
                 raise LockError(e)
@@ -123,7 +128,9 @@ try:
             # standard IO errors get exposed directly.
             self._open(filename, 'rb')
             try:
-                fcntl.lockf(self.f, fcntl.LOCK_SH)
+                # LOCK_NB will cause IOError to be raised if we can't grab a
+                # lock right away.
+                fcntl.lockf(self.f, fcntl.LOCK_SH | fcntl.LOCK_NB)
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
@@ -198,6 +205,7 @@ except ImportError:
                 LOCK_SH = 1
                 LOCK_EX = 2
                 LOCK_NB = 4
+
                 def unlock(self):
                     _msvc_unlock(self.f)
                     self.f.close()
@@ -206,12 +214,14 @@ except ImportError:
 
             class _msvc_ReadLock(_msvc_FileLock):
                 def __init__(self, filename):
-                    _msvc_lock(self._open(filename, 'rb'), self.LOCK_SH)
+                    _msvc_lock(self._open(filename, 'rb'),
+                               self.LOCK_SH | self.LOCK_NB)
 
 
             class _msvc_WriteLock(_msvc_FileLock):
                 def __init__(self, filename):
-                    _msvc_lock(self._open(filename, 'rb+'), self.LOCK_EX)
+                    _msvc_lock(self._open(filename, 'rb+'),
+                               self.LOCK_EX | self.LOCK_NB)
 
 
             def _msvc_lock(f, flags):

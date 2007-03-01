@@ -194,6 +194,7 @@ desired.
 import bisect
 import codecs
 import cStringIO
+import errno
 import os
 import sha
 import struct
@@ -285,6 +286,7 @@ class DirState(object):
         self._state_file = None
         self._filename = path
         self._lock_token = None
+        self._lock_state = None
         self._id_index = None
         self._end_of_header = None
         self._split_path_cache = {}
@@ -1028,9 +1030,13 @@ class DirState(object):
         # the internal _dirblocks. So the dirblock state must have already been
         # read.
         assert self._dirblock_state != DirState.NOT_IN_MEMORY
-        assert entry[1][0][0] == 'f', \
-            'can only get sha1 for a file not: %s %s' % (
-            DirState._minikind_to_kind[entry[1][0][0]], entry[0])
+        # TODO: jam 20070301 Because we now allow kind changes (files => dirs)
+        #       we should actually base this check on the stat value, since
+        #       that is the absolute measurement of whether we have a file or
+        #       directory or link. That means that this function might actually
+        #       change an entry from being a file => dir or dir => file, etc.
+        if entry[1][0][0] != 'f':
+            return None
         if stat_value is None:
             stat_value = os.lstat(abspath)
         packed_stat = pack_stat(stat_value)
@@ -1563,16 +1569,15 @@ class DirState(object):
         num_entries_line = self._state_file.readline()
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
         self._num_entries = int(num_entries_line[len('num_entries: '):-1])
-    
+
     def save(self):
         """Save any pending changes created during this session.
-        
+
         We reuse the existing file, because that prevents race conditions with
-        file creation, and we expect to be using oslocks on it in the near 
-        future to prevent concurrent modification and reads - because dirstates
-        incremental data aggretation is not compatible with reading a modified
-        file, and replacing a file in use by another process is impossible on 
-        windows.
+        file creation, and use oslocks on it to prevent concurrent modification
+        and reads - because dirstates incremental data aggretation is not
+        compatible with reading a modified file, and replacing a file in use by
+        another process is impossible on windows.
 
         A dirstate in read only mode should be smart enough though to validate
         that the file has not changed, and otherwise discard its cache and
@@ -1581,12 +1586,38 @@ class DirState(object):
         """
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
-            self._state_file.seek(0)
-            self._state_file.writelines(self.get_lines())
-            self._state_file.truncate()
-            self._state_file.flush()
-            self._header_state = DirState.IN_MEMORY_UNMODIFIED
-            self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+
+            if self._lock_state == 'w':
+                out_file = self._state_file
+                wlock = None
+            else:
+                # Try to grab a write lock so that we can update the file.
+                try:
+                    wlock = lock.WriteLock(self._filename)
+                except (errors.LockError, errors.LockContention), e:
+                    # We couldn't grab the lock, so just leave things dirty in
+                    # memory.
+                    return
+                except IOError, e:
+                    # This may be a read-only tree, or someone else may have a
+                    # ReadLock. so handle the case when we cannot grab a write
+                    # lock
+                    if e.errno in (errno.ENOENT, errno.EPERM, errno.EACCES,
+                                   errno.EAGAIN):
+                        # Ignore these errors and just don't save anything
+                        return
+                    raise
+                out_file = wlock.f
+            try:
+                out_file.seek(0)
+                out_file.writelines(self.get_lines())
+                out_file.truncate()
+                out_file.flush()
+                self._header_state = DirState.IN_MEMORY_UNMODIFIED
+                self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+            finally:
+                if wlock is not None:
+                    wlock.unlock()
 
     def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.
@@ -2053,7 +2084,12 @@ class DirState(object):
         """Acquire a read lock on the dirstate"""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._lock_token = lock.ReadLock(self._filename)
+        self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
 
@@ -2061,7 +2097,12 @@ class DirState(object):
         """Acquire a write lock on the dirstate"""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._lock_token = lock.WriteLock(self._filename)
+        self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()
 
@@ -2069,7 +2110,12 @@ class DirState(object):
         """Drop any locks held on the dirstate"""
         if self._lock_token is None:
             raise errors.LockNotHeld(self)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._state_file = None
+        self._lock_state = None
         self._lock_token.unlock()
         self._lock_token = None
         self._split_path_cache = {}

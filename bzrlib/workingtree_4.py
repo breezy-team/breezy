@@ -224,12 +224,12 @@ class WorkingTree4(WorkingTree3):
         return result
 
     def current_dirstate(self):
-        """Return the current dirstate object. 
+        """Return the current dirstate object.
 
         This is not part of the tree interface and only exposed for ease of
         testing.
 
-        :raises errors.NotWriteLocked: when not in a lock. 
+        :raises errors.NotWriteLocked: when not in a lock.
         """
         if not self._control_files._lock_count:
             raise errors.ObjectNotLocked(self)
@@ -237,7 +237,7 @@ class WorkingTree4(WorkingTree3):
 
     def _current_dirstate(self):
         """Internal function that does not check lock status.
-        
+
         This is needed for break_lock which also needs the dirstate.
         """
         if self._dirstate is not None:
@@ -433,22 +433,45 @@ class WorkingTree4(WorkingTree3):
             return None
 
     def lock_read(self):
-        super(WorkingTree4, self).lock_read()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_read()
+        """See Branch.lock_read, and WorkingTree.unlock."""
+        self.branch.lock_read()
+        try:
+            self._control_files.lock_read()
+            try:
+                state = self.current_dirstate()
+                if not state._lock_token:
+                    state.lock_read()
+            except:
+                self._control_files.unlock()
+                raise
+        except:
+            self.branch.unlock()
+            raise
+
+    def _lock_self_write(self):
+        """This should be called after the branch is locked."""
+        try:
+            self._control_files.lock_write()
+            try:
+                state = self.current_dirstate()
+                if not state._lock_token:
+                    state.lock_write()
+            except:
+                self._control_files.unlock()
+                raise
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_tree_write(self):
-        super(WorkingTree4, self).lock_tree_write()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_write()
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        self.branch.lock_read()
+        self._lock_self_write()
 
     def lock_write(self):
-        super(WorkingTree4, self).lock_write()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_write()
+        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        self.branch.lock_write()
+        self._lock_self_write()
 
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
@@ -934,7 +957,13 @@ class WorkingTree4(WorkingTree3):
                 if self._dirty:
                     self.flush()
             if self._dirstate is not None:
+                # This is a no-op if there are no modifications.
+                self._dirstate.save()
                 self._dirstate.unlock()
+            # TODO: jam 20070301 We shouldn't have to wipe the dirstate at this
+            #       point. Instead, it could check if the header has been
+            #       modified when it is locked, and if not, it can hang on to
+            #       the data it has in memory.
             self._dirstate = None
             self._inventory = None
         # reverse order of locking.
