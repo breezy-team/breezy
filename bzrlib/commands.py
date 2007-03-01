@@ -627,7 +627,7 @@ def display_command(func):
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe
-                if sys.platform != 'win32' or e.errno != 0:
+                if sys.platform != 'win32' or (e.errno not in (0, errno.EINVAL)):
                     raise
             pass
         except KeyboardInterrupt:
