@@ -266,6 +266,7 @@ class DebSplitBuild(DebBuild):
     tar = tarfile.open(tarball, "w:gz")
     source_dir_rel = self._properties.source_dir(False)
     tar.add(source_dir, source_dir_rel)
+    tar.close()
     shutil.rmtree(source_dir)
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)

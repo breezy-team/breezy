@@ -21,6 +21,7 @@
 import commands
 import os
 from os.path import join
+import tarfile
 
 from debian_bundle.changelog import (Changelog, Version)
 
@@ -33,6 +34,7 @@ from builder import (remove_dir,
                      remove_debian_dir,
                      DebBuild,
                      DebNativeBuild,
+                     DebSplitBuild,
                      )
 import errors
 from properties import BuildProperties
@@ -468,7 +470,6 @@ class TestNativeBuilder(BuilderTestCase):
   def test_export_creates_source_dir(self):
     """Test that the source dir is created by export."""
     builder = self.get_builder()
-    self.make_orig_tarball()
     builder.prepare()
     builder.export()
     self.failUnlessExists(self.source_dir)
@@ -483,7 +484,6 @@ class TestNativeBuilder(BuilderTestCase):
     wt.add(['c'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
-    self.make_orig_tarball()
     builder.prepare()
     builder.export()
     self.failUnlessExists(join(self.source_dir, 'a'))
@@ -499,10 +499,94 @@ class TestNativeBuilder(BuilderTestCase):
     wt.add(files)
     wt.commit('commit one')
     builder = self.get_builder(wt=wt)
-    self.make_orig_tarball()
     builder.prepare()
     builder.export()
     self.failUnlessExists(join(self.source_dir, 'a'))
     self.failIfExists(join(self.source_dir, '.bzr-builddeb'))
 
+class TestSplitBuilder(BuilderTestCase):
+  """Test that the split builder does its thing correctly."""
+
+  def get_builder(self, wt=None, version=None):
+    """Returns a native builder."""
+    if wt is None:
+      (wt, branch) = self._make_branch()
+    changelog = self.make_changelog(version=version)
+    properties = self.make_properties(changelog, False)
+    return DebSplitBuild(properties, wt)
+
+  def test_export_creates_source_dir(self):
+    """Test that the source dir is created by export."""
+    builder = self.get_builder()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(self.source_dir)
+
+  def test_export_creates_tarball(self):
+    """Test that a tarball is created in the build dir"""
+    builder = self.get_builder()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(join(self.build_dir, self.tarball_name))
+
+  def test_created_tarball_has_correct_contents(self):
+    """Test that the tarball has the correct contents.
+
+    The working tree state should be reflected, but the debian/ and
+    .bzr-builddeb/ dirs should be removed.
+    """
+    wt = self.make_branch_and_tree(self.basedir)
+    files = ['a', 'b', 'dir/', 'debian/', 'debian/control', '.bzr-builddeb/',
+             '.bzr-builddeb/default.conf']
+    self.build_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    self.build_tree(['c', 'd'])
+    wt.add(['c'])
+    wt.remove(['b'])
+    builder = self.get_builder(wt=wt)
+    builder.prepare()
+    builder.export()
+    tar = tarfile.open(join(self.build_dir, self.tarball_name), "r:gz")
+    expected = ['a', 'dir/', 'c']
+    extras = []
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    real_expected = [basename]
+    for item in expected:
+      real_expected.append(join(basename, item))
+    for tarinfo in tar:
+      if tarinfo.name in real_expected:
+        index = real_expected.index(tarinfo.name)
+        del real_expected[index:index+1]
+      else:
+        extras.append(tarinfo.name)
+
+    if len(real_expected) > 0:
+      self.fail("Files not found in %s: %s" % (self.tarball_name,
+                                               ", ".join(real_expected)))
+    if len(extras) > 0:
+      self.fail("Files not expected to be found in %s: %s" % (self.tarball_name,
+                                                            ", ".join(extras)))
+
+  def test_source_dir_has_full_contents(self):
+    """Test that the source dir has the full contents after an export.
+    
+    The export of a split build should leave the full branch contents in
+    the source dir (including debian/) except for the .bzr-builddeb/ dir.
+    """
+    wt = self.make_branch_and_tree(self.basedir)
+    files = ['a', 'b', 'dir/', 'debian/', 'debian/control', '.bzr-builddeb/',
+             '.bzr-builddeb/default.conf']
+    self.build_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    self.build_tree(['c', 'd'])
+    wt.add(['c'])
+    wt.remove(['b'])
+    builder = self.get_builder(wt=wt)
+    builder.prepare()
+    builder.export()
+    expected = ['a', 'c', 'dir/', 'debian/', 'debian/control']
+    for filename in expected:
+      self.failUnlessExists(join(self.source_dir, filename))
 
