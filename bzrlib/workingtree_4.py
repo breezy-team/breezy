@@ -1066,7 +1066,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
         wt._new_tree()
-        wt.lock_write()
+        wt.lock_tree_write()
         try:
             #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
