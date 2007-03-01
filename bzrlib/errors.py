@@ -1551,6 +1551,19 @@ class OutOfDateTree(BzrError):
         self.tree = tree
 
 
+class PublicBranchOutOfDate(BzrError):
+
+    _fmt = 'Public branch "%(public_location)s" lacks revision '\
+        '"%(revstring)s".'
+
+    def __init__(self, public_location, revstring):
+        import bzrlib.urlutils as urlutils
+        public_location = urlutils.unescape_for_display(public_location,
+                                                        'ascii')
+        BzrError.__init__(self, public_location=public_location,
+                          revstring=revstring)
+
+
 class MergeModifiedFormatError(BzrError):
 
     _fmt = "Error in merge modified format"
@@ -1787,7 +1800,7 @@ class NoMergeSource(BzrError):
     """Raise if no merge source was specified for a merge directive"""
 
     _fmt = "A merge directive must provide either a bundle or a public"\
-        "branch location."
+        " branch location."
 
 
 class PatchMissing(BzrError):

@@ -36,7 +36,7 @@ class TestMergeDirective(tests.TestCase):
             'http://example.com', public_location="http://example.org",
             patch='booga', patch_type='diff')
         md2 = merge_directive.MergeDirective.from_lines(md.to_lines())
-        self.assertEqual('example:', md2.revision)
+        self.assertEqual('example:', md2.revision_id)
         self.assertEqual('sha', md2.testament_sha1)
         self.assertEqual('http://example.com', md2.submit_location)
         self.assertEqual('http://example.org', md2.public_location)
@@ -58,8 +58,27 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('message', rev_id='rev1')
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c\n')])
         tree_a.commit('message', rev_id='rev2a')
-        merge_directive.MergeDirective.from_objects(tree_a.branch.repository,
-            'rev2a', tree_b.branch.base)
+        self.assertRaises(errors.PublicBranchOutOfDate,
+            merge_directive.MergeDirective.from_objects,
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            public_branch=branch_c)
+        md1 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base)
+        self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
+        self.assertContainsRe(md1.patch, '\\+content_c')
+        self.assertNotContainsRe(md1.patch, '\\+content_a')
+        branch_c.pull(tree_a.branch)
+        md2 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            patch_type='diff', public_branch=branch_c)
+        self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
+        self.assertContainsRe(md1.patch, '\\+content_c')
+        self.assertNotContainsRe(md1.patch, '\\+content_a')
+        md3 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            patch_type=None, public_branch=branch_c)
+        self.assertIs(None, md3.patch)

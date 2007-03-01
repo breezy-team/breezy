@@ -1,8 +1,12 @@
 from StringIO import StringIO
 
 from bzrlib import (
+    branch as _mod_branch,
+    diff,
     errors,
+    revision as _mod_revision,
     rio,
+    testament,
     )
 from bzrlib.bundle import serializer as bundle_serializer
 
@@ -69,16 +73,42 @@ class MergeDirective(object):
         return lines
 
     @classmethod
-    def from_objects(klass, repository, revision_id, submit_location,
-                 patch_type='bundle', local_submit_location=None,
-                 public_location=None):
-        if patch_type == 'bundle':
-            patch = klass._generate_bundle(repository, revision_id,
-                                           submit_location)
-        elif patch_type == 'diff':
-            patch = klass._generate_diff(repository, revision_id,
-                                         submit_location)
-        else:
+    def from_objects(klass, repository, revision_id, time, timezone,
+                 submit_location, patch_type='bundle',
+                 local_submit_location=None, public_branch=None):
+        if public_branch is not None:
+            public_location = public_branch.base
+            if not public_branch.repository.has_revision(revision_id):
+                raise errors.PublicBranchOutOfDate(public_location,
+                                                   revision_id)
+            else:
+                public_location = None
+        t = testament.StrictTestament3.from_revision(repository, revision_id)
+        if patch_type is None:
             patch = None
-        return MergeDirective(revision_id, submit_location, patch, patch_type,
-                              public_location)
+        else:
+            submit_branch = _mod_branch.Branch.open(submit_location)
+            submit_revision_id = submit_branch.last_revision()
+            repository.fetch(submit_branch.repository, submit_revision_id)
+            ancestor_id = _mod_revision.common_ancestor(revision_id,
+                                                        submit_revision_id,
+                                                        repository)
+            if patch_type == 'bundle':
+                s = StringIO()
+                bundle_serializer.write_bundle(repository, revision_id,
+                                               ancestor_id, s)
+                patch = s.getvalue()
+            elif patch_type == 'diff':
+                patch = klass._generate_diff(repository, revision_id,
+                                             ancestor_id)
+        return MergeDirective(revision_id, t.as_sha1(), time, timezone,
+                              submit_location, patch, patch_type,
+                              public_branch)
+
+    @staticmethod
+    def _generate_diff(repository, revision_id, ancestor_id):
+        tree_1 = repository.revision_tree(ancestor_id)
+        tree_2 = repository.revision_tree(revision_id)
+        s = StringIO()
+        diff.show_diff_trees(tree_1, tree_2, s)
+        return s.getvalue()
