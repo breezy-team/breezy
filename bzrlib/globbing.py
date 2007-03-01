@@ -108,11 +108,20 @@ def _invalid_regex(repl):
     return _
 
 
+def _trailing_backslashes_regex(m):
+    if len(m) %2  != 0:
+        warning(u"Regular expressions cannot end with an odd number of '\\'. "
+                "Dropping the final '\\'.")
+        return m[:-1]
+    return m
+
+
 _sub_re = Replacer()
 _sub_re.add(u'^RE:', u'')
 _sub_re.add(u'\((?!\?)', u'(?:')
 _sub_re.add(u'\(\?P<.*>', _invalid_regex(u'(?:'))
 _sub_re.add(u'\(\?P=[^)]*\)', _invalid_regex(u''))
+_sub_re.add(ur'\\+$', _trailing_backslashes_regex)
 
 
 _sub_fullpath = Replacer()
@@ -169,6 +178,7 @@ class Globster(object):
         base_patterns = []
         ext_patterns = []
         for pat in patterns:
+            pat = normalize_pattern(pat)
             if pat.startswith(u'RE:') or u'/' in pat:
                 path_patterns.append(pat)
             elif pat.startswith(u'*.'):
@@ -200,3 +210,15 @@ class Globster(object):
                 return patterns[match.lastindex -1]
         return None
         
+
+_normalize_re = re.compile(ur'\\(?!x\d\d|\d\d\d|u\d\d\d\d)')
+
+
+def normalize_pattern(pattern):
+    """Converts backslashes in path patterns to forward slashes.
+     
+    Avoids converting escape backslashes.
+    """
+    if not pattern.startswith('RE:'):
+        pattern = _normalize_re.sub('/', pattern)
+    return pattern.rstrip('/')
