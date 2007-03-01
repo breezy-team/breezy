@@ -331,10 +331,18 @@ class DirState(object):
             kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
             info = '%s:%s' % (kind, path)
             raise errors.DuplicateFileId(file_id, info)
-        entry_key = (dirname, basename, file_id)
-        self._read_dirblocks_if_needed()
-        block_index, present = self._find_block_index_from_key(entry_key)
-        if not present:
+        first_key = (dirname, basename, '')
+        block_index, present = self._find_block_index_from_key(first_key)
+        if present:
+            # check the path is not in the tree
+            block = self._dirblocks[block_index][1]
+            entry_index, _ = self._find_entry_index(first_key, block)
+            while (entry_index < len(block) and 
+                block[entry_index][0][0:2] == first_key[0:2]):
+                if block[entry_index][1][0][0] not in 'ar':
+                    # this path is in the dirstate in the current tree.
+                    raise Exception, "adding already added path!"
+        else:
             # The block where we want to put the file is not present. But it
             # might be because the directory was empty, or not loaded yet. Look
             # for a parent entry, if not found, raise NotVersionedError
@@ -345,6 +353,7 @@ class DirState(object):
                 raise errors.NotVersionedError(path, str(self))
             self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
         block = self._dirblocks[block_index][1]
+        entry_key = (dirname, basename, file_id)
         if stat is None:
             size = 0
             packed_stat = DirState.NULLSTAT
