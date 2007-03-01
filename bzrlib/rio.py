@@ -321,21 +321,36 @@ def to_patch_lines(stanza):
     for pline in stanza.to_lines():
         for line in pline.split('\n')[:-1]:
             line = re.sub('\\\\', '\\\\\\\\', line)
-            lines.append('# ' + re.sub('\r', '\\\\r', line + '\n'))
+            while len(line) > 0:
+                partline = line[:72]
+                line = line[72:]
+                if len(line) > 0:
+                    partline += '\\'
+                lines.append('# ' + re.sub('\r', '\\\\r', partline+ '\n'))
     return lines
 
 def _patch_stanza_iter(line_iter):
     map = {'\\\\': '\\',
-           '\\r' : '\r' }
+           '\\r' : '\r',
+           '\\\n': ''}
     def mapget(match):
         return map[match.group(0)]
 
+    last_line = None
     for line in line_iter:
         assert line.startswith('# ')
         line = line[2:]
         line = re.sub('\r', '', line)
-        line = re.sub('\\\\.', mapget, line)
-        yield line
+        line = re.sub('\\\\(.|\n)', mapget, line)
+        if last_line is None:
+            last_line = line
+        else:
+            last_line += line
+        if last_line[-1] == '\n':
+            yield last_line
+            last_line = None
+    if last_line is not None:
+        yield last_line
 
 def read_patch_stanza(line_iter):
     return read_stanza(_patch_stanza_iter(line_iter))
