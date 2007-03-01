@@ -1218,6 +1218,19 @@ class DirStateRevisionTree(Tree):
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
+    def get_file_mtime(self, file_id, path=None):
+        """Return the modification time for this record.
+
+        We return the timestamp of the last-changed revision.
+        """
+        # Make sure the file exists
+        entry = self._get_entry(file_id, path=path)
+        if entry == (None, None): # do we raise?
+            return None
+        parent_index = self._get_parent_index()
+        last_changed_revision = entry[1][parent_index][4]
+        return self._repository.get_revision(last_changed_revision).timestamp
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # TODO: if path is present, fast-path on that, as inventory
         # might not be present

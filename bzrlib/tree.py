@@ -180,7 +180,16 @@ class Tree(object):
     def get_file(self, file_id):
         """Return a file object for the file file_id in the tree."""
         raise NotImplementedError(self.get_file)
-    
+
+    def get_file_mtime(self, file_id, path=None):
+        """Return the modification time for a file.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        """
+        raise NotImplementedError(self.get_file_mtime)
+
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 

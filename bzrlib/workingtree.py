@@ -596,7 +596,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_mtime(self, file_id, path=None):
         file_id = osutils.safe_file_id(file_id)
         if not path:
-            path = self._inventory.id2path(file_id)
+            path = self.inventory.id2path(file_id)
         return os.lstat(self.abspath(path)).st_mtime
 
     if not supports_executable():
