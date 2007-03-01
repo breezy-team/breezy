@@ -1791,7 +1791,7 @@ class InterDirStateTree(InterTree):
                         or result[7][0] != result[7][1] # executable
                         ):
                         result = (result[0],
-                                  _utf8_decode(result[1])[0]) + result[2:]
+                                  utf8_decode(result[1])[0]) + result[2:]
                         yield result
             dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
@@ -1868,7 +1868,7 @@ class InterDirStateTree(InterTree):
                                     or result[7][0] != result[7][1] # executable
                                     ):
                                     result = (result[0],
-                                              _utf8_decode(result[1])[0]) + result[2:]
+                                              utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
@@ -1923,7 +1923,7 @@ class InterDirStateTree(InterTree):
                                 or result[7][0] != result[7][1] # executable
                                 ):
                                 result = (result[0],
-                                          _utf8_decode(result[1])[0]) + result[2:]
+                                          utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
@@ -1948,7 +1948,7 @@ class InterDirStateTree(InterTree):
                                     or result[7][0] != result[7][1] # executable
                                     ):
                                     result = (result[0],
-                                              _utf8_decode(result[1])[0]) + result[2:]
+                                              utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                             advance_path = False
                     else:
@@ -1965,7 +1965,7 @@ class InterDirStateTree(InterTree):
                                 or result[7][0] != result[7][1] # executable
                                 ):
                                 result = (result[0],
-                                          _utf8_decode(result[1])[0]) + result[2:]
+                                          utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
