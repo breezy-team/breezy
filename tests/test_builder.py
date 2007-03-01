@@ -35,6 +35,7 @@ from builder import (remove_dir,
                      DebBuild,
                      DebNativeBuild,
                      DebSplitBuild,
+                     DebMergeBuild,
                      )
 import errors
 from properties import BuildProperties
@@ -245,18 +246,18 @@ Files:
       f = open(join(self.build_dir, filename), 'wb')
       f.close()
 
-  def get_builder(self, version=None, wt=None):
+  def get_builder(self, version=None, wt=None, larstiq=False):
     raise NotImplementedError("You must provide this method in the subclass")
 
 class TestDefaultBuilder(BuilderTestCase):
   """Test the default builder (full source, non-native)"""
 
-  def get_builder(self, version=None, wt=None):
+  def get_builder(self, version=None, wt=None, larstiq=False):
     """Returns a builder set up for this type."""
     if wt is None:
       (wt, branch) = self._make_branch()
     changelog = self.make_changelog(version=version)
-    properties = self.make_properties(changelog, False)
+    properties = self.make_properties(changelog, larstiq)
     return DebBuild(properties, wt)
 
   def test_prepare_creates_build_dir(self):
@@ -459,12 +460,12 @@ class TestNativeBuilder(BuilderTestCase):
 
   package_version = Version('0.1')
 
-  def get_builder(self, wt=None, version=None):
+  def get_builder(self, wt=None, version=None, larstiq=False):
     """Returns a native builder."""
     if wt is None:
       (wt, branch) = self._make_branch()
     changelog = self.make_changelog(version=version)
-    properties = self.make_properties(changelog, False)
+    properties = self.make_properties(changelog, larstiq)
     return DebNativeBuild(properties, wt)
 
   def test_export_creates_source_dir(self):
@@ -507,12 +508,12 @@ class TestNativeBuilder(BuilderTestCase):
 class TestSplitBuilder(BuilderTestCase):
   """Test that the split builder does its thing correctly."""
 
-  def get_builder(self, wt=None, version=None):
+  def get_builder(self, wt=None, version=None, larstiq=False):
     """Returns a native builder."""
     if wt is None:
       (wt, branch) = self._make_branch()
     changelog = self.make_changelog(version=version)
-    properties = self.make_properties(changelog, False)
+    properties = self.make_properties(changelog, larstiq)
     return DebSplitBuild(properties, wt)
 
   def test_export_creates_source_dir(self):
