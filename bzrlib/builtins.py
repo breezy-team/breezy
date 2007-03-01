@@ -1086,7 +1086,7 @@ class cmd_file_id(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        i = tree.inventory.path2id(relpath)
+        i = tree.path2id(relpath)
         if i is None:
             raise errors.NotVersionedError(filename)
         else:
@@ -1106,12 +1106,13 @@ class cmd_file_path(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        inv = tree.inventory
-        fid = inv.path2id(relpath)
+        fid = tree.path2id(relpath)
         if fid is None:
             raise errors.NotVersionedError(filename)
-        for fip in inv.get_idpath(fid):
-            self.outf.write(fip + '\n')
+        segments = osutils.splitpath(relpath)
+        for pos in range(1, len(segments) + 1):
+            path = osutils.joinpath(segments[:pos])
+            self.outf.write("%s\n" % tree.path2id(path))
 
 
 class cmd_reconcile(Command):
@@ -1541,8 +1542,7 @@ class cmd_log(Command):
             if fp != '':
                 if tree is None:
                     tree = b.basis_tree()
-                inv = tree.inventory
-                file_id = inv.path2id(fp)
+                file_id = tree.path2id(fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
                         "Path does not have any revision history: %s" %
@@ -1636,8 +1636,7 @@ class cmd_touching_revisions(Command):
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
         b = tree.branch
-        inv = tree.read_working_inventory()
-        file_id = inv.path2id(relpath)
+        file_id = tree.path2id(relpath)
         for revno, revision_id, what in log.find_touching_revisions(b, file_id):
             self.outf.write("%6d %s\n" % (revno, what))
 
@@ -1826,11 +1825,7 @@ class cmd_ignore(Command):
         finally:
             f.close()
 
-        inv = tree.inventory
-        if inv.path2id('.bzrignore'):
-            mutter('.bzrignore is already versioned')
-        else:
-            mutter('need to make new .bzrignore file versioned')
+        if not tree.path2id('.bzrignore'):
             tree.add(['.bzrignore'])
 
 
@@ -2922,7 +2917,7 @@ class cmd_annotate(Command):
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
-            file_id = tree.inventory.path2id(relpath)
+            file_id = tree.path2id(relpath)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout,
