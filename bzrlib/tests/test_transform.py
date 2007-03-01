@@ -21,6 +21,7 @@ import sys
 from bzrlib import (
     errors,
     generate_ids,
+    symbol_versioning,
     tests,
     urlutils,
     )
@@ -516,8 +517,9 @@ class TestTreeTransform(TestCaseInTempDir):
         create.new_file('vfile', root, 'myfile-text', 'myfile-id')
         create.new_file('uvfile', root, 'othertext')
         create.apply()
-        self.assertEqual(find_interesting(wt, wt, ['vfile']),
-                         set(['myfile-id']))
+        result = self.applyDeprecated(symbol_versioning.zero_fifteen,
+            find_interesting, wt, wt, ['vfile'])
+        self.assertEqual(result, set(['myfile-id']))
         self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
                           ['uvfile'])
 

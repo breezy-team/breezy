@@ -30,6 +30,7 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.symbol_versioning import deprecated_function, zero_fifteen
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
 import bzrlib.ui 
@@ -1245,10 +1246,21 @@ def create_entry_executability(tt, entry, trans_id):
         tt.set_executability(entry.executable, trans_id)
 
 
+@deprecated_function(zero_fifteen)
 def find_interesting(working_tree, target_tree, filenames):
-    """Find the ids corresponding to specified filenames."""
-    trees = (working_tree, target_tree)
-    return tree.find_ids_across_trees(filenames, trees)
+    """Find the ids corresponding to specified filenames.
+    
+    Deprecated: Please use tree1.paths2ids(filenames, [tree2]).
+    """
+    working_tree.lock_read()
+    try:
+        target_tree.lock_read()
+        try:
+            return working_tree.paths2ids(filenames, [target_tree])
+        finally:
+            target_tree.unlock()
+    finally:
+        working_tree.unlock()
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 
