@@ -48,6 +48,8 @@ class TestMergeDirective(tests.TestCase):
         md3 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual("# Bazaar revision bundle v0.9\n#\n", md3.patch)
         self.assertEqual("bundle", md3.patch_type)
+        self.assertContainsRe(md3.to_lines()[0],
+            '^# Bazaar merge directive format ')
 
 
 class TestMergeDirectiveBranch(tests.TestCaseWithTransport):

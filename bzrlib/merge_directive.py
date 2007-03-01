@@ -13,6 +13,8 @@ from bzrlib.bundle import serializer as bundle_serializer
 
 class MergeDirective(object):
 
+    _format_string = 'Bazaar merge directive format experimental-1'
+
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  submit_location, patch=None, patch_type=None,
                  public_location=None):
@@ -31,9 +33,10 @@ class MergeDirective(object):
         self.patch_type = patch_type
         self.public_location = public_location
 
-    @staticmethod
-    def from_lines(lines):
-        line_iter = iter(lines)
+    @classmethod
+    def from_lines(klass, lines):
+        assert lines[0].startswith('# ' + klass._format_string + '\n')
+        line_iter = iter(lines[1:])
         stanza = rio.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
@@ -67,7 +70,8 @@ class MergeDirective(object):
         for key in ('public_location',):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
-        lines = rio.to_patch_lines(stanza)
+        lines = ['# ' + self._format_string + '\n']
+        lines.extend(rio.to_patch_lines(stanza))
         lines.append('# \n')
         if self.patch is not None:
             lines.extend(self.patch.splitlines(True))
