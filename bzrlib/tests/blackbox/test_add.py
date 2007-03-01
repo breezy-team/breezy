@@ -144,7 +144,6 @@ class TestAdd(ExternalBase):
                              'added b/c w/ file id from b/c\n',
                              out)
 
-        new_tree.read_working_inventory()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
         self.assertEqual(base_tree.path2id('b'), new_tree.path2id('b'))
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('b/c'))
@@ -165,7 +164,6 @@ class TestAdd(ExternalBase):
                              'added d w/ file id from b/d\n',
                              out)
 
-        new_tree.read_working_inventory()
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 
