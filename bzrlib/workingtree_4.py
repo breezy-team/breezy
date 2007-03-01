@@ -351,7 +351,7 @@ class WorkingTree4(WorkingTree3):
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = os.path.join(*key[0:2]).decode('utf8')
+            path = pathjoin(key[0], key[1]).decode('utf8')
         return self._hashcache.get_sha1(path, stat_value)
 
     def _get_inventory(self):
@@ -958,7 +958,6 @@ class WorkingTree4(WorkingTree3):
                 # I haven't written the code to unversion / yet - it should be
                 # supported.
                 raise errors.BzrError('Unversioning the / is not currently supported')
-        details_length = len(state._dirblocks[0][1][0][1])
         block_index = 0
         while block_index < len(state._dirblocks):
             # process one directory at a time.
@@ -980,6 +979,8 @@ class WorkingTree4(WorkingTree3):
                 # just forget the whole block.
                 entry_index = 0
                 while entry_index < len(block[1]):
+                    # Mark this file id as having been removed
+                    ids_to_unversion.discard(block[1][entry_index][0][2])
                     if not state._make_absent(block[1][entry_index]):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
@@ -996,7 +997,7 @@ class WorkingTree4(WorkingTree3):
                     entry_index += 1
                     continue
                 if entry[1][0][0] == 'd':
-                    paths_to_unversion.add(os.path.join(*entry[0][0:2]))
+                    paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
                 if not state._make_absent(entry):
                     entry_index += 1
                 # we have unversioned this id
@@ -1570,7 +1571,7 @@ class InterDirStateTree(InterTree):
                     # as well.
                     old_path = source_details[1]
                     old_dirname, old_basename = os.path.split(old_path)
-                    path = os.path.join(entry[0][0], entry[0][1])
+                    path = pathjoin(entry[0][0], entry[0][1])
                     old_entry = state._get_entry(source_index,
                                                  path_utf8=old_path)
                     # update the source details variable to be the real
@@ -1580,10 +1581,10 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    old_path = path = os.path.join(old_dirname, old_basename)
+                    old_path = path = pathjoin(old_dirname, old_basename)
                 if path_info is None:
                     # the file is missing on disk, show as removed.
-                    old_path = os.path.join(entry[0][0], entry[0][1])
+                    old_path = pathjoin(entry[0][0], entry[0][1])
                     content_change = True
                     target_kind = None
                     target_exec = False
@@ -1666,7 +1667,7 @@ class InterDirStateTree(InterTree):
             elif source_minikind in 'a' and target_minikind in 'fdl':
                 # looks like a new file
                 if path_info is not None:
-                    path = os.path.join(*entry[0][0:2])
+                    path = pathjoin(entry[0][0], entry[0][1])
                     # parent id is the entry for the path in the target tree
                     # TODO: these are the same for an entire directory: cache em.
                     parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
@@ -1692,7 +1693,7 @@ class InterDirStateTree(InterTree):
                 # if its still on disk, *and* theres no other entry at this
                 # path [we dont know this in this routine at the moment -
                 # perhaps we should change this - then it would be an unknown.
-                old_path = os.path.join(*entry[0][0:2])
+                old_path = pathjoin(entry[0][0], entry[0][1])
                 # parent id is the entry for the path in the target tree
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
