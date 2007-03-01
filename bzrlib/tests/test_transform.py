@@ -520,8 +520,6 @@ class TestTreeTransform(TestCaseInTempDir):
         result = self.applyDeprecated(symbol_versioning.zero_fifteen,
             find_interesting, wt, wt, ['vfile'])
         self.assertEqual(result, set(['myfile-id']))
-        self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
-                          ['uvfile'])
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
