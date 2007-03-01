@@ -342,6 +342,7 @@ class DirState(object):
                 if block[entry_index][1][0][0] not in 'ar':
                     # this path is in the dirstate in the current tree.
                     raise Exception, "adding already added path!"
+                entry_index += 1
         else:
             # The block where we want to put the file is not present. But it
             # might be because the directory was empty, or not loaded yet. Look
@@ -1199,27 +1200,30 @@ class DirState(object):
             if not possible_keys:
                 return None, None
             for key in possible_keys:
-                (block_index, entry_index, dir_present,
-                 file_present) = self._get_block_entry_index(key[0], key[1],
-                                                             tree_index)
-                if file_present:
+                block_index, present = \
+                    self._find_block_index_from_key(key)
+                # strange, probably indicates an out of date
+                # id index - for now, allow this.
+                if not present:
+                    continue
+                # WARNING: DO not change this code to use _get_block_entry_index
+                # as that function is not suitable: it does not use the key
+                # to lookup, and thus the wront coordinates are returned.
+                block = self._dirblocks[block_index][1]
+                entry_index, present = self._find_entry_index(key, block)
+                if present:
                     entry = self._dirblocks[block_index][1][entry_index]
-                    # _get_block_entry_index only returns entries that are not
-                    # absent in the current tree. _get_id_index will return
-                    # both locations for a renamed file.  It is possible that a
-                    # new file was added at the same location that the old file
-                    # was renamed away. So _get_block_entry_index will actually
-                    # match the new file, skipping the fact that the real entry
-                    # we want is the rename. By just continuing here, we should
-                    # find the record at the target location, because
-                    # _get_id_index should return all locations.
-                    if entry[0][2] != fileid_utf8:
-                        continue
-                    assert entry[1][tree_index][0] not in ('a', 'r')
-                    assert key == entry[0], ('We were told that %s would be at'
-                            ' %s, %s, but we found %s' % (key, block_index,
-                                                          entry_index, entry))
-                    return entry
+                    if entry[1][tree_index][0] in 'fdl':
+                        # this is the result we are looking for: the  
+                        # real home of this file_id in this tree.
+                        return entry
+                    if entry[1][tree_index][0] == 'a':
+                        # there is no home for this entry in this tree
+                        return None, None
+                    assert entry[1][tree_index][0] == 'r'
+                    real_path = entry[1][tree_index][1]
+                    return self._get_entry(tree_index, fileid_utf8=fileid_utf8,
+                        path_utf8=real_path)
             return None, None
 
     @staticmethod
