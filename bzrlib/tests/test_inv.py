@@ -411,6 +411,8 @@ class TestSnapshot(TestCaseWithTransport):
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.file_active = self.wt.inventory['fileid']
         self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
 
@@ -465,8 +467,8 @@ class TestSnapshot(TestCaseWithTransport):
     def test_snapshot_changed(self):
         # This tests that a commit with one different parent results in a new
         # revision id in the entry.
-        self.file_active.name='newname'
-        rename('subdir/file', 'subdir/newname')
+        self.wt.rename_one('subdir/file', 'subdir/newname')
+        self.file_active = self.wt.inventory['fileid']
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
                                   self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
