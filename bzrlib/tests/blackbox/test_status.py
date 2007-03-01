@@ -40,15 +40,15 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
     
-    def assertStatus(self, output_lines, working_tree,
+    def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False):
         """Run status in working_tree and look for output.
         
-        :param output_lines: The lines to look for.
+        :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short)
-        self.assertEqual(output_lines, output_string.splitlines(True))
+        self.assertEqual(expected_lines, output_string.splitlines(True))
     
     def status_string(self, wt, revision=None, short=False):
         # use a real file rather than StringIO because it doesn't handle

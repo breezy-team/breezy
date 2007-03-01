@@ -415,8 +415,11 @@ class Merge3Merger(object):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
+        self.this_tree.lock_tree_write()
         self.base_tree = base_tree
+        self.base_tree.lock_read()
         self.other_tree = other_tree
+        self.other_tree.lock_read()
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -432,7 +435,6 @@ class Merge3Merger(object):
         else:
             all_ids = set(base_tree)
             all_ids.update(other_tree)
-        working_tree.lock_tree_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
@@ -467,7 +469,9 @@ class Merge3Merger(object):
                 pass
         finally:
             self.tt.finalize()
-            working_tree.unlock()
+            self.other_tree.unlock()
+            self.base_tree.unlock()
+            self.this_tree.unlock()
             self.pb.clear()
 
     def fix_root(self):

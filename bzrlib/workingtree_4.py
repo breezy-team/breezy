@@ -174,7 +174,17 @@ class WorkingTree4(WorkingTree3):
             # - on the first access it will be gathered, and we can
             # always change this once tests are all passing.
             state.add(f, file_id, kind, None, '')
+        self._make_dirty(reset_inventory=True)
+
+    def _make_dirty(self, reset_inventory):
+        """Make the tree state dirty.
+
+        :param reset_inventory: True if the cached inventory should be removed
+            (presuming there is one).
+        """
         self._dirty = True
+        if reset_inventory and self._inventory is not None:
+            self._inventory = None
 
     @needs_tree_write_lock
     def add_reference(self, sub_tree):
@@ -253,7 +263,7 @@ class WorkingTree4(WorkingTree3):
         return self._dirstate
 
     def filter_unversioned_files(self, paths):
-        """Filter out paths that are not versioned.
+        """Filter out paths that are versioned.
 
         :return: set of paths.
         """
@@ -262,13 +272,13 @@ class WorkingTree4(WorkingTree3):
         # results of each bisect in further still
         paths = sorted(paths)
         result = set()
-        state = self.current_dirstate()
+        STate = self.current_dirstate()
         # TODO we want a paths_to_dirblocks helper I think
         for path in paths:
             dirname, basename = os.path.split(path.encode('utf8'))
             _, _, _, path_is_versioned = state._get_block_entry_index(
                 dirname, basename, 0)
-            if path_is_versioned:
+            if not path_is_versioned:
                 result.add(path)
         return result
 
@@ -692,7 +702,7 @@ class WorkingTree4(WorkingTree3):
                 raise
             result.append((from_rel, to_rel))
             state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
-            self._dirty = True
+            self._make_dirty(reset_inventory=False)
 
         return result
 
@@ -707,6 +717,7 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
+        path = path.strip('/')
         entry = self._get_entry(path=path)
         if entry == (None, None):
             return None
@@ -946,13 +957,14 @@ class WorkingTree4(WorkingTree3):
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
         state = self.current_dirstate()
         state.set_path_id('', file_id)
-        self._dirty = state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED
+        if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
+            self._make_dirty(reset_inventory=True)
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
@@ -1048,7 +1060,7 @@ class WorkingTree4(WorkingTree3):
             block_index += 1
         if ids_to_unversion:
             raise errors.NoSuchId(self, iter(ids_to_unversion).next())
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
@@ -1059,8 +1071,11 @@ class WorkingTree4(WorkingTree3):
         """Write inventory as the current inventory."""
         assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
         self.current_dirstate().set_state_from_inventory(inv)
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
+        if self._inventory is not None:
+            self._inventory = inv
         self.flush()
+
 
 
 class WorkingTreeFormat4(WorkingTreeFormat3):
@@ -1115,20 +1130,24 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
+        state._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 wt._set_root_id(generate_ids.gen_root_id())
                 wt.flush()
+                wt.current_dirstate()._validate()
             else:
                 wt.set_last_revision(revision_id)
                 wt.flush()
                 basis = wt.basis_tree()
                 basis.lock_read()
                 state = wt.current_dirstate()
+                state._validate()
                 # if the basis has a root id we have to use that; otherwise we use
                 # a new random one
                 basis_root_id = basis.get_root_id()
                 if basis_root_id is not None:
+                    state._validate()
                     wt._set_root_id(basis_root_id)
                     wt.flush()
                 transform.build_tree(basis, wt)
@@ -1566,7 +1585,7 @@ class InterDirStateTree(InterTree):
                     all_versioned = False
                     break
             if not all_versioned:
-                raise errors.PathsNotVersionedError(paths)
+                raise errors.PathsNotVersionedError(specific_files)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
         search_specific_files = set()
         for path in specific_files:
@@ -1943,12 +1962,15 @@ class InterDirStateTree(InterTree):
                         new_executable = bool(
                             stat.S_ISREG(current_path_info[3].st_mode)
                             and stat.S_IEXEC & current_path_info[3].st_mode)
-                        yield (None, current_path_info[0], True,
-                               (False, False),
-                               (None, None),
-                               (None, current_path_info[1]),
-                               (None, current_path_info[2]),
-                               (None, new_executable))
+                        pass # unversioned file support not added to the
+                        # _iter_changes api yet - breaks status amongst other
+                        # things.
+#                        yield (None, current_path_info[0], True,
+#                               (False, False),
+#                               (None, None),
+#                               (None, current_path_info[1]),
+#                               (None, current_path_info[2]),
+#                               (None, new_executable))
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):

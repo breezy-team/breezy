@@ -92,37 +92,6 @@ class TestBreakLock(ExternalBase):
         self.assertRaises(errors.LockBroken, self.wt.unlock)
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
-    def test_saying_no_leaves_it_locked(self):
-        ### if 'no' is answered, objects should remain locked.
-        self.wt.lock_write()
-        try:
-            self.master_branch.lock_write()
-            try:
-                # run the break-lock
-                # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
-                self.run_bzr('break-lock', 'checkout', stdin="n\nn\nn\nn\nn\n")
-
-                # The default timeout to wait for LockContention is 5 minutes.
-                # we need to override this temporarily.
-                # TODO: jam 20060927 When we have per repository/branch/tree
-                #       timeouts set the value of the repository,
-                #       rather than setting the global default.
-                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
-                try:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
-                    # a new tree instance should not be lockable
-                    wt = bzrlib.workingtree.WorkingTree.open('checkout')
-                    self.assertRaises(errors.LockContention, wt.lock_write)
-                    # and a new instance of the master branch 
-                    mb = wt.branch.get_master_branch()
-                    self.assertRaises(errors.LockContention, mb.lock_write)
-                finally:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
-                # unlock our branches normally.
-            finally:
-                self.master_branch.unlock()
-        finally:
-            self.wt.unlock()
 
 class TestBreakLockOldBranch(ExternalBase):
 

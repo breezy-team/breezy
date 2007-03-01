@@ -620,7 +620,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
         # TODO: Re-adding a file that is removed in the working copy
@@ -2706,9 +2706,11 @@ class WorkingTreeFormatAB1(WorkingTreeFormat3):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __default_format = WorkingTreeFormat3()
+## __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
 WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.register_format(WorkingTreeFormatAB1())
+## WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.

@@ -342,6 +342,7 @@ class cmd_add(Command):
             file_ids_from=None):
         import bzrlib.add
 
+        base_tree = None
         if file_ids_from is not None:
             try:
                 base_tree, base_path = WorkingTree.open_containing(
@@ -357,8 +358,14 @@ class cmd_add(Command):
             action = bzrlib.add.AddAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
-        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
-                                              action=action, save=not dry_run)
+        if base_tree:
+            base_tree.lock_read()
+        try:
+            added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
+                action=action, save=not dry_run)
+        finally:
+            if base_tree is not None:
+                base_tree.unlock()
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -977,12 +984,21 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        old_inv = tree.basis_tree().inventory
-        new_inv = tree.read_working_inventory()
-        renames = list(_mod_tree.find_renames(old_inv, new_inv))
-        renames.sort()
-        for old_name, new_name in renames:
-            self.outf.write("%s => %s\n" % (old_name, new_name))
+        tree.lock_read()
+        try:
+            new_inv = tree.inventory
+            old_tree = tree.basis_tree()
+            old_tree.lock_read()
+            try:
+                old_inv = old_tree.inventory
+                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames.sort()
+                for old_name, new_name in renames:
+                    self.outf.write("%s => %s\n" % (old_name, new_name))
+            finally:
+                old_tree.unlock()
+        finally:
+            tree.unlock()
 
 
 class cmd_update(Command):
@@ -1467,17 +1483,26 @@ class cmd_added(Command):
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
-        basis_inv = wt.basis_tree().inventory
-        inv = wt.inventory
-        for file_id in inv:
-            if file_id in basis_inv:
-                continue
-            if inv.is_root(file_id) and len(basis_inv) == 0:
-                continue
-            path = inv.id2path(file_id)
-            if not os.access(osutils.abspath(path), os.F_OK):
-                continue
-            self.outf.write(path + '\n')
+        wt.lock_read()
+        try:
+            basis = wt.basis_tree()
+            basis.lock_read()
+            try:
+                basis_inv = basis.inventory
+                inv = wt.inventory
+                for file_id in inv:
+                    if file_id in basis_inv:
+                        continue
+                    if inv.is_root(file_id) and len(basis_inv) == 0:
+                        continue
+                    path = inv.id2path(file_id)
+                    if not os.access(osutils.abspath(path), os.F_OK):
+                        continue
+                    self.outf.write(path + '\n')
+            finally:
+                basis.unlock()
+        finally:
+            wt.unlock()
 
 
 class cmd_root(Command):
