@@ -153,17 +153,19 @@ class TestPushHook(TestCaseWithBranch):
         
         The call is logged, as is some state of the two branches.
         """
-        if result.local:
-            local_locked = result.local.is_locked()
-            local_base = result.local.base
+        if result.local_branch:
+            local_locked = result.local_branch.is_locked()
+            local_base = result.local_branch.base
         else:
             local_locked = None
             local_base = None
         self.hook_calls.append(
-            ('post_push', result.source, local_base, result.master.base,
+            ('post_push', result.source_branch, local_base,
+             result.master_branch.base,
              result.old_revno, result.old_revid,
-             result.new_revno, result.new_revid, result.source.is_locked(), local_locked,
-             result.master.is_locked()))
+             result.new_revno, result.new_revid,
+             result.source_branch.is_locked(), local_locked,
+             result.master_branch.is_locked()))
 
     def test_post_push_empty_history(self):
         target = self.make_branch('target')

@@ -1405,7 +1405,8 @@ class BzrBranch(Branch):
             hooks, used when pushing to a master branch.
         """
         result = PullResult()
-        result.source = source
+        result.source_branch = source
+        result.target_branch = self
         source.lock_read()
         try:
             result.old_revno, result.old_revid = self.last_revision_info()
@@ -1418,11 +1419,11 @@ class BzrBranch(Branch):
                 self.set_revision_history(source.revision_history())
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
-                result.master = _hook_master
-                result.local = self
+                result.master_branch = _hook_master
+                result.local_branch = self
             else:
-                result.master = self
-                result.local = None
+                result.master_branch = self
+                result.local_branch = None
             if _run_hooks:
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
@@ -1450,8 +1451,8 @@ class BzrBranch(Branch):
             hooks, used when pushing to a master branch.
         """
         result = PushResult()
-        result.source = self
-        result.target = target
+        result.source_branch = self
+        result.target_branch = target
         target.lock_write()
         try:
             result.old_revno, result.old_revid = target.last_revision_info()
@@ -1464,11 +1465,11 @@ class BzrBranch(Branch):
                 target.set_revision_history(self.revision_history())
             result.new_revno, result.new_revid = target.last_revision_info()
             if _hook_master:
-                result.master = _hook_master
-                result.local = target
+                result.master_branch = _hook_master
+                result.local_branch = target
             else:
-                result.master = target
-                result.local = None
+                result.master_branch = target
+                result.local_branch = None
             if _run_hooks:
                 for hook in Branch.hooks['post_push']:
                     hook(result)
@@ -1929,6 +1930,16 @@ class BranchTestProviderAdapter(object):
 # results of operations
 
 class PullResult(object):
+    """Result of a Branch.pull operation.
+
+    :ivar old_revno: Revision number before pull.
+    :ivar new_revno: Revision number after pull.
+    :ivar old_revid: Tip revision id before pull.
+    :ivar new_revid: Tip revision id after pull.
+    :ivar source_branch: Source (local) branch object.
+    :ivar master_branch: Master branch of the target, or None.
+    :ivar target_branch: Target/destination branch object.
+    """
 
     def __int__(self):
         # DEPRECATED: pull used to return the change in revno
@@ -1936,6 +1947,16 @@ class PullResult(object):
 
 
 class PushResult(object):
+    """Result of a Branch.push operation.
+
+    :ivar old_revno: Revision number before push.
+    :ivar new_revno: Revision number after push.
+    :ivar old_revid: Tip revision id before push.
+    :ivar new_revid: Tip revision id after push.
+    :ivar source_branch: Source branch object.
+    :ivar master_branch: Master branch of the target, or None.
+    :ivar target_branch: Target/destination branch object.
+    """
 
     def __int__(self):
         # DEPRECATED: push used to return the change in revno
