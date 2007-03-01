@@ -742,6 +742,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.unlock()
 
     def test_path2id(self):
+        # smoke test for path2id
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
@@ -750,3 +751,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # though its probably a bad idea, it makes things work. Perhaps
         # it should raise a deprecation warning?
         self.assertEqual('foo-id', tree.path2id('foo/'))
+
+    def test_filter_unversioned_files(self):
+        # smoke test for filter_unversioned_files
+        tree = self.make_branch_and_tree('.')
+        paths = ['here-and-versioned', 'here-and-not-versioned',
+            'not-here-and-versioned', 'not-here-and-not-versioned']
+        tree.add(['here-and-versioned', 'not-here-and-versioned'],
+            kinds=['file', 'file'])
+        self.build_tree(['here-and-versioned', 'here-and-not-versioned'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(
+            set(['not-here-and-not-versioned', 'here-and-not-versioned']),
+            tree.filter_unversioned_files(paths))

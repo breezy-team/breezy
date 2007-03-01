@@ -293,7 +293,7 @@ class Tree(object):
         pass
 
     def filter_unversioned_files(self, paths):
-        """Filter out paths that are not versioned.
+        """Filter out paths that are versioned.
 
         :return: set of paths.
         """

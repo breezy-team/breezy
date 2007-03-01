@@ -242,7 +242,7 @@ class WorkingTree4(WorkingTree3):
         return self._dirstate
 
     def filter_unversioned_files(self, paths):
-        """Filter out paths that are not versioned.
+        """Filter out paths that are versioned.
 
         :return: set of paths.
         """
@@ -257,7 +257,7 @@ class WorkingTree4(WorkingTree3):
             dirname, basename = os.path.split(path.encode('utf8'))
             _, _, _, path_is_versioned = state._get_block_entry_index(
                 dirname, basename, 0)
-            if path_is_versioned:
+            if not path_is_versioned:
                 result.add(path)
         return result
 
@@ -1489,7 +1489,7 @@ class InterDirStateTree(InterTree):
                     all_versioned = False
                     break
             if not all_versioned:
-                raise errors.PathsNotVersionedError(paths)
+                raise errors.PathsNotVersionedError(specific_files)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
         search_specific_files = set()
         for path in specific_files:
@@ -1866,12 +1866,15 @@ class InterDirStateTree(InterTree):
                         new_executable = bool(
                             stat.S_ISREG(current_path_info[3].st_mode)
                             and stat.S_IEXEC & current_path_info[3].st_mode)
-                        yield (None, current_path_info[0], True,
-                               (False, False),
-                               (None, None),
-                               (None, current_path_info[1]),
-                               (None, current_path_info[2]),
-                               (None, new_executable))
+                        pass # unversioned file support not added to the
+                        # _iter_changes api yet - breaks status amongst other
+                        # things.
+#                        yield (None, current_path_info[0], True,
+#                               (False, False),
+#                               (None, None),
+#                               (None, current_path_info[1]),
+#                               (None, current_path_info[2]),
+#                               (None, new_executable))
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):
