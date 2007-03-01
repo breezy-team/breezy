@@ -16,7 +16,7 @@ class TestMergeDirective(tests.TestCase):
             'example:', 'sha', time, timezone, 'http://example.com',
             patch_type='diff')
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
-            'http://example.com', public_location='http://example.org')
+            'http://example.com', source_branch='http://example.org')
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com',
             patch_type='bundle')
@@ -24,22 +24,22 @@ class TestMergeDirective(tests.TestCase):
             'http://example.com', patch='blah', patch_type='bundle')
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com',
-            public_location="http://example.org", patch_type='diff')
+            source_branch="http://example.org", patch_type='diff')
         md = merge_directive.MergeDirective('example:', 'sha1', time, timezone,
-            'http://example.com', public_location="http://example.org",
+            'http://example.com', source_branch="http://example.org",
             patch='', patch_type='diff')
 
     def test_serialization(self):
         time = 500.23
         timezone = 60
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
-            'http://example.com', public_location="http://example.org",
+            'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
         md2 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual('example:', md2.revision_id)
         self.assertEqual('sha', md2.testament_sha1)
-        self.assertEqual('http://example.com', md2.submit_location)
-        self.assertEqual('http://example.org', md2.public_location)
+        self.assertEqual('http://example.com', md2.target_branch)
+        self.assertEqual('http://example.org', md2.source_branch)
         self.assertEqual(time, md2.time)
         self.assertEqual(timezone, md2.timezone)
         self.assertEqual('diff', md2.patch_type)

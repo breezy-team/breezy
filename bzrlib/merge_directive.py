@@ -16,11 +16,11 @@ class MergeDirective(object):
     _format_string = 'Bazaar merge directive format experimental-1'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 submit_location, patch=None, patch_type=None,
-                 public_location=None):
+                 target_branch, patch=None, patch_type=None,
+                 source_branch=None):
         assert isinstance(time, float)
         assert patch_type in (None, 'diff', 'bundle')
-        if patch_type != 'bundle' and public_location is None:
+        if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:
             raise errors.PatchMissing(patch_type)
@@ -28,10 +28,10 @@ class MergeDirective(object):
         self.testament_sha1 = testament_sha1
         self.time = time
         self.timezone = timezone
-        self.submit_location = submit_location
+        self.target_branch = target_branch
         self.patch = patch
         self.patch_type = patch_type
-        self.public_location = public_location
+        self.source_branch = source_branch
 
     @classmethod
     def from_lines(klass, lines):
@@ -52,8 +52,8 @@ class MergeDirective(object):
         time, timezone = bundle_serializer.unpack_highres_date(
             stanza.get('timestamp'))
         kwargs = {}
-        for key in ('revision_id', 'testament_sha1', 'submit_location',
-                    'public_location'):
+        for key in ('revision_id', 'testament_sha1', 'target_branch',
+                    'source_branch'):
             try:
                 kwargs[key] = stanza.get(key)
             except KeyError:
@@ -65,9 +65,9 @@ class MergeDirective(object):
         timestamp = bundle_serializer.format_highres_date(self.time,
                                                           self.timezone)
         stanza = rio.Stanza(revision_id=self.revision_id, timestamp=timestamp,
-                            submit_location=self.submit_location,
+                            target_branch=self.target_branch,
                             testament_sha1=self.testament_sha1)
-        for key in ('public_location',):
+        for key in ('source_branch',):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
         lines = ['# ' + self._format_string + '\n']
@@ -79,20 +79,20 @@ class MergeDirective(object):
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
-                 submit_location, patch_type='bundle',
-                 local_submit_location=None, public_branch=None):
+                 target_branch, patch_type='bundle',
+                 local_target_branch=None, public_branch=None):
         if public_branch is not None:
-            public_location = public_branch.base
+            source_branch = public_branch.base
             if not public_branch.repository.has_revision(revision_id):
-                raise errors.PublicBranchOutOfDate(public_location,
+                raise errors.PublicBranchOutOfDate(source_branch,
                                                    revision_id)
         else:
-            public_location = None
+            source_branch = None
         t = testament.StrictTestament3.from_revision(repository, revision_id)
         if patch_type is None:
             patch = None
         else:
-            submit_branch = _mod_branch.Branch.open(submit_location)
+            submit_branch = _mod_branch.Branch.open(target_branch)
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
             ancestor_id = _mod_revision.common_ancestor(revision_id,
@@ -107,8 +107,7 @@ class MergeDirective(object):
                 patch = klass._generate_diff(repository, revision_id,
                                              ancestor_id)
         return MergeDirective(revision_id, t.as_sha1(), time, timezone,
-                              submit_location, patch, patch_type,
-                              public_location)
+                              target_branch, patch, patch_type, source_branch)
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
