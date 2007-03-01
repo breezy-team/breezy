@@ -1097,15 +1097,15 @@ def build_tree(tree, wt):
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
     """
-    tree.lock_read()
+    wt.lock_tree_write()
     try:
-        wt.lock_tree_write()
+        tree.lock_read()
         try:
             return _build_tree(tree, wt)
         finally:
-            wt.unlock()
+            tree.unlock()
     finally:
-        tree.unlock()
+        wt.unlock()
 
 def _build_tree(tree, wt):
     """See build_tree."""
