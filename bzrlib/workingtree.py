@@ -611,7 +611,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
         # TODO: Re-adding a file that is removed in the working copy
