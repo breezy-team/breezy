@@ -73,6 +73,9 @@ class TestCat(TestCaseWithTransport):
         try:
             tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
             tree.commit('add test files')
+            # remove currently uses self._write_inventory - 
+            # work around that for now.
+            tree.flush()
             tree.remove(['d-rev'])
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
