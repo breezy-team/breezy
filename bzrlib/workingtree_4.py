@@ -443,8 +443,9 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
         """See WorkingTree.move()."""
+        result = []
         if not from_paths:
-            return ()
+            return result
 
         state = self.current_dirstate()
 
@@ -652,10 +653,11 @@ class WorkingTree4(WorkingTree3):
             except:
                 rollback_rename()
                 raise
+            result.append((from_rel, to_rel))
             state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
             self._dirty = True
 
-        return #rename_tuples
+        return result
 
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
