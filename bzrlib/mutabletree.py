@@ -61,7 +61,7 @@ class MutableTree(tree.Tree):
     branch and bzrdir attributes.
     """
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
 
