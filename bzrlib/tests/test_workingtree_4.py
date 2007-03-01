@@ -435,4 +435,3 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual(None, tree.id2path('a-id'))
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertEqual(None, tree.id2path('c-id'))
-

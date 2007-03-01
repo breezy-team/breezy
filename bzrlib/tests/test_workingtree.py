@@ -268,6 +268,14 @@ class TestWorkingTreeFormatAB1(TestCaseWithTransport):
         self.assertEqual('revision-1', 
                          revision_tree.inventory['my-root-id'].revision)
 
+    def test_unique_root_id_per_tree(self):
+        # each time you initialize a new tree, it gets a different root id
+        tree1 = self.make_branch_and_tree('tree1',
+            format='experimental-knit3')
+        tree2 = self.make_branch_and_tree('tree2',
+            format='experimental-knit3')
+        self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
+
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
