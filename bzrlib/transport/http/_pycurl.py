@@ -33,6 +33,7 @@
 
 import os
 from cStringIO import StringIO
+import sys
 
 from bzrlib import (
     errors,
@@ -45,6 +46,7 @@ from bzrlib.errors import (NoSuchFile,
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (
+    ca_bundle,
     _extract_headers,
     HttpTransportBase,
     _pycurl_errors,
@@ -87,6 +89,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         super(PyCurlTransport, self).__init__(base)
+        self.cabundle = ca_bundle.get_ca_path()
         if from_transport is not None:
             self._curl = from_transport._curl
         else:
@@ -241,6 +244,8 @@ class PyCurlTransport(HttpTransportBase):
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
         curl.setopt(pycurl.USERAGENT, ua_str)
+        if self.cabundle:
+            curl.setopt(pycurl.CAINFO, self.cabundle)
 
     def _curl_perform(self, curl, header, more_headers=[]):
         """Perform curl operation and translate exceptions."""
