@@ -131,6 +131,10 @@ class RevisionTree(Tree):
     def get_reference_revision(self, entry, path=None):
         return entry.reference_revision
 
+    def get_root_id(self):
+        if self.inventory.root:
+            return self.inventory.root.file_id
+
     def kind(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].kind

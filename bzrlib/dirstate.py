@@ -1824,6 +1824,8 @@ class DirState(object):
             # Remove it, its meaningless.
             block = self._find_block(current_old[0])
             entry_index, present = self._find_entry_index(current_old[0], block[1])
+            if not present:
+                import pdb;pdb.set_trace()
             assert present, 'could not find entry for %s' % (current_old,)
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.

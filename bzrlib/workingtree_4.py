@@ -72,8 +72,6 @@ from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
-    compact_date,
-    file_kind,
     isdir,
     normpath,
     pathjoin,
@@ -81,7 +79,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     splitpath,
-    supports_executable,
     )
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
@@ -93,9 +90,6 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
-        zero_eleven,
-        zero_thirteen,
         )
 from bzrlib.tree import Tree
 from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
@@ -1094,8 +1088,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
 
-        revision_id allows creating a working tree at a different
+        :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
+
+        These trees get an initial random root id.
         """
         revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
@@ -1109,6 +1105,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')
+        # write out new dirstate (must exist when we create the tree)
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
@@ -1119,11 +1116,20 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt._new_tree()
         wt.lock_tree_write()
         try:
-            #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
             wt.flush()
             basis = wt.basis_tree()
             basis.lock_read()
+            state = wt.current_dirstate()
+            # if the basis has a root id we have to use that; otherwise we use
+            # a new random one
+            basis_root_id = basis.get_root_id()
+            if basis_root_id is not None:
+                wt._set_root_id(basis_root_id)
+                wt.flush()
+            elif revision_id in (None, NULL_REVISION):
+                wt._set_root_id(generate_ids.gen_root_id())
+                wt.flush()
             transform.build_tree(basis, wt)
             basis.unlock()
         finally:
@@ -1185,6 +1191,9 @@ class DirStateRevisionTree(Tree):
         """
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
+
+    def get_root_id(self):
+        return self.path2id('')
 
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""

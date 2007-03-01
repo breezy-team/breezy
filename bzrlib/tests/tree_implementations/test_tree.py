@@ -72,3 +72,10 @@ class TestReference(TestCaseWithTree):
             tree.unlock()
         self.assertEqual([entry], [e for p, e in
                                    tree.iter_reference_entries()])
+
+    def test_get_root_id(self):
+        # trees should return some kind of root id; it can be none
+        tree = self.make_branch_and_tree('tree')
+        root_id = tree.get_root_id()
+        if root_id is not None:
+            self.assertIsInstance(root_id, str)

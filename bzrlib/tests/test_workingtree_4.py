@@ -435,3 +435,17 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual(None, tree.id2path('a-id'))
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertEqual(None, tree.id2path('c-id'))
+
+    def test_unique_root_id_per_tree(self):
+        # each time you initialize a new tree, it gets a different root id
+        format_name = 'experimental-reference-dirstate'
+        tree1 = self.make_branch_and_tree('tree1',
+            format=format_name)
+        tree2 = self.make_branch_and_tree('tree2',
+            format=format_name)
+        self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
+        # when you branch, it inherits the same root id
+        rev1 = tree1.commit('first post')
+        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
+        self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
+
