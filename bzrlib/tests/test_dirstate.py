@@ -424,6 +424,41 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def test_set_path_id_with_parents(self):
+        """Set the root file id in a dirstate with parents"""
+        mt = self.make_branch_and_tree('mt')
+        # may need to set the root when the default format is one where it's
+        # not TREE_ROOT
+        mt.commit('foo', rev_id='parent-revid')
+        rt = mt.branch.repository.revision_tree('parent-revid')
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_parent_trees([('parent-revid', rt)], ghosts=[])
+            state.set_path_id('', 'foobarbaz')
+            # now see that it is what we expected
+            expected_rows = [
+                (('', '', 'TREE_ROOT'),
+                    [('a', '', 0, False, ''),
+                     ('d', '', 0, False, 'parent-revid'),
+                     ]),
+                (('', '', 'foobarbaz'),
+                    [('d', '', 0, False, ''),
+                     ('a', '', 0, False, ''),
+                     ]),
+                ]
+            self.assertEqual(expected_rows, list(state._iter_entries()))
+            # should work across save too
+            state.save()
+        finally:
+            state.unlock()
+        # now flush & check we get the same
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            self.assertEqual(expected_rows, list(state._iter_entries()))
+        finally:
+            state.unlock()
+
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.
         tree1 = self.make_branch_and_memory_tree('tree1')
