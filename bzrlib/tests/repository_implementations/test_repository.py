@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,10 +38,10 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -219,8 +219,8 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         f = bzrdir.BzrDirMetaFormat1()
-        f._repository_format = repository.RepositoryFormatKnit2()
-        get_transport(self.get_url()).mkdir('b')
+        f._repository_format = knitrepo.RepositoryFormatKnit2()
+        self.get_transport().mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         repo = b_bzrdir.create_repository()
         repo.fetch(tree_a.branch.repository,
@@ -432,8 +432,9 @@ class TestRepository(TestCaseWithRepository):
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
-        if self.repository_format.__class__ == repository.RepositoryFormat4:
-            return # no need to test upgrade to format 4
+        if self.repository_format.get_format_description() \
+            == "Repository format 4":
+            raise TestSkipped('Cannot convert format-4 to itself')
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return # local conversion to/from RemoteObjects is irrelevant.
         self.build_tree_contents(_upgrade_dir_template)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@ import os
 
 import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 
 
 class TestLog(ExternalBase):
@@ -290,3 +290,14 @@ class TestLogEncodings(TestCaseInTempDir):
         # Make sure the cp1251 string is not found anywhere
         self.assertEquals(-1, stdout.find(test_in_cp1251))
 
+
+class TestLogFile(TestCaseWithTransport):
+
+    def test_log_local_branch_file(self):
+        """We should be able to log files in local treeless branches"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add('file')
+        tree.commit('revision 1')
+        tree.bzrdir.destroy_workingtree()
+        self.run_bzr('log', 'tree/file')

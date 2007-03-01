@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,11 +27,15 @@ import warnings
 import bzrlib
 from bzrlib import (
     bzrdir,
+    errors,
     memorytree,
     osutils,
     repository,
+    symbol_versioning,
     )
 from bzrlib.progress import _BaseProgressBar
+from bzrlib.repofmt import weaverepo
+from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
@@ -44,9 +48,6 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
-import bzrlib.errors as errors
-from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
@@ -492,7 +493,7 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat7()
+        format.repository_format = weaverepo.RepositoryFormat7()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
