@@ -977,12 +977,21 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        old_inv = tree.basis_tree().inventory
-        new_inv = tree.read_working_inventory()
-        renames = list(_mod_tree.find_renames(old_inv, new_inv))
-        renames.sort()
-        for old_name, new_name in renames:
-            self.outf.write("%s => %s\n" % (old_name, new_name))
+        tree.lock_read()
+        try:
+            new_inv = tree.inventory
+            old_tree = tree.basis_tree()
+            old_tree.lock_read()
+            try:
+                old_inv = old_tree.inventory
+                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames.sort()
+                for old_name, new_name in renames:
+                    self.outf.write("%s => %s\n" % (old_name, new_name))
+            finally:
+                old_tree.unlock()
+        finally:
+            tree.unlock()
 
 
 class cmd_update(Command):
