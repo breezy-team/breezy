@@ -21,6 +21,7 @@
 import commands
 import os
 from os.path import join
+import shutil
 import tarfile
 
 from debian_bundle.changelog import (Changelog, Version)
@@ -146,15 +147,14 @@ class BuilderTestCase(TestCaseWithTransport):
   def _make_branch(self):
     os.mkdir(self.basedir)
     tree = self.make_branch_and_tree(self.branch_dir)
-    branch = tree.branch
-    return (tree, branch)
+    return tree
 
-  def build_tree(self, files, *args, **kwargs):
+  def build_branch_tree(self, files, *args, **kwargs):
     #divert in to base
     newfiles = []
     for filename in files:
-      newfiles.append(join('base', filename))
-    super(BuilderTestCase, self).build_tree(newfiles, *args, **kwargs)
+      newfiles.append(join(self.branch_dir, filename))
+    self.build_tree(newfiles, *args, **kwargs)
 
   def make_orig_tarball(self):
     os.mkdir(self.orig_dir)
@@ -255,7 +255,7 @@ class TestDefaultBuilder(BuilderTestCase):
   def get_builder(self, version=None, wt=None, larstiq=False):
     """Returns a builder set up for this type."""
     if wt is None:
-      (wt, branch) = self._make_branch()
+      wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
     return DebBuild(properties, wt)
@@ -348,13 +348,12 @@ class TestDefaultBuilder(BuilderTestCase):
     """Test that the tarball is not copied in to the build dir.
     
     If use_existing is given then the tarball should not be copied.
-    This is currently checked by just not creating the one in the orig_dir
-    and checking that it doesn't barf. It might be better to use a checksum
-    or similar to make it more robust.
     
     This might not be the desired behaviour, but add a test for it
-    either way."""
+    either way.
+    """
     builder = self.get_builder()
+    self.make_orig_tarball()
     builder.prepare()
     builder.export(use_existing=True)
     self.failIfExists(join(self.build_dir, self.tarball_name))
@@ -369,11 +368,11 @@ class TestDefaultBuilder(BuilderTestCase):
 
   def test_export_has_correct_contents_in_source_dir(self):
     """Test that the exported source dir has the correct contents."""
-    wt = self.make_branch_and_tree(self.basedir)
-    self.build_tree(['a', 'b'])
+    wt = self._make_branch()
+    self.build_branch_tree(['a', 'b'])
     wt.add(['a', 'b'])
     wt.commit('commit one')
-    self.build_tree(['c', 'd'])
+    self.build_branch_tree(['c', 'd'])
     wt.add(['c'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
@@ -387,9 +386,9 @@ class TestDefaultBuilder(BuilderTestCase):
 
   def test_export_removes_builddeb_dir(self):
     """Test that the builddeb dir is removed from the export."""
-    wt = self.make_branch_and_tree(self.basedir)
+    wt = self._make_branch()
     files = ['a', '.bzr-builddeb/', '.bzr-builddeb/default.conf']
-    self.build_tree(files)
+    self.build_branch_tree(files)
     wt.add(files)
     wt.commit('commit one')
     builder = self.get_builder(wt=wt)
@@ -478,7 +477,7 @@ class TestNativeBuilder(BuilderTestCase):
   def get_builder(self, wt=None, version=None, larstiq=False):
     """Returns a native builder."""
     if wt is None:
-      (wt, branch) = self._make_branch()
+      wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
     return DebNativeBuild(properties, wt)
@@ -492,11 +491,11 @@ class TestNativeBuilder(BuilderTestCase):
 
   def test_export_has_correct_contents_in_source_dir(self):
     """Test that the exported source dir has the correct contents."""
-    wt = self.make_branch_and_tree(self.basedir)
-    self.build_tree(['a', 'b'])
+    wt = self._make_branch()
+    self.build_branch_tree(['a', 'b'])
     wt.add(['a', 'b'])
     wt.commit('commit one')
-    self.build_tree(['c', 'd'])
+    self.build_branch_tree(['c', 'd'])
     wt.add(['c'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
@@ -509,9 +508,9 @@ class TestNativeBuilder(BuilderTestCase):
 
   def test_export_removes_builddeb_dir(self):
     """Test that the builddeb dir is removed from the export."""
-    wt = self.make_branch_and_tree(self.basedir)
+    wt = self._make_branch()
     files = ['a', '.bzr-builddeb/', '.bzr-builddeb/default.conf']
-    self.build_tree(files)
+    self.build_branch_tree(files)
     wt.add(files)
     wt.commit('commit one')
     builder = self.get_builder(wt=wt)
@@ -526,7 +525,7 @@ class TestSplitBuilder(BuilderTestCase):
   def get_builder(self, wt=None, version=None, larstiq=False):
     """Returns a native builder."""
     if wt is None:
-      (wt, branch) = self._make_branch()
+      wt = self._make_branch()
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
     return DebSplitBuild(properties, wt)
@@ -551,13 +550,13 @@ class TestSplitBuilder(BuilderTestCase):
     The working tree state should be reflected, but the debian/ and
     .bzr-builddeb/ dirs should be removed.
     """
-    wt = self.make_branch_and_tree(self.basedir)
+    wt = self._make_branch()
     files = ['a', 'b', 'dir/', 'debian/', 'debian/control', '.bzr-builddeb/',
              '.bzr-builddeb/default.conf']
-    self.build_tree(files)
+    self.build_branch_tree(files)
     wt.add(files)
     wt.commit('commit one')
-    self.build_tree(['c', 'd'])
+    self.build_branch_tree(['c', 'd'])
     wt.add(['c'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
@@ -590,13 +589,13 @@ class TestSplitBuilder(BuilderTestCase):
     The export of a split build should leave the full branch contents in
     the source dir (including debian/) except for the .bzr-builddeb/ dir.
     """
-    wt = self.make_branch_and_tree(self.basedir)
+    wt = self._make_branch()
     files = ['a', 'b', 'dir/', 'debian/', 'debian/control', '.bzr-builddeb/',
              '.bzr-builddeb/default.conf']
-    self.build_tree(files)
+    self.build_branch_tree(files)
     wt.add(files)
     wt.commit('commit one')
-    self.build_tree(['c', 'd'])
+    self.build_branch_tree(['c', 'd'])
     wt.add(['c'])
     wt.remove(['b'])
     builder = self.get_builder(wt=wt)
@@ -605,4 +604,144 @@ class TestSplitBuilder(BuilderTestCase):
     expected = ['a', 'c', 'dir/', 'debian/', 'debian/control']
     for filename in expected:
       self.failUnlessExists(join(self.source_dir, filename))
+
+
+class TestMergeBuilder(BuilderTestCase):
+  """Test the merge builder."""
+
+  def get_builder(self, wt=None, version=None, larstiq=False):
+    """Returns a native builder."""
+    if wt is None:
+      wt = self._make_branch()
+    changelog = self.make_changelog(version=version)
+    properties = self.make_properties(changelog, larstiq)
+    return DebMergeBuild(properties, wt)
+
+  upstream_files = ['a', 'b', 'dir/', 'dir/c']
+  debian_files = ['control', 'changelog', 'patches/', 'patches/patch']
+
+  def make_orig_tarball(self):
+    """Make the orig tarball with some content for merge builders."""
+    os.mkdir(self.orig_dir)
+    tarball = join(self.orig_dir, self.tarball_name)
+    basedir = self.package_name+'-'+self.upstream_version+'/'
+    files = [basedir]
+    files = files + [join(basedir, f) for f in self.upstream_files]
+    self.build_tree(files)
+    tar = tarfile.open(join(self.orig_dir, self.tarball_name), 'w:gz')
+    try:
+      tar.add(basedir)
+    finally:
+      tar.close()
+    shutil.rmtree(basedir)
+
+  def test__export_upstream_branch(self):
+    """Simple sanity check on this private function."""
+    builder = self.get_builder()
+    self.assertEqual(builder._export_upstream_branch(), False)
+
+  def test_export_creates_source_dir(self):
+    """Test that the source dir is created on export."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(self.source_dir)
+
+  def test_export_extracts_tarball(self):
+    """Test that the upstream tarball is extracted in to the source dir."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    self.failUnlessExists(join(self.orig_dir, self.tarball_name))
+    builder.prepare()
+    builder.export()
+    for f in self.upstream_files:
+      self.failUnlessExists(join(self.source_dir, f))
+
+  def test_export_copies_tarball(self):
+    """Test that the tarball is copied in to the build dir."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    self.failUnlessExists(join(self.build_dir, self.tarball_name))
+
+  def test_export_use_existing_doesnt_copy_tarball(self):
+    """Test that if use_existing is true it doesn't copy the tarball."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export(use_existing=True)
+    self.failIfExists(join(self.build_dir, self.tarball_name))
+
+  def test_export_use_existing_doesnt_extract_tarball(self):
+    """Test that the tarball is not extracted if use_existing is True."""
+    builder = self.get_builder()
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export(use_existing=True)
+    self.failIfExists(self.source_dir)
+
+  def test_export_has_correct_contents_in_source_dir(self):
+    """Test that the exported source dir has the correct contents."""
+    wt = self._make_branch()
+    basedir = 'debian/'
+    files = [basedir]
+    files = files + [join(basedir, f) for f in self.debian_files]
+    self.build_branch_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    self.build_branch_tree(join(basedir, f) for f in ['rules', 'unknown'])
+    wt.add(join(basedir, 'rules'))
+    wt.remove(join(basedir, 'control'))
+    builder = self.get_builder(wt=wt)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    expected = ['changelog', 'patches', 'patches/patch', 'rules']
+    for f in expected:
+      self.failUnlessExists(join(self.source_dir, basedir, f))
+    for f in ['control', 'unknown']:
+      self.failIfExists(join(self.source_dir, basedir, f))
+
+  def test_export_removes_builddeb_dir(self):
+    """Test that the builddeb dir is removed from the export."""
+    wt = self._make_branch()
+    basedir = 'debian/'
+    files = [basedir]
+    files = files + [join(basedir, f) for f in ['.bzr-builddeb/',
+                             '.bzr-builddeb/default.conf']]
+    files = files + [join(basedir, f) for f in self.debian_files]
+    self.build_branch_tree(files)
+    wt.add(files)
+    wt.commit('commit one')
+    builder = self.get_builder(wt=wt)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    for f in self.debian_files:
+      self.failUnlessExists(join(self.source_dir, join(basedir, f)))
+    self.failIfExists(join(self.source_dir, '.bzr-builddeb'))
+
+  def test_larstiq(self):
+    """Test that LarstiQ format is exported correctly"""
+    wt = self._make_branch()
+    self.build_branch_tree(self.debian_files)
+    wt.add(self.debian_files)
+    wt.commit('commit one')
+    self.build_branch_tree(['rules', 'unknown'])
+    wt.add('rules')
+    wt.remove('control')
+    builder = self.get_builder(wt=wt, larstiq=True)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    expected = ['changelog', 'patches', 'patches/patch', 'rules']
+    basedir = 'debian'
+    for f in expected:
+      self.failUnlessExists(join(self.source_dir, basedir, f))
+    for f in self.upstream_files:
+      self.failUnlessExists(join(self.source_dir, f))
+    for f in ['control', 'unknown']:
+      self.failIfExists(join(self.source_dir, f))
 
