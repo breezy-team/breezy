@@ -80,6 +80,19 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_overwrite(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('message 1')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('message 2', rev_id='rev2a')
+        tree_b.commit('message 2', rev_id='rev2b')
+        self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+        tree_a.branch.pull(tree_a.branch, overwrite=True,
+                           stop_revision='rev2b')
+        self.assertEqual('rev2b', tree_a.branch.last_revision())
+        self.assertEqual(tree_b.branch.revision_history(),
+                         tree_a.branch.revision_history())
+
 
 class TestPullHook(TestCaseWithBranch):
 
