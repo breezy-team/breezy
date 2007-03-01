@@ -23,7 +23,7 @@ class TestMergeDirective(tests.TestCase):
         md = merge_directive.MergeDirective('null:', 'sha', time, timezone,
             'http://example.com', patch='blah', patch_type='bundle')
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
-            'example:', 'http://example.com', 'sha', time, timezone,
+            'example:', 'sha', time, timezone, 'http://example.com',
             public_location="http://example.org", patch_type='diff')
         md = merge_directive.MergeDirective('example:', 'sha1', time, timezone,
             'http://example.com', public_location="http://example.org",
@@ -67,18 +67,18 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
             tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
             public_branch=branch_c)
         md1 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base)
+            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base)
         self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         branch_c.pull(tree_a.branch)
         md2 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
             patch_type='diff', public_branch=branch_c)
         self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         md3 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
             patch_type=None, public_branch=branch_c)
         self.assertIs(None, md3.patch)

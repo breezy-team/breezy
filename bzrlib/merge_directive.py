@@ -16,6 +16,7 @@ class MergeDirective(object):
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  submit_location, patch=None, patch_type=None,
                  public_location=None):
+        assert isinstance(time, float)
         assert patch_type in (None, 'diff', 'bundle')
         if patch_type != 'bundle' and public_location is None:
             raise errors.NoMergeSource()
