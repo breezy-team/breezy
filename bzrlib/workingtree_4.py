@@ -469,7 +469,7 @@ class WorkingTree4(WorkingTree3):
             state._get_block_entry_index(to_entry_dirname, to_basename, 0)
         if not entry_present:
             raise errors.BzrMoveFailedError('', to_dir,
-                errors.NotInWorkingDirectory(to_dir))
+                errors.NotVersionedError(to_dir))
         to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
         # get a handle on the block itself.
         to_block_index = state._ensure_block(
