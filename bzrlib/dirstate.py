@@ -191,12 +191,13 @@ desired.
 """
 
 
-import base64
 import bisect
+import codecs
 import cStringIO
 import os
 import sha
 import struct
+import time
 import zlib
 
 from bzrlib import (
@@ -297,7 +298,7 @@ class DirState(object):
             within the root.
         :param file_id: The file id of the path being added.
         :param kind: The kind of the path.
-        :param stat: The output of os.lstate for the path.
+        :param stat: The output of os.lstat for the path.
         :param link_or_sha1: The sha value of the file, or the target of a
             symlink. '' for directories.
         """
@@ -900,7 +901,7 @@ class DirState(object):
 
     def _entry_to_line(self, entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
-        
+
         :param entry: An entry_tuple as defined in the module docstring.
         """
         entire_entry = list(entry[0])
@@ -1013,6 +1014,68 @@ class DirState(object):
             result.unlock()
             raise
         return result
+
+    def get_sha1_for_entry(self, entry, abspath, stat_value=None):
+        """Return the sha1 sum for a given file.
+
+        :param entry: This is the dirblock entry for the file in question.
+        :param abspath: The path on disk for this file.
+        :param stat_value: (optional) if we already have done a stat on the
+            file, re-use it.
+        :return: The sha1 hexdigest of the file (40 bytes)
+        """
+        # This code assumes that the entry passed in is directly held in one of
+        # the internal _dirblocks. So the dirblock state must have already been
+        # read.
+        assert self._dirblock_state != DirState.NOT_IN_MEMORY
+        assert entry[1][0][0] == 'f', \
+            'can only get sha1 for a file not: %s %s' % (
+            DirState._minikind_to_kind[entry[1][0][0]], entry[0])
+        if stat_value is None:
+            stat_value = os.lstat(abspath)
+        packed_stat = pack_stat(stat_value)
+        saved_sha1_digest = entry[1][0][1]
+        saved_file_size = entry[1][0][2]
+        saved_packed_stat = entry[1][0][4]
+        if (packed_stat == saved_packed_stat
+            and saved_sha1_digest != ''
+            # size should also be in packed_stat
+            and saved_file_size == stat_value.st_size):
+            # The stat hasn't changed since we saved, so we can potentially
+            # re-use the saved sha hash.
+            cutoff = self._sha_cutoff_time()
+            if (stat_value.st_mtime < cutoff
+                and stat_value.st_ctime < cutoff):
+                # Return the existing fingerprint
+                return saved_sha1_digest
+        # If we have gotten this far, that means that we need to actually
+        # process the file.
+        new_sha1_digest = self._sha1_file(abspath)
+        # TODO: jam 20070301 Is it worth checking to see if the new sha is
+        #       actually different? I'm guessing not, because we wouldn't have
+        #       gotten this far otherwise.
+        entry[1][0] = ('f', new_sha1_digest, stat_value.st_size,
+                       entry[1][0][3], # Executable?
+                       packed_stat
+                      )
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        return new_sha1_digest
+
+    def _sha_cutoff_time(self):
+        """Return cutoff time.
+
+        Files modified more recently than this time are at risk of being
+        undetectably modified and so can't be cached.
+        """
+        return int(time.time()) - 3
+
+    def _sha1_file(self, abspath):
+        """Calculate the SHA1 of a file by reading the full text"""
+        f = file(abspath, 'rb', buffering=65000)
+        try:
+            return osutils.sha_file(f)
+        finally:
+            f.close()
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""
@@ -1226,8 +1289,8 @@ class DirState(object):
                         path_utf8=real_path)
             return None, None
 
-    @staticmethod
-    def initialize(path):
+    @classmethod
+    def initialize(cls, path):
         """Create a new dirstate on path.
 
         The new dirstate will be an empty tree - that is it has no parents,
@@ -1245,7 +1308,7 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = DirState(path)
+        result = cls(path)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -2048,7 +2111,10 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     return lo
 
 
-def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
+_base64_encoder = codecs.getencoder('base64')
+
+
+def pack_stat(st, _encode=_base64_encoder, _pack=struct.pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
     # are going to leave it in packed form.
@@ -2058,5 +2124,5 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
 
     # base64.encode always adds a final newline, so strip it off
     return _encode(_pack('>llllll'
-        , st.st_size, st.st_mtime, st.st_ctime
-        , st.st_dev, st.st_ino, st.st_mode))[:-1]
+        , st.st_size, int(st.st_mtime), int(st.st_ctime)
+        , st.st_dev, st.st_ino, st.st_mode))[0][:-1]

@@ -125,7 +125,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
@@ -140,22 +139,6 @@ class WorkingTree4(WorkingTree3):
         assert isinstance(_control_files, LockableFiles), \
             "_control_files must be a LockableFiles, not %r" % _control_files
         self._control_files = _control_files
-        # update the whole cache up front and write to disk if anything changed;
-        # in the future we might want to do this more selectively
-        # two possible ways offer themselves : in self._unlock, write the cache
-        # if needed, or, when the cache sees a change, append it to the hash
-        # cache file, and have the parser take the most recent entry for a
-        # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
-        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
-        hc.read()
-        # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
-
-        if hc.needs_write:
-            mutter("write hc")
-            hc.write()
-
         self._dirty = None
         #-------------
         # during a read or write lock these objects are set, and are
@@ -369,13 +352,17 @@ class WorkingTree4(WorkingTree3):
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
-        key, details = self._get_entry(file_id=file_id, path=path)
-        assert key is not None, 'what error should this raise'
+        entry = self._get_entry(file_id=file_id, path=path)
+        assert entry[0] is not None, 'what error should this raise'
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = pathjoin(key[0], key[1]).decode('utf8')
-        return self._hashcache.get_sha1(path, stat_value)
+            path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
+
+        file_abspath = self.abspath(path)
+        state = self.current_dirstate()
+        return state.get_sha1_for_entry(entry, file_abspath,
+                                        stat_value=stat_value)
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
@@ -941,7 +928,6 @@ class WorkingTree4(WorkingTree3):
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:
-            self._write_hashcache_if_dirty()
             # eventually we should do signature checking during read locks for
             # dirstate updates.
             if self._control_files._lock_mode == 'w':
@@ -1262,11 +1248,11 @@ class DirStateRevisionTree(Tree):
         return self._repository.get_revision(last_changed_revision).timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        # TODO: if path is present, fast-path on that, as inventory
-        # might not be present
-        ie = self.inventory[file_id]
-        if ie.kind == "file":
-            return ie.text_sha1
+        entry = self._get_entry(file_id=file_id, path=path)
+        parent_index = self._get_parent_index()
+        parent_details = entry[1][parent_index]
+        if parent_details[0] == 'f':
+            return parent_details[1]
         return None
 
     def get_file(self, file_id):
@@ -1639,8 +1625,9 @@ class InterDirStateTree(InterTree):
                                 content_change = True
                             else:
                                 # maybe the same. Get the hash
-                                new_hash = self.target._hashcache.get_sha1(
-                                                            path, path_info[3])
+                                new_hash = state.get_sha1_for_entry(entry,
+                                                abspath=path_info[4],
+                                                stat_value=path_info[3])
                                 content_change = (new_hash != source_details[1])
                         target_exec = bool(
                             stat.S_ISREG(path_info[3].st_mode)
