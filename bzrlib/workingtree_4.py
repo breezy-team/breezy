@@ -666,6 +666,7 @@ class WorkingTree4(WorkingTree3):
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
+        path = path.strip('/')
         entry = self._get_entry(path=path)
         if entry == (None, None):
             return None

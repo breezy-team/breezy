@@ -740,3 +740,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual(expected_results, list(tree.walkdirs()))
         finally:
             tree.unlock()
+
+    def test_path2id(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        self.assertEqual('foo-id', tree.path2id('foo'))
+        # the next assertion is for backwards compatability with WorkingTree3,
+        # though its probably a bad idea, it makes things work. Perhaps
+        # it should raise a deprecation warning?
+        self.assertEqual('foo-id', tree.path2id('foo/'))
