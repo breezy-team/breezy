@@ -1097,6 +1097,18 @@ def build_tree(tree, wt):
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
     """
+    tree.lock_read()
+    try:
+        wt.lock_tree_write()
+        try:
+            return _build_tree(tree, wt)
+        finally:
+            wt.unlock()
+    finally:
+        tree.unlock()
+
+def _build_tree(tree, wt):
+    """See build_tree."""
     if len(wt.inventory) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
