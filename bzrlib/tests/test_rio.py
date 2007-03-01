@@ -367,7 +367,9 @@ s: both\\\"
         lines = rio.to_patch_lines(stanza)
         for line in lines:
             self.assertContainsRe(line, '^# ')
-            self.assertTrue(76 >= len(line))
+            self.assertTrue(72 >= len(line))
+        for line in rio.to_patch_lines(stanza, max_width=12):
+            self.assertTrue(12 >= len(line))
         lines = self.mail_munge(lines)
         new_stanza = rio.read_patch_stanza(lines)
         self.assertEqual('#\n\r\\r ', new_stanza.get('data'))

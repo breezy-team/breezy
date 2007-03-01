@@ -316,14 +316,16 @@ def read_stanza_unicode(unicode_iter):
     else:     # didn't see any content
         return None    
 
-def to_patch_lines(stanza):
+def to_patch_lines(stanza, max_width=72):
+    assert max_width > 6
+    max_rio_width = max_width - 4
     lines = []
     for pline in stanza.to_lines():
         for line in pline.split('\n')[:-1]:
             line = re.sub('\\\\', '\\\\\\\\', line)
             while len(line) > 0:
-                partline = line[:72]
-                line = line[72:]
+                partline = line[:max_rio_width]
+                line = line[max_rio_width:]
                 if len(line) > 0:
                     partline += '\\'
                 lines.append('# ' + re.sub('\r', '\\\\r', partline+ '\n'))
