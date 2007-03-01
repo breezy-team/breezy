@@ -902,11 +902,14 @@ class TestDirstateSortOrder(TestCaseWithTransport):
     """Test that DirState adds entries in the right order."""
 
     def test_add_sorting(self):
-        """Add entries in lexicographical order, we get path sorted order."""
-        dirs = ['a', 'a-a', 'a-z',
-                'a/a', 'a/a-a', 'a/a-z', 'a/a/a', 'a/a/z',
-                'a/z', 'a/z-a', 'a/z-z', 'a/z/a', 'a/z/z',
-                'z',
+        """Add entries in lexicographical order, we get path sorted order.
+
+        This tests it to a depth of 4, to make sure we don't just get it right
+        at a single depth. 'a/a' should come before 'a-a', even though it
+        doesn't lexicographically.
+        """
+        dirs = ['a', 'a/a', 'a/a/a', 'a/a/a/a',
+                'a-a', 'a/a-a', 'a/a/a-a', 'a/a/a/a-a',
                ]
         null_sha = ''
         state = dirstate.DirState.initialize('dirstate')
@@ -921,10 +924,38 @@ class TestDirstateSortOrder(TestCaseWithTransport):
             state.add(file_path, file_id, 'file', fake_stat, null_sha)
 
         expected = ['', '', 'a',
-                'a/a', 'a/a/a', 'a/a/z', 'a/a-a', 'a/a-z',
-                'a/z', 'a/z/a', 'a/z/z', 'a/z-a', 'a/z-z',
-                'a-a', 'a-z', 'z',
+                'a/a', 'a/a/a', 'a/a/a/a',
+                'a/a/a/a-a', 'a/a/a-a', 'a/a-a', 'a-a',
                ]
+        split = lambda p:p.split('/')
+        self.assertEqual(sorted(expected, key=split), expected)
+        dirblock_names = [d[0] for d in state._dirblocks]
+        self.assertEqual(expected, dirblock_names)
+
+    def test_set_parent_trees_correct_order(self):
+        """After calling set_parent_trees() we should maintain the order."""
+        dirs = ['a', 'a-a', 'a/a']
+        null_sha = ''
+        state = dirstate.DirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+
+        fake_stat = os.stat('dirstate')
+        for d in dirs:
+            d_id = d.replace('/', '_')+'-id'
+            file_path = d + '/f'
+            file_id = file_path.replace('/', '_')+'-id'
+            state.add(d, d_id, 'directory', fake_stat, null_sha)
+            state.add(file_path, file_id, 'file', fake_stat, null_sha)
+
+        expected = ['', '', 'a', 'a/a', 'a-a']
+        dirblock_names = [d[0] for d in state._dirblocks]
+        self.assertEqual(expected, dirblock_names)
+
+        # *really* cheesy way to just get an empty tree
+        repo = self.make_repository('repo')
+        empty_tree = repo.revision_tree(None)
+        state.set_parent_trees([('null:', empty_tree)], [])
+
         dirblock_names = [d[0] for d in state._dirblocks]
         self.assertEqual(expected, dirblock_names)
 

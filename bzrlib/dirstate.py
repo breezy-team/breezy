@@ -864,7 +864,7 @@ class DirState(object):
         :return: Nothing.
         """
         assert new_entries[0][0][0:2] == ('', ''), \
-            "Missing root row %r" % new_entries[0][0]
+            "Missing root row %r" % (new_entries[0][0],)
         # The two blocks here are deliberate: the root block and the 
         # contents-of-root block.
         self._dirblocks = [('', []), ('', [])]
@@ -1709,7 +1709,8 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = sorted(by_path.items())
+        new_entries = sorted(by_path.items(),
+                        key=lambda entry:(entry[0][0].split('/'), entry[0][1]))
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
