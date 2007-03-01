@@ -715,6 +715,12 @@ class RemoteBranch(branch.Branch):
             mode = self._lock_mode
             self._lock_mode = None
             if self._real_branch is not None:
+                if not self._leave_lock:
+                    # If this RemoteBranch will remove the physical lock for the
+                    # repository, make sure the _real_branch doesn't do it
+                    # first.  (Because the _real_branch's repository is set to
+                    # be the RemoteRepository.)
+                    self._real_branch.repository.leave_lock_in_place()
                 self._real_branch.unlock()
             if mode != 'w':
                 return

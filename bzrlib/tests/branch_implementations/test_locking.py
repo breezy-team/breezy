@@ -418,7 +418,8 @@ class TestBranchLocking(TestCaseWithBranch):
         new_branch.dont_leave_lock_in_place()
         new_branch.repository.dont_leave_lock_in_place()
         new_branch.unlock()
-        # Now the branch is unlocked.  Test this by locking it (without tokens).
+        # Now the branch (and repository) is unlocked.  Test this by locking it
+        # without tokens.
         branch.lock_write()
         branch.unlock()
 
