@@ -1575,6 +1575,9 @@ class InterDirStateTree(InterTree):
             :param path_info: top_relpath, basename, kind, lstat, abspath for
                 the path of entry. If None, then the path is considered absent.
                 (Perhaps we should pass in a concrete entry for this ?)
+                Basename is returned as a utf8 string because we expect this
+                tuple will be ignored, and don't want to take the time to
+                decode.
             """
             # TODO: when a parent has been renamed, dont emit path renames for children,
             if source_index is None:
@@ -1686,8 +1689,8 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                path_unicode = utf8_decode(path)[0]
-                return ((entry[0][2], path_unicode, content_change,
+                #path_unicode = utf8_decode(path)[0]
+                return ((entry[0][2], path, content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
                         (old_basename, entry[0][1]),
@@ -1706,8 +1709,8 @@ class InterDirStateTree(InterTree):
                     new_executable = bool(
                         stat.S_ISREG(path_info[3].st_mode)
                         and stat.S_IEXEC & path_info[3].st_mode)
-                    path_unicode = utf8_decode(path)[0]
-                    return ((entry[0][2], path_unicode, True,
+                    #path_unicode = utf8_decode(path)[0]
+                    return ((entry[0][2], path, True,
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
@@ -1727,8 +1730,8 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                old_path_unicode = utf8_decode(old_path)[0]
-                return ((entry[0][2], old_path_unicode, True,
+                #old_path_unicode = utf8_decode(old_path)[0]
+                return ((entry[0][2], old_path, True,
                         (True, False),
                         (parent_id, None),
                         (entry[0][1], None),
@@ -1787,6 +1790,8 @@ class InterDirStateTree(InterTree):
                         or result[6][0] != result[6][1] # kind
                         or result[7][0] != result[7][1] # executable
                         ):
+                        result = (result[0],
+                                  _utf8_decode(result[1])[0]) + result[2:]
                         yield result
             dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
@@ -1862,6 +1867,8 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
+                                    result = (result[0],
+                                              _utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
@@ -1915,6 +1922,8 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
+                                result = (result[0],
+                                          _utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
@@ -1938,6 +1947,8 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
+                                    result = (result[0],
+                                              _utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                             advance_path = False
                     else:
@@ -1953,6 +1964,8 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
+                                result = (result[0],
+                                          _utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
