@@ -1005,6 +1005,171 @@ class TestDirstateSortOrder(TestCaseWithTransport):
         self.assertEqual(expected, dirblock_names)
 
 
+class Sha1InstrumentedDirState(dirstate.DirState):
+    """An DirState with instrumented sha1 functionality."""
+
+    def __init__(self, path):
+        super(Sha1InstrumentedDirState, self).__init__(path)
+        self._time_offset = 0
+        self._sha1_log = []
+
+    def _sha_cutoff_time(self):
+        timestamp = super(Sha1InstrumentedDirState, self)._sha_cutoff_time()
+        return timestamp + self._time_offset
+
+    def _sha1_file(self, abspath):
+        self._sha1_log.append(abspath)
+        return super(Sha1InstrumentedDirState, self)._sha1_file(abspath)
+
+    def adjust_time(self, secs):
+        """Move the clock forward or back.
+
+        :param secs: The amount to adjust the clock by. Positive values make it
+        seem as if we are in the future, negative values make it seem like we
+        are in the past.
+        """
+        self._time_offset += secs
+
+
+class _FakeStat(object):
+    """A class with the same attributes as a real stat result."""
+
+    def __init__(self, size, mtime, ctime, dev, ino, mode):
+        self.st_size = size
+        self.st_mtime = mtime
+        self.st_ctime = ctime
+        self.st_dev = dev
+        self.st_ino = ino
+        self.st_mode = mode
+
+
+class TestDirStateGetSha1(TestCaseWithDirState):
+    """Test the DirState.get_sha1 functions"""
+
+    def test_get_sha1_from_entry(self):
+        state = Sha1InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        self.build_tree(['a'])
+        # Add one where we don't provide the stat or sha already
+        state.add('a', 'a-id', 'file', None, '')
+        entry = state._get_entry(0, path_utf8='a')
+        self.assertEqual(('', 'a', 'a-id'), entry[0])
+        self.assertEqual([('f', '', 0, False, dirstate.DirState.NULLSTAT)],
+                         entry[1])
+        # Flush the buffers to disk
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+        stat_value = os.lstat('a')
+        digest = state.get_sha1_for_entry(entry, abspath='a',
+                                          stat_value=stat_value)
+        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
+        packed_stat = dirstate.pack_stat(stat_value)
+
+        # The dirblock entry should be updated with the new info
+        self.assertEqual([('f', digest, 14, False, packed_stat)], entry[1])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(['a'], state._sha1_log)
+
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+        # If we do it again right away, we don't know if the file has changed
+        # so we will re-read the file. Roll the clock back so the file is
+        # guaranteed to look too new.
+        state.adjust_time(-10)
+
+        digest = state.get_sha1_for_entry(entry, abspath='a',
+                                          stat_value=stat_value)
+        self.assertEqual(['a', 'a'], state._sha1_log)
+        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+
+        # However, if we move the clock forward so the file is considered
+        # "stable", it should just returned the cached value.
+        state.adjust_time(20)
+        digest = state.get_sha1_for_entry(entry, abspath='a',
+                                          stat_value=stat_value)
+        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
+        self.assertEqual(['a', 'a'], state._sha1_log)
+
+    def test_get_sha1_from_entry_no_stat_value(self):
+        """Passing the stat_value is optional."""
+        state = Sha1InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        self.build_tree(['a'])
+        # Add one where we don't provide the stat or sha already
+        state.add('a', 'a-id', 'file', None, '')
+        entry = state._get_entry(0, path_utf8='a')
+        digest = state.get_sha1_for_entry(entry, abspath='a')
+        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
+
+    def test_get_sha1_from_entry_dir(self):
+        state = Sha1InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        self.build_tree(['a/'])
+        state.add('a', 'a-id', 'directory', None, '')
+        entry = state._get_entry(0, path_utf8='a')
+        self.assertIs(None, state.get_sha1_for_entry(entry, 'a'))
+
+
+class TestPackStat(TestCaseWithTransport):
+
+    def assertPackStat(self, expected, stat_value):
+        """Check the packed and serialized form of a stat value."""
+        self.assertEqual(expected, dirstate.pack_stat(stat_value))
+
+    def test_pack_stat_int(self):
+        st = _FakeStat(6859L, 1172758614, 1172758617, 777L, 6499538L, 0100644)
+        # Make sure that all parameters have an impact on the packed stat.
+        self.assertPackStat('AAAay0Xm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        st.st_size = 7000L
+        #                ay0 => bWE
+        self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        st.st_mtime = 1172758620
+        #                     4FZ => 4Fx
+        self.assertPackStat('AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
+        st.st_ctime = 1172758630
+        #                          uBZ => uBm
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        st.st_dev = 888L
+        #                                DCQ => DeA
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNIAAIGk', st)
+        st.st_ino = 6499540L
+        #                                     LNI => LNQ
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIGk', st)
+        st.st_mode = 0100744
+        #                                          IGk => IHk
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIHk', st)
+
+    def test_pack_stat_float(self):
+        """On some platforms mtime and ctime are floats.
+
+        Make sure we don't get warnings or errors, and that we ignore changes <
+        1s
+        """
+        st = _FakeStat(7000L, 1172758614.0, 1172758617.0,
+                       777L, 6499538L, 0100644)
+        # These should all be the same as the integer counterparts
+        self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
+        st.st_mtime = 1172758620.0
+        #                     FZF5 => FxF5
+        self.assertPackStat('AAAbWEXm4FxF5uBZAAADCQBjLNIAAIGk', st)
+        st.st_ctime = 1172758630.0
+        #                          uBZ => uBm
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        # fractional seconds are discarded, so no change from above
+        st.st_mtime = 1172758620.453
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+        st.st_ctime = 1172758630.228
+        self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
+
+
 class TestBisect(TestCaseWithTransport):
     """Test the ability to bisect into the disk format."""
 
