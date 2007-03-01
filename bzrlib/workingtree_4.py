@@ -1116,22 +1116,23 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt._new_tree()
         wt.lock_tree_write()
         try:
-            wt.set_last_revision(revision_id)
-            wt.flush()
-            basis = wt.basis_tree()
-            basis.lock_read()
-            state = wt.current_dirstate()
-            # if the basis has a root id we have to use that; otherwise we use
-            # a new random one
-            basis_root_id = basis.get_root_id()
-            if basis_root_id is not None:
-                wt._set_root_id(basis_root_id)
-                wt.flush()
-            elif revision_id in (None, NULL_REVISION):
+            if revision_id in (None, NULL_REVISION):
                 wt._set_root_id(generate_ids.gen_root_id())
                 wt.flush()
-            transform.build_tree(basis, wt)
-            basis.unlock()
+            else:
+                wt.set_last_revision(revision_id)
+                wt.flush()
+                basis = wt.basis_tree()
+                basis.lock_read()
+                state = wt.current_dirstate()
+                # if the basis has a root id we have to use that; otherwise we use
+                # a new random one
+                basis_root_id = basis.get_root_id()
+                if basis_root_id is not None:
+                    wt._set_root_id(basis_root_id)
+                    wt.flush()
+                transform.build_tree(basis, wt)
+                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()
