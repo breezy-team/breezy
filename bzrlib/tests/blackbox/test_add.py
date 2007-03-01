@@ -115,7 +115,7 @@ class TestAdd(ExternalBase):
         self.run_bzr('add')
         
         self.assertEquals(self.capture('unknowns'), 'README\n')
-        eq(len(t.read_working_inventory()), 3)
+        eq(len(list(t)), 3)
                 
         chdir('..')
         self.run_bzr('add')
