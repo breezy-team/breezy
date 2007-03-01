@@ -304,6 +304,8 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.file_1 = self.inv_1['fileid']
         self.file_1b = self.inv_1['binfileid']
         self.tree_2 = self.wt
+        self.tree_2.lock_read()
+        self.addCleanup(self.tree_2.unlock)
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         self.file_2b = self.inv_2['binfileid']
@@ -502,6 +504,8 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.wt.add_parent_tree_id('B')
         self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.repository.get_inventory('D')
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
         self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.repository.get_transaction())
@@ -602,10 +606,13 @@ class TestRevert(TestCaseWithTransport):
 
     def test_dangling_id(self):
         wt = self.make_branch_and_tree('b1')
+        wt.lock_tree_write()
+        self.addCleanup(wt.unlock)
         self.assertEqual(len(wt.inventory), 1)
         open('b1/a', 'wb').write('a test\n')
         wt.add('a')
         self.assertEqual(len(wt.inventory), 2)
+        wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)

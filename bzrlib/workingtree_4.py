@@ -178,7 +178,17 @@ class WorkingTree4(WorkingTree3):
             # - on the first access it will be gathered, and we can
             # always change this once tests are all passing.
             state.add(f, file_id, kind, None, '')
+        self._make_dirty(reset_inventory=True)
+
+    def _make_dirty(self, reset_inventory):
+        """Make the tree state dirty.
+
+        :param reset_inventory: True if the cached inventory should be removed
+            (presuming there is one).
+        """
         self._dirty = True
+        if reset_inventory and self._inventory is not None:
+            self._inventory = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -655,7 +665,7 @@ class WorkingTree4(WorkingTree3):
                 raise
             result.append((from_rel, to_rel))
             state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
-            self._dirty = True
+            self._make_dirty(reset_inventory=False)
 
         return result
 
@@ -906,13 +916,14 @@ class WorkingTree4(WorkingTree3):
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
         state = self.current_dirstate()
         state.set_path_id('', file_id)
-        self._dirty = state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED
+        if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
+            self._make_dirty(reset_inventory=True)
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
@@ -1008,7 +1019,7 @@ class WorkingTree4(WorkingTree3):
             block_index += 1
         if ids_to_unversion:
             raise errors.NoSuchId(self, iter(ids_to_unversion).next())
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
@@ -1019,8 +1030,11 @@ class WorkingTree4(WorkingTree3):
         """Write inventory as the current inventory."""
         assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
         self.current_dirstate().set_state_from_inventory(inv)
-        self._dirty = True
+        self._make_dirty(reset_inventory=False)
+        if self._inventory is not None:
+            self._inventory = inv
         self.flush()
+
 
 
 class WorkingTreeFormat4(WorkingTreeFormat3):
