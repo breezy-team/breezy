@@ -1,5 +1,23 @@
 IN DEVELOPMENT
 
+  SURPRISES:
+
+    * For users of bzrlib: Two major changes have been made to the working tree
+      api in bzrlib. The first is that many methods and attributes, including
+      the inventory attribute, are no longer valid for use until one of
+      lock_read/lock_write/lock_tree_write has been called, and become invalid
+      again after unlock is called. This has been done to improve performance
+      and correctness as part of the dirstate development. (Robert Collins,
+      John A Meinel, Martin Pool, and others).
+    * For users of bzrlib: The attribute 'tree.inventory' should be considered
+      readonly. Previously it was possible to directly alter this attribute, or
+      its contents, and have the tree notice this. This has been made
+      unsupported - it may work in some tree formats, but in the newer dirstate
+      format such actions will have no effect and will be ignored, or even
+      cause assertions. All operations possible can still be carried out by a
+      combination of the tree API, and the bzrlib.transform API. (Robert
+      Collins, John A Meinel, Martin Pool, and others).
+
   IMPROVEMENTS:
 
     * Support for OS Windows 98. Also .bzr.log on any windows system
