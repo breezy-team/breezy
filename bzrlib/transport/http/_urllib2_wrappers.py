@@ -600,18 +600,19 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
     def http_error_301(self, req, fp, code, msg, headers):
         response = self.http_error_30x(req, fp, code, msg, headers)
-        # If one or several 301 response occur during the
+        # If one or several 301 responses occur during the
         # redirection chain, we MUST update the original request
         # to indicate where the URI where finally found.
 
         original_req = req
         while original_req.parent is not None:
             original_req = original_req.parent
-            if original_req.redirected_to is None:
-                # Only the last occurring 301 should be taken
-                # into account i.e. the first occurring here when
-                # redirected_to has not yet been set.
-                original_req.redirected_to = redirected_url
+        if original_req.redirected_to is None:
+            # Only the last occurring 301 (the deepest in the
+            # recursive call chain) should be taken into
+            # account i.e. the first occurring here when
+            # redirected_to has not yet been set.
+            original_req.redirected_to = req.redirected_to
         return response
 
 

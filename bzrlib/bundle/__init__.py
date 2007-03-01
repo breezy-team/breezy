@@ -53,11 +53,17 @@ def read_bundle_from_url(url):
 
         def redirected_transport(transport, exception, redirection_notice):
             note(redirection_notice)
-            return get_transport(exception.get_target_url())
+            url, filename = urlutils.split(exception.target,
+                                           exclude_trailing_slash=False)
+            if not filename:
+                raise errors.NotABundle('A directory cannot be a bundle')
+            return get_transport(url)
 
-        f = do_catching_redirections(get_bundle, transport,
-                                     redirected_transport,
-                                     errors.NotABundle(str(url)))
+        try:
+            f = do_catching_redirections(get_bundle, transport,
+                                         redirected_transport)
+        except errors.TooManyRedirections:
+            raise errors.NotABundle(str(url))
 
         return _serializer.read_bundle(f)
     except (errors.TransportError, errors.PathError), e:

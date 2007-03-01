@@ -527,15 +527,18 @@ class BzrDir(object):
                  transport.base, e.permanently, target)
             # Let's try with a new transport
             qualified_target = e.get_target_url()[:-len(relpath)]
-            # FIXME: If 'transport' have a qualifier, this should
+            # FIXME: If 'transport' has a qualifier, this should
             # be applied again to the new transport *iff* the
             # schemes used are the same. It's a bit tricky to
             # verify, so I'll punt for now
             # -- vila20070212
             return get_transport(target)
 
-        transport, format = do_catching_redirections(
-            find_format, transport, redirected, errors.NotBranchError(base))
+        try:
+            transport, format = do_catching_redirections(find_format, transport,
+                                                         redirected)
+        except errors.TooManyRedirections:
+            raise errors.NotBranchError(base)
 
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)

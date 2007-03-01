@@ -259,3 +259,26 @@ class HTTPServerRedirecting(HttpServer):
         return self._redirect_to_host, self._redirect_to_port
 
 
+class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
+   """A support class providing redirections from one server to another.
+
+   We setup two webservers to allows various tests involving
+   redirections.
+   The 'old' server is redirected to the 'new' server.
+   """
+
+   def create_transport_secondary_server(self):
+       """Create the secondary server redirecting to the primary server"""
+       new = self.get_readonly_server()
+       redirecting = HTTPServerRedirecting()
+       redirecting.redirect_to(new.host, new.port)
+       return redirecting
+
+   def setUp(self):
+       super(TestCaseWithRedirectedWebserver, self).setUp()
+       # The redirections will point to the new server
+       self.new_server = self.get_readonly_server()
+       # The requests to the old server will be redirected
+       self.old_server = self.get_secondary_server()
+
+

@@ -1267,8 +1267,12 @@ class RedirectRequested(TransportError):
         return self._requalify_url(self.source)
 
     def get_target_url(self):
-        return self._requalify_url(self.source)
+        return self._requalify_url(self.target)
 
+
+class TooManyRedirections(TransportError):
+
+    _fmt = "Too many redirections"
 
 class ConflictsInTree(BzrError):
 

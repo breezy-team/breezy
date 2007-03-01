@@ -1048,7 +1048,7 @@ def get_transport(base):
     return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
-def do_catching_redirections(action, transport, redirected, exception):
+def do_catching_redirections(action, transport, redirected):
     """Execute an action with given transport catching redirections.
 
     This is a facility provided for callers needing to follow redirections
@@ -1067,26 +1067,28 @@ def do_catching_redirections(action, transport, redirected, exception):
     """
     MAX_REDIRECTIONS = 8
 
-    t = transport
     # If a loop occurs, there is little we can do. So we don't try to detect
     # them, just getting out if too much redirections occurs. The solution
     # is outside: where the loop is defined.
     for redirections in range(MAX_REDIRECTIONS):
         try:
-            return action(t)
+            return action(transport)
         except errors.RedirectRequested, e:
             redirection_notice = '%s is%s redirected to %s' % (
-                e.get_source_url(), e.permanently, e.get_target_url())
-            t = redirected(t, e, redirection_notice)
+                e.source, e.permanently, e.target)
+            transport = redirected(transport, e, redirection_notice)
     else:
-        # Loop exited without resolving redirect ? Either the user has kept
-        # a very very very old reference or a loop occured in the
-        # redirections.  Nothing we can cure here: tell the user. Note that
-        # as the user has been informed about each redirection (it is the
-        # caller responsibility to do that in redirected via the provided
-        # redirection_notice), there is no need to issue an additional error
-        # message.
-        raise exception
+        # Loop exited without resolving redirect ? Either the
+        # user has kept a very very very old reference or a loop
+        # occured in the redirections.  Nothing we can cure here:
+        # tell the user. Note that as the user has been informed
+        # about each redirection (it is the caller responsibility
+        # to do that in redirected via the provided
+        # redirection_notice). The caller may provide more
+        # informations if needed (like what file or directory we
+        # were trying to act upon when the redirection loop
+        # occured).
+        raise errors.TooManyRedirections
 
 
 def _try_transport_factories(base, factory_list):

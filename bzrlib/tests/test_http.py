@@ -26,8 +26,11 @@ import socket
 import threading
 
 import bzrlib
-from bzrlib import errors
-from bzrlib import osutils
+from bzrlib import (
+    errors,
+    osutils,
+    urlutils,
+    )
 from bzrlib.tests import (
     TestCase,
     TestSkipped,
@@ -46,11 +49,13 @@ from bzrlib.tests.HTTPTestUtil import (
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
     SingleRangeRequestHandler,
+    TestCaseWithRedirectedWebserver,
     TestCaseWithTwoWebservers,
     TestCaseWithWebserver,
     WallRequestHandler,
     )
 from bzrlib.transport import (
+    do_catching_redirections,
     get_transport,
     Transport,
     )
@@ -883,7 +888,7 @@ class TestHTTPRedirections(object):
     """Test redirection between http servers.
 
     This MUST be used by daughter classes that also inherit from
-    TestCaseWithTwoWebservers.
+    TestCaseWithRedirectedWebserver.
 
     We can't inherit directly from TestCaseWithTwoWebservers or the
     test framework will try to create an instance which cannot
@@ -900,21 +905,28 @@ class TestHTTPRedirections(object):
 
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
-        # The redirections will point to the new server
-        new_server = self.get_readonly_server()
-        # The requests to the old server will be redirected
-        old_server = self.get_secondary_server()
+        self.build_tree_contents([('a', '0123456789'),
+                                  ('bundle',
+                                  '# Bazaar revision bundle v0.9\n#\n')
+                                  ],)
 
-        self.build_tree_contents([('a', '0123456789')],)
-
-        self.old_transport = self._transport(old_server.get_url())
+        self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
         self.assertRaises(errors.RedirectRequested, self.old_transport.get, 'a')
+        t = self._transport(self.new_server.get_url())
+        self.assertEqual('0123456789', t.get('a').read())
+
+    def test_read_redirected_bundle_from_url(self):
+        from bzrlib.bundle import read_bundle_from_url
+        url = self.old_transport.abspath('bundle')
+        bundle = read_bundle_from_url(url)
+        # If read_bundle_from_url was successful we get an empty bundle
+        self.assertEqual([], bundle.revisions)
 
 
 class TestHTTPRedirections_urllib(TestHTTPRedirections,
-                                  TestCaseWithTwoWebservers):
+                                  TestCaseWithRedirectedWebserver):
     """Tests redirections for urllib implementation"""
 
     _transport = HttpTransport_urllib
@@ -923,5 +935,56 @@ class TestHTTPRedirections_urllib(TestHTTPRedirections,
 
 class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
                                   TestHTTPRedirections,
-                                  TestCaseWithTwoWebservers):
+                                  TestCaseWithRedirectedWebserver):
     """Tests redirections for pycurl implementation"""
+
+
+class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
+    """Test transport.do_catching_redirections.
+
+    We arbitrarily choose to use urllib transports
+    """
+
+    _transport = HttpTransport_urllib
+
+    def setUp(self):
+        super(TestDoCatchRedirections, self).setUp()
+        self.build_tree_contents([('a', '0123456789'),],)
+
+        self.old_transport = self._transport(self.old_server.get_url())
+
+    def get_a(self, transport):
+        return transport.get('a')
+
+    def test_no_redirection(self):
+        t = self._transport(self.new_server.get_url())
+
+        # We use None for redirected so that we fail if redirected
+        self.assertEquals('0123456789',
+                          do_catching_redirections(self.get_a, t, None).read())
+
+    def test_one_redirection(self):
+        self.redirections = 0
+
+        def redirected(transport, exception, redirection_notice):
+            self.redirections += 1
+            dir, file = urlutils.split(exception.target)
+            return self._transport(dir)
+
+        self.assertEquals('0123456789',
+                          do_catching_redirections(self.get_a,
+                                                   self.old_transport,
+                                                   redirected
+                                                   ).read())
+        self.assertEquals(1, self.redirections)
+
+    def test_redirection_loop(self):
+
+        def redirected(transport, exception, redirection_notice):
+            # By using the redirected url as a base dir for the
+            # *old* transport, we create a loop: a => a/a =>
+            # a/a/a
+            return self.old_transport.clone(exception.target)
+
+        self.assertRaises(errors.TooManyRedirections, do_catching_redirections,
+                          self.get_a, self.old_transport, redirected)

@@ -232,7 +232,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         :param relpath: Path relative to transport base URL
         :param ranges: None to get the whole file;
             or [(start,end)+], a list of tuples to fetch parts of a file.
-        :param tail_amount: to fetch that amount from file tail.
+        :param tail_amount: to fetch the last bytes of the file.
 
         :returns: (http_code, result_file)
 
