@@ -1955,6 +1955,28 @@ class DirState(object):
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
+    def _validate(self):
+        """Check that invariants on the dirblock are correct.
+
+        This can be useful in debugging; it shouldn't be necessary in 
+        normal code.
+        """
+        from pprint import pformat
+        if len(self._dirblocks) > 0:
+            assert self._dirblocks[0][0] == '', \
+                    "dirblocks don't start with root block:\n" + \
+                    pformat(dirblocks)
+        if len(self._dirblocks) > 1:
+            assert self._dirblocks[1][0] == '', \
+                    "dirblocks missing root directory:\n" + \
+                    pformat(dirblocks)
+        assert self._dirblocks[1:] == sorted(self._dirblocks[1:]), \
+                "dirblocks are not in sorted order:\n" + \
+                pformat(self._dirblocks)
+        for dirblock in self._dirblocks:
+            assert dirblock[1] == sorted(dirblock[1]), \
+                "dirblock for %r is not sorted:\n%s" % \
+                (dirblock[0], pformat(dirblock))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
