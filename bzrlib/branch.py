@@ -1292,8 +1292,7 @@ class BzrBranch(Branch):
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
-        get_cached_utf8 = cache_utf8.get_cached_utf8
-        history = [get_cached_utf8(l.rstrip('\r\n')) for l in
+        history = [l.rstrip('\r\n') for l in
                 self.control_files.get('revision-history').readlines()]
         return history
 
