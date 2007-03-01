@@ -52,7 +52,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
-        tree.move(['a1'], to_dir='sub1', after=False)
+        self.assertEqual([('a1', 'sub1/a1')],
+            tree.move(['a1'], to_dir='sub1', after=False))
 
     def test_move_correct_call_unnamed(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -63,7 +64,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
-        tree.move(['a1'], 'sub1', after=False)
+        self.assertEqual([('a1', 'sub1/a1')],
+            tree.move(['a1'], 'sub1', after=False))
 
     def test_move_deprecated_wrong_call(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -171,7 +173,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
         a_contents = tree.get_file_text('a-id')
-        tree.move(['a'], 'b')
+        self.assertEqual([('a', 'b/a')],
+            tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id'),
                                ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
@@ -186,7 +189,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
         c_contents = tree.get_file_text('c-id')
-        tree.move(['b/c'], '')
+        self.assertEqual([('b/c', 'c')],
+            tree.move(['b/c'], ''))
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
@@ -245,7 +249,8 @@ class TestMove(TestCaseWithWorkingTree):
                               tree)
         # We don't need after=True as long as source is missing and target
         # exists.
-        tree.move(['a'], 'b')
+        self.assertEqual([('a', 'b/a')],
+            tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
@@ -262,7 +267,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree)
         # Passing after=True should work as well
-        tree.move(['a'], 'b', after=True)
+        self.assertEqual([('a', 'b/a')],
+            tree.move(['a'], 'b', after=True))
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
@@ -310,7 +316,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
         # But you can pass after=True
-        tree.move(['a'], 'b', after=True)
+        self.assertEqual([('a', 'b/a')],
+            tree.move(['a'], 'b', after=True))
         self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
@@ -327,7 +334,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-        tree.move(['a'], 'e')
+        self.assertEqual([('a', 'e/a')],
+            tree.move(['a'], 'e'))
         self.assertTreeLayout([('', root_id), ('e', 'e-id'), ('e/a', 'a-id'),
                                ('e/a/b', 'b-id'), ('e/a/c', 'c-id'),
                                ('e/a/c/d', 'd-id')], tree)
@@ -343,13 +351,15 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-        tree.move(['a/b'], 'c')
+        self.assertEqual([('a/b', 'c/b')],
+            tree.move(['a/b'], 'c'))
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('c/b', 'b-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
 
-        tree.move(['c/b'], '')
+        self.assertEqual([('c/b', 'b')],
+            tree.move(['c/b'], ''))
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),

@@ -368,7 +368,7 @@ class WorkingTree4(WorkingTree3):
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = os.path.join(*key[0:2]).decode('utf8')
+            path = pathjoin(key[0], key[1]).decode('utf8')
         return self._hashcache.get_sha1(path, stat_value)
 
     def _get_inventory(self):
@@ -486,8 +486,9 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
         """See WorkingTree.move()."""
+        result = []
         if not from_paths:
-            return ()
+            return result
 
         state = self.current_dirstate()
 
@@ -695,10 +696,11 @@ class WorkingTree4(WorkingTree3):
             except:
                 rollback_rename()
                 raise
+            result.append((from_rel, to_rel))
             state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
             self._dirty = True
 
-        return #rename_tuples
+        return result
 
     def _must_be_locked(self):
         if not self._control_files._lock_count:
@@ -1005,7 +1007,6 @@ class WorkingTree4(WorkingTree3):
                 # I haven't written the code to unversion / yet - it should be
                 # supported.
                 raise errors.BzrError('Unversioning the / is not currently supported')
-        details_length = len(state._dirblocks[0][1][0][1])
         block_index = 0
         while block_index < len(state._dirblocks):
             # process one directory at a time.
@@ -1027,6 +1028,8 @@ class WorkingTree4(WorkingTree3):
                 # just forget the whole block.
                 entry_index = 0
                 while entry_index < len(block[1]):
+                    # Mark this file id as having been removed
+                    ids_to_unversion.discard(block[1][entry_index][0][2])
                     if not state._make_absent(block[1][entry_index]):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
@@ -1043,7 +1046,7 @@ class WorkingTree4(WorkingTree3):
                     entry_index += 1
                     continue
                 if entry[1][0][0] == 'd':
-                    paths_to_unversion.add(os.path.join(*entry[0][0:2]))
+                    paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
                 if not state._make_absent(entry):
                     entry_index += 1
                 # we have unversioned this id
@@ -1114,7 +1117,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
         wt._new_tree()
-        wt.lock_write()
+        wt.lock_tree_write()
         try:
             #wt.current_dirstate().set_path_id('', NEWROOT)
             wt.set_last_revision(revision_id)
@@ -1277,6 +1280,19 @@ class DirStateRevisionTree(Tree):
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
+
+    def get_file_mtime(self, file_id, path=None):
+        """Return the modification time for this record.
+
+        We return the timestamp of the last-changed revision.
+        """
+        # Make sure the file exists
+        entry = self._get_entry(file_id, path=path)
+        if entry == (None, None): # do we raise?
+            return None
+        parent_index = self._get_parent_index()
+        last_changed_revision = entry[1][parent_index][4]
+        return self._repository.get_revision(last_changed_revision).timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # TODO: if path is present, fast-path on that, as inventory
@@ -1625,7 +1641,7 @@ class InterDirStateTree(InterTree):
                     # as well.
                     old_path = source_details[1]
                     old_dirname, old_basename = os.path.split(old_path)
-                    path = os.path.join(entry[0][0], entry[0][1])
+                    path = pathjoin(entry[0][0], entry[0][1])
                     old_entry = state._get_entry(source_index,
                                                  path_utf8=old_path)
                     # update the source details variable to be the real
@@ -1635,10 +1651,10 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    old_path = path = os.path.join(old_dirname, old_basename)
+                    old_path = path = pathjoin(old_dirname, old_basename)
                 if path_info is None:
                     # the file is missing on disk, show as removed.
-                    old_path = os.path.join(entry[0][0], entry[0][1])
+                    old_path = pathjoin(entry[0][0], entry[0][1])
                     content_change = True
                     target_kind = None
                     target_exec = False
@@ -1721,7 +1737,7 @@ class InterDirStateTree(InterTree):
             elif source_minikind in 'a' and target_minikind in 'fdl':
                 # looks like a new file
                 if path_info is not None:
-                    path = os.path.join(*entry[0][0:2])
+                    path = pathjoin(entry[0][0], entry[0][1])
                     # parent id is the entry for the path in the target tree
                     # TODO: these are the same for an entire directory: cache em.
                     parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
@@ -1747,7 +1763,7 @@ class InterDirStateTree(InterTree):
                 # if its still on disk, *and* theres no other entry at this
                 # path [we dont know this in this routine at the moment -
                 # perhaps we should change this - then it would be an unknown.
-                old_path = os.path.join(*entry[0][0:2])
+                old_path = pathjoin(entry[0][0], entry[0][1])
                 # parent id is the entry for the path in the target tree
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
@@ -1766,7 +1782,13 @@ class InterDirStateTree(InterTree):
                 # implementation will do.
                 if not osutils.is_inside_any(searched_specific_files, target_details[1]):
                     search_specific_files.add(target_details[1])
+            elif source_minikind in 'r' and target_minikind in 'r':
+                # neither of the selected trees contain this file,
+                # so skip over it. This is not currently directly tested, but
+                # is indirectly via test_too_much.TestCommands.test_conflicts.
+                pass
             else:
+                print "*******", source_minikind, target_minikind
                 import pdb;pdb.set_trace()
             return ()
         while search_specific_files:

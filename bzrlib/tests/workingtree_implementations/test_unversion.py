@@ -60,7 +60,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         self.assertTrue(tree.has_filename('b'))
         self.assertTrue(tree.has_filename('c'))
         tree.unlock()
-        
+
     def test_unversion_subtree(self):
         """Unversioning the root of a subtree unversions the entire subtree."""
         tree = self.make_branch_and_tree('.')
@@ -76,3 +76,26 @@ class TestUnversion(TestCaseWithWorkingTree):
         self.assertTrue(tree.has_filename('a/b'))
         self.assertTrue(tree.has_filename('c'))
         tree.unlock()
+
+    def test_unversion_subtree_and_children(self):
+        """Passing a child id will raise NoSuchId.
+
+        This is because the parent directory will have already been removed.
+        """
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'a/c', 'd'])
+        tree.add(['a', 'a/b', 'a/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.lock_write()
+        try:
+            tree.unversion(['b-id', 'a-id'])
+            self.assertFalse(tree.has_id('a-id'))
+            self.assertFalse(tree.has_id('b-id'))
+            self.assertFalse(tree.has_id('c-id'))
+            self.assertTrue(tree.has_id('d-id'))
+            # The files are still on disk
+            self.assertTrue(tree.has_filename('a'))
+            self.assertTrue(tree.has_filename('a/b'))
+            self.assertTrue(tree.has_filename('a/c'))
+            self.assertTrue(tree.has_filename('d'))
+        finally:
+            tree.unlock()
