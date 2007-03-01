@@ -600,8 +600,15 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id,
-                delta.ChangeReporter(tree_to.inventory))
+            # lock the tree we are pulling too, so that its inventory is
+            # stable. This is a hack to workaround the _iter_changes interface
+            # not exposing the old path, which will be fixed soon. RBC 20070301
+            tree_to.lock_write()
+            try:
+                count = tree_to.pull(branch_from, overwrite, rev_id,
+                    delta.ChangeReporter(tree_to.inventory))
+            finally:
+                tree_to.unlock()
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
