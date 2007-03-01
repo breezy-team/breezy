@@ -9,7 +9,7 @@ from bzrlib.bundle import serializer as bundle_serializer
 
 class MergeDirective(object):
 
-    def __init__(self, revision, testament_sha1, time, timezone,
+    def __init__(self, revision_id, testament_sha1, time, timezone,
                  submit_location, patch=None, patch_type=None,
                  public_location=None):
         assert patch_type in (None, 'diff', 'bundle')
@@ -17,7 +17,7 @@ class MergeDirective(object):
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:
             raise errors.PatchMissing(patch_type)
-        self.revision = revision
+        self.revision_id = revision_id
         self.testament_sha1 = testament_sha1
         self.time = time
         self.timezone = timezone
@@ -44,7 +44,7 @@ class MergeDirective(object):
         time, timezone = bundle_serializer.unpack_highres_date(
             stanza.get('timestamp'))
         kwargs = {}
-        for key in ('revision', 'testament_sha1', 'submit_location',
+        for key in ('revision_id', 'testament_sha1', 'submit_location',
                     'public_location'):
             try:
                 kwargs[key] = stanza.get(key)
@@ -56,7 +56,7 @@ class MergeDirective(object):
     def to_lines(self):
         timestamp = bundle_serializer.format_highres_date(self.time,
                                                           self.timezone)
-        stanza = rio.Stanza(revision=self.revision, timestamp=timestamp,
+        stanza = rio.Stanza(revision_id=self.revision_id, timestamp=timestamp,
                             submit_location=self.submit_location,
                             testament_sha1=self.testament_sha1)
         for key in ('public_location',):
@@ -69,16 +69,16 @@ class MergeDirective(object):
         return lines
 
     @classmethod
-    def from_objects(klass, repository, revision, submit_location,
+    def from_objects(klass, repository, revision_id, submit_location,
                  patch_type='bundle', local_submit_location=None,
                  public_location=None):
         if patch_type == 'bundle':
-            patch = klass._generate_bundle(repository, revision,
+            patch = klass._generate_bundle(repository, revision_id,
                                            submit_location)
         elif patch_type == 'diff':
-            patch = klass._generate_diff(repository, revision,
+            patch = klass._generate_diff(repository, revision_id,
                                          submit_location)
         else:
             patch = None
-        return MergeDirective(revision, submit_location, patch, patch_type,
+        return MergeDirective(revision_id, submit_location, patch, patch_type,
                               public_location)

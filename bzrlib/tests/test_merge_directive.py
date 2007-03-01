@@ -4,6 +4,7 @@ from bzrlib import (
     tests,
     )
 
+
 class TestMergeDirective(tests.TestCase):
 
     def test_init(self):
@@ -47,3 +48,18 @@ class TestMergeDirective(tests.TestCase):
         md3 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual("# Bazaar revision bundle v0.9\n#\n", md3.patch)
         self.assertEqual("bundle", md3.patch_type)
+
+
+class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
+
+    def test_generate(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n')])
+        tree_a.add('file')
+        tree_a.commit('message', rev_id='rev1')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b.commit('message', rev_id='rev2b')
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c\n')])
+        tree_a.commit('message', rev_id='rev2a')
+        merge_directive.MergeDirective.from_objects(tree_a.branch.repository,
+            'rev2a', tree_b.branch.base)
