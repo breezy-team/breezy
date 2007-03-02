@@ -797,7 +797,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         #   links_supported = False
         return self.mutable_trees_to_test_trees(tree1, tree2)
 
-    def _disabled_test_versioned_symlinks(self):
+    def test_versioned_symlinks(self):
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         tree1.lock_read()
@@ -817,9 +817,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.kind_changed(tree1, tree2, 'tofile'),
             ]
         expected = sorted(expected)
-        self.assertEqual(expected, self.do_iter_changes(tree1, tree2, include_unchanged=True))
+        self.assertEqual(expected,
+            self.do_iter_changes(tree1, tree2, include_unchanged=True,
+                want_unversioned=True))
 
-    def _disabled_test_versioned_symlinks_specific_files(self):
+    def test_versioned_symlinks_specific_files(self):
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         tree1.lock_read()
