@@ -1015,7 +1015,7 @@ class InstrumentedDirState(dirstate.DirState):
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
-        return timestamp + self._time_offset
+        self._cutoff_time = timestamp + self._time_offset
 
     def _sha1_file(self, abspath, entry):
         self._log.append(('sha1', abspath))
@@ -1042,6 +1042,7 @@ class InstrumentedDirState(dirstate.DirState):
         are in the past.
         """
         self._time_offset += secs
+        self._cutoff_time = None
 
 
 class _FakeStat(object):

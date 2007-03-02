@@ -290,6 +290,7 @@ class DirState(object):
         self._lock_state = None
         self._id_index = None
         self._end_of_header = None
+        self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
@@ -1062,9 +1063,11 @@ class DirState(object):
             if minikind == 'd':
                 return None
 
-            cutoff = self._sha_cutoff_time()
-            if (stat_value.st_mtime < cutoff
-                and stat_value.st_ctime < cutoff):
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
                 # Return the existing fingerprint
                 return saved_link_or_sha1
 
@@ -1101,11 +1104,12 @@ class DirState(object):
         Files modified more recently than this time are at risk of being
         undetectably modified and so can't be cached.
         """
-        # TODO: jam 20070301 Cache the cutoff time as long as we hold a lock.
-        #       time.time() isn't super expensive (approx 3.38us), but
-        #       when you call it 50,000 times it adds up.
-        #       For comparison, os.lstat() costs 7.2us if it is hot.
-        return int(time.time()) - 3
+        # Cache the cutoff time as long as we hold a lock.
+        # time.time() isn't super expensive (approx 3.38us), but
+        # when you call it 50,000 times it adds up.
+        # For comparison, os.lstat() costs 7.2us if it is hot.
+        self._cutoff_time = int(time.time()) - 3
+        return self._cutoff_time
 
     def _lstat(self, abspath, entry):
         """Return the os.lstat value for this path."""
@@ -2126,6 +2130,10 @@ class DirState(object):
         self._parents = []
         self._ghosts = []
         self._dirblocks = []
+        self._id_index = None
+        self._end_of_header = None
+        self._cutoff_time = None
+        self._split_path_cache = {}
 
     def lock_read(self):
         """Acquire a read lock on the dirstate"""
