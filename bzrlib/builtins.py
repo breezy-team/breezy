@@ -3180,7 +3180,8 @@ class cmd_merge_directive(Command):
 
     takes_options = [RegistryOption('patch-type',
         'The type of patch to include in the directive',
-        _directive_patch_type, value_switches=True),
+        _directive_patch_type, value_switches=True, enum_switch=False,
+        title='Patch type'),
         Option('sign', help='GPG-sign the directive'), 'revision']
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
