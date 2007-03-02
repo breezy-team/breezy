@@ -121,7 +121,6 @@ class WorkingTree4(WorkingTree3):
         """
         self._format = _format
         self.bzrdir = _bzrdir
-        from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
@@ -136,22 +135,6 @@ class WorkingTree4(WorkingTree3):
         assert isinstance(_control_files, LockableFiles), \
             "_control_files must be a LockableFiles, not %r" % _control_files
         self._control_files = _control_files
-        # update the whole cache up front and write to disk if anything changed;
-        # in the future we might want to do this more selectively
-        # two possible ways offer themselves : in self._unlock, write the cache
-        # if needed, or, when the cache sees a change, append it to the hash
-        # cache file, and have the parser take the most recent entry for a
-        # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
-        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
-        hc.read()
-        # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
-
-        if hc.needs_write:
-            mutter("write hc")
-            hc.write()
-
         self._dirty = None
         #-------------
         # during a read or write lock these objects are set, and are
@@ -253,19 +236,19 @@ class WorkingTree4(WorkingTree3):
         return result
 
     def current_dirstate(self):
-        """Return the current dirstate object. 
+        """Return the current dirstate object.
 
         This is not part of the tree interface and only exposed for ease of
         testing.
 
-        :raises errors.NotWriteLocked: when not in a lock. 
+        :raises errors.NotWriteLocked: when not in a lock.
         """
         self._must_be_locked()
         return self._current_dirstate()
 
     def _current_dirstate(self):
         """Internal function that does not check lock status.
-        
+
         This is needed for break_lock which also needs the dirstate.
         """
         if self._dirstate is not None:
@@ -380,13 +363,20 @@ class WorkingTree4(WorkingTree3):
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         # check file id is valid unconditionally.
-        key, details = self._get_entry(file_id=file_id, path=path)
-        assert key is not None, 'what error should this raise'
+        entry = self._get_entry(file_id=file_id, path=path)
+        assert entry[0] is not None, 'what error should this raise'
         # TODO:
         # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
-            path = pathjoin(key[0], key[1]).decode('utf8')
-        return self._hashcache.get_sha1(path, stat_value)
+            path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
+
+        file_abspath = self.abspath(path)
+        state = self.current_dirstate()
+        link_or_sha1 = state.update_entry(entry, file_abspath,
+                                          stat_value=stat_value)
+        if entry[1][0][0] == 'f':
+            return link_or_sha1
+        return None
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
@@ -483,22 +473,45 @@ class WorkingTree4(WorkingTree3):
             return None
 
     def lock_read(self):
-        super(WorkingTree4, self).lock_read()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_read()
+        """See Branch.lock_read, and WorkingTree.unlock."""
+        self.branch.lock_read()
+        try:
+            self._control_files.lock_read()
+            try:
+                state = self.current_dirstate()
+                if not state._lock_token:
+                    state.lock_read()
+            except:
+                self._control_files.unlock()
+                raise
+        except:
+            self.branch.unlock()
+            raise
+
+    def _lock_self_write(self):
+        """This should be called after the branch is locked."""
+        try:
+            self._control_files.lock_write()
+            try:
+                state = self.current_dirstate()
+                if not state._lock_token:
+                    state.lock_write()
+            except:
+                self._control_files.unlock()
+                raise
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_tree_write(self):
-        super(WorkingTree4, self).lock_tree_write()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_write()
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        self.branch.lock_read()
+        self._lock_self_write()
 
     def lock_write(self):
-        super(WorkingTree4, self).lock_write()
-        if self._dirstate is None:
-            self.current_dirstate()
-            self._dirstate.lock_write()
+        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        self.branch.lock_write()
+        self._lock_self_write()
 
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
@@ -982,14 +995,19 @@ class WorkingTree4(WorkingTree3):
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:
-            self._write_hashcache_if_dirty()
             # eventually we should do signature checking during read locks for
             # dirstate updates.
             if self._control_files._lock_mode == 'w':
                 if self._dirty:
                     self.flush()
             if self._dirstate is not None:
+                # This is a no-op if there are no modifications.
+                self._dirstate.save()
                 self._dirstate.unlock()
+            # TODO: jam 20070301 We shouldn't have to wipe the dirstate at this
+            #       point. Instead, it could check if the header has been
+            #       modified when it is locked, and if not, it can hang on to
+            #       the data it has in memory.
             self._dirstate = None
             self._inventory = None
         # reverse order of locking.
@@ -1088,7 +1106,6 @@ class WorkingTree4(WorkingTree3):
         if self._inventory is not None:
             self._inventory = inv
         self.flush()
-
 
 
 class WorkingTreeFormat4(WorkingTreeFormat3):
@@ -1337,11 +1354,11 @@ class DirStateRevisionTree(Tree):
         return self._repository.get_revision(last_changed_revision).timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        # TODO: if path is present, fast-path on that, as inventory
-        # might not be present
-        ie = self.inventory[file_id]
-        if ie.kind == "file":
-            return ie.text_sha1
+        entry = self._get_entry(file_id=file_id, path=path)
+        parent_index = self._get_parent_index()
+        parent_details = entry[1][parent_index]
+        if parent_details[0] == 'f':
+            return parent_details[1]
         return None
 
     def get_file(self, file_id):
@@ -1498,7 +1515,7 @@ class InterDirStateTree(InterTree):
 
     def _iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
-                      require_versioned=True):
+                      require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
         :return: An iterator that yields tuples. See InterTree._iter_changes
@@ -1514,6 +1531,9 @@ class InterDirStateTree(InterTree):
         :param require_versioned: If True, all files in specific_files must be
             versioned in one of source, target, extra_trees or
             PathsNotVersionedError is raised.
+        :param want_unversioned: Should unversioned files be returned in the
+            output. An unversioned file is defined as one with (False, False)
+            for the versioned pair.
         """
         utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
@@ -1658,6 +1678,9 @@ class InterDirStateTree(InterTree):
             :param path_info: top_relpath, basename, kind, lstat, abspath for
                 the path of entry. If None, then the path is considered absent.
                 (Perhaps we should pass in a concrete entry for this ?)
+                Basename is returned as a utf8 string because we expect this
+                tuple will be ignored, and don't want to take the time to
+                decode.
             """
             # TODO: when a parent has been renamed, dont emit path renames for children,
             if source_index is None:
@@ -1665,8 +1688,17 @@ class InterDirStateTree(InterTree):
             else:
                 source_details = entry[1][source_index]
             target_details = entry[1][target_index]
-            source_minikind = source_details[0]
             target_minikind = target_details[0]
+            if path_info is not None and target_minikind in 'fdl':
+                assert target_index == 0
+                link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
+                                                  stat_value=path_info[3])
+                # The entry may have been modified by update_entry
+                target_details = entry[1][target_index]
+                target_minikind = target_details[0]
+            else:
+                link_or_sha1 = None
+            source_minikind = source_details[0]
             if source_minikind in 'fdlr' and target_minikind in 'fdl':
                 # claimed content in both: diff
                 #   r    | fdl    |      | add source to search, add id path move and perform
@@ -1714,14 +1746,10 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'f':
                             content_change = True
                         else:
-                            # has it changed? fast path: size, slow path: sha1.
-                            if source_details[2] != path_info[3].st_size:
-                                content_change = True
-                            else:
-                                # maybe the same. Get the hash
-                                new_hash = self.target._hashcache.get_sha1(
-                                                            path, path_info[3])
-                                content_change = (new_hash != source_details[1])
+                            # We could check the size, but we already have the
+                            # sha1 hash.
+                            content_change = (link_or_sha1 != source_details[1])
+                        # Target details is updated at update_entry time
                         target_exec = bool(
                             stat.S_ISREG(path_info[3].st_mode)
                             and stat.S_IEXEC & path_info[3].st_mode)
@@ -1729,10 +1757,7 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'l':
                             content_change = True
                         else:
-                            # TODO: check symlink supported for windows users
-                            # and grab from target state here.
-                            link_target = os.readlink(path_info[4])
-                            content_change = (link_target != source_details[1])
+                            content_change = (link_or_sha1 != source_details[1])
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
@@ -1769,8 +1794,7 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                path_unicode = utf8_decode(path)[0]
-                return ((entry[0][2], path_unicode, content_change,
+                return ((entry[0][2], path, content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
                         (old_basename, entry[0][1]),
@@ -1782,20 +1806,19 @@ class InterDirStateTree(InterTree):
                     path = pathjoin(entry[0][0], entry[0][1])
                     # parent id is the entry for the path in the target tree
                     # TODO: these are the same for an entire directory: cache em.
-                    parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                    parent_id = state._get_entry(target_index,
+                                                 path_utf8=entry[0][0])[0][2]
                     if parent_id == entry[0][2]:
                         parent_id = None
-                    # basename
-                    new_executable = bool(
+                    target_exec = bool(
                         stat.S_ISREG(path_info[3].st_mode)
                         and stat.S_IEXEC & path_info[3].st_mode)
-                    path_unicode = utf8_decode(path)[0]
-                    return ((entry[0][2], path_unicode, True,
+                    return ((entry[0][2], path, True,
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
                             (None, path_info[2]),
-                            (None, new_executable)),)
+                            (None, target_exec)),)
                 else:
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
@@ -1810,8 +1833,7 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                old_path_unicode = utf8_decode(old_path)[0]
-                return ((entry[0][2], old_path_unicode, True,
+                return ((entry[0][2], old_path, True,
                         (True, False),
                         (parent_id, None),
                         (entry[0][1], None),
@@ -1857,11 +1879,13 @@ class InterDirStateTree(InterTree):
             if not root_entries and not root_dir_info:
                 # this specified path is not present at all, skip it.
                 continue
+            path_handled = False
             for entry in root_entries:
                 for result in _process_entry(entry, root_dir_info):
                     # this check should probably be outside the loop: one
                     # 'iterate two trees' api, and then _iter_changes filters
                     # unchanged pairs. - RBC 20070226
+                    path_handled = True
                     if (include_unchanged
                         or result[2]                    # content change
                         or result[3][0] != result[3][1] # versioned status
@@ -1870,7 +1894,16 @@ class InterDirStateTree(InterTree):
                         or result[6][0] != result[6][1] # kind
                         or result[7][0] != result[7][1] # executable
                         ):
+                        result = (result[0],
+                                  utf8_decode(result[1])[0]) + result[2:]
                         yield result
+            if want_unversioned and not path_handled:
+                new_executable = bool(
+                    stat.S_ISREG(root_dir_info[3].st_mode)
+                    and stat.S_IEXEC & root_dir_info[3].st_mode)
+                yield (None, current_root, True, (False, False), (None, None),
+                    (None, splitpath(current_root)[-1]),
+                    (None, root_dir_info[2]), (None, new_executable))
             dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
@@ -1945,6 +1978,8 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
+                                    result = (result[0],
+                                              utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
@@ -1966,24 +2001,13 @@ class InterDirStateTree(InterTree):
                 else:
                     current_path_info = None
                 advance_path = True
+                path_handled = False
                 while (current_entry is not None or
                     current_path_info is not None):
                     if current_entry is None:
-                        # no more entries: yield current_pathinfo as an
-                        # unversioned file: its not the same as a path in any
-                        # tree in the dirstate.
-                        new_executable = bool(
-                            stat.S_ISREG(current_path_info[3].st_mode)
-                            and stat.S_IEXEC & current_path_info[3].st_mode)
-                        pass # unversioned file support not added to the
-                        # _iter_changes api yet - breaks status amongst other
-                        # things.
-#                        yield (None, current_path_info[0], True,
-#                               (False, False),
-#                               (None, None),
-#                               (None, current_path_info[1]),
-#                               (None, current_path_info[2]),
-#                               (None, new_executable))
+                        # the check for path_handled when the path is adnvaced
+                        # will yield this path if needed.
+                        pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):
@@ -1998,6 +2022,8 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
+                                result = (result[0],
+                                          utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
@@ -2013,6 +2039,7 @@ class InterDirStateTree(InterTree):
                                 # this check should probably be outside the loop: one
                                 # 'iterate two trees' api, and then _iter_changes filters
                                 # unchanged pairs. - RBC 20070226
+                                path_handled = True
                                 if (include_unchanged
                                     or result[2]                    # content change
                                     or result[3][0] != result[3][1] # versioned status
@@ -2021,6 +2048,8 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
+                                    result = (result[0],
+                                              utf8_decode(result[1])[0]) + result[2:]
                                     yield result
                             advance_path = False
                     else:
@@ -2028,6 +2057,7 @@ class InterDirStateTree(InterTree):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
+                            path_handled = True
                             if (include_unchanged
                                 or result[2]                    # content change
                                 or result[3][0] != result[3][1] # versioned status
@@ -2036,6 +2066,8 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
+                                result = (result[0],
+                                          utf8_decode(result[1])[0]) + result[2:]
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
@@ -2046,11 +2078,30 @@ class InterDirStateTree(InterTree):
                     else:
                         advance_entry = True # reset the advance flaga
                     if advance_path and current_path_info is not None:
+                        if not path_handled:
+                            # unversioned in all regards
+                            if want_unversioned:
+                                new_executable = bool(
+                                    stat.S_ISREG(current_path_info[3].st_mode)
+                                    and stat.S_IEXEC & current_path_info[3].st_mode)
+                                if want_unversioned:
+                                    yield (None, current_path_info[0], True,
+                                           (False, False),
+                                           (None, None),
+                                           (None, current_path_info[1]),
+                                           (None, current_path_info[2]),
+                                           (None, new_executable))
+                            # dont descend into this unversioned path if it is
+                            # a dir
+                            if current_path_info[2] == 'directory':
+                                del current_dir_info[1][path_index]
+                                path_index -= 1
                         path_index += 1
                         if path_index < len(current_dir_info[1]):
                             current_path_info = current_dir_info[1][path_index]
                         else:
                             current_path_info = None
+                        path_handled = False
                     else:
                         advance_path = True # reset the advance flagg.
                 if current_block is not None:

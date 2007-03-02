@@ -42,8 +42,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar Working Tree format 4\n',
                              t.get('format').read())
-        self.assertEqualDiff('### bzr hashcache v5\n',
-                             t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
         self.assertFalse(t.has('last-revision'))
@@ -59,7 +57,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
-            
+
             - lock is a directory
             - when the WorkingTree is locked, LockDir can see that
         """

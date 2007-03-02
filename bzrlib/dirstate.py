@@ -195,10 +195,12 @@ desired.
 
 import base64
 import bisect
-import cStringIO
+import errno
 import os
-import sha
+from stat import S_IEXEC
 import struct
+import sys
+import time
 import zlib
 
 from bzrlib import (
@@ -207,12 +209,6 @@ from bzrlib import (
     lock,
     osutils,
     trace,
-    )
-from bzrlib.osutils import (
-    pathjoin,
-    sha_file,
-    sha_string,
-    walkdirs,
     )
 
 
@@ -296,8 +292,10 @@ class DirState(object):
         self._state_file = None
         self._filename = path
         self._lock_token = None
+        self._lock_state = None
         self._id_index = None
         self._end_of_header = None
+        self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
@@ -310,7 +308,7 @@ class DirState(object):
         :param file_id: The file id of the path being added.
         :param kind: The kind of the path, as a string like 'file', 
             'directory', etc.
-        :param stat: The output of os.lstate for the path.
+        :param stat: The output of os.lstat for the path.
         :param fingerprint: The sha value of the file,
             or the target of a symlink,
             or the referenced revision id for tree-references,
@@ -919,7 +917,7 @@ class DirState(object):
 
     def _entry_to_line(self, entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
-        
+
         :param entry: An entry_tuple as defined in the module docstring.
         """
         entire_entry = list(entry[0])
@@ -1032,6 +1030,129 @@ class DirState(object):
             result.unlock()
             raise
         return result
+
+    def update_entry(self, entry, abspath, stat_value=None):
+        """Update the entry based on what is actually on disk.
+
+        :param entry: This is the dirblock entry for the file in question.
+        :param abspath: The path on disk for this file.
+        :param stat_value: (optional) if we already have done a stat on the
+            file, re-use it.
+        :return: The sha1 hexdigest of the file (40 bytes) or link target of a
+                symlink.
+        """
+        # This code assumes that the entry passed in is directly held in one of
+        # the internal _dirblocks. So the dirblock state must have already been
+        # read.
+        assert self._dirblock_state != DirState.NOT_IN_MEMORY
+        if stat_value is None:
+            try:
+                # We could inline os.lstat but the common case is that
+                # stat_value will be passed in, not read here.
+                stat_value = self._lstat(abspath, entry)
+            except (OSError, IOError), e:
+                if e.errno in (errno.ENOENT, errno.EACCES,
+                               errno.EPERM):
+                    # The entry is missing, consider it gone
+                    return None
+                raise
+
+        kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
+        try:
+            minikind = DirState._kind_to_minikind[kind]
+        except KeyError: # Unknown kind
+            return None
+        packed_stat = pack_stat(stat_value)
+        (saved_minikind, saved_link_or_sha1, saved_file_size,
+         saved_executable, saved_packed_stat) = entry[1][0]
+
+        if (minikind == saved_minikind
+            and packed_stat == saved_packed_stat
+            # size should also be in packed_stat
+            and saved_file_size == stat_value.st_size):
+            # The stat hasn't changed since we saved, so we can potentially
+            # re-use the saved sha hash.
+            if minikind == 'd':
+                return None
+
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                # Return the existing fingerprint
+                return saved_link_or_sha1
+
+        # If we have gotten this far, that means that we need to actually
+        # process this entry.
+        link_or_sha1 = None
+        if minikind == 'f':
+            link_or_sha1 = self._sha1_file(abspath, entry)
+            executable = self._is_executable(stat_value.st_mode,
+                                             saved_executable)
+            entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
+                           executable, packed_stat)
+        elif minikind == 'd':
+            link_or_sha1 = None
+            entry[1][0] = ('d', '', 0, False, packed_stat)
+            if saved_minikind != 'd':
+                # This changed from something into a directory. Make sure we
+                # have a directory block for it. This doesn't happen very
+                # often, so this doesn't have to be super fast.
+                block_index, entry_index, dir_present, file_present = \
+                    self._get_block_entry_index(entry[0][0], entry[0][1], 0)
+                self._ensure_block(block_index, entry_index,
+                                   osutils.pathjoin(entry[0][0], entry[0][1]))
+        elif minikind == 'l':
+            link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
+            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+                           False, packed_stat)
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        return link_or_sha1
+
+    def _sha_cutoff_time(self):
+        """Return cutoff time.
+
+        Files modified more recently than this time are at risk of being
+        undetectably modified and so can't be cached.
+        """
+        # Cache the cutoff time as long as we hold a lock.
+        # time.time() isn't super expensive (approx 3.38us), but
+        # when you call it 50,000 times it adds up.
+        # For comparison, os.lstat() costs 7.2us if it is hot.
+        self._cutoff_time = int(time.time()) - 3
+        return self._cutoff_time
+
+    def _lstat(self, abspath, entry):
+        """Return the os.lstat value for this path."""
+        return os.lstat(abspath)
+
+    def _sha1_file(self, abspath, entry):
+        """Calculate the SHA1 of a file by reading the full text"""
+        f = file(abspath, 'rb', buffering=65000)
+        try:
+            return osutils.sha_file(f)
+        finally:
+            f.close()
+
+    def _is_executable(self, mode, old_executable):
+        """Is this file executable?"""
+        return bool(S_IEXEC & mode)
+
+    def _is_executable_win32(self, mode, old_executable):
+        """On win32 the executable bit is stored in the dirstate."""
+        return old_executable
+
+    if sys.platform == 'win32':
+        _is_executable = _is_executable_win32
+
+    def _read_link(self, abspath, old_link):
+        """Read the target of a symlink"""
+        # TODO: jam 200700301 On Win32, this could just return the value
+        #       already in memory. However, this really needs to be done at a
+        #       higher level, because there either won't be anything on disk,
+        #       or the thing on disk will be a file.
+        return os.readlink(abspath)
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""
@@ -1245,8 +1366,8 @@ class DirState(object):
                         path_utf8=real_path)
             return None, None
 
-    @staticmethod
-    def initialize(path):
+    @classmethod
+    def initialize(cls, path):
         """Create a new dirstate on path.
 
         The new dirstate will be an empty tree - that is it has no parents,
@@ -1264,7 +1385,7 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = DirState(path)
+        result = cls(path)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -1523,16 +1644,15 @@ class DirState(object):
         num_entries_line = self._state_file.readline()
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
         self._num_entries = int(num_entries_line[len('num_entries: '):-1])
-    
+
     def save(self):
         """Save any pending changes created during this session.
-        
+
         We reuse the existing file, because that prevents race conditions with
-        file creation, and we expect to be using oslocks on it in the near 
-        future to prevent concurrent modification and reads - because dirstates
-        incremental data aggretation is not compatible with reading a modified
-        file, and replacing a file in use by another process is impossible on 
-        windows.
+        file creation, and use oslocks on it to prevent concurrent modification
+        and reads - because dirstates incremental data aggretation is not
+        compatible with reading a modified file, and replacing a file in use by
+        another process is impossible on windows.
 
         A dirstate in read only mode should be smart enough though to validate
         that the file has not changed, and otherwise discard its cache and
@@ -1541,12 +1661,38 @@ class DirState(object):
         """
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
-            self._state_file.seek(0)
-            self._state_file.writelines(self.get_lines())
-            self._state_file.truncate()
-            self._state_file.flush()
-            self._header_state = DirState.IN_MEMORY_UNMODIFIED
-            self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+
+            if self._lock_state == 'w':
+                out_file = self._state_file
+                wlock = None
+            else:
+                # Try to grab a write lock so that we can update the file.
+                try:
+                    wlock = lock.WriteLock(self._filename)
+                except (errors.LockError, errors.LockContention), e:
+                    # We couldn't grab the lock, so just leave things dirty in
+                    # memory.
+                    return
+                except IOError, e:
+                    # This may be a read-only tree, or someone else may have a
+                    # ReadLock. so handle the case when we cannot grab a write
+                    # lock
+                    if e.errno in (errno.ENOENT, errno.EPERM, errno.EACCES,
+                                   errno.EAGAIN):
+                        # Ignore these errors and just don't save anything
+                        return
+                    raise
+                out_file = wlock.f
+            try:
+                out_file.seek(0)
+                out_file.writelines(self.get_lines())
+                out_file.truncate()
+                out_file.flush()
+                self._header_state = DirState.IN_MEMORY_UNMODIFIED
+                self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+            finally:
+                if wlock is not None:
+                    wlock.unlock()
 
     def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.
@@ -2008,12 +2154,21 @@ class DirState(object):
         self._parents = []
         self._ghosts = []
         self._dirblocks = []
+        self._id_index = None
+        self._end_of_header = None
+        self._cutoff_time = None
+        self._split_path_cache = {}
 
     def lock_read(self):
         """Acquire a read lock on the dirstate"""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._lock_token = lock.ReadLock(self._filename)
+        self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
 
@@ -2021,7 +2176,12 @@ class DirState(object):
         """Acquire a write lock on the dirstate"""
         if self._lock_token is not None:
             raise errors.LockContention(self._lock_token)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._lock_token = lock.WriteLock(self._filename)
+        self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()
 
@@ -2029,7 +2189,12 @@ class DirState(object):
         """Drop any locks held on the dirstate"""
         if self._lock_token is None:
             raise errors.LockNotHeld(self)
+        # TODO: jam 20070301 Rather than wiping completely, if the blocks are
+        #       already in memory, we could read just the header and check for
+        #       any modification. If not modified, we can just leave things
+        #       alone
         self._state_file = None
+        self._lock_state = None
         self._lock_token.unlock()
         self._lock_token = None
         self._split_path_cache = {}
@@ -2071,6 +2236,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     return lo
 
 
+
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
@@ -2081,5 +2247,5 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
 
     # base64.encode always adds a final newline, so strip it off
     return _encode(_pack('>llllll'
-        , st.st_size, st.st_mtime, st.st_ctime
+        , st.st_size, int(st.st_mtime), int(st.st_ctime)
         , st.st_dev, st.st_ino, st.st_mode))[:-1]

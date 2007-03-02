@@ -361,6 +361,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return WorkingTree.open(path, _unsupported=True)
 
+    # should be deprecated - this is slow and in any case treating them as a
+    # container is (we now know) bad style -- mbp 20070302
+    ## @deprecated_method(zero_fifteen)
     def __iter__(self):
         """Iterate through file_ids for this tree.
 
@@ -1515,13 +1518,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # TODO: update the hashcache here ?
 
     def extras(self):
-        """Yield all unknown files in this WorkingTree.
+        """Yield all unversioned files in this WorkingTree.
 
-        If there are any unknown directories then only the directory is
-        returned, not all its children.  But if there are unknown files
+        If there are any unversioned directories then only the directory is
+        returned, not all its children.  But if there are unversioned files
         under a versioned subdirectory, they are returned.
 
         Currently returned depth-first, sorted by name within directories.
+        This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():

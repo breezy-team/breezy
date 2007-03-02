@@ -488,7 +488,7 @@ class V08BundleTester(TestCaseWithTransport):
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
-                             'Working tree has modifications')
+                             'Working tree has modifications: %s' % delta)
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
