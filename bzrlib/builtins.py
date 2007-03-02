@@ -39,6 +39,7 @@ from bzrlib import (
     merge as _mod_merge,
     merge_directive,
     osutils,
+    registry,
     repository,
     symbol_versioning,
     transport,
@@ -3166,22 +3167,49 @@ class cmd_serve(Command):
         server.serve()
 
 
+_directive_patch_type = registry.Registry()
+_directive_patch_type.register('bundle', 'bundle', 'Bazaar revision bundle')
+_directive_patch_type.register('diff', 'diff', 'Normal unified diff')
+_directive_patch_type.register('plain', None, 'No patch, just directive')
+
+
 class cmd_merge_directive(Command):
     """Generate a merge directive auto-merge tools."""
 
-    def run(self):
+    takes_args = ['submit_branch?', 'public_branch?']
+
+    takes_options = [RegistryOption('patch-type',
+        'The type of patch to include in the directive',
+        _directive_patch_type, value_switches=True)]
+
+    def run(self, submit_branch=None, public_branch=None, patch_type='bundle'):
         branch = Branch.open('.')
-        submit_branch = branch.get_submit_branch()
-        public_branch = branch.get_config().get_user_option('public_branch')
-        if public_branch is not None:
-            public_branch = Branch.open(public_branch)
+        config_submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            submit_branch = config_submit_branch
+        else:
+            if config_submit_branch is None:
+                branch.set_submit_branch(submit_branch)
         if submit_branch is None:
             submit_branch = branch.get_parent()
+        if submit_branch is None:
+            raise errors.BzrCommandError('No submit branch specified or known')
+        config_public_branch = branch.get_config().get_user_option(
+                'public_branch')
+        if public_branch is None:
+            public_branch = config_public_branch
+        elif config_public_branch is None:
+            branch.get_config().set_user_option('public_branch', public_branch)
+        if public_branch is not None:
+            public_branch = Branch.open(public_branch)
+        if patch_type != "bundle" and public_branch is None:
+            raise errors.BzrCommandError('No public branch specified or known')
         directive = merge_directive.MergeDirective.from_objects(
             branch.repository, branch.last_revision(), time.time(),
             osutils.local_time_offset(), submit_branch,
-            public_branch=public_branch)
+            public_branch=public_branch, patch_type=patch_type)
         self.outf.writelines(directive.to_lines())
+
 
 # command-line interpretation helper for merge-related commands
 def _merge_helper(other_revision, base_revision,
