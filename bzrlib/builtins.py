@@ -1930,7 +1930,8 @@ class cmd_cat(Command):
         try:
             tree, relpath = WorkingTree.open_containing(filename)
             b = tree.branch
-        except (errors.NotBranchError, errors.NotLocalUrl):
+        except (errors.NotBranchError, errors.NotLocalUrl,
+                errors.NoWorkingTree):
             pass
 
         if revision is not None and revision[0].get_branch() is not None:
