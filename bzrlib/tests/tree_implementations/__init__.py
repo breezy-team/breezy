@@ -43,7 +43,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTreeFormat3,
-    WorkingTreeFormatAB1,
     WorkingTreeTestProviderAdapter,
     _legacy_formats,
     )

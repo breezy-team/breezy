@@ -2342,41 +2342,6 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
-class WorkingTreeAB1(WorkingTree3):
-
-    def _serialize(self, inventory, out_file):
-        xml7.serializer_v7.write_inventory(self._inventory, out_file)
-
-    def _deserialize(selt, in_file):
-        return xml7.serializer_v7.read_inventory(in_file)
-
-    def _comparison_data(self, entry, path):
-        kind, executable, stat_value = \
-            WorkingTree3._comparison_data(self, entry, path)
-        if kind == 'directory' and entry.kind == 'tree-reference':
-            kind = 'tree-reference'
-        return kind, executable, stat_value
-
-    def kind(self, file_id):
-        kind = WorkingTree3.kind(self, file_id)
-        if kind == 'directory':
-            entry = self.inventory[file_id]
-            if entry.kind == 'tree-reference':
-                kind = 'tree-reference'
-        return kind
-
-    def add_reference(self, sub_tree):
-        return self._add_reference(sub_tree)
-
-    def get_nested_tree(self, entry, path=None):
-        if path is None:
-            path = self.id2path(entry.file_id)
-        return WorkingTree.open(self.abspath(path))
-
-    def get_reference_revision(self, entry, path=None):
-        return self.get_nested_tree(entry, path).last_revision()
-
-
 def get_conflicted_stem(path):
     for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
@@ -2679,38 +2644,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-class WorkingTreeFormatAB1(WorkingTreeFormat3):
-    """Working tree format that supports unique roots and nested trees"""
-
-    _tree_class = WorkingTreeAB1
-
-    requires_rich_root = True
-
-    supports_tree_reference = True
-
-    def __init__(self):
-        WorkingTreeFormat3.__init__(self)
-        
-    def __get_matchingbzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('experimental-knit3')
-
-    _matchingbzrdir = property(__get_matchingbzrdir)
-
-    def get_format_string(self):
-        """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format AB1"
-
-    def get_format_description(self):
-        """See WorkingTreeFormat.get_format_description()."""
-        return "Working tree format 4"
-
-    def _initial_inventory(self):
-        return Inventory(root_id=generate_ids.gen_root_id())
-
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
-WorkingTreeFormat.register_format(WorkingTreeFormatAB1())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.

@@ -44,7 +44,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = self.make_branch_and_tree('.', format='experimental-knit3')
+        self.wt = self.make_branch_and_tree('.', format='experimental-reference-dirstate')
         os.chdir('..')
 
     def get_transform(self):
@@ -972,9 +972,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
 
     def test_build_with_references(self):
-        tree = self.make_branch_and_tree('source', format='experimental-knit3')
+        tree = self.make_branch_and_tree('source', format='experimental-reference-dirstate')
         subtree = self.make_branch_and_tree('source/subtree', 
-                                            format='experimental-knit3')
+                                            format='experimental-reference-dirstate')
         tree.add_reference(subtree)
         tree.commit('a revision')
         tree.branch.create_checkout('target')

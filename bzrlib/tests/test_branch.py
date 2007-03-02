@@ -251,11 +251,11 @@ class TestBranch6(TestCaseWithTransport):
             tree.unlock()
 
     def do_checkout_test(self, lightweight=False):
-        tree = self.make_branch_and_tree('source', format='experimental-knit3')
+        tree = self.make_branch_and_tree('source', format='experimental-reference-dirstate')
         subtree = self.make_branch_and_tree('source/subtree', 
-                                            format='experimental-knit3')
+                                            format='experimental-reference-dirstate')
         subsubtree = self.make_branch_and_tree('source/subtree/subsubtree',
-                                               format='experimental-knit3')
+                                               format='experimental-reference-dirstate')
         self.build_tree(['source/subtree/file',
                          'source/subtree/subsubtree/file'])
         subsubtree.add('file')

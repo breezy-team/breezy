@@ -38,7 +38,6 @@ from bzrlib.tests.tree_implementations import (
 from bzrlib.tree import InterTree
 from bzrlib.workingtree import (
     WorkingTreeFormat3,
-    WorkingTreeFormatAB1,
     WorkingTreeTestProviderAdapter,
     )
 

@@ -2234,13 +2234,6 @@ format_registry.register_metadir('experimental-knit2',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3'
     )
-
-format_registry.register_metadir('experimental-knit3',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
-    'Experimental successor to knit2.  Use at your own risk.', 
-    branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormatAB1')
-
 format_registry.register_metadir('experimental-branch6',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Experimental successor to knit.  Use at your own risk.',

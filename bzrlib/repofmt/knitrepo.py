@@ -481,7 +481,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit2):
     support_tree_reference = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('experimental-knit3')
+        return bzrdir.format_registry.make_bzrdir('experimental-reference-dirstate')
 
     def _ignore_setting_bzrdir(self, format):
         pass

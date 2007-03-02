@@ -75,10 +75,6 @@ class TestFormatRegistry(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
-        my_format_registry.register_metadir('experimental-knit3', 
-            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
-            'Format using knits', 
-            tree_format='bzrlib.workingtree.WorkingTreeFormatAB1')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
             'experimental-knit2',
@@ -104,11 +100,6 @@ class TestFormatRegistry(TestCase):
         my_bzrdir = my_format_registry.make_bzrdir('knit')
         self.assertIsInstance(my_bzrdir.repository_format, 
             knitrepo.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('experimental-knit3')
-        self.assertIsInstance(my_bzrdir.repository_format, 
-            knitrepo.RepositoryFormatKnit3)
-        self.assertIsInstance(my_bzrdir.workingtree_format, 
-            workingtree.WorkingTreeFormatAB1)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
                               bzrlib.branch.BzrBranchFormat6)
@@ -486,9 +477,9 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        tree = self.make_branch_and_tree('tree1', format='experimental-reference-dirstate')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='experimental-knit3')
+                                             format='experimental-reference-dirstate')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
@@ -503,23 +494,19 @@ class ChrootedTests(TestCaseWithTransport):
         branch = self.make_branch('branch', format='knit')
         format = branch.bzrdir.cloning_metadir()
         self.assertIsInstance(format.workingtree_format,
-        workingtree.WorkingTreeFormat3)
-        branch2 = self.make_branch('branch2', format='experimental-knit3')
-        format2 = branch2.bzrdir.cloning_metadir()
-        self.assertIsInstance(format2.workingtree_format,
-                              workingtree.WorkingTreeFormatAB1)
+            workingtree.WorkingTreeFormat3)
 
     def test_sprout_recursive_treeless(self):
-        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        tree = self.make_branch_and_tree('tree1', format='experimental-reference-dirstate')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='experimental-knit3')
+                                             format='experimental-reference-dirstate')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
         tree.bzrdir.destroy_workingtree()
         repo = self.make_repository('repo', shared=True,
-                                    format='experimental-knit3')
+                                    format='experimental-reference-dirstate')
         repo.set_make_working_trees(False)
         tree.bzrdir.sprout('repo/tree2')
         self.failUnlessExists('repo/tree2/subtree')
@@ -745,12 +732,6 @@ class NonLocalTests(TestCaseWithTransport):
     def test_checkout_metadir(self):
         # checkout_metadir has reasonable working tree format even when no
         # working tree is present
-        self.make_branch('branch-knit3', format='experimental-knit3')
-        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit3'))
-        checkout_format = my_bzrdir.checkout_metadir()
-        self.assertIsInstance(checkout_format.workingtree_format,
-                              workingtree.WorkingTreeFormatAB1)
-
         self.make_branch('branch-knit2', format='experimental-knit2')
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
         checkout_format = my_bzrdir.checkout_metadir()

@@ -24,7 +24,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def make_trees(self):
         base_tree = self.make_branch_and_tree('tree',
-                                              format='experimental-knit3')
+                                              format='experimental-reference-dirstate')
         base_tree.commit('empty commit')
         self.build_tree(['tree/subtree/', 'tree/subtree/file1'])
         sub_tree = self.make_branch_and_tree('tree/subtree')
