@@ -358,8 +358,11 @@ def _patch_stanza_iter(line_iter):
 
     last_line = None
     for line in line_iter:
-        assert line.startswith('#')
-        line = line[2:]
+        if line.startswith('# '):
+            line = line[2:]
+        else:
+            assert line.startswith('#')
+            line = line[1:]
         line = re.sub('\r', '', line)
         line = re.sub('\\\\(.|\n)', mapget, line)
         if last_line is None:
