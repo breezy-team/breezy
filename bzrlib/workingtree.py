@@ -856,7 +856,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except StopIteration:
             raise errors.MergeModifiedFormatError()
         for s in RioReader(hashfile):
-            file_id = s.get("file_id")
+            # RioReader reads in Unicode, so convert file_ids back to utf8
+            file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
             if file_id not in self.inventory:
                 continue
             text_hash = s.get("hash")

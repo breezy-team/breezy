@@ -154,9 +154,11 @@ class AddCustomIDAction(AddAction):
     def __call__(self, inv, parent_ie, path, kind):
         # The first part just logs if appropriate
         # Now generate a custom id
-        file_id = kind + '-' + path.raw_path.replace('/', '%')
+        file_id = osutils.safe_file_id(kind + '-'
+                                       + path.raw_path.replace('/', '%'),
+                                       warn=False)
         if self.should_print:
-            self._to_file.write('added %s with id %s\n' 
+            self._to_file.write('added %s with id %s\n'
                                 % (path.raw_path, file_id))
         return file_id
 
