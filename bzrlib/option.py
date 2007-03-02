@@ -227,7 +227,7 @@ class RegistryOption(Option):
             return self.converter(value)
 
     def __init__(self, name, help, registry, converter=None,
-        value_switches=False, title=None):
+        value_switches=False, title=None, enum_switch=True):
         """
         Constructor.
 
@@ -239,12 +239,15 @@ class RegistryOption(Option):
         :param value_switches: If true, each possible value is assigned its
             own switch.  For example, instead of '--format knit',
             '--knit' can be used interchangeably.
+        :param enum_switch: If true, a switch is provided with the option name,
+            which takes a value.
         """
         Option.__init__(self, name, help, type=self.convert)
         self.registry = registry
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
+        self.enum_switch = enum_switch
         self.title = title
         if self.title is None:
             self.title = name
@@ -253,7 +256,8 @@ class RegistryOption(Option):
         """Add this option to an Optparse parser"""
         if self.value_switches:
             parser = parser.add_option_group(self.title)
-        Option.add_option(self, parser, short_name)
+        if self.enum_switch:
+            Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]

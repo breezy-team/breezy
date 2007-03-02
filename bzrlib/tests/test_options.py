@@ -157,6 +157,10 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--two', '--one',
                                           '--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
+        options = [option.RegistryOption('format', '', registry, str,
+                   enum_switch=False)]
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--format', 'two'])
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
