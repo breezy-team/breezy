@@ -329,14 +329,16 @@ def to_patch_lines(stanza, max_width=72):
                 if len(line) > 0 and line[0] != [' ']:
                     break_index = -1
                     break_index = partline.rfind(' ', -20)
-                    if break_index in (0, -1):
+                    if break_index < 3:
                         break_index = partline.rfind('-', -20)
                         break_index += 1
-                    if break_index in (0, -1):
+                    if break_index < 3:
                         break_index = partline.rfind('/', -20)
-                    if break_index not in (0, -1):
+                    if break_index >= 3:
                         line = partline[break_index:] + line
                         partline = partline[:break_index]
+                if len(line) > 0:
+                    line = '  ' + line
                 partline = re.sub('\r', '\\\\r', partline)
                 blank_line = False
                 if len(line) > 0:
@@ -346,8 +348,9 @@ def to_patch_lines(stanza, max_width=72):
                     blank_line = True
                 lines.append('# ' + partline + '\n')
                 if blank_line:
-                    lines.append('# \n')
+                    lines.append('#   \n')
     return lines
+
 
 def _patch_stanza_iter(line_iter):
     map = {'\\\\': '\\',
@@ -363,6 +366,8 @@ def _patch_stanza_iter(line_iter):
         else:
             assert line.startswith('#')
             line = line[1:]
+        if last_line is not None and len(line) > 2:
+            line = line[2:]
         line = re.sub('\r', '', line)
         line = re.sub('\\\\(.|\n)', mapget, line)
         if last_line is None:
@@ -374,6 +379,7 @@ def _patch_stanza_iter(line_iter):
             last_line = None
     if last_line is not None:
         yield last_line
+
 
 def read_patch_stanza(line_iter):
     return read_stanza(_patch_stanza_iter(line_iter))
