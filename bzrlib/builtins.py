@@ -3178,14 +3178,17 @@ class cmd_merge_directive(Command):
 
     takes_args = ['submit_branch?', 'public_branch?']
 
-    takes_options = [RegistryOption('patch-type',
-        'The type of patch to include in the directive',
-        _directive_patch_type, value_switches=True, enum_switch=False,
-        title='Patch type'),
+    takes_options = [RegistryOption.from_kwargs('patch-type',
+        'The type of patch to include in the directive', title='Patch type',
+        value_switches=True, enum_switch=False,
+        bundle='Bazaar revision bundle', diff='Normal unified diff',
+        plain='No patch, just directive'),
         Option('sign', help='GPG-sign the directive'), 'revision']
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None):
+        if patch_type == 'plain':
+            patch_type = None
         branch = Branch.open('.')
         config_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
@@ -3206,11 +3209,12 @@ class cmd_merge_directive(Command):
         if public_branch is not None:
             public_branch = Branch.open(public_branch)
         if patch_type != "bundle" and public_branch is None:
-            raise errors.BzrCommandError('No public branch specified or known')
+            raise errors.BzrCommandError('No public branch specified or'
+                                         ' known')
         if revision is not None:
             if len(revision) != 1:
                 raise errors.BzrCommandError('bzr merge-directive takes '
-                                             'exactly one revision identifier')
+                    'exactly one revision identifier')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
         else:

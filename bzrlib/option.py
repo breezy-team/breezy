@@ -252,6 +252,22 @@ class RegistryOption(Option):
         if self.title is None:
             self.title = name
 
+    @staticmethod
+    def from_kwargs(name_, help=None, title=None, value_switches=False,
+        enum_switch=True, **kwargs):
+        """Convenience method to generate string-map registry options
+
+        name, help, value_switches and enum_switch are passed to the
+        RegistryOption constructor.  Any other keyword arguments are treated
+        as values for the option, and they value is treated as the help.
+        """
+        reg = registry.Registry()
+        for name, help in kwargs.iteritems():
+            name = name.replace('_', '-')
+            reg.register(name, name, help=help)
+        return RegistryOption(name_, help, reg, title=title,
+            value_switches=value_switches, enum_switch=enum_switch)
+
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
         if self.value_switches:
