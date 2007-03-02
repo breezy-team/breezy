@@ -853,6 +853,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                     [
                                      './.bzr/branch/branch.conf',
                                      './.bzr/branch/parent',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/inventory',
                                      './.bzr/inventory',
