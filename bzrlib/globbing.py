@@ -109,7 +109,12 @@ def _invalid_regex(repl):
 
 
 def _trailing_backslashes_regex(m):
-    if len(m) %2  != 0:
+    """Check trailing backslashes.
+
+    Does a head count on trailing backslashes to ensure there isn't an odd
+    one on the end that would escape the brackets we wrap the RE in.
+    """
+    if (len(m) % 2) != 0:
         warning(u"Regular expressions cannot end with an odd number of '\\'. "
                 "Dropping the final '\\'.")
         return m[:-1]
@@ -211,14 +216,11 @@ class Globster(object):
         return None
         
 
-_normalize_re = re.compile(ur'\\(?!x\d\d|\d\d\d|u\d\d\d\d)')
-
-
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
-     
-    Avoids converting escape backslashes.
+    
+    Doesn't normalize regular expressions - they may contain escapes.
     """
     if not pattern.startswith('RE:'):
-        pattern = _normalize_re.sub('/', pattern)
+        pattern = pattern.replace('\\','/')
     return pattern.rstrip('/')
