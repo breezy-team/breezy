@@ -961,3 +961,12 @@ class TestMergeExportUpstreamBuilder(BuilderTestCase):
     builder.prepare()
     self.assertEqual(builder._export_upstream_branch(), True)
 
+  def test_export_has_correct_file(self):
+    """A check that the top level export works as expected,"""
+    builder = self.get_builder()
+    self.make_upstream_branch()
+    builder.prepare()
+    builder.export()
+    for f in ['a', 'dir', 'dir/b', 'c']:
+      self.failUnlessExists(join(self.source_dir, f))
+
