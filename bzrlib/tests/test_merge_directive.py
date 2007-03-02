@@ -1,5 +1,6 @@
 from bzrlib import (
     errors,
+    gpg,
     merge_directive,
     tests,
     )
@@ -85,3 +86,24 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
             patch_type=None, public_branch=branch_c)
         md3.to_lines()
         self.assertIs(None, md3.patch)
+
+    def test_signing(self):
+        time = 500.23
+        timezone = 60
+        class FakeBranch(object):
+            def get_config(self):
+                return self
+            def gpg_signing_command(self):
+                return 'loopback'
+        md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
+            'http://example.com', source_branch="http://example.org",
+            patch='booga', patch_type='diff')
+        old_strategy = gpg.GPGStrategy
+        gpg.GPGStrategy = gpg.LoopbackGPGStrategy
+        try:
+            signed = md.to_signed(FakeBranch())
+        finally:
+            gpg.GPGStrategy = old_strategy
+        self.assertContainsRe(signed, '^-----BEGIN PSEUDO-SIGNED CONTENT')
+        self.assertContainsRe(signed, 'example.org')
+        self.assertContainsRe(signed, 'booga')

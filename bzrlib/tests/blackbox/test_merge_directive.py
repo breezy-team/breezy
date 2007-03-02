@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib import tests
+
+from bzrlib import gpg, tests
 
 class TestMergeDirective(tests.TestCaseWithTransport):
 
@@ -44,3 +45,10 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertNotContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive')[0]
         self.assertContainsRe(md_text, 'source_branch:')
+        old_strategy = gpg.GPGStrategy
+        gpg.GPGStrategy = gpg.LoopbackGPGStrategy
+        try:
+            md_text = self.run_bzr('merge-directive', '--sign')[0]
+        finally:
+            gpg.GPGStrategy = old_strategy
+        self.assertContainsRe(md_text, '^-----BEGIN PSEUDO-SIGNED CONTENT')

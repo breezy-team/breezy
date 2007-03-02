@@ -4,6 +4,7 @@ from bzrlib import (
     branch as _mod_branch,
     diff,
     errors,
+    gpg,
     revision as _mod_revision,
     rio,
     testament,
@@ -76,6 +77,10 @@ class MergeDirective(object):
         if self.patch is not None:
             lines.extend(self.patch.splitlines(True))
         return lines
+
+    def to_signed(self, branch):
+        my_gpg = gpg.GPGStrategy(branch.get_config())
+        return my_gpg.sign(''.join(self.to_lines()))
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,

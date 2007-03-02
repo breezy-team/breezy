@@ -3180,9 +3180,11 @@ class cmd_merge_directive(Command):
 
     takes_options = [RegistryOption('patch-type',
         'The type of patch to include in the directive',
-        _directive_patch_type, value_switches=True)]
+        _directive_patch_type, value_switches=True),
+        Option('sign', help='GPG-sign the directive')]
 
-    def run(self, submit_branch=None, public_branch=None, patch_type='bundle'):
+    def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
+            sign=False):
         branch = Branch.open('.')
         config_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
@@ -3208,7 +3210,10 @@ class cmd_merge_directive(Command):
             branch.repository, branch.last_revision(), time.time(),
             osutils.local_time_offset(), submit_branch,
             public_branch=public_branch, patch_type=patch_type)
-        self.outf.writelines(directive.to_lines())
+        if sign:
+            self.outf.write(directive.to_signed(branch))
+        else:
+            self.outf.writelines(directive.to_lines())
 
 
 # command-line interpretation helper for merge-related commands
