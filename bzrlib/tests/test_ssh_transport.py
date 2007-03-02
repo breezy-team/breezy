@@ -93,23 +93,39 @@ class SSHVendorManagerTests(TestCase):
         manager.clear_cache()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
-    def test_vendor_getting_methods_precedence(self):
+    def test_get_vendor_search_order(self):
+        # The 'get_vendor' method search for SSH vendors as following:
+        #
+        #   1. Check previously cached value
+        #   2. Check BZR_SSH environment variable
+        #   3. Check the system for known SSH vendors
+        #   4. Fall back to the default vendor if registered
+        #
+        # Let's now check the each check method in the reverse order
+        # clearing the cache between each invocation:
+
         manager = TestSSHVendorManager()
+        # At first no vendors are found
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
+        # If the default vendor is registered it will be returned
         default_vendor = object()
         manager.register_default_vendor(default_vendor)
         self.assertIs(manager.get_vendor({}), default_vendor)
 
+        # If the known vendor is found in the system it will be returned
         manager.clear_cache()
         manager.set_ssh_version_string("OpenSSH")
         self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
 
+        # If the BZR_SSH environment variable is found it will be treated as
+        # the vendor name
         manager.clear_cache()
         vendor = object()
         manager.register_vendor("vendor", vendor)
         self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
 
+        # Last cached value always checked first
         self.assertIs(manager.get_vendor({}), vendor)
 
 
