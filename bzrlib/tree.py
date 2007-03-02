@@ -18,6 +18,7 @@
 """
 
 import os
+from collections import deque
 from cStringIO import StringIO
 
 import bzrlib
@@ -29,7 +30,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
@@ -89,7 +90,7 @@ class Tree(object):
 
     def _iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
-                     require_versioned=True):
+                     require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
         return intertree._iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned)
@@ -557,7 +558,7 @@ class InterTree(InterObject):
 
     def _iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
-                      require_versioned=True):
+                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
@@ -581,12 +582,22 @@ class InterTree(InterObject):
         :param require_versioned: Raise errors.PathsNotVersionedError if a
             path in the specific_files list is not versioned in one of
             source, target or extra_trees.
+        :param want_unversioned: Should unversioned files be returned in the
+            output. An unversioned file is defined as one with (False, False)
+            for the versioned pair.
         """
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
         specific_file_ids = self.target.paths2ids(specific_files,
             lookup_trees, require_versioned=require_versioned)
+        if want_unversioned:
+            all_unversioned = sorted([(p.split('/'), p) for p in self.target.extras()
+                if not specific_files or
+                    osutils.is_inside_any(specific_files, p)])
+            all_unversioned = deque(all_unversioned)
+        else:
+            all_unversioned = deque()
         to_paths = {}
         from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
@@ -595,7 +606,20 @@ class InterTree(InterObject):
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
+        # the unversioned path lookup only occurs on real trees - where there 
+        # can be extras. So the fake_entry is solely used to look up
+        # executable it values when execute is not supported.
+        fake_entry = InventoryFile('unused', 'unused', 'unused')
         for to_path, to_entry in to_entries_by_dir:
+            while all_unversioned and all_unversioned[0][0] < to_path.split('/'):
+                unversioned_path = all_unversioned.popleft()
+                to_kind, to_executable, to_stat = \
+                    self.target._comparison_data(fake_entry, unversioned_path[1])
+                yield (None, unversioned_path[1], True, (False, False),
+                    (None, None),
+                    (None, unversioned_path[0][-1]),
+                    (None, to_kind),
+                    (None, to_executable))
             file_id = to_entry.file_id
             to_paths[file_id] = to_path
             entry_count += 1
@@ -643,6 +667,16 @@ class InterTree(InterObject):
                 executable[0] != executable[1] or include_unchanged):
                 yield (file_id, to_path, changed_content, versioned, parent,
                        name, kind, executable)
+        while all_unversioned:
+            # yield any trailing unversioned paths
+            unversioned_path = all_unversioned.popleft()
+            to_kind, to_executable, to_stat = \
+                self.target._comparison_data(fake_entry, unversioned_path[1])
+            yield (None, unversioned_path[1], True, (False, False),
+                (None, None),
+                (None, unversioned_path[0][-1]),
+                (None, to_kind),
+                (None, to_executable))
 
         def get_to_path(from_entry):
             if from_entry.parent_id is None:

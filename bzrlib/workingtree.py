@@ -1402,13 +1402,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # TODO: update the hashcache here ?
 
     def extras(self):
-        """Yield all unknown files in this WorkingTree.
+        """Yield all unversioned files in this WorkingTree.
 
-        If there are any unknown directories then only the directory is
-        returned, not all its children.  But if there are unknown files
+        If there are any unversioned directories then only the directory is
+        returned, not all its children.  But if there are unversioned files
         under a versioned subdirectory, they are returned.
 
         Currently returned depth-first, sorted by name within directories.
+        This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():

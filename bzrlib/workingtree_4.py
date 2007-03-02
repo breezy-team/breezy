@@ -1437,7 +1437,7 @@ class InterDirStateTree(InterTree):
 
     def _iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
-                      require_versioned=True):
+                      require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
         :return: An iterator that yields tuples. See InterTree._iter_changes
@@ -1453,6 +1453,9 @@ class InterDirStateTree(InterTree):
         :param require_versioned: If True, all files in specific_files must be
             versioned in one of source, target, extra_trees or
             PathsNotVersionedError is raised.
+        :param want_unversioned: Should unversioned files be returned in the
+            output. An unversioned file is defined as one with (False, False)
+            for the versioned pair.
         """
         utf8_decode = cache_utf8._utf8_decode
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
@@ -1793,11 +1796,13 @@ class InterDirStateTree(InterTree):
             if not root_entries and not root_dir_info:
                 # this specified path is not present at all, skip it.
                 continue
+            path_handled = False
             for entry in root_entries:
                 for result in _process_entry(entry, root_dir_info):
                     # this check should probably be outside the loop: one
                     # 'iterate two trees' api, and then _iter_changes filters
                     # unchanged pairs. - RBC 20070226
+                    path_handled = True
                     if (include_unchanged
                         or result[2]                    # content change
                         or result[3][0] != result[3][1] # versioned status
@@ -1809,6 +1814,13 @@ class InterDirStateTree(InterTree):
                         result = (result[0],
                                   utf8_decode(result[1])[0]) + result[2:]
                         yield result
+            if want_unversioned and not path_handled:
+                new_executable = bool(
+                    stat.S_ISREG(root_dir_info[3].st_mode)
+                    and stat.S_IEXEC & root_dir_info[3].st_mode)
+                yield (None, current_root, True, (False, False), (None, None),
+                    (None, splitpath(current_root)[-1]),
+                    (None, root_dir_info[2]), (None, new_executable))
             dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
@@ -1906,24 +1918,13 @@ class InterDirStateTree(InterTree):
                 else:
                     current_path_info = None
                 advance_path = True
+                path_handled = False
                 while (current_entry is not None or
                     current_path_info is not None):
                     if current_entry is None:
-                        # no more entries: yield current_pathinfo as an
-                        # unversioned file: its not the same as a path in any
-                        # tree in the dirstate.
-                        new_executable = bool(
-                            stat.S_ISREG(current_path_info[3].st_mode)
-                            and stat.S_IEXEC & current_path_info[3].st_mode)
-                        pass # unversioned file support not added to the
-                        # _iter_changes api yet - breaks status amongst other
-                        # things.
-#                        yield (None, current_path_info[0], True,
-#                               (False, False),
-#                               (None, None),
-#                               (None, current_path_info[1]),
-#                               (None, current_path_info[2]),
-#                               (None, new_executable))
+                        # the check for path_handled when the path is adnvaced
+                        # will yield this path if needed.
+                        pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):
@@ -1955,6 +1956,7 @@ class InterDirStateTree(InterTree):
                                 # this check should probably be outside the loop: one
                                 # 'iterate two trees' api, and then _iter_changes filters
                                 # unchanged pairs. - RBC 20070226
+                                path_handled = True
                                 if (include_unchanged
                                     or result[2]                    # content change
                                     or result[3][0] != result[3][1] # versioned status
@@ -1972,6 +1974,7 @@ class InterDirStateTree(InterTree):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
+                            path_handled = True
                             if (include_unchanged
                                 or result[2]                    # content change
                                 or result[3][0] != result[3][1] # versioned status
@@ -1992,11 +1995,23 @@ class InterDirStateTree(InterTree):
                     else:
                         advance_entry = True # reset the advance flaga
                     if advance_path and current_path_info is not None:
+                        if want_unversioned and not path_handled:
+                            new_executable = bool(
+                                stat.S_ISREG(current_path_info[3].st_mode)
+                                and stat.S_IEXEC & current_path_info[3].st_mode)
+                            if want_unversioned:
+                                yield (None, current_path_info[0], True,
+                                       (False, False),
+                                       (None, None),
+                                       (None, current_path_info[1]),
+                                       (None, current_path_info[2]),
+                                       (None, new_executable))
                         path_index += 1
                         if path_index < len(current_dir_info[1]):
                             current_path_info = current_dir_info[1][path_index]
                         else:
                             current_path_info = None
+                        path_handled = False
                     else:
                         advance_path = True # reset the advance flagg.
                 if current_block is not None:
