@@ -92,7 +92,7 @@ method to override the email in a script context.  If you would like
 to set a general default, then please see the ini methods above.
 
 Concerns about spam
-==============--===
+===================
 Some people want to avoid sharing their email address so as not to get
 spam.  Bazaar will never disclose your email address, unless you publish
 a branch or changeset in a public location.  It's recommended that you
