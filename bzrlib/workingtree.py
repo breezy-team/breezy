@@ -2707,14 +2707,10 @@ class WorkingTreeFormatAB1(WorkingTreeFormat3):
     def _initial_inventory(self):
         return Inventory(root_id=generate_ids.gen_root_id())
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-__default_format = WorkingTreeFormat3()
-## __default_format = WorkingTreeFormat4()
+__default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat4())
+WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.register_format(WorkingTreeFormatAB1())
-## WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
