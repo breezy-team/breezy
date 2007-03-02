@@ -326,6 +326,17 @@ def to_patch_lines(stanza, max_width=72):
             while len(line) > 0:
                 partline = line[:max_rio_width]
                 line = line[max_rio_width:]
+                if len(line) > 0 and line[0] != [' ']:
+                    break_index = -1
+                    break_index = partline.rfind(' ', -20)
+                    if break_index in (0, -1):
+                        break_index = partline.rfind('-', -20)
+                        break_index += 1
+                    if break_index in (0, -1):
+                        break_index = partline.rfind('/', -20)
+                    if break_index not in (0, -1):
+                        line = partline[break_index:] + line
+                        partline = partline[:break_index]
                 partline = re.sub('\r', '\\\\r', partline)
                 blank_line = False
                 if len(line) > 0:

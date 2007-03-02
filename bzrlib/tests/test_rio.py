@@ -364,7 +364,7 @@ s: both\\\"
         return new_lines
 
     def test_patch_rio(self):
-        stanza = Stanza(data='#\n\r\\r ', space=' ' * 255)
+        stanza = Stanza(data='#\n\r\\r ', space=' ' * 255, hash='#' * 255)
         lines = rio.to_patch_lines(stanza)
         for line in lines:
             self.assertContainsRe(line, '^# ')
@@ -375,3 +375,15 @@ s: both\\\"
         new_stanza = rio.read_patch_stanza(lines)
         self.assertEqual('#\n\r\\r ', new_stanza.get('data'))
         self.assertEqual(' '* 255, new_stanza.get('space'))
+        self.assertEqual('#'* 255, new_stanza.get('hash'))
+
+    def test_patch_rio_linebreaks(self):
+        stanza = Stanza(breaktest='linebreak -/'*30)
+        self.assertContainsRe(rio.to_patch_lines(stanza, 71)[0],
+                              'linebreak\\\\\n')
+        stanza = Stanza(breaktest='linebreak-/'*30)
+        self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0],
+                              'linebreak-\\\\\n')
+        stanza = Stanza(breaktest='linebreak/'*30)
+        self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0],
+                              'linebreak\\\\\n')
