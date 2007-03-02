@@ -21,6 +21,13 @@ from bzrlib import (
     errors,
     workingtree,
     )
+from bzrlib.add import (
+    AddAction,
+    AddFromBaseAction,
+    smart_add,
+    smart_add_tree,
+    )
+
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -40,3 +47,14 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             tree.unlock()
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
+
+    def test_save_false(self):
+        """Dry-run add doesn't permanently affect the tree."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        smart_add_tree(wt, ['file'], save=False)
+        # The in-memory inventory is left modified in inventory-based trees;
+        # it may not be in dirstate trees.  Anyhow, now we reload to make sure
+        # the on-disk version is not modified.
+        wt = wt.bzrdir.open_workingtree()
+        self.assertEqual(wt.path2id('file'), None)

@@ -17,7 +17,6 @@
 import os
 import sys
 
-from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped

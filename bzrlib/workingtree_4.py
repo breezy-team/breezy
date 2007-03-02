@@ -1067,7 +1067,6 @@ class WorkingTree4(WorkingTree3):
         self.flush()
 
 
-
 class WorkingTreeFormat4(WorkingTreeFormat3):
     """The first consolidated dirstate working tree format.
 

@@ -35,7 +35,6 @@ class TestSmartAdd(TestCaseWithTransport):
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
-        from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
@@ -108,13 +107,6 @@ class TestSmartAdd(TestCaseWithTransport):
         smart_add_tree(wt, add_paths)
         for path in expected_paths:
             self.assertNotEqual(wt.path2id(path), None, "No id added for %s" % path)
-
-    def test_save_false(self):
-        """Test smart-adding a path with save set to false."""
-        wt = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        smart_add_tree(wt, ['file'], save=False)
-        self.assertEqual(wt.path2id('file'), None)
 
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
