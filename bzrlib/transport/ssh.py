@@ -63,6 +63,11 @@ _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 class SSHVendorManager(object):
     """Manager for manage SSH vendors."""
 
+    # Note, although at first sign the class interface seems similar to
+    # bzrlib.registry.Registry it is not possible to directly use the Registry
+    # because the class just has "get()" interface instead of the Registry's
+    # "get(key)".
+
     def __init__(self):
         self._ssh_vendors = {}
         self._cached_ssh_vendor = None
@@ -77,10 +82,15 @@ class SSHVendorManager(object):
         self._ssh_vendors[name] = vendor
 
     def clear_cache(self):
-        """Clear cache."""
+        """Clear previously cached lookup result."""
         self._cached_ssh_vendor = None
 
     def _get_vendor_by_environment(self, environment=None):
+        """Return the vendor or None based on BZR_SSH environment variable.
+
+        :raises UnknownSSH: if the BZR_SSH environment variable contains
+                            unknown vendor name
+        """
         if environment is None:
             environment = os.environ
         if 'BZR_SSH' in environment:
@@ -93,6 +103,7 @@ class SSHVendorManager(object):
         return None
 
     def _get_ssh_version_string(self, args):
+        """Return SSH version string from the subprocess."""
         try:
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
@@ -104,6 +115,10 @@ class SSHVendorManager(object):
         return stdout + stderr
 
     def _get_vendor_by_version_string(self, version):
+        """Return the vendor or None based on output from the subprocess.
+
+        :param version: The output of 'ssh -V' like command.
+        """
         vendor = None
         if 'OpenSSH' in version:
             mutter('ssh implementation is OpenSSH')
@@ -117,6 +132,7 @@ class SSHVendorManager(object):
         return vendor
 
     def _get_vendor_by_inspection(self):
+        """Return the vendor or None by checking for known SSH implementations."""
         for args in [['ssh', '-V'], ['plink', '-V']]:
             version = self._get_ssh_version_string(args)
             vendor = self._get_vendor_by_version_string(version)
@@ -125,7 +141,12 @@ class SSHVendorManager(object):
         return None
 
     def get_vendor(self, environment=None):
-        """Find out what version of SSH is on the system."""
+        """Find out what version of SSH is on the system.
+
+        :raises SSHVendorNotFound: if no any SSH vendor is found
+        :raises UnknownSSH: if the BZR_SSH environment variable contains
+                            unknown vendor name
+        """
         if self._cached_ssh_vendor is None:
             vendor = self._get_vendor_by_environment(environment)
             if vendor is None:
