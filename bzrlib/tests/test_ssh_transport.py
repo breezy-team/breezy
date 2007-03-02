@@ -17,10 +17,10 @@
 from bzrlib.tests import TestCase
 from bzrlib.errors import SSHVendorNotFound, UnknownSSH
 from bzrlib.transport.ssh import (
-    SSHVendorManager,
     OpenSSHSubprocessVendor,
-    SSHCorpSubprocessVendor,
     PLinkSubprocessVendor,
+    SSHCorpSubprocessVendor,
+    SSHVendorManager,
     )
 
 
@@ -84,8 +84,14 @@ class SSHVendorManagerTests(TestCase):
         vendor = object()
         manager.register_vendor("vendor", vendor)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        # Once the vendor is found the result is cached (mainly because of the
+        # 'get_vendor' sometimes can be an expensive operation) and later
+        # invocations of the 'get_vendor' just returns the cached value.
         self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
         self.assertIs(manager.get_vendor({}), vendor)
+        # The cache can be cleared by the 'clear_cache' method
+        manager.clear_cache()
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
     def test_vendor_getting_methods_precedence(self):
         manager = TestSSHVendorManager()
