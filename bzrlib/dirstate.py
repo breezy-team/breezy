@@ -191,8 +191,8 @@ desired.
 """
 
 
+import base64
 import bisect
-import codecs
 import errno
 import os
 from stat import S_IEXEC
@@ -2213,10 +2213,8 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     return lo
 
 
-_base64_encoder = codecs.getencoder('base64')
 
-
-def pack_stat(st, _encode=_base64_encoder, _pack=struct.pack):
+def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
     # are going to leave it in packed form.
@@ -2227,4 +2225,4 @@ def pack_stat(st, _encode=_base64_encoder, _pack=struct.pack):
     # base64.encode always adds a final newline, so strip it off
     return _encode(_pack('>llllll'
         , st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino, st.st_mode))[0][:-1]
+        , st.st_dev, st.st_ino, st.st_mode))[:-1]
