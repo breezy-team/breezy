@@ -361,8 +361,11 @@ class WorkingTree4(WorkingTree3):
 
         file_abspath = self.abspath(path)
         state = self.current_dirstate()
-        return state.get_sha1_for_entry(entry, file_abspath,
-                                        stat_value=stat_value)
+        link_or_sha1 = state.update_entry(entry, file_abspath,
+                                          stat_value=stat_value)
+        if entry[1][0][0] == 'f':
+            return link_or_sha1
+        return None
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
@@ -1599,6 +1602,11 @@ class InterDirStateTree(InterTree):
                 source_details = NULL_PARENT_DETAILS
             else:
                 source_details = entry[1][source_index]
+            if path_info is not None:
+                link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
+                                                  stat_value=path_info[3])
+            else:
+                link_or_sha1 = None
             target_details = entry[1][target_index]
             source_minikind = source_details[0]
             target_minikind = target_details[0]
@@ -1649,26 +1657,15 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'f':
                             content_change = True
                         else:
-                            # has it changed? fast path: size, slow path: sha1.
-                            if source_details[2] != path_info[3].st_size:
-                                content_change = True
-                            else:
-                                # maybe the same. Get the hash
-                                new_hash = state.get_sha1_for_entry(entry,
-                                                abspath=path_info[4],
-                                                stat_value=path_info[3])
-                                content_change = (new_hash != source_details[1])
-                        target_exec = bool(
-                            stat.S_ISREG(path_info[3].st_mode)
-                            and stat.S_IEXEC & path_info[3].st_mode)
+                            # We could check the size, but we already have the
+                            # sha1 hash.
+                            content_change = (link_or_sha1 != source_details[1])
+                        target_exec = target_details[3]
                     elif target_kind == 'symlink':
                         if source_minikind != 'l':
                             content_change = True
                         else:
-                            # TODO: check symlink supported for windows users
-                            # and grab from target state here.
-                            link_target = os.readlink(path_info[4])
-                            content_change = (link_target != source_details[1])
+                            content_change = (link_or_sha1 != source_details[1])
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]

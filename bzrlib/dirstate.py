@@ -197,6 +197,7 @@ import cStringIO
 import errno
 import os
 import sha
+from stat import S_IEXEC
 import struct
 import time
 import zlib
@@ -1017,55 +1018,82 @@ class DirState(object):
             raise
         return result
 
-    def get_sha1_for_entry(self, entry, abspath, stat_value=None):
-        """Return the sha1 sum for a given file.
+    def update_entry(self, entry, abspath, stat_value=None):
+        """Update the entry based on what is actually on disk.
 
         :param entry: This is the dirblock entry for the file in question.
         :param abspath: The path on disk for this file.
         :param stat_value: (optional) if we already have done a stat on the
             file, re-use it.
-        :return: The sha1 hexdigest of the file (40 bytes)
+        :return: The sha1 hexdigest of the file (40 bytes) or link target of a
+                symlink.
         """
         # This code assumes that the entry passed in is directly held in one of
         # the internal _dirblocks. So the dirblock state must have already been
         # read.
         assert self._dirblock_state != DirState.NOT_IN_MEMORY
-        # TODO: jam 20070301 Because we now allow kind changes (files => dirs)
-        #       we should actually base this check on the stat value, since
-        #       that is the absolute measurement of whether we have a file or
-        #       directory or link. That means that this function might actually
-        #       change an entry from being a file => dir or dir => file, etc.
-        if entry[1][0][0] != 'f':
-            return None
         if stat_value is None:
-            stat_value = os.lstat(abspath)
+            try:
+                # We could inline os.lstat but the common case is that
+                # stat_value will be passed in, not read here.
+                stat_value = self._lstat(abspath, entry)
+            except (OSError, IOError), e:
+                if e.errno in (errno.ENOENT, errno.EACCES,
+                               errno.EPERM):
+                    # The entry is missing, consider it gone
+                    return None
+                raise
+
+        kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
+        try:
+            minikind = DirState._kind_to_minikind[kind]
+        except KeyError: # Unknown kind
+            return None
         packed_stat = pack_stat(stat_value)
-        saved_sha1_digest = entry[1][0][1]
-        saved_file_size = entry[1][0][2]
-        saved_packed_stat = entry[1][0][4]
-        if (packed_stat == saved_packed_stat
-            and saved_sha1_digest != ''
+        (saved_minikind, saved_link_or_sha1, saved_file_size,
+         saved_executable, saved_packed_stat) = entry[1][0]
+
+        if (minikind == saved_minikind
+            and packed_stat == saved_packed_stat
             # size should also be in packed_stat
             and saved_file_size == stat_value.st_size):
             # The stat hasn't changed since we saved, so we can potentially
             # re-use the saved sha hash.
+            if minikind != 'f':
+                return None
+
             cutoff = self._sha_cutoff_time()
             if (stat_value.st_mtime < cutoff
                 and stat_value.st_ctime < cutoff):
                 # Return the existing fingerprint
-                return saved_sha1_digest
+                return saved_link_or_sha1
+
         # If we have gotten this far, that means that we need to actually
-        # process the file.
-        new_sha1_digest = self._sha1_file(abspath)
-        # TODO: jam 20070301 Is it worth checking to see if the new sha is
-        #       actually different? I'm guessing not, because we wouldn't have
-        #       gotten this far otherwise.
-        entry[1][0] = ('f', new_sha1_digest, stat_value.st_size,
-                       entry[1][0][3], # Executable?
-                       packed_stat
-                      )
+        # process this entry.
+        link_or_sha1 = None
+        if minikind == 'f':
+            link_or_sha1 = self._sha1_file(abspath, entry)
+            executable = self._is_executable(stat_value.st_mode,
+                                             saved_executable)
+            entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
+                           executable, packed_stat)
+        elif minikind == 'd':
+            link_or_sha1 = None
+            entry[1][0] = ('d', '', 0, False, packed_stat)
+            if saved_minikind != 'd':
+                # This changed from something into a directory. Make sure we
+                # have a directory block for it. This doesn't happen very
+                # often, so this doesn't have to be super fast.
+                block_index, entry_index, dir_present, file_present = \
+                    self._get_block_entry_index(entry[0][0], entry[0][1], 0)
+                self._ensure_block(block_index, entry_index,
+                                   osutils.pathjoin(entry[0][0], entry[0][1]))
+        elif minikind == 'l':
+            link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
+            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+                           False, packed_stat)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        return new_sha1_digest
+        return link_or_sha1
 
     def _sha_cutoff_time(self):
         """Return cutoff time.
@@ -1073,15 +1101,34 @@ class DirState(object):
         Files modified more recently than this time are at risk of being
         undetectably modified and so can't be cached.
         """
+        # TODO: jam 20070301 Cache the cutoff time as long as we hold a lock.
+        #       time.time() isn't super expensive (approx 3.38us), but
+        #       when you call it 50,000 times it adds up.
+        #       For comparison, os.lstat() costs 7.2us if it is hot.
         return int(time.time()) - 3
 
-    def _sha1_file(self, abspath):
+    def _lstat(self, abspath, entry):
+        """Return the os.lstat value for this path."""
+        return os.lstat(abspath)
+
+    def _sha1_file(self, abspath, entry):
         """Calculate the SHA1 of a file by reading the full text"""
         f = file(abspath, 'rb', buffering=65000)
         try:
             return osutils.sha_file(f)
         finally:
             f.close()
+
+    def _is_executable(self, mode, old_executable):
+        """Is this file executable?"""
+        # TODO: jam 20070301 Win32 should just return the original value
+        return bool(S_IEXEC & mode)
+
+    def _read_link(self, abspath, old_link):
+        """Read the target of a symlink"""
+        # TODO: jam 200700301 On Win32, this could just return the value
+        #       already in memory.
+        return os.readlink(abspath)
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""

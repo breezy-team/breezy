@@ -1005,21 +1005,34 @@ class TestDirstateSortOrder(TestCaseWithTransport):
         self.assertEqual(expected, dirblock_names)
 
 
-class Sha1InstrumentedDirState(dirstate.DirState):
+class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
     def __init__(self, path):
-        super(Sha1InstrumentedDirState, self).__init__(path)
+        super(InstrumentedDirState, self).__init__(path)
         self._time_offset = 0
-        self._sha1_log = []
+        self._log = []
 
     def _sha_cutoff_time(self):
-        timestamp = super(Sha1InstrumentedDirState, self)._sha_cutoff_time()
+        timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         return timestamp + self._time_offset
 
-    def _sha1_file(self, abspath):
-        self._sha1_log.append(abspath)
-        return super(Sha1InstrumentedDirState, self)._sha1_file(abspath)
+    def _sha1_file(self, abspath, entry):
+        self._log.append(('sha1', abspath))
+        return super(InstrumentedDirState, self)._sha1_file(abspath, entry)
+
+    def _read_link(self, abspath, old_link):
+        self._log.append(('read_link', abspath, old_link))
+        return super(InstrumentedDirState, self)._read_link(abspath, old_link)
+
+    def _lstat(self, abspath, entry):
+        self._log.append(('lstat', abspath))
+        return super(InstrumentedDirState, self)._lstat(abspath, entry)
+
+    def _is_executable(self, mode, old_executable):
+        self._log.append(('is_exec', mode, old_executable))
+        return super(InstrumentedDirState, self)._is_executable(mode,
+                                                                old_executable)
 
     def adjust_time(self, secs):
         """Move the clock forward or back.
@@ -1043,16 +1056,21 @@ class _FakeStat(object):
         self.st_mode = mode
 
 
-class TestDirStateGetSha1(TestCaseWithDirState):
-    """Test the DirState.get_sha1 functions"""
+class TestUpdateEntry(TestCaseWithDirState):
+    """Test the DirState.update_entry functions"""
 
-    def test_get_sha1_from_entry(self):
-        state = Sha1InstrumentedDirState.initialize('dirstate')
+    def get_state_with_a(self):
+        """Create a DirState tracking a single object named 'a'"""
+        state = InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
-        self.build_tree(['a'])
-        # Add one where we don't provide the stat or sha already
         state.add('a', 'a-id', 'file', None, '')
         entry = state._get_entry(0, path_utf8='a')
+        return state, entry
+
+    def test_update_entry(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a'])
+        # Add one where we don't provide the stat or sha already
         self.assertEqual(('', 'a', 'a-id'), entry[0])
         self.assertEqual([('f', '', 0, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
@@ -1062,7 +1080,7 @@ class TestDirStateGetSha1(TestCaseWithDirState):
                          state._dirblock_state)
 
         stat_value = os.lstat('a')
-        digest = state.get_sha1_for_entry(entry, abspath='a',
+        digest = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
         packed_stat = dirstate.pack_stat(stat_value)
@@ -1071,7 +1089,8 @@ class TestDirStateGetSha1(TestCaseWithDirState):
         self.assertEqual([('f', digest, 14, False, packed_stat)], entry[1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
-        self.assertEqual(['a'], state._sha1_log)
+        mode = stat_value.st_mode
+        self.assertEqual([('sha1', 'a'), ('is_exec', mode, False)], state._log)
 
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1082,9 +1101,11 @@ class TestDirStateGetSha1(TestCaseWithDirState):
         # guaranteed to look too new.
         state.adjust_time(-10)
 
-        digest = state.get_sha1_for_entry(entry, abspath='a',
+        digest = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
-        self.assertEqual(['a', 'a'], state._sha1_log)
+        self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
+                         ], state._log)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
@@ -1093,29 +1114,158 @@ class TestDirStateGetSha1(TestCaseWithDirState):
         # However, if we move the clock forward so the file is considered
         # "stable", it should just returned the cached value.
         state.adjust_time(20)
-        digest = state.get_sha1_for_entry(entry, abspath='a',
+        digest = state.update_entry(entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
-        self.assertEqual(['a', 'a'], state._sha1_log)
+        self.assertEqual([('sha1', 'a'), ('is_exec', mode, False),
+                          ('sha1', 'a'), ('is_exec', mode, False),
+                         ], state._log)
 
-    def test_get_sha1_from_entry_no_stat_value(self):
+    def test_update_entry_no_stat_value(self):
         """Passing the stat_value is optional."""
-        state = Sha1InstrumentedDirState.initialize('dirstate')
-        self.addCleanup(state.unlock)
+        state, entry = self.get_state_with_a()
         self.build_tree(['a'])
         # Add one where we don't provide the stat or sha already
-        state.add('a', 'a-id', 'file', None, '')
-        entry = state._get_entry(0, path_utf8='a')
-        digest = state.get_sha1_for_entry(entry, abspath='a')
+        digest = state.update_entry(entry, abspath='a')
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6', digest)
 
-    def test_get_sha1_from_entry_dir(self):
-        state = Sha1InstrumentedDirState.initialize('dirstate')
-        self.addCleanup(state.unlock)
+    def test_update_entry_dir(self):
+        state, entry = self.get_state_with_a()
         self.build_tree(['a/'])
-        state.add('a', 'a-id', 'directory', None, '')
-        entry = state._get_entry(0, path_utf8='a')
-        self.assertIs(None, state.get_sha1_for_entry(entry, 'a'))
+        self.assertIs(None, state.update_entry(entry, 'a'))
+
+    def create_and_test_file(self, state, entry):
+        """Create a file at 'a' and verify the state finds it.
+
+        The state should already be versioning *something* at 'a'. This makes
+        sure that state.update_entry recognizes it as a file.
+        """
+        self.build_tree(['a'])
+        stat_value = os.lstat('a')
+        packed_stat = dirstate.pack_stat(stat_value)
+
+        link_or_sha1 = state.update_entry(entry, abspath='a')
+        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
+                         link_or_sha1)
+        self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
+                         entry[1])
+        return packed_stat
+
+    def create_and_test_dir(self, state, entry):
+        """Create a directory at 'a' and verify the state finds it.
+
+        The state should already be versioning *something* at 'a'. This makes
+        sure that state.update_entry recognizes it as a directory.
+        """
+        self.build_tree(['a/'])
+        stat_value = os.lstat('a')
+        packed_stat = dirstate.pack_stat(stat_value)
+
+        link_or_sha1 = state.update_entry(entry, abspath='a')
+        self.assertIs(None, link_or_sha1)
+        self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
+
+        return packed_stat
+
+    def create_and_test_symlink(self, state, entry):
+        """Create a symlink at 'a' and verify the state finds it.
+
+        The state should already be versioning *something* at 'a'. This makes
+        sure that state.update_entry recognizes it as a symlink.
+
+        This should not be called if this platform does not have symlink
+        support.
+        """
+        os.symlink('path/to/foo', 'a')
+
+        stat_value = os.lstat('a')
+        packed_stat = dirstate.pack_stat(stat_value)
+
+        link_or_sha1 = state.update_entry(entry, abspath='a')
+        self.assertEqual('path/to/foo', link_or_sha1)
+        self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
+                         entry[1])
+        return packed_stat
+
+    def test_update_missing_file(self):
+        state, entry = self.get_state_with_a()
+        packed_stat = self.create_and_test_file(state, entry)
+        # Now if we delete the file, update_entry should recover and
+        # return None.
+        os.remove('a')
+        self.assertIs(None, state.update_entry(entry, abspath='a'))
+        # And the record shouldn't be changed.
+        digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        self.assertEqual([('f', digest, 14, False, packed_stat)],
+                         entry[1])
+
+    def test_update_missing_dir(self):
+        state, entry = self.get_state_with_a()
+        packed_stat = self.create_and_test_dir(state, entry)
+        # Now if we delete the directory, update_entry should recover and
+        # return None.
+        os.rmdir('a')
+        self.assertIs(None, state.update_entry(entry, abspath='a'))
+        self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
+
+    def test_update_missing_symlink(self):
+        if not osutils.has_symlinks():
+            return # PlatformDeficiency / TestSkipped
+        state, entry = self.get_state_with_a()
+        packed_stat = self.create_and_test_symlink(state, entry)
+        os.remove('a')
+        self.assertIs(None, state.update_entry(entry, abspath='a'))
+        # And the record shouldn't be changed.
+        self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
+                         entry[1])
+
+    def test_update_file_to_dir(self):
+        """If a file changes to a directory we return None for the sha.
+        We also update the inventory record.
+        """
+        state, entry = self.get_state_with_a()
+        self.create_and_test_file(state, entry)
+        os.remove('a')
+        self.create_and_test_dir(state, entry)
+
+    def test_update_file_to_symlink(self):
+        """File becomes a symlink"""
+        if not osutils.has_symlinks():
+            return # PlatformDeficiency / TestSkipped
+        state, entry = self.get_state_with_a()
+        self.create_and_test_file(state, entry)
+        os.remove('a')
+        self.create_and_test_symlink(state, entry)
+
+    def test_update_dir_to_file(self):
+        """Directory becoming a file updates the entry."""
+        state, entry = self.get_state_with_a()
+        self.create_and_test_dir(state, entry)
+        os.rmdir('a')
+        self.create_and_test_file(state, entry)
+
+    def test_update_dir_to_symlink(self):
+        """Directory becomes a symlink"""
+        if not osutils.has_symlinks():
+            return # PlatformDeficiency / TestSkipped
+        state, entry = self.get_state_with_a()
+        self.create_and_test_dir(state, entry)
+        os.rmdir('a')
+        self.create_and_test_symlink(state, entry)
+
+    def test_update_symlink_to_file(self):
+        """Symlink becomes a file"""
+        state, entry = self.get_state_with_a()
+        self.create_and_test_symlink(state, entry)
+        os.remove('a')
+        self.create_and_test_file(state, entry)
+
+    def test_update_symlink_to_dir(self):
+        """Symlink becomes a directory"""
+        state, entry = self.get_state_with_a()
+        self.create_and_test_symlink(state, entry)
+        os.remove('a')
+        self.create_and_test_dir(state, entry)
 
 
 class TestPackStat(TestCaseWithTransport):
