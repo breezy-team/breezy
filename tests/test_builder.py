@@ -26,9 +26,11 @@ import tarfile
 
 from debian_bundle.changelog import (Changelog, Version)
 
+from bzrlib.errors import NotBranchError
 from bzrlib.tests import (TestCaseInTempDir,
                           TestCaseWithTransport,
                           )
+from bzrlib.workingtree import WorkingTree
 
 from builder import (remove_dir,
                      remove_bzrbuilddeb_dir,
@@ -37,6 +39,7 @@ from builder import (remove_dir,
                      DebNativeBuild,
                      DebSplitBuild,
                      DebMergeBuild,
+                     DebMergeExportUpstreamBuild,
                      )
 import errors
 from properties import BuildProperties
@@ -248,6 +251,43 @@ Files:
 
   def get_builder(self, version=None, wt=None, larstiq=False):
     raise NotImplementedError("You must provide this method in the subclass")
+
+  def check_tarball_contents(self, tarball, expected, basedir=None,
+                             skip_basedir=False, mode=None):
+    """Test that the tarball has certain contents.
+
+    Test that the tarball has exactly expected contents. The basedir
+    is checked for and prepended if it is not None. The mode is the mode
+    used in tarfile.open defaults to r:gz. If skip_basedir is True and
+    basedir is not None then the basedir wont be tested for itself.
+    """
+    if basedir is None:
+      real_expected = expected[:]
+    else:
+      if skip_basedir:
+        real_expected = []
+      else:
+        real_expected = [basedir]
+      for item in expected:
+        real_expected.append(join(basedir, item))
+    extras = []
+    tar = tarfile.open(tarball, 'r:gz')
+    try:
+      for tarinfo in tar:
+        if tarinfo.name in real_expected:
+          index = real_expected.index(tarinfo.name)
+          del real_expected[index:index+1]
+        else:
+            extras.append(tarinfo.name)
+
+      if len(real_expected) > 0:
+        self.fail("Files not found in %s: %s" % (tarball,
+                                                 ", ".join(real_expected)))
+      if len(extras) > 0:
+        self.fail("Files not expected to be found in %s: %s" % (tarball,
+                                                 ", ".join(extras)))
+    finally:
+      tar.close()
 
 class TestDefaultBuilder(BuilderTestCase):
   """Test the default builder (full source, non-native)"""
@@ -523,7 +563,6 @@ class TestSplitBuilder(BuilderTestCase):
   """Test that the split builder does its thing correctly."""
 
   def get_builder(self, wt=None, version=None, larstiq=False):
-    """Returns a native builder."""
     if wt is None:
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
@@ -562,26 +601,10 @@ class TestSplitBuilder(BuilderTestCase):
     builder = self.get_builder(wt=wt)
     builder.prepare()
     builder.export()
-    tar = tarfile.open(join(self.build_dir, self.tarball_name), "r:gz")
+    tarball = join(self.build_dir, self.tarball_name)
     expected = ['a', 'dir/', 'c']
-    extras = []
     basename = self.package_name + '-' + self.upstream_version + '/'
-    real_expected = [basename]
-    for item in expected:
-      real_expected.append(join(basename, item))
-    for tarinfo in tar:
-      if tarinfo.name in real_expected:
-        index = real_expected.index(tarinfo.name)
-        del real_expected[index:index+1]
-      else:
-        extras.append(tarinfo.name)
-
-    if len(real_expected) > 0:
-      self.fail("Files not found in %s: %s" % (self.tarball_name,
-                                               ", ".join(real_expected)))
-    if len(extras) > 0:
-      self.fail("Files not expected to be found in %s: %s" % (self.tarball_name,
-                                                            ", ".join(extras)))
+    self.check_tarball_contents(tarball, expected, basedir=basename)
 
   def test_source_dir_has_full_contents(self):
     """Test that the source dir has the full contents after an export.
@@ -610,7 +633,6 @@ class TestMergeBuilder(BuilderTestCase):
   """Test the merge builder."""
 
   def get_builder(self, wt=None, version=None, larstiq=False):
-    """Returns a native builder."""
     if wt is None:
       wt = self._make_branch()
     changelog = self.make_changelog(version=version)
@@ -744,4 +766,198 @@ class TestMergeBuilder(BuilderTestCase):
       self.failUnlessExists(join(self.source_dir, f))
     for f in ['control', 'unknown']:
       self.failIfExists(join(self.source_dir, f))
+
+
+class TestMergeExportUpstreamBuilder(BuilderTestCase):
+
+  upstream_branch = property(lambda self: join(self.basedir, 'upstream'))
+  upstream_parent = property(lambda self: join(self.basedir, 'parent'))
+
+  def get_builder(self, wt=None, version=None, larstiq=False,
+                  export_revision=None, export_prepull=False,
+                  stop_on_no_change=False):
+    if wt is None:
+      wt = self._make_branch()
+    changelog = self.make_changelog(version=version)
+    properties = self.make_properties(changelog, larstiq)
+    return DebMergeExportUpstreamBuild(properties, wt, self.upstream_branch,
+                                       export_revision, export_prepull,
+                                       stop_on_no_change)
+
+  def make_upstream_branch(self, parent=None):
+    """Make the upstream branch that will be exported."""
+    wt = self.make_branch_and_tree(self.upstream_branch)
+    files = ['a', 'dir/', 'dir/b']
+    newfiles = [join(self.upstream_branch, f) for f in files]
+    self.build_tree(newfiles)
+    wt.add(files)
+    wt.commit('commit one', rev_id='rev1')
+    self.build_tree([join(self.upstream_branch, 'c')])
+    wt.add('c')
+    wt.commit('commit two', rev_id='rev2')
+    self.build_tree([join(self.upstream_branch, f) for f in
+                                          ['added', 'unknown']])
+    wt.add('added')
+    if parent is not None:
+      wt.branch.set_parent(parent)
+    self._upstream_tree = wt
+
+  def make_upstream_parent_no_changes(self):
+    """Makes the upstream parent by just sprouting it off the upstream."""
+    upstream = self._upstream_tree
+    upstream.branch.bzrdir.sprout(os.path.abspath(self.upstream_parent))
+
+  def make_upstream_parent_changes(self):
+    """Makes the upstream parent and adds a commit."""
+    self.make_upstream_parent_no_changes()
+    parent_location = os.path.abspath(self.upstream_parent)
+    parent = WorkingTree.open_containing(parent_location)[0]
+    self.build_tree([join(self.upstream_parent, 'parent'),
+                     join(self.upstream_parent, 'parent2')])
+    parent.add(['parent'])
+    parent.commit('parent commit 1', rev_id='parent1')
+    parent.add(['parent2'])
+    parent.commit('parent commit 2', rev_id='parent2')
+
+  def test__find_tarball(self):
+    """Test that the tarball is located in the build dir."""
+    builder = self.get_builder()
+    self.assertEqual(builder._find_tarball(), join(self.build_dir,
+                     self.tarball_name))
+
+  def test__export_upstream_branch_errors_on_no_branch(self):
+    """Test that an error is raised if there is no branch to export."""
+    wt = self._make_branch()
+    changelog = self.make_changelog()
+    properties = self.make_properties(changelog, False)
+    builder = DebMergeExportUpstreamBuild(properties, wt, None, None, False,
+                                          False)
+    builder.prepare()
+    self.assertRaises(errors.DebianError, builder._export_upstream_branch)
+
+  def test__export_upstream_branch_errors_on_non_branch(self):
+    """Test that the builder wont pull a branch that doesn't exists"""
+    wt = self._make_branch()
+    changelog = self.make_changelog()
+    properties = self.make_properties(changelog, False)
+    builder = DebMergeExportUpstreamBuild(properties, wt, 'invalid', None,
+                                          False, False)
+    builder.prepare()
+    self.assertRaises(NotBranchError, builder._export_upstream_branch)
+
+  def test__export_upstream_branch_errors_export_prepull_no_default(self):
+    """Test that the export_prepull fails if the default location is not set."""
+    builder = self.get_builder(export_prepull=True)
+    self.make_upstream_branch()
+    builder.prepare()
+    self.assertRaises(errors.DebianError, builder._export_upstream_branch)
+
+  def test__export_upstream_branch_errors_invalid_parent(self):
+    """Test that the export_prepull fails if the parent doesn't exist."""
+    builder = self.get_builder(export_prepull=True)
+    self.make_upstream_branch(parent='invalid')
+    builder.prepare()
+    self.assertRaises(NotBranchError, builder._export_upstream_branch)
+
+  def test__export_upstream_branch_stops_on_trivial(self):
+    """Test that StopBuild is raised if there are no changes to pull."""
+    builder = self.get_builder(export_prepull=True, stop_on_no_change=True)
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_no_changes()
+    builder.prepare()
+    self.assertRaises(errors.StopBuild, builder._export_upstream_branch)
+
+  def test__export_upstream_branch_doesnt_stop_on_trivial(self):
+    """Test that the build normally doesn't stop if there is nothing to do."""
+    builder = self.get_builder(export_prepull=True)
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_no_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+
+  def test__export_upstream_branch_doesnt_stop_on_changes(self):
+    """Test the the build doesn't stop if there is something to do."""
+    builder = self.get_builder(export_prepull=True, stop_on_no_change=True)
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+
+  def test__export_upstream_branch_has_correct_files(self):
+    """Test that the upstream tarball has the correct files."""
+    builder = self.get_builder()
+    self.make_upstream_branch()
+    builder.prepare()
+    builder._export_upstream_branch()
+    tarball = join(self.build_dir, self.tarball_name)
+    self.failUnlessExists(tarball)
+    expected = ['a', 'dir/', 'dir/b', 'c']
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    self.check_tarball_contents(tarball, expected, basedir=basename,
+                                skip_basedir=True)
+
+  def test__export_upstream_pull_no_changes_has_correct_files(self):
+    """Test that the upstream tarball has the correct files."""
+    builder = self.get_builder(export_prepull=True)
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_no_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+    tarball = join(self.build_dir, self.tarball_name)
+    self.failUnlessExists(tarball)
+    expected = ['a', 'dir/', 'dir/b', 'c']
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    self.check_tarball_contents(tarball, expected, basedir=basename,
+                                skip_basedir=True)
+
+  def test__export_upstream_pull_changes_has_correct_files(self):
+    """Test that the upstream tarball has the correct files."""
+    builder = self.get_builder(export_prepull=True)
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+    tarball = join(self.build_dir, self.tarball_name)
+    self.failUnlessExists(tarball)
+    expected = ['a', 'dir/', 'dir/b', 'c', 'parent', 'parent2']
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    self.check_tarball_contents(tarball, expected, basedir=basename,
+                                skip_basedir=True)
+
+  def test__export_upstream_selects_correct_revision(self):
+    """Test that if an upstream revision is selected it will be used."""
+    builder = self.get_builder(export_prepull=True,
+                               export_revision='revid:rev1')
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_no_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+    tarball = join(self.build_dir, self.tarball_name)
+    self.failUnlessExists(tarball)
+    expected = ['a', 'dir/', 'dir/b']
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    self.check_tarball_contents(tarball, expected, basedir=basename,
+                                skip_basedir=True)
+
+  def test__export_upstream_can_select_parent_revision(self):
+    """Test that if an upstream parent revision is selected it will be used."""
+    builder = self.get_builder(export_prepull=True,
+                               export_revision='revid:parent1')
+    self.make_upstream_branch(parent=os.path.abspath(self.upstream_parent))
+    self.make_upstream_parent_changes()
+    builder.prepare()
+    builder._export_upstream_branch()
+    tarball = join(self.build_dir, self.tarball_name)
+    self.failUnlessExists(tarball)
+    expected = ['a', 'dir/', 'dir/b', 'c', 'parent']
+    basename = self.package_name + '-' + self.upstream_version + '/'
+    self.check_tarball_contents(tarball, expected, basedir=basename,
+                                skip_basedir=True)
+
+  def test__export_upstream_returns_true(self):
+    """Sanity check that the function returns true."""
+    builder = self.get_builder()
+    self.make_upstream_branch()
+    builder.prepare()
+    self.assertEqual(builder._export_upstream_branch(), True)
 

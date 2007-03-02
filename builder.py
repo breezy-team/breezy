@@ -307,18 +307,21 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
         branch_to = Branch.open(export_upstream)
       location = branch_to.get_parent()
       if location is None:
-        raise DebianError('No default pull location for %s, run "bzr '
-                          +'pull location" in that branch to set one up',
-                          export_upstream)
+        raise DebianError('No default pull location for '+export_upstream+ \
+                          ', run "bzr pull location" in that branch to set ' \
+                          'one up')
       branch_from = Branch.open(location)
       info('Pulling the upstream branch.')
-      if tree_to is not None:
-        count = tree_to.pull(branch_from)
+      if branch_from.last_revision() == branch_to.last_revision():
+        if self._stop_on_no_change:
+          raise StopBuild('No changes to upstream branch')
+        info('Nothing to pull')
       else:
-        count = branch_to.pull(branch_from)
-      info('Pulled %d revision(s).', count)
-      if self._stop_on_no_change:
-        raise StopBuild('No changes to upstream branch')
+        if tree_to is not None:
+          count = tree_to.pull(branch_from)
+        else:
+          count = branch_to.pull(branch_from)
+        info('Pulled %d revision(s).', count)
       b = branch_to
     else:
       b = Branch.open(export_upstream)
