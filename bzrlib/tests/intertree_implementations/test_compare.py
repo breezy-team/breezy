@@ -294,7 +294,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2.add(['a', 'c'], ['a-id', 'c-id'])
 
         tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
+        d = self.intertree_class(tree1, tree2).compare()
         self.assertEqual([], d.added)
         self.assertEqual([(u'a', 'a-id', 'file', True, False),
             (u'c', 'c-id', 'file', True, False)], d.modified)
@@ -319,8 +319,8 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
         self.assertEqual([], d.unchanged)
-        self.assertEqual([(u'dir', 'directory'), (u'file', 'file'),
-            (u'link', 'symlink')], d.unversioned)
+        self.assertEqual([(u'dir', None, 'directory'), (u'file', None, 'file'),
+            (u'link', None, 'symlink')], d.unversioned)
 
 
 class TestIterChanges(TestCaseWithTwoTrees):

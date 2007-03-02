@@ -105,6 +105,10 @@ class Tree(object):
         """
         return []
 
+    def extras(self):
+        """For trees that can have unversioned files, return all such paths."""
+        return []
+
     def get_parent_ids(self):
         """Get the parent ids for this tree. 
 
@@ -558,7 +562,10 @@ class InterTree(InterObject):
             # All files are unversioned, so just return an empty delta
             # _compare_trees would think we want a complete delta
             result = delta.TreeDelta()
-            result.unversioned = list(specific_files)
+            fake_entry = InventoryFile('unused', 'unused', 'unused')
+            result.unversioned = [(path, None,
+                self.target._comparison_data(fake_entry, path)[0]) for path in
+                specific_files]
             return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_files, include_root, extra_trees=extra_trees,

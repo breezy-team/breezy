@@ -148,18 +148,21 @@ def show_tree_status(wt, show_unchanged=None,
                 reporter = _mod_delta.ChangeReporter(old.inventory,
                     output_file=to_file)
                 _mod_delta.report_changes(changes, reporter)
+                short_status_letter = '? '
+                list_paths('unknown', new.unknowns(), specific_files, to_file,
+                           short_status_letter)
             else:
                 delta = new.changes_from(old, want_unchanged=show_unchanged,
-                                      specific_files=specific_files)
+                                      specific_files=specific_files,
+                                      want_unversioned=True)
+                # filter out unknown files. We may want a tree method for
+                # this
+                delta.unversioned = [unversioned for unversioned in
+                    delta.unversioned if not new.is_ignored(unversioned[0])]
                 delta.show(to_file,
                            show_ids=show_ids,
                            show_unchanged=show_unchanged,
-                           short_status=short)
-            short_status_letter = '? '
-            if not short:
-                short_status_letter = ''
-            list_paths('unknown', new.unknowns(), specific_files, to_file,
-                       short_status_letter)
+                           short_status=False)
             conflict_title = False
             # show the new conflicts only for now. XXX: get them from the delta.
             for conflict in new.conflicts():

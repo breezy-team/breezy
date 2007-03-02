@@ -191,6 +191,10 @@ class TreeDelta(object):
             else:
                 show_list(self.unchanged, 'S')
 
+        if self.unversioned:
+            print >>to_file, 'unknown:'
+            show_list(self.unversioned)
+
 
 @deprecated_function(zero_nine)
 def compare_trees(old_tree, new_tree, want_unchanged=False,
@@ -217,7 +221,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             specific_files, extra_trees=extra_trees,
             want_unversioned=want_unversioned):
         if versioned == (False, False):
-            delta.unversioned.append((path, kind[1]))
+            delta.unversioned.append((path, None, kind[1]))
             continue
         if not include_root and (None, None) == parent_id:
             continue
