@@ -345,8 +345,10 @@ class TestCommit(TestCaseWithTransport):
                                                       allow_pointless=True,
                                                       rev_id='B',
                                                       working_tree=wt)
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'B').as_short_text(),
+            def sign(text):
+                return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
+            self.assertEqual(sign(Testament.from_revision(branch.repository,
+                             'B').as_short_text()),
                              branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
