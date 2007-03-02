@@ -1996,17 +1996,24 @@ class InterDirStateTree(InterTree):
                     else:
                         advance_entry = True # reset the advance flaga
                     if advance_path and current_path_info is not None:
-                        if want_unversioned and not path_handled:
-                            new_executable = bool(
-                                stat.S_ISREG(current_path_info[3].st_mode)
-                                and stat.S_IEXEC & current_path_info[3].st_mode)
+                        if not path_handled:
+                            # unversioned in all regards
                             if want_unversioned:
-                                yield (None, current_path_info[0], True,
-                                       (False, False),
-                                       (None, None),
-                                       (None, current_path_info[1]),
-                                       (None, current_path_info[2]),
-                                       (None, new_executable))
+                                new_executable = bool(
+                                    stat.S_ISREG(current_path_info[3].st_mode)
+                                    and stat.S_IEXEC & current_path_info[3].st_mode)
+                                if want_unversioned:
+                                    yield (None, current_path_info[0], True,
+                                           (False, False),
+                                           (None, None),
+                                           (None, current_path_info[1]),
+                                           (None, current_path_info[2]),
+                                           (None, new_executable))
+                            # dont descend into this unversioned path if it is
+                            # a dir
+                            if current_path_info[2] == 'directory':
+                                del current_dir_info[1][path_index]
+                                path_index -= 1
                         path_index += 1
                         if path_index < len(current_dir_info[1]):
                             current_path_info = current_dir_info[1][path_index]
