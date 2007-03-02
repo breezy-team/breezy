@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -269,7 +269,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         self.assertEqual([], wt.get_parent_ids())
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertEqual(['A'], wt.get_parent_ids())
+        parent_ids = wt.get_parent_ids()
+        self.assertEqual(['A'], parent_ids)
+        for parent_id in parent_ids:
+            self.assertIsInstance(parent_id, str)
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
@@ -285,7 +288,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
-        wt.branch.set_revision_history(['A', 'B'])
+        try:
+            wt.branch.set_revision_history(['A', 'B'])
+        except errors.NoSuchRevision, e:
+            self.assertEqual('B', e.revision)
+            raise TestSkipped("Branch format does not permit arbitrary"
+                              " history")
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
         self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
@@ -540,10 +548,28 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(master_tree.branch.revision_history(),
             tree.branch.revision_history())
 
-    def test_merge_modified(self):
+    def test_merge_modified_detects_corruption(self):
+        # FIXME: This doesn't really test that it works; also this is not
+        # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree('master')
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
+
+    def test_merge_modified(self):
+        # merge_modified stores a map from file id to hash
+        tree = self.make_branch_and_tree('tree')
+        d = {'file-id': osutils.sha_string('hello')}
+        self.build_tree_contents([('tree/somefile', 'hello')])
+        tree.lock_write()
+        try:
+            tree.add(['somefile'], ['file-id'])
+            tree.set_merge_modified(d)
+            mm = tree.merge_modified()
+            self.assertEquals(mm, d)
+        finally:
+            tree.unlock()
+        mm = tree.merge_modified()
+        self.assertEquals(mm, d)
 
     def test_conflicts(self):
         from bzrlib.tests.test_conflicts import example_conflicts

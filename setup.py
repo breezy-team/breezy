@@ -99,9 +99,6 @@ class my_install_scripts(install_scripts):
     Create bzr.bat for win32.
     """
     def run(self):
-        import os
-        import sys
-
         install_scripts.run(self)   # standard action
 
         if sys.platform == "win32":
@@ -127,7 +124,8 @@ class my_install_scripts(install_scripts):
             return path
 
     def _win_batch_args(self):
-        if os.name == 'nt':
+        from bzrlib.win32utils import winver
+        if winver == 'Windows NT':
             return '%*'
         else:
             return '%1 %2 %3 %4 %5 %6 %7 %8 %9'

@@ -20,7 +20,7 @@
 import os
 
 from bzrlib import branch, bzrdir
-from bzrlib.repository import RepositoryFormatKnit1
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 

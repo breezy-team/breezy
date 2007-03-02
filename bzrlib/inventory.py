@@ -94,7 +94,7 @@ class InventoryEntry(object):
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
+    (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -295,6 +295,8 @@ class InventoryEntry(object):
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
+        assert isinstance(file_id, (str, None.__class__)), \
+            'bad type %r for %r' % (type(file_id), file_id)
         self.name = name
         self.text_id = text_id
         self.parent_id = parent_id
@@ -384,6 +386,8 @@ class InventoryEntry(object):
             return 'added'
         elif new_entry is None:
             return 'removed'
+        if old_entry.kind != new_entry.kind:
+            return 'modified'
         text_modified, meta_modified = new_entry.detect_changes(old_entry)
         if text_modified or meta_modified:
             modified = True
@@ -873,7 +877,8 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, '', None))
+            assert root_id.__class__ == str
+            self._set_root(InventoryDirectory(root_id, u'', None))
         else:
             self.root = None
             self._byid = {}
@@ -954,6 +959,9 @@ class Inventory(object):
 
         :return: This yields (path, entry) pairs
         """
+        if specific_file_ids:
+            specific_file_ids = [osutils.safe_file_id(fid)
+                                 for fid in specific_file_ids]
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
         if from_dir is None:
@@ -968,7 +976,7 @@ class Inventory(object):
             from_dir = self.root
             if (specific_file_ids is None or 
                 self.root.file_id in specific_file_ids):
-                yield '', self.root
+                yield u'', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
 
@@ -1051,6 +1059,7 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
+        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def __getitem__(self, file_id):
@@ -1062,6 +1071,7 @@ class Inventory(object):
         >>> inv['123123'].name
         'hello.c'
         """
+        file_id = osutils.safe_file_id(file_id)
         try:
             return self._byid[file_id]
         except KeyError:
@@ -1069,9 +1079,11 @@ class Inventory(object):
             raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
+        parent_id = osutils.safe_file_id(parent_id)
         return self[parent_id].children.get(filename)
 
     def add(self, entry):
@@ -1114,6 +1126,8 @@ class Inventory(object):
         if len(parts) == 0:
             if file_id is None:
                 file_id = generate_ids.gen_root_id()
+            else:
+                file_id = osutils.safe_file_id(file_id)
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return self.root
@@ -1137,6 +1151,7 @@ class Inventory(object):
         >>> '123' in inv
         False
         """
+        file_id = osutils.safe_file_id(file_id)
         ie = self[file_id]
 
         assert ie.parent_id is None or \
@@ -1175,6 +1190,7 @@ class Inventory(object):
 
     def _iter_file_id_parents(self, file_id):
         """Yield the parents of file_id up to the root."""
+        file_id = osutils.safe_file_id(file_id)
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
@@ -1191,6 +1207,7 @@ class Inventory(object):
         is equal to the depth of the file in the tree, counting the
         root directory as depth 1.
         """
+        file_id = osutils.safe_file_id(file_id)
         p = []
         for parent in self._iter_file_id_parents(file_id):
             p.insert(0, parent.file_id)
@@ -1205,6 +1222,7 @@ class Inventory(object):
         >>> print i.id2path('foo-id')
         src/foo.c
         """
+        file_id = osutils.safe_file_id(file_id)
         # get all names, skipping root
         return '/'.join(reversed(
             [parent.name for parent in 
@@ -1248,6 +1266,7 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def remove_recursive_id(self, file_id):
@@ -1255,6 +1274,7 @@ class Inventory(object):
         
         :param file_id: A file_id to remove.
         """
+        file_id = osutils.safe_file_id(file_id)
         to_find_delete = [self._byid[file_id]]
         to_delete = []
         while to_find_delete:
@@ -1273,7 +1293,9 @@ class Inventory(object):
 
         This can change either the name, or the parent, or both.
 
-        This does not move the working file."""
+        This does not move the working file.
+        """
+        file_id = osutils.safe_file_id(file_id)
         if not is_valid_name(new_name):
             raise BzrError("not an acceptable filename: %r" % new_name)
 
@@ -1298,6 +1320,7 @@ class Inventory(object):
         file_ie.parent_id = new_parent_id
 
     def is_root(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.root is not None and file_id == self.root.file_id
 
 
@@ -1311,6 +1334,8 @@ def make_entry(kind, name, parent_id, file_id=None):
     """
     if file_id is None:
         file_id = generate_ids.gen_file_id(name)
+    else:
+        file_id = osutils.safe_file_id(file_id)
 
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:

@@ -61,7 +61,8 @@ def decode(utf8_str,
     try:
         return _utf8_to_uni[utf8_str]
     except KeyError:
-        _utf8_to_uni[utf8_str] = unicode_str = _utf8_decode(utf8_str)[0]
+        unicode_str = _utf8_decode(utf8_str)[0]
+        _utf8_to_uni[utf8_str] = unicode_str
         _uni_to_utf8[unicode_str] = utf8_str
         return unicode_str
 
@@ -76,6 +77,29 @@ def get_cached_unicode(unicode_str):
     # the decode() should just be a hash lookup, because the encode() side
     # should add the entry to the maps
     return decode(encode(unicode_str))
+
+
+def get_cached_utf8(utf8_str):
+    """Return a cached version of the utf-8 string.
+
+    Get a cached version of this string (similar to intern()).
+    At present, this will be decoded to ensure it is a utf-8 string. In the
+    future this might change to simply caching the string.
+    """
+    return encode(decode(utf8_str))
+
+
+def get_cached_ascii(ascii_str,
+                     _uni_to_utf8=_unicode_to_utf8_map,
+                     _utf8_to_uni=_utf8_to_unicode_map):
+    """This is a string which is identical in utf-8 and unicode."""
+    # We don't need to do any encoding, but we want _utf8_to_uni to return a
+    # real Unicode string. Unicode and plain strings of this type will have the
+    # same hash, so we can just use it as the key in _uni_to_utf8, but we need
+    # the return value to be different in _utf8_to_uni
+    ascii_str = _uni_to_utf8.setdefault(ascii_str, ascii_str)
+    _utf8_to_uni.setdefault(ascii_str, unicode(ascii_str))
+    return ascii_str
 
 
 def clear_encoding_cache():

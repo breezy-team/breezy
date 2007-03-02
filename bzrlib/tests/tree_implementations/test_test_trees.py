@@ -127,3 +127,93 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
+
+    def test_tree_with_utf8(self):
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_with_utf8(tree)
+
+        revision_id = u'r\xe9v-1'.encode('utf8')
+        root_id = 'TREE_ROOT'
+        bar_id = u'b\xe5r-id'.encode('utf8')
+        foo_id = u'f\xf6-id'.encode('utf8')
+        baz_id = u'b\xe1z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None),
+                        (u'b\xe5r', bar_id, root_id),
+                        (u'f\xf6', foo_id, root_id),
+                        (u'b\xe5r/b\xe1z', baz_id, bar_id),
+                       ]
+        tree.lock_read()
+        try:
+            path_entries = list(tree.iter_entries_by_dir())
+        finally:
+            tree.unlock()
+
+        for expected, (path, ie) in zip(path_and_ids, path_entries):
+            self.assertEqual(expected[0], path) # Paths should match
+            self.assertIsInstance(path, unicode)
+            self.assertEqual(expected[1], ie.file_id)
+            self.assertIsInstance(ie.file_id, str)
+            self.assertEqual(expected[2], ie.parent_id)
+            if expected[2] is not None:
+                self.assertIsInstance(ie.parent_id, str)
+            # WorkingTree's return None for the last modified revision
+            if ie.revision is not None:
+                self.assertIsInstance(ie.revision, str)
+                if expected[0] != '':
+                    # Some trees will preserve the revision id of the tree root,
+                    # but not all will
+                    self.assertEqual(revision_id, ie.revision)
+        self.assertEqual(len(path_and_ids), len(path_entries))
+        get_revision_id = getattr(tree, 'get_revision_id', None)
+        if get_revision_id is not None:
+            self.assertIsInstance(get_revision_id(), str)
+        last_revision = getattr(tree, 'last_revision', None)
+        if last_revision is not None:
+            self.assertIsInstance(last_revision(), str)
+
+    def test_tree_with_merged_utf8(self):
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_with_merged_utf8(tree)
+
+        revision_id_1 = u'r\xe9v-1'.encode('utf8')
+        revision_id_2 = u'r\xe9v-2'.encode('utf8')
+        root_id = 'TREE_ROOT'
+        bar_id = u'b\xe5r-id'.encode('utf8')
+        foo_id = u'f\xf6-id'.encode('utf8')
+        baz_id = u'b\xe1z-id'.encode('utf8')
+        zez_id = u'z\xf7z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None, None),
+                        (u'b\xe5r', bar_id, root_id, revision_id_1),
+                        (u'f\xf6', foo_id, root_id, revision_id_1),
+                        (u'b\xe5r/b\xe1z', baz_id, bar_id, revision_id_1),
+                        (u'b\xe5r/z\xf7z', zez_id, bar_id, revision_id_2),
+                       ]
+        tree.lock_read()
+        try:
+            path_entries = list(tree.iter_entries_by_dir())
+        finally:
+            tree.unlock()
+
+        for expected, (path, ie) in zip(path_and_ids, path_entries):
+            self.assertEqual(expected[0], path) # Paths should match
+            self.assertIsInstance(path, unicode)
+            self.assertEqual(expected[1], ie.file_id)
+            self.assertIsInstance(ie.file_id, str)
+            self.assertEqual(expected[2], ie.parent_id)
+            if expected[2] is not None:
+                self.assertIsInstance(ie.parent_id, str)
+            # WorkingTree's return None for the last modified revision
+            if ie.revision is not None:
+                self.assertIsInstance(ie.revision, str)
+                if expected[0] == '':
+                    # Some trees will preserve the revision id of the tree root,
+                    # but not all will
+                    continue
+                self.assertEqual(expected[3], ie.revision)
+        self.assertEqual(len(path_and_ids), len(path_entries))
+        get_revision_id = getattr(tree, 'get_revision_id', None)
+        if get_revision_id is not None:
+            self.assertIsInstance(get_revision_id(), str)
+        last_revision = getattr(tree, 'last_revision', None)
+        if last_revision is not None:
+            self.assertIsInstance(last_revision(), str)

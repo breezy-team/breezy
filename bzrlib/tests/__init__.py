@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1424,10 +1424,10 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
+            if format is None:
+                format = 'default'
             if isinstance(format, basestring):
                 format = bzrdir.format_registry.make_bzrdir(format)
-            elif format is None:
-                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
@@ -1784,6 +1784,7 @@ def test_suite():
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
+                   'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
@@ -1827,6 +1828,7 @@ def test_suite():
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
+                   'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',
                    'bzrlib.tests.test_textmerge',
@@ -1872,7 +1874,20 @@ def test_suite():
             raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
-            suite.addTest(plugin.test_suite())
+            default_encoding = sys.getdefaultencoding()
+            try:
+                plugin_suite = plugin.test_suite()
+            except ImportError, e:
+                bzrlib.trace.warning(
+                    'Unable to test plugin "%s": %s', name, e)
+            else:
+                suite.addTest(plugin_suite)
+            if default_encoding != sys.getdefaultencoding():
+                bzrlib.trace.warning(
+                    'Plugin "%s" tried to reset default encoding to: %s', name,
+                    sys.getdefaultencoding())
+                reload(sys)
+                sys.setdefaultencoding(default_encoding)
     return suite
 
 

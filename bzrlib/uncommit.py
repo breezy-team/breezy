@@ -14,11 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Remove the last revision from the history of the current branch.
-"""
+"""Remove the last revision from the history of the current branch."""
+
+# TODO: make the guts of this methods on tree, branch.
 
 import os
 
+from bzrlib.branch import Branch
 from bzrlib.errors import BoundBranchOutOfDate
 
 
@@ -51,10 +53,14 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             raise BoundBranchOutOfDate(branch, master)
         if revno is None:
             revno = len(rh)
+        old_revno, old_tip = branch.last_revision_info()
+        new_revno = revno -1
 
         files_to_remove = []
         for r in range(revno-1, len(rh)):
             rev_id = rh.pop()
+            # NB: performance would be better using the revision graph rather
+            # than the whole revision.
             rev = branch.repository.get_revision(rev_id)
             # When we finish popping off the pending merges, we want
             # them to stay in the order that they used to be.
@@ -70,10 +76,19 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             if master is not None:
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
+            new_tip = branch.last_revision()
+            if master is None:
+                hook_local = None
+                hook_master = branch
+            else:
+                hook_local = branch
+                hook_master = master
+            for hook in Branch.hooks['post_uncommit']:
+                hook(hook_local, hook_master, old_revno, old_tip, new_revno,
+                    new_tip)
             if tree is not None:
-                branch_tip = branch.last_revision()
-                if branch_tip is not None:
-                    parents = [branch.last_revision()]
+                if new_tip is not None:
+                    parents = [new_tip]
                 else:
                     parents = []
                 parents.extend(reversed(pending_merges))

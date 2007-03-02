@@ -25,9 +25,9 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/interrepository_implementations/*.py.
 """
 
-from bzrlib.repository import (_legacy_formats,
-                               InterRepositoryTestProviderAdapter,
-                               )
+from bzrlib.repository import (
+    InterRepositoryTestProviderAdapter,
+    )
                             
 from bzrlib.tests import (
                           adapt_modules,

@@ -212,8 +212,7 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
-    win32_path = osutils._nt_normpath(
-        osutils._win32_abspath(path)).replace('\\', '/')
+    win32_path = osutils._win32_abspath(path)
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
         return 'file:' + escape(win32_path)
@@ -405,7 +404,7 @@ def strip_trailing_slash(url):
     if not url.endswith('/'):
         # Nothing to do
         return url
-    if sys.platform == 'win32' and url.startswith('file:///'):
+    if sys.platform == 'win32' and url.startswith('file://'):
         return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)

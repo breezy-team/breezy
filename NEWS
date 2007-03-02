@@ -4,15 +4,18 @@ IN DEVELOPMENT
 
     * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
+    * Support for OS Windows 98. Also .bzr.log on any windows system
+      saved in My Documents folder. (Alexander Belchenko)
+
     * ``bzr mv`` enhanced to support already moved files.
       In the past the mv command would have failed if the source file doesn't
       exist. In this situation ``bzr mv`` would now detect that the file has
       already moved and update the repository accordingly, if the target file
       does exist.
       A new option ``--after`` has been added so that if two files already
-      exist, you could notify Bazaar that you have moved a (versioned) file and
-      replaced it with another. Thus in this case ``bzr move --after`` will
-      only update the Bazaar identifier.
+      exist, you could notify Bazaar that you have moved a (versioned) file
+      and replaced it with another. Thus in this case ``bzr move --after``
+      will only update the Bazaar identifier.
       (Steffen Eichenberg, Marius Kruger)
 
     * ``ls`` now works on treeless branches and remote branches.
@@ -21,16 +24,69 @@ IN DEVELOPMENT
     * ``bzr help global-options`` describes the global options.
       (Aaron Bentley)
 
+    * ``bzr pull --overwrite`` will now correctly overwrite checkouts.
+      (Robert Collins)
+
+    * Files are now allowed to change kind (e.g. from file to symlink).
+      Supported by ``commit``, ``revert`` and ``status``
+      (Aaron Bentley)
+
+    * ``inventory`` and ``unknowns`` hidden in favour of ``ls``
+      (Aaron Bentley)
+
+    * ``bzr help checkouts`` descibes what checkouts are and some possible
+      uses of them. (James Westby, Aaron Bentley)
+
+    * A new ``-d`` option to push, pull and merge overrides the default 
+      directory.  (Martin Pool)
+
+    * Branch format 6: smaller, and potentially faster than format 5.  Supports
+      "append_history_only" mode, where the log view and revnos do not change,
+      except by being added to.  Stores policy settings in
+      ".bzr/branch/branch.conf".
+
+    * append_only branches:  Format 6 branches may be configured so that log
+      view and revnos are always consistent.  Either create the branch using
+      "bzr init --append-revisions-only" or edit the config file as descriped
+      in docs/configuration.txt.
+
+    * rebind: Format 6 branches retain the last-used bind location, so if you
+      "bzr unbind", you can "bzr bind" to bind to the previously-selected
+      bind location.
+
+    * Builtin tags support, created and deleted by the ``tag`` command and
+      stored in the branch.  Tags can be accessed with the revisionspec
+      ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
+      at present.  (Martin Pool)
+
+    * The bzr:// transport now has a well-known port number, 4155, which it will
+      use by default.  (Andrew Bennetts, Martin Pool)
+
+    * Bazaar now looks for user-installed plugins before looking for site-wide
+      plugins. (Jonathan Lange)
+
   INTERNALS:
+
+    * Internally revision ids and file ids are now passed around as utf-8
+      bytestrings, rather than treating them as Unicode strings. This has
+      performance benefits for Knits, since we no longer need to decode the
+      revision id for each line of content, nor for each entry in the index.
+      This will also help with the future dirstate format.
+      (John Arbash Meinel)
 
     * Reserved ids (any revision-id ending in a colon) are rejected by
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
-    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
-      whenever the revision history is set. This allows triggering on e.g.
-      push, pull, commit, and so on. Developed for use with the branchrss
-      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+    * Minor performance improvement by not creating a ProgressBar for
+      every KnitIndex we create. (about 90ms for a bzr.dev tree)
+      (John Arbash Meinel)
+
+    * New easier to use Branch hooks facility. There are five initial hooks,
+      all documented in bzrlib.branch.BranchHooks.__init__ - 'set_rh',
+      'post_push', 'post_pull', 'post_commit', 'post_uncommit'. These hooks
+      fire after the matching operation on a branch has taken place, and were
+      originally added for the branchrss plugin. (Robert Collins)
 
     * New method ``Branch.push()`` which should be used when pushing from a
       branch as it makes performance and policy decisions to match the UI
@@ -46,6 +102,27 @@ IN DEVELOPMENT
       other for code reuse without requiring users to perform file-renaming
       gymnastics. (Robert Collins)
 
+    * New Repository method 'gather_stats' for statistic data collection.
+      This is expected to grow to cover a number of related uses mainly
+      related to bzr info. (Robert Collins)
+
+    * Log formatters are now managed with a registry.
+      ``log.register_formatter`` continues to work, but callers accessing
+      the FORMATTERS dictionary directly will not.
+
+    * Allow a start message to be passed to the ``edit_commit_message``
+      function.  This will be placed in the message offered to the user
+      for editing above the separator. It allows a template commit message
+      to be used more easily. (James Westby)
+
+    * ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
+      you pass a Unicode string rather than an 8-bit string. Callers need
+      to be updated to encode first. (John Arbash Meinel)
+
+    * Branch.push, pull, merge now return Result objects with information
+      about what happened, rather than a scattering of various methods.  These
+      are also passed to the post hooks.  (Martin Pool)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
@@ -54,6 +131,29 @@ IN DEVELOPMENT
 
     * Lock operations no longer hang if they encounter a permission problem.
       (Aaron Bentley)
+
+    * ``bzr push`` can resume a push that was canceled before it finished.
+      Also, it can push even if the target directory exists if you supply
+      the ``--use-existing-dir`` flag.
+      (John Arbash Meinel, #30576, #45504)
+
+    * Fix http proxy authentication when user and an optional
+      password appears in the ``*_proxy`` vars. (Vincent Ladeuil,
+      #83954).
+
+    * ``bzr log branch/file`` works for local treeless branches
+      (Aaron Bentley, #84247)
+
+    * Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
+
+    * Searching location of CA bundle for PyCurl in env variable (CURL_CA_BUNDLE),
+      and on win32 along the PATH. (Alexander Belchenko, #82086)
+
+    * ``bzr init`` works with unicode argument LOCATION.
+      (Alexander Belchenko, #85599)
+
+    * Raise DependencyNotPresent if pycurl do not support https. (Vincent
+      Ladeuil, #85305)
 
   TESTING:
 
@@ -68,7 +168,7 @@ bzr 0.14  2007-01-23
     * ``bzr help global-options`` describes the global options. (Aaron Bentley)
 
   BUG FIXES:
-    
+
     * Skip documentation generation tests if the tools to do so are not
       available. Fixes running selftest for installled copies of bzr. 
       (John Arbash Meinel, #80330)
@@ -110,7 +210,7 @@ bzr 0.14rc1  2007-01-16
     * Policy can be set for each configuration key. This allows keys to be
       inherited properly across configuration entries. For example, this
       should enable you to do::
-        
+
         [/home/user/project]
         push_location = sftp://host/srv/project/
         push_location:policy = appendpath
@@ -207,6 +307,8 @@ bzr 0.14rc1  2007-01-16
 
     * Allow plugins import from zip archives.
       (Alexander Belchenko, #68124)
+
+    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
 
 
 bzr 0.13  2006-12-05

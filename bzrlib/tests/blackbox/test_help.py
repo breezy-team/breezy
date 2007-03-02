@@ -51,6 +51,12 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, 'ancestor:')
         self.assertContainsRe(out, 'branch:')
 
+    def test_help_checkouts(self):
+        """Smoke test for 'bzr help checkouts'"""
+        out, err = self.runbzr('help checkouts')
+        self.assertContainsRe(out, 'checkout')
+        self.assertContainsRe(out, 'lightweight')
+
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]
@@ -85,3 +91,4 @@ class TestHelp(ExternalBase):
         for line in help.split('\n'):
             if '--long' in line:
                 self.assertTrue('show help on all commands' in line)
+
