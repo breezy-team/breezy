@@ -224,8 +224,8 @@ class NoSuchId(BzrError):
 
 class InventoryModified(BzrError):
 
-    _fmt = ("The current inventory for the tree %(tree)r has been modified, "
-            "so a clean inventory cannot be read without data loss.")
+    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
+            " so a clean inventory cannot be read without data loss.")
 
     internal_error = True
 
@@ -343,7 +343,7 @@ class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
     _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
-         "%(extra)s")
+            "%(extra)s")
 
     def __init__(self, source, dest, extra=None):
         BzrError.__init__(self)
@@ -787,8 +787,8 @@ class NoSuchRevision(BzrError):
 
 class NotLeftParentDescendant(BzrError):
 
-    _fmt = "Revision %(old_revision)s is not the left parent of"\
-        " %(new_revision)s, but branch %(branch_location)s expects this"
+    _fmt = ("Revision %(old_revision)s is not the left parent of"
+            " %(new_revision)s, but branch %(branch_location)s expects this")
 
     internal_error = True
 
@@ -826,9 +826,9 @@ class HistoryMissing(BzrError):
 
 class AppendRevisionsOnlyViolation(BzrError):
 
-    _fmt = 'Operation denied because it would change the main history, '\
-           'which is not permitted by the append_revisions_only setting on'\
-           ' branch "%(location)s".'
+    _fmt = ('Operation denied because it would change the main history,'
+           ' which is not permitted by the append_revisions_only setting on'
+           ' branch "%(location)s".')
 
     def __init__(self, location):
        import bzrlib.urlutils as urlutils
@@ -1146,8 +1146,8 @@ class TransportError(BzrError):
 class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
-            " Be sure to finish_writing and finish_reading on the "
-            "current request that is open.")
+            " Be sure to finish_writing and finish_reading on the"
+            " current request that is open.")
 
     internal_error = True
 
@@ -1821,12 +1821,13 @@ class NoSuchTag(BzrError):
 
 class TagsNotSupported(BzrError):
 
-    _fmt = "Tags not supported by %(branch)s; you may be able to use bzr upgrade."
+    _fmt = ("Tags not supported by %(branch)s;"
+            " you may be able to use bzr upgrade.")
 
     def __init__(self, branch):
         self.branch = branch
 
-        
+
 class TagAlreadyExists(BzrError):
 
     _fmt = "Tag %(tag_name)s already exists."
