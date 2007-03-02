@@ -18,6 +18,7 @@
 
 import bisect
 import os
+import time
 
 from bzrlib import (
     dirstate,
@@ -1318,6 +1319,28 @@ class TestUpdateEntry(TestCaseWithDirState):
         self.create_and_test_symlink(state, entry)
         os.remove('a')
         self.create_and_test_dir(state, entry)
+
+    def test__is_executable_win32(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a'])
+
+        # Make sure we are using the win32 implementation of _is_executable
+        state._is_executable = state._is_executable_win32
+
+        # The file on disk is not executable, but we are marking it as though
+        # it is. With _is_executable_win32 we ignore what is on disk.
+        entry[1][0] = ('f', '', 0, True, dirstate.DirState.NULLSTAT)
+
+        stat_value = os.lstat('a')
+        packed_stat = dirstate.pack_stat(stat_value)
+
+        state.adjust_time(-10) # Make sure everything is new
+        # Make sure it wants to kkkkkkkk
+        state.update_entry(entry, abspath='a', stat_value=stat_value)
+
+        # The row is updated, but the executable bit stays set.
+        digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        self.assertEqual([('f', digest, 14, True, packed_stat)], entry[1])
 
 
 class TestPackStat(TestCaseWithTransport):

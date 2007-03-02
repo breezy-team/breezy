@@ -193,12 +193,11 @@ desired.
 
 import bisect
 import codecs
-import cStringIO
 import errno
 import os
-import sha
 from stat import S_IEXEC
 import struct
+import sys
 import time
 import zlib
 
@@ -208,12 +207,6 @@ from bzrlib import (
     lock,
     osutils,
     trace,
-    )
-from bzrlib.osutils import (
-    pathjoin,
-    sha_file,
-    sha_string,
-    walkdirs,
     )
 
 
@@ -1125,13 +1118,21 @@ class DirState(object):
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
-        # TODO: jam 20070301 Win32 should just return the original value
         return bool(S_IEXEC & mode)
+
+    def _is_executable_win32(self, mode, old_executable):
+        """On win32 the executable bit is stored in the dirstate."""
+        return old_executable
+
+    if sys.platform == 'win32':
+        _is_executable = _is_executable_win32
 
     def _read_link(self, abspath, old_link):
         """Read the target of a symlink"""
         # TODO: jam 200700301 On Win32, this could just return the value
-        #       already in memory.
+        #       already in memory. However, this really needs to be done at a
+        #       higher level, because there either won't be anything on disk,
+        #       or the thing on disk will be a file.
         return os.readlink(abspath)
 
     def get_ghosts(self):
