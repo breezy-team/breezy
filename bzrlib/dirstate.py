@@ -20,7 +20,7 @@ Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
 lines by NL. The field delimiters are ommitted in the grammar, line delimiters
 are not - this is done for clarity of reading. All string data is in utf8.
 
-MINIKIND = "f" | "d" | "l" | "a" | "r";
+MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
 NL = "\n";
 NULL = "\0";
 WHOLE_NUMBER = {digit}, digit;
@@ -1353,14 +1353,18 @@ class DirState(object):
                 entry_index, present = self._find_entry_index(key, block)
                 if present:
                     entry = self._dirblocks[block_index][1][entry_index]
-                    if entry[1][tree_index][0] in 'fdl':
+                    if entry[1][tree_index][0] in 'fdlt':
                         # this is the result we are looking for: the  
                         # real home of this file_id in this tree.
                         return entry
                     if entry[1][tree_index][0] == 'a':
                         # there is no home for this entry in this tree
                         return None, None
-                    assert entry[1][tree_index][0] == 'r'
+                    assert entry[1][tree_index][0] == 'r', \
+                        "entry %r has invalid minikind %r for tree %r" \
+                        % (entry,
+                           entry[1][tree_index][0],
+                           tree_index)
                     real_path = entry[1][tree_index][1]
                     return self._get_entry(tree_index, fileid_utf8=fileid_utf8,
                         path_utf8=real_path)
