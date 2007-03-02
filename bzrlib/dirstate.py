@@ -1059,7 +1059,7 @@ class DirState(object):
             and saved_file_size == stat_value.st_size):
             # The stat hasn't changed since we saved, so we can potentially
             # re-use the saved sha hash.
-            if minikind != 'f':
+            if minikind == 'd':
                 return None
 
             cutoff = self._sha_cutoff_time()

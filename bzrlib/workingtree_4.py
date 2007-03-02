@@ -1604,7 +1604,7 @@ class InterDirStateTree(InterTree):
                 source_details = entry[1][source_index]
             target_details = entry[1][target_index]
             target_minikind = target_details[0]
-            if path_info is not None and target_minikind not in 'ar':
+            if path_info is not None and target_minikind in 'fdl':
                 assert target_index == 0
                 link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
                                                   stat_value=path_info[3])
@@ -1664,6 +1664,7 @@ class InterDirStateTree(InterTree):
                             # We could check the size, but we already have the
                             # sha1 hash.
                             content_change = (link_or_sha1 != source_details[1])
+                        # Target details is updated at update_entry time
                         target_exec = target_details[3]
                     elif target_kind == 'symlink':
                         if source_minikind != 'l':
@@ -1706,7 +1707,6 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                #path_unicode = utf8_decode(path)[0]
                 return ((entry[0][2], path, content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
@@ -1719,20 +1719,17 @@ class InterDirStateTree(InterTree):
                     path = pathjoin(entry[0][0], entry[0][1])
                     # parent id is the entry for the path in the target tree
                     # TODO: these are the same for an entire directory: cache em.
-                    parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                    parent_id = state._get_entry(target_index,
+                                                 path_utf8=entry[0][0])[0][2]
                     if parent_id == entry[0][2]:
                         parent_id = None
-                    # basename
-                    new_executable = bool(
-                        stat.S_ISREG(path_info[3].st_mode)
-                        and stat.S_IEXEC & path_info[3].st_mode)
-                    #path_unicode = utf8_decode(path)[0]
+                    target_exec = target_details[3]
                     return ((entry[0][2], path, True,
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
                             (None, path_info[2]),
-                            (None, new_executable)),)
+                            (None, target_exec)),)
                 else:
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
@@ -1747,7 +1744,6 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                #old_path_unicode = utf8_decode(old_path)[0]
                 return ((entry[0][2], old_path, True,
                         (True, False),
                         (parent_id, None),

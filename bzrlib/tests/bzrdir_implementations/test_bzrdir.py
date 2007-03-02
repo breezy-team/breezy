@@ -415,6 +415,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
