@@ -18,9 +18,12 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import doctest
 from unittest import TestSuite
 
 from bzrlib.tests import TestUtil
+
+import changes
 
 def test_suite():
     loader = TestUtil.TestLoader()
@@ -29,6 +32,7 @@ def test_suite():
             'test_builder',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
+    suite.addTest(doctest.DocTestSuite(changes))
 
     return suite
 
