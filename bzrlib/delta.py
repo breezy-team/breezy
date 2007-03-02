@@ -38,6 +38,8 @@ class TreeDelta(object):
         (path, id, kind, text_modified, meta_modified)
     unchanged
         (path, id, kind)
+    unversioned
+        (path, kind)
 
     Each id is listed only once.
 
@@ -59,6 +61,7 @@ class TreeDelta(object):
         self.kind_changed = []
         self.modified = []
         self.unchanged = []
+        self.unversioned = []
 
     def __eq__(self, other):
         if not isinstance(other, TreeDelta):
@@ -68,16 +71,18 @@ class TreeDelta(object):
                and self.renamed == other.renamed \
                and self.modified == other.modified \
                and self.unchanged == other.unchanged \
-               and self.kind_changed == other.kind_changed
+               and self.kind_changed == other.kind_changed \
+               and self.unversioned == other.unversioned
 
     def __ne__(self, other):
         return not (self == other)
 
     def __repr__(self):
         return "TreeDelta(added=%r, removed=%r, renamed=%r," \
-            " kind_changed=%r, modified=%r, unchanged=%r)" % (self.added,
+            " kind_changed=%r, modified=%r, unchanged=%r," \
+            " unversioned=%r)" % (self.added,
             self.removed, self.renamed, self.kind_changed, self.modified,
-            self.unchanged)
+            self.unchanged, self.unversioned)
 
     def has_changed(self):
         return bool(self.modified
@@ -201,13 +206,19 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
-                   include_root, extra_trees=None):
+                   include_root, extra_trees=None,
+                   want_unversioned=False):
+    """Worker function that implements Tree.changes_from."""
     delta = TreeDelta()
     # mutter('start compare_trees')
 
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree._iter_changes(old_tree, want_unchanged,
-            specific_files, extra_trees=extra_trees):
+            specific_files, extra_trees=extra_trees,
+            want_unversioned=want_unversioned):
+        if versioned == (False, False):
+            delta.unversioned.append((path, kind[1]))
+            continue
         if not include_root and (None, None) == parent_id:
             continue
         fully_present = tuple((versioned[x] and kind[x] is not None) for

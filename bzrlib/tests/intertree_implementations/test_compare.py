@@ -38,7 +38,6 @@ from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 #       (it should not follow the link)
 # TODO: test specific_files when the target tree has a file and the source a
 #       dir with children, same id and same path. 
-# TODO: test specific_files with a new unversioned path.
 
 class TestCompare(TestCaseWithTwoTrees):
 
@@ -285,6 +284,43 @@ class TestCompare(TestCaseWithTwoTrees):
             self.intertree_class(tree1, tree2).compare,
             specific_files=['d'],
             require_versioned=True)
+
+    def test_default_ignores_unversioned_files(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree1/c',
+                         'tree2/a', 'tree2/b', 'tree2/c'])
+        tree1.add(['a', 'c'], ['a-id', 'c-id'])
+        tree2.add(['a', 'c'], ['a-id', 'c-id'])
+
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
+        self.assertEqual([], d.added)
+        self.assertEqual([(u'a', 'a-id', 'file', True, False),
+            (u'c', 'c-id', 'file', True, False)], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+        self.assertEqual([], d.unversioned)
+
+    def test_unversioned_paths_in_tree(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree2/file', 'tree2/dir/'])
+        # try:
+        os.symlink('target', 'tree2/link')
+        links_supported = True
+        # except ???:
+        #   links_supported = False
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+        self.assertEqual([(u'dir', 'directory'), (u'file', 'file'),
+            (u'link', 'symlink')], d.unversioned)
 
 
 class TestIterChanges(TestCaseWithTwoTrees):

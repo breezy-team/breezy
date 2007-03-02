@@ -58,7 +58,8 @@ class Tree(object):
     """
     
     def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -73,6 +74,7 @@ class Tree(object):
         :param require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
+        :param want_unversioned: Scan for unversioned paths.
 
         The comparison will be performed by an InterTree object looked up on 
         self and other.
@@ -85,7 +87,8 @@ class Tree(object):
             specific_files=specific_files,
             extra_trees=extra_trees,
             require_versioned=require_versioned,
-            include_root=include_root
+            include_root=include_root,
+            want_unversioned=want_unversioned,
             )
 
     def _iter_changes(self, from_tree, include_unchanged=False,
@@ -93,7 +96,7 @@ class Tree(object):
                      require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
         return intertree._iter_changes(include_unchanged, specific_files, pb,
-            extra_trees, require_versioned)
+            extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -525,7 +528,8 @@ class InterTree(InterObject):
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -540,6 +544,7 @@ class InterTree(InterObject):
         :param require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
+        :param want_unversioned: Scan for unversioned paths.
         """
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
@@ -552,9 +557,12 @@ class InterTree(InterObject):
         if specific_files and not specific_file_ids:
             # All files are unversioned, so just return an empty delta
             # _compare_trees would think we want a complete delta
-            return delta.TreeDelta()
+            result = delta.TreeDelta()
+            result.unversioned = list(specific_files)
+            return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_files, include_root, extra_trees=extra_trees)
+            specific_files, include_root, extra_trees=extra_trees,
+            want_unversioned=want_unversioned)
 
     def _iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
