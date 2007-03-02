@@ -52,3 +52,5 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         finally:
             gpg.GPGStrategy = old_strategy
         self.assertContainsRe(md_text, '^-----BEGIN PSEUDO-SIGNED CONTENT')
+        md_text = self.run_bzr('merge-directive', '-r', '-2')[0]
+        self.assertNotContainsRe(md_text, "\\+e")

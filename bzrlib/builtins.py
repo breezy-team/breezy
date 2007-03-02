@@ -3181,10 +3181,10 @@ class cmd_merge_directive(Command):
     takes_options = [RegistryOption('patch-type',
         'The type of patch to include in the directive',
         _directive_patch_type, value_switches=True),
-        Option('sign', help='GPG-sign the directive')]
+        Option('sign', help='GPG-sign the directive'), 'revision']
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
-            sign=False):
+            sign=False, revision=None):
         branch = Branch.open('.')
         config_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
@@ -3206,8 +3206,16 @@ class cmd_merge_directive(Command):
             public_branch = Branch.open(public_branch)
         if patch_type != "bundle" and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or known')
+        if revision is not None:
+            if len(revision) != 1:
+                raise errors.BzrCommandError('bzr merge-directive takes '
+                                             'exactly one revision identifier')
+            else:
+                revision_id = revision[0].in_history(branch).rev_id
+        else:
+            revision_id = branch.last_revision()
         directive = merge_directive.MergeDirective.from_objects(
-            branch.repository, branch.last_revision(), time.time(),
+            branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
             public_branch=public_branch, patch_type=patch_type)
         if sign:
