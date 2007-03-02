@@ -3167,14 +3167,14 @@ class cmd_serve(Command):
         server.serve()
 
 
-_directive_patch_type = registry.Registry()
-_directive_patch_type.register('bundle', 'bundle', 'Bazaar revision bundle')
-_directive_patch_type.register('diff', 'diff', 'Normal unified diff')
-_directive_patch_type.register('plain', None, 'No patch, just directive')
-
-
 class cmd_merge_directive(Command):
     """Generate a merge directive auto-merge tools."""
+
+    _directive_patch_type = registry.Registry()
+    _directive_patch_type.register('bundle', 'bundle',
+                                   'Bazaar revision bundle')
+    _directive_patch_type.register('diff', 'diff', 'Normal unified diff')
+    _directive_patch_type.register('plain', None, 'No patch, just directive')
 
     takes_args = ['submit_branch?', 'public_branch?']
 
