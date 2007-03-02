@@ -5,8 +5,8 @@ Serving Bazaar with FastCGI
 **This feature is EXPERIMENTAL and is NOT SECURE.  It will allow access to
 arbitrary files on your server.**
 
-This document describes one way to setup a Bazaar HTTP smart server, using
-Apache 2.0 and FastCGI or mod_python.
+This document describes one way to set up a Bazaar HTTP smart server,
+using Apache 2.0 and FastCGI or mod_python.
 
 Example
 =======

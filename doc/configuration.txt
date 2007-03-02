@@ -25,18 +25,18 @@ Bazaar when parsing ini files.
 Section Headers
 ---------------
 A section header is a word enclosed in brackets that starts at the begining
-of a line.  A typical section headers look like this::
+of a line.  A typical section header looks like this::
 
     [DEFAULT]
 
-The only valid section header for bazaar.conf is [DEFAULT], which is case
-sensitive. The default section provides for setting variables which can be
-overridden with the branch config file.
+The only valid section header for bazaar.conf is [DEFAULT], which is
+case sensitive. The default section provides for setting variables
+which can be overridden with the branch config file.
 
-For ``locations.conf``, the variables from the section with the longest matching
-section header are used to the exclusion of other potentially valid section
-headers. A section header uses the path for the branch as the section
-header. Some examples include::
+For ``locations.conf``, the variables from the section with the
+longest matching section header are used to the exclusion of other
+potentially valid section headers. A section header uses the path for
+the branch as the section header. Some examples include::
 
     [http://mybranches.isp.com/~jdoe/branchdir]
     [/home/jdoe/branches/]
@@ -89,7 +89,7 @@ The main configuration file, bazaar.conf
 The main configuration file, ``$HOME/.bazaar/bazaar.conf``, only allows one
 section called ``[DEFAULT]``. This default section contains the default
 configuration options for all branches. The default section can be
-overriden by providing a branch specific section in ``locations.conf``.
+overriden by providing a branch-specific section in ``locations.conf``.
 
 A typical ``bazaar.conf`` section often looks like the following::
 
@@ -158,15 +158,16 @@ when-required
     signed revisions.
 
 never
-    Refuse to sign newly committed revisions, even if the branch requires signatures.
+    Refuse to sign newly committed revisions, even if the branch
+    requires signatures.
 
 recurse
 -------
-Only useful in ``locations.conf``. Defines whether or not the configuration for
-this section applies to subdirectories:
+Only useful in ``locations.conf``. Defines whether or not the
+configuration for this section applies to subdirectories:
 
 true
-    (default) This section applies to subdirectories.
+    (default) This section applies to subdirectories as well.
 
 false
     This section only applies to the branch at this directory and not
@@ -189,7 +190,7 @@ may be manually set in ``locations.conf`` or ``bazaar.conf``.
 
 append_revisions_only
 ---------------------
-If set to "true" then revisions can only be appended to the log, not
+If set to "True" then revisions can only be appended to the log, not
 removed.  A branch with this setting enabled can only pull from
 another branch if the other branch's log is a longer version of its
 own.  This is normally set by ``bzr init --append-revisions-only``.

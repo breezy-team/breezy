@@ -42,9 +42,13 @@ The aliases defined above would be used like so: ::
 Rules for Aliases
 =================
 
- * You can override parts of the options given in an alias by overriding it.
-   For example, if you run ``lastlog -r-5..``, you will only get five
-   line-based log entries instead of 10.
+ * You can override a portion of the options given in an alias by
+   specifying the new part on the command-line.  For example, if
+   you run ``lastlog -r-5..``, you will only get five line-based log
+   entries instead of 10.  Note that all boolean options have an
+   implicit inverse, so you can override the commit alias with
+   ``commit --no-strict``.
+
  * Aliases can override the standard behaviour of existing commands by giving
    an alias name that is the same as the orignal command. For example, default
    commit is changed with ``commit=commit --strict``.

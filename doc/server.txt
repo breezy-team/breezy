@@ -18,20 +18,21 @@ enter the URL to the branch in the Bazaar command you are running.::
 
 Bazaar supports writing over FTP, SFTP and via a plugin over HTTP-WebDAV.
 
-High performance server
+High-performance server
 =======================
 
 **In development**
 
-The high performance server is currently in development.  The version of Bazaar
+The high-performance server is currently in development.  The version of Bazaar
 that accompanies this documentation is able to use the servers underlying
-protocol as a dumb server.  This is the first stage high performance server
+protocol as a dumb server.  This is the first stage high-performance server
 functionality to be delivered.
 
-The current high performance server provides read-only access by
-default for security. To enable read-write access, run it with
-``--allow-writes``. When using the SSH access method, bzr
-automatically runs with with the ``--allow-writes`` option.
+To maintain the highest security possible, the current
+high-performance server provides read-only access by default.  To
+enable read-write access, run it with ``--allow-writes``. When using
+the SSH access method, bzr automatically runs with with the
+``--allow-writes`` option.
 
 The server can be configured to run in three different ways:
 
@@ -42,13 +43,13 @@ Using Bazaar over SSH requires no special configuration on the server::
 
     BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
 
-The ``BZR_REMOTE_PATH`` environment variable adjusts how `bzr` will be invoked on
-the remote system.  By default, just `bzr` will be invoked, which requires the
-`bzr` executable to be on the default search path.
+The ``BZR_REMOTE_PATH`` environment variable adjusts how `bzr` will be
+invoked on the remote system.  By default, just `bzr` will be invoked,
+which requires the `bzr` executable to be on the default search path.
 
-The ``bzr+ssh://`` URL scheme only supports absolute paths from the root of the
-filesystem.  Future versions are expected to support ``~`` in the same way as
-``sftp://`` URLs.
+The ``bzr+ssh://`` URL scheme only supports absolute paths from the
+root of the filesystem.  Future versions are expected to support ``~``
+in the same way as ``sftp://`` URLs.
 
 inetd
 -----
@@ -69,9 +70,9 @@ the ``--directory`` option given in inetd.conf::
 Dedicated
 ---------
 
-This mode has the same path and URL behaviour as the inetd mode.  To run as a
-specific user, you should use ``su`` or login as that user.  This example runs ``bzr
-serve`` on `localhost` port `1234`.
+This mode has the same path and URL behaviour as the inetd mode.  To
+run as a specific user, you should use ``su`` or login as that user.
+This example runs ``bzr serve`` on `localhost` port `1234`.
 
 server::
 

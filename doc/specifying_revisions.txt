@@ -23,7 +23,7 @@ You can omit one bound like::
     $ bzr log -r ..4
 
 Note:
-    Omitting the lower bound doesn't work on currently released versions.
+    Omitting the lower bound doesn't work on versions of ``bzr`` prior to 0.14.
 
 Other commands, like ``bzr cat`` take only one revision, not a range, like::
 
@@ -82,8 +82,8 @@ revno, last
 revid
 -----
 
-**revid** allows specifying a an internal revision ID, as show by ``bzr
-testament`` and some other commands.
+**revid** allows specifying a an internal revision ID, as shown by ``bzr
+log`` and some other commands.
 
 For example::
 

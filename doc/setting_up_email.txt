@@ -14,15 +14,19 @@ you have to trust the people involved in your project.  Additionally,
 the email address in a revision gives others a way to contact the
 author of a revision for credit and/or blame.  :)
 
-How to setup your email address 
-===============================
+How to set up your email address 
+================================
 Bazaar will try to guess an email address based on your username and the
 hostname if none is set.  This will probably not be what you want, so three
 ways exist to tell Bazaar what email to use:
 
- * You can set your email in the default configuration file,
- * You can set emails per-branch in the branch specific ini file,
- * Or your email can be set by an environmental variable.
+You can set your email in one of several configuration files.  Like
+other configuration values, you can set it in ``bazaar.conf`` as a
+general setting.  If you want to override the value for a particular
+branch, or set of branches, you can use ``locations.conf``.
+``.bzr/branch/branch.conf`` will also work, but will cause all commits
+to that branch to use the same email address, even if someone else
+does them.
 
 The order of precedence is
 
@@ -58,7 +62,8 @@ Setting email via default configuration file
 To use the default ini file, create the file ``$HOME/.bazaar/bazaar.conf`` (on
 Windows this is ``%APPDATA%\bazaar\2.0\bazaar.conf``) and set an email address
 as shown below.  Please note that the word DEFAULT is case sensitive, and
-must be in upper-case. ::
+must be in upper-case.
+::
 
     [DEFAULT]
     email=Your Name <name@isp.com>
@@ -69,8 +74,9 @@ For more information on the ini file format, see ConfiguringBzr.
 Setting email on a per-branch basis
 ===================================
 
-The second approach is to set email on a branch by branch basis by using the
-``$HOME/.bazaar/locations.conf`` ini file, thusly::
+The second approach is to set email on a branch by branch basis by
+using the ``$HOME/.bazaar/locations.conf`` configuration file,
+thusly::
 
     [/some/branch/location]
     email=Your Name <name@other-isp.com>
@@ -80,13 +86,13 @@ overriding the default specified in the ``bazaar.conf`` above.
 
 Setting email via environment variable
 --------------------------------------
-The final method Bazaar will use is checking for the ``$BZR_EMAIL`` and
-``$EMAIL`` environment variables.  Generally, one would use this method to
-override the email in a script context.  If you would like to set a general
-default, then please see the ini methods above.
+The final method Bazaar will use is checking for the ``$BZR_EMAIL``
+and ``$EMAIL`` environment variables.  Generally, you would use this
+method to override the email in a script context.  If you would like
+to set a general default, then please see the ini methods above.
 
-Concerns for spam
-=================
+Concerns about spam
+==============--===
 Some people want to avoid sharing their email address so as not to get
 spam.  Bazaar will never disclose your email address, unless you publish
 a branch or changeset in a public location.  It's recommended that you

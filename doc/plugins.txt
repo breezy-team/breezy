@@ -14,7 +14,7 @@ developers to test new features for Bazaar prior to inclusion in the
 official codebase. Plugins can do a variety of things, including
 overriding commands, adding new commands, providing additional network
 transports, or customizing log output. The sky is the limit for the
-customizations that can be done through plugins.
+customization that can be done through plugins.
 
 Where to find Plugins 
 =====================

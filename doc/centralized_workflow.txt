@@ -56,11 +56,11 @@ optimization, it is possible for related branches to combine their storage
 needs so that you do not need to copy around all of this history
 information whenever you create a new branch.
 
-The best way to do this is to create a `Shared Repository`_. In general,
-branches will share their storage if they exist in a subdirectory of a
-`Shared Repository`_.  So let's setup a `Shared Repository`_ in our home
-directory, thus all branches we create underneath will share their history
-storage.
+The best way to do this is to create a `Shared Repository`_. In
+general, branches will share their storage if they exist in a
+subdirectory of a `Shared Repository`_.  So let's set up a `Shared
+Repository`_ in our home directory, thus all branches we create
+underneath will share their history storage.
 
 ::
 
@@ -88,18 +88,18 @@ called ``centralhost``. Again, we will use a
 
 You can think of this step as similar to setting up a new cvsroot, or
 subversion repository.  The {{{--no-trees}}} option tells bzr to not
-populate the directory with a working tree.  This is appropriate since
-no one will be making changes directly in the branches within the
-central repository.
+populate the directory with a working tree.  This is appropriate,
+since no one will be making changes directly in the branches within
+the central repository.
 
 
-Placing an existing project into Bazaar
+Migrating an existing project to Bazaar
 =======================================
 
 Now that we have a repository, let's create a versioned project. Most of
 the time, you will already have some code that you are working with,
 that you now want to version using Bazaar_. If the code was originally
-in source control there are many ways to convert the project to Bazaar_
+in source control, there are many ways to convert the project to Bazaar_
 without losing any history. However, this is outside the scope of this
 document. See `Tracking Upstream`_ for some possibilities (section
 "Converting and keeping history").
@@ -144,16 +144,16 @@ working on.
   % bzr commit -m "Initial import of Sigil"
 
 
-In the previous section, we created an empty branch (the ``/sigil`` branch)
-on ``centralhost``, and then checkout out this empty branch onto our
-workstation to add files from our existing project.
-There are many ways to setup your working directory, but the steps above
+In the previous section, we created an empty branch (the ``/sigil``
+branch) on ``centralhost``, and then checkout out this empty branch
+onto our workstation to add files from our existing project.  There
+are many ways to set up your working directory, but the steps above
 make it easy to handle working with feature/bugfix branches. And one
 of the strong points of Bazaar_ is how well it works with branches.
 
 At this point, because you have a 'checkout' of the remote branch, any
-commits you make in ``~/work/sigil/dev/`` will automatically be saved both locally,
-and on ``centralhost``.
+commits you make in ``~/work/sigil/dev/`` will automatically be saved
+both locally, and on ``centralhost``.
 
 
 Developer N: Getting a working copy of the project
@@ -298,17 +298,18 @@ Shared Repository
 -----------------
 
 Bazaar_ has the concept of a "Shared Repository". This is similar to
-the concept of a repository in other RCSs. For example, in Subversion
-you have a remote repository, which is where all of the history is
-stored, and locally you don't have any history information, only a
-checkout of the working tree files. Note that "Shared" in this context
-means shared between branches. It *may* be shared between people, but
-standalone branches can also be shared between people.
+the traditional concept of a repository in other RCSs like CVS and
+Subversion. For example, in Subversion you have a remote repository,
+which is where all of the history is stored, and locally you don't
+have any history information, only a checkout of the working tree
+files. Note that "Shared" in this context means shared between
+branches. It *may* be shared between people, but standalone branches
+can also be shared between people.
 
 In Bazaar_ terms, a "Shared Repository" is a location where multiple
 branches can **share** their revision history information. In order to
 support decentralized workflows, it is possible for every branch to
-maintain its own revision history information. But this is often
+store its own revision history information. But this is often
 inefficient, since related branches share history, and they might as
 well share the storage as well.
 

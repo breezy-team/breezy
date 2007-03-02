@@ -91,10 +91,10 @@ a **revision** of the directory tree whenever the user asks.
 
 Revision control software such as Bazaar can do much more than just
 storage and performing undo.  For example, with Bazaar a developer can
-take the modifications in one branch of software and apply them to
-another related branch -- even if those changes exist in a branch owned
-by somebody else. This allows developers to cooperate without giving write
-access to the repository.
+take the modifications in one branch of software and apply them to a
+related branch -- even if those changes exist in a branch owned by
+somebody else. This allows developers to cooperate without giving
+write access to the repository.
 
 Bazaar remembers the ''ancestry'' of a revision: the previous revisions
 that it is based upon.  A single revision may have more than one direct
@@ -158,7 +158,7 @@ Creating a branch
 History is by default stored in the .bzr directory of the branch. In a
 future version of Bazaar, there will be a facility to store it in a
 separate repository, which may be remote.  We create a new branch by
-running **bzr init** in an existing directory::
+running ``bzr init`` in an existing directory::
 
     % mkdir tutorial
     % cd tutorial
@@ -202,12 +202,13 @@ project.
 
 You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  bzr also supports
-accessing branches over http, for example::
+accessing branches over http and sftp, for example::
 
     % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
+    % bzr log sftp://bazaar-vcs.org/bzr/bzr.dev/
 
-By installing bzr plugins you can also access branches using the sftp or
-rsync protocols.
+By installing bzr plugins you can also access branches using the rsync
+protocol.
 
 Reviewing changes
 =================
@@ -504,17 +505,16 @@ the filename of the file containing your changes is appended with
 ".THIS" and the filename with the changes from the other tree is
 appended with ".OTHER".  Using a program such as kdiff3, you can now
 comfortably merge them into one file.  In order to commit you have to
-rename the merged file (".THIS") to the original file name and delete
-the other two temporary files (".BASE" and ".OTHER"). As long as there
+rename the merged file (".THIS") to the original file name.  To
+complete the conflict resolution you must use the resolve command,
+which will remove the ".OTHER" and ".BASE" files.  As long as there
 exist files with .BASE, .THIS or .OTHER the commit command will
-complain.  To complete the conflict resolution you must use the
-resolve command.
+report an error.
 
 ::
 
   % kdiff3 file.BASE file.OTHER file.THIS
   % mv file.THIS file
-  % rm file.BASE file.OTHER
   % bzr resolve file
 
 [**TODO**: explain conflict markers within files]
@@ -528,13 +528,14 @@ server.  Just mirror the files to your server, including the .bzr
 directory.  One can push a branch (or the changes for a branch) by one of
 the following three methods:
 
-* Rsync:   rsync -avrz LOCALBRANCH  servername.com/this/directory/here
+* Rsync:   rsync -avrz LOCALBRANCH  servername.com/path/to/directory
 
   (or any other tool for publishing a directory to a web site.)
 
-* bzr push sftp://servername.com/this/directory/here 
+* bzr push sftp://servername.com/path/to/directory 
 
-  (The destination directory must already exist)
+  (The destination directory must already exist unless the
+  ``--create-prefix`` option is used.)
 
 * The rspush plugin that comes with BzrTools
 
