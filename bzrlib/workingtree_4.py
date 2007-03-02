@@ -1602,14 +1602,18 @@ class InterDirStateTree(InterTree):
                 source_details = NULL_PARENT_DETAILS
             else:
                 source_details = entry[1][source_index]
-            if path_info is not None:
+            target_details = entry[1][target_index]
+            target_minikind = target_details[0]
+            if path_info is not None and target_minikind not in 'ar':
+                assert target_index == 0
                 link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
                                                   stat_value=path_info[3])
+                # The entry may have been modified by update_entry
+                target_details = entry[1][target_index]
+                target_minikind = target_details[0]
             else:
                 link_or_sha1 = None
-            target_details = entry[1][target_index]
             source_minikind = source_details[0]
-            target_minikind = target_details[0]
             if source_minikind in 'fdlr' and target_minikind in 'fdl':
                 # claimed content in both: diff
                 #   r    | fdl    |      | add source to search, add id path move and perform
