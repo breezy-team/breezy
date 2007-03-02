@@ -67,6 +67,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Refactored SSH vendor registration into SSHVendorManager class.
+      (Dmitry Vasiliev)
+
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
       performance benefits for Knits, since we no longer need to decode the
