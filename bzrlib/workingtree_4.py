@@ -361,8 +361,11 @@ class WorkingTree4(WorkingTree3):
 
         file_abspath = self.abspath(path)
         state = self.current_dirstate()
-        return state.get_sha1_for_entry(entry, file_abspath,
-                                        stat_value=stat_value)
+        link_or_sha1 = state.update_entry(entry, file_abspath,
+                                          stat_value=stat_value)
+        if entry[1][0][0] == 'f':
+            return link_or_sha1
+        return None
 
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
@@ -1603,8 +1606,17 @@ class InterDirStateTree(InterTree):
             else:
                 source_details = entry[1][source_index]
             target_details = entry[1][target_index]
-            source_minikind = source_details[0]
             target_minikind = target_details[0]
+            if path_info is not None and target_minikind in 'fdl':
+                assert target_index == 0
+                link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
+                                                  stat_value=path_info[3])
+                # The entry may have been modified by update_entry
+                target_details = entry[1][target_index]
+                target_minikind = target_details[0]
+            else:
+                link_or_sha1 = None
+            source_minikind = source_details[0]
             if source_minikind in 'fdlr' and target_minikind in 'fdl':
                 # claimed content in both: diff
                 #   r    | fdl    |      | add source to search, add id path move and perform
@@ -1652,15 +1664,10 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'f':
                             content_change = True
                         else:
-                            # has it changed? fast path: size, slow path: sha1.
-                            if source_details[2] != path_info[3].st_size:
-                                content_change = True
-                            else:
-                                # maybe the same. Get the hash
-                                new_hash = state.get_sha1_for_entry(entry,
-                                                abspath=path_info[4],
-                                                stat_value=path_info[3])
-                                content_change = (new_hash != source_details[1])
+                            # We could check the size, but we already have the
+                            # sha1 hash.
+                            content_change = (link_or_sha1 != source_details[1])
+                        # Target details is updated at update_entry time
                         target_exec = bool(
                             stat.S_ISREG(path_info[3].st_mode)
                             and stat.S_IEXEC & path_info[3].st_mode)
@@ -1668,10 +1675,7 @@ class InterDirStateTree(InterTree):
                         if source_minikind != 'l':
                             content_change = True
                         else:
-                            # TODO: check symlink supported for windows users
-                            # and grab from target state here.
-                            link_target = os.readlink(path_info[4])
-                            content_change = (link_target != source_details[1])
+                            content_change = (link_or_sha1 != source_details[1])
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
@@ -1708,7 +1712,6 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                #path_unicode = utf8_decode(path)[0]
                 return ((entry[0][2], path, content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
@@ -1721,20 +1724,19 @@ class InterDirStateTree(InterTree):
                     path = pathjoin(entry[0][0], entry[0][1])
                     # parent id is the entry for the path in the target tree
                     # TODO: these are the same for an entire directory: cache em.
-                    parent_id = state._get_entry(target_index, path_utf8=entry[0][0])[0][2]
+                    parent_id = state._get_entry(target_index,
+                                                 path_utf8=entry[0][0])[0][2]
                     if parent_id == entry[0][2]:
                         parent_id = None
-                    # basename
-                    new_executable = bool(
+                    target_exec = bool(
                         stat.S_ISREG(path_info[3].st_mode)
                         and stat.S_IEXEC & path_info[3].st_mode)
-                    #path_unicode = utf8_decode(path)[0]
                     return ((entry[0][2], path, True,
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
                             (None, path_info[2]),
-                            (None, new_executable)),)
+                            (None, target_exec)),)
                 else:
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
@@ -1749,7 +1751,6 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                #old_path_unicode = utf8_decode(old_path)[0]
                 return ((entry[0][2], old_path, True,
                         (True, False),
                         (parent_id, None),
