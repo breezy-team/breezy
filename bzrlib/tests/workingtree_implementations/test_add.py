@@ -22,6 +22,7 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
+    tests,
     )
 from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
