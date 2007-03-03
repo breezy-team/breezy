@@ -423,3 +423,44 @@ class TestInstrumentedTree(TestCase):
         self.assertEqual(['t', 'u'], tree._locks)
         self.assertRaises(TypeError, tree.method_that_raises, 'foo')
         self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
+
+
+class TestAutoResolve(TestCaseWithTransport):
+
+    def test_auto_resolve(self):
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', 'hello_id')
+        base.commit('Hello')
+        other = base.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'hELLO')])
+        other.commit('Case switch')
+        this = base.bzrdir.sprout('this').open_workingtree()
+        self.failUnlessExists('this/hello')
+        self.build_tree_contents([('this/hello', 'Hello World')])
+        this.commit('Add World')
+        this.merge_from_branch(other.branch)
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '=======')])
+        this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        remaining, resolved = this.auto_resolve()
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         this.conflicts())
+        self.assertEqual([], resolved)
+        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        remaining, resolved = this.auto_resolve()
+        self.assertEqual([], this.conflicts())
+        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+                         resolved)
+        self.failIfExists('this/hello.BASE')

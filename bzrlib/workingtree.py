@@ -1794,6 +1794,37 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                              file_id=self.path2id(conflicted)))
         return conflicts
 
+    @needs_tree_write_lock
+    def auto_resolve(self):
+        """Automatically resolve text conflicts according to contents.
+
+        Only text conflicts are auto_resolvable. Files with no conflict markers
+        are considered 'resolved', because bzr always puts conflict markers
+        into files that have text conflicts.  The corresponding .THIS .BASE and
+        .OTHER files are deleted, as per 'resolve'.
+        :return: a tuple of ConflictLists: (un_resolved, resolved).
+        """
+        un_resolved = _mod_conflicts.ConflictList()
+        resolved = _mod_conflicts.ConflictList()
+        conflict_re = re.compile('^(<{7}|={7}|>{7})')
+        for conflict in self.conflicts():
+            if conflict.typestring != 'text conflict':
+                un_resolved.append(conflict)
+                continue
+            my_file = open(self.id2abspath(conflict.file_id), 'rb')
+            try:
+                for line in my_file:
+                    if conflict_re.search(line):
+                        un_resolved.append(conflict)
+                        break
+                else:
+                    resolved.append(conflict)
+            finally:
+                my_file.close()
+        resolved.remove_files(self)
+        self.set_conflicts(un_resolved)
+        return un_resolved, resolved
+
 
 class WorkingTree2(WorkingTree):
     """This is the Format 2 working tree.
