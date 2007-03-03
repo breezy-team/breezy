@@ -219,7 +219,7 @@ class LogWalker(object):
         :param path: Path to check for changes
         :param revnum: First revision to check
         """
-        assert isinstance(path, str)
+        assert isinstance(path, basestring)
         assert isinstance(revnum, int) and revnum >= 0
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
