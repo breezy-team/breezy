@@ -106,16 +106,33 @@ class EncodingBenchmark(Benchmark):
 
     def test_encode_1k_by_1k_unicode(self):
         """Test encoding 5 revisions 100k times"""
-        revisions = ['\u062c\u0648\u062c\u0648' +
+        revisions = [u'\u062c\u0648\u062c\u0648' +
                      unicode(osutils.rand_chars(60)) for x in xrange(1000)]
         self.time(self.encode_multi, revisions, 1000)
 
     def test_encode_1k_by_1k_unicode_cached(self):
         """Test encoding 5 revisions 100k times"""
-        revisions = ['\u062c\u0648\u062c\u0648' +
+        revisions = [u'\u062c\u0648\u062c\u0648' +
                      unicode(osutils.rand_chars(60)) for x in xrange(1000)]
         self.time(self.encode_cached_multi, revisions, 1000)
 
+    def test_encode_500K_by_1_ascii(self):
+        revisions = [unicode("test%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_multi, revisions, 1)
+
+    def test_encode_500K_by_1_ascii_cached(self):
+        revisions = [unicode("test%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_cached_multi, revisions, 1)
+
+    def test_encode_500K_by_1_unicode(self):
+        revisions = [u'\u062c\u0648\u062c\u0648' +
+                     unicode("%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_multi, revisions, 1)
+
+    def test_encode_500K_by_1_unicode_cached(self):
+        revisions = [u'\u062c\u0648\u062c\u0648' +
+                     unicode("%07d" % x) for x in xrange(500000)]
+        self.time(self.encode_cached_multi, revisions, 1)
 
 class DecodingBenchmarks(Benchmark):
 
@@ -173,14 +190,34 @@ class DecodingBenchmarks(Benchmark):
 
     def test_decode_1k_by_1k_unicode(self):
         """Test decoding 5 revisions 100k times"""
-        revisions = [('\u062c\u0648\u062c\u0648' +
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
                       unicode(osutils.rand_chars(60))).encode('utf8')
                      for x in xrange(1000)]
         self.time(self.decode_multi, revisions, 1000)
 
     def test_decode_1k_by_1k_unicode_cached(self):
         """Test decoding 5 revisions 100k times"""
-        revisions = [('\u062c\u0648\u062c\u0648' +
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
                       unicode(osutils.rand_chars(60))).encode('utf8')
                      for x in xrange(1000)]
         self.time(self.decode_cached_multi, revisions, 1000)
+
+    def test_decode_500K_by_1_ascii(self):
+        revisions = [("test%07d" % x) for x in xrange(500000)]
+        self.time(self.decode_multi, revisions, 1)
+
+    def test_decode_500K_by_1_ascii_cached(self):
+        revisions = [("test%07d" % x) for x in xrange(500000)]
+        self.time(self.decode_cached_multi, revisions, 1)
+
+    def test_decode_500K_by_1_unicode(self):
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
+                      unicode("%07d" % x)).encode('utf-8')
+                     for x in xrange(500000)]
+        self.time(self.decode_multi, revisions, 1)
+
+    def test_decode_500K_by_1_unicode_cached(self):
+        revisions = [(u'\u062c\u0648\u062c\u0648' +
+                      unicode("%07d" % x)).encode('utf-8')
+                     for x in xrange(500000)]
+        self.time(self.decode_cached_multi, revisions, 1)

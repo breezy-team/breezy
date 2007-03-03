@@ -31,6 +31,7 @@ def read_bundle_from_url(url):
     :return: A BundleReader, may raise NotABundle if the target 
             is not a proper bundle.
     """
+    url = urlutils.normalize_url(url)
     url, filename = urlutils.split(url, exclude_trailing_slash=False)
     if not filename:
         # A path to a directory was passed in

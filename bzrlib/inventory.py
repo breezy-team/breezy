@@ -39,8 +39,10 @@ import tarfile
 import bzrlib
 from bzrlib import (
     errors,
+    generate_ids,
     osutils,
     symbol_versioning,
+    workingtree,
     )
 """)
 
@@ -92,7 +94,7 @@ class InventoryEntry(object):
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
+    (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -293,6 +295,8 @@ class InventoryEntry(object):
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
+        assert isinstance(file_id, (str, None.__class__)), \
+            'bad type %r for %r' % (type(file_id), file_id)
         self.name = name
         self.text_id = text_id
         self.parent_id = parent_id
@@ -382,6 +386,8 @@ class InventoryEntry(object):
             return 'added'
         elif new_entry is None:
             return 'removed'
+        if old_entry.kind != new_entry.kind:
+            return 'modified'
         text_modified, meta_modified = new_entry.detect_changes(old_entry)
         if text_modified or meta_modified:
             modified = True
@@ -871,7 +877,8 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, '', None))
+            assert root_id.__class__ == str
+            self._set_root(InventoryDirectory(root_id, u'', None))
         else:
             self.root = None
             self._byid = {}
@@ -942,7 +949,7 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def iter_entries_by_dir(self, from_dir=None):
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
         """Iterate over the entries in a directory first order.
 
         This returns all entries for a directory before returning
@@ -952,15 +959,42 @@ class Inventory(object):
 
         :return: This yields (path, entry) pairs
         """
+        if specific_file_ids:
+            specific_file_ids = [osutils.safe_file_id(fid)
+                                 for fid in specific_file_ids]
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
         if from_dir is None:
             if self.root is None:
                 return
+            # Optimize a common case
+            if specific_file_ids is not None and len(specific_file_ids) == 1:
+                file_id = list(specific_file_ids)[0]
+                if file_id in self:
+                    yield self.id2path(file_id), self[file_id]
+                return 
             from_dir = self.root
-            yield '', self.root
+            if (specific_file_ids is None or 
+                self.root.file_id in specific_file_ids):
+                yield u'', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
+
+        if specific_file_ids is not None:
+            parents = set()
+            def add_ancestors(file_id):
+                if file_id not in self:
+                    return
+                parent_id = self[file_id].parent_id
+                if parent_id is None:
+                    return
+                if parent_id not in parents:
+                    parents.add(parent_id)
+                    add_ancestors(parent_id)
+            for file_id in specific_file_ids:
+                add_ancestors(file_id)
+        else:
+            parents = None
             
         stack = [(u'', from_dir)]
         while stack:
@@ -971,10 +1005,13 @@ class Inventory(object):
 
                 child_relpath = cur_relpath + child_name
 
-                yield child_relpath, child_ie
+                if (specific_file_ids is None or 
+                    child_ie.file_id in specific_file_ids):
+                    yield child_relpath, child_ie
 
                 if child_ie.kind == 'directory':
-                    child_dirs.append((child_relpath+'/', child_ie))
+                    if parents is None or child_ie.file_id in parents:
+                        child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
 
     def entries(self):
@@ -1022,6 +1059,7 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
+        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def __getitem__(self, file_id):
@@ -1033,6 +1071,7 @@ class Inventory(object):
         >>> inv['123123'].name
         'hello.c'
         """
+        file_id = osutils.safe_file_id(file_id)
         try:
             return self._byid[file_id]
         except KeyError:
@@ -1040,9 +1079,11 @@ class Inventory(object):
             raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
+        parent_id = osutils.safe_file_id(parent_id)
         return self[parent_id].children.get(filename)
 
     def add(self, entry):
@@ -1084,10 +1125,12 @@ class Inventory(object):
 
         if len(parts) == 0:
             if file_id is None:
-                file_id = bzrlib.workingtree.gen_root_id()
+                file_id = generate_ids.gen_root_id()
+            else:
+                file_id = osutils.safe_file_id(file_id)
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
-            return
+            return self.root
         else:
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
@@ -1108,6 +1151,7 @@ class Inventory(object):
         >>> '123' in inv
         False
         """
+        file_id = osutils.safe_file_id(file_id)
         ie = self[file_id]
 
         assert ie.parent_id is None or \
@@ -1146,6 +1190,7 @@ class Inventory(object):
 
     def _iter_file_id_parents(self, file_id):
         """Yield the parents of file_id up to the root."""
+        file_id = osutils.safe_file_id(file_id)
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
@@ -1162,6 +1207,7 @@ class Inventory(object):
         is equal to the depth of the file in the tree, counting the
         root directory as depth 1.
         """
+        file_id = osutils.safe_file_id(file_id)
         p = []
         for parent in self._iter_file_id_parents(file_id):
             p.insert(0, parent.file_id)
@@ -1176,6 +1222,7 @@ class Inventory(object):
         >>> print i.id2path('foo-id')
         src/foo.c
         """
+        file_id = osutils.safe_file_id(file_id)
         # get all names, skipping root
         return '/'.join(reversed(
             [parent.name for parent in 
@@ -1219,6 +1266,7 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._byid)
 
     def remove_recursive_id(self, file_id):
@@ -1226,6 +1274,7 @@ class Inventory(object):
         
         :param file_id: A file_id to remove.
         """
+        file_id = osutils.safe_file_id(file_id)
         to_find_delete = [self._byid[file_id]]
         to_delete = []
         while to_find_delete:
@@ -1244,7 +1293,9 @@ class Inventory(object):
 
         This can change either the name, or the parent, or both.
 
-        This does not move the working file."""
+        This does not move the working file.
+        """
+        file_id = osutils.safe_file_id(file_id)
         if not is_valid_name(new_name):
             raise BzrError("not an acceptable filename: %r" % new_name)
 
@@ -1269,6 +1320,7 @@ class Inventory(object):
         file_ie.parent_id = new_parent_id
 
     def is_root(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.root is not None and file_id == self.root.file_id
 
 
@@ -1281,7 +1333,9 @@ def make_entry(kind, name, parent_id, file_id=None):
     :param file_id: the file_id to use. if None, one will be created.
     """
     if file_id is None:
-        file_id = bzrlib.workingtree.gen_file_id(name)
+        file_id = generate_ids.gen_file_id(name)
+    else:
+        file_id = osutils.safe_file_id(file_id)
 
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:

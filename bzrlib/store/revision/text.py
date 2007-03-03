@@ -24,8 +24,11 @@ requires access to a inventory weave to produce object graphs.
 from cStringIO import StringIO
 
 
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    osutils,
+    )
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import VersionedFileStore
@@ -64,11 +67,16 @@ class TextRevisionStore(RevisionStore):
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
-        self.text_store.add(revision_as_file, revision.revision_id)
+        # TODO: jam 20070209 text_store.add() still requires a unicode file id
+        unicode_revision_id = cache_utf8.decode(revision.revision_id)
+        self.text_store.add(revision_as_file, unicode_revision_id)
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore.add_revision_signature_text()."""
-        self.text_store.add(StringIO(signature_text), revision_id, "sig")
+        # TODO: jam 20070209 text_store.add() still requires a unicode file id
+        revision_id_unicode = cache_utf8.decode(revision_id)
+        self.text_store.add(StringIO(signature_text), revision_id_unicode,
+                            "sig")
 
     def all_revision_ids(self, transaction):
         """See RevisionStore.all_revision_ids()."""
@@ -77,6 +85,7 @@ class TextRevisionStore(RevisionStore):
         assert self.text_store.listable()
         result_graph = {}
         for rev_id in self.text_store:
+            rev_id = osutils.safe_revision_id(rev_id)
             rev = self.get_revision(rev_id, transaction)
             result_graph[rev_id] = rev.parent_ids
         # remove ghosts
@@ -100,13 +109,13 @@ class TextRevisionStore(RevisionStore):
             xml_file.close()
             assert r.revision_id == revision_id
             revisions.append(r)
-        return revisions 
+        return revisions
 
     def _get_revision_xml_file(self, revision_id):
         try:
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def _get_signature_text(self, revision_id, transaction):
         """See RevisionStore._get_signature_text()."""
@@ -119,7 +128,7 @@ class TextRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.text_store.has_id(revision_id))
- 
+
     def _has_signature(self, revision_id, transaction):
         """See RevisionStore._has_signature()."""
         return self.text_store.has_id(revision_id, suffix='sig')

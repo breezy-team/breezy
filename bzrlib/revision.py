@@ -27,6 +27,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
         )
 
 NULL_REVISION="null:"
+CURRENT_REVISION="current:"
 
 
 class Revision(object):
@@ -453,3 +454,17 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
         next = best_ancestor(next)
     path.reverse()
     return path
+
+
+def is_reserved_id(revision_id):
+    """Determine whether a revision id is reserved
+
+    :return: True if the revision is is reserved, False otherwise
+    """
+    return isinstance(revision_id, basestring) and revision_id.endswith(':')
+
+
+def check_not_reserved_id(revision_id):
+    """Raise ReservedId if the supplied revision_id is reserved"""
+    if is_reserved_id(revision_id):
+        raise errors.ReservedId(revision_id)

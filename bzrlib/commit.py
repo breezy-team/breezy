@@ -15,15 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# XXX: Can we do any better about making interrupted commits change
-# nothing?  
-
-# TODO: Separate 'prepare' phase where we find a list of potentially
-# committed files.  We then can then pause the commit to prompt for a
-# commit message, knowing the summary will be the same as what's
-# actually used for the commit.  (But perhaps simpler to simply get
-# the tree status, then use that for a selective commit?)
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working inventory.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -55,12 +46,6 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
-# TODO: Do checks that the tree can be committed *before* running the 
-# editor; this should include checks for a pointless commit and for 
-# unknown or missing files.
-
-# TODO: If commit fails, leave the message in a file somewhere.
-
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
@@ -73,8 +58,10 @@ from cStringIO import StringIO
 
 from bzrlib import (
     errors,
+    inventory,
     tree,
     )
+from bzrlib.branch import Branch
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
@@ -92,6 +79,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -184,13 +172,14 @@ class Commit(object):
                working_tree=None,
                local=False,
                reporter=None,
-               config=None):
+               config=None,
+               message_callback=None):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
                   working_tree instead
 
-        message -- the commit message, a mandatory parameter
+        message -- the commit message (it or message_callback is required)
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -225,8 +214,14 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
-        if message is None:
-            raise BzrError("The message keyword parameter is required for commit().")
+        if message_callback is None:
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.decode(bzrlib.user_encoding)
+                message_callback = lambda x: message
+            else:
+                raise BzrError("The message or message_callback keyword"
+                               " parameter is required for commit().")
 
         self.bound_branch = None
         self.local = local
@@ -259,12 +254,16 @@ class Commit(object):
                 # this is so that we still consier the master branch
                 # - in a checkout scenario the tree may have no
                 # parents but the branch may do.
-                first_tree_parent = None
-            master_last = self.master_branch.last_revision()
-            if (master_last is not None and
-                master_last != first_tree_parent):
-                raise errors.OutOfDateTree(self.work_tree)
-    
+                first_tree_parent = bzrlib.revision.NULL_REVISION
+            old_revno, master_last = self.master_branch.last_revision_info()
+            if master_last != first_tree_parent:
+                if master_last != bzrlib.revision.NULL_REVISION:
+                    raise errors.OutOfDateTree(self.work_tree)
+            if self.branch.repository.has_revision(first_tree_parent):
+                new_revno = old_revno + 1
+            else:
+                # ghost parents never appear in revision history.
+                new_revno = 1
             if strict:
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
@@ -272,12 +271,6 @@ class Commit(object):
                    
             if self.config is None:
                 self.config = self.branch.get_config()
-      
-            if isinstance(message, str):
-                message = message.decode(bzrlib.user_encoding)
-            assert isinstance(message, unicode), type(message)
-            self.message = message
-            self._escape_commit_message()
 
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
@@ -317,6 +310,11 @@ class Commit(object):
             # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
+            message = message_callback(self)
+            assert isinstance(message, unicode), type(message)
+            self.message = message
+            self._escape_commit_message()
+
             self.rev_id = self.builder.commit(self.message)
             self._emit_progress_update()
             # revision data is in the local branch now.
@@ -329,16 +327,19 @@ class Commit(object):
                 # now the master has the revision data
                 # 'commit' to the master first so a timeout here causes the local
                 # branch to be out of date
-                self.master_branch.append_revision(self.rev_id)
+                self.master_branch.set_last_revision_info(new_revno,
+                                                          self.rev_id)
 
             # and now do the commit locally.
-            self.branch.append_revision(self.rev_id)
+            self.branch.set_last_revision_info(new_revno, self.rev_id)
 
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
-            self.reporter.completed(self.branch.revno(), self.rev_id)
+            self.reporter.completed(new_revno, self.rev_id)
+            # old style commit hooks - should be deprecated ? (obsoleted in
+            # 0.15)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny
@@ -347,6 +348,23 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
+            # new style commit hooks:
+            if not self.bound_branch:
+                hook_master = self.branch
+                hook_local = None
+            else:
+                hook_master = self.master_branch
+                hook_local = self.branch
+            # With bound branches, when the master is behind the local branch,
+            # the 'old_revno' and old_revid values here are incorrect.
+            # XXX: FIXME ^. RBC 20060206
+            if self.parents:
+                old_revid = self.parents[0]
+            else:
+                old_revid = bzrlib.revision.NULL_REVISION
+            for hook in Branch.hooks['post_commit']:
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                    self.rev_id)
             self._emit_progress_update()
         finally:
             self._cleanup()
@@ -436,9 +454,9 @@ class Commit(object):
         #       to local.
         
         # Make sure the local branch is identical to the master
-        master_rh = self.master_branch.revision_history()
-        local_rh = self.branch.revision_history()
-        if local_rh != master_rh:
+        master_info = self.master_branch.last_revision_info()
+        local_info = self.branch.last_revision_info()
+        if local_info != master_info:
             raise errors.BoundBranchOutOfDate(self.branch,
                     self.master_branch)
 
@@ -506,8 +524,8 @@ class Commit(object):
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
         self.parents = self.work_tree.get_parent_ids()
-        self.parent_invs = []
-        for revision in self.parents:
+        self.parent_invs = [self.basis_inv]
+        for revision in self.parents[1:]:
             if self.branch.repository.has_revision(revision):
                 mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)
@@ -568,6 +586,13 @@ class Commit(object):
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
+            try:
+                kind = self.work_tree.kind(file_id)
+                if kind != new_ie.kind:
+                    new_ie = inventory.make_entry(kind, new_ie.name,
+                                                  new_ie.parent_id, file_id)
+            except errors.NoSuchFile:
+                pass
             # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):

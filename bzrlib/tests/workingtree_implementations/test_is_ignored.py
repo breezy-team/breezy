@@ -30,6 +30,11 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.build_tree_contents([
             ('.bzrignore', './rootdir\n'
                            'randomfile*\n'
+                           '*bar\n'
+                           '?foo\n'
+                           '*.~*\n'
+                           'dir1/*f1\n'
+                           'dir1/?f2\n'
                            'path/from/ro?t\n'
                            'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
                            'dos\r\n'
@@ -62,6 +67,23 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         self.assertEqual('dos', tree.is_ignored('dos'))
         self.assertEqual(None, tree.is_ignored('dosfoo'))
+
+        self.assertEqual('*bar', tree.is_ignored('foobar'))
+        self.assertEqual('*bar', tree.is_ignored(r'foo\nbar'))
+        self.assertEqual('*bar', tree.is_ignored('bar'))
+        self.assertEqual('*bar', tree.is_ignored('.bar'))
+
+        self.assertEqual('?foo', tree.is_ignored('afoo'))
+        self.assertEqual('?foo', tree.is_ignored('.foo'))
+
+        self.assertEqual('*.~*', tree.is_ignored('blah.py.~1~'))
+
+        self.assertEqual('dir1/*f1', tree.is_ignored('dir1/foof1'))
+        self.assertEqual('dir1/*f1', tree.is_ignored('dir1/f1'))
+        self.assertEqual('dir1/*f1', tree.is_ignored('dir1/.f1'))
+
+        self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
+        self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
 
         # Blank lines and comments should be ignored
         self.assertEqual(None, tree.is_ignored(''))
@@ -142,6 +164,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
         self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
         self.assertEqual('./rootdir', tree.is_ignored('rootdir'))
+        self.assertEqual('*.swp', tree.is_ignored('foo.py.swp'))
         self.assertEqual('*.swp', tree.is_ignored('.foo.py.swp'))
         self.assertEqual(None, tree.is_ignored('.foo.py.swo'))
 
@@ -158,7 +181,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual(None, tree.is_ignored('foo.pyc'))
 
         # Must reset the list so that it reads a new one
-        tree._ignoreset = None
+        tree._flush_ignore_list_cache()
 
         # use list.append() to get around the deprecation warnings
         list.append(bzrlib.DEFAULT_IGNORE, '*.py[co]')
@@ -177,7 +200,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
             ignores._runtime_ignores = set()
             self.assertEqual(None, tree.is_ignored('foobar.py'))
 
-            tree._ignoreset = None
+            tree._flush_ignore_list_cache()
             ignores.add_runtime_ignores(['./foobar.py'])
             self.assertEqual(set(['./foobar.py']), ignores.get_runtime_ignores())
             self.assertEqual('./foobar.py', tree.is_ignored('foobar.py'))

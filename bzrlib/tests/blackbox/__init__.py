@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -69,6 +69,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_mv',
+                     'bzrlib.tests.blackbox.test_nick',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',
@@ -76,6 +77,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',
+                     'bzrlib.tests.blackbox.test_remove_tree',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',
@@ -85,6 +87,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_shared_repository',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_status',
+                     'bzrlib.tests.blackbox.test_tags',
                      'bzrlib.tests.blackbox.test_testament',
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_uncommit',

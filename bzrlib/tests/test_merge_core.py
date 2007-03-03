@@ -20,6 +20,7 @@ import sys
 
 import bzrlib
 from bzrlib import (
+    generate_ids,
     osutils,
     )
 from bzrlib.add import smart_add_tree
@@ -34,13 +35,13 @@ from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
                             )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
-from bzrlib.workingtree import WorkingTree, gen_root_id
+from bzrlib.workingtree import WorkingTree
 
 
 class MergeBuilder(object):
     def __init__(self, dir=None):
         self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
-        self.tree_root = gen_root_id()
+        self.tree_root = generate_ids.gen_root_id()
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
@@ -258,6 +259,9 @@ class MergeTest(TestCaseWithTransport):
 
     def test_contents_merge2(self):
         """Test diff3 merging"""
+        if sys.platform == 'win32':
+            raise TestSkipped("diff3 does not have --binary flag"
+                              " and therefore always fails on win32")
         try:
             self.do_contents_test(Diff3Merger)
         except NoDiff3:

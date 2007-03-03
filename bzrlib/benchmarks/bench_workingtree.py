@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib import ignores
 from bzrlib.benchmarks import Benchmark
 from bzrlib.workingtree import WorkingTree
 
@@ -54,3 +55,33 @@ class WorkingTreeBenchmark(Benchmark):
             for x in xrange(10824):
                 t.is_ignored(str(x))
         self.time(call_is_ignored_10824_not_ignored)
+
+    def test_is_ignored_10_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 9)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_50_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 49)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_100_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 99)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_1000_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 999)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+

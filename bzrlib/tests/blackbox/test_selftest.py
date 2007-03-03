@@ -27,6 +27,7 @@ from bzrlib import (
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
+                          TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
@@ -261,7 +262,8 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertContainsRe(result[1], 'unknown command')
         err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
                                       retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
+        self.assertContainsRe(err, 'Bad value "magic merge" for option'
+                              ' "merge-type"')
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.
@@ -327,7 +329,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess('rocks',
                         env_changes={'NON_EXISTANT_ENV_VAR':None},
                         universal_newlines=True)
-        self.assertEqual('it sure does!\n', out)
+        self.assertEqual('It sure does!\n', out)
         self.assertEqual('', err)
 
     def test_run_bzr_subprocess_working_dir(self):
@@ -438,16 +440,53 @@ class TestBzrSubprocess(TestCaseWithTransport):
         self.make_branch_and_tree('one')
 
         process = self.start_bzr_subprocess(['root'], working_dir='one')
-        result = self.finish_bzr_subprocess(process)
+        result = self.finish_bzr_subprocess(process, universal_newlines=True)
         self.assertEndsWith(result[0], 'one\n')
         self.assertEqual('', result[1])
-        
+
 
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
-        self.assertEqual(out, 'it sure does!\n')
+        self.assertEqual(out, 'It sure does!\n')
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')
+
+
+class TestSelftestCleanOutput(TestCaseInTempDir):
+
+    def test_clean_output(self):
+        # check that 'bzr selftest --clean-output' works correct
+        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
+        files = ('bzr', 'setup.py', 'test9999.tmp')
+        for i in dirs:
+            os.mkdir(i)
+        for i in files:
+            f = file(i, 'wb')
+            f.write('content of ')
+            f.write(i)
+            f.close()
+
+        root = os.getcwdu()
+        before = os.listdir(root)
+        before.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test0000.tmp','test0001.tmp',
+                           'test9999.tmp','tests'],
+                           before)
+
+        out,err = self.run_bzr_captured(['selftest','--clean-output'],
+                                        working_dir=root)
+
+        self.assertEquals(['delete directory: test0000.tmp',
+                          'delete directory: test0001.tmp'],
+                          sorted(out.splitlines()))
+        self.assertEquals('', err)
+
+        after = os.listdir(root)
+        after.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test9999.tmp','tests'],
+                           after)

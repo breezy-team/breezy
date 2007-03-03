@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,6 +93,8 @@ def register_lazy_transport(scheme, module, classname):
     intended to be used when the implementation depends on an external
     implementation that may not be present.  If any other error is raised, it
     propagates up and the attempt to open the url fails.
+
+    :param scheme: The url scheme part, eg "ftp://"
     """
     # TODO: If no implementation of a protocol is available because of missing
     # dependencies, we should perhaps show the message about what dependency
@@ -1004,12 +1006,9 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
-    # TODO: give a better error if base looks like a url but there's no
-    # handler for the scheme?
     global _protocol_handlers
     if base is None:
         base = '.'
-
     last_err = None
 
     def convert_path_to_url(base, error_str):
@@ -1183,6 +1182,8 @@ register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTran
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
+                        'ChrootTransportDecorator')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+',
@@ -1191,6 +1192,9 @@ register_lazy_transport('vfat+',
 register_lazy_transport('bzr://',
                         'bzrlib.transport.smart',
                         'SmartTCPTransport')
+register_lazy_transport('bzr+http://',
+                        'bzrlib.transport.smart',
+                        'SmartHTTPTransport')
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.smart',
                         'SmartSSHTransport')

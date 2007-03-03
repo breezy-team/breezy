@@ -58,17 +58,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_nick_command(self):
-        """bzr nick for viewing, setting nicknames"""
-        os.mkdir('me.dev')
-        os.chdir('me.dev')
-        self.runbzr('init')
-        nick = self.runbzr("nick",backtick=True)
-        self.assertEqual(nick, 'me.dev\n')
-        nick = self.runbzr("nick moo")
-        nick = self.runbzr("nick",backtick=True)
-        self.assertEqual(nick, 'moo\n')
-
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=3)
         self.runbzr("--pants off", retcode=3)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,12 @@ import re
 import sys
 
 import bzrlib
-from bzrlib import bzrdir, errors, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    transactions,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -32,19 +37,16 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
-
-    def setUp(self):
-        super(TestCaseWithRepository, self).setUp()
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=None)
@@ -190,7 +192,7 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         f = bzrdir.BzrDirMetaFormat1()
-        f._repository_format = repository.RepositoryFormatKnit2()
+        f._repository_format = knitrepo.RepositoryFormatKnit2()
         os.mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         repo = b_bzrdir.create_repository()
@@ -273,11 +275,8 @@ class TestRepository(TestCaseWithRepository):
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-            try:
-                upgrade(wt.basedir)
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+            upgrade(wt.basedir, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
@@ -395,7 +394,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
-        if self.repository_format.__class__ == repository.RepositoryFormat4:
+        if self.repository_format.get_format_description() \
+            == "Repository format 4":
             raise TestSkipped('Cannot convert format-4 to itself')
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
@@ -518,6 +518,13 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
+
+    def test_reserved_id(self):
+        repo = self.make_repository('repository')
+        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                          None, None)
+        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                          None)
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

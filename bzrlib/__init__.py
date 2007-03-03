@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ IGNORE_FILENAME = ".bzrignore"
 user_encoding = get_user_encoding()
 
 
-__copyright__ = "Copyright 2005, 2006 Canonical Ltd."
+__copyright__ = "Copyright 2005, 2006, 2007 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -35,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 13, 0, 'dev', 0)
+version_info = (0, 15, 0, 'dev', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -53,6 +53,11 @@ from bzrlib.symbol_versioning import (deprecated_function,
 DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores'
                     ' or bzrlib.ignores.add_runtime_ignores')
+
+# allow bzrlib plugins to be imported.
+import bzrlib.plugin
+bzrlib.plugin.set_plugins_path()
+
 
 def test_suite():
     import tests

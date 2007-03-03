@@ -26,6 +26,7 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 from bzrlib.tests import (
@@ -37,6 +38,20 @@ from bzrlib.tests import (
 
 
 class TestOSUtils(TestCaseInTempDir):
+
+    def test_contains_whitespace(self):
+        self.failUnless(osutils.contains_whitespace(u' '))
+        self.failUnless(osutils.contains_whitespace(u'hello there'))
+        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
+        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+
+        # \xa0 is "Non-breaking-space" which on some python locales thinks it
+        # is whitespace, but we do not.
+        self.failIf(osutils.contains_whitespace(u''))
+        self.failIf(osutils.contains_whitespace(u'hellothere'))
+        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
 
     def test_fancy_rename(self):
         # This should work everywhere
@@ -246,12 +261,89 @@ class TestSafeUnicode(TestCase):
                           '\xbb\xbb')
 
 
+class TestSafeUtf8(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_utf8(f))
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_utf8(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae', osutils.safe_utf8('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_utf8, '\xbb\xbb')
+
+
+class TestSafeRevisionId(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_revision_id(f))
+        self.assertIs(osutils.safe_utf8(f), f)
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_revision_id(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae',
+                         osutils.safe_revision_id(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae',
+                         osutils.safe_revision_id('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        # This check may eventually go away
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_revision_id, '\xbb\xbb')
+
+    def test_none(self):
+        """Currently, None is a valid revision_id"""
+        self.assertEqual(None, osutils.safe_revision_id(None))
+
+
+class TestSafeFileId(TestCase):
+
+    def test_from_ascii_string(self):
+        f = 'foobar'
+        self.assertEqual('foobar', osutils.safe_file_id(f))
+
+    def test_from_unicode_string_ascii_contents(self):
+        self.assertEqual('bargam', osutils.safe_file_id(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual('bargam\xc2\xae',
+                         osutils.safe_file_id(u'bargam\xae'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual('foo\xc2\xae',
+                         osutils.safe_file_id('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        # This check may eventually go away
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_file_id, '\xbb\xbb')
+
+    def test_none(self):
+        """Currently, None is a valid revision_id"""
+        self.assertEqual(None, osutils.safe_file_id(None))
+
+
 class TestWin32Funcs(TestCase):
     """Test that the _win32 versions of os utilities return appropriate paths."""
 
     def test_abspath(self):
         self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
+        self.assertEqual('//HOST/path', osutils._win32_abspath(r'\\HOST\path'))
+        self.assertEqual('//HOST/path', osutils._win32_abspath('//HOST/path'))
 
     def test_realpath(self):
         self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
@@ -285,11 +377,29 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
         self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
+    def test_win98_abspath(self):
+        # absolute path
+        self.assertEqual('C:/foo', osutils._win98_abspath('C:\\foo'))
+        self.assertEqual('C:/foo', osutils._win98_abspath('C:/foo'))
+        # UNC path
+        self.assertEqual('//HOST/path', osutils._win98_abspath(r'\\HOST\path'))
+        self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
+        # relative path
+        cwd = osutils.getcwd().rstrip('/')
+        drive = osutils._nt_splitdrive(cwd)[0]
+        self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
+        self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
+        # unicode path
+        u = u'\u1234'
+        self.assertEqual(cwd+'/'+u, osutils._win98_abspath(u))
+
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
     """Test win32 functions that create files."""
     
     def test_getcwd(self):
+        if win32utils.winver == 'Windows 98':
+            raise TestSkipped('Windows 98 cannot handle unicode filenames')
         # Make sure getcwd can handle unicode filenames
         try:
             os.mkdir(u'mu-\xb5')
@@ -580,42 +690,8 @@ class TestCopyTree(TestCaseInTempDir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
-class TestTerminalEncoding(TestCase):
-    """Test the auto-detection of proper terminal encoding."""
-
-    def setUp(self):
-        self._stdout = sys.stdout
-        self._stderr = sys.stderr
-        self._stdin = sys.stdin
-        self._user_encoding = bzrlib.user_encoding
-
-        self.addCleanup(self._reset)
-
-        sys.stdout = StringIOWrapper()
-        sys.stdout.encoding = 'stdout_encoding'
-        sys.stderr = StringIOWrapper()
-        sys.stderr.encoding = 'stderr_encoding'
-        sys.stdin = StringIOWrapper()
-        sys.stdin.encoding = 'stdin_encoding'
-        bzrlib.user_encoding = 'user_encoding'
-
-    def _reset(self):
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
-        sys.stdin = self._stdin
-        bzrlib.user_encoding = self._user_encoding
-
-    def test_get_terminal_encoding(self):
-        # first preference is stdout encoding
-        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
-
-        sys.stdout.encoding = None
-        # if sys.stdout is None, fall back to sys.stdin
-        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
-
-        sys.stdin.encoding = None
-        # and in the worst case, use bzrlib.user_encoding
-        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+#class TestTerminalEncoding has been moved to test_osutils_encodings.py
+# [bialix] 2006/12/26
 
 
 class TestSetUnsetEnv(TestCase):
@@ -677,3 +753,24 @@ class TestSetUnsetEnv(TestCase):
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
         self.failIf('BZR_TEST_ENV_VAR' in os.environ)
 
+
+class TestLocalTimeOffset(TestCase):
+
+    def test_local_time_offset(self):
+        """Test that local_time_offset() returns a sane value."""
+        offset = osutils.local_time_offset()
+        self.assertTrue(isinstance(offset, int))
+        # Test that the offset is no more than a eighteen hours in
+        # either direction.
+        # Time zone handling is system specific, so it is difficult to
+        # do more specific tests, but a value outside of this range is
+        # probably wrong.
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+    def test_local_time_offset_with_timestamp(self):
+        """Test that local_time_offset() works with a timestamp."""
+        offset = osutils.local_time_offset(1000000000.1234567)
+        self.assertTrue(isinstance(offset, int))
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)

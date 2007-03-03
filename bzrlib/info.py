@@ -19,12 +19,15 @@ __all__ = ['show_bzrdir_info']
 import time
 
 
-import bzrlib.diff as diff
+from bzrlib import (
+    diff,
+    osutils,
+    urlutils,
+    )
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-import bzrlib.osutils as osutils
-from bzrlib.symbol_versioning import (deprecated_function, 
+from bzrlib.symbol_versioning import (deprecated_function,
         zero_eight)
 
 
@@ -37,20 +40,22 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_relpath(repo_path, path):
+def _repo_rel_url(repo_url, inner_url):
     """Return path with common prefix of repository path removed.
 
     If path is not part of the repository, the original path is returned.
     If path is equal to the repository, the current directory marker '.' is
     returned.
+    Otherwise, a relative path is returned, with trailing '/' stripped.
     """
-    path = osutils.normalizepath(path)
-    repo_path = osutils.normalizepath(repo_path)
-    if path == repo_path:
+    inner_url = urlutils.normalize_url(inner_url)
+    repo_url = urlutils.normalize_url(repo_url)
+    if inner_url == repo_url:
         return '.'
-    if osutils.is_inside(repo_path, path):
-        return osutils.relpath(repo_path, path)
-    return path
+    result = urlutils.relative_url(repo_url, inner_url)
+    if result != inner_url:
+        result = result.rstrip('/')
+    return result
 
 
 def _show_location_info(repository, branch=None, working=None):
@@ -67,7 +72,7 @@ def _show_location_info(repository, branch=None, working=None):
                 # lightweight checkout of branch in shared repository
                 print '   shared repository: %s' % repository_path
                 print '   repository branch: %s' % (
-                    _repo_relpath(repository_path, branch_path))
+                    _repo_rel_url(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
                 print '  checkout of branch: %s' % branch_path
@@ -75,7 +80,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path
             print '  repository checkout: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         elif branch.get_bound_location():
             # normal checkout
             print '       checkout root: %s' % working_path
@@ -89,7 +94,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch is part of shared repository
             print '  shared repository: %s' % repository_path
             print '  repository branch: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         else:
             # standalone branch
             print '  branch root: %s' % branch_path
@@ -171,16 +176,15 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = working.changes_from(basis, want_unchanged=True)
-    history = branch.revision_history()
+    branch_revno, branch_last_revision = branch.last_revision_info()
     try:
         tree_last_id = working.get_parent_ids()[0]
     except IndexError:
         tree_last_id = None
 
-    if len(history) and tree_last_id != history[-1]:
+    if branch_revno and tree_last_id != branch_last_revision:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)
-        missing_count = len(history) - tree_last_revno
+        missing_count = branch_revno - tree_last_revno
         print
         print 'Working tree is out of date: missing %d revision%s.' % (
             missing_count, plural(missing_count))
@@ -221,40 +225,24 @@ def _show_working_stats(working):
 
 def _show_branch_stats(branch, verbose):
     """Show statistics about a branch."""
-    repository = branch.repository
-    history = branch.revision_history()
-
+    revno, head = branch.last_revision_info()
     print
     print 'Branch history:'
-    revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
+    stats = branch.repository.gather_stats(head, committers=verbose)
     if verbose:
-        committers = {}
-        for rev in history:
-            committers[repository.get_revision(rev).committer] = True
-        print '  %8d committer%s' % (len(committers), plural(len(committers)))
-    if revno > 0:
-        firstrev = repository.get_revision(history[0])
-        age = int((time.time() - firstrev.timestamp) / 3600 / 24)
+        committers = stats['committers']
+        print '  %8d committer%s' % (committers, plural(committers))
+    if revno:
+        timestamp, timezone = stats['firstrev']
+        age = int((time.time() - timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
-        print '   first revision: %s' % osutils.format_date(firstrev.timestamp,
-                                                            firstrev.timezone)
-
-        lastrev = repository.get_revision(history[-1])
-        print '  latest revision: %s' % osutils.format_date(lastrev.timestamp,
-                                                            lastrev.timezone)
-
-#     print
-#     print 'Text store:'
-#     c, t = branch.text_store.total_size()
-#     print '  %8d file texts' % c
-#     print '  %8d KiB' % (t/1024)
-
-#     print
-#     print 'Inventory store:'
-#     c, t = branch.inventory_store.total_size()
-#     print '  %8d inventories' % c
-#     print '  %8d KiB' % (t/1024)
+        print '   first revision: %s' % osutils.format_date(timestamp,
+            timezone)
+        timestamp, timezone = stats['latestrev']
+        print '  latest revision: %s' % osutils.format_date(timestamp,
+            timezone)
+    return stats
 
 
 def _show_repository_info(repository):
@@ -264,14 +252,16 @@ def _show_repository_info(repository):
         print 'Create working tree for new branches inside the repository.'
 
 
-def _show_repository_stats(repository):
+def _show_repository_stats(stats):
     """Show statistics about a repository."""
-    if repository.bzrdir.root_transport.listable():
+    if 'revisions' in stats or 'size' in stats:
         print
         print 'Revision store:'
-        c, t = repository._revision_store.total_size(repository.get_transaction())
-        print '  %8d revision%s' % (c, plural(c))
-        print '  %8d KiB' % (t/1024)
+    if 'revisions' in stats:
+        revisions = stats['revisions']
+        print '  %8d revision%s' % (revisions, plural(revisions))
+    if 'size' in stats:
+        print '  %8d KiB' % (stats['size']/1024)
 
 
 @deprecated_function(zero_eight)
@@ -332,8 +322,8 @@ def show_tree_info(working, verbose):
     _show_missing_revisions_branch(branch)
     _show_missing_revisions_working(working)
     _show_working_stats(working)
-    _show_branch_stats(branch, verbose)
-    _show_repository_stats(repository)
+    stats = _show_branch_stats(branch, verbose)
+    _show_repository_stats(stats)
 
 
 def show_branch_info(branch, verbose):
@@ -346,8 +336,8 @@ def show_branch_info(branch, verbose):
     _show_format_info(control, repository, branch)
     _show_locking_info(repository, branch)
     _show_missing_revisions_branch(branch)
-    _show_branch_stats(branch, verbose)
-    _show_repository_stats(repository)
+    stats = _show_branch_stats(branch, verbose)
+    _show_repository_stats(stats)
 
 
 def show_repository_info(repository, verbose):
@@ -358,4 +348,5 @@ def show_repository_info(repository, verbose):
     _show_format_info(control, repository)
     _show_locking_info(repository)
     _show_repository_info(repository)
-    _show_repository_stats(repository)
+    stats = repository.gather_stats()
+    _show_repository_stats(stats)

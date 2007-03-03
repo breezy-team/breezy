@@ -71,7 +71,8 @@ def _run_editor(filename):
         else:
             break
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
-                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n"
+                   " - $VISUAL\n - $EDITOR" % \
                     config.config_filename())
 
 
@@ -79,7 +80,8 @@ DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
     { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
 
 
-def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
+                        start_message=None):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -89,21 +91,34 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
         Text to be displayed at bottom of message for
         the user's reference; currently similar to
         'bzr status'.
+
+    ignoreline:
+        The separator to use above the infotext.
+
+    start_message:
+        The text to place above the separator, if any. This will not be
+        removed from the message after the user has edited it.
     """
     import tempfile
 
     msgfilename = None
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
-        msgfile = os.close(tmp_fileno)
-        if infotext is not None and infotext != "":
-            hasinfo = True
-            msgfile = file(msgfilename, "w")
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
-                infotext.encode(bzrlib.user_encoding, 'replace')))
+        msgfile = os.fdopen(tmp_fileno, 'w')
+        try:
+            if start_message is not None:
+                msgfile.write("%s\n" % start_message.encode(
+                                           bzrlib.user_encoding, 'replace'))
+
+            if infotext is not None and infotext != "":
+                hasinfo = True
+                msgfile.write("\n\n%s\n\n%s" % (ignoreline,
+                              infotext.encode(bzrlib.user_encoding,
+                                                    'replace')))
+            else:
+                hasinfo = False
+        finally:
             msgfile.close()
-        else:
-            hasinfo = False
 
         if not _run_editor(msgfilename):
             return None

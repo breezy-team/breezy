@@ -16,6 +16,10 @@
 
 import sys
 
+from bzrlib import (
+    delta as _mod_delta,
+    tree,
+    )
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
 from bzrlib.log import line_log
@@ -76,7 +80,8 @@ def show_tree_status(wt, show_unchanged=None,
                      show_ids=False,
                      to_file=None,
                      show_pending=True,
-                     revision=None):
+                     revision=None,
+                     short=False):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision. 
@@ -101,6 +106,7 @@ def show_tree_status(wt, show_unchanged=None,
         If not None it must be a RevisionSpec list.
         If one revision show compared it with working tree.
         If two revisions show status between first and second.
+    :param short: If True, gives short SVN-style status lines
     """
     if show_unchanged is not None:
         warn("show_status_trees with show_unchanged has been deprecated "
@@ -133,26 +139,43 @@ def show_tree_status(wt, show_unchanged=None,
             else:
                 new = wt
         _raise_if_nonexistent(specific_files, old, new)
-        delta = new.changes_from(old, want_unchanged=show_unchanged,
-                              specific_files=specific_files)
-        delta.show(to_file,
-                   show_ids=show_ids,
-                   show_unchanged=show_unchanged)
-
-        list_paths('unknown', new.unknowns(), specific_files, to_file)
+        if short:
+            specific_file_ids = tree.find_ids_across_trees(specific_files,
+                (old, new), require_versioned=False)
+            changes = new._iter_changes(old, show_unchanged,
+                                        specific_file_ids)
+            reporter = _mod_delta.ChangeReporter(old.inventory,
+                output_file=to_file)
+            _mod_delta.report_changes(changes, reporter)
+        else:
+            delta = new.changes_from(old, want_unchanged=show_unchanged,
+                                  specific_files=specific_files)
+            delta.show(to_file,
+                       show_ids=show_ids,
+                       show_unchanged=show_unchanged,
+                       short_status=short)
+        short_status_letter = '? '
+        if not short:
+            short_status_letter = ''
+        list_paths('unknown', new.unknowns(), specific_files, to_file,
+                   short_status_letter)
         conflict_title = False
         # show the new conflicts only for now. XXX: get them from the delta.
         for conflict in new.conflicts():
-            if conflict_title is False:
+            if not short and conflict_title is False:
                 print >> to_file, "conflicts:"
                 conflict_title = True
-            print >> to_file, "  %s" % conflict
+            if short:
+                prefix = 'C  '
+            else:
+                prefix = ' '
+            print >> to_file, "%s %s" % (prefix, conflict)
         if new_is_working_tree and show_pending:
-            show_pending_merges(new, to_file)
+            show_pending_merges(new, to_file, short)
     finally:
         wt.unlock()
 
-def show_pending_merges(new, to_file):
+def show_pending_merges(new, to_file, short=False):
     """Write out a display of pending merges in a working tree."""
     parents = new.get_parent_ids()
     if len(parents) < 2:
@@ -160,7 +183,8 @@ def show_pending_merges(new, to_file):
     pending = parents[1:]
     branch = new.branch
     last_revision = parents[0]
-    print >>to_file, 'pending merges:'
+    if not short:
+        print >>to_file, 'pending merges:'
     if last_revision is not None:
         try:
             ignore = set(branch.repository.get_ancestry(last_revision))
@@ -178,7 +202,11 @@ def show_pending_merges(new, to_file):
             from bzrlib.osutils import terminal_width
             width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
-            print >> to_file, ' ', line_log(m_revision, width - 3)
+            if short:
+                prefix = 'P  '
+            else:
+                prefix = ' '
+            print >> to_file, prefix, line_log(m_revision, width - 4)
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
             inner_merges.pop(0)
@@ -187,17 +215,25 @@ def show_pending_merges(new, to_file):
                 if mmerge in ignore:
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
-                print >> to_file, '   ', line_log(mm_revision, width - 5)
+                if short:
+                    prefix = 'P.  '
+                else:
+                    prefix = '   '
+                print >> to_file, prefix, line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
-            print >> to_file, ' ', merge
+            if short:
+                prefix = 'P  '
+            else:
+                prefix = ' '
+            print >> to_file, prefix, merge
         
-def list_paths(header, paths, specific_files, to_file):
+def list_paths(header, paths, specific_files, to_file, short_status_letter=''):
     done_header = False
     for path in paths:
         if specific_files and not is_inside_any(specific_files, path):
             continue
-        if not done_header:
+        if not short_status_letter and not done_header:
             print >>to_file, '%s:' % header
             done_header = True
-        print >>to_file, ' ', path
+        print >>to_file, '%s  %s' % (short_status_letter, path)

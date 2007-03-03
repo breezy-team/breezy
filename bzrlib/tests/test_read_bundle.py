@@ -74,7 +74,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
             return
 
         info = bzrlib.bundle.read_bundle_from_url(
-                    self.get_url('test_bundle'))
+                    unicode(self.get_url('test_bundle')))
         bundle_tree = info.revision_tree(wt.branch.repository, info.target)
         self.assertEqual('commit-1', bundle_tree.revision_id)
 

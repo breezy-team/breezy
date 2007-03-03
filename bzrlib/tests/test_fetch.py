@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import re
 import sys
 
 from bzrlib import bzrdir, repository
@@ -22,6 +23,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
 import bzrlib.errors
+from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -94,10 +96,12 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_a2.append_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
 
-    # TODO: jam 20051218 Branch should no longer allow append_revision for revisions
-    #       which don't exist. So this test needs to be rewritten
-    #       RBC 20060403 the way to do this is to uncommit the revision from the
-    #           repository after the commit
+    # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
+    #       revisions which are not present?  In that case, this test
+    #       must be rewritten.
+    #
+    #       RBC 20060403 the way to do this is to uncommit the revision from
+    #       the repository after the commit
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
@@ -122,9 +126,9 @@ class TestFetch(TestCaseWithTransport):
         corresponding filename, parent, contents or other changes.
         """
         knit1_format = bzrdir.BzrDirMetaFormat1()
-        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
         knit2_format = bzrdir.BzrDirMetaFormat1()
-        knit2_format.repository_format = repository.RepositoryFormatKnit2()
+        knit2_format.repository_format = knitrepo.RepositoryFormatKnit2()
         # we start with a knit1 repository because that causes the
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.
@@ -236,13 +240,12 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def _count_log_matches(self, target, logs):
         """Count the number of times the target file pattern was fetched in an http log"""
-        log_pattern = '%s HTTP/1.1" 200 - "-" "bzr/%s' % \
-            (target, bzrlib.__version__)
+        get_succeeds_re = re.compile(
+            '.*"GET .*%s HTTP/1.1" 20[06] - "-" "bzr/%s' %
+            (     target,                    bzrlib.__version__))
         c = 0
         for line in logs:
-            # TODO: perhaps use a regexp instead so we can match more
-            # precisely?
-            if line.find(log_pattern) > -1:
+            if get_succeeds_re.match(line):
                 c += 1
         return c
 
@@ -257,7 +260,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
@@ -272,7 +274,10 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertTrue(1 >= self._count_log_matches('revision-history',
+                                                     http_logs))
+        self.assertTrue(1 >= self._count_log_matches('last-revision',
+                                                     http_logs))
         # FIXME naughty poking in there.
         self.get_readonly_server().logs = []
         # check there is nothing more to fetch
@@ -285,5 +290,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
         self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertTrue(1 >= self._count_log_matches('revision-history',
+                                                     http_logs))
+        self.assertTrue(1 >= self._count_log_matches('last-revision',
+                                                     http_logs))
         self.assertEqual(4, len(http_logs))

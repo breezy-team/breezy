@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -79,6 +79,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -191,15 +192,17 @@ class ExtendedTestResult(unittest._TextTestResult):
                 self._formatTime(self._benchmarkTime),
                 self._elapsedTestTimeString())
         else:
-            return "      %s" % self._elapsedTestTimeString()
+            return "           %s" % self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
-        return "%5dms" % (1000 * seconds)
+        # some benchmarks can take thousands of seconds to run, so we need 8
+        # places
+        return "%8dms" % (1000 * seconds)
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
+        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
         return what
 
     def startTest(self, test):
@@ -323,17 +326,17 @@ class TextTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.error_count += 1
-        self.pb.note('ERROR: %s\n    %s\n' % (
+        self.pb.note('ERROR: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.pb.note('FAIL: %s\n    %s\n' % (
+        self.pb.note('FAIL: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -343,13 +346,13 @@ class TextTestResult(ExtendedTestResult):
             # to see them.
             if False:
                 # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n' % (
+                self.pb.note('SKIP: %s\n    %s\n', 
                     self._shortened_test_description(test),
-                    skip_excinfo[1]))
+                    skip_excinfo[1])
             else:
                 # since the class name was left behind in the still-visible
                 # progress bar...
-                self.pb.note('SKIP: %s' % (skip_excinfo[1]))
+                self.pb.note('SKIP: %s', skip_excinfo[1])
 
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
@@ -375,7 +378,10 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        self.stream.write(self._ellipsize_to_right(name, 60))
+        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
+        # numbers, plus a trailing blank
+        self.stream.write(self._ellipsize_to_right(name,
+                            osutils.terminal_width()-30))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -385,7 +391,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n    %s'
+        self.stream.writeln(' FAIL %s\n    %s'
                 % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
@@ -563,6 +569,12 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        # prevent hooks affecting tests
+        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self.addCleanup(self._restoreHooks)
+        # this list of hooks must be kept in sync with the defaults
+        # in branch.py
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -637,9 +649,37 @@ class TestCase(unittest.TestCase):
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
 
-    def assertIs(self, left, right):
+    def assertListRaises(self, excClass, func, *args, **kwargs):
+        """Fail unless excClass is raised when the iterator from func is used.
+        
+        Many functions can return generators this makes sure
+        to wrap them in a list() call to make sure the whole generator
+        is run, and that the proper exception is raised.
+        """
+        try:
+            list(func(*args, **kwargs))
+        except excClass:
+            return
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
+    def assertIs(self, left, right, message=None):
         if not (left is right):
-            raise AssertionError("%r is not %r." % (left, right))
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is not %r." % (left, right))
+
+    def assertIsNot(self, left, right, message=None):
+        if (left is right):
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -773,6 +813,20 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # Proxies
+            'http_proxy': None,
+            'HTTP_PROXY': None,
+            'https_proxy': None,
+            'HTTPS_PROXY': None,
+            'no_proxy': None,
+            'NO_PROXY': None,
+            'all_proxy': None,
+            'ALL_PROXY': None,
+            # Nobody cares about these ones AFAIK. So far at
+            # least. If you do (care), please update this comment
+            # -- vila 20061212
+            'ftp_proxy': None,
+            'FTP_PROXY': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -786,6 +840,9 @@ class TestCase(unittest.TestCase):
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
+
+    def _restoreHooks(self):
+        bzrlib.branch.Branch.hooks = self._preserved_hooks
 
     def tearDown(self):
         self._runCleanups()
@@ -1224,14 +1281,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
-    def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
-
-    def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
-        
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
         t = get_transport(self.get_url())
@@ -1248,6 +1297,13 @@ class TestCaseWithMemoryTransport(TestCase):
         self.assertTrue(t.is_readonly())
         return t
 
+    def create_transport_readonly_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_readonly_server()
+
     def get_readonly_server(self):
         """Get the server instance for the readonly transport
 
@@ -1261,7 +1317,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = ReadonlyServer()
                 self.__readonly_server.setUp(self.__server)
             else:
-                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server = self.create_transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
@@ -1369,7 +1425,9 @@ class TestCaseWithMemoryTransport(TestCase):
                 except errors.FileExists:
                     pass
             if format is None:
-                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+                format = 'default'
+            if isinstance(format, basestring):
+                format = bzrdir.format_registry.make_bzrdir(format)
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
@@ -1453,7 +1511,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 os.chdir(self.test_dir)
                 break
 
-    def build_tree(self, shape, line_endings='native', transport=None):
+    def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -1484,16 +1542,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 elif line_endings == 'native':
                     end = os.linesep
                 else:
-                    raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
+                    raise errors.BzrError(
+                        'Invalid line ending request %r' % line_endings)
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                # Technically 'put()' is the right command. However, put
-                # uses an AtomicFile, which requires an extra rename into place
-                # As long as the files didn't exist in the past, append() will
-                # do the same thing as put()
-                # On jam's machine, make_kernel_like_tree is:
-                #   put:    4.5-7.5s (averaging 6s)
-                #   append: 2.9-4.5s
-                #   put_non_atomic: 2.9-4.5s
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
@@ -1501,9 +1552,17 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
+
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path),path+" exists")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -1520,6 +1579,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
+    def create_transport_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_server()
+
     def get_server(self):
         """See TestCaseWithMemoryTransport.
 
@@ -1527,7 +1593,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         diagnostics.
         """
         if self.__server is None:
-            self.__server = self.transport_server()
+            self.__server = self.create_transport_server()
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         return self.__server
@@ -1598,8 +1664,8 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
-            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+        if not self.transport_server == MemoryServer:
+            self.transport_readonly_server = HttpServer
 
 
 def filter_suite_by_re(suite, pattern):
@@ -1611,9 +1677,22 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
+def sort_suite_by_re(suite, pattern):
+    first = []
+    second = []
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        if filter_re.search(test.id()):
+            first.append(test)
+        else:
+            second.append(test)
+    return TestUtil.TestSuite(first + second)
+
+
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None, bench_history=None):
+              transport=None, lsprof_timed=None, bench_history=None,
+              matching_tests_first=None):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -1626,7 +1705,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
-        suite = filter_suite_by_re(suite, pattern)
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern)
+        else:
+            suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -1636,7 +1718,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              transport=None,
              test_suite_factory=None,
              lsprof_timed=None,
-             bench_history=None):
+             bench_history=None,
+             matching_tests_first=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -1658,7 +1741,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
-                     bench_history=bench_history)
+                     bench_history=bench_history,
+                     matching_tests_first=matching_tests_first)
     finally:
         default_transport = old_transport
 
@@ -1671,6 +1755,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
+                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
@@ -1678,23 +1763,28 @@ def test_suite():
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_generate_docs',
+                   'bzrlib.tests.test_generate_ids',
+                   'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
+                   'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
@@ -1713,6 +1803,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -1736,6 +1827,7 @@ def test_suite():
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
+                   'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',
                    'bzrlib.tests.test_textmerge',
@@ -1756,6 +1848,7 @@ def test_suite():
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
+                   'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
@@ -1780,7 +1873,20 @@ def test_suite():
             raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
-            suite.addTest(plugin.test_suite())
+            default_encoding = sys.getdefaultencoding()
+            try:
+                plugin_suite = plugin.test_suite()
+            except ImportError, e:
+                bzrlib.trace.warning(
+                    'Unable to test plugin "%s": %s', name, e)
+            else:
+                suite.addTest(plugin_suite)
+            if default_encoding != sys.getdefaultencoding():
+                bzrlib.trace.warning(
+                    'Plugin "%s" tried to reset default encoding to: %s', name,
+                    sys.getdefaultencoding())
+                reload(sys)
+                sys.setdefaultencoding(default_encoding)
     return suite
 
 
@@ -1788,3 +1894,23 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def clean_selftest_output(root=None, quiet=False):
+    """Remove all selftest output directories from root directory.
+
+    :param  root:   root directory for clean
+                    (if ommitted or None then clean current directory).
+    :param  quiet:  suppress report about deleting directories
+    """
+    import re
+    import shutil
+
+    re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
+    if root is None:
+        root = u'.'
+    for i in os.listdir(root):
+        if os.path.isdir(i) and re_dir.match(i):
+            if not quiet:
+                print 'delete directory:', i
+            shutil.rmtree(i)

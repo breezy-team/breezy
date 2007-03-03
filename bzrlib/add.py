@@ -19,6 +19,7 @@ import os
 from os.path import dirname
 import sys
 
+import bzrlib.bzrdir
 import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
@@ -203,7 +204,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
         if tree.is_control_filename(rf.raw_path):
-            raise errors.ForbiddenControlFileError(filename=rf)
+            raise errors.ForbiddenControlFileError(filename=rf.raw_path)
         
         abspath = tree.abspath(rf.raw_path)
         kind = bzrlib.osutils.file_kind(abspath)

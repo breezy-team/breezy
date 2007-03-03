@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ directories.
 
 from cStringIO import StringIO
 import os
+import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -42,7 +43,9 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    registry,
     revision as _mod_revision,
+    symbol_versioning,
     urlutils,
     xml4,
     xml5,
@@ -201,18 +204,18 @@ class BzrDir(object):
 
     # TODO: Should take a Transport
     @classmethod
-    def create(cls, base):
+    def create(cls, base, format=None):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
         as the only parameter.
 
-        If you need a specific format, consider creating an instance
-        of that and calling initialize().
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
         """
         if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the default format, "
-                    "not one of %r" % cls)
+            raise AssertionError("BzrDir.create always creates the default"
+                " format, not one of %r" % cls)
         head, tail = urlutils.split(base)
         if tail and tail != '.':
             t = get_transport(head)
@@ -220,7 +223,9 @@ class BzrDir(object):
                 t.mkdir(tail)
             except errors.FileExists:
                 pass
-        return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return format.initialize(safe_unicode(base))
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -231,7 +236,7 @@ class BzrDir(object):
         raise NotImplementedError(self.create_branch)
 
     @staticmethod
-    def create_branch_and_repo(base, force_new_repo=False):
+    def create_branch_and_repo(base, force_new_repo=False, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This will use the current default BzrDirFormat, and use whatever 
@@ -244,7 +249,7 @@ class BzrDir(object):
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
         """
-        bzrdir = BzrDir.create(base)
+        bzrdir = BzrDir.create(base, format)
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
@@ -288,10 +293,7 @@ class BzrDir(object):
             t = get_transport(safe_unicode(base))
             if not isinstance(t, LocalTransport):
                 raise errors.NotLocalUrl(base)
-        if format is None:
-            bzrdir = BzrDir.create(base)
-        else:
-            bzrdir = format.initialize(base)
+        bzrdir = BzrDir.create(base, format)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
@@ -303,11 +305,12 @@ class BzrDir(object):
         return result
         
     @staticmethod
-    def create_repository(base, shared=False):
+    def create_repository(base, shared=False, format=None):
         """Create a new BzrDir and Repository at the url 'base'.
 
-        This will use the current default BzrDirFormat, and use whatever 
-        repository format that that uses for bzrdirformat.create_repository.
+        If no format is supplied, this will default to the current default
+        BzrDirFormat by default, and use whatever repository format that that
+        uses for bzrdirformat.create_repository.
 
         :param shared: Create a shared repository rather than a standalone
                        repository.
@@ -317,11 +320,11 @@ class BzrDir(object):
         it should take no parameters and construct whatever repository format
         that child class desires.
         """
-        bzrdir = BzrDir.create(base)
+        bzrdir = BzrDir.create(base, format)
         return bzrdir.create_repository(shared)
 
     @staticmethod
-    def create_standalone_workingtree(base):
+    def create_standalone_workingtree(base, format=None):
         """Create a new BzrDir, WorkingTree, Branch and Repository at 'base'.
 
         'base' must be a local path or a file:// url.
@@ -336,7 +339,8 @@ class BzrDir(object):
         if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base),
-                                               force_new_repo=True).bzrdir
+                                               force_new_repo=True,
+                                               format=format).bzrdir
         return bzrdir.create_workingtree()
 
     def create_workingtree(self, revision_id=None):
@@ -552,6 +556,26 @@ class BzrDir(object):
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
+
+    @classmethod
+    def open_containing_tree_or_branch(klass, location):
+        """Return the branch and working tree contained by a location.
+
+        Returns (tree, branch, relpath).
+        If there is no tree at containing the location, tree will be None.
+        If there is no branch containing the location, an exception will be
+        raised
+        relpath is the portion of the path that is contained by the branch.
+        """
+        bzrdir, relpath = klass.open_containing(location)
+        try:
+            tree = bzrdir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
+            branch = bzrdir.open_branch()
+        else:
+            branch = tree.branch
+        return tree, branch, relpath
 
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
@@ -848,7 +872,7 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat4
+        from bzrlib.repofmt.weaverepo import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
 
 
@@ -860,7 +884,7 @@ class BzrDir5(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False):
@@ -877,7 +901,7 @@ class BzrDir6(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False):
@@ -901,8 +925,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        from bzrlib.branch import BranchFormat
-        return BranchFormat.get_default_format().initialize(self)
+        return self._format.get_branch_format().initialize(self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -917,7 +940,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_workingtree."""
         wt = self.open_workingtree()
         repository = wt.branch.repository
-        empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
+        empty = repository.revision_tree(_mod_revision.NULL_REVISION)
         wt.revert([], old_tree=empty)
         self.destroy_workingtree_metadata()
 
@@ -986,6 +1009,13 @@ class BzrDirMeta1(BzrDir):
                 # the repository needs an upgrade.
                 return True
         except errors.NoRepositoryPresent:
+            pass
+        try:
+            if not isinstance(self.open_branch()._format,
+                              format.get_branch_format().__class__):
+                # the repository needs an upgrade.
+                return True
+        except errors.NotBranchError:
             pass
         # currently there are no other possible conversions for meta1 formats.
         return False
@@ -1205,7 +1235,13 @@ class BzrDirFormat(object):
         klass._control_formats.append(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
+        klass._set_default_format(format)
+
+    @classmethod
+    def _set_default_format(klass, format):
+        """Set default format (for testing behavior of defaults only)"""
         klass._default_format = format
 
     def __str__(self):
@@ -1272,7 +1308,7 @@ class BzrDirFormat4(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat4
+        from bzrlib.repofmt.weaverepo import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
@@ -1312,7 +1348,7 @@ class BzrDirFormat5(BzrDirFormat):
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         from bzrlib.workingtree import WorkingTreeFormat2
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
@@ -1332,7 +1368,7 @@ class BzrDirFormat5(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.repofmt.weaverepo import RepositoryFormat5
         return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
@@ -1371,7 +1407,7 @@ class BzrDirFormat6(BzrDirFormat):
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         from bzrlib.workingtree import WorkingTreeFormat2
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
@@ -1391,7 +1427,7 @@ class BzrDirFormat6(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.repofmt.weaverepo import RepositoryFormat6
         return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
@@ -1408,6 +1444,18 @@ class BzrDirMetaFormat1(BzrDirFormat):
     """
 
     _lock_class = lockdir.LockDir
+
+    def __init__(self):
+        self._branch_format = None
+
+    def get_branch_format(self):
+        if self._branch_format is None:
+            from bzrlib.branch import BranchFormat
+            self._branch_format = BranchFormat.get_default_format()
+        return self._branch_format
+
+    def set_branch_format(self, format):
+        self._branch_format = format
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1449,7 +1497,7 @@ BzrDirFormat.register_format(BzrDirFormat5())
 BzrDirFormat.register_format(BzrDirFormat6())
 __default_format = BzrDirMetaFormat1()
 BzrDirFormat.register_format(__default_format)
-BzrDirFormat.set_default_format(__default_format)
+BzrDirFormat._default_format = __default_format
 
 
 class BzrDirTestProviderAdapter(object):
@@ -1803,6 +1851,8 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = pb
         self.count = 0
@@ -1837,14 +1887,14 @@ class ConvertBzrDir6ToMeta(Converter):
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
         # future format within each component.
-        self.put_format('repository', bzrlib.repository.RepositoryFormat7())
+        self.put_format('repository', RepositoryFormat7())
         for entry in repository_names:
             self.move_entry('repository', entry)
 
         self.step('Upgrading branch      ')
         self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
-        self.put_format('branch', bzrlib.branch.BzrBranchFormat5())
+        self.put_format('branch', BzrBranchFormat5())
         branch_files = [('revision-history', True),
                         ('branch-name', True),
                         ('parent', False)]
@@ -1870,11 +1920,12 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
+            from bzrlib.workingtree import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
             self.put_format(
-                'checkout', bzrlib.workingtree.WorkingTreeFormat3())
+                'checkout', WorkingTreeFormat3())
             self.bzrdir.transport.delete_multi(
                 self.garbage_inventories, self.pb)
             for entry in checkout_files:
@@ -1937,4 +1988,172 @@ class ConvertMetaToMeta(Converter):
                 self.pb.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
+        try:
+            branch = self.bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            # Avoid circular imports
+            from bzrlib import branch as _mod_branch
+            if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
+                self.target_format.get_branch_format().__class__ is
+                _mod_branch.BzrBranchFormat6):
+                branch_converter = _mod_branch.Converter5to6()
+                branch_converter.convert(branch)
         return to_convert
+
+
+class BzrDirFormatInfo(object):
+
+    def __init__(self, native, deprecated):
+        self.deprecated = deprecated
+        self.native = native
+
+
+class BzrDirFormatRegistry(registry.Registry):
+    """Registry of user-selectable BzrDir subformats.
+    
+    Differs from BzrDirFormat._control_formats in that it provides sub-formats,
+    e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
+    """
+
+    def register_metadir(self, key, repo, help, native=True, deprecated=False,
+                         branch_format=None):
+        """Register a metadir subformat.
+
+        These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
+        by the Repository format.
+
+        :param repo: The fully-qualified repository format class name as a
+        string.
+        """
+        # This should be expanded to support setting WorkingTree and Branch
+        # formats, once BzrDirMetaFormat1 supports that.
+        def helper():
+            import bzrlib.branch
+            mod_name, repo_factory_name = repo.rsplit('.', 1)
+            try:
+                mod = __import__(mod_name, globals(), locals(),
+                        [repo_factory_name])
+            except ImportError, e:
+                raise ImportError('failed to load repository %s: %s'
+                    % (repo, e))
+            try:
+                repo_format_class = getattr(mod, repo_factory_name)
+            except AttributeError:
+                raise AttributeError('no repository format %r in module %r' 
+                    % (repo, mod))
+            bd = BzrDirMetaFormat1()
+            bd.repository_format = repo_format_class()
+            if branch_format is not None:
+                bd.set_branch_format(getattr(bzrlib.branch, branch_format)())
+            return bd
+        self.register(key, helper, help, native, deprecated)
+
+    def register(self, key, factory, help, native=True, deprecated=False):
+        """Register a BzrDirFormat factory.
+        
+        The factory must be a callable that takes one parameter: the key.
+        It must produce an instance of the BzrDirFormat when called.
+
+        This function mainly exists to prevent the info object from being
+        supplied directly.
+        """
+        registry.Registry.register(self, key, factory, help, 
+            BzrDirFormatInfo(native, deprecated))
+
+    def register_lazy(self, key, module_name, member_name, help, native=True,
+                      deprecated=False):
+        registry.Registry.register_lazy(self, key, module_name, member_name, 
+            help, BzrDirFormatInfo(native, deprecated))
+
+    def set_default(self, key):
+        """Set the 'default' key to be a clone of the supplied key.
+        
+        This method must be called once and only once.
+        """
+        registry.Registry.register(self, 'default', self.get(key), 
+            self.get_help(key), info=self.get_info(key))
+
+    def set_default_repository(self, key):
+        """Set the FormatRegistry default and Repository default.
+        
+        This is a transitional method while Repository.set_default_format
+        is deprecated.
+        """
+        if 'default' in self:
+            self.remove('default')
+        self.set_default(key)
+        format = self.get('default')()
+        assert isinstance(format, BzrDirMetaFormat1)
+
+    def make_bzrdir(self, key):
+        return self.get(key)()
+
+    def help_topic(self, topic):
+        output = textwrap.dedent("""\
+            Bazaar directory formats
+            ------------------------
+
+            These formats can be used for creating branches, working trees, and
+            repositories.
+
+            """)
+        default_help = self.get_help('default')
+        help_pairs = []
+        for key in self.keys():
+            if key == 'default':
+                continue
+            help = self.get_help(key)
+            if help == default_help:
+                default_realkey = key
+            else:
+                help_pairs.append((key, help))
+
+        def wrapped(key, help, info):
+            if info.native:
+                help = '(native) ' + help
+            return '  %s:\n%s\n\n' % (key, 
+                    textwrap.fill(help, initial_indent='    ', 
+                    subsequent_indent='    '))
+        output += wrapped('%s/default' % default_realkey, default_help,
+                          self.get_info('default'))
+        deprecated_pairs = []
+        for key, help in help_pairs:
+            info = self.get_info(key)
+            if info.deprecated:
+                deprecated_pairs.append((key, help))
+            else:
+                output += wrapped(key, help, info)
+        if len(deprecated_pairs) > 0:
+            output += "Deprecated formats\n------------------\n\n"
+            for key, help in deprecated_pairs:
+                info = self.get_info(key)
+                output += wrapped(key, help, info)
+
+        return output
+
+
+format_registry = BzrDirFormatRegistry()
+format_registry.register('weave', BzrDirFormat6,
+    'Pre-0.8 format.  Slower than knit and does not'
+    ' support checkouts or shared repositories.',
+    deprecated=True)
+format_registry.register_metadir('knit',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    'Format using knits.  Recommended.',
+    branch_format='BzrBranchFormat5')
+format_registry.set_default('knit')
+format_registry.register_metadir('metaweave',
+    'bzrlib.repofmt.weaverepo.RepositoryFormat7',
+    'Transitional format in 0.8.  Slower than knit.',
+    deprecated=True,
+    )
+format_registry.register_metadir('experimental-knit2',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
+    'Experimental successor to knit.  Use at your own risk.',
+    branch_format='BzrBranchFormat5')
+format_registry.register_metadir('experimental-branch6',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    'Experimental successor to knit.  Use at your own risk.',
+    branch_format='BzrBranchFormat6')

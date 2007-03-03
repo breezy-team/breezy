@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,11 +27,15 @@ import warnings
 import bzrlib
 from bzrlib import (
     bzrdir,
+    errors,
     memorytree,
     osutils,
     repository,
+    symbol_versioning,
     )
 from bzrlib.progress import _BaseProgressBar
+from bzrlib.repofmt import weaverepo
+from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
@@ -44,9 +48,6 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
-import bzrlib.errors as errors
-from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
@@ -467,15 +468,19 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         a branch and checking no directory was created at its relpath.
         """
         tree = self.make_branch_and_memory_tree('dir')
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat7()
+        format.repository_format = weaverepo.RepositoryFormat7()
         tree = self.make_branch_and_memory_tree('dir', format=format)
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
@@ -501,9 +506,10 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
+        from bzrlib.tests.HttpServer import HttpServer
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalURLServer
-        from bzrlib.transport.http import HttpServer, HttpTransportBase
+        from bzrlib.transport.http import HttpTransportBase
         self.transport_server = LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -584,18 +590,18 @@ class TestTestResult(TestCase):
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # if a benchmark time is given, we want a x of y style result.
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms/ *[ 1-9][0-9]ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -847,7 +853,12 @@ class TestTestCase(TestCase):
         self.assertContainsRe(
             output_stream.getvalue(),
             r"\d+ms/ +\d+ms\n$")
-        
+
+    def test_hooks_sanitised(self):
+        """The bzrlib hooks should be sanitised by setUp."""
+        self.assertEqual(bzrlib.branch.BranchHooks(),
+            bzrlib.branch.Branch.hooks)
+
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
         
@@ -998,3 +1009,34 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+
+class TestSelftestCleanOutput(TestCaseInTempDir):
+
+    def test_clean_output(self):
+        # test functionality of clean_selftest_output()
+        from bzrlib.tests import clean_selftest_output
+
+        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
+        files = ('bzr', 'setup.py', 'test9999.tmp')
+        for i in dirs:
+            os.mkdir(i)
+        for i in files:
+            f = file(i, 'wb')
+            f.write('content of ')
+            f.write(i)
+            f.close()
+
+        root = os.getcwdu()
+        before = os.listdir(root)
+        before.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test0000.tmp','test0001.tmp',
+                           'test9999.tmp','tests'],
+                           before)
+        clean_selftest_output(root, quiet=True)
+        after = os.listdir(root)
+        after.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test9999.tmp','tests'],
+                           after)

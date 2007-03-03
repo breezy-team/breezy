@@ -16,6 +16,8 @@
 
 """Tests for the InterTree.compare() function."""
 
+import os
+
 from bzrlib import errors
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
@@ -44,6 +46,22 @@ class TestCompare(TestCaseWithTwoTrees):
                           ('b', 'b-id', 'directory'),
                           ('b/c', 'c-id', 'file'),
                          ], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+
+    def test_dangling(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_branch_and_tree('2')
+        self.build_tree(['2/a'])
+        tree2.add('a')
+        os.unlink('2/a')
+        self.build_tree(['1/b'])
+        tree1.add('b')
+        os.unlink('1/b')
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
@@ -220,3 +238,156 @@ class TestCompare(TestCaseWithTwoTrees):
             self.intertree_class(tree1, tree2).compare,
             specific_files=['d'],
             require_versioned=True)
+
+
+class TestIterChanges(TestCaseWithTwoTrees):
+    """Test the comparison iterator"""
+
+    def test_compare_empty_trees(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_no_content(tree2)
+        self.assertEqual([], list(tree2._iter_changes(tree1)))
+
+    def added(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        path = tree.id2path(file_id)
+        return (file_id, path, True, (False, True), (None, entry.parent_id),
+                (None, entry.name), (None, entry.kind), 
+                (None, entry.executable))
+
+    def deleted(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        path = tree.id2path(file_id)
+        return (file_id, path, True, (True, False), (entry.parent_id, None),
+                (entry.name, None), (entry.kind, None), 
+                (entry.executable, None))
+
+    def test_empty_to_abc_content(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+            
+        self.assertEqual([self.added(tree2, 'root-id'),
+                          self.added(tree2, 'a-id'), 
+                          self.added(tree2, 'b-id'), 
+                          self.added(tree2, 'c-id'),
+                          self.deleted(tree1, 'empty-root-id')],
+                         list(tree2._iter_changes(tree1)))
+
+    def test_empty_to_abc_content_a_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        self.assertEqual([self.added(tree2, 'a-id')],
+                         list(tree2._iter_changes(tree1, 
+                                                 specific_file_ids=['a-id'])))
+        self.assertEqual([self.deleted(tree2, 'a-id')],
+                         list(tree1._iter_changes(tree2, 
+                                                 specific_file_ids=['a-id'])))
+
+    def test_empty_to_abc_content_a_and_c_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        self.assertEqual([self.added(tree2, 'a-id'),
+                          self.added(tree2, 'c-id')],
+                         list(tree2._iter_changes(tree1, 
+                                                 specific_file_ids=['a-id', 
+                                                                    'c-id'])))
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['a', 'b/c'])
+
+    def test_abc_content(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        def deleted(file_id):
+            entry = tree2.inventory[file_id]
+            path = tree2.id2path(file_id)
+            return (file_id, path, True, (True, False), 
+                    (entry.parent_id, None),
+                    (entry.name, None), (entry.kind, None), 
+                    (entry.executable, None))
+        self.assertEqual([self.added(tree1, 'empty-root-id'), 
+                          deleted('root-id'), deleted('a-id'), 
+                          deleted('b-id'), deleted('c-id')],
+                          list(tree1._iter_changes(tree2)))
+
+    def test_content_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_2(tree2)
+        root_id = tree1.inventory.root.file_id
+        self.assertEqual([('a-id', 'a', True, (True, True), 
+                          (root_id, root_id), ('a', 'a'), 
+                          ('file', 'file'), (False, False))], 
+                         list(tree2._iter_changes(tree1)))
+
+    def test_meta_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_3(tree2)
+        self.assertEqual([('c-id', 'b/c', False, (True, True), 
+                          ('b-id', 'b-id'), ('c', 'c'), ('file', 'file'), 
+                          (False, True))], list(tree2._iter_changes(tree1)))
+
+    def test_file_rename(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_4(tree2)
+        root_id = tree1.inventory.root.file_id
+        self.assertEqual([('a-id', 'd', False, (True, True), 
+                          (root_id, root_id), ('a', 'd'), ('file', 'file'),
+                          (False, False))], list(tree2._iter_changes(tree1)))
+
+    def test_file_rename_and_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
+        root_id = tree1.inventory.root.file_id
+        self.assertEqual([('a-id', 'd', True, (True, True), 
+                          (root_id, root_id), ('a', 'd'), ('file', 'file'),
+                           (False, False))], list(tree2._iter_changes(tree1)))
+
+    def test_file_rename_and_meta_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_6(tree2)
+        root_id = tree1.inventory.root.file_id
+        self.assertEqual([('c-id', 'e', False, (True, True), 
+                          ('b-id', root_id), ('c', 'e'), ('file', 'file'), 
+                          (False, True))], list(tree2._iter_changes(tree1)))
+
+    def test_unchanged_with_renames_and_modifications(self):
+        """want_unchanged should generate a list of unchanged entries."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
+        root_id = tree1.inventory.root.file_id
+        def unchanged(file_id):
+            entry = tree1.inventory[file_id]
+            parent = entry.parent_id
+            name = entry.name
+            kind = entry.kind
+            executable = entry.executable
+            return (file_id, tree1.id2path(file_id), False, (True, True), 
+                   (parent, parent), (name, name), (kind, kind), 
+                   (executable, executable))
+        self.assertEqual([unchanged(root_id), unchanged('b-id'),
+                          ('a-id', 'd', True, (True, True), 
+                          (root_id, root_id), ('a', 'd'), ('file', 'file'),
+                          (False, False)), unchanged('c-id')],
+                         list(tree2._iter_changes(tree1, 
+                                                 include_unchanged=True)))

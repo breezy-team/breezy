@@ -96,9 +96,9 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 
 def _set_lang_C():
-    """Set the env var LANG=C"""
+    """Set the env vars LANG=C and LC_ALL=C."""
     osutils.set_or_unset_env('LANG', 'C')
-    osutils.set_or_unset_env('LC_ALL', None)
+    osutils.set_or_unset_env('LC_ALL', 'C')
     osutils.set_or_unset_env('LC_CTYPE', None)
     osutils.set_or_unset_env('LANGUAGE', None)
 
@@ -107,15 +107,15 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     """Spawn the externall diff process, and return the child handle.
 
     :param diffcmd: The command list to spawn
-    :param capture_errors: Capture stderr as well as setting LANG=C.
-        This lets us read and understand the output of diff, and respond 
-        to any errors.
+    :param capture_errors: Capture stderr as well as setting LANG=C
+        and LC_ALL=C. This lets us read and understand the output of diff,
+        and respond to any errors.
     :return: A Popen object.
     """
     if capture_errors:
         if sys.platform == 'win32':
             # Win32 doesn't support preexec_fn, but that is
-            # okay, because it doesn't support LANG either.
+            # okay, because it doesn't support LANG and LC_ALL either.
             preexec_fn = None
         else:
             preexec_fn = _set_lang_C
@@ -219,8 +219,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             if pipe.returncode != 2:
                 raise errors.BzrError(
                                'external diff failed with exit code 2'
-                               ' when run with LANG=C, but not when run'
-                               ' natively: %r' % (diffcmd,))
+                               ' when run with LANG=C and LC_ALL=C,'
+                               ' but not when run natively: %r' % (diffcmd,))
 
             first_line = lang_c_out.split('\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.
@@ -306,29 +306,41 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
+                    revision_specs=None,
                     old_label='a/', new_label='b/'):
     """Helper for cmd_diff.
 
-   tree 
+    :param tree:
         A WorkingTree
 
-    specific_files
+    :param specific_files:
         The specific files to compare, or None
 
-    external_diff_options
+    :param external_diff_options:
         If non-None, run an external diff, and pass it these options
 
-    old_revision_spec
+    :param old_revision_spec:
         If None, use basis tree as old revision, otherwise use the tree for
         the specified revision. 
 
-    new_revision_spec
+    :param new_revision_spec:
         If None, use working tree as new revision, otherwise use the tree for
         the specified revision.
     
+    :param revision_specs: 
+        Zero, one or two RevisionSpecs from the command line, saying what revisions 
+        to compare.  This can be passed as an alternative to the old_revision_spec 
+        and new_revision_spec parameters.
+
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
+
+    # TODO: perhaps remove the old parameters old_revision_spec and
+    # new_revision_spec, since this is only really for use from cmd_diff and
+    # it now always passes through a sequence of revision_specs -- mbp
+    # 20061221
+
     def spec_tree(spec):
         if tree:
             revision = spec.in_store(tree.branch)
@@ -337,15 +349,26 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         revision_id = revision.rev_id
         branch = revision.branch
         return branch.repository.revision_tree(revision_id)
+
+    if revision_specs is not None:
+        assert (old_revision_spec is None
+                and new_revision_spec is None)
+        if len(revision_specs) > 0:
+            old_revision_spec = revision_specs[0]
+        if len(revision_specs) > 1:
+            new_revision_spec = revision_specs[1]
+
     if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
         old_tree = spec_tree(old_revision_spec)
 
-    if new_revision_spec is None:
+    if (new_revision_spec is None
+        or new_revision_spec.spec is None):
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+
     if new_tree is not tree:
         extra_trees = (tree,)
     else:

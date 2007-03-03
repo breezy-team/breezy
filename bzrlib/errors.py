@@ -18,12 +18,17 @@
 """
 
 
-from bzrlib import symbol_versioning
-from bzrlib.patches import (PatchSyntax, 
-                            PatchConflict, 
-                            MalformedPatchHeader,
-                            MalformedHunkHeader,
-                            MalformedLine,)
+from bzrlib import (
+    osutils,
+    symbol_versioning,
+    )
+from bzrlib.patches import (
+    MalformedHunkHeader,
+    MalformedLine,
+    MalformedPatchHeader,
+    PatchConflict,
+    PatchSyntax,
+    )
 
 
 # TODO: is there any value in providing the .args field used by standard
@@ -199,6 +204,12 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+class ReservedId(BzrError):
+
+    _fmt = "Reserved revision-id {%(revision_id)s}"
+
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
 
 class NoSuchId(BzrError):
 
@@ -288,6 +299,14 @@ class BzrOptionError(BzrCommandError):
 
     _fmt = "Error in command line options"
 
+
+class BadOptionValue(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
+
     
 class StrictCommitFailed(BzrError):
 
@@ -317,6 +336,32 @@ class NoSuchFile(PathError):
 class FileExists(PathError):
 
     _fmt = "File exists: %(path)r%(extra)s"
+
+
+class RenameFailedFilesExist(BzrError):
+    """Used when renaming and both source and dest exist."""
+
+    _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
+         "%(extra)s")
+
+    def __init__(self, source, dest, extra=None):
+        BzrError.__init__(self)
+        self.source = str(source)
+        self.dest = str(dest)
+        if extra:
+            self.extra = ' ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class NotADirectory(PathError):
+
+    _fmt = "%(path)r is not a directory %(extra)s"
+
+
+class NotInWorkingDirectory(PathError):
+
+    _fmt = "%(path)r is not in the working directory %(extra)s"
 
 
 class DirectoryNotEmpty(PathError):
@@ -358,6 +403,16 @@ class InvalidURLJoin(PathError):
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
         self.args = [base] + list(args)
+
+
+class UnknownHook(BzrError):
+
+    _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."
+
+    def __init__(self, hook_type, hook_name):
+        BzrError.__init__(self)
+        self.type = hook_type
+        self.hook = hook_name
 
 
 class UnsupportedProtocol(PathError):
@@ -491,17 +546,50 @@ class IncompatibleRevision(BzrError):
         self.repo_format = repo_format
 
 
-class NotVersionedError(BzrError):
+class AlreadyVersionedError(BzrError):
+    """Used when a path is expected not to be versioned, but it is."""
 
-    _fmt = "%(path)s is not versioned"
+    _fmt = "%(context_info)s%(path)s is already versioned"
 
-    def __init__(self, path):
+    def __init__(self, path, context_info=None):
+        """Construct a new NotVersionedError.
+
+        :param path: This is the path which is versioned,
+        which should be in a user friendly form.
+        :param context_info: If given, this is information about the context,
+        which could explain why this is expected to not be versioned.
+        """
         BzrError.__init__(self)
         self.path = path
+        if context_info is None:
+            self.context_info = ''
+        else:
+            self.context_info = context_info + ". "
+
+
+class NotVersionedError(BzrError):
+    """Used when a path is expected to be versioned, but it is not."""
+
+    _fmt = "%(context_info)s%(path)s is not versioned"
+
+    def __init__(self, path, context_info=None):
+        """Construct a new NotVersionedError.
+
+        :param path: This is the path which is not versioned,
+        which should be in a user friendly form.
+        :param context_info: If given, this is information about the context,
+        which could explain why this is expected to be versioned.
+        """
+        BzrError.__init__(self)
+        self.path = path
+        if context_info is None:
+            self.context_info = ''
+        else:
+            self.context_info = context_info + ". "
 
 
 class PathsNotVersionedError(BzrError):
-    # used when reporting several paths are not versioned
+    """Used when reporting several paths which are not versioned"""
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
@@ -514,17 +602,21 @@ class PathsNotVersionedError(BzrError):
 
 class PathsDoNotExist(BzrError):
 
-    _fmt = "Path(s) do not exist: %(paths_as_string)s"
+    _fmt = "Path(s) do not exist: %(paths_as_string)s%(extra)s"
 
     # used when reporting that paths are neither versioned nor in the working
     # tree
 
-    def __init__(self, paths):
+    def __init__(self, paths, extra=None):
         # circular import
         from bzrlib.osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
 
 
 class BadFileKindError(BzrError):
@@ -540,6 +632,8 @@ class ForbiddenControlFileError(BzrError):
 class LockError(BzrError):
 
     _fmt = "Lock error: %(message)s"
+
+    internal_error = True
 
     # All exceptions from the lock/unlock functions should be from
     # this exception class.  They will be translated as necessary. The
@@ -583,8 +677,6 @@ class ObjectNotLocked(LockError):
 
     _fmt = "%(obj)r is not locked"
 
-    internal_error = True
-
     # this can indicate that any particular object is not locked; see also
     # LockNotHeld which means that a particular *lock* object is not held by
     # the caller -- perhaps they should be unified.
@@ -611,7 +703,10 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = "Could not acquire lock %(lock)s"
-    # TODO: show full url for lock, combining the transport and relative bits?
+    # TODO: show full url for lock, combining the transport and relative
+    # bits?
+
+    internal_error = False
     
     def __init__(self, lock):
         self.lock = lock
@@ -621,6 +716,8 @@ class LockBroken(LockError):
 
     _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
 
+    internal_error = False
+
     def __init__(self, lock):
         self.lock = lock
 
@@ -628,6 +725,8 @@ class LockBroken(LockError):
 class LockBreakMismatch(LockError):
 
     _fmt = "Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"
+
+    internal_error = False
 
     def __init__(self, lock, holder, target):
         self.lock = lock
@@ -638,6 +737,8 @@ class LockBreakMismatch(LockError):
 class LockNotHeld(LockError):
 
     _fmt = "Lock not held: %(lock)s"
+
+    internal_error = False
 
     def __init__(self, lock):
         self.lock = lock
@@ -677,6 +778,19 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
+class NotLeftParentDescendant(BzrError):
+
+    _fmt = "Revision %(old_revision)s is not the left parent of"\
+        " %(new_revision)s, but branch %(branch_location)s expects this"
+
+    internal_error = True
+
+    def __init__(self, branch, old_revision, new_revision):
+        BzrError.__init__(self, branch_location=branch.base,
+                          old_revision=old_revision,
+                          new_revision=new_revision)
+
+
 class NoSuchRevisionSpec(BzrError):
 
     _fmt = "No namespace registered for string: %(spec)r"
@@ -702,6 +816,18 @@ class HistoryMissing(BzrError):
     _fmt = "%(branch)s is missing %(object_type)s {%(object_id)s}"
 
 
+class AppendRevisionsOnlyViolation(BzrError):
+
+    _fmt = 'Operation denied because it would change the main history, '\
+           'which is not permitted by the append_revisions_only setting on'\
+           ' branch "%(location)s".'
+
+    def __init__(self, location):
+       import bzrlib.urlutils as urlutils
+       location = urlutils.unescape_for_display(location, 'ascii')
+       BzrError.__init__(self, location=location)
+
+
 class DivergedBranches(BzrError):
     
     _fmt = "These branches have diverged.  Use the merge command to reconcile them."""
@@ -711,6 +837,16 @@ class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
         self.branch2 = branch2
+
+
+class NotLefthandHistory(BzrError):
+
+    _fmt = "Supplied history does not follow left-hand parents"
+
+    internal_error = True
+
+    def __init__(self, history):
+        BzrError.__init__(self, history=history)
 
 
 class UnrelatedBranches(BzrError):
@@ -750,7 +886,8 @@ class NotAncestor(BzrError):
 class InstallFailed(BzrError):
 
     def __init__(self, revisions):
-        msg = "Could not install revisions:\n%s" % " ,".join(revisions)
+        revision_str = ", ".join(str(r) for r in revisions)
+        msg = "Could not install revisions:\n%s" % revision_str
         BzrError.__init__(self, msg)
         self.revisions = revisions
 
@@ -928,14 +1065,17 @@ class KnitError(BzrError):
     
     _fmt = "Knit error"
 
+    internal_error = True
+
 
 class KnitHeaderError(KnitError):
 
-    _fmt = "Knit header error: %(badline)r unexpected"
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
 
-    def __init__(self, badline):
+    def __init__(self, badline, filename):
         KnitError.__init__(self)
         self.badline = badline
+        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
@@ -946,6 +1086,21 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class KnitIndexUnknownMethod(KnitError):
+    """Raised when we don't understand the storage method.
+
+    Currently only 'fulltext' and 'line-delta' are supported.
+    """
+    
+    _fmt = ("Knit index %(filename)s does not have a known method"
+            " in options: %(options)r")
+
+    def __init__(self, filename, options):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.options = options
 
 
 class NoSuchExportFormat(BzrError):
@@ -1250,6 +1405,48 @@ class CantMoveRoot(BzrError):
     _fmt = "Moving the root directory is not supported at this time"
 
 
+class BzrMoveFailedError(BzrError):
+
+    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+
+    def __init__(self, from_path='', to_path='', extra=None):
+        BzrError.__init__(self)
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+        has_from = len(from_path) > 0
+        has_to = len(to_path) > 0
+        if has_from:
+            self.from_path = osutils.splitpath(from_path)[-1]
+        else:
+            self.from_path = ''
+
+        if has_to:
+            self.to_path = osutils.splitpath(to_path)[-1]
+        else:
+            self.to_path = ''
+
+        self.operator = ""
+        if has_from and has_to:
+            self.operator = " =>"
+        elif has_from:
+            self.from_path = "from " + from_path
+        elif has_to:
+            self.operator = "to"
+        else:
+            self.operator = "file"
+
+
+class BzrRenameFailedError(BzrMoveFailedError):
+
+    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+
+    def __init__(self, from_path, to_path, extra=None):
+        BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
+
 class BzrBadParameterNotString(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is not a string or unicode string."
@@ -1412,6 +1609,14 @@ class UnsupportedOperation(BzrError):
         self.tname = type(method_self).__name__
 
 
+class CannotSetRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a revision id but cant."""
+
+
+class NonAsciiRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a non-ascii revision id but cant."""
+
+
 class BinaryFile(BzrError):
     
     _fmt = "File is binary but should be text."
@@ -1507,6 +1712,7 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+    internal_error = True
 
     def __init__(self, transport):
         self.transport = transport
@@ -1575,3 +1781,27 @@ class ImportNameCollision(BzrError):
     def __init__(self, name):
         BzrError.__init__(self)
         self.name = name
+
+
+class NoSuchTag(BzrError):
+
+    _fmt = "No such tag: %(tag_name)s"
+
+    def __init__(self, tag_name):
+        self.tag_name = tag_name
+
+
+class TagsNotSupported(BzrError):
+
+    _fmt = "Tags not supported by %(branch)s; you may be able to use bzr upgrade."
+
+    def __init__(self, branch):
+        self.branch = branch
+
+        
+class TagAlreadyExists(BzrError):
+
+    _fmt = "Tag %(tag_name)s already exists."
+
+    def __init__(self, tag_name):
+        self.tag_name = tag_name

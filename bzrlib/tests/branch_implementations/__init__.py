@@ -1,6 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
-# -*- coding: utf-8 -*-
+#          and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,11 +42,17 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
+        'bzrlib.tests.branch_implementations.test_commit',
+        'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
+        'bzrlib.tests.branch_implementations.test_last_revision_info',
         'bzrlib.tests.branch_implementations.test_locking',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
+        'bzrlib.tests.branch_implementations.test_tags',
+        'bzrlib.tests.branch_implementations.test_push',
+        'bzrlib.tests.branch_implementations.test_uncommit',
         'bzrlib.tests.branch_implementations.test_update',
         ]
     adapter = BranchTestProviderAdapter(
