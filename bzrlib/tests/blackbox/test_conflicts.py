@@ -16,6 +16,9 @@
 
 import os
 
+from bzrlib import (
+    conflicts
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -52,7 +55,6 @@ class TestConflicts(ExternalBase):
         self.assertEqual(len(conflicts.splitlines()), 2)
 
     def test_resolve(self):
-        self.runbzr('resolve', retcode=3)
         self.runbzr('resolve myfile')
         conflicts = self.runbzr('conflicts', backtick=True)
         self.assertEqual(len(conflicts.splitlines()), 1)
@@ -80,3 +82,21 @@ class TestConflicts(ExternalBase):
                 self.fail("tree still contains conflicts: %r" % conflicts)
         finally:
             os.chdir(orig_dir)
+
+    def test_auto_resolve(self):
+        """Text conflicts can be resolved automatically"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file',
+            '<<<<<<<\na\n=======\n>>>>>>>\n')])
+        tree.add('file', 'file_id')
+        self.assertEqual(tree.kind('file_id'), 'file')
+        file_conflict = conflicts.TextConflict('file', file_id='file_id')
+        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        os.chdir('tree')
+        note = self.run_bzr('resolve', retcode=1)[1]
+        self.assertContainsRe(note, '0 conflict\\(s\\) auto-resolved.')
+        self.assertContainsRe(note,
+            'Remaining conflicts:\nText conflict in file')
+        self.build_tree_contents([('file', 'a\n')])
+        note = self.run_bzr('resolve')[1]
+        self.assertContainsRe(note, 'All conflicts resolved.')

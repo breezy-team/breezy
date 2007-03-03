@@ -26,10 +26,12 @@ lazy_import(globals(), """
 import errno
 
 from bzrlib import (
+    builtins,
     commands,
     errors,
     osutils,
     rio,
+    trace,
     )
 """)
 from bzrlib.option import Option
@@ -48,9 +50,6 @@ class cmd_conflicts(commands.Command):
 
     Use bzr resolve when you have fixed a problem.
 
-    (conflicts are determined by the presence of .BASE .TREE, and .OTHER 
-    files.)
-
     See also bzr resolve.
     """
     def run(self):
@@ -68,9 +67,9 @@ class cmd_resolve(commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Once you have fixed a problem, use "bzr resolve FILE.." to mark
-    individual files as fixed, or "bzr resolve --all" to mark all conflicts as
-    resolved.
+    Once you have fixed a problem, use "bzr resolve" to automatically mark
+    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    resolved, or "bzr resolve --all" to mark all conflicts as resolved.
 
     See also bzr conflicts.
     """
@@ -86,12 +85,21 @@ class cmd_resolve(commands.Command):
             tree = WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
+            tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
-                raise errors.BzrCommandError("command 'resolve' needs one or"
-                                             " more FILE, or --all")
-            tree = WorkingTree.open_containing(file_list[0])[0]
-            to_resolve = [tree.relpath(p) for p in file_list]
-            resolve(tree, to_resolve)
+                un_resolved, resolved = tree.auto_resolve()
+                if len(un_resolved) > 0:
+                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
+                    trace.note('Remaining conflicts:')
+                    for conflict in un_resolved:
+                        trace.note(conflict)
+                    return 1
+                else:
+                    trace.note('All conflicts resolved.')
+                    return 0
+            else:
+                to_resolve = [tree.relpath(p) for p in file_list]
+                resolve(tree, to_resolve)
 
 
 def resolve(tree, paths=None, ignore_misses=False):

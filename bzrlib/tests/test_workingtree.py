@@ -464,3 +464,11 @@ class TestAutoResolve(TestCaseWithTransport):
         self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
                          resolved)
         self.failIfExists('this/hello.BASE')
+
+    def test_auto_resolve_dir(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello/'])
+        tree.add('hello', 'hello-id')
+        file_conflict = conflicts.TextConflict('file', 'hello_id')
+        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        tree.auto_resolve()

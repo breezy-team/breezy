@@ -1808,7 +1808,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         resolved = _mod_conflicts.ConflictList()
         conflict_re = re.compile('^(<{7}|={7}|>{7})')
         for conflict in self.conflicts():
-            if conflict.typestring != 'text conflict':
+            if (conflict.typestring != 'text conflict' or
+                self.kind(conflict.file_id) != 'file'):
                 un_resolved.append(conflict)
                 continue
             my_file = open(self.id2abspath(conflict.file_id), 'rb')
