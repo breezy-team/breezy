@@ -98,8 +98,7 @@ class cmd_resolve(commands.Command):
                     trace.note('All conflicts resolved.')
                     return 0
             else:
-                to_resolve = [tree.relpath(p) for p in file_list]
-                resolve(tree, to_resolve)
+                resolve(tree, file_list)
 
 
 def resolve(tree, paths=None, ignore_misses=False):
