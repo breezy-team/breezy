@@ -434,3 +434,23 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual('b', tree.id2path('b-id'))
         self.assertEqual(None, tree.id2path('c-id'))
 
+    def test_set_root_id(self):
+        # similar to some code that fails in the dirstate-plus-subtree branch
+        # -- setting the root id while adding a parent seems to scramble the
+        # dirstate invariants. -- mbp 20070303
+        def validate():
+            wt.lock_read()
+            try:
+                wt.current_dirstate()._validate()
+            finally:
+                wt.unlock()
+        wt = self.make_workingtree('tree')
+        wt.set_root_id('TREE-ROOTID')
+        validate()
+        wt.commit('somenthing')
+        validate()
+        # now switch and commit again
+        wt.set_root_id('tree-rootid')
+        validate()
+        wt.commit('again')
+        validate()
