@@ -61,6 +61,7 @@ class SvnBranch(Branch):
         :param branch_path: Relative path inside the repository this
             branch is located at.
         """
+        super(Branch, self).__init__()
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
         self.branch_path = branch_path
