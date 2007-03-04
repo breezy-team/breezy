@@ -268,7 +268,7 @@ class WorkingTree4(WorkingTree3):
         # results of each bisect in further still
         paths = sorted(paths)
         result = set()
-        STate = self.current_dirstate()
+        state = self.current_dirstate()
         # TODO we want a paths_to_dirblocks helper I think
         for path in paths:
             dirname, basename = os.path.split(path.encode('utf8'))
@@ -991,6 +991,7 @@ class WorkingTree4(WorkingTree3):
         state.set_path_id('', file_id)
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
+        state.save()
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""

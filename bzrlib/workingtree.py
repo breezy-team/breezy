@@ -486,8 +486,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         file_id = osutils.safe_file_id(file_id)
         basis = self.basis_tree()
-        changes = iter(self._iter_changes(basis, True, [self.id2path(file_id)],
-            require_versioned=True)).next()
+        changes = self._iter_changes(basis, True, [self.id2path(file_id)],
+            require_versioned=True).next()
         changed_content, kind = changes[2], changes[6]
         if not changed_content:
             return basis.annotate_iter(file_id)

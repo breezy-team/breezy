@@ -222,17 +222,29 @@ class DirState(object):
     A dirstate is a specialised data structure for managing local working
     tree state information. Its not yet well defined whether it is platform
     specific, and if it is how we detect/parameterise that.
+
+    Dirstates use the usual lock_write, lock_read and unlock mechanisms.
+    Unlike most bzr disk formats, DirStates must be locked for reading, using
+    lock_read.  (This is an os file lock internally.)  This is necessary
+    because the file can be rewritten in place.
+
+    DirStates must be explicitly written with save() to commit changes; just
+    unlocking them does not write the changes to disk.
     """
 
     _kind_to_minikind = {
-            'absent':'a',
-            'file':'f',
-            'directory':'d',
-            'relocated':'r',
+            'absent': 'a',
+            'file': 'f',
+            'directory': 'd',
+            'relocated': 'r',
             'symlink': 'l',
             'tree-reference': 't',
         }
-    _minikind_to_kind = {'a':'absent', 'f':'file', 'd':'directory', 'l':'symlink',
+    _minikind_to_kind = {
+            'a': 'absent',
+            'f': 'file',
+            'd': 'directory',
+            'l':'symlink',
             'r': 'relocated',
             't': 'tree-reference',
         }
@@ -1314,6 +1326,8 @@ class DirState(object):
         :param tree_index: The index of the tree we wish to locate this path
             in. If the path is present in that tree, the entry containing its
             details is returned, otherwise (None, None) is returned
+            0 is the working tree, higher indexes are successive parent
+            trees.
         :param fileid_utf8: A utf8 file_id to look up.
         :param path_utf8: An utf8 path to be looked up.
         :return: The dirstate entry tuple for path, or (None, None)

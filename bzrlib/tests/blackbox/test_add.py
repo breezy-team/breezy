@@ -116,7 +116,8 @@ class TestAdd(ExternalBase):
         chdir('src')
         self.run_bzr('add')
         self.assertEquals(self.capture('unknowns'), 'README\n')
-        t.read_working_inventory()
+        # reopen to see the new changes
+        t = t.bzrdir.open_workingtree()
         versioned = [path for path, entry in t.iter_entries_by_dir()]
         self.assertEquals(versioned,
             ['', 'src', 'src/foo.c'])
