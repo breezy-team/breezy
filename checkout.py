@@ -220,7 +220,7 @@ class SvnWorkingTree(WorkingTree):
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
             if os.path.islink(self.abspath(relpath)):
-                file = InventoryLink(id, os.path.basename(relpath), parent_id)
+                file = InventoryLink(str(id), os.path.basename(relpath), str(parent_id))
                 file.revision = revid
                 file.symlink_target = os.readlink(self.abspath(relpath))
                 file.text_sha1 = None
@@ -228,7 +228,7 @@ class SvnWorkingTree(WorkingTree):
                 file.executable = False
                 inv.add(file)
             else:
-                file = InventoryFile(id, os.path.basename(relpath), parent_id)
+                file = InventoryFile(str(id), os.path.basename(relpath), str(parent_id))
                 file.revision = revid
                 try:
                     data = fingerprint_file(open(self.abspath(relpath)))
@@ -294,7 +294,7 @@ class SvnWorkingTree(WorkingTree):
                 inv.add_path("", 'directory', ROOT_ID)
                 inv.revision_id = revid
             else:
-                inventry = InventoryDirectory(id, os.path.basename(relpath), parent_id)
+                inventry = InventoryDirectory(str(id), os.path.basename(relpath), str(parent_id))
                 inventry.revision = revid
                 inv.add(inventry)
 

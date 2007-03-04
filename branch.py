@@ -61,7 +61,7 @@ class SvnBranch(Branch):
         :param branch_path: Relative path inside the repository this
             branch is located at.
         """
-        super(Branch, self).__init__()
+        super(SvnBranch, self).__init__()
         self.repository = repository
         assert isinstance(self.repository, SvnRepository)
         self.branch_path = branch_path
@@ -142,6 +142,9 @@ class SvnBranch(Branch):
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
+
+    def set_last_revision_info(self, revno, revid):
+        pass
 
     def set_push_location(self, location):
         raise NotImplementedError(self.set_push_location)

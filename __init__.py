@@ -28,7 +28,7 @@ except ImportError:
     # get the message out any way we can
     from warnings import warn as warning
 
-__version__ = '0.3.1'
+__version__ = '0.4.0'
 required_bzr_version = (0,15)
 
 def check_bzrlib_version(desired):

@@ -30,7 +30,6 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
-
 bzr-svn 0.3.1	2007-01-31
 
   BUG FIXES
