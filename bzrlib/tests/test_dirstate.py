@@ -726,6 +726,35 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def test_add_tree_reference(self):
+        # make a dirstate and add a tree reference
+        state = dirstate.DirState.initialize('dirstate')
+        expected_entry = (
+            ('', 'subdir', 'subdir-id'),
+            [('t', 'subtree-123123', 0, False,
+              'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')],
+            )
+        try:
+            state.add('subdir', 'subdir-id', 'tree-reference', None, 'subtree-123123')
+            entry = state._get_entry(0, 'subdir-id', 'subdir')
+            self.assertEqual(entry, expected_entry)
+            state._validate()
+            state.save()
+        finally:
+            state.unlock()
+        # now check we can read it back
+        state.lock_read()
+        state._validate()
+        try:
+            entry2 = state._get_entry(0, 'subdir-id', 'subdir')
+            self.assertEqual(entry, entry2)
+            self.assertEqual(entry, expected_entry)
+            # and lookup by id should work too
+            entry2 = state._get_entry(0, fileid_utf8='subdir-id')
+            self.assertEqual(entry, expected_entry)
+        finally:
+            state.unlock()
+
 
 class TestGetLines(TestCaseWithDirState):
 
