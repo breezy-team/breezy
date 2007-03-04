@@ -22,8 +22,8 @@ import sys
 import unittest
 import bzrlib
 
-__version__ = '0.3.1'
-required_bzr_version = (0,14)
+__version__ = '0.3.2'
+required_bzr_version = (0,15)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.

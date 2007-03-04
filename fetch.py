@@ -279,6 +279,10 @@ class InterSvnRepository(InterRepository):
 
     _matching_repo_format = SvnRepositoryFormat()
 
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
     def _find_all(self):
         needed = []
         parents = {}

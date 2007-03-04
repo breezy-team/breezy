@@ -1,3 +1,9 @@
+bzr-svn 0.3.2	UNRELEASED
+
+  BUG FIXES
+
+  * Fix compatibility with Bazaar 0.15.
+
 bzr-svn 0.3.1	2007-01-31
 
   BUG FIXES
