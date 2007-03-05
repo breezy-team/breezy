@@ -820,6 +820,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # both foo and bar.
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/file', 'tree2/dir/',
             'tree1/file', 'tree2/movedfile',
             'tree1/dir/', 'tree2/moveddir/'])
