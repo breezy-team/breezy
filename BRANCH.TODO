@@ -15,6 +15,3 @@ Lazy inventory object that will:
 
 In things like get_file_sha1 on tree, consider a deprecation warning if
 path is not given? or some developer tool to profile.
-
-hashcache removal.
-

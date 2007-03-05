@@ -1387,7 +1387,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
         if change_reporter:
-            change_reporter = delta.ChangeReporter()
+            change_reporter = delta.ChangeReporter(
+                unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt._iter_changes(), change_reporter)
         for conflict in conflicts:
             warning(conflict)

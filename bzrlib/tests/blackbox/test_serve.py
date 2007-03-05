@@ -126,11 +126,6 @@ class TestBzrServe(TestCaseWithTransport):
 
         self.assertServerFinishesCleanly(process)
 
-    def test_bzr_serve_no_args(self):
-        """'bzr serve' with no arguments or options should not traceback."""
-        out, err = self.run_bzr_error(
-            ['bzr serve requires one of --inet or --port'], 'serve')
-
     def test_bzr_connect_to_bzr_ssh(self):
         """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
 

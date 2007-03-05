@@ -785,8 +785,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
-    @needs_tree_write_lock
     def _put_rio(self, filename, stanzas, header):
+        self._must_be_locked()
         my_file = rio_file(stanzas, header)
         self._control_files.put(filename, my_file)
 
@@ -837,6 +837,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_read_lock
     def merge_modified(self):
+        """Return a dictionary of files modified by a merge.
+
+        The list is initialized by WorkingTree.set_merge_modified, which is 
+        typically called after we make some automatic updates to the tree
+        because of a merge.
+
+        This returns a map of file_id->sha1, containing only files which are
+        still in the working inventory and have that text hash.
+        """
         try:
             hashfile = self._control_files.get('merge-hashes')
         except errors.NoSuchFile:
@@ -851,9 +860,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             file_id = s.get("file_id")
             if file_id not in self.inventory:
                 continue
-            hash = s.get("hash")
-            if hash == self.get_file_sha1(file_id):
-                merge_hashes[file_id] = hash
+            text_hash = s.get("hash")
+            if text_hash == self.get_file_sha1(file_id):
+                merge_hashes[file_id] = text_hash
         return merge_hashes
 
     @needs_write_lock
@@ -1525,6 +1534,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def is_locked(self):
         return self._control_files.is_locked()
+
+    def _must_be_locked(self):
+        if not self.is_locked():
+            raise errors.ObjectNotLocked(self)
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""

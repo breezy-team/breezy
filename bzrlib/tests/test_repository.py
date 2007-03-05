@@ -336,7 +336,6 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
-
 class InterString(repository.InterRepository):
     """An inter-repository optimised code path for strings.
 
@@ -474,3 +473,4 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         tree.commit("Another dull commit", rev_id='dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
         self.assertEqual('dull', revision_tree.inventory.root.revision)
+
