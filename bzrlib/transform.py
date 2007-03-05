@@ -1137,8 +1137,8 @@ def _build_tree(tree, wt):
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-#    if tree.inventory.root is not None:
-#        wt.set_root_id(tree.inventory.root.file_id)
+    if tree.inventory.root is not None:
+        wt.set_root_id(tree.inventory.root.file_id)
     tt = TreeTransform(wt)
     divert = set()
     try:
@@ -1174,7 +1174,9 @@ def _build_tree(tree, wt):
                         if kind == 'directory':
                             reparent = True
                 if entry.parent_id not in file_trans_id:
-                    raise repr(entry.parent_id)
+                    raise AssertionError(
+                        'entry %s parent id %r is not in file_trans_id %r'
+                        % (entry, entry.parent_id, file_trans_id))
                 parent_id = file_trans_id[entry.parent_id]
                 file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                       tree)

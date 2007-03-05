@@ -1439,6 +1439,10 @@ class DirStateRevisionTree(Tree):
                 self._dirstate_locked = True
         self._locked += 1
 
+    def _must_be_locked(self):
+        if not self._locked:
+            raise errors.ObjectNotLocked(self)
+
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
