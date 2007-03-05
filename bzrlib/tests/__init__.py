@@ -475,7 +475,15 @@ class TextTestRunner(object):
                 else:
                     test_root = test_root.encode(
                         sys.getfilesystemencoding())
-                osutils.rmtree(test_root)
+                try:
+                    osutils.rmtree(test_root)
+                except OSError, e:
+                    if sys.platform == 'win32' and e.errno == errno.EACCES:
+                        print >>sys.stderr, ('Permission denied: '
+                                             'unable to remove testing dir '
+                                             '%s' % os.path.basename(test_root))
+                    else:
+                        raise
         else:
             note("Failed tests working directories are in '%s'\n", test_root)
         TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -900,7 +908,14 @@ class TestCase(unittest.TestCase):
                 logfile.close()
             if not keep_log_file:
                 self._log_contents = log_contents
-                os.remove(self._log_file_name)
+                try:
+                    os.remove(self._log_file_name)
+                except OSError, e:
+                    if sys.platform == 'win32' and e.errno == errno.EACCES:
+                        print >>sys.stderr, ('Unable to delete log file '
+                                             ' %r' % self._log_file_name)
+                    else:
+                        raise
             return log_contents
         else:
             return "DELETED log file to reduce memory footprint"
