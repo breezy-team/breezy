@@ -41,7 +41,7 @@ and what is documented on the wiki.
 * `Using aliases <using_aliases.htm>`_
   (wiki page: http://bazaar-vcs.org/CommandAliases)
 
-    How to setup and use command aliases.
+    How to set up and use command aliases.
 
 * `Running a Bazaar server <server.htm>`_
   

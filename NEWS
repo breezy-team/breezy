@@ -156,11 +156,17 @@ IN DEVELOPMENT
     * Raise DependencyNotPresent if pycurl do not support https. (Vincent
       Ladeuil, #85305)
 
+    * Invalid proxy env variables should not cause a traceback.
+      (Vincent Ladeuil, #87765)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
+
+    * Fix bzrtools shelve command for removed lines beginning with "--"
+      (Johan Dahlberg, #75577)
 
 bzr 0.14  2007-01-23
 

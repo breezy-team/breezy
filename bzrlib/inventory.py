@@ -960,8 +960,8 @@ class Inventory(object):
         :return: This yields (path, entry) pairs
         """
         if specific_file_ids:
-            specific_file_ids = [osutils.safe_file_id(fid)
-                                 for fid in specific_file_ids]
+            safe = osutils.safe_file_id
+            specific_file_ids = set(safe(fid) for fid in specific_file_ids)
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
         if from_dir is None:
