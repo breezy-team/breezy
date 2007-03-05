@@ -559,6 +559,7 @@ class cmd_pull(Command):
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
             directory=None):
+        from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
         if directory is None:
             directory = u'.'
@@ -607,19 +608,16 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(branch_from, overwrite, rev_id,
-                delta.ChangeReporter())
+            result = tree_to.pull(branch_from, overwrite, rev_id,
+                delta.ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
-            count = branch_to.pull(branch_from, overwrite, rev_id)
-        note('%d revision(s) pulled.' % (count,))
+            result = branch_to.pull(branch_from, overwrite, rev_id)
 
+        result.report(self.outf)
         if verbose:
+            from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            if old_rh != new_rh:
-                # Something changed
-                from bzrlib.log import show_changed_revisions
-                show_changed_revisions(branch_to, old_rh, new_rh,
-                                       to_file=self.outf)
+            show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -689,9 +687,6 @@ class cmd_push(Command):
         to_transport = transport.get_transport(location)
         location_url = to_transport.base
 
-        old_rh = []
-        count = 0
-
         br_to = repository_to = dir_to = None
         try:
             dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -711,9 +706,10 @@ class cmd_push(Command):
             else:
                 # Found a branch, so we must have found a repository
                 repository_to = br_to.repository
-
+        push_result = None
         old_rh = []
         if dir_to is None:
+            # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
             try:
@@ -760,7 +756,8 @@ class cmd_push(Command):
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
-            count = br_to.last_revision_info()[0]
+            # TODO: Some more useful message about what was copied
+            note('Created new branch.')
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -779,7 +776,7 @@ class cmd_push(Command):
             repository_to.fetch(br_from.repository,
                                 revision_id=last_revision_id)
             br_to = br_from.clone(dir_to, revision_id=last_revision_id)
-            count = len(br_to.revision_history())
+            note('Created new branch.')
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
         else: # We have a valid to branch
@@ -794,28 +791,32 @@ class cmd_push(Command):
                 except errors.NotLocalUrl:
                     warning('This transport does not update the working '
                             'tree of: %s' % (br_to.base,))
-                    count = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
-                    count = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite)
                 else:
                     tree_to.lock_write()
                     try:
-                        count = br_from.push(tree_to.branch, overwrite)
+                        push_result = br_from.push(tree_to.branch, overwrite)
                         tree_to.update()
                     finally:
                         tree_to.unlock()
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
-        note('%d revision(s) pushed.' % (count,))
-
-        if verbose:
+        if push_result is not None:
+            push_result.report(self.outf)
+        elif verbose:
             new_rh = br_to.revision_history()
             if old_rh != new_rh:
                 # Something changed
                 from bzrlib.log import show_changed_revisions
                 show_changed_revisions(br_to, old_rh, new_rh,
                                        to_file=self.outf)
+        else:
+            # we probably did a clone rather than a push, so a message was
+            # emitted above
+            pass
 
 
 class cmd_branch(Command):
@@ -836,6 +837,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
+        from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -886,6 +888,7 @@ class cmd_branch(Command):
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
+            _merge_tags_if_possible(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
@@ -1253,7 +1256,7 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            branch = bzrdir.BzrDir.create_branch_convenience(location,
+            branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
                                                              format=format)
         else:
             from bzrlib.transport.local import LocalTransport
@@ -1964,15 +1967,14 @@ class cmd_cat(Command):
 
         tree = None
         try:
-            tree, relpath = WorkingTree.open_containing(filename)
-            b = tree.branch
-        except (errors.NotBranchError, errors.NotLocalUrl):
+            tree, b, relpath = \
+                    bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        except errors.NotBranchError:
             pass
 
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
         if tree is None:
-            b, relpath = Branch.open_containing(filename)
             tree = b.basis_tree()
         if revision is None:
             revision_id = b.last_revision()
@@ -2371,7 +2373,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
-        print "it sure does!"
+        print "It sure does!"
 
 
 class cmd_find_merge_base(Command):
@@ -2455,7 +2457,7 @@ class cmd_merge(Command):
                 ' source rather than merging. When this happens,'
                 ' you do not need to commit the result.'),
         Option('directory',
-            help='branch to merge into, '
+            help='Branch to merge into, '
                  'rather than the one containing the working directory',
             short_name='d',
             type=unicode,
@@ -2467,6 +2469,7 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             ):
+        from bzrlib.tag import _merge_tags_if_possible
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2479,7 +2482,8 @@ class cmd_merge(Command):
         #      Either the merge helper code should be updated to take a tree,
         #      (What about tree.merge_from_branch?)
         tree = WorkingTree.open_containing(directory)[0]
-        change_reporter = delta.ChangeReporter()
+        change_reporter = delta.ChangeReporter(
+            unversioned_filter=tree.is_ignored)
 
         if branch is not None:
             try:
@@ -2533,6 +2537,10 @@ class cmd_merge(Command):
 
         if tree.branch.get_parent() is None or remember:
             tree.branch.set_parent(other_branch.base)
+
+        # pull tags now... it's a bit inconsistent to do it ahead of copying
+        # the history but that's done inside the merge code
+        _merge_tags_if_possible(other_branch, tree.branch)
 
         if path != "":
             interesting_files = [path]
@@ -3174,7 +3182,8 @@ class cmd_serve(Command):
         Option('port',
                help='listen for connections on nominated port of the form '
                     '[hostname:]portnumber. Passing 0 as the port number will '
-                    'result in a dynamically allocated port.',
+                    'result in a dynamically allocated port. Default port is '
+                    '4155.',
                type=str),
         Option('directory',
                help='serve contents of directory',
@@ -3197,17 +3206,102 @@ class cmd_serve(Command):
         t = get_transport(url)
         if inet:
             server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
-        elif port is not None:
-            if ':' in port:
-                host, port = port.split(':')
-            else:
+        else:
+            if port is None:
+                port = smart.BZR_DEFAULT_PORT
                 host = '127.0.0.1'
-            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            else:
+                if ':' in port:
+                    host, port = port.split(':')
+                else:
+                    host = '127.0.0.1'
+                port = int(port)
+            server = smart.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', server.port
             sys.stdout.flush()
-        else:
-            raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
+
+
+class cmd_tag(Command):
+    """Create a tag naming a revision.
+    
+    Tags give human-meaningful names to revisions.  Commands that take a -r
+    (--revision) option can be given -rtag:X, where X is any previously
+    created tag.
+
+    Tags are stored in the branch.  Tags are copied from one branch to another
+    along when you branch, push, pull or merge.
+
+    It is an error to give a tag name that already exists unless you pass 
+    --force, in which case the tag is moved to point to the new revision.
+    """
+
+    takes_args = ['tag_name']
+    takes_options = [
+        Option('delete',
+            help='Delete this tag rather than placing it.',
+            ),
+        Option('directory',
+            help='Branch in which to place the tag.',
+            short_name='d',
+            type=unicode,
+            ),
+        Option('force',
+            help='Replace existing tags',
+            ),
+        'revision',
+        ]
+
+    def run(self, tag_name,
+            delete=None,
+            directory='.',
+            force=None,
+            revision=None,
+            ):
+        branch, relpath = Branch.open_containing(directory)
+        branch.lock_write()
+        try:
+            if delete:
+                branch.tags.delete_tag(tag_name)
+                self.outf.write('Deleted tag %s.\n' % tag_name)
+            else:
+                if revision:
+                    if len(revision) != 1:
+                        raise errors.BzrCommandError(
+                            "Tags can only be placed on a single revision, "
+                            "not on a range")
+                    revision_id = revision[0].in_history(branch).rev_id
+                else:
+                    revision_id = branch.last_revision()
+                if (not force) and branch.tags.has_tag(tag_name):
+                    raise errors.TagAlreadyExists(tag_name)
+                branch.tags.set_tag(tag_name, revision_id)
+                self.outf.write('Created tag %s.\n' % tag_name)
+        finally:
+            branch.unlock()
+
+
+class cmd_tags(Command):
+    """List tags.
+
+    This tag shows a table of tag names and the revisions they reference.
+    """
+
+    takes_options = [
+        Option('directory',
+            help='Branch whose tags should be displayed',
+            short_name='d',
+            type=unicode,
+            ),
+    ]
+
+    @display_command
+    def run(self,
+            directory='.',
+            ):
+        branch, relpath = Branch.open_containing(directory)
+        for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
+            self.outf.write('%-20s %s\n' % (tag_name, target))
 
 
 # command-line interpretation helper for merge-related commands
@@ -3282,9 +3376,13 @@ def _merge_helper(other_revision, base_revision,
             return 0
         if file_list is None:
             if pull and merger.base_rev_id == merger.this_rev_id:
-                count = merger.this_tree.pull(merger.this_branch,
+                # FIXME: deduplicate with pull
+                result = merger.this_tree.pull(merger.this_branch,
                         False, merger.other_rev_id)
-                note('%d revision(s) pulled.' % (count,))
+                if result.old_revid == result.new_revid:
+                    note('No revisions to pull.')
+                else:
+                    note('Now on revision %d.' % result.new_revno)
                 return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 

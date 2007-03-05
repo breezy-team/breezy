@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -80,6 +80,19 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_overwrite(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('message 1')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('message 2', rev_id='rev2a')
+        tree_b.commit('message 2', rev_id='rev2b')
+        self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+        tree_a.branch.pull(tree_a.branch, overwrite=True,
+                           stop_revision='rev2b')
+        self.assertEqual('rev2b', tree_a.branch.last_revision())
+        self.assertEqual(tree_b.branch.revision_history(),
+                         tree_a.branch.revision_history())
+
 
 class TestPullHook(TestCaseWithBranch):
 
@@ -87,22 +100,24 @@ class TestPullHook(TestCaseWithBranch):
         self.hook_calls = []
         TestCaseWithBranch.setUp(self)
 
-    def capture_post_pull_hook(self, source, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+    def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
         
         The call is logged, as is some state of the two branches.
         """
-        if local:
-            local_locked = local.is_locked()
-            local_base = local.base
+        if result.local_branch:
+            local_locked = result.local_branch.is_locked()
+            local_base = result.local_branch.base
         else:
             local_locked = None
             local_base = None
         self.hook_calls.append(
-            ('post_pull', source, local_base, master.base, old_revno, old_revid,
-             new_revno, new_revid, source.is_locked(), local_locked,
-             master.is_locked()))
+            ('post_pull', result.source_branch, local_base,
+             result.master_branch.base, result.old_revno,
+             result.old_revid,
+             result.new_revno, result.new_revid,
+             result.source_branch.is_locked(), local_locked,
+             result.master_branch.is_locked()))
 
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')

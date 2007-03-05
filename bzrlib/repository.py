@@ -60,6 +60,9 @@ from bzrlib.trace import mutter, note, warning
 _deprecation_warning_done = False
 
 
+######################################################################
+# Repositories
+
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -1036,6 +1039,9 @@ can be called to obtain one.
 """
 
 
+#####################################################################
+# Repository Formats
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1133,7 +1139,7 @@ class RepositoryFormat(object):
         from bzrlib.store.revision.text import TextRevisionStore
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
-        text_store =TextStore(transport.clone(name),
+        text_store = TextStore(transport.clone(name),
                               prefixed=prefixed,
                               compressed=compressed,
                               dir_mode=dir_mode,
