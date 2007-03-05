@@ -477,6 +477,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                      ('a', '', 0, False, ''),
                      ]),
                 ]
+            state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
             # should work across save too
             state.save()
@@ -486,9 +487,19 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
+            state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
         finally:
             state.unlock()
+        # now change within an existing file-backed state
+        state.lock_write()
+        try:
+            state._validate()
+            state.set_path_id('', 'tree-root-2')
+            state._validate()
+        finally:
+            state.unlock()
+
 
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.

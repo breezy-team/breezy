@@ -1173,23 +1173,14 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 wt._set_root_id(generate_ids.gen_root_id())
                 wt.flush()
                 wt.current_dirstate()._validate()
-                return wt
-            # TODO: Remove some of this validation once the problem is
-            # fixed -- mbp 20070304
-            wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)
-            wt.current_dirstate()._validate()
             wt.flush()
-            wt.current_dirstate()._validate()
             basis = wt.basis_tree()
-            wt.current_dirstate()._validate()
             basis.lock_read()
-            wt.current_dirstate()._validate()
             # if the basis has a root id we have to use that; otherwise we use
             # a new random one
             basis_root_id = basis.get_root_id()
             if basis_root_id is not None:
-                state._validate()
                 wt._set_root_id(basis_root_id)
                 wt.flush()
             transform.build_tree(basis, wt)
