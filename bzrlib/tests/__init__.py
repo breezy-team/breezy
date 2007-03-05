@@ -33,6 +33,7 @@ import doctest
 import errno
 import logging
 import os
+from pprint import pformat
 import re
 import shlex
 import stat
@@ -599,6 +600,14 @@ class TestCase(unittest.TestCase):
                                   linejunk=lambda x: False,
                                   charjunk=lambda x: False)
         return ''.join(difflines)
+
+    def assertEqual(self, a, b):
+        if a == b:
+            return
+        raise AssertionError("not equal:\na = %s\nb = %s\n"
+            % (pformat(a, indent=4), pformat(b, indent=4)))
+
+    assertEquals = assertEqual
 
     def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
