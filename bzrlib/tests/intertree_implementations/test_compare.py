@@ -904,6 +904,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
         #   links_supported = False
         return self.mutable_trees_to_test_trees(tree1, tree2)
 
+    def make_trees_with_subtrees(self):
+        # trees containing tree references
+        # TODO: might have to skip if the format can't do tree references
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        self.build_tree(['tree1/fromdir/', 'tree1/common/',
+            'tree2/todir/', 'tree2/common/'])
+        # TODO: actually add the references
+        return self.mutable_trees_to_test_trees(tree1, tree2)
+
     def test_versioned_symlinks(self):
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
@@ -970,6 +980,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_trees_with_subtrees(self):
+        tree1, tree2 = self.make_trees_with_subtrees()
+        self.do_iter_changes(tree1, tree2)
 
     def test_trees_with_deleted_dir(self):
         tree1 = self.make_branch_and_tree('tree1')

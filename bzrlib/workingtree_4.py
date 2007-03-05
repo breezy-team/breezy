@@ -1228,6 +1228,7 @@ class DirStateRevisionTree(Tree):
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def _comparison_data(self, entry, path):
+        """See Tree._comparison_data."""
         if entry is None:
             return None, False, None
         # trust the entry as RevisionTree does, but this may not be
@@ -1275,7 +1276,7 @@ class DirStateRevisionTree(Tree):
         """Create and set self.inventory from the dirstate object.
 
         (So this is only called the first time the inventory is requested for
-        this tree; it then remains in memory.)
+        this tree; it then remains in memory until it's out of date.)
 
         This is relatively expensive: we have to walk the entire dirstate.
         """
@@ -1396,6 +1397,7 @@ class DirStateRevisionTree(Tree):
     def _get_inventory(self):
         if self._inventory is not None:
             return self._inventory
+        self._must_be_locked()
         self._generate_inventory()
         return self._inventory
 
@@ -1409,15 +1411,14 @@ class DirStateRevisionTree(Tree):
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 
+    def kind(self, file_id):
+        return self.inventory[file_id].kind
+
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]
         if ie.kind != "file":
             return None
         return ie.executable
-
-    @needs_read_lock
-    def kind(self, file_id):
-        return self.inventory[file_id].kind
 
     def list_files(self, include_root=False):
         # We use a standard implementation, because DirStateRevisionTree is

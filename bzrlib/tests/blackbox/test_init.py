@@ -24,6 +24,7 @@ from bzrlib import (
     branch as _mod_branch,
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
@@ -108,6 +109,15 @@ class TestInit(ExternalBase):
         """Init creates no default ignore rules."""
         self.run_bzr('init')
         self.assertFalse(os.path.exists('.bzrignore'))
+
+    def test_init_unicode(self):
+        # Make sure getcwd can handle unicode filenames
+        try:
+            os.mkdir(u'mu-\xb5')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+        # try to init unicode dir
+        self.run_bzr('init', u'mu-\xb5')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):

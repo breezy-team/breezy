@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1797,6 +1797,7 @@ def test_suite():
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
+                   'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
@@ -1840,6 +1841,7 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_subsume',
                    'bzrlib.tests.test_symbol_versioning',
+                   'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',
                    'bzrlib.tests.test_textmerge',
