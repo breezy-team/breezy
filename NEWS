@@ -63,7 +63,9 @@ IN DEVELOPMENT
     * Bazaar now looks for user-installed plugins before looking for site-wide
       plugins. (Jonathan Lange)
 
->>>>>>> MERGE-SOURCE
+    * ``bzr resolve`` now detects and marks resolved text conflicts.
+      (Aaron Bentley)
+
   INTERNALS:
 
     * Internally revision ids and file ids are now passed around as utf-8
@@ -450,7 +452,7 @@ bzr 0.12rc1  2006-10-23
       commands such as log, diff etc. (Robert Collins)
 
     * revisions can now be specified using dotted-decimal revision numbers.
-      For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
+      For instance, ``bzr diff -r 1.2.1..1.2.3``. (Robert Collins)
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
@@ -864,7 +866,7 @@ bzr 0.9.0  2006-08-11
      and normalize the parent based on root, allowing access across
      different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
      (Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
-      #42517, #42514)
+     #42517, #42514)
 
    * On Unix, detect terminal width using an ioctl not just $COLUMNS.
      Use terminal width for single-line logs from ``bzr log --line`` and
@@ -1212,7 +1214,9 @@ bzr 0.8  2006-05-08
     * Pull now accepts a --revision argument (Erik Bågfors)
 
     * 'bzr re-sign' now allows multiple revisions to be supplied on the command
-      line. You can now use the following command to sign all of your old commits.
+      line. You can now use the following command to sign all of your old
+      commits::
+
         find .bzr/revision-store// -name my@email-* \
           | sed 's/.*\/\/..\///' \
           | xargs bzr re-sign
