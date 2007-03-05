@@ -318,6 +318,28 @@ class TestTreeToDirState(TestCaseWithDirState):
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
 
+    def test_colliding_fileids(self):
+        # test insertion of parents creating several entries at the same path.
+        # we used to have a bug where they could cause the dirstate to break
+        # its ordering invariants.
+        # create some trees to test from
+        parents = []
+        for i in range(7):
+            tree = self.make_branch_and_tree('tree%d' % i)
+            self.build_tree(['tree%d/name' % i,])
+            tree.add(['name'], ['file-id%d' % i])
+            revision_id = 'revid-%d' % i
+            tree.commit('message', rev_id=revision_id)
+            parents.append((revision_id,
+                tree.branch.repository.revision_tree(revision_id)))
+        # now fold these trees into a dirstate
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_parent_trees(parents, [])
+            state._validate()
+        finally:
+            state.unlock()
+
 
 class TestDirStateOnFile(TestCaseWithDirState):
 
@@ -734,6 +756,35 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_read()
         try:
             self.assertEqual(expected_entries, list(state._iter_entries()))
+        finally:
+            state.unlock()
+
+    def test_add_tree_reference(self):
+        # make a dirstate and add a tree reference
+        state = dirstate.DirState.initialize('dirstate')
+        expected_entry = (
+            ('', 'subdir', 'subdir-id'),
+            [('t', 'subtree-123123', 0, False,
+              'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')],
+            )
+        try:
+            state.add('subdir', 'subdir-id', 'tree-reference', None, 'subtree-123123')
+            entry = state._get_entry(0, 'subdir-id', 'subdir')
+            self.assertEqual(entry, expected_entry)
+            state._validate()
+            state.save()
+        finally:
+            state.unlock()
+        # now check we can read it back
+        state.lock_read()
+        state._validate()
+        try:
+            entry2 = state._get_entry(0, 'subdir-id', 'subdir')
+            self.assertEqual(entry, entry2)
+            self.assertEqual(entry, expected_entry)
+            # and lookup by id should work too
+            entry2 = state._get_entry(0, fileid_utf8='subdir-id')
+            self.assertEqual(entry, expected_entry)
         finally:
             state.unlock()
 

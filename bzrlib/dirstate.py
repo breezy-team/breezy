@@ -20,7 +20,7 @@ Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
 lines by NL. The field delimiters are ommitted in the grammar, line delimiters
 are not - this is done for clarity of reading. All string data is in utf8.
 
-MINIKIND = "f" | "d" | "l" | "a" | "r";
+MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
 NL = "\n";
 NULL = "\0";
 WHOLE_NUMBER = {digit}, digit;
@@ -86,7 +86,16 @@ Kinds:
     sha1 value.
 'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
     link target.
+'t' is a reference to a nested subtree; the fingerprint is the referenced
+    revision.
 
+Ordering:
+
+The entries on disk and in memory are ordered according to the following keys:
+
+    directory, as a list of components
+    filename
+    file-id
 
 --- Format 1 had the following different definition: ---
 rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
@@ -220,10 +229,32 @@ class DirState(object):
     A dirstate is a specialised data structure for managing local working
     tree state information. Its not yet well defined whether it is platform
     specific, and if it is how we detect/parameterise that.
+
+    Dirstates use the usual lock_write, lock_read and unlock mechanisms.
+    Unlike most bzr disk formats, DirStates must be locked for reading, using
+    lock_read.  (This is an os file lock internally.)  This is necessary
+    because the file can be rewritten in place.
+
+    DirStates must be explicitly written with save() to commit changes; just
+    unlocking them does not write the changes to disk.
     """
 
-    _kind_to_minikind = {'absent':'a', 'file':'f', 'directory':'d', 'relocated':'r', 'symlink':'l'}
-    _minikind_to_kind = {'a':'absent', 'f':'file', 'd':'directory', 'l':'symlink', 'r':'relocated'}
+    _kind_to_minikind = {
+            'absent': 'a',
+            'file': 'f',
+            'directory': 'd',
+            'relocated': 'r',
+            'symlink': 'l',
+            'tree-reference': 't',
+        }
+    _minikind_to_kind = {
+            'a': 'absent',
+            'f': 'file',
+            'd': 'directory',
+            'l':'symlink',
+            'r': 'relocated',
+            't': 'tree-reference',
+        }
     _to_yesno = {True:'y', False: 'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
@@ -287,17 +318,20 @@ class DirState(object):
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
-    def add(self, path, file_id, kind, stat, link_or_sha1):
+    def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
 
         :param path: The path within the dirstate - '' is the root, 'foo' is the
             path foo within the root, 'foo/bar' is the path bar within foo 
             within the root.
         :param file_id: The file id of the path being added.
-        :param kind: The kind of the path.
+        :param kind: The kind of the path, as a string like 'file', 
+            'directory', etc.
         :param stat: The output of os.lstat for the path.
-        :param link_or_sha1: The sha value of the file, or the target of a
-            symlink. '' for directories.
+        :param fingerprint: The sha value of the file,
+            or the target of a symlink,
+            or the referenced revision id for tree-references,
+            or '' for directories.
         """
         # adding a file:
         # find the block its in. 
@@ -363,7 +397,7 @@ class DirState(object):
         minikind = DirState._kind_to_minikind[kind]
         if kind == 'file':
             entry_data = entry_key, [
-                (minikind, link_or_sha1, size, False, packed_stat),
+                (minikind, fingerprint, size, False, packed_stat),
                 ] + parent_info
         elif kind == 'directory':
             entry_data = entry_key, [
@@ -371,7 +405,11 @@ class DirState(object):
                 ] + parent_info
         elif kind == 'symlink':
             entry_data = entry_key, [
-                (minikind, link_or_sha1, size, False, packed_stat),
+                (minikind, fingerprint, size, False, packed_stat),
+                ] + parent_info
+        elif kind == 'tree-reference':
+            entry_data = entry_key, [
+                (minikind, fingerprint, 0, False, packed_stat),
                 ] + parent_info
         else:
             raise errors.BzrError('unknown kind %r' % kind)
@@ -850,7 +888,7 @@ class DirState(object):
         """Load new_entries into self.dirblocks.
 
         Process new_entries into the current state object, making them the active
-        state.
+        state.  The entries are grouped together by directory to form dirblocks.
 
         :param new_entries: A sorted list of entries. This function does not sort
             to prevent unneeded overhead when callers have a sorted list already.
@@ -1295,6 +1333,8 @@ class DirState(object):
         :param tree_index: The index of the tree we wish to locate this path
             in. If the path is present in that tree, the entry containing its
             details is returned, otherwise (None, None) is returned
+            0 is the working tree, higher indexes are successive parent
+            trees.
         :param fileid_utf8: A utf8 file_id to look up.
         :param path_utf8: An utf8 path to be looked up.
         :return: The dirstate entry tuple for path, or (None, None)
@@ -1334,14 +1374,18 @@ class DirState(object):
                 entry_index, present = self._find_entry_index(key, block)
                 if present:
                     entry = self._dirblocks[block_index][1][entry_index]
-                    if entry[1][tree_index][0] in 'fdl':
+                    if entry[1][tree_index][0] in 'fdlt':
                         # this is the result we are looking for: the  
                         # real home of this file_id in this tree.
                         return entry
                     if entry[1][tree_index][0] == 'a':
                         # there is no home for this entry in this tree
                         return None, None
-                    assert entry[1][tree_index][0] == 'r'
+                    assert entry[1][tree_index][0] == 'r', \
+                        "entry %r has invalid minikind %r for tree %r" \
+                        % (entry,
+                           entry[1][tree_index][0],
+                           tree_index)
                     real_path = entry[1][tree_index][1]
                     return self._get_entry(tree_index, fileid_utf8=fileid_utf8,
                         path_utf8=real_path)
@@ -1407,8 +1451,12 @@ class DirState(object):
             fingerprint = inv_entry.text_sha1 or ''
             size = inv_entry.text_size or 0
             executable = inv_entry.executable
+        elif kind == 'tree-reference':
+            fingerprint = inv_entry.reference_revision or ''
+            size = 0
+            executable = False
         else:
-            raise Exception
+            raise Exception("can't pack %s" % inv_entry)
         return (minikind, fingerprint, size, executable, tree_data)
 
     def _iter_entries(self):
@@ -1726,6 +1774,7 @@ class DirState(object):
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
         """ 
+        ## self._validate()
         # TODO: generate a list of parent indexes to preserve to save 
         # processing specific parent trees. In the common case one tree will
         # be preserved - the left most parent.
@@ -1849,14 +1898,27 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = sorted(by_path.items(),
-                        key=lambda entry:(entry[0][0].split('/'), entry[0][1]))
+        new_entries = self._sort_entries(by_path.items())
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = id_index
+        self._validate()
+
+    def _sort_entries(self, entry_list):
+        """Given a list of entries, sort them into the right order.
+
+        This is done when constructing a new dirstate from trees - normally we
+        try to keep everything in sorted blocks all the time, but sometimes
+        it's easier to sort after the fact.
+        """
+        # TODO: Might be faster to do a scwartzian transform?
+        def _key(entry):
+            # sort by: directory parts, file name, file id
+            return entry[0][0].split('/'), entry[0][1], entry[0][2]
+        return sorted(entry_list, key=_key)
 
     def set_state_from_inventory(self, new_inv):
         """Set new_inv as the current state. 
@@ -2116,10 +2178,18 @@ class DirState(object):
             assert self._dirblocks[1][0] == '', \
                     "dirblocks missing root directory:\n" + \
                     pformat(dirblocks)
-        assert self._dirblocks[1:] == sorted(self._dirblocks[1:]), \
-                "dirblocks are not in sorted order:\n" + \
-                pformat(self._dirblocks)
+        # the dirblocks are sorted by their path components, name, and dir id
+        dir_names = [d[0].split('/')
+                for d in self._dirblocks[1:]]
+        if dir_names != sorted(dir_names):
+            raise AssertionError(
+                "dir names are not in sorted order:\n" + \
+                pformat(self._dirblocks) + \
+                "\nkeys:\n" +
+                pformat(dir_names))
         for dirblock in self._dirblocks:
+            # within each dirblock, the entries are sorted by filename and
+            # then by id.
             assert dirblock[1] == sorted(dirblock[1]), \
                 "dirblock for %r is not sorted:\n%s" % \
                 (dirblock[0], pformat(dirblock))
