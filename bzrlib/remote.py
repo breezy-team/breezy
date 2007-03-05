@@ -215,11 +215,13 @@ class RemoteRepository(object):
             return {}
 
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call2('Repository.get_revision_graph', path, revision_id.encode('utf8'))
+        assert type(revision_id) is str
+        response = self._client.call2(
+            'Repository.get_revision_graph', path, revision_id)
         assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
         if response[0][0] == 'ok':
             coded = response[1].read_body_bytes()
-            lines = coded.decode('utf8').split('\n')
+            lines = coded.split('\n')
             revision_graph = {}
             # FIXME
             for line in lines:
@@ -238,7 +240,7 @@ class RemoteRepository(object):
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Repository.has_revision', path, revision_id.encode('utf8'))
+        response = self._client.call('Repository.has_revision', path, revision_id)
         assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'ok'
 
@@ -248,7 +250,7 @@ class RemoteRepository(object):
         if revid in (None, NULL_REVISION):
             fmt_revid = ''
         else:
-            fmt_revid = revid.encode('utf8')
+            fmt_revid = revid
         if committers is None or not committers:
             fmt_committers = 'no'
         else:
@@ -533,6 +535,10 @@ class RemoteRepository(object):
         # root data.
         return False
 
+    def iter_reverse_revision_history(self, revision_id):
+        self._ensure_real()
+        return self._real_repository.iter_reverse_revision_history(revision_id)
+
 
 class RemoteBranchLockableFiles(object):
     """A 'LockableFiles' implementation that talks to a smart server.
@@ -748,7 +754,7 @@ class RemoteBranch(branch.Branch):
         response = self._client.call('Branch.last_revision_info', path)
         assert response[0] == 'ok', 'unexpected response code %s' % (response,)
         revno = int(response[1])
-        last_revision = response[2].decode('utf8')
+        last_revision = response[2]
         if last_revision == '':
             last_revision = NULL_REVISION
         return (revno, last_revision)
@@ -761,7 +767,7 @@ class RemoteBranch(branch.Branch):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.revision_history', path)
         assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
-        result = response[1].read_body_bytes().decode('utf8').split('\x00')
+        result = response[1].read_body_bytes().split('\x00')
         if result == ['']:
             return []
         return result
@@ -814,6 +820,10 @@ class RemoteBranch(branch.Branch):
 
     def is_locked(self):
         return self._lock_count >= 1
+
+    def set_last_revision_info(self, revno, revision_id):
+        self._ensure_real()
+        return self._real_branch.set_last_revision_info(revno, revision_id)
 
 
 class RemoteWorkingTree(object):

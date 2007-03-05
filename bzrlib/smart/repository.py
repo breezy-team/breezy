@@ -51,13 +51,12 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
         :return: A smart server response where the body contains an utf8
             encoded flattened list of the revision graph.
         """
-        decoded_revision_id = revision_id.decode('utf8')
-        if not decoded_revision_id:
-            decoded_revision_id = None
+        if not revision_id:
+            revision_id = None
 
         lines = []
         try:
-            revision_graph = repository.get_revision_graph(decoded_revision_id)
+            revision_graph = repository.get_revision_graph(revision_id)
         except errors.NoSuchRevision:
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
@@ -67,7 +66,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
         for revision, parents in revision_graph.items():
             lines.append(' '.join([revision,] + parents))
 
-        return SmartServerResponse(('ok', ), '\n'.join(lines).encode('utf8'))
+        return SmartServerResponse(('ok', ), '\n'.join(lines))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
@@ -80,8 +79,7 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
         :return: A smart server response of ('ok', ) if the revision is
             present.
         """
-        decoded_revision_id = revision_id.decode('utf8')
-        if repository.has_revision(decoded_revision_id):
+        if repository.has_revision(revision_id):
             return SmartServerResponse(('ok', ))
         else:
             return SmartServerResponse(('no', ))
@@ -108,7 +106,7 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
         if revid == '':
             decoded_revision_id = None
         else:
-            decoded_revision_id = revid.decode('utf8')
+            decoded_revision_id = revid
         if committers == 'yes':
             decoded_committers = True
         else:

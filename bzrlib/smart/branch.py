@@ -81,8 +81,8 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
-        return SmartServerResponse(('ok', ),
-            ('\x00'.join(branch.revision_history())).encode('utf8'))
+        return SmartServerResponse(
+            ('ok', ), ('\x00'.join(branch.revision_history())))
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
@@ -95,21 +95,19 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         revno, last_revision = branch.last_revision_info()
         if last_revision == NULL_REVISION:
             last_revision = ''
-        return SmartServerResponse(
-            ('ok', str(revno), last_revision.encode('utf8')))
+        return SmartServerResponse(('ok', str(revno), last_revision))
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
     
     def do_with_locked_branch(self, branch, new_last_revision_id):
-        unicode_new_last_revision_id = new_last_revision_id.decode('utf-8')  # XXX test
         if new_last_revision_id == '':
             branch.set_revision_history([])
         else:
-            if not branch.repository.has_revision(unicode_new_last_revision_id):
+            if not branch.repository.has_revision(new_last_revision_id):
                 return SmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
-            branch.generate_revision_history(unicode_new_last_revision_id)
+            branch.generate_revision_history(new_last_revision_id)
         return SmartServerResponse(('ok',))
 
 
