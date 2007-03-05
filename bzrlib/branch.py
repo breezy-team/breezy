@@ -657,10 +657,12 @@ class Branch(object):
         Weaves are used if this branch's repository uses weaves.
         """
         from bzrlib.remote import RemoteBzrDir
-        if isinstance(self.bzrdir, (bzrdir.BzrDirPreSplitOut, RemoteBzrDir)):
+        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
             from bzrlib.repofmt import weaverepo
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = weaverepo.RepositoryFormat7()
+        elif isinstance(self.bzrdir, RemoteBzrDir):
+            format = bzrdir.BzrDirMetaFormat1()
         else:
             format = self.repository.bzrdir.cloning_metadir()
             format.branch_format = self._format
