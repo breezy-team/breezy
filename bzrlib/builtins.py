@@ -1790,8 +1790,8 @@ class cmd_ignore(Command):
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
                                   "NAME_PATTERN or --old-default-rules")
-        name_pattern_list = [ globbing.normalize_pattern(x) 
-            for x in name_pattern_list ]
+        name_pattern_list = [globbing.normalize_pattern(p) 
+                             for p in name_pattern_list]
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or 
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
