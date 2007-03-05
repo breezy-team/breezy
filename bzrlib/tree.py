@@ -134,6 +134,14 @@ class Tree(object):
             return True
         return self.inventory.has_id(file_id)
 
+    def is_ignored(self, filename):
+        """Check whether the filename is ignored by this tree.
+
+        :param filename: The relative filename within the tree.
+        :return: True if the filename is ignored.
+        """
+        return False
+
     def __iter__(self):
         return iter(self.inventory)
 

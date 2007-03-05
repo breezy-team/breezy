@@ -39,14 +39,19 @@ class TestReportChanges(tests.TestCase):
     def assertReport(self, expected, file_id='fid', path='path',
                      versioned_change='unchanged', renamed=False,
                      modified='unchanged', exe_change=False,
-                     kind=('file', 'file'), old_path=None):
+                     kind=('file', 'file'), old_path=None,
+                     unversioned_filter=None):
         result = []
         def result_line(format, *args):
             result.append(format % args)
-        reporter = _mod_delta.ChangeReporter(result_line)
+        reporter = _mod_delta.ChangeReporter(result_line,
+            unversioned_filter=unversioned_filter)
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
-        self.assertEqualDiff(expected, result[0])
+        if expected is not None:
+            self.assertEqualDiff(expected, result[0])
+        else:
+            self.assertEqual([], result)
 
     def test_rename(self):
         self.assertReport('R   old => path', renamed=True, old_path='old')
@@ -86,9 +91,22 @@ class TestReportChanges(tests.TestCase):
         self.assertReport(' M  path', modified='modified')
         self.assertReport(' M* path', modified='modified', exe_change=True)
 
+    def test_unversioned(self):
+        # by default any unversioned file is output
+        self.assertReport('?   subdir/foo~', file_id=None, path='subdir/foo~',
+            old_path=None, versioned_change='unversioned',
+            renamed=False, modified='created', exe_change=False,
+            kind=(None, 'file'))
+        # but we can choose to filter these. Probably that should be done 
+        # close to the tree, but this is a reasonable starting point.
+        self.assertReport(None, file_id=None, path='subdir/foo~',
+            old_path=None, versioned_change='unversioned',
+            renamed=False, modified='created', exe_change=False,
+            kind=(None, 'file'), unversioned_filter=lambda x:True)
+
     def assertChangesEqual(self,
                            file_id='fid',
-                           path='path',
+                           paths=('path', 'path'),
                            content_change=False,
                            versioned=(True, True),
                            parent_id=('pid', 'pid'),
@@ -100,11 +118,11 @@ class TestReportChanges(tests.TestCase):
                            modified='unchanged',
                            exe_change=False):
         reporter = InstrumentedReporter()
-        _mod_delta.report_changes([(file_id, path, content_change, versioned,
+        _mod_delta.report_changes([(file_id, paths, content_change, versioned,
             parent_id, name, kind, executable)], reporter)
         output = reporter.calls[0]
         self.assertEqual(file_id, output[0])
-        self.assertEqual(path, output[1])
+        self.assertEqual(paths, output[1])
         self.assertEqual(versioned_change, output[2])
         self.assertEqual(renamed, output[3])
         self.assertEqual(modified, output[4])
@@ -151,6 +169,20 @@ class TestReportChanges(tests.TestCase):
                                 exe_change=True, versioned=(True, False),
                                 content_change=True, name=('old', 'new'),
                                 executable=(False, True))
+
+    def test_report_unversioned(self):
+        """Unversioned entries are reported well."""
+        self.assertChangesEqual(file_id=None, paths=(None, 'full/path'),
+                           content_change=True,
+                           versioned=(False, False),
+                           parent_id=(None, None),
+                           name=(None, 'path'),
+                           kind=(None, 'file'),
+                           executable=(None, False),
+                           versioned_change='unversioned',
+                           renamed=False,
+                           modified='created',
+                           exe_change=False)
 
 
 class TestChangesFrom (tests.TestCaseWithTransport):
