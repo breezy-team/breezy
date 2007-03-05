@@ -63,7 +63,6 @@ IN DEVELOPMENT
     * Bazaar now looks for user-installed plugins before looking for site-wide
       plugins. (Jonathan Lange)
 
->>>>>>> MERGE-SOURCE
   INTERNALS:
 
     * Internally revision ids and file ids are now passed around as utf-8
@@ -153,6 +152,9 @@ IN DEVELOPMENT
 
     * Raise DependencyNotPresent if pycurl do not support https. (Vincent
       Ladeuil, #85305)
+
+    * Invalid proxy env variables should not cause a traceback.
+      (Vincent Ladeuil, #87765)
 
   TESTING:
 
