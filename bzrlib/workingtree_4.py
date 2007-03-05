@@ -1711,7 +1711,7 @@ class InterDirStateTree(InterTree):
             else:
                 link_or_sha1 = None
             source_minikind = source_details[0]
-            if source_minikind in 'fdlr' and target_minikind in 'fdl':
+            if source_minikind in 'fdltr' and target_minikind in 'fdlt':
                 # claimed content in both: diff
                 #   r    | fdlt   |      | add source to search, add id path move and perform
                 #        |        |      | diff check on source-target
