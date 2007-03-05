@@ -1228,7 +1228,7 @@ class Inventory(object):
             try:
                 ie = self._byid[file_id]
             except KeyError:
-                raise BzrError("file_id {%s} not found in inventory" % file_id)
+                raise errors.NoSuchId(tree=None, file_id=file_id)
             yield ie
             file_id = ie.parent_id
 

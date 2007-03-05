@@ -1037,7 +1037,14 @@ class TreeTransform(object):
             to_name, to_parent, to_kind, to_executable = \
                 self._to_file_data(to_trans_id, from_trans_id, from_executable)
 
-            to_path = final_paths.get_path(to_trans_id)
+            if not from_versioned:
+                from_path = None
+            else:
+                from_path = self._tree_id_paths.get(from_trans_id)
+            if not to_versioned:
+                to_path = None
+            else:
+                to_path = final_paths.get_path(to_trans_id)
             if from_kind != to_kind:
                 modified = True
             elif to_kind in ('file' or 'symlink') and (
@@ -1048,7 +1055,7 @@ class TreeTransform(object):
                 from_parent==to_parent and from_name == to_name and
                 from_executable == to_executable):
                 continue
-            results.append((file_id, to_path, modified,
+            results.append((file_id, (from_path, to_path), modified,
                    (from_versioned, to_versioned),
                    (from_parent, to_parent),
                    (from_name, to_name),
@@ -1401,7 +1408,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
         if change_reporter:
-            change_reporter = delta.ChangeReporter(working_tree.inventory)
+            change_reporter = delta.ChangeReporter()
             delta.report_changes(tt._iter_changes(), change_reporter)
         for conflict in conflicts:
             warning(conflict)

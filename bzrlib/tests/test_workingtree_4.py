@@ -422,7 +422,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ['a-id'])
         self.assertEqual(u'a', tree.id2path('a-id'))
-        self.assertIs(None, tree.id2path('a'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         tree.commit('a')
         tree.add(['b'], ['b-id'])
 
@@ -430,9 +430,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual(u'b\xb5rry', tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
         tree.unversion(['a-id'])
-        self.assertEqual(None, tree.id2path('a-id'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')
         self.assertEqual('b', tree.id2path('b-id'))
-        self.assertEqual(None, tree.id2path('c-id'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, 'c-id')
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
@@ -447,3 +447,23 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
         self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
 
+    def test_set_root_id(self):
+        # similar to some code that fails in the dirstate-plus-subtree branch
+        # -- setting the root id while adding a parent seems to scramble the
+        # dirstate invariants. -- mbp 20070303
+        def validate():
+            wt.lock_read()
+            try:
+                wt.current_dirstate()._validate()
+            finally:
+                wt.unlock()
+        wt = self.make_workingtree('tree')
+        wt.set_root_id('TREE-ROOTID')
+        validate()
+        wt.commit('somenthing')
+        validate()
+        # now switch and commit again
+        wt.set_root_id('tree-rootid')
+        validate()
+        wt.commit('again')
+        validate()
