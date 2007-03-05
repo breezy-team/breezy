@@ -808,7 +808,7 @@ class TestCase(unittest.TestCase):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
-            'APPDATA': os.getcwd(),
+            'APPDATA': None,  # bzr now use Win32 API and don't rely on APPDATA
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -1444,7 +1444,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
-        os.environ['APPDATA'] = self.test_home_dir
+        os.environ['BZR_HOME'] = self.test_home_dir
         
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
