@@ -1221,6 +1221,10 @@ class DirStateRevisionTree(Tree):
         self._locked = 0
         self._dirstate_locked = False
 
+    def __repr__(self):
+        return "<%s of %s in %s>" % \
+            (self.__class__.__name__, self._revision_id, self._dirstate)
+
     def annotate_iter(self, file_id):
         """See Tree.annotate_iter"""
         w = self._repository.weave_store.get_weave(file_id,
