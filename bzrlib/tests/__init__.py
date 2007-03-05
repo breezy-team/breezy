@@ -1647,12 +1647,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
         If the transport is not a LocalTransport, the Tree can't be created on
         the transport.  In that case the working tree is created in the local
-        directory, and the returned tree's branch and repository will also be
-        accessed locally.
+        directory backing the transport, and the returned tree's branch and
+        repository will also be accessed locally.
 
-        This will fail if the original default transport for this test
-        case wasn't backed by the working directory, as the branch won't
-        be on disk for us to open it.
+        If the original default transport for this test case isn't backed by the
+        working directory, this will return a checkout.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
