@@ -864,6 +864,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unversioned_subtree_only_emits_root(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/dir/', 'tree2/dir/file'])
         tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
         expected = [
