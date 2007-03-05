@@ -145,8 +145,7 @@ def show_tree_status(wt, show_unchanged=None,
             if short:
                 changes = new._iter_changes(old, show_unchanged, specific_files,
                     require_versioned=False)
-                reporter = _mod_delta.ChangeReporter(old.inventory,
-                    output_file=to_file)
+                reporter = _mod_delta.ChangeReporter(output_file=to_file)
                 _mod_delta.report_changes(changes, reporter)
                 short_status_letter = '? '
                 list_paths('unknown', new.unknowns(), specific_files, to_file,

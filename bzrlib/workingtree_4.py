@@ -1459,7 +1459,7 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        utf8_decode = cache_utf8._utf8_decode
+        utf8_decode = cache_utf8._utf8_decode_with_None
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
@@ -1645,7 +1645,6 @@ class InterDirStateTree(InterTree):
                     old_path = path = pathjoin(old_dirname, old_basename)
                 if path_info is None:
                     # the file is missing on disk, show as removed.
-                    old_path = pathjoin(entry[0][0], entry[0][1])
                     content_change = True
                     target_kind = None
                     target_exec = False
@@ -1711,7 +1710,7 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                return ((entry[0][2], path, content_change,
+                return ((entry[0][2], (old_path, path), content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
                         (old_basename, entry[0][1]),
@@ -1730,7 +1729,7 @@ class InterDirStateTree(InterTree):
                     target_exec = bool(
                         stat.S_ISREG(path_info[3].st_mode)
                         and stat.S_IEXEC & path_info[3].st_mode)
-                    return ((entry[0][2], path, True,
+                    return ((entry[0][2], (None, path), True,
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
@@ -1750,7 +1749,7 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                return ((entry[0][2], old_path, True,
+                return ((entry[0][2], (old_path, None), True,
                         (True, False),
                         (parent_id, None),
                         (entry[0][1], None),
@@ -1812,13 +1811,15 @@ class InterDirStateTree(InterTree):
                         or result[7][0] != result[7][1] # executable
                         ):
                         result = (result[0],
-                                  utf8_decode(result[1])[0]) + result[2:]
+                            ((utf8_decode(result[1][0])[0]),
+                             utf8_decode(result[1][1])[0]),) + result[2:]
                         yield result
             if want_unversioned and not path_handled:
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield (None, current_root, True, (False, False), (None, None),
+                yield (None, (None, current_root), True, (False, False),
+                    (None, None),
                     (None, splitpath(current_root)[-1]),
                     (None, root_dir_info[2]), (None, new_executable))
             dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
@@ -1896,7 +1897,8 @@ class InterDirStateTree(InterTree):
                                     or result[7][0] != result[7][1] # executable
                                     ):
                                     result = (result[0],
-                                              utf8_decode(result[1])[0]) + result[2:]
+                                        ((utf8_decode(result[1][0])[0]),
+                                         utf8_decode(result[1][1])[0]),) + result[2:]
                                     yield result
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
@@ -1940,7 +1942,8 @@ class InterDirStateTree(InterTree):
                                 or result[7][0] != result[7][1] # executable
                                 ):
                                 result = (result[0],
-                                          utf8_decode(result[1])[0]) + result[2:]
+                                    ((utf8_decode(result[1][0])[0]),
+                                     utf8_decode(result[1][1])[0]),) + result[2:]
                                 yield result
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
@@ -1966,7 +1969,8 @@ class InterDirStateTree(InterTree):
                                     or result[7][0] != result[7][1] # executable
                                     ):
                                     result = (result[0],
-                                              utf8_decode(result[1])[0]) + result[2:]
+                                        ((utf8_decode(result[1][0])[0]),
+                                         utf8_decode(result[1][1])[0]),) + result[2:]
                                     yield result
                             advance_path = False
                     else:
@@ -1984,7 +1988,8 @@ class InterDirStateTree(InterTree):
                                 or result[7][0] != result[7][1] # executable
                                 ):
                                 result = (result[0],
-                                          utf8_decode(result[1])[0]) + result[2:]
+                                    ((utf8_decode(result[1][0])[0]),
+                                     utf8_decode(result[1][1])[0]),) + result[2:]
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
@@ -2002,12 +2007,13 @@ class InterDirStateTree(InterTree):
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 if want_unversioned:
-                                    yield (None, current_path_info[0], True,
-                                           (False, False),
-                                           (None, None),
-                                           (None, current_path_info[1]),
-                                           (None, current_path_info[2]),
-                                           (None, new_executable))
+                                    yield (None, (None, current_path_info[0]),
+                                        True,
+                                        (False, False),
+                                        (None, None),
+                                        (None, current_path_info[1]),
+                                        (None, current_path_info[2]),
+                                        (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] == 'directory':

@@ -106,12 +106,15 @@ class TestRevert(ExternalBase):
     def test_revert_chatter(self):
         self._prepare_rename_mod_tree()
         chatter = self.run_bzr('revert')[1]
-        self.assertEqualDiff('R   j/b => a/b\n'
-                             'R   j/d/ => a/d/\n'
-                             'R   j/e => a/d/e\n'
-                             'R   j/ => f/\n'
-                             'R   a/g => f/g\n'
-                             'R   h => f/h\n', chatter)
+        self.assertEqualDiff(
+            'R   a/g => f/g\n'
+            'R   h => f/h\n'
+            'R   j/ => f/\n'
+            'R   j/b => a/b\n'
+            'R   j/d/ => a/d/\n'
+            'R   j/e => a/d/e\n',
+            chatter)
+
     def test_revert(self):
         self.run_bzr('init')
 

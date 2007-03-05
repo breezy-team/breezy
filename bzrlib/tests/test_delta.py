@@ -19,7 +19,6 @@ from StringIO import StringIO
 
 from bzrlib import (
     delta as _mod_delta,
-    inventory,
     tests,
     )
 
@@ -44,13 +43,9 @@ class TestReportChanges(tests.TestCase):
         result = []
         def result_line(format, *args):
             result.append(format % args)
-        inv = inventory.Inventory()
-        if old_path is not None:
-            inv.add(inventory.InventoryFile(file_id, old_path,
-                                            inv.root.file_id))
-        reporter = _mod_delta.ChangeReporter(inv, result_line)
-        reporter.report(file_id, path, versioned_change, renamed, modified,
-                         exe_change, kind)
+        reporter = _mod_delta.ChangeReporter(result_line)
+        reporter.report(file_id, (old_path, path), versioned_change, renamed,
+            modified, exe_change, kind)
         self.assertEqualDiff(expected, result[0])
 
     def test_rename(self):
@@ -61,7 +56,7 @@ class TestReportChanges(tests.TestCase):
 
     def test_kind(self):
         self.assertReport(' K  path => path/', modified='kind changed',
-                          kind=('file', 'directory'))
+                          kind=('file', 'directory'), old_path='path')
         self.assertReport(' K  path/ => path', modified='kind changed',
                           kind=('directory', 'file'), old_path='old')
         self.assertReport('RK  old => path/', renamed=True,
@@ -78,8 +73,6 @@ class TestReportChanges(tests.TestCase):
                           modified='created', kind=(None, 'directory'))
         self.assertReport('+M  path/', versioned_change='added',
                           modified='modified', kind=(None, 'directory'))
-        self.assertReport('+K  path => path/', versioned_change='added',
-                          modified='kind changed', kind=('file', 'directory'))
 
     def test_removal(self):
         self.assertReport(' D  path/', modified='deleted',
