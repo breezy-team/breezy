@@ -1646,30 +1646,30 @@ class InterDirStateTree(InterTree):
         # cases:
         # 
         # Source | Target | disk | action
-        #   r    | fdl    |      | add source to search, add id path move and perform
+        #   r    | fdlt   |      | add source to search, add id path move and perform
         #        |        |      | diff check on source-target
-        #   r    | fdl    |  a   | dangling file that was present in the basis. 
+        #   r    | fdlt   |  a   | dangling file that was present in the basis. 
         #        |        |      | ???
         #   r    |  a     |      | add source to search
         #   r    |  a     |  a   | 
         #   r    |  r     |      | this path is present in a non-examined tree, skip.
         #   r    |  r     |  a   | this path is present in a non-examined tree, skip.
-        #   a    | fdl    |      | add new id
-        #   a    | fdl    |  a   | dangling locally added file, skip
+        #   a    | fdlt   |      | add new id
+        #   a    | fdlt   |  a   | dangling locally added file, skip
         #   a    |  a     |      | not present in either tree, skip
         #   a    |  a     |  a   | not present in any tree, skip
         #   a    |  r     |      | not present in either tree at this path, skip as it
         #        |        |      | may not be selected by the users list of paths.
         #   a    |  r     |  a   | not present in either tree at this path, skip as it
         #        |        |      | may not be selected by the users list of paths.
-        #  fdl   | fdl    |      | content in both: diff them
-        #  fdl   | fdl    |  a   | deleted locally, but not unversioned - show as deleted ?
-        #  fdl   |  a     |      | unversioned: output deleted id for now
-        #  fdl   |  a     |  a   | unversioned and deleted: output deleted id
-        #  fdl   |  r     |      | relocated in this tree, so add target to search.
+        #  fdlt  | fdlt   |      | content in both: diff them
+        #  fdlt  | fdlt   |  a   | deleted locally, but not unversioned - show as deleted ?
+        #  fdlt  |  a     |      | unversioned: output deleted id for now
+        #  fdlt  |  a     |  a   | unversioned and deleted: output deleted id
+        #  fdlt  |  r     |      | relocated in this tree, so add target to search.
         #        |        |      | Dont diff, we will see an r,fd; pair when we reach
         #        |        |      | this id at the other path.
-        #  fdl   |  r     |  a   | relocated in this tree, so add target to search.
+        #  fdlt  |  r     |  a   | relocated in this tree, so add target to search.
         #        |        |      | Dont diff, we will see an r,fd; pair when we reach
         #        |        |      | this id at the other path.
 
@@ -1713,9 +1713,9 @@ class InterDirStateTree(InterTree):
             source_minikind = source_details[0]
             if source_minikind in 'fdlr' and target_minikind in 'fdl':
                 # claimed content in both: diff
-                #   r    | fdl    |      | add source to search, add id path move and perform
+                #   r    | fdlt   |      | add source to search, add id path move and perform
                 #        |        |      | diff check on source-target
-                #   r    | fdl    |  a   | dangling file that was present in the basis.
+                #   r    | fdlt   |  a   | dangling file that was present in the basis.
                 #        |        |      | ???
                 if source_minikind in 'r':
                     # add the source to the search path to find any children it
@@ -1770,6 +1770,11 @@ class InterDirStateTree(InterTree):
                         else:
                             content_change = (link_or_sha1 != source_details[1])
                         target_exec = False
+                    elif target_kind == 'tree-reference':
+                        if source_minikind != 't':
+                            content_change = True
+                        else:
+                            content_change = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
                 # parent id is the entry for the path in the target tree
@@ -1811,7 +1816,7 @@ class InterDirStateTree(InterTree):
                         (old_basename, entry[0][1]),
                         (_minikind_to_kind[source_minikind], target_kind),
                         (source_exec, target_exec)),)
-            elif source_minikind in 'a' and target_minikind in 'fdl':
+            elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
                 if path_info is not None:
                     path = pathjoin(entry[0][0], entry[0][1])
@@ -1834,7 +1839,7 @@ class InterDirStateTree(InterTree):
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
                     pass
-            elif source_minikind in 'fdl' and target_minikind in 'a':
+            elif source_minikind in 'fdlt' and target_minikind in 'a':
                 # unversioned, possibly, or possibly not deleted: we dont care.
                 # if its still on disk, *and* theres no other entry at this
                 # path [we dont know this in this routine at the moment -
@@ -1850,7 +1855,7 @@ class InterDirStateTree(InterTree):
                         (entry[0][1], None),
                         (_minikind_to_kind[source_minikind], None),
                         (source_details[3], None)),)
-            elif source_minikind in 'fdl' and target_minikind in 'r':
+            elif source_minikind in 'fdlt' and target_minikind in 'r':
                 # a rename; could be a true rename, or a rename inherited from
                 # a renamed parent. TODO: handle this efficiently. Its not
                 # common case to rename dirs though, so a correct but slow

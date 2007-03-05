@@ -39,6 +39,8 @@ from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 # TODO: test specific_files when the target tree has a file and the source a
 #       dir with children, same id and same path. 
 # TODO: test comparisons between trees with different root ids. mbp 20070301
+#
+# TODO: More comparisons between trees with subtrees in different states.
 
 class TestCompare(TestCaseWithTwoTrees):
 
@@ -722,15 +724,25 @@ class TestIterChanges(TestCaseWithTwoTrees):
         try:
             self.assertEqual([], list(tree2._iter_changes(tree1)))
             subtree1.commit('commit', rev_id='commit-a')
-            self.assertEqual([('subtree-id',
-                               'sub',
-                               True,
-                               (True, True),
-                               ('root-id', 'root-id'),
-                               ('sub', 'sub'),
-                               ('tree-reference', 'tree-reference'),
-                               (False, False))],
-                             list(tree2._iter_changes(tree1)))
+            self.assertEqual([
+                ('root-id',
+                 (u'', u''),
+                 False,
+                 (True, True),
+                 (None, None),
+                 (u'', u''),
+                 ('directory', 'directory'),
+                 (False, False)),
+                ('subtree-id',
+                 ('sub', 'sub',),
+                 False,
+                 (True, True),
+                 ('root-id', 'root-id'),
+                 ('sub', 'sub'),
+                 ('tree-reference', 'tree-reference'),
+                 (False, False))],
+                             list(tree2._iter_changes(tree1,
+                                 include_unchanged=True)))
         finally:
             tree1.unlock()
             tree2.unlock()
