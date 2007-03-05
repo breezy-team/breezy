@@ -662,6 +662,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_missing_and_renamed(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree1/file'])
         tree1.add(['file'], ['file-id'])
         self.build_tree(['tree2/directory/'])
@@ -737,6 +738,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_default_ignores_unversioned_files(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree1/a', 'tree1/c',
                          'tree2/a', 'tree2/b', 'tree2/c'])
         tree1.add(['a', 'c'], ['a-id', 'c-id'])
