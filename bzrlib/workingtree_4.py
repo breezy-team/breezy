@@ -1684,6 +1684,8 @@ class InterDirStateTree(InterTree):
         last_source_parent = [None, None, None]
         last_target_parent = [None, None, None]
 
+        use_filesystem_for_exec = (sys.platform != 'win32')
+
         def _process_entry(entry, path_info):
             """Compare an entry and real disk to generate delta information.
 
@@ -1761,9 +1763,12 @@ class InterDirStateTree(InterTree):
                             # sha1 hash.
                             content_change = (link_or_sha1 != source_details[1])
                         # Target details is updated at update_entry time
-                        target_exec = bool(
-                            stat.S_ISREG(path_info[3].st_mode)
-                            and stat.S_IEXEC & path_info[3].st_mode)
+                        if use_filesystem_for_exec:
+                            # We don't need S_ISREG here, because we are sure
+                            # we are dealing with a file.
+                            target_exec = bool(stat.S_IEXEC & path_info[3].st_mode)
+                        else:
+                            target_exec = target_details[3]
                     elif target_kind == 'symlink':
                         if source_minikind != 'l':
                             content_change = True
@@ -1826,9 +1831,14 @@ class InterDirStateTree(InterTree):
                                                  path_utf8=entry[0][0])[0][2]
                     if parent_id == entry[0][2]:
                         parent_id = None
-                    target_exec = bool(
-                        stat.S_ISREG(path_info[3].st_mode)
-                        and stat.S_IEXEC & path_info[3].st_mode)
+                    if use_filesystem_for_exec:
+                        # We need S_ISREG here, because we aren't sure if this
+                        # is a file or not.
+                        target_exec = bool(
+                            stat.S_ISREG(path_info[3].st_mode)
+                            and stat.S_IEXEC & path_info[3].st_mode)
+                    else:
+                        target_exec = target_details[3]
                     return ((entry[0][2], (None, path), True,
                             (False, True),
                             (None, parent_id),
