@@ -693,7 +693,10 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
 
 
 class TestHttpProxyWhiteBox(TestCase):
-    """Whitebox test proxy http authorization."""
+    """Whitebox test proxy http authorization.
+
+    These tests concern urllib implementation only.
+    """
 
     def setUp(self):
         TestCase.setUp(self)
@@ -741,6 +744,10 @@ class TestHttpProxyWhiteBox(TestCase):
         self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
                          request.headers['Proxy-authorization'])
 
+    def test_invalid_proxy(self):
+        """A proxy env variable without scheme"""
+        self._install_env({'http_proxy': 'host:1234'})
+        self.assertRaises(errors.InvalidURL, self._proxied_request)
 
 
 class TestProxyHttpServer(object):
@@ -772,7 +779,9 @@ class TestProxyHttpServer(object):
                                   ('foo-proxied', 'proxied contents of foo\n')])
         # Let's setup some attributes for tests
         self.server = self.get_readonly_server()
-        self.no_proxy_host = 'localhost:%d' % self.server.port
+        # FIXME: We should not rely on 'localhost' being the hostname
+        self.proxy_address = 'localhost:%d' % self.server.port
+        self.no_proxy_host = self.proxy_address
         # The secondary server is the proxy
         self.proxy = self.get_secondary_server()
         self.proxy_url = self.proxy.get_url()
@@ -842,6 +851,11 @@ class TestProxyHttpServer(object):
         self.not_proxied_in_env({'ALL_PROXY': self.proxy_url,
                                  'NO_PROXY': self.no_proxy_host})
 
+    def test_http_proxy_without_scheme(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.proxied_in_env,
+                          {'http_proxy': self.proxy_address})
+
 
 class TestProxyHttpServer_urllib(TestProxyHttpServer,
                                  TestCaseWithTwoWebservers):
@@ -869,6 +883,13 @@ class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
         raise TestSkipped()
+
+    def test_http_proxy_without_scheme(self):
+        # pycurl *ignores* invalid proxy env variables. If that
+        # ever change in the future, this test will fail
+        # indicating that pycurl do not ignore anymore such
+        # variables.
+        self.not_proxied_in_env({'http_proxy': self.proxy_address})
 
 
 class TestRanges(object):
