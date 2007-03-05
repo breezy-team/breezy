@@ -405,7 +405,7 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
         if entry == (None, None):
-            return None
+            raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 

@@ -146,6 +146,10 @@ class Tree(object):
         return iter(self.inventory)
 
     def id2path(self, file_id):
+        """Return the path for a file id.
+
+        :raises NoSuchId:
+        """
         file_id = osutils.safe_file_id(file_id)
         return self.inventory.id2path(file_id)
 
