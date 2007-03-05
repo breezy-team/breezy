@@ -607,15 +607,8 @@ class cmd_pull(Command):
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            # lock the tree we are pulling too, so that its inventory is
-            # stable. This is a hack to workaround the _iter_changes interface
-            # not exposing the old path, which will be fixed soon. RBC 20070301
-            tree_to.lock_write()
-            try:
-                count = tree_to.pull(branch_from, overwrite, rev_id,
-                    delta.ChangeReporter(tree_to.inventory))
-            finally:
-                tree_to.unlock()
+            count = tree_to.pull(branch_from, overwrite, rev_id,
+                delta.ChangeReporter())
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
@@ -2484,14 +2477,9 @@ class cmd_merge(Command):
         #      However, cmd_merge open's its own tree in _merge_helper, which
         #      means if we lock here, the later lock_write() will always block.
         #      Either the merge helper code should be updated to take a tree,
-        #      or the ChangeReporter should be updated to not require an
-        #      inventory. (What about tree.merge_from_branch?)
+        #      (What about tree.merge_from_branch?)
         tree = WorkingTree.open_containing(directory)[0]
-        tree.lock_read()
-        try:
-            change_reporter = delta.ChangeReporter(tree.inventory)
-        finally:
-            tree.unlock()
+        change_reporter = delta.ChangeReporter()
 
         if branch is not None:
             try:

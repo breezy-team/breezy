@@ -134,6 +134,14 @@ class Tree(object):
             return True
         return self.inventory.has_id(file_id)
 
+    def is_ignored(self, filename):
+        """Check whether the filename is ignored by this tree.
+
+        :param filename: The relative filename within the tree.
+        :return: True if the filename is ignored.
+        """
+        return False
+
     def __iter__(self):
         return iter(self.inventory)
 
@@ -577,12 +585,12 @@ class InterTree(InterObject):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
-        (file_id, path, changed_content, versioned, parent, name, kind,
+        (file_id, (path_in_source, path_in_target),
+         changed_content, versioned, parent, name, kind,
          executable)
 
-        Path is relative to the target tree.  changed_content is True if the
-        file's content has changed.  This includes changes to its kind, and to
-        a symlink's target.
+        Changed_content is True if the file's content has changed.  This
+        includes changes to its kind, and to a symlink's target.
 
         versioned, parent, name, kind, executable are tuples of (from, to).
         If a file is missing in a tree, its kind is None.
@@ -630,7 +638,7 @@ class InterTree(InterObject):
                 unversioned_path = all_unversioned.popleft()
                 to_kind, to_executable, to_stat = \
                     self.target._comparison_data(fake_entry, unversioned_path[1])
-                yield (None, unversioned_path[1], True, (False, False),
+                yield (None, (None, unversioned_path[1]), True, (False, False),
                     (None, None),
                     (None, unversioned_path[0][-1]),
                     (None, to_kind),
@@ -680,35 +688,43 @@ class InterTree(InterObject):
             if (changed_content is not False or versioned[0] != versioned[1]
                 or parent[0] != parent[1] or name[0] != name[1] or 
                 executable[0] != executable[1] or include_unchanged):
-                yield (file_id, to_path, changed_content, versioned, parent,
-                       name, kind, executable)
+                yield (file_id, (from_path, to_path), changed_content,
+                    versioned, parent, name, kind, executable)
+
         while all_unversioned:
             # yield any trailing unversioned paths
             unversioned_path = all_unversioned.popleft()
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
-            yield (None, unversioned_path[1], True, (False, False),
+            yield (None, (None, unversioned_path[1]), True, (False, False),
                 (None, None),
                 (None, unversioned_path[0][-1]),
                 (None, to_kind),
                 (None, to_executable))
 
-        def get_to_path(from_entry):
-            if from_entry.parent_id is None:
-                to_path = ''
+        def get_to_path(to_entry):
+            if to_entry.parent_id is None:
+                to_path = '' # the root
             else:
-                if from_entry.parent_id not in to_paths:
-                    get_to_path(self.source.inventory[from_entry.parent_id])
-                to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
-                                           from_entry.name)
-            to_paths[from_entry.file_id] = to_path
+                if to_entry.parent_id not in to_paths:
+                    # recurse up
+                    return get_to_path(self.target.inventory[to_entry.parent_id])
+                to_path = osutils.pathjoin(to_paths[to_entry.parent_id],
+                                           to_entry.name)
+            to_paths[to_entry.file_id] = to_path
             return to_path
 
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
             if file_id in to_paths:
+                # already returned
                 continue
-            to_path = get_to_path(from_entry)
+            if not file_id in self.target.inventory:
+                # common case - paths we have not emitted are not present in
+                # target.
+                to_path = None
+            else:
+                to_path = get_to_path(self.target.inventory[file_id])
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -721,7 +737,7 @@ class InterTree(InterObject):
             executable = (from_executable, None)
             changed_content = True
             # the parent's path is necessarily known at this point.
-            yield(file_id, to_path, changed_content, versioned, parent,
+            yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
 
 
