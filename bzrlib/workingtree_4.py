@@ -955,8 +955,10 @@ class WorkingTree4(WorkingTree3):
             except (errors.NoSuchRevision, errors.RevisionNotPresent):
                 revtree = None
             trees.append((revision_id, revtree))
+        self.current_dirstate()._validate()
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        self.current_dirstate()._validate()
 
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
@@ -967,6 +969,7 @@ class WorkingTree4(WorkingTree3):
             parent tree - i.e. a ghost.
         """
         dirstate = self.current_dirstate()
+        dirstate._validate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
@@ -982,8 +985,11 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
+        dirstate._validate()
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
+        dirstate._validate()
         self._make_dirty(reset_inventory=False)
+        dirstate._validate()
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
@@ -1167,22 +1173,27 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 wt._set_root_id(generate_ids.gen_root_id())
                 wt.flush()
                 wt.current_dirstate()._validate()
-            else:
-                wt.set_last_revision(revision_id)
-                wt.flush()
-                basis = wt.basis_tree()
-                basis.lock_read()
-                state = wt.current_dirstate()
+                return wt
+            # TODO: Remove some of this validation once the problem is
+            # fixed -- mbp 20070304
+            wt.current_dirstate()._validate()
+            wt.set_last_revision(revision_id)
+            wt.current_dirstate()._validate()
+            wt.flush()
+            wt.current_dirstate()._validate()
+            basis = wt.basis_tree()
+            wt.current_dirstate()._validate()
+            basis.lock_read()
+            wt.current_dirstate()._validate()
+            # if the basis has a root id we have to use that; otherwise we use
+            # a new random one
+            basis_root_id = basis.get_root_id()
+            if basis_root_id is not None:
                 state._validate()
-                # if the basis has a root id we have to use that; otherwise we use
-                # a new random one
-                basis_root_id = basis.get_root_id()
-                if basis_root_id is not None:
-                    state._validate()
-                    wt._set_root_id(basis_root_id)
-                    wt.flush()
-                transform.build_tree(basis, wt)
-                basis.unlock()
+                wt._set_root_id(basis_root_id)
+                wt.flush()
+            transform.build_tree(basis, wt)
+            basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()

@@ -89,6 +89,13 @@ Kinds:
 't' is a reference to a nested subtree; the fingerprint is the referenced
     revision.
 
+Ordering:
+
+The entries on disk and in memory are ordered according to the following keys:
+
+    directory, as a list of components
+    filename
+    file-id
 
 --- Format 1 had the following different definition: ---
 rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
@@ -881,7 +888,7 @@ class DirState(object):
         """Load new_entries into self.dirblocks.
 
         Process new_entries into the current state object, making them the active
-        state.
+        state.  The entries are grouped together by directory to form dirblocks.
 
         :param new_entries: A sorted list of entries. This function does not sort
             to prevent unneeded overhead when callers have a sorted list already.
@@ -1767,6 +1774,7 @@ class DirState(object):
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
         """ 
+        self._validate()
         # TODO: generate a list of parent indexes to preserve to save 
         # processing specific parent trees. In the common case one tree will
         # be preserved - the left most parent.
@@ -1890,14 +1898,27 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = sorted(by_path.items(),
-                        key=lambda entry:(entry[0][0].split('/'), entry[0][1]))
+        new_entries = self._sort_entries(by_path.items())
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = id_index
+        self._validate()
+
+    def _sort_entries(self, entry_list):
+        """Given a list of entries, sort them into the right order.
+
+        This is done when constructing a new dirstate from trees - normally we
+        try to keep everything in sorted blocks all the time, but sometimes
+        it's easier to sort after the fact.
+        """
+        # TODO: Might be faster to do a scwartzian transform?
+        def _key(entry):
+            # sort by: directory parts, file name, file id
+            return entry[0][0].split('/'), entry[0][1], entry[0][2]
+        return sorted(entry_list, key=_key)
 
     def set_state_from_inventory(self, new_inv):
         """Set new_inv as the current state. 
@@ -2157,10 +2178,18 @@ class DirState(object):
             assert self._dirblocks[1][0] == '', \
                     "dirblocks missing root directory:\n" + \
                     pformat(dirblocks)
-        assert self._dirblocks[1:] == sorted(self._dirblocks[1:]), \
-                "dirblocks are not in sorted order:\n" + \
-                pformat(self._dirblocks)
+        # the dirblocks are sorted by their path components, name, and dir id
+        dir_names = [d[0].split('/')
+                for d in self._dirblocks[1:]]
+        if dir_names != sorted(dir_names):
+            raise AssertionError(
+                "dir names are not in sorted order:\n" + \
+                pformat(self._dirblocks) + \
+                "\nkeys:\n" +
+                pformat(dir_names))
         for dirblock in self._dirblocks:
+            # within each dirblock, the entries are sorted by filename and
+            # then by id.
             assert dirblock[1] == sorted(dirblock[1]), \
                 "dirblock for %r is not sorted:\n%s" % \
                 (dirblock[0], pformat(dirblock))

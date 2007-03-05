@@ -318,6 +318,28 @@ class TestTreeToDirState(TestCaseWithDirState):
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
 
+    def test_colliding_fileids(self):
+        # test insertion of parents creating several entries at the same path.
+        # we used to have a bug where they could cause the dirstate to break
+        # its ordering invariants.
+        # create some trees to test from
+        parents = []
+        for i in range(7):
+            tree = self.make_branch_and_tree('tree%d' % i)
+            self.build_tree(['tree%d/name' % i,])
+            tree.add(['name'], ['file-id%d' % i])
+            revision_id = 'revid-%d' % i
+            tree.commit('message', rev_id=revision_id)
+            parents.append((revision_id,
+                tree.branch.repository.revision_tree(revision_id)))
+        # now fold these trees into a dirstate
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_parent_trees(parents, [])
+            state._validate()
+        finally:
+            state.unlock()
+
 
 class TestDirStateOnFile(TestCaseWithDirState):
 
@@ -443,6 +465,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             state.set_parent_trees([('parent-revid', rt)], ghosts=[])
             state.set_path_id('', 'foobarbaz')
+            state._validate()
             # now see that it is what we expected
             expected_rows = [
                 (('', '', 'TREE_ROOT'),
