@@ -530,10 +530,8 @@ class RemoteRepository(object):
         return self._real_repository.get_revisions(revision_ids)
 
     def supports_rich_root(self):
-        # Perhaps this should return True depending on the real repository, but
-        # for now we just take the easy option and assume we can't handle rich
-        # root data.
-        return False
+        self._ensure_real()
+        return self._real_repository.supports_rich_root()
 
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()

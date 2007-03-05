@@ -1360,7 +1360,7 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if source._format.rich_root_data == target._format.rich_root_data:
+        if source.supports_rich_root() == target.supports_rich_root():
             return True
         else:
             return False
@@ -1613,11 +1613,7 @@ class InterModel1and2(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if not isinstance(source, Repository):
-            return False
-        if not isinstance(target, Repository):
-            return False
-        if not source._format.rich_root_data and target._format.rich_root_data:
+        if not source.supports_rich_root() and target.supports_rich_root():
             return True
         else:
             return False
