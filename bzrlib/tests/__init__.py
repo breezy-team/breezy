@@ -1652,7 +1652,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
         This will fail if the original default transport for this test
         case wasn't backed by the working directory, as the branch won't
-        be on disk for us to open it.  
+        be on disk for us to open it.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
@@ -1666,13 +1666,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
-            # transport can't support them, then reopen the branch on a local
-            # transport, and create the working tree there.  
-            #
-            # Possibly we should instead keep
-            # the non-disk-backed branch and create a local checkout?
-            bd = bzrdir.BzrDir.open(relpath)
-            return bd.create_workingtree()
+            # transport can't support them, then we keep the non-disk-backed
+            # branch and create a local checkout.
+            if not os.path.exists('_checkouts'):
+                os.mkdir('_checkouts')
+            return b.create_checkout('_checkouts/' + relpath)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
