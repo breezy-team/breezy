@@ -193,9 +193,13 @@ class TestMerge(TestCaseWithTransport):
         tree.commit('set text to 1')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree2/sub-tree/file', 'text2')])
-        subtree2 = tree2.get_nested_tree(tree2.inventory['sub-tree-root'],
-                                         'sub-tree')
-        tree2.commit('changed file text')
+        tree2.lock_write()
+        try:
+            subtree2 = tree2.get_nested_tree(tree2.inventory['sub-tree-root'],
+                                             'sub-tree')
+            tree2.commit('changed file text')
+        finally:
+            tree2.unlock()
         tree.merge_from_branch(tree2.branch)
         self.assertFileEqual('text2', 'tree/sub-tree/file')
 
