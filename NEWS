@@ -160,6 +160,9 @@ IN DEVELOPMENT
       before the rest of the suite.  (Martin Pool)
 
 
+    * Fix bzrtools shelve command for removed lines beginning with "--"
+      (Johan Dahlberg, #75577)
+
 bzr 0.14  2007-01-23
 
   IMPROVEMENTS:
