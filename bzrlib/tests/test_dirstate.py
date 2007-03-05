@@ -456,8 +456,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_set_path_id_with_parents(self):
         """Set the root file id in a dirstate with parents"""
         mt = self.make_branch_and_tree('mt')
-        # may need to set the root when the default format is one where it's
-        # not TREE_ROOT
+        # in case the default tree format uses a different root id
+        mt.set_root_id('TREE_ROOT')
         mt.commit('foo', rev_id='parent-revid')
         rt = mt.branch.repository.revision_tree('parent-revid')
         state = dirstate.DirState.initialize('dirstate')
