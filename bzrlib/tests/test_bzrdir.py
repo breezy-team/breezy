@@ -77,11 +77,6 @@ class TestFormatRegistry(TestCase):
             )
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
-            'experimental-knit2',
-            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
-            'Experimental successor to knit.  Use at your own risk.',
-            )
-        my_format_registry.register_metadir(
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
             'Experimental successor to knit.  Use at your own risk.',

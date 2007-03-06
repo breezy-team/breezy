@@ -191,7 +191,7 @@ class TestRepository(TestCaseWithRepository):
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
-        f = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+        f = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         try:
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)
@@ -279,7 +279,7 @@ class TestRepository(TestCaseWithRepository):
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+            format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
             upgrade(wt.basedir, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
