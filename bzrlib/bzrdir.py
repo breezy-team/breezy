@@ -2244,7 +2244,7 @@ format_registry.register_metadir('knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat3')
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
