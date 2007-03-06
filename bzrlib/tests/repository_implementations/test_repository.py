@@ -303,18 +303,18 @@ class TestRepository(TestCaseWithRepository):
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
 
-    def XXXtest_upgrade_preserves_signatures(self):
+    def test_upgrade_preserves_signatures(self):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
-        wt.branch.repository.sign_revision('A',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
-        old_signature = wt.branch.repository.get_signature_text('A')
+        repo = wt.branch.repository
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        old_signature = repo.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
             format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
-            upgrade(wt.basedir, format=format)
+            upgrade(repo.bzrdir.root_transport.base, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
