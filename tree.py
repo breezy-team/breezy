@@ -32,7 +32,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.core, svn.wc, svn.delta, svn.ra
+import svn.core, svn.wc, svn.delta
 from svn.core import SubversionException, Pool
 
 def apply_txdelta_handler(src_stream, target_stream, pool):
@@ -62,12 +62,11 @@ class SvnRevisionTree(RevisionTree):
         self.file_data = {}
         editor, baton = svn.delta.make_editor(self.editor, pool)
         root_repos = repository.transport.get_repos_root()
-        reporter, reporter_baton = repository.transport.do_switch(
+        reporter = repository.transport.do_switch(
                 self.revnum, "", True, 
                 os.path.join(root_repos, self.branch_path), editor, baton, pool)
-        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, 
-                True, None, pool)
-        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        reporter.set_path("", 0, True, None, pool)
+        reporter.finish_report(pool)
         pool.destroy()
 
      def get_file_lines(self, file_id):

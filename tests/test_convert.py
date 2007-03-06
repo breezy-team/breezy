@@ -16,7 +16,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.trace import mutter
@@ -112,6 +112,16 @@ class TestConversion(TestCaseWithSubversionRepository):
 
         self.assertTrue(Repository.open("e").is_shared())
 
+    def test_shared_import_continue_remove(self):
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), True)
+        self.client_update("dc")
+        self.client_delete("dc/trunk")
+        self.client_commit("dc", "blafoo")
+        self.build_tree({'dc/trunk/file': 'otherdata'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "change")
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), True)
+
     def test_shared_import_continue_with_wt(self):
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), working_trees=True)
@@ -168,6 +178,9 @@ class TestConversion(TestCaseWithSubversionRepository):
         convert_repository("svn+"+self.repos_url, os.path.join(self.test_dir, "e"), TrunkBranchingScheme())
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "trunk")))
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
+
+    def test_convert_to_nonexistant(self):
+        self.assertRaises(NoSuchFile, convert_repository,"svn+"+self.repos_url, os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
 
     def test_notshared_import(self):
         convert_repository("svn+"+self.repos_url, "e", TrunkBranchingScheme(), 
@@ -284,3 +297,5 @@ data
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
         self.assertEqual(generate_svn_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk'), branch.last_revision())
+
+

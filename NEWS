@@ -10,6 +10,12 @@ bzr-svn 0.4	UNRELEASED
 
    * Implemented Repository.get_revision_graph(None)
 
+   * svn-import will no longer spin using CPU if the target directory 
+     did not exist (#80223).
+
+   * Remove branches when they are being replaced. Fixes DivergedBranches 
+     error when using svn-import (#81908).
+
   IMPROVEMENTS
 
    * A proper warning will now be printed if no sqlite implementation is 
@@ -24,8 +30,22 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+bzr-svn 0.3.1	2007-01-31
 
-bzr-svn 0.3	2007-01-16
+  BUG FIXES
+ 
+   *  Warning given when the version of python-subversion is not patched 
+      is now fixed. (Wouter van Heyst)
+
+  IMPROVEMENTS
+
+   * A proper warning will now be printed if no sqlite implementation is 
+     available.
+
+   * Working tree copies will be disabled if the version of python-subversion 
+     is too old.
+
+bzr-svn 0.3.0	2007-01-16
 
   BUG FIXES
 
