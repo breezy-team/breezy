@@ -142,14 +142,8 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._add)
 
     @needs_write_lock
-    def commit(self, message=None, revprops=None, recursive='down', *args,
+    def commit(self, message=None, revprops=None, *args,
                **kwargs):
-        if recursive == 'down':
-            for tree in self.iter_nested_trees():
-                try:
-                    tree.commit(message, revprops, recursive, *args, **kwargs)
-                except errors.PointlessCommit:
-                    pass
         # avoid circular imports
         from bzrlib import commit
         if revprops is None:

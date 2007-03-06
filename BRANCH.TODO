@@ -3,6 +3,10 @@
 # 
 #
 
+nested commits:
+message_callback : call it many times?
+specific files : adjust them as we walk deep into the trees.
+
 get_reference_revision should not take an InventoryEntry
 
 notice subtrees based on whether they actually have a control directory, not

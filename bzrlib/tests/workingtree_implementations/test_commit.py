@@ -210,6 +210,45 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.rename_one('name1', 'name2')
         wt.commit('third')
         wt.path2id('name1-id')
+
+    def test_nested_commit(self):
+        """Commit in multiply-nested trees"""
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        subsubtree = self.make_branch_and_tree('subtree/subtree')
+        subtree.add(['subtree'])
+        tree.add(['subtree'])
+        # use allow_pointless=False to ensure that the deepest tree, which
+        # has no commits made to it, does not get a pointless commit.
+        rev_id = tree.commit('added reference', allow_pointless=False)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # the deepest subtree has not changed, so no commit should take place.
+        self.assertEqual(None, subsubtree.last_revision())
+        # the intermediate tree should have committed a pointer to the current
+        # subtree revision.
+        sub_basis = subtree.basis_tree()
+        sub_basis.lock_read()
+        self.addCleanup(sub_basis.unlock)
+        self.assertEqual(subsubtree.last_revision(),
+            sub_basis.get_reference_revision(
+                sub_basis.inventory[sub_basis.path2id('subtree')]))
+        # the intermediate tree has changed, so should have had a commit
+        # take place.
+        self.assertNotEqual(None, subtree.last_revision())
+        # the outer tree should have committed a pointer to the current
+        # subtree revision.
+        basis = tree.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual(subtree.last_revision(),
+            basis.get_reference_revision(
+                basis.inventory[basis.path2id('subtree')]))
+        # the outer tree must have have changed too.
+        self.assertNotEqual(None, rev_id)
         
 
 class TestCommitProgress(TestCaseWithWorkingTree):

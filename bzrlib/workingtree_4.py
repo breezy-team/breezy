@@ -353,7 +353,7 @@ class WorkingTree4(WorkingTree3):
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = link_or_sha1
+                    inv_entry.reference_revision = link_or_sha1 or None
                 else:
                     assert 'unknown kind'
                 # These checks cost us around 40ms on a 55k entry tree
@@ -1357,7 +1357,7 @@ class DirStateRevisionTree(Tree):
                     inv_entry.text_size = size
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = fingerprint
+                    inv_entry.reference_revision = fingerprint or None
                 else:
                     raise AssertionError("cannot convert entry %r into an InventoryEntry"
                             % entry)
@@ -1402,6 +1402,9 @@ class DirStateRevisionTree(Tree):
 
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))
+
+    def get_reference_revision(self, entry, path=None):
+        return entry.reference_revision
 
     def get_symlink_target(self, file_id):
         entry = self._get_entry(file_id=file_id)
