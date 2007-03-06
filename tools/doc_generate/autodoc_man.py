@@ -117,9 +117,7 @@ def format_command (params, cmd):
                 if short_name:
                     assert len(short_name) == 1
                     l += ', -' + short_name
-                l += (30 - len(l)) * ' ' + help
-                # TODO: Split help over multiple lines with
-                # correct indenting and wrapping.
+                l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
                                         subsequent_indent=30*' ')
                 option_str = option_str + wrapped + '\n'       
