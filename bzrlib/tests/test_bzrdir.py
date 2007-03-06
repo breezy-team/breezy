@@ -132,13 +132,13 @@ class TestFormatRegistry(TestCase):
         default_factory = bzrdir.format_registry.get('default')
         old_default = [k for k, v in bzrdir.format_registry.iteritems()
                        if v == default_factory and k != 'default'][0]
-        bzrdir.format_registry.set_default_repository('experimental-knit2')
+        bzrdir.format_registry.set_default_repository('dirstate-with-subtree')
         try:
-            self.assertIs(bzrdir.format_registry.get('experimental-knit2'),
+            self.assertIs(bzrdir.format_registry.get('dirstate-with-subtree'),
                           bzrdir.format_registry.get('default'))
             self.assertIs(
                 repository.RepositoryFormat.get_default_format().__class__,
-                knitrepo.RepositoryFormatKnit2)
+                knitrepo.RepositoryFormatKnit3)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 
@@ -478,9 +478,9 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='experimental-reference-dirstate')
+        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
@@ -498,16 +498,17 @@ class ChrootedTests(TestCaseWithTransport):
             workingtree.WorkingTreeFormat3)
 
     def test_sprout_recursive_treeless(self):
-        tree = self.make_branch_and_tree('tree1', format='experimental-reference-dirstate')
+        tree = self.make_branch_and_tree('tree1',
+            format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
         tree.bzrdir.destroy_workingtree()
         repo = self.make_repository('repo', shared=True,
-                                    format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         repo.set_make_working_trees(False)
         tree.bzrdir.sprout('repo/tree2')
         self.failUnlessExists('repo/tree2/subtree')
@@ -551,7 +552,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         otherdir = bzrdir.format_registry.make_bzrdir('knit')
         self.assertEqual(otherdir, mydir)
         self.assertFalse(otherdir != mydir)
-        otherdir2 = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+        otherdir2 = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
@@ -745,7 +746,7 @@ class NonLocalTests(TestCaseWithTransport):
     def test_checkout_metadir(self):
         # checkout_metadir has reasonable working tree format even when no
         # working tree is present
-        self.make_branch('branch-knit2', format='experimental-knit2')
+        self.make_branch('branch-knit2', format='dirstate-with-subtree')
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,

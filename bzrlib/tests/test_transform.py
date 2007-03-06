@@ -44,7 +44,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = self.make_branch_and_tree('.', format='experimental-reference-dirstate')
+        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
         os.chdir('..')
 
     def get_transform(self):
@@ -127,7 +127,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(self.wt.path2id('oz/dorothy'), 'dorothy-id')
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
-        self.assertEqual('toto-contents', 
+        self.assertEqual('toto-contents',
                          self.wt.get_file_byname('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('toto-id'), False)
 
@@ -137,7 +137,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         trans_id = transform.new_directory('reference', root, 'subtree-id')
         transform.set_tree_reference('subtree-revision', trans_id)
         transform.apply()
-        self.assertEqual('subtree-revision', 
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('subtree-revision',
                          tree.inventory['subtree-id'].reference_revision)
 
     def test_conflicts(self):
@@ -967,15 +969,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
         b = BzrDir.create_standalone_workingtree('b')
-        build_tree(a.basis_tree(), b)
+        basis = a.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        build_tree(basis, b)
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
 
     def test_build_with_references(self):
-        tree = self.make_branch_and_tree('source', format='experimental-reference-dirstate')
-        subtree = self.make_branch_and_tree('source/subtree', 
-                                            format='experimental-reference-dirstate')
+        tree = self.make_branch_and_tree('source',
+            format='dirstate-with-subtree')
+        subtree = self.make_branch_and_tree('source/subtree',
+            format='dirstate-with-subtree')
         tree.add_reference(subtree)
         tree.commit('a revision')
         tree.branch.create_checkout('target')

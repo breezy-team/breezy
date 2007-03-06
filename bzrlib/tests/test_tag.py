@@ -27,7 +27,7 @@ from bzrlib.tag import (
     )
 from bzrlib.tests import (
     TestCase,
-    TestCaseInTempDir,
+    TestCaseWithTransport,
     )
 
 
@@ -48,15 +48,14 @@ class TestTagSerialization(TestCase):
         self.assertEqual(store._deserialize_tag_dict(packed), td)
 
 
-class TestTagMerging(TestCaseInTempDir):
+class TestTagMerging(TestCaseWithTransport):
 
     def make_knit_branch(self, relpath):
         old_bdf = bzrdir.format_registry.make_bzrdir('knit')
         return bzrdir.BzrDir.create_branch_convenience(relpath, format=old_bdf)
 
     def make_branch_supporting_tags(self, relpath):
-        new_bdf = bzrdir.format_registry.make_bzrdir('experimental-branch6')
-        return bzrdir.BzrDir.create_branch_convenience(relpath, format=new_bdf)
+        return self.make_branch(relpath, format='dirstate-with-subtree')
 
     def test_merge_not_possible(self):
         # test merging between branches which do and don't support tags

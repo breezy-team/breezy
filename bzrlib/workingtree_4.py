@@ -335,6 +335,10 @@ class WorkingTree4(WorkingTree3):
                 elif kind == 'directory':
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
+                elif kind == 'tree-reference':
+                    inv_entry.reference_revision = fingerprint
+                else:
+                    assert 'unknown kind'
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid, ('file_id %s already in'
                     ' inventory as %s' % (file_id, inv_byid[file_id]))
@@ -997,7 +1001,6 @@ class WorkingTree4(WorkingTree3):
         state.set_path_id('', file_id)
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
-        state.save()
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
@@ -1205,7 +1208,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     def __get_matchingbzrdir(self):
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
-            'experimental-reference-dirstate')
+            'dirstate-with-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
@@ -2202,7 +2205,11 @@ class Converter3to4(object):
         transport = tree.bzrdir.get_workingtree_transport(None)
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
             'pending-merges', 'stat-cache']:
-            transport.delete(path)
+            try:
+                transport.delete(path)
+            except errors.NoSuchFile:
+                # some files are optional - just deal.
+                pass
 
     def update_format(self, tree):
         """Change the format marker."""

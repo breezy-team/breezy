@@ -719,33 +719,32 @@ class TestIterChanges(TestCaseWithTwoTrees):
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
         tree2.add_reference(subtree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
         tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         tree2.lock_read()
-        try:
-            self.assertEqual([], list(tree2._iter_changes(tree1)))
-            subtree1.commit('commit', rev_id='commit-a')
-            self.assertEqual([
-                ('root-id',
-                 (u'', u''),
-                 False,
-                 (True, True),
-                 (None, None),
-                 (u'', u''),
-                 ('directory', 'directory'),
-                 (False, False)),
-                ('subtree-id',
-                 ('sub', 'sub',),
-                 False,
-                 (True, True),
-                 ('root-id', 'root-id'),
-                 ('sub', 'sub'),
-                 ('tree-reference', 'tree-reference'),
-                 (False, False))],
-                             list(tree2._iter_changes(tree1,
-                                 include_unchanged=True)))
-        finally:
-            tree1.unlock()
-            tree2.unlock()
+        self.addCleanup(tree2.unlock)
+        self.assertEqual([], list(tree2._iter_changes(tree1)))
+        subtree1.commit('commit', rev_id='commit-a')
+        self.assertEqual([
+            ('root-id',
+             (u'', u''),
+             False,
+             (True, True),
+             (None, None),
+             (u'', u''),
+             ('directory', 'directory'),
+             (False, False)),
+            ('subtree-id',
+             ('sub', 'sub',),
+             False,
+             (True, True),
+             ('root-id', 'root-id'),
+             ('sub', 'sub'),
+             ('tree-reference', 'tree-reference'),
+             (False, False))],
+                         list(tree2._iter_changes(tree1,
+                             include_unchanged=True)))
 
     def test_default_ignores_unversioned_files(self):
         tree1 = self.make_branch_and_tree('tree1')
