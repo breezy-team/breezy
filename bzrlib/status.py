@@ -81,7 +81,8 @@ def show_tree_status(wt, show_unchanged=None,
                      to_file=None,
                      show_pending=True,
                      revision=None,
-                     short=False):
+                     short=False,
+                     versioned=False):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision. 
@@ -106,7 +107,8 @@ def show_tree_status(wt, show_unchanged=None,
         If not None it must be a RevisionSpec list.
         If one revision show compared it with working tree.
         If two revisions show status between first and second.
-    :param short: If True, gives short SVN-style status lines
+    :param short: If True, gives short SVN-style status lines.
+    :param versioned: If True, only shows versioned files.
     """
     if show_unchanged is not None:
         warn("show_status_trees with show_unchanged has been deprecated "
@@ -154,11 +156,12 @@ def show_tree_status(wt, show_unchanged=None,
                        show_ids=show_ids,
                        show_unchanged=show_unchanged,
                        short_status=short)
-        short_status_letter = '? '
-        if not short:
-            short_status_letter = ''
-        list_paths('unknown', new.unknowns(), specific_files, to_file,
-                   short_status_letter)
+        if not versioned:
+            short_status_letter = '? '
+            if not short:
+                short_status_letter = ''
+            list_paths('unknown', new.unknowns(), specific_files, to_file,
+                       short_status_letter)
         conflict_title = False
         # show the new conflicts only for now. XXX: get them from the delta.
         for conflict in new.conflicts():

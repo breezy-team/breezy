@@ -66,6 +66,9 @@ IN DEVELOPMENT
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
 
+    * Added ``bzr status --versioned`` to report only versioned files, 
+      not unknowns. (Kent Gibson)
+
   INTERNALS:
 
     * Internally revision ids and file ids are now passed around as utf-8
