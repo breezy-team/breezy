@@ -177,16 +177,16 @@ class Tree(object):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)
 
-    def iter_reference_entries(self):
+    def iter_references(self):
         for path, entry in self.iter_entries_by_dir():
             if entry.kind == 'tree-reference':
-                yield path, entry
+                yield path, entry.file_id
 
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
-    def get_reference_revision(self, entry, path=None):
+    def get_reference_revision(self, file_id, path=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
             % self.__class__.__name__)
@@ -705,8 +705,8 @@ class InterTree(InterObject):
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
                 elif from_kind == 'tree-reference':
-                    if (self.source.get_reference_revision(from_entry, from_path)
-                        != self.target.get_reference_revision(to_entry, to_path)):
+                    if (self.source.get_reference_revision(file_id, from_path)
+                        != self.target.get_reference_revision(file_id, to_path)):
                         changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)

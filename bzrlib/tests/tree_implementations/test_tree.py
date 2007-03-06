@@ -58,23 +58,16 @@ class TestReference(TestCaseWithTree):
 
     def test_get_reference_revision(self):
         tree = self.create_nested()
-        tree.lock_read()
-        try:
-            entry = tree.inventory['sub-root']
-        finally:
-            tree.unlock()
         path = tree.id2path('sub-root')
-        self.assertEqual('sub-1', tree.get_reference_revision(entry, path))
+        self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
 
-    def test_iter_reference_entries(self):
+    def test_iter_references(self):
         tree = self.create_nested()
         tree.lock_read()
-        try:
-            entry = tree.inventory['sub-root']
-        finally:
-            tree.unlock()
-        self.assertEqual([entry], [e for p, e in
-                                   tree.iter_reference_entries()])
+        self.addCleanup(tree.unlock)
+        entry = tree.inventory['sub-root']
+        self.assertEqual([(tree.abspath('subtree'), 'sub-root')],
+            list(tree.iter_references()))
 
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none

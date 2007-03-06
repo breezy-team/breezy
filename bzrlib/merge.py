@@ -298,6 +298,23 @@ class Merger(object):
             merge = self.merge_type(pb=self._pb,
                                     change_reporter=self.change_reporter,
                                     **kwargs)
+            if self.recurse == 'down':
+                for path, file_id in self.this_tree.iter_references():
+                    sub_tree = self.this_tree.get_nested_tree(file_id, path)
+                    other_revision = self.other_tree.get_reference_revision(
+                        file_id, path)
+                    if  other_revision == sub_tree.last_revision():
+                        continue
+                    sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
+                    sub_merge.merge_type = self.merge_type
+                    relpath = self.this_tree.relpath(path)
+                    other_branch = self.other_branch.reference_parent(file_id, relpath)
+                    sub_merge.set_other_revision(other_revision, other_branch)
+                    base_revision = self.base_tree.get_reference_revision(file_id)
+                    sub_merge.base_tree = \
+                        sub_tree.branch.repository.revision_tree(base_revision)
+                    sub_merge.do_merge()
+
         finally:
             if self.other_tree is not None:
                 self.other_tree.unlock()
@@ -309,26 +326,6 @@ class Merger(object):
                 note("All changes applied successfully.")
         else:
             note("%d conflicts encountered." % len(merge.cooked_conflicts))
-
-        if self.recurse == 'down':
-            for path, entry in self.this_tree.iter_reference_entries():
-                sub_tree = self.this_tree.get_nested_tree(entry, path)
-                other_entry = self.other_tree.inventory[entry.file_id]
-                other_revision = self.other_tree.get_reference_revision(
-                    other_entry, path)
-                if  other_revision == sub_tree.last_revision():
-                    continue
-                sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
-                sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(
-                    entry.file_id, path)
-                sub_merge.set_other_revision(other_revision, other_branch)
-                base_entry = self.base_tree.inventory[entry.file_id]
-                base_revision = \
-                    self.base_tree.get_reference_revision(base_entry)
-                sub_merge.base_tree = \
-                    sub_tree.branch.repository.revision_tree(base_revision)
-                sub_merge.do_merge()
 
         return len(merge.cooked_conflicts)
 

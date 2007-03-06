@@ -128,8 +128,8 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
-    def get_reference_revision(self, entry, path=None):
-        return entry.reference_revision
+    def get_reference_revision(self, file_id, path=None):
+        return self.inventory[file_id].reference_revision
 
     def get_root_id(self):
         if self.inventory.root:

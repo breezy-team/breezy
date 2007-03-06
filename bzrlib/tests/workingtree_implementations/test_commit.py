@@ -234,8 +234,7 @@ class TestCommit(TestCaseWithWorkingTree):
         sub_basis.lock_read()
         self.addCleanup(sub_basis.unlock)
         self.assertEqual(subsubtree.last_revision(),
-            sub_basis.get_reference_revision(
-                sub_basis.inventory[sub_basis.path2id('subtree')]))
+            sub_basis.get_reference_revision(basis.path2id('subtree')))
         # the intermediate tree has changed, so should have had a commit
         # take place.
         self.assertNotEqual(None, subtree.last_revision())
@@ -245,8 +244,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision(
-                basis.inventory[basis.path2id('subtree')]))
+            basis.get_reference_revision(basis.path2id('subtree')))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
         
@@ -278,8 +276,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision(
-                basis.inventory[basis.path2id('subtree')]))
+            basis.get_reference_revision(basis.path2id('subtree')))
         self.assertNotEqual(rev_id, rev_id2)
 
 

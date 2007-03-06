@@ -418,13 +418,14 @@ class WorkingTree4(WorkingTree3):
         """
         return self.current_dirstate().get_parent_ids()
 
-    def get_reference_revision(self, entry, path=None):
+    def get_reference_revision(self, file_id, path=None):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(entry, path).last_revision()
+        return self.get_nested_tree(file_id, path).last_revision()
 
-    def get_nested_tree(self, entry, path=None):
+    def get_nested_tree(self, file_id, path=None):
         if path is None:
-            path = self.id2path(entry.file_id)
+            path = self.id2path(file_id)
+        # else: check file_id is at path?
         return WorkingTree.open(self.abspath(path))
 
     @needs_read_lock
@@ -468,6 +469,18 @@ class WorkingTree4(WorkingTree3):
                 result.append(key[2])
         return iter(result)
 
+    def iter_references(self):
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # absent, relocated
+                # not relevant to the working tree
+                continue
+            if not key[1]:
+                # the root is not a reference.
+                continue
+            path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
+            if self._kind(path) == 'tree-reference':
+                yield path, key[2]
+
     @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
@@ -478,6 +491,9 @@ class WorkingTree4(WorkingTree3):
         relpath = self.id2path(file_id)
         assert relpath != None, \
             "path for id {%s} is None!" % file_id
+        return self._kind(relpath)
+
+    def _kind(self, relpath):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
         if kind == 'directory' and self._directory_is_tree_reference(relpath):
@@ -1403,8 +1419,8 @@ class DirStateRevisionTree(Tree):
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))
 
-    def get_reference_revision(self, entry, path=None):
-        return entry.reference_revision
+    def get_reference_revision(self, file_id, path=None):
+        return self.inventory[file_id].reference_revision
 
     def get_symlink_target(self, file_id):
         entry = self._get_entry(file_id=file_id)

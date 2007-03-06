@@ -768,19 +768,28 @@ class BzrDir(object):
             wt = None
         if recurse == 'down':
             if wt is not None:
-                entries = wt.iter_reference_entries()
+                basis = wt.basis_tree()
+                basis.lock_read()
+                subtrees = basis.iter_references()
                 recurse_branch = wt.branch
             elif source_branch is not None:
-                entries = source_branch.basis_tree().iter_reference_entries()
+                basis = source_branch.basis_tree()
+                basis.lock_read()
+                subtrees = basis.iter_references()
                 recurse_branch = source_branch
             else:
-                entries = []
-            for path, entry in entries:
-                target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(entry.file_id,
-                                                             path)
-                sublocation.bzrdir.sprout(target, entry.reference_revision,
-                    force_new_repo=force_new_repo, recurse=recurse)
+                subtrees = []
+                basis = None
+            try:
+                for path, file_id in subtrees:
+                    target = urlutils.join(url, urlutils.escape(path))
+                    sublocation = source_branch.reference_parent(file_id, path)
+                    sublocation.bzrdir.sprout(target,
+                        basis.get_reference_revision(file_id, path),
+                        force_new_repo=force_new_repo, recurse=recurse)
+            finally:
+                if basis is not None:
+                    basis.unlock()
         return result
 
 
