@@ -2088,6 +2088,7 @@ class ConvertMetaToMeta(Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups
             if (isinstance(tree, workingtree.WorkingTree3) and
+                not isinstance(tree, workingtree_4.WorkingTree4) and
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat4)):
                 workingtree_4.Converter3to4().convert(tree)
