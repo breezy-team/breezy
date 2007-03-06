@@ -60,9 +60,8 @@ class TestJoin(tests.TestCaseWithTransport):
         """Join can add a reference if --reference is supplied"""
         base_tree, sub_tree = self.make_trees()
         self.run_bzr('join', '.', '--reference', working_dir='tree/subtree')
-        # Restore trees, because run_bzr is out-of-band
-        base_tree = workingtree.WorkingTree.open('tree')
-        sub_tree = workingtree.WorkingTree.open('tree/subtree')
+        sub_tree.lock_read()
+        self.addCleanup(sub_tree.unlock)
         self.assertEqual('file1-id', sub_tree.path2id('file1'))
         self.assertTrue('file1-id' in sub_tree)
         self.assertEqual('subtree-root-id', sub_tree.path2id(''))
