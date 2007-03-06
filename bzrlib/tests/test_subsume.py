@@ -61,16 +61,16 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree, sub_tree = self.make_trees()
         assert base_tree.get_root_id() != sub_tree.get_root_id()
         sub_root_id = sub_tree.get_root_id()
+        # this test checks the subdir is removed, so it needs to know the
+        # control directory; that changes rarely so just hardcode (and check)
+        # it is correct.
+        self.failUnlessExists('tree/subtree/.bzr')
         base_tree.subsume(sub_tree)
         self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
-        sub_bzrdir = bzrdir.BzrDir.open('tree/subtree')
         # subsuming the tree removes the control directory, so you can't open
-        # the workingtree or branch
-        import pdb;pdb.set_trace()
-        self.assertRaises(errors.NoWorkingTree, sub_bzrdir.open_workingtree)
-        self.assertRaises(errors.NotBranchError, sub_bzrdir.open_branch)
+        # it.
         self.failIfExists('tree/subtree/.bzr')
         file2 = open('tree/subtree/file2', 'rb')
         try:

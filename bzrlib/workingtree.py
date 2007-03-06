@@ -931,7 +931,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self.add_parent_tree_id(parent_id)
         finally:
             other_tree.unlock()
-        other_tree.bzrdir.destroy_workingtree_metadata()
+        other_tree.bzrdir.retire_bzrdir()
 
     @needs_tree_write_lock
     def extract(self, file_id, format=None):

@@ -1809,6 +1809,7 @@ class InterDirStateTree(InterTree):
                             content_change = True
                         else:
                             content_change = False
+                        target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
                 # parent id is the entry for the path in the target tree
@@ -1933,6 +1934,11 @@ class InterDirStateTree(InterTree):
                 root_dir_info = ('', current_root,
                     osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
                     root_abspath)
+                if root_dir_info[2] == 'directory':
+                    if self.target._directory_is_tree_reference(current_root):
+                        root_dir_info = root_dir_info[:2] + \
+                            ('tree-reference',) + root_dir_info[3:]
+
             if not root_entries and not root_dir_info:
                 # this specified path is not present at all, skip it.
                 continue
@@ -1999,8 +2005,6 @@ class InterDirStateTree(InterTree):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
                     if current_dir_info[0][0] < current_block[0] :
-                        # import pdb; pdb.set_trace()
-                        # print 'unversioned dir'
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
@@ -2058,6 +2062,11 @@ class InterDirStateTree(InterTree):
                 path_index = 0
                 if current_dir_info and path_index < len(current_dir_info[1]):
                     current_path_info = current_dir_info[1][path_index]
+                    if current_path_info[2] == 'directory':
+                        if self.target._directory_is_tree_reference(
+                            current_path_info[0]):
+                            current_path_info = current_path_info[:2] + \
+                                ('tree-reference',) + current_path_info[3:]
                 else:
                     current_path_info = None
                 advance_path = True
@@ -2157,12 +2166,18 @@ class InterDirStateTree(InterTree):
                                         (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
-                            if current_path_info[2] == 'directory':
+                            if current_path_info[2] in (
+                                'directory', 'tree-referene'):
                                 del current_dir_info[1][path_index]
                                 path_index -= 1
                         path_index += 1
                         if path_index < len(current_dir_info[1]):
                             current_path_info = current_dir_info[1][path_index]
+                            if current_path_info[2] == 'directory':
+                                if self.target._directory_is_tree_reference(
+                                    current_path_info[0]):
+                                    current_path_info = current_path_info[:2] + \
+                                        ('tree-reference',) + current_path_info[3:]
                         else:
                             current_path_info = None
                         path_handled = False
