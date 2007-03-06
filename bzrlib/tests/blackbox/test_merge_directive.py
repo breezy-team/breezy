@@ -61,6 +61,9 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertNotContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive')[0]
         self.assertContainsRe(md_text, 'source_branch:')
+        self.assertNotContainsRe(md_text, 'message: Message for merge')
+        md_text = self.run_bzr('merge-directive', '-m', 'Message for merge')[0]
+        self.assertContainsRe(md_text, 'message: Message for merge')
         old_strategy = gpg.GPGStrategy
         gpg.GPGStrategy = gpg.LoopbackGPGStrategy
         try:

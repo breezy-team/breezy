@@ -104,7 +104,7 @@ class MergeDirective(object):
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
                  target_branch, patch_type='bundle',
-                 local_target_branch=None, public_branch=None):
+                 local_target_branch=None, public_branch=None, message=None):
         if public_branch is not None:
             source_branch = public_branch.base
             if not public_branch.repository.has_revision(revision_id):
@@ -131,7 +131,8 @@ class MergeDirective(object):
                 patch = klass._generate_diff(repository, revision_id,
                                              ancestor_id)
         return MergeDirective(revision_id, t.as_sha1(), time, timezone,
-                              target_branch, patch, patch_type, source_branch)
+                              target_branch, patch, patch_type, source_branch,
+                              message)
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):

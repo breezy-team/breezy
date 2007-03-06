@@ -119,9 +119,10 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         md3 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
-            patch_type=None, public_branch=branch_c)
+            patch_type=None, public_branch=branch_c, message='Merge message')
         md3.to_lines()
         self.assertIs(None, md3.patch)
+        self.assertEqual('Merge message', md3.message)
 
     def test_signing(self):
         time = 500.23

@@ -3198,10 +3198,13 @@ class cmd_merge_directive(Command):
         plain='No patch, just directive'),
         Option('sign', help='GPG-sign the directive'), 'revision',
         Option('mail-to', type=str,
-            help='Instead of printing the directive, email to this address')]
+            help='Instead of printing the directive, email to this address'),
+        Option('message', type=str, short_name='m',
+            help='Message to use when committing this merge')
+        ]
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
-            sign=False, revision=None, mail_to=None):
+            sign=False, revision=None, mail_to=None, message=None):
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
@@ -3237,7 +3240,8 @@ class cmd_merge_directive(Command):
         directive = merge_directive.MergeDirective.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
-            public_branch=public_branch, patch_type=patch_type)
+            public_branch=public_branch, patch_type=patch_type,
+            message=message)
         if mail_to is None:
             if sign:
                 self.outf.write(directive.to_signed(branch))
