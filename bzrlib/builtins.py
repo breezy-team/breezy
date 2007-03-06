@@ -3181,7 +3181,21 @@ class cmd_serve(Command):
 
 
 class cmd_merge_directive(Command):
-    """Generate a merge directive for auto-merge tools."""
+    """Generate a merge directive for auto-merge tools.
+
+    A directive requests a merge to be performed, and also provides all the
+    information necessary to do so.  This means it must either include a
+    revision bundle, or the location of a branch containing the desired
+    revision.
+
+    A submit branch (the location to merge into) must be supplied the first
+    time the command is issued.  After it has been supplied once, it will
+    be remembered as the default.
+
+    A public branch is optional if a revision bundle is supplied, but required
+    if --diff or --plain is specified.  It will be remembered as the default
+    after the first use.
+    """
 
     takes_args = ['submit_branch?', 'public_branch?']
 
