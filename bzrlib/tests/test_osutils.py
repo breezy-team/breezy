@@ -284,25 +284,24 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_revision_id(f))
-        self.assertIs(osutils.safe_utf8(f), f)
+        self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_revision_id(u'bargam'))
+        self.assertEqual('bargam',
+                         osutils.safe_revision_id(u'bargam', warn=False))
+
+    def test_from_unicode_deprecated(self):
+        self.assertEqual('bargam',
+            self.callDeprecated([osutils._revision_id_warning],
+                                osutils.safe_revision_id, u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
         self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_revision_id(u'bargam\xae'))
+                         osutils.safe_revision_id(u'bargam\xae', warn=False))
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
                          osutils.safe_revision_id('foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        # This check may eventually go away
-        self.assertRaises(BzrBadParameterNotUnicode,
-                          osutils.safe_revision_id, '\xbb\xbb')
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -312,24 +311,23 @@ class TestSafeRevisionId(TestCase):
 class TestSafeFileId(TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_file_id(f))
+        self.assertEqual('foobar', osutils.safe_file_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_file_id(u'bargam'))
+        self.assertEqual('bargam', osutils.safe_file_id(u'bargam', warn=False))
+
+    def test_from_unicode_deprecated(self):
+        self.assertEqual('bargam',
+            self.callDeprecated([osutils._file_id_warning],
+                                osutils.safe_file_id, u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
         self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_file_id(u'bargam\xae'))
+                         osutils.safe_file_id(u'bargam\xae', warn=False))
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
                          osutils.safe_file_id('foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        # This check may eventually go away
-        self.assertRaises(BzrBadParameterNotUnicode,
-                          osutils.safe_file_id, '\xbb\xbb')
 
     def test_none(self):
         """Currently, None is a valid revision_id"""

@@ -54,6 +54,7 @@ from bzrlib import (
 """)
 
 import bzrlib
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
     zero_nine,
@@ -904,29 +905,50 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-def safe_revision_id(unicode_or_utf8_string):
+_revision_id_warning = ('Unicode revision ids were deprecated in bzr 0.15.'
+                        ' Revision id generators should be creating utf8'
+                        ' revision ids.')
+
+
+def safe_revision_id(unicode_or_utf8_string, warn=True):
     """Revision ids should now be utf8, but at one point they were unicode.
 
-    This is the same as safe_utf8, except it uses the cached encode functions
-    to save a little bit of performance.
+    :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 revision id.
     """
-    if unicode_or_utf8_string is None:
-        return None
-    if isinstance(unicode_or_utf8_string, str):
-        # TODO: jam 20070209 Eventually just remove this check.
-        try:
-            utf8_str = cache_utf8.get_cached_utf8(unicode_or_utf8_string)
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
-        return utf8_str
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_revision_id_warning, DeprecationWarning,
+                               stacklevel=2)
     return cache_utf8.encode(unicode_or_utf8_string)
 
 
-# TODO: jam 20070217 We start by just re-using safe_revision_id, but ultimately
-#       we want to use a different dictionary cache, because trapping file ids
-#       and revision ids in the same dict seemed to have a noticable effect on
-#       performance.
-safe_file_id = safe_revision_id
+_file_id_warning = ('Unicode file ids were deprecated in bzr 0.15. File id'
+                    ' generators should be creating utf8 file ids.')
+
+
+def safe_file_id(unicode_or_utf8_string, warn=True):
+    """File ids should now be utf8, but at one point they were unicode.
+
+    This is the same as safe_utf8, except it uses the cached encode functions
+    to save a little bit of performance.
+
+    :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 file id.
+    """
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_file_id_warning, DeprecationWarning,
+                               stacklevel=2)
+    return cache_utf8.encode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
