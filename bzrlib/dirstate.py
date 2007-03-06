@@ -353,6 +353,10 @@ class DirState(object):
                 basename = norm_name
             else:
                 raise errors.InvalidNormalization(path)
+        # you should never have files called . or ..; just add the directory
+        # in the parent, or according to the special treatment for the root
+        if basename == '.' or basename == '..':
+            raise errors.InvalidEntryName(path)
         # now that we've normalised, we need the correct utf8 path and 
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
