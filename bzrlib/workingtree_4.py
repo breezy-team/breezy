@@ -473,6 +473,12 @@ class WorkingTree4(WorkingTree3):
             # recognize this directory, but at the moment there's no cheap api
             # to do that.  Since we probably can only nest bzr checkouts and
             # they always use this name it's ok for now.  -- mbp 20060306
+            #
+            # FIXME: There is an unhandled case here of a subdirectory
+            # containing .bzr but not a branch; that will probably blow up
+            # when you try to commit it.  It might happen if there is a
+            # checkout in a subdirectory.  This can be avoided by not adding
+            # it.  mbp 20070306
         return kind
 
     @needs_read_lock
