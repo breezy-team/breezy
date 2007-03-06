@@ -148,8 +148,8 @@ def join(base, *args):
             # XXX: duplicates mess from earlier in this function.  This URL
             # manipulation code needs some cleaning up.
             if scheme is not None and len(path) >= 1:
-                host = path[:2]
-                path = path[2:]
+                host = path[:1]
+                path = path[1:]
             else:
                 host = []
         else:
@@ -157,7 +157,9 @@ def join(base, *args):
             path = joinpath(path, arg)
             path = path.split('/')
     if host:
-        if path and path[0] == '':
+        # Remove the leading slash from the path, so long as it isn't also the
+        # trailing slash, which we want to keep if present.
+        if path and path[0] == '' and len(path) > 1:
             del path[0]
         path = host + path
 

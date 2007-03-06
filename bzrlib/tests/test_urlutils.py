@@ -212,6 +212,9 @@ class TestUrlToPath(TestCase):
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+        test('http://bar/', 'http://foo', 'http://bar/')
+        test('http://bar/a', 'http://foo', 'http://bar/a')
+        test('http://bar/a/', 'http://foo', 'http://bar/a/')
 
         # From a base path
         test('file:///foo', 'file:///', 'foo')
