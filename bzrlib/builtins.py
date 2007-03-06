@@ -2158,7 +2158,6 @@ class cmd_upgrade(Command):
                         value_switches=True, title='Branch format'),
                     ]
 
-
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
         if format is None:

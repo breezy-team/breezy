@@ -65,7 +65,7 @@ from bzrlib.transport import get_transport
 from bzrlib.weave import Weave
 """)
 
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 
 
@@ -351,6 +351,25 @@ class BzrDir(object):
         revision_id: create it as of this revision id.
         """
         raise NotImplementedError(self.create_workingtree)
+
+    def retire_bzrdir(self):
+        """Permanently disable the bzrdir.
+
+        This is done by renaming it to give the user some ability to recover
+        if there was a problem.
+
+        This will have horrible consequences if anyone has anything locked or
+        in use.
+        """
+        for i in xrange(10000):
+            try:
+                to_path = '.bzr.retired.%d' % i
+                self.root_transport.rename('.bzr', to_path)
+                note("renamed %s to %s"
+                    % (self.root_transport.abspath('.bzr'), to_path))
+                break
+            except (errors.TransportError, IOError, errors.PathError):
+                pass
 
     def destroy_workingtree(self):
         """Destroy the working tree at this BzrDir.

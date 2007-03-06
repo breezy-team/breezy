@@ -66,8 +66,12 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
         sub_bzrdir = bzrdir.BzrDir.open('tree/subtree')
+        # subsuming the tree removes the control directory, so you can't open
+        # the workingtree or branch
+        import pdb;pdb.set_trace()
         self.assertRaises(errors.NoWorkingTree, sub_bzrdir.open_workingtree)
-        sub_bzrdir.open_branch()
+        self.assertRaises(errors.NotBranchError, sub_bzrdir.open_branch)
+        self.failIfExists('tree/subtree/.bzr')
         file2 = open('tree/subtree/file2', 'rb')
         try:
             file2_contents = file2.read()
