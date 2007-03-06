@@ -72,6 +72,7 @@ from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
+    file_kind,
     isdir,
     normpath,
     pathjoin,
@@ -453,18 +454,25 @@ class WorkingTree4(WorkingTree3):
 
     @needs_read_lock
     def kind(self, file_id):
-        # The kind of a file is whatever it actually is on disk, except that 
-        # tree-references need to be reported as such rather than as the
-        # directiories
-        #
-        # TODO: Possibly we should check that the directory still really
-        # contains a subtree, at least during commit? mbp 20070227
-        kind = WorkingTree3.kind(self, file_id)
-        if kind == 'directory':
-            # TODO: ask the dirstate not the inventory -- mbp 20060227
-            entry = self.inventory[file_id]
-            if entry.kind == 'tree-reference':
+        """Return the kind of a file.
+
+        This is always the actual kind that's on disk, regardless of what it
+        was added as.
+        """
+        relpath = self.id2path(file_id)
+        assert relpath != None, \
+            "path for id {%s} is None!" % file_id
+        abspath = self.abspath(relpath)
+        kind = file_kind(abspath)
+        if kind == 'directory' and relpath != '':
+            # as a special case, if a directory contains control files then 
+            # it's a tree reference, except that the root of the tree is not
+            if osutils.isdir(abspath + "/.bzr"):
                 kind = 'tree-reference'
+            # TODO: We could ask all the control formats whether they
+            # recognize this directory, but at the moment there's no cheap api
+            # to do that.  Since we probably can only nest bzr checkouts and
+            # they always use this name it's ok for now.  -- mbp 20060306
         return kind
 
     @needs_read_lock

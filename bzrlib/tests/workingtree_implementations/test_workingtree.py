@@ -812,4 +812,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         for i in range(1, len(names)):
             os.rename(names[i], names[i-1])
         os.rename('tmp', names[-1])
-
+        # now look and expect to see the correct types again
+        for i in range(len(names)):
+            actual_kind = tree.kind(names[i-1] + '-id')
+            expected_kind = names[i]
+            self.assertEqual(expected_kind, actual_kind)
