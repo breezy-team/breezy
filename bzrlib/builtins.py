@@ -3181,20 +3181,14 @@ class cmd_serve(Command):
 
 
 class cmd_merge_directive(Command):
-    """Generate a merge directive auto-merge tools."""
-
-    _directive_patch_type = registry.Registry()
-    _directive_patch_type.register('bundle', 'bundle',
-                                   'Bazaar revision bundle')
-    _directive_patch_type.register('diff', 'diff', 'Normal unified diff')
-    _directive_patch_type.register('plain', None, 'No patch, just directive')
+    """Generate a merge directive for auto-merge tools."""
 
     takes_args = ['submit_branch?', 'public_branch?']
 
     takes_options = [RegistryOption.from_kwargs('patch-type',
         'The type of patch to include in the directive', title='Patch type',
         value_switches=True, enum_switch=False,
-        bundle='Bazaar revision bundle', diff='Normal unified diff',
+        bundle='Bazaar revision bundle (default)', diff='Normal unified diff',
         plain='No patch, just directive'),
         Option('sign', help='GPG-sign the directive'), 'revision',
         Option('mail-to', type=str,
