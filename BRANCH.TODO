@@ -1,6 +1,9 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
+#
+
+get_reference_revision should not take an InventoryEntry
 
 notice subtrees based on whether they actually have a control directory, not
 how they're recorded in the working inventory

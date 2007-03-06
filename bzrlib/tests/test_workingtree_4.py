@@ -447,17 +447,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
         self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
 
-    def test_unique_root_id_per_tree(self):
-        # each time you initialize a new tree, it gets a different root id
-        ## format_name = 'experimental-reference-dirstate'
-        tree1 = self.make_branch_and_tree('tree1')
-        tree2 = self.make_branch_and_tree('tree2')
-        self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
-        # when you branch, it inherits the same root id
-        rev1 = tree1.commit('first post')
-        tree3 = tree1.bzrdir.sprout('tree3').open_workingtree()
-        self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
-
     def test_set_root_id(self):
         # similar to some code that fails in the dirstate-plus-subtree branch
         # -- setting the root id while adding a parent seems to scramble the
