@@ -207,6 +207,7 @@ class TestUrlToPath(TestCase):
         test('http://foo/baz', 'http://foo', 'bar', '../baz')
         test('http://foo/bar/baz', 'http://foo', 'bar/baz')
         test('http://foo/baz', 'http://foo', 'bar/../baz')
+        test('http://foo/baz', 'http://foo/bar/', '../baz')
 
         # Absolute paths
         test('http://bar', 'http://foo', 'http://bar')

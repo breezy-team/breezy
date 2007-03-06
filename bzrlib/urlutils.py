@@ -131,8 +131,8 @@ def join(base, *args):
         path = base.split('/')
 
     if scheme is not None and len(path) >= 1:
-        host = path[:2]
-        path = path[2:]
+        host = path[:1]
+        path = path[1:]
     else:
         host = []
     for arg in args:
