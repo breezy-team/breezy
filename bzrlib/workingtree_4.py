@@ -223,8 +223,9 @@ class WorkingTree4(WorkingTree3):
     def _comparison_data(self, entry, path):
         kind, executable, stat_value = \
             WorkingTree3._comparison_data(self, entry, path)
-        # it looks like a plain directory, but it's really a reference
-        if kind == 'directory' and entry.kind == 'tree-reference':
+        # it looks like a plain directory, but it's really a reference -- see
+        # also kind()
+        if kind == 'directory' and self._directory_is_tree_reference(path):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
@@ -258,6 +259,21 @@ class WorkingTree4(WorkingTree3):
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path)
         return self._dirstate
+
+    def _directory_is_tree_reference(self, relpath):
+        # as a special case, if a directory contains control files then 
+        # it's a tree reference, except that the root of the tree is not
+        return relpath and osutils.isdir(self.abspath(relpath) + "/.bzr")
+        # TODO: We could ask all the control formats whether they
+        # recognize this directory, but at the moment there's no cheap api
+        # to do that.  Since we probably can only nest bzr checkouts and
+        # they always use this name it's ok for now.  -- mbp 20060306
+        #
+        # FIXME: There is an unhandled case here of a subdirectory
+        # containing .bzr but not a branch; that will probably blow up
+        # when you try to commit it.  It might happen if there is a
+        # checkout in a subdirectory.  This can be avoided by not adding
+        # it.  mbp 20070306
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -464,21 +480,8 @@ class WorkingTree4(WorkingTree3):
             "path for id {%s} is None!" % file_id
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
-        if kind == 'directory' and relpath != '':
-            # as a special case, if a directory contains control files then 
-            # it's a tree reference, except that the root of the tree is not
-            if osutils.isdir(abspath + "/.bzr"):
-                kind = 'tree-reference'
-            # TODO: We could ask all the control formats whether they
-            # recognize this directory, but at the moment there's no cheap api
-            # to do that.  Since we probably can only nest bzr checkouts and
-            # they always use this name it's ok for now.  -- mbp 20060306
-            #
-            # FIXME: There is an unhandled case here of a subdirectory
-            # containing .bzr but not a branch; that will probably blow up
-            # when you try to commit it.  It might happen if there is a
-            # checkout in a subdirectory.  This can be avoided by not adding
-            # it.  mbp 20070306
+        if kind == 'directory' and self._directory_is_tree_reference(relpath):
+            kind = 'tree-reference'
         return kind
 
     @needs_read_lock
