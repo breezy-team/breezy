@@ -2245,38 +2245,20 @@ format_registry.register_metadir('knit',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3')
-format_registry.set_default('knit')
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat3',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
     deprecated=True)
-format_registry.register_metadir('experimental-knit2',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
-    'Experimental successor to knit.  Use at your own risk.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3'
-    )
-format_registry.register_metadir('experimental-branch6',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    'Experimental successor to knit.  Use at your own risk.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3')
-
-format_registry.register_metadir('experimental-reference-dirstate',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
-    help='Experimental: dirstate working tree, Branch6, and reference-tree '
-    'support.  Proposed default for bzr 0.15',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
-    )
 format_registry.register_metadir('dirstate',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     help='New in 0.15: Fast local operations. Compatible with bzr 0.8 and '
         'above when accessed over the network.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    # this uses bzrlib.workingtree.WorkingTreeFormat4 because importing
+    # directly from workingtree_4 triggers a circular import.
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
@@ -2284,5 +2266,6 @@ format_registry.register_metadir('dirstate-with-subtree',
         'network operations. Additionally adds support for versioning nested '
         'bzr branches. Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.set_default('dirstate')
