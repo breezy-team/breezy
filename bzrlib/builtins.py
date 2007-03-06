@@ -33,6 +33,7 @@ from bzrlib import (
     delta,
     config,
     errors,
+    globbing,
     ignores,
     log,
     merge as _mod_merge,
@@ -1792,8 +1793,11 @@ class cmd_ignore(Command):
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
                                   "NAME_PATTERN or --old-default-rules")
+        name_pattern_list = [globbing.normalize_pattern(p) 
+                             for p in name_pattern_list]
         for name_pattern in name_pattern_list:
-            if name_pattern[0] == '/':
+            if (name_pattern[0] == '/' or 
+                (len(name_pattern) > 1 and name_pattern[1] == ':')):
                 raise errors.BzrCommandError(
                     "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
@@ -1813,7 +1817,7 @@ class cmd_ignore(Command):
         if igns and igns[-1] != '\n':
             igns += '\n'
         for name_pattern in name_pattern_list:
-            igns += name_pattern.rstrip('/') + '\n'
+            igns += name_pattern + '\n'
 
         f = AtomicFile(ifn, 'wb')
         try:
