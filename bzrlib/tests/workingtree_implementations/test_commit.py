@@ -250,6 +250,38 @@ class TestCommit(TestCaseWithWorkingTree):
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
         
+    def test_nested_commit_second_commit_detects_changes(self):
+        """Commit with a nested tree picks up the correct child revid."""
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'])
+        self.build_tree(['subtree/file'])
+        subtree.add(['file'], ['file-id'])
+        rev_id = tree.commit('added reference', allow_pointless=False)
+        child_revid = subtree.last_revision()
+        # now change the child tree
+        self.build_tree_contents([('subtree/file', 'new-content')])
+        # and commit in the parent should commit the child and grab its revid,
+        # we test with allow_pointless=False here so that we are simulating
+        # what users will see.
+        rev_id2 = tree.commit('changed subtree only', allow_pointless=False)
+        # the child tree has changed, so should have had a commit
+        # take place.
+        self.assertNotEqual(None, subtree.last_revision())
+        self.assertNotEqual(child_revid, subtree.last_revision())
+        # the outer tree should have committed a pointer to the current
+        # subtree revision.
+        basis = tree.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual(subtree.last_revision(),
+            basis.get_reference_revision(
+                basis.inventory[basis.path2id('subtree')]))
+        self.assertNotEqual(rev_id, rev_id2)
+
 
 class TestCommitProgress(TestCaseWithWorkingTree):
     

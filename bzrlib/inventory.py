@@ -297,6 +297,7 @@ class InventoryEntry(object):
         self.text_id = text_id
         self.parent_id = parent_id
         self.symlink_target = None
+        self.reference_revision = None
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
@@ -469,6 +470,7 @@ class InventoryEntry(object):
                 and (self.kind == other.kind)
                 and (self.revision == other.revision)
                 and (self.executable == other.executable)
+                and (self.reference_revision == other.reference_revision)
                 )
 
     def __ne__(self, other):
@@ -509,8 +511,8 @@ class InventoryEntry(object):
 class RootEntry(InventoryEntry):
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'text_id', 'parent_id', 'children', 'executable',
+                 'revision', 'symlink_target', 'reference_revision']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
@@ -538,8 +540,8 @@ class InventoryDirectory(InventoryEntry):
     """A directory in an inventory."""
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'text_id', 'parent_id', 'children', 'executable',
+                 'revision', 'symlink_target', 'reference_revision']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
@@ -585,8 +587,8 @@ class InventoryFile(InventoryEntry):
     """A file in an inventory."""
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'text_id', 'parent_id', 'children', 'executable',
+                 'revision', 'symlink_target', 'reference_revision']
 
     def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
@@ -733,8 +735,8 @@ class InventoryLink(InventoryEntry):
     """A file in an inventory."""
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'text_id', 'parent_id', 'children', 'executable',
+                 'revision', 'symlink_target', 'reference_revision']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""

@@ -412,6 +412,7 @@ class Commit(object):
                     and (this.parent_id == other.parent_id)
                     and (this.kind == other.kind)
                     and (this.executable == other.executable)
+                    and (this.reference_revision == other.reference_revision)
                     )
         if not ie_equal_no_revision(new_root_ie, basis_root_ie):
             return True
