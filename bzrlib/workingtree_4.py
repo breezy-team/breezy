@@ -336,7 +336,7 @@ class WorkingTree4(WorkingTree3):
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = fingerprint
+                    inv_entry.reference_revision = link_or_sha1
                 else:
                     assert 'unknown kind'
                 # These checks cost us around 40ms on a 55k entry tree

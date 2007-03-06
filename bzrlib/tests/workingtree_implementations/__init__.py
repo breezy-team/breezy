@@ -65,6 +65,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_merge_from_branch',
         'bzrlib.tests.workingtree_implementations.test_mkdir',
         'bzrlib.tests.workingtree_implementations.test_move',
+        'bzrlib.tests.workingtree_implementations.test_nested_specifics',
         'bzrlib.tests.workingtree_implementations.test_parents',
         'bzrlib.tests.workingtree_implementations.test_paths2ids',
         'bzrlib.tests.workingtree_implementations.test_pull',
