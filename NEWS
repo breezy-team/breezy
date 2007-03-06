@@ -162,6 +162,9 @@ IN DEVELOPMENT
     * Invalid proxy env variables should not cause a traceback.
       (Vincent Ladeuil, #87765)
 
+    * Ignore patterns normalised to use '/' path separator.
+      (Kent Gibson, #86451)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
