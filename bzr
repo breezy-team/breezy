@@ -104,7 +104,6 @@ if __name__ == '__main__':
     # are just about to be discarded anyhow.  This does mean that atexit hooks
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
-    # stderr isn't buffered (at least on win32) -- bialix 20070305
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -115,7 +114,6 @@ if __name__ == '__main__':
     if bzrlib.trace._trace_file:
         # this is also _bzr_log
         bzrlib.trace._trace_file.flush()
-    # stderr isn't buffered
     os._exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib
