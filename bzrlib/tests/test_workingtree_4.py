@@ -436,7 +436,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
-        format_name = 'experimental-reference-dirstate'
+        format_name = 'dirstate-with-subtree'
         tree1 = self.make_branch_and_tree('tree1',
             format=format_name)
         tree2 = self.make_branch_and_tree('tree2',
