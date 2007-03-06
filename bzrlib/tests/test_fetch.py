@@ -128,7 +128,7 @@ class TestFetch(TestCaseWithTransport):
         knit1_format = bzrdir.BzrDirMetaFormat1()
         knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
         knit2_format = bzrdir.BzrDirMetaFormat1()
-        knit2_format.repository_format = knitrepo.RepositoryFormatKnit2()
+        knit2_format.repository_format = knitrepo.RepositoryFormatKnit3()
         # we start with a knit1 repository because that causes the
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.

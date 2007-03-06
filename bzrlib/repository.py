@@ -923,10 +923,8 @@ for _name in [
 
 for _name in [
         'KnitRepository',
-        'KnitRepository2',
         'RepositoryFormatKnit',
         'RepositoryFormatKnit1',
-        'RepositoryFormatKnit2',
         ]:
     __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
 
@@ -1258,12 +1256,6 @@ format_registry.register_lazy(
     'RepositoryFormatKnit1',
     )
 format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
-
-format_registry.register_lazy(
-    'Bazaar Knit Repository Format 2\n',
-    'bzrlib.repofmt.knitrepo',
-    'RepositoryFormatKnit2',
-    )
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 3\n',
@@ -1660,13 +1652,13 @@ class InterKnit1and2(InterKnitRepo):
 
     @staticmethod
     def is_compatible(source, target):
-        """Be compatible with Knit1 source and Knit2 target"""
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit2
+        """Be compatible with Knit1 source and Knit3 target"""
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
             from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1, \
-                    RepositoryFormatKnit2
+                    RepositoryFormatKnit3
             return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit2)))
+                    isinstance(target._format, (RepositoryFormatKnit3)))
         except AttributeError:
             return False
 
@@ -1776,10 +1768,10 @@ class InterRepositoryTestProviderAdapter(object):
         # here.
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
-                       knitrepo.RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit3()))
         result.append((InterKnit1and2,
                        knitrepo.RepositoryFormatKnit1(),
-                       knitrepo.RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit3()))
         return result
 
 

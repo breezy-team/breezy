@@ -24,7 +24,6 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
-    xml6,
     xml7,
     )
 
@@ -205,13 +204,13 @@ class KnitRepository(MetaDirRepository):
         return self._get_revision_vf().get_parents(revision_id)
 
 
-class KnitRepository2(KnitRepository):
-    """"""
+class KnitRepository3(KnitRepository):
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
-        self._serializer = xml6.serializer_v6
+        self._serializer = xml7.serializer_v7
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -250,15 +249,6 @@ class KnitRepository2(KnitRepository):
         revision_id = osutils.safe_revision_id(revision_id)
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
-
-
-class KnitRepository3(KnitRepository2):
-
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
-                 control_store, text_store):
-        KnitRepository2.__init__(self, _format, a_bzrdir, control_files,
-                                 _revision_store, control_store, text_store)
-        self._serializer = xml7.serializer_v7
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -400,10 +390,9 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         pass
 
 
-class RepositoryFormatKnit2(RepositoryFormatKnit):
+class RepositoryFormatKnit3(RepositoryFormatKnit):
     """Bzr repository knit format 2.
 
-    THIS FORMAT IS EXPERIMENTAL
     This repository format has:
      - knits for file texts and inventory
      - hash subdirectory based stores.
@@ -413,25 +402,37 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
      - a LockDir lock
-     - Support for recording full info about the tree root
-
+     - support for recording full info about the tree root
+     - support for recording tree-references
     """
-    
+
+    repository_class = KnitRepository3
     rich_root_data = True
-    repository_class = KnitRepository2
+    support_tree_reference = True
 
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 2\n"
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
 
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Knit repository format 2"
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'support_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Knit Repository Format 3\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 3"
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
@@ -458,49 +459,3 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
                                      _revision_store=_revision_store,
                                      control_store=control_store,
                                      text_store=text_store)
-
-
-class RepositoryFormatKnit3(RepositoryFormatKnit2):
-    """Bzr repository knit format 2.
-
-    THIS FORMAT IS EXPERIMENTAL
-    This repository format has:
-     - knits for file texts and inventory
-     - hash subdirectory based stores.
-     - knits for revisions and signatures
-     - TextStores for revisions and signatures.
-     - a format marker of its own
-     - an optional 'shared-storage' flag
-     - an optional 'no-working-trees' flag
-     - a LockDir lock
-     - support for recording full info about the tree root
-     - support for recording tree-references
-    """
-
-    repository_class = KnitRepository3
-    support_tree_reference = True
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        RepositoryFormatKnit2.check_conversion_target(self, target_format)
-        if not getattr(target_format, 'support_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-            
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 3\n"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Knit repository format 3"
-
-

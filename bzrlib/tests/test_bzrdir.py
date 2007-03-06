@@ -78,7 +78,7 @@ class TestFormatRegistry(TestCase):
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir(
             'branch6',
-            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6')
         return my_format_registry
