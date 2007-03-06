@@ -199,7 +199,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
 
@@ -381,7 +381,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
 
@@ -828,7 +828,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: %s
     repository: %s
 
@@ -870,7 +870,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: %s
     repository: %s
 
@@ -915,7 +915,7 @@ Related branches:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: %s
     repository: %s
 
@@ -960,7 +960,7 @@ Related branches:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: %s
     repository: %s
 
@@ -1056,7 +1056,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 3
         branch: %s
     repository: %s
 
