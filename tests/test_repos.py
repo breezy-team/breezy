@@ -377,6 +377,27 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(author, rev.committer)
         self.assertIsInstance(rev.properties, dict)
 
+    def test_get_revision_id_overriden(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision, repository.get_revision, "nonexisting")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+                            "myrevid")
+        (num, date, author) = self.client_commit("dc", "Second Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision,
+                repository.get_revision, repository.generate_revision_id(2, ""))
+        rev = repository.get_revision("myrevid")
+        self.assertEqual([repository.generate_revision_id(1, "")],
+                rev.parent_ids)
+        self.assertEqual(rev.revision_id, repository.generate_revision_id(2, ""))
+        self.assertEqual(author, rev.committer)
+        self.assertIsInstance(rev.properties, dict)
+
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
