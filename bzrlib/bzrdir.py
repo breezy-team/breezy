@@ -625,7 +625,7 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
-    def cloning_metadir(self, basis=None):
+    def cloning_metadir(self):
         """Produce a metadir suitable for cloning with"""
         def related_repository(bzrdir):
             try:
@@ -636,15 +636,11 @@ class BzrDir(object):
                 return bzrdir.open_repository()
         result_format = self._format.__class__()
         try:
-            try:
-                source_repository = related_repository(self)
-            except errors.NoRepositoryPresent:
-                if basis is None:
-                    raise
-                source_repository = related_repository(self)
-            result_format.repository_format = source_repository._format
+            source_repository = related_repository(self)
         except errors.NoRepositoryPresent:
             pass
+        else:
+            result_format.repository_format = source_repository._format
         return result_format
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
@@ -662,7 +658,7 @@ class BzrDir(object):
             itself to download less data.
         """
         self._make_tail(url)
-        cloning_format = self.cloning_metadir(basis)
+        cloning_format = self.cloning_metadir()
         result = cloning_format.initialize(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
