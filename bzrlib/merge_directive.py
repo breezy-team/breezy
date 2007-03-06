@@ -9,6 +9,7 @@ from bzrlib import (
     revision as _mod_revision,
     rio,
     testament,
+    timestamp,
     )
 from bzrlib.bundle import serializer as bundle_serializer
 
@@ -20,7 +21,6 @@ class MergeDirective(object):
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
                  source_branch=None, message=None):
-        assert isinstance(time, float)
         assert patch_type in (None, 'diff', 'bundle')
         if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
@@ -52,8 +52,7 @@ class MergeDirective(object):
             patch_type = 'diff'
         else:
             patch_type = 'bundle'
-        time, timezone = bundle_serializer.unpack_highres_date(
-            stanza.get('timestamp'))
+        time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
                     'source_branch', 'message'):
@@ -65,9 +64,8 @@ class MergeDirective(object):
                               patch_type=patch_type, patch=patch, **kwargs)
 
     def to_lines(self):
-        timestamp = bundle_serializer.format_highres_date(self.time,
-                                                          self.timezone)
-        stanza = rio.Stanza(revision_id=self.revision_id, timestamp=timestamp,
+        time_str = timestamp.format_patch_date(self.time, self.timezone)
+        stanza = rio.Stanza(revision_id=self.revision_id, timestamp=time_str,
                             target_branch=self.target_branch,
                             testament_sha1=self.testament_sha1)
         for key in ('source_branch', 'message'):

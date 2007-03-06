@@ -31,8 +31,8 @@ class TestMergeDirective(tests.TestCase):
             patch='', patch_type='diff')
 
     def test_serialization(self):
-        time = 500.23
-        timezone = 60
+        time = 501
+        timezone = 72
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
@@ -64,7 +64,7 @@ Subject: Commit of rev2a
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*
-# timestamp: Thu 1970-01-01 00:10:20.000000000 \\+0002
+# timestamp: 1970-01-01 00:08:56 \\+0001
 # source_branch: (.|\n)*
 """
 
@@ -77,7 +77,7 @@ Subject: Commit of rev2a with special message
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*
-# timestamp: Thu 1970-01-01 00:10:20.000000000 \\+0002
+# timestamp: 1970-01-01 00:08:56 \\+0001
 # source_branch: (.|\n)*
 # message: Commit of rev2a with special message
 """
@@ -103,30 +103,30 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         tree_a, tree_b, branch_c = self.make_trees()
         self.assertRaises(errors.PublicBranchOutOfDate,
             merge_directive.MergeDirective.from_objects,
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
             public_branch=branch_c)
         md1 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base)
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base)
         self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         branch_c.pull(tree_a.branch)
         md2 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
             patch_type='diff', public_branch=branch_c)
         self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         md3 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
             patch_type=None, public_branch=branch_c, message='Merge message')
         md3.to_lines()
         self.assertIs(None, md3.patch)
         self.assertEqual('Merge message', md3.message)
 
     def test_signing(self):
-        time = 500.23
-        timezone = 60
+        time = 501
+        timezone = 72
         class FakeBranch(object):
             def get_config(self):
                 return self
@@ -148,7 +148,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
     def test_email(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
             patch_type=None, public_branch=tree_a.branch)
         message = md.to_email('pqm@example.com', tree_a.branch)
         self.assertContainsRe(message.as_string(), EMAIL1)
