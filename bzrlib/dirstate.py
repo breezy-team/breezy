@@ -318,6 +318,10 @@ class DirState(object):
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
 
+    def __repr__(self):
+        return "%s(%r)" % \
+            (self.__class__.__name__, self._filename)
+
     def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
 
