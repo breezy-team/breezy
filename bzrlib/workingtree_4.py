@@ -997,7 +997,6 @@ class WorkingTree4(WorkingTree3):
         state.set_path_id('', file_id)
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
-        state.save()
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""

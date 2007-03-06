@@ -719,6 +719,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
         tree2.add_reference(subtree2)
+
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+
         tree1.lock_read()
         tree2.lock_read()
         try:
