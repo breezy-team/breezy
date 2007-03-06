@@ -335,6 +335,10 @@ class WorkingTree4(WorkingTree3):
                 elif kind == 'directory':
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
+                elif kind == 'tree-reference':
+                    inv_entry.reference_revision = link_or_sha1
+                else:
+                    assert 'unknown kind'
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid, ('file_id %s already in'
                     ' inventory as %s' % (file_id, inv_byid[file_id]))
@@ -1204,7 +1208,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     def __get_matchingbzrdir(self):
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
-            'experimental-reference-dirstate')
+            'dirstate-with-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
@@ -2179,3 +2183,46 @@ class InterDirStateTree(InterTree):
         return True
 
 InterTree.register_optimiser(InterDirStateTree)
+
+
+class Converter3to4(object):
+    """Perform an in-place upgrade of format 3 to format 4 trees."""
+
+    def __init__(self):
+        self.target_format = WorkingTreeFormat4()
+
+    def convert(self, tree):
+        # lock the control files not the tree, so that we dont get tree
+        # on-unlock behaviours, and so that noone else diddles with the 
+        # tree during upgrade.
+        tree._control_files.lock_write()
+        try:
+            self.create_dirstate_data(tree)
+            self.update_format(tree)
+            self.remove_xml_files(tree)
+        finally:
+            tree._control_files.unlock()
+
+    def create_dirstate_data(self, tree):
+        """Create the dirstate based data for tree."""
+        local_path = tree.bzrdir.get_workingtree_transport(None
+            ).local_abspath('dirstate')
+        state = dirstate.DirState.from_tree(tree, local_path)
+        state.save()
+        state.unlock()
+
+    def remove_xml_files(self, tree):
+        """Remove the oldformat 3 data."""
+        transport = tree.bzrdir.get_workingtree_transport(None)
+        for path in ['basis-inventory-cache', 'inventory', 'last-revision',
+            'pending-merges', 'stat-cache']:
+            try:
+                transport.delete(path)
+            except errors.NoSuchFile:
+                # some files are optional - just deal.
+                pass
+
+    def update_format(self, tree):
+        """Change the format marker."""
+        tree._control_files.put_utf8('format',
+            self.target_format.get_format_string())

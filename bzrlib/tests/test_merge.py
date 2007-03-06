@@ -182,9 +182,10 @@ class TestMerge(TestCaseWithTransport):
             tree_a.conflicts())
 
     def test_nested_merge(self):
-        tree = self.make_branch_and_tree('tree', format='experimental-reference-dirstate')
+        tree = self.make_branch_and_tree('tree',
+            format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
-                                             format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub-tree/file', 'text1')])
         sub_tree.add('file')

@@ -49,6 +49,8 @@ from bzrlib import (
     urlutils,
     xml4,
     xml5,
+    workingtree,
+    workingtree_4,
     )
 from bzrlib.osutils import (
     safe_unicode,
@@ -1058,11 +1060,17 @@ class BzrDirMeta1(BzrDir):
         try:
             if not isinstance(self.open_branch()._format,
                               format.get_branch_format().__class__):
-                # the repository needs an upgrade.
+                # the branch needs an upgrade.
                 return True
         except errors.NotBranchError:
             pass
-        # currently there are no other possible conversions for meta1 formats.
+        try:
+            if not isinstance(self.open_workingtree()._format,
+                              format.workingtree_format.__class__):
+                # the workingtree needs an upgrade.
+                return True
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
         return False
 
     def open_branch(self, unsupported=False):
@@ -2063,6 +2071,8 @@ class ConvertMetaToMeta(Converter):
         except errors.NotBranchError:
             pass
         else:
+            # TODO: conversions of Branch and Tree should be done by
+            # InterXFormat lookups
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
             if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
@@ -2070,6 +2080,17 @@ class ConvertMetaToMeta(Converter):
                 _mod_branch.BzrBranchFormat6):
                 branch_converter = _mod_branch.Converter5to6()
                 branch_converter.convert(branch)
+        try:
+            tree = self.bzrdir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+        else:
+            # TODO: conversions of Branch and Tree should be done by
+            # InterXFormat lookups
+            if (isinstance(tree, workingtree.WorkingTree3) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat4)):
+                workingtree_4.Converter3to4().convert(tree)
         return to_convert
 
 
@@ -2221,12 +2242,15 @@ format_registry.register('weave', BzrDirFormat6,
     deprecated=True)
 format_registry.register_metadir('knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    'Format using knits.  Recommended.',
-    branch_format='bzrlib.branch.BzrBranchFormat5')
+    'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat3')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat3',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit2',
@@ -2244,6 +2268,21 @@ format_registry.register_metadir('experimental-reference-dirstate',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='Experimental: dirstate working tree, Branch6, and reference-tree '
     'support.  Proposed default for bzr 0.15',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('dirstate',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    help='New in 0.15: Fast local operations. Compatible with bzr 0.8 and '
+        'above when accessed over the network.',
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('dirstate-with-subtree',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+    help='New in 0.15: Fast local operations and improved scaling for '
+        'network operations. Additionally adds support for versioning nested '
+        'bzr branches. Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     )

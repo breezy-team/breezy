@@ -1959,6 +1959,10 @@ class DirState(object):
                 new_entry_key = (new_dirname, new_basename, new_id)
                 current_new_minikind = \
                     DirState._kind_to_minikind[current_new[1].kind]
+                if current_new_minikind == 't':
+                    fingerprint = current_new[1].reference_revision
+                else:
+                    fingerprint = ''
             else:
                 # for safety disable variables
                 new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = None
@@ -1968,7 +1972,7 @@ class DirState(object):
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    path_utf8=new_path_utf8)
+                    path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
@@ -1983,7 +1987,7 @@ class DirState(object):
                     current_old[1][0][0] != current_new_minikind):
                     self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
-                        path_utf8=new_path_utf8)
+                        path_utf8=new_path_utf8, fingerprint=fingerprint)
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
@@ -1992,7 +1996,7 @@ class DirState(object):
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    path_utf8=new_path_utf8)
+                    path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             else:
                 # old comes before:

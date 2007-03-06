@@ -682,11 +682,12 @@ class TestCommit(TestCaseWithTransport):
 
     def test_nested_commit(self):
         """Commit in multiply-nested trees"""
-        tree = self.make_branch_and_tree('.', format='experimental-reference-dirstate')
+        tree = self.make_branch_and_tree('.',
+            format='dirstate-with-subtree')
         subtree = self.make_branch_and_tree('subtree',
-                                            format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         subsubtree = self.make_branch_and_tree('subtree/subtree',
-                                               format='experimental-reference-dirstate')
+            format='dirstate-with-subtree')
         subtree.add_reference(subsubtree)
         tree.add_reference(subtree)
         tree.commit('added reference', allow_pointless=False)

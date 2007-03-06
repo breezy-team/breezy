@@ -899,16 +899,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
         if other_tree.get_root_id() == self.get_root_id():
-            raise errors.BadSubsumeSource(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree,
                                           'Trees have the same root')
         try:
             other_tree_path = self.relpath(other_tree.basedir)
         except errors.PathNotChild:
-            raise errors.BadSubsumeSource(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree,
                 'Tree is not contained by the other')
         new_root_parent = self.path2id(osutils.dirname(other_tree_path))
         if new_root_parent is None:
-            raise errors.BadSubsumeSource(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree,
                 'Parent directory is not versioned.')
         # We need to ensure that the result of a fetch will have a
         # versionedfile for the other_tree root, and only fetching into
@@ -917,15 +917,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise errors.SubsumeTargetNeedsUpgrade(other_tree)
         other_tree.lock_tree_write()
         try:
-            for parent_id in other_tree.get_parent_ids():
-                self.branch.fetch(other_tree.branch, parent_id)
-                self.add_parent_tree_id(parent_id)
+            new_parents = other_tree.get_parent_ids()
             other_root = other_tree.inventory.root
             other_root.parent_id = new_root_parent
             other_root.name = osutils.basename(other_tree_path)
             self.inventory.add(other_root)
             add_children(self.inventory, other_root)
             self._write_inventory(self.inventory)
+            for parent_id in other_tree.get_parent_ids():
+                self.branch.fetch(other_tree.branch, parent_id)
+                self.add_parent_tree_id(parent_id)
         finally:
             other_tree.unlock()
         other_tree.bzrdir.destroy_workingtree_metadata()
@@ -950,7 +951,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+            format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         try:
             branch_transport.mkdir('.')
         except errors.FileExists:

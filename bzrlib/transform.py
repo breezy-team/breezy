@@ -1138,7 +1138,16 @@ def _build_tree(tree, wt):
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     if tree.inventory.root is not None:
-        wt.set_root_id(tree.inventory.root.file_id)
+        # this is kindof a hack: we should be altering the root 
+        # as partof the regular tree shape diff logic.
+        # the conditional test hereis to avoid doing an
+        # expensive operation (flush) every time the root id
+        # is set within the tree, nor setting the root and thus
+        # marking the tree as dirty, because we use two different
+        # idioms here: tree interfaces and inventory interfaces.
+        if wt.path2id('') != tree.inventory.root.file_id:
+            wt.set_root_id(tree.inventory.root.file_id)
+            wt.flush()
     tt = TreeTransform(wt)
     divert = set()
     try:
