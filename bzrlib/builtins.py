@@ -3235,10 +3235,10 @@ class cmd_join(Command):
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
         if reference:
-            try: 
+            try:
                 containing_tree.add_reference(sub_tree)
-            except errors.BadReferenceTarget:
-                raise errors.BzrCommandError("Cannot join %s.  %s" % 
+            except errors.BadReferenceTarget, e:
+                raise errors.BzrCommandError("Cannot join %s.  %s" %
                                              (tree, e.reason))
         else:
             try:
