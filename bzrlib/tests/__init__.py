@@ -1669,7 +1669,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # branch and create a local checkout.
             if not os.path.exists('_checkouts'):
                 os.mkdir('_checkouts')
-            return b.create_checkout('_checkouts/' + relpath)
+            return b.create_checkout('_checkouts/' + relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.

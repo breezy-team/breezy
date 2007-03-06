@@ -654,7 +654,9 @@ class BzrDir(object):
         except errors.NoRepositoryPresent:
             pass
         else:
-            result_format.repository_format = source_repository._format
+            repo_format = source_repository._format
+            if not isinstance(repo_format, remote.RemoteRepositoryFormat):
+                result_format.repository_format = repo_format
         return result_format
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):

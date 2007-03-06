@@ -33,7 +33,8 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http',
+               'readonly+bzr']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 

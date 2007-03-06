@@ -138,6 +138,16 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
+    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+        self._ensure_real()
+        return self._real_bzrdir.clone(url, revision_id=revision_id,
+            basis=basis, force_new_repo=force_new_repo)
+
+    #def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+    #    self._ensure_real()
+    #    return self._real_bzrdir.sprout(url, revision_id=revision_id,
+    #        basis=basis, force_new_repo=force_new_repo)
+
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
     """Format for repositories accessed over rpc.
@@ -798,6 +808,17 @@ class RemoteBranch(branch.Branch):
         
     def get_config(self):
         return RemoteBranchConfig(self)
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        # Like Branch.sprout, except that it sprouts a branch in the default
+        # format, because RemoteBranches can't be created at arbitrary URLs.
+        # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
+        # to_bzrdir.create_branch...
+        self._ensure_real()
+        result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
+        self._real_branch.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.bzrdir.root_transport.base)
+        return result
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
