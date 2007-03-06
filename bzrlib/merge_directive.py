@@ -122,7 +122,7 @@ class MergeDirective(object):
                 patch = klass._generate_diff(repository, revision_id,
                                              ancestor_id)
 
-            if public_branch is not None:
+            if public_branch is not None and patch_type != 'bundle':
                 public_branch_obj = _mod_branch.Branch.open(public_branch)
                 if not public_branch_obj.repository.has_revision(revision_id):
                     raise errors.PublicBranchOutOfDate(public_branch,

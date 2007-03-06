@@ -104,12 +104,17 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertRaises(errors.PublicBranchOutOfDate,
             merge_directive.MergeDirective.from_objects,
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            public_branch=branch_c.base)
+            public_branch=branch_c.base, patch_type='diff')
+        # public branch is not checked if patch format is bundle.
         md1 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base)
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            public_branch=branch_c.base)
         self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
+        # public branch is provided with a bundle, despite possibly being out
+        # of date, because it's not required if a bundle is present.
+        self.assertEqual(md1.source_branch, branch_c.base)
         branch_c.pull(tree_a.branch)
         md2 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
