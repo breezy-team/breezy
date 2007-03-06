@@ -308,7 +308,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return self._format.requires_rich_root
 
     def supports_tree_reference(self):
-        return getattr(self._format, 'supports_tree_reference', False)
+        return False
 
     def _set_inventory(self, inv, dirty):
         """Set the internal cached inventory.

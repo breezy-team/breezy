@@ -17,6 +17,8 @@
 
 """Tests for WorkingTreeFormat4"""
 
+import os
+
 from bzrlib import (
     bzrdir,
     dirstate,
@@ -467,3 +469,55 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         validate()
         wt.commit('again')
         validate()
+
+    def test_non_subtree_with_nested_trees(self):
+        # prior to dirstate, st/diff/commit ignored nested trees.
+        # dirstate, as opposed to dirstate-with-subtree, should
+        # behave the same way.
+        tree = self.make_branch_and_tree('.', format='dirstate')
+        self.assertFalse(tree.supports_tree_reference())
+        self.build_tree(['dir/'])
+        # for testing easily.
+        tree.set_root_id('root')
+        tree.add(['dir'], ['dir-id'])
+        subtree = self.make_branch_and_tree('dir')
+        # the most primitive operation: kind
+        self.assertEqual('directory', tree.kind('dir-id'))
+        # a diff against the basis should give us a directory
+        tree.lock_read()
+        expected = [('dir-id',
+            (None, u'dir'),
+            True,
+            (False, True),
+            (None, 'root'),
+            (None, u'dir'),
+            (None, 'directory'),
+            (None, False))]
+        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree(),
+            specific_files=['dir'])))
+        tree.unlock()
+        # do a commit, we want to trigger the dirstate fast-path too
+        tree.commit('first post')
+        # change the path for the subdir, which will trigger getting all
+        # its data:
+        os.rename('dir', 'also-dir')
+        # now the diff will use the fast path
+        tree.lock_read()
+        expected = [('dir-id',
+            (u'dir', u'dir'),
+            True,
+            (True, True),
+            ('root', 'root'),
+            ('dir', 'dir'),
+            ('directory', None),
+            (False, False))]
+        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree())))
+        tree.unlock()
+
+    def test_with_subtree_supports_tree_references(self):
+        # dirstate-with-subtree should support tree-references.
+        tree = self.make_branch_and_tree('.', format='dirstate-with-subtree')
+        self.assertTrue(tree.supports_tree_reference())
+        # having checked this is on, the tree interface, and intertree
+        # interface tests, will proceed to test the subtree support of
+        # workingtree_4.

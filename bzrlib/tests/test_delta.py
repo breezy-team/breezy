@@ -83,8 +83,10 @@ class TestReportChanges(tests.TestCase):
         self.assertReport(' D  path/', modified='deleted',
                           kind=('directory', None), old_path='old')
         self.assertReport('-   path/', versioned_change='removed',
+                          old_path='path',
                           kind=(None, 'directory'))
         self.assertReport('-D  path', versioned_change='removed',
+                          old_path='path',
                           modified='deleted', kind=('file', 'directory'))
 
     def test_modification(self):

@@ -225,7 +225,9 @@ class WorkingTree4(WorkingTree3):
             WorkingTree3._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
-        if kind == 'directory' and self._directory_is_tree_reference(path):
+        if (self._repo_supports_tree_reference and
+            kind == 'directory' and
+            self._directory_is_tree_reference(path)):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
@@ -353,6 +355,7 @@ class WorkingTree4(WorkingTree3):
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
+                    assert self._repo_supports_tree_reference
                     inv_entry.reference_revision = link_or_sha1 or None
                 else:
                     assert 'unknown kind'
@@ -500,7 +503,9 @@ class WorkingTree4(WorkingTree3):
     def _kind(self, relpath):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
-        if kind == 'directory' and self._directory_is_tree_reference(relpath):
+        if (self._repo_supports_tree_reference and
+            kind == 'directory' and
+            self._directory_is_tree_reference(relpath)):
             kind = 'tree-reference'
         return kind
 
@@ -522,6 +527,11 @@ class WorkingTree4(WorkingTree3):
                 state = self.current_dirstate()
                 if not state._lock_token:
                     state.lock_read()
+                # set our support for tree references from the repository in
+                # use.
+                self._repo_supports_tree_reference = getattr(
+                    self.branch.repository._format, "support_tree_reference",
+                    False)
             except:
                 self._control_files.unlock()
                 raise
@@ -537,6 +547,11 @@ class WorkingTree4(WorkingTree3):
                 state = self.current_dirstate()
                 if not state._lock_token:
                     state.lock_write()
+                # set our support for tree references from the repository in
+                # use.
+                self._repo_supports_tree_reference = getattr(
+                    self.branch.repository._format, "support_tree_reference",
+                    False)
             except:
                 self._control_files.unlock()
                 raise
@@ -1039,6 +1054,10 @@ class WorkingTree4(WorkingTree3):
         if state._dirblock_state == dirstate.DirState.IN_MEMORY_MODIFIED:
             self._make_dirty(reset_inventory=True)
 
+    @needs_read_lock
+    def supports_tree_reference(self):
+        return self._repo_supports_tree_reference
+
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:
@@ -1166,8 +1185,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
     """
-
-    supports_tree_reference = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
