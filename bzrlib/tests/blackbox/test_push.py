@@ -80,12 +80,14 @@ class TestPush(ExternalBase):
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
-        out = self.run_bzr('push')
+        out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
-        self.assertEquals(('Using saved location: %s\n' 
-                           % (local_path_from_url(path),)
-                          , 'All changes applied successfully.\n'
-                            '1 revision(s) pushed.\n'), out)
+        self.assertEquals(out,
+                          'Using saved location: %s\n' 
+                          'Pushed up to revision 2.\n'
+                          % local_path_from_url(path))
+        self.assertEqual(err,
+                         'All changes applied successfully.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
@@ -98,7 +100,7 @@ class TestPush(ExternalBase):
         b = self.make_branch('.')
         out, err = self.run_bzr('push', 'pushed-location')
         self.assertEqual('', out)
-        self.assertEqual('0 revision(s) pushed.\n', err)
+        self.assertEqual('Created new branch.\n', err)
         b2 = Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
@@ -114,7 +116,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push', 'pushed-to')
         os.chdir('..')
         self.assertEqual('', out)
-        self.assertEqual('1 revision(s) pushed.\n', err)
+        self.assertEqual('Created new branch.\n', err)
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
