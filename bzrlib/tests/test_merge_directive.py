@@ -104,7 +104,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertRaises(errors.PublicBranchOutOfDate,
             merge_directive.MergeDirective.from_objects,
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            public_branch=branch_c)
+            public_branch=branch_c.base)
         md1 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base)
         self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
@@ -113,13 +113,14 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         branch_c.pull(tree_a.branch)
         md2 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            patch_type='diff', public_branch=branch_c)
+            patch_type='diff', public_branch=branch_c.base)
         self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         md3 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            patch_type=None, public_branch=branch_c, message='Merge message')
+            patch_type=None, public_branch=branch_c.base,
+            message='Merge message')
         md3.to_lines()
         self.assertIs(None, md3.patch)
         self.assertEqual('Merge message', md3.message)
@@ -149,7 +150,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         tree_a, tree_b, branch_c = self.make_trees()
         md = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
-            patch_type=None, public_branch=tree_a.branch)
+            patch_type=None, public_branch=tree_a.branch.base)
         message = md.to_email('pqm@example.com', tree_a.branch)
         self.assertContainsRe(message.as_string(), EMAIL1)
         md.message = 'Commit of rev2a with special message'

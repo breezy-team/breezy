@@ -3232,8 +3232,6 @@ class cmd_merge_directive(Command):
             public_branch = config_public_branch
         elif config_public_branch is None:
             branch.get_config().set_user_option('public_branch', public_branch)
-        if public_branch is not None:
-            public_branch = Branch.open(public_branch)
         if patch_type != "bundle" and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or'
                                          ' known')

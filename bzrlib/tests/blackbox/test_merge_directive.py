@@ -28,7 +28,7 @@ Subject: bar
 # target_branch: ../tree2
 # testament_sha1: .*
 # timestamp: .*
-# source_branch: file:///(.|\n)*/tree1/
+# source_branch: .
 #"""
 
 

@@ -103,13 +103,6 @@ class MergeDirective(object):
     def from_objects(klass, repository, revision_id, time, timezone,
                  target_branch, patch_type='bundle',
                  local_target_branch=None, public_branch=None, message=None):
-        if public_branch is not None:
-            source_branch = public_branch.base
-            if not public_branch.repository.has_revision(revision_id):
-                raise errors.PublicBranchOutOfDate(source_branch,
-                                                   revision_id)
-        else:
-            source_branch = None
         t = testament.StrictTestament3.from_revision(repository, revision_id)
         if patch_type is None:
             patch = None
@@ -128,8 +121,15 @@ class MergeDirective(object):
             elif patch_type == 'diff':
                 patch = klass._generate_diff(repository, revision_id,
                                              ancestor_id)
+
+            if public_branch is not None:
+                public_branch_obj = _mod_branch.Branch.open(public_branch)
+                if not public_branch_obj.repository.has_revision(revision_id):
+                    raise errors.PublicBranchOutOfDate(public_branch,
+                                                       revision_id)
+
         return MergeDirective(revision_id, t.as_sha1(), time, timezone,
-                              target_branch, patch, patch_type, source_branch,
+                              target_branch, patch, patch_type, public_branch,
                               message)
 
     @staticmethod
