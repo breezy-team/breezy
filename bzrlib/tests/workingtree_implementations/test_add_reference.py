@@ -57,11 +57,9 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             basis = tree.basis_tree()
             basis.lock_read()
             try:
-                entry = basis.inventory['sub-tree-root-id']
-                self.assertEqual(entry.kind, 'tree-reference')
-                sub_tree = tree.get_nested_tree(entry)
+                sub_tree = tree.get_nested_tree('sub-tree-root-id')
                 self.assertEqual(sub_tree.last_revision(),
-                                 entry.reference_revision)
+                    tree.get_reference_revision('sub-tree-root-id'))
             finally:
                 basis.unlock()
         finally:
@@ -107,10 +105,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree, sub_tree = self.make_nested_trees()
         tree.lock_read()
         try:
-            sub_tree2 = tree.get_nested_tree(
-                tree.inventory['sub-tree-root-id'])
+            sub_tree2 = tree.get_nested_tree('sub-tree-root-id')
             self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
-            sub_tree2 = tree.get_nested_tree(
-                tree.inventory['sub-tree-root-id'], 'sub-tree')
+            sub_tree2 = tree.get_nested_tree('sub-tree-root-id', 'sub-tree')
         finally:
             tree.unlock()
