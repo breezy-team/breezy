@@ -555,7 +555,19 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
-        
+    def test_needs_conversion_different_working_tree(self):
+        # meta1dirs need an conversion if any element is not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        # test with 
+        new_default = bzrdir.format_registry.make_bzrdir('dirstate')
+        bzrdir.BzrDirFormat._set_default_format(new_default)
+        try:
+            tree = self.make_branch_and_tree('tree', format='knit')
+            self.assertTrue(tree.bzrdir.needs_format_conversion())
+        finally:
+            bzrdir.BzrDirFormat._set_default_format(old_format)
+
+
 class TestFormat5(TestCaseWithTransport):
     """Tests specific to the version 5 bzrdir format."""
 
