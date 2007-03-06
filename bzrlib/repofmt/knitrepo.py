@@ -428,7 +428,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
             
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 3\n"
+        return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

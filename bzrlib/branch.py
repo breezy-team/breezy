@@ -65,7 +65,7 @@ from bzrlib.trace import mutter, note
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
-BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
+BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
 # TODO: Maybe include checks for common corruption of newlines, etc?
@@ -1024,7 +1024,7 @@ class BzrBranchFormat6(BzrBranchFormat5):
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 6\n"
+        return "Bazaar Branch Format 6 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""

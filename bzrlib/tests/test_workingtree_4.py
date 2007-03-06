@@ -40,7 +40,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # format 'Bazaar Working Tree format 4'
         # stat-cache = ??
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar Working Tree format 4\n',
+        self.assertEqualDiff('Bazaar Working Tree Format 4 (bzr 0.15)\n',
                              t.get('format').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'

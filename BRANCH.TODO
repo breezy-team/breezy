@@ -14,8 +14,6 @@ how they're recorded in the working inventory
 
 _iter_changes needs to stop iterating into control directories
 
-Set the introduction version of WorkingTreeFormat4 in workingtree.py.
-
 set_parent_trees needing to do the weird hack of making empty trees to pass in.
 
 deprecate Tree.__iter__.

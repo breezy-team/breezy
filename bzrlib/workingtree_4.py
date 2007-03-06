@@ -1163,7 +1163,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - includes an explicit version marker for the workingtree control
           files, separate from the BzrDir format
         - modifies the hash cache format
-        - is new in bzr TODO FIXME SETBEFOREMERGE
+        - is new in bzr 0.15
         - uses a LockDir to guard access to it.
     """
 
@@ -1171,7 +1171,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree format 4\n"
+        return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""

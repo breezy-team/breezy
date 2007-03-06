@@ -1258,7 +1258,7 @@ format_registry.register_lazy(
 format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 3\n',
+    'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit3',
     )
