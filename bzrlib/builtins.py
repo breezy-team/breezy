@@ -2221,6 +2221,13 @@ class cmd_selftest(Command):
             run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
             disable plugins and list tests as they're run
+
+    For each test, that needs actual disk access, bzr create their own
+    subdirectory in the temporary testing directory (testXXXX.tmp).
+    By default the name of such subdirectory is based on the name of the test.
+    If option '--numbered-dirs' is given, bzr will use sequent numbers
+    of running tests to create such subdirectories. This is default behavior
+    on Windows because of path length limitation.
     """
     # TODO: --list should give a list of all available tests
 
@@ -2263,14 +2270,16 @@ class cmd_selftest(Command):
                                  ' without running tests'),
                      Option('first',
                             help='run all tests, but run specified tests first',
-                            )
+                            ),
+                     Option('numbered-dirs',
+                            help='use numbered dirs for TestCaseInTempDir'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False):
+            first=False, numbered_dirs=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2280,6 +2289,9 @@ class cmd_selftest(Command):
             from bzrlib.tests import clean_selftest_output
             clean_selftest_output()
             return 0
+
+        if numbered_dirs is None and sys.platform == 'win32':
+            numbered_dirs = True
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2311,6 +2323,7 @@ class cmd_selftest(Command):
                               lsprof_timed=lsprof_timed,
                               bench_history=benchfile,
                               matching_tests_first=first,
+                              numbered_dirs=numbered_dirs,
                               )
         finally:
             if benchfile is not None:
