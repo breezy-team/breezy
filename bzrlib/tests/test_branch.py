@@ -234,7 +234,6 @@ class TestBranch6(TestCaseWithTransport):
             format='dirstate-with-subtree')
         tree.lock_write()
         try:
-            tree.add('.')
             tree.commit('foo', rev_id='foo')
             tree.commit('bar', rev_id='bar')
             tree.commit('baz', rev_id='baz')
