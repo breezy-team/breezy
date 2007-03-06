@@ -924,6 +924,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.inventory.add(other_root)
             add_children(self.inventory, other_root)
             self._write_inventory(self.inventory)
+            # normally we don't want to fetch whole repositories, but i think
+            # here we really do want to consolidate the whole thing.
             for parent_id in other_tree.get_parent_ids():
                 self.branch.fetch(other_tree.branch, parent_id)
                 self.add_parent_tree_id(parent_id)

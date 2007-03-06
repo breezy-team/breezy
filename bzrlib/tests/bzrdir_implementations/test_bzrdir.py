@@ -451,7 +451,6 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
         # should stay a checkout on clone.
@@ -1329,6 +1328,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         text = dir._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_retire_bzrdir(self):
+        bd = self.make_bzrdir('.')
+        # must not overwrite existing directories
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',])
+        self.failUnlessExists('.bzr')
+        bd.retire_bzrdir()
+        self.failIfExists('.bzr')
+        self.failUnlessExists('.bzr.retired.1')
 
 class TestBreakLock(TestCaseWithBzrDir):
 
