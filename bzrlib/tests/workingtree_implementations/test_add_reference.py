@@ -114,10 +114,3 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 tree.inventory['sub-tree-root-id'], 'sub-tree')
         finally:
             tree.unlock()
-
-    def test_iter_nested_trees(self):
-        tree, sub_tree = self.make_nested_trees()
-        iterator = tree.iter_nested_trees()
-        sub_tree2 = iterator.next()
-        self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
-        self.assertRaises(StopIteration, iterator.next)

@@ -216,7 +216,3 @@ class MutableTree(tree.Tree):
             parent tree - i.e. a ghost.
         """
         raise NotImplementedError(self.set_parent_trees)
-
-    def iter_nested_trees(self):
-        for path, entry in self.iter_reference_entries():
-            yield self.get_nested_tree(entry, path)
