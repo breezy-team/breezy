@@ -174,7 +174,7 @@ class TestMerge(TestCaseWithTransport):
             conflicts.MissingParent('Created directory', 'b', 'b-id'),
             conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
             tree_z.conflicts())
-        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree, 
+        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree,
                     this_tree=tree_a)
         self.assertEqual([
             conflicts.DeletingParent('Not deleting', 'b', 'b-id'),
@@ -194,13 +194,7 @@ class TestMerge(TestCaseWithTransport):
         tree.commit('set text to 1')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree2/sub-tree/file', 'text2')])
-        tree2.lock_write()
-        try:
-            subtree2 = tree2.get_nested_tree(tree2.inventory['sub-tree-root'],
-                                             'sub-tree')
-            tree2.commit('changed file text')
-        finally:
-            tree2.unlock()
+        tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
         self.assertFileEqual('text2', 'tree/sub-tree/file')
 
