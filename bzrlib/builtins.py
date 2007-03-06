@@ -3234,6 +3234,8 @@ class cmd_join(Command):
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
+        # XXX: Would be better to just raise a nicely printable exception from
+        # the real origin. mbp 20070306
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
