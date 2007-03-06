@@ -346,6 +346,10 @@ class ChangeReporter(object):
             if kind[0] is not None:
                 old_path += osutils.kind_marker(kind[0])
             old_path += " => "
+        elif versioned == 'removed':
+            # not present in target
+            old_path = ""
+            path = paths[0]
         else:
             old_path = ""
             path = paths[1]
