@@ -1,5 +1,6 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
+#           and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -783,3 +784,32 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(
             set(['not-here-and-not-versioned', 'here-and-not-versioned']),
             tree.filter_unversioned_files(paths))
+
+    def test_detect_real_kind(self):
+        # working trees report the real kind of the file on disk, not the kind
+        # they had when they were first added
+        # create one file of every interesting type
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file', 'directory/'])
+        names = ['file', 'directory']
+        if has_symlinks():
+            os.symlink('target', 'symlink')
+            names.append('symlink')
+        tree.add(names, [n + '-id' for n in names])
+        if tree.supports_tree_reference():
+            sub_tree = self.make_branch_and_tree('tree-reference')
+            sub_tree.set_root_id('tree-reference-id')
+            sub_tree.commit('message')
+            names.append('tree-reference')
+            tree.add_reference(sub_tree)
+        # now when we first look, we should see everything with the same kind
+        # with which they were initially added
+        for n in names:
+            actual_kind = tree.kind(n + '-id')
+            self.assertEqual(n, actual_kind)
+        # move them around so the names no longer correspond to the types
+        os.rename(names[0], 'tmp')
+        for i in range(1, len(names)):
+            os.rename(names[i], names[i-1])
+        os.rename('tmp', names[-1])
+

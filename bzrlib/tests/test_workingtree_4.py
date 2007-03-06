@@ -436,7 +436,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
-        format_name = 'dirstate-with-subtree'
+        format_name = 'experimental-reference-dirstate'
         tree1 = self.make_branch_and_tree('tree1',
             format=format_name)
         tree2 = self.make_branch_and_tree('tree2',
@@ -449,11 +449,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
-        format_name = 'dirstate-with-subtree'
-        tree1 = self.make_branch_and_tree('tree1',
-            format=format_name)
-        tree2 = self.make_branch_and_tree('tree2',
-            format=format_name)
+        ## format_name = 'experimental-reference-dirstate'
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_branch_and_tree('tree2')
         self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
         # when you branch, it inherits the same root id
         rev1 = tree1.commit('first post')

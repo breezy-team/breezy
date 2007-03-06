@@ -1509,7 +1509,14 @@ class DirStateRevisionTree(Tree):
 
 
 class InterDirStateTree(InterTree):
-    """Fast path optimiser for changes_from with dirstate trees."""
+    """Fast path optimiser for changes_from with dirstate trees.
+    
+    This is used only when both trees are in the dirstate working file, and 
+    the source is any parent within the dirstate, and the destination is 
+    the current working tree of the same dirstate.
+    """
+    # this could be generalized to allow comparisons between any trees in the
+    # dirstate, and possibly between trees stored in different dirstates.
 
     def __init__(self, source, target):
         super(InterDirStateTree, self).__init__(source, target)
@@ -1700,13 +1707,15 @@ class InterDirStateTree(InterTree):
                 decode.
             """
             # TODO: when a parent has been renamed, dont emit path renames for children,
+            ## if path_info[1] == 'sub':
+            ##     import pdb;pdb.set_trace()
             if source_index is None:
                 source_details = NULL_PARENT_DETAILS
             else:
                 source_details = entry[1][source_index]
             target_details = entry[1][target_index]
             target_minikind = target_details[0]
-            if path_info is not None and target_minikind in 'fdl':
+            if path_info is not None and target_minikind in 'fdlt':
                 assert target_index == 0
                 link_or_sha1 = state.update_entry(entry, abspath=path_info[4],
                                                   stat_value=path_info[3])
@@ -1881,8 +1890,10 @@ class InterDirStateTree(InterTree):
                 # is indirectly via test_too_much.TestCommands.test_conflicts.
                 pass
             else:
-                print "*******", source_minikind, target_minikind
-                import pdb;pdb.set_trace()
+                raise AssertionError("don't know how to compare "
+                    "source_minikind=%r, target_minikind=%r"
+                    % (source_minikind, target_minikind))
+                ## import pdb;pdb.set_trace()
             return ()
         while search_specific_files:
             # TODO: the pending list should be lexically sorted?
