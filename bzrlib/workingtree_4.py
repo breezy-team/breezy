@@ -478,8 +478,12 @@ class WorkingTree4(WorkingTree3):
                 # the root is not a reference.
                 continue
             path = pathjoin(self.basedir, key[0].decode('utf8'), key[1].decode('utf8'))
-            if self._kind(path) == 'tree-reference':
-                yield path, key[2]
+            try:
+                if self._kind(path) == 'tree-reference':
+                    yield path, key[2]
+            except errors.NoSuchFile:
+                # path is missing on disk.
+                continue
 
     @needs_read_lock
     def kind(self, file_id):
