@@ -102,9 +102,9 @@ class TestConflictStanzas(TestCase):
             if o.file_id is not None:
                 self.assertIsInstance(o.file_id, str)
 
-            conflict_file_path = getattr(o, 'conflict_file_path', None)
-            if conflict_file_path is not None:
-                self.assertIsInstance(conflict_file_path, unicode)
+            conflict_path = getattr(o, 'conflict_path', None)
+            if conflict_path is not None:
+                self.assertIsInstance(conflict_path, unicode)
 
             conflict_file_id = getattr(o, 'conflict_file_id', None)
             if conflict_file_id is not None:
@@ -116,7 +116,7 @@ class TestConflictStanzas(TestCase):
                 # In Stanza form, the file_id has to be unicode.
                 self.assertStartsWith(stanza['file_id'], u'\xeed')
             self.assertStartsWith(stanza['path'], u'p\xe5th')
-            if 'conflict_file_path' in stanza:
-                self.assertStartsWith(stanza['conflict_file_path'], u'p\xe5th')
+            if 'conflict_path' in stanza:
+                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
             if 'conflict_file_id' in stanza:
                 self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
