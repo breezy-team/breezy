@@ -17,6 +17,7 @@
 import calendar
 import time
 
+
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
     seconds field.
@@ -119,3 +120,34 @@ def unpack_highres_date(date):
     # Add back in the fractional seconds
     timestamp += fract_seconds
     return (timestamp, seconds_offset)
+
+
+def format_patch_date(secs, offset=0):
+    """Format a POSIX timestamp and optional offset as a patch-style date.
+
+    Inverse of parse_patch_date.
+    """
+    assert offset % 36 == 0
+    tm = time.gmtime(secs+offset)
+    if offset < 0:
+        sign = '-'
+    else:
+        sign = '+'
+    time_str = time.strftime('%Y-%m-%d %H:%M:%S', tm)
+    return '%s %s%04d' % (time_str, sign, abs(offset/36))
+
+
+def parse_patch_date(date_str):
+    """Parse a patch-style date into a POSIX timestamp and offset.
+
+    Inverse of format_patch_date.
+    """
+    secs_str = date_str[:-6]
+    offset_str = date_str[-6:]
+    offset = int(offset_str) * 36
+    tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
+    # adjust seconds according to offset before converting to POSIX
+    # timestamp, to avoid edge problems
+    tm_time = tm_time[:5] + (tm_time[5] - offset,) + tm_time[6:]
+    secs = calendar.timegm(tm_time)
+    return secs, offset

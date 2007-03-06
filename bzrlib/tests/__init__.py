@@ -1832,6 +1832,7 @@ def test_suite():
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',
                    'bzrlib.tests.test_textmerge',
+                   'bzrlib.tests.test_timestamp',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
