@@ -1582,7 +1582,7 @@ class InterDirStateTree(InterTree):
             # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
-                require_versioned):
+                require_versioned, want_unversioned=want_unversioned):
                 yield f
             return
         parent_ids = self.target.get_parent_ids()

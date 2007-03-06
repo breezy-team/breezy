@@ -1649,6 +1649,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
+        if not self.is_locked():
+            self._reset_data()
         self.branch.lock_read()
         try:
             return self._control_files.lock_read()
@@ -1658,6 +1660,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def lock_tree_write(self):
         """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        if not self.is_locked():
+            self._reset_data()
         self.branch.lock_read()
         try:
             return self._control_files.lock_write()
@@ -1667,6 +1671,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def lock_write(self):
         """See MutableTree.lock_write, and WorkingTree.unlock."""
+        if not self.is_locked():
+            self._reset_data()
         self.branch.lock_write()
         try:
             return self._control_files.lock_write()
@@ -1679,6 +1685,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _basis_inventory_name(self):
         return 'basis-inventory-cache'
+
+    def _reset_data(self):
+        """Reset transient data that cannot be revalidated."""
+        self._inventory_is_modified = False
+        result = self._deserialize(self._control_files.get('inventory'))
+        self._set_inventory(result, dirty=False)
 
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
