@@ -1069,7 +1069,7 @@ class BzrDirMeta1(BzrDir):
                               format.workingtree_format.__class__):
                 # the workingtree needs an upgrade.
                 return True
-        except errors.NotBranchError:
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         return False
 
@@ -2082,7 +2082,7 @@ class ConvertMetaToMeta(Converter):
                 branch_converter.convert(branch)
         try:
             tree = self.bzrdir.open_workingtree()
-        except errors.NotBranchError:
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         else:
             # TODO: conversions of Branch and Tree should be done by

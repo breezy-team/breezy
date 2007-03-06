@@ -169,7 +169,7 @@ class TestUpgrade(TestCaseWithTransport):
         branch.set_parent('file:///EF')
         branch.set_bound_location('file:///GH')
         branch.set_push_location('file:///IJ')
-        target = bzrdir.format_registry.make_bzrdir('experimental-branch6')
+        target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         converter = branch.bzrdir._format.get_converter(target)
         converter.convert(branch.bzrdir, progress.DummyProgress())
         new_branch = _mod_branch.Branch.open(self.get_url('branch'))
