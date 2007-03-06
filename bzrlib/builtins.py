@@ -17,11 +17,13 @@
 """builtin bzr commands"""
 
 import os
+from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import smtplib
 import sys
 import tempfile
 import time
@@ -3194,10 +3196,12 @@ class cmd_merge_directive(Command):
         value_switches=True, enum_switch=False,
         bundle='Bazaar revision bundle', diff='Normal unified diff',
         plain='No patch, just directive'),
-        Option('sign', help='GPG-sign the directive'), 'revision']
+        Option('sign', help='GPG-sign the directive'), 'revision',
+        Option('mail-to', type=str,
+            help='Instead of printing the directive, email to this address')]
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
-            sign=False, revision=None):
+            sign=False, revision=None, mail_to=None):
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
@@ -3234,10 +3238,19 @@ class cmd_merge_directive(Command):
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
             public_branch=public_branch, patch_type=patch_type)
-        if sign:
-            self.outf.write(directive.to_signed(branch))
+        if mail_to is None:
+            if sign:
+                self.outf.write(directive.to_signed(branch))
+            else:
+                self.outf.writelines(directive.to_lines())
         else:
-            self.outf.writelines(directive.to_lines())
+            message = directive.to_email(mail_to, branch, sign)
+            s = smtplib.SMTP()
+            server = branch.get_config().get_user_option('smtp_server')
+            if not server:
+                server = 'localhost'
+            s.connect()
+            s.sendmail(message['From'], message['To'], message.as_string())
 
 
 class cmd_tag(Command):

@@ -18,11 +18,27 @@ import os
 
 from bzrlib import gpg, tests
 
+
+EMAIL1 = """To: pqm@example.com
+From: J. Random Hacker <jrandom@example.com>
+Subject: bar
+
+# Bazaar merge directive format experimental-1
+# revision_id: jrandom@example.com-.*
+# target_branch: ../tree2
+# testament_sha1: .*
+# timestamp: .*
+# source_branch: file:///(.|\n)*/tree1/
+#"""
+
+
 class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_merge_directive(self):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
+        tree1.branch.get_config().set_user_option('email',
+            'J. Random Hacker <jrandom@example.com>')
         tree1.add('file')
         tree1.commit('foo')
         tree2=tree1.bzrdir.sprout('tree2').open_workingtree()
@@ -54,3 +70,20 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertContainsRe(md_text, '^-----BEGIN PSEUDO-SIGNED CONTENT')
         md_text = self.run_bzr('merge-directive', '-r', '-2')[0]
         self.assertNotContainsRe(md_text, "\\+e")
+        sendmail_calls = []
+        import smtplib
+        def sendmail(self, from_, to, message):
+            sendmail_calls.append((self, from_, to, message))
+        old_sendmail = smtplib.SMTP.sendmail
+        smtplib.SMTP.sendmail = sendmail
+        try:
+            md_text = self.run_bzr('merge-directive', '--mail-to',
+                                   'pqm@example.com', '--plain')[0]
+        finally:
+            smtplib.SMTP.sendmail = old_sendmail
+        self.assertEqual('', md_text)
+        self.assertEqual(1, len(sendmail_calls))
+        call = sendmail_calls[0]
+        self.assertEqual(('J. Random Hacker <jrandom@example.com>',
+                          'pqm@example.com'), call[1:3])
+        self.assertContainsRe(call[3], EMAIL1)

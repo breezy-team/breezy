@@ -1,3 +1,4 @@
+from email import Message
 from StringIO import StringIO
 
 from bzrlib import (
@@ -18,7 +19,7 @@ class MergeDirective(object):
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
-                 source_branch=None):
+                 source_branch=None, message=None):
         assert isinstance(time, float)
         assert patch_type in (None, 'diff', 'bundle')
         if patch_type != 'bundle' and source_branch is None:
@@ -33,6 +34,7 @@ class MergeDirective(object):
         self.patch = patch
         self.patch_type = patch_type
         self.source_branch = source_branch
+        self.message = message
 
     @classmethod
     def from_lines(klass, lines):
@@ -54,7 +56,7 @@ class MergeDirective(object):
             stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
-                    'source_branch'):
+                    'source_branch', 'message'):
             try:
                 kwargs[key] = stanza.get(key)
             except KeyError:
@@ -68,7 +70,7 @@ class MergeDirective(object):
         stanza = rio.Stanza(revision_id=self.revision_id, timestamp=timestamp,
                             target_branch=self.target_branch,
                             testament_sha1=self.testament_sha1)
-        for key in ('source_branch',):
+        for key in ('source_branch', 'message'):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
         lines = ['# ' + self._format_string + '\n']
@@ -81,6 +83,23 @@ class MergeDirective(object):
     def to_signed(self, branch):
         my_gpg = gpg.GPGStrategy(branch.get_config())
         return my_gpg.sign(''.join(self.to_lines()))
+
+    def to_email(self, mail_to, branch, sign=False):
+        mail_from = branch.get_config().username()
+        message = Message.Message()
+        message['To'] = mail_to
+        message['From'] = mail_from
+        if self.message is not None:
+            message['Subject'] = self.message
+        else:
+            revision = branch.repository.get_revision(self.revision_id)
+            message['Subject'] = revision.message
+        if sign:
+            body = self.to_signed(branch)
+        else:
+            body = ''.join(self.to_lines())
+        message.set_payload(body)
+        return message
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,

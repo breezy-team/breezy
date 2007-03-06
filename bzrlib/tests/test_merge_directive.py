@@ -45,18 +45,50 @@ class TestMergeDirective(tests.TestCase):
         self.assertEqual(timezone, md2.timezone)
         self.assertEqual('diff', md2.patch_type)
         self.assertEqual('booga', md2.patch)
+        self.assertEqual(None, md2.message)
         md.patch = "# Bazaar revision bundle v0.9\n#\n"
+        md.message = "Hi mom!"
         md3 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual("# Bazaar revision bundle v0.9\n#\n", md3.patch)
         self.assertEqual("bundle", md3.patch_type)
         self.assertContainsRe(md3.to_lines()[0],
             '^# Bazaar merge directive format ')
+        self.assertEqual("Hi mom!", md3.message)
+
+
+EMAIL1 = """To: pqm@example.com
+From: J. Random Hacker <jrandom@example.com>
+Subject: Commit of rev2a
+
+# Bazaar merge directive format experimental-1
+# revision_id: rev2a
+# target_branch: (.|\n)*
+# testament_sha1: .*
+# timestamp: Thu 1970-01-01 00:10:20.000000000 \\+0002
+# source_branch: (.|\n)*
+"""
+
+
+EMAIL2 = """To: pqm@example.com
+From: J. Random Hacker <jrandom@example.com>
+Subject: Commit of rev2a with special message
+
+# Bazaar merge directive format experimental-1
+# revision_id: rev2a
+# target_branch: (.|\n)*
+# testament_sha1: .*
+# timestamp: Thu 1970-01-01 00:10:20.000000000 \\+0002
+# source_branch: (.|\n)*
+# message: Commit of rev2a with special message
+"""
 
 
 class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
 
-    def test_generate(self):
+    def make_trees(self):
         tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.branch.get_config().set_user_option('email',
+            'J. Random Hacker <jrandom@example.com>')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n')])
         tree_a.add('file')
         tree_a.commit('message', rev_id='rev1')
@@ -64,7 +96,11 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c\n')])
-        tree_a.commit('message', rev_id='rev2a')
+        tree_a.commit('Commit of rev2a', rev_id='rev2a')
+        return tree_a, tree_b, branch_c
+
+    def test_generate(self):
+        tree_a, tree_b, branch_c = self.make_trees()
         self.assertRaises(errors.PublicBranchOutOfDate,
             merge_directive.MergeDirective.from_objects,
             tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
@@ -107,3 +143,14 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertContainsRe(signed, '^-----BEGIN PSEUDO-SIGNED CONTENT')
         self.assertContainsRe(signed, 'example.org')
         self.assertContainsRe(signed, 'booga')
+
+    def test_email(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500.0, 120, tree_b.branch.base,
+            patch_type=None, public_branch=tree_a.branch)
+        message = md.to_email('pqm@example.com', tree_a.branch)
+        self.assertContainsRe(message.as_string(), EMAIL1)
+        md.message = 'Commit of rev2a with special message'
+        message = md.to_email('pqm@example.com', tree_a.branch)
+        self.assertContainsRe(message.as_string(), EMAIL2)
