@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -193,7 +193,10 @@ class TestMerge(TestCaseWithTransport):
         tree.add_reference(sub_tree)
         tree.commit('set text to 1')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        # modify the file in the subtree
         self.build_tree_contents([('tree2/sub-tree/file', 'text2')])
+        # and merge the changes from the diverged subtree into the containing
+        # tree
         tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
         self.assertFileEqual('text2', 'tree/sub-tree/file')

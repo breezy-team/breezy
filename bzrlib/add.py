@@ -287,6 +287,10 @@ def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
             pass
             # mutter("%r is already versioned", abspath)
         elif sub_tree:
+            # XXX: This is wrong; people *might* reasonably be trying to add
+            # subtrees as subtrees.  This should probably only be done in formats 
+            # which can represent subtrees, and even then perhaps only when
+            # the user asked to add subtrees.  mbp 20070306
             mutter("%r is a nested bzr tree", abspath)
         else:
             __add_one(tree, inv, parent_ie, directory, kind, action)
