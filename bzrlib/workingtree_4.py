@@ -263,7 +263,7 @@ class WorkingTree4(WorkingTree3):
     def _directory_is_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then 
         # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + "/.bzr")
+        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
         # TODO: We could ask all the control formats whether they
         # recognize this directory, but at the moment there's no cheap api
         # to do that.  Since we probably can only nest bzr checkouts and
@@ -1935,7 +1935,8 @@ class InterDirStateTree(InterTree):
                     osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
                     root_abspath)
                 if root_dir_info[2] == 'directory':
-                    if self.target._directory_is_tree_reference(current_root):
+                    if self.target._directory_is_tree_reference(
+                        current_root.decode('utf8')):
                         root_dir_info = root_dir_info[:2] + \
                             ('tree-reference',) + root_dir_info[3:]
 
@@ -2064,7 +2065,7 @@ class InterDirStateTree(InterTree):
                     current_path_info = current_dir_info[1][path_index]
                     if current_path_info[2] == 'directory':
                         if self.target._directory_is_tree_reference(
-                            current_path_info[0]):
+                            current_path_info[0].decode('utf8')):
                             current_path_info = current_path_info[:2] + \
                                 ('tree-reference',) + current_path_info[3:]
                 else:
@@ -2175,7 +2176,7 @@ class InterDirStateTree(InterTree):
                             current_path_info = current_dir_info[1][path_index]
                             if current_path_info[2] == 'directory':
                                 if self.target._directory_is_tree_reference(
-                                    current_path_info[0]):
+                                    current_path_info[0].decode('utf8')):
                                     current_path_info = current_path_info[:2] + \
                                         ('tree-reference',) + current_path_info[3:]
                         else:
