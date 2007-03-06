@@ -283,12 +283,15 @@ class Conflict(object):
 
     def __init__(self, path, file_id=None):
         self.path = path
-        self.file_id = file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__ and Stanza is purely a Unicode api.
+        self.file_id = osutils.safe_file_id(file_id, warn=False)
 
     def as_stanza(self):
         s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
-            s.add('file_id', self.file_id)
+            # Stanza requires Unicode apis
+            s.add('file_id', self.file_id.decode('utf8'))
         return s
 
     def _cmp_list(self):
@@ -402,7 +405,10 @@ class HandledPathConflict(HandledConflict):
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
-        self.conflict_file_id = conflict_file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__.
+        self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
+                                                     warn=False)
         
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path, 
@@ -412,7 +418,7 @@ class HandledPathConflict(HandledConflict):
         s = HandledConflict.as_stanza(self)
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
-            s.add('conflict_file_id', self.conflict_file_id)
+            s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
             
         return s
 
