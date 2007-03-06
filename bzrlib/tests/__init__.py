@@ -54,7 +54,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 import bzrlib.commands
-import bzrlib.bundle.serializer
+import bzrlib.timestamp
 import bzrlib.export
 import bzrlib.inventory
 import bzrlib.iterablefile
@@ -91,7 +91,7 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.bundle.serializer,
+                      bzrlib.timestamp,
                       bzrlib.errors,
                       bzrlib.export,
                       bzrlib.inventory,
