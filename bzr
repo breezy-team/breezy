@@ -84,7 +84,7 @@ else:
 import bzrlib.commands
 import bzrlib.trace
 
-if bzrlib.version_info[:3] != (0, 15, 0):
+if bzrlib.version_info[:3] != (0, 16, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"
@@ -106,6 +106,7 @@ if __name__ == '__main__':
     # but our policy is to always close files from a finally block. -- mbp 20070215
     try:
         sys.stdout.flush()
+        sys.stderr.flush()
     except IOError, e:
         import errno
         if sys.platform != 'win32' or e.errno != errno.EINVAL:
@@ -113,7 +114,6 @@ if __name__ == '__main__':
     if bzrlib.trace._trace_file:
         # this is also _bzr_log
         bzrlib.trace._trace_file.flush()
-    # stderr isn't buffered
     os._exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib

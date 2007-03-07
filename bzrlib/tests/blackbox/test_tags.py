@@ -16,17 +16,14 @@
 
 """Tests for commands related to tags"""
 
+from bzrlib import bzrdir
 from bzrlib.branch import (
     Branch,
-    BzrBranchExperimental,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.repository import (
     Repository,
-    )
-from bzrlib.repofmt.knitrepo import (
-    RepositoryFormatKnit2,
     )
 from bzrlib.workingtree import WorkingTree
 
@@ -37,10 +34,9 @@ class TestTagging(TestCaseWithTransport):
     # specific format
     
     def make_branch_and_tree(self, relpath):
-        control = BzrDir.create(relpath)
-        repo = RepositoryFormatKnit2().initialize(control)
-        BzrBranchExperimental.initialize(control)
-        return control.create_workingtree()
+        format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return TestCaseWithTransport.make_branch_and_tree(self, relpath,
+            format=format)
 
     def test_tag_command_help(self):
         out, err = self.run_bzr_captured(['help', 'tag'])
