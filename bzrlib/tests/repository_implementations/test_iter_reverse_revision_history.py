@@ -72,6 +72,7 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
             tree2.commit('rev-2-4', rev_id='rev-2-4')
 
             tree1.commit('rev-1-2', rev_id='rev-1-2')
+            tree1.flush() # workaround merge using _write_inventory
             tree1.merge_from_branch(tree2.branch)
             tree1.commit('rev-1-3', rev_id='rev-1-3')
 

@@ -106,12 +106,15 @@ class TestRevert(ExternalBase):
     def test_revert_chatter(self):
         self._prepare_rename_mod_tree()
         chatter = self.run_bzr('revert')[1]
-        self.assertEqualDiff('R   j/b => a/b\n'
-                             'R   j/d/ => a/d/\n'
-                             'R   j/e => a/d/e\n'
-                             'R   j/ => f/\n'
-                             'R   a/g => f/g\n'
-                             'R   h => f/h\n', chatter)
+        self.assertEqualDiff(
+            'R   a/g => f/g\n'
+            'R   h => f/h\n'
+            'R   j/ => f/\n'
+            'R   j/b => a/b\n'
+            'R   j/d/ => a/d/\n'
+            'R   j/e => a/d/e\n',
+            chatter)
+
     def test_revert(self):
         self.run_bzr('init')
 
@@ -161,3 +164,25 @@ class TestRevert(ExternalBase):
         os.chdir('revertdir')
         self.run_bzr('revert')
         os.chdir('..')
+
+    def test_revert_newly_added(self):
+        # this tests the UI reports reverting a newly added file
+        # correct (such files are not deleted)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add(['file'])
+        out, err = self.run_bzr('revert')
+        self.assertEqual('', out)
+        self.assertEqual('-   file\n', err)
+
+    def test_revert_removing_file(self):
+        # this tests the UI reports reverting a file which has been committed
+        # to a revision that did not have it, reports it as being deleted.
+        tree = self.make_branch_and_tree('.')
+        tree.commit('empty commit')
+        self.build_tree(['file'])
+        tree.add(['file'])
+        tree.commit('add file')
+        out, err = self.run_bzr('revert', '-r', '-2')
+        self.assertEqual('', out)
+        self.assertEqual('-D  file\n', err)

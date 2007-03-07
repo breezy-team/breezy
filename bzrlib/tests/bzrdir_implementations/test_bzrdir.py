@@ -415,6 +415,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
@@ -433,6 +434,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.skipIfNoWorkingTree(target)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
@@ -442,12 +444,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         target.open_workingtree().revert([])
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
                                      ])
-
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
@@ -850,6 +852,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                     [
                                      './.bzr/branch/branch.conf',
                                      './.bzr/branch/parent',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/inventory',
                                      './.bzr/inventory',
@@ -1325,6 +1328,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         text = dir._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_retire_bzrdir(self):
+        bd = self.make_bzrdir('.')
+        # must not overwrite existing directories
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',])
+        self.failUnlessExists('.bzr')
+        bd.retire_bzrdir()
+        self.failIfExists('.bzr')
+        self.failUnlessExists('.bzr.retired.1')
 
 class TestBreakLock(TestCaseWithBzrDir):
 
@@ -1420,8 +1431,11 @@ class TestBreakLock(TestCaseWithBzrDir):
         bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\ny\n")
         try:
             tree.bzrdir.break_lock()
-        except NotImplementedError:
+        except (NotImplementedError, errors.LockActive):
             # bzrdir does not support break_lock
+            # or one of the locked objects (currently only tree does this)
+            # raised a LockActive because we do still have a live locked
+            # object.
             tree.unlock()
             return
         self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())

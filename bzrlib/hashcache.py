@@ -83,6 +83,7 @@ class HashCache(object):
     def __init__(self, root, cache_file_name, mode=None):
         """Create a hash cache in base dir, and set the file mode to mode."""
         self.root = safe_unicode(root)
+        self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -131,7 +132,10 @@ class HashCache(object):
     def get_sha1(self, path, stat_value=None):
         """Return the sha1 of a file.
         """
-        abspath = pathjoin(self.root, path)
+        if path.__class__ is str:
+            abspath = pathjoin(self.root_utf8, path)
+        else:
+            abspath = pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
         

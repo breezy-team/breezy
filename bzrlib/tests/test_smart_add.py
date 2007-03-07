@@ -35,7 +35,6 @@ class TestSmartAdd(TestCaseWithTransport):
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
-        from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
@@ -108,15 +107,6 @@ class TestSmartAdd(TestCaseWithTransport):
         smart_add_tree(wt, add_paths)
         for path in expected_paths:
             self.assertNotEqual(wt.path2id(path), None, "No id added for %s" % path)
-
-    def test_save_false(self):
-        """Test smart-adding a path with save set to false."""
-        wt = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        smart_add_tree(wt, ['file'], save=False)
-        self.assertNotEqual(wt.path2id('file'), None, "No id added for 'file'")
-        wt.read_working_inventory()
-        self.assertEqual(wt.path2id('file'), None)
 
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
@@ -260,7 +250,9 @@ class TestSmartAddTree(TestCaseWithTransport):
                               'added dir1/file2 with id file-dir1%file2\n',
                               'added file1 with id file-file1\n',
                              ], lines)
-        self.assertEqual([('', wt.inventory.root.file_id),
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual([('', wt.path2id('')),
                           ('dir1', 'directory-dir1'),
                           ('dir1/file2', 'file-dir1%file2'),
                           ('file1', 'file-file1'),
@@ -343,6 +335,8 @@ class TestAddFrom(TestCaseWithTransport):
         # These should get newly generated ids
         c_id = new_tree.path2id('c')
         self.assertNotEqual(None, c_id)
+        self.base_tree.lock_read()
+        self.addCleanup(self.base_tree.unlock)
         self.failIf(c_id in self.base_tree)
 
         d_id = new_tree.path2id('subdir/d')
@@ -366,6 +360,8 @@ class TestAddFrom(TestCaseWithTransport):
         # matching path or child of 'subby'.
         a_id = new_tree.path2id('subby/a')
         self.assertNotEqual(None, a_id)
+        self.base_tree.lock_read()
+        self.addCleanup(self.base_tree.unlock)
         self.failIf(a_id in self.base_tree)
 
 
@@ -385,6 +381,8 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [u'a\u030a'])
+            self.wt.lock_read()
+            self.addCleanup(self.wt.unlock)
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
@@ -397,6 +395,8 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [])
+            self.wt.lock_read()
+            self.addCleanup(self.wt.unlock)
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])

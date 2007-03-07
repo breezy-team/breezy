@@ -55,7 +55,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
         # newly-added files should not be deleted
         tree.add('new_file')
-        basis_tree = tree.basis_tree()
+        basis_tree = tree.branch.repository.revision_tree(tree.last_revision())
         tree.revert([])
         self.failUnlessExists('tree/new_file')
 
