@@ -711,7 +711,8 @@ class TestWalkDirs(TestCaseInTempDir):
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
             self.assertIsInstance(dirdetail[0], str)
             if isinstance(dirdetail[1], unicode):
-                dirdetail[1] = dirdetail[1].encode('utf8')
+                dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
+                dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
                     self.assertIsInstance(info[4], unicode)
                     info[4] = info[4].encode('utf8')
