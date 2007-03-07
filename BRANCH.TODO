@@ -3,25 +3,3 @@
 # 
 #
 
-nested commits:
-message_callback : call it many times?
-specific files : adjust them as we walk deep into the trees.
-
-get_reference_revision should not take an InventoryEntry
-
-notice subtrees based on whether they actually have a control directory, not
-how they're recorded in the working inventory
-
-_iter_changes needs to stop iterating into control directories
-
-set_parent_trees needing to do the weird hack of making empty trees to pass in.
-
-deprecate Tree.__iter__.
-
-Lazy inventory object that will:
- - be synced with the dirstate - or invalidated or something
- - only convert as much as needed. I.e. calling iter_entries_by_dir does not
-   parse the lot.
-
-In things like get_file_sha1 on tree, consider a deprecation warning if
-path is not given? or some developer tool to profile.

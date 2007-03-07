@@ -2,6 +2,13 @@ IN DEVELOPMENT
 
   SURPRISES:
 
+    * The default disk format has changed. Please run 'bzr upgrade' in your
+      working trees to upgrade. This new default is compatible for network
+      operations, but not for local operations. That is, if you have two
+      versions of bzr installed locally, after upgrading you can only use the
+      bzr 0.15 version. This new default does not enable tags or nested-trees
+      as they are incompatible with bzr versions before 0.15 over the network.
+
     * For users of bzrlib: Two major changes have been made to the working tree
       api in bzrlib. The first is that many methods and attributes, including
       the inventory attribute, are no longer valid for use until one of
@@ -74,7 +81,9 @@ IN DEVELOPMENT
     * Builtin tags support, created and deleted by the ``tag`` command and
       stored in the branch.  Tags can be accessed with the revisionspec
       ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
-      at present.  (Martin Pool)
+      at present. Tags require a network incompatible upgrade. To perform this
+      upgrade, run ``bzr upgrade --dirstate-with-subtree`` in your branch and
+      repositories. (Martin Pool)
 
     * The bzr:// transport now has a well-known port number, 4155, which it will
       use by default.  (Andrew Bennetts, Martin Pool)
@@ -84,6 +93,13 @@ IN DEVELOPMENT
 
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
+
+    * There is now initial support for managing a forest of trees in bzr,
+      and splitting up existing trees into smaller subtrees, and finally
+      joining trees to make a larger tree. This is the first iteration
+      of this support. To enable the new ``join`` and ``split`` commands,
+      please run ``bzr upgrade --dirstate-with-subtree`` in your working
+      trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
 
   INTERNALS:
 
