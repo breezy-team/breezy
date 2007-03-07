@@ -1067,7 +1067,7 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-
+    
     def setUp(self):
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor

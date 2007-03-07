@@ -227,7 +227,7 @@ bzr 0.14  2007-01-23
     * ``bzr help global-options`` describes the global options. (Aaron Bentley)
 
   BUG FIXES:
-
+    
     * Skip documentation generation tests if the tools to do so are not
       available. Fixes running selftest for installled copies of bzr. 
       (John Arbash Meinel, #80330)
@@ -269,7 +269,7 @@ bzr 0.14rc1  2007-01-16
     * Policy can be set for each configuration key. This allows keys to be
       inherited properly across configuration entries. For example, this
       should enable you to do::
-
+        
         [/home/user/project]
         push_location = sftp://host/srv/project/
         push_location:policy = appendpath
