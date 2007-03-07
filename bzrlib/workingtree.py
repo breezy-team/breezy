@@ -487,26 +487,30 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         file_id = osutils.safe_file_id(file_id)
         basis = self.basis_tree()
-        changes = self._iter_changes(basis, True, [self.id2path(file_id)],
-            require_versioned=True).next()
-        changed_content, kind = changes[2], changes[6]
-        if not changed_content:
-            return basis.annotate_iter(file_id)
-        if kind[1] is None:
-            return None
-        import annotate
-        if kind[0] != 'file':
-            old_lines = []
-        else:
-            old_lines = list(basis.annotate_iter(file_id))
-        old = [old_lines]
-        for tree in self.branch.repository.revision_trees(
-            self.get_parent_ids()[1:]):
-            if file_id not in tree:
-                continue
-            old.append(list(tree.annotate_iter(file_id)))
-        return annotate.reannotate(old, self.get_file(file_id).readlines(),
-                                   CURRENT_REVISION)
+        basis.lock_read()
+        try:
+            changes = self._iter_changes(basis, True, [self.id2path(file_id)],
+                require_versioned=True).next()
+            changed_content, kind = changes[2], changes[6]
+            if not changed_content:
+                return basis.annotate_iter(file_id)
+            if kind[1] is None:
+                return None
+            import annotate
+            if kind[0] != 'file':
+                old_lines = []
+            else:
+                old_lines = list(basis.annotate_iter(file_id))
+            old = [old_lines]
+            for tree in self.branch.repository.revision_trees(
+                self.get_parent_ids()[1:]):
+                if file_id not in tree:
+                    continue
+                old.append(list(tree.annotate_iter(file_id)))
+            return annotate.reannotate(old, self.get_file(file_id).readlines(),
+                                       CURRENT_REVISION)
+        finally:
+            basis.unlock()
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
