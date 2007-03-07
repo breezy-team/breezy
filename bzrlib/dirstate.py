@@ -30,7 +30,7 @@ REVISION_ID = a non-empty utf8 string;
 dirstate format = header line, full checksum, row count, parent details,
  ghost_details, entries;
 header line = "#bazaar dirstate flat format 2", NL;
-full checksum = "adler32: ", ["-"], WHOLE_NUMBER, NL;
+full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
 row count = "num_entries: ", digit, NL;
 parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
 ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
@@ -1494,7 +1494,7 @@ class DirState(object):
         output_lines = [DirState.HEADER_FORMAT_3]
         lines.append('') # a final newline
         inventory_text = '\0\n\0'.join(lines)
-        output_lines.append('adler32: %s\n' % (zlib.adler32(inventory_text),))
+        output_lines.append('crc32: %s\n' % (zlib.crc32(inventory_text),))
         # -3, 1 for num parents, 1 for ghosts, 1 for final newline
         num_entries = len(lines)-3
         output_lines.append('num_entries: %s\n' % (num_entries,))
@@ -1532,7 +1532,7 @@ class DirState(object):
             # has been called in the mean time)
             self._state_file.seek(self._end_of_header)
             text = self._state_file.read()
-            # TODO: check the adler checksums. adler_measured = zlib.adler32(text)
+            # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
             fields = text.split('\0')
             # Remove the last blank entry
@@ -1628,7 +1628,7 @@ class DirState(object):
         After reading in, the file should be positioned at the null
         just before the start of the first record in the file.
 
-        :return: (expected adler checksum, number of entries, parent list)
+        :return: (expected crc checksum, number of entries, parent list)
         """
         self._read_prelude()
         parent_line = self._state_file.readline()
@@ -1656,7 +1656,7 @@ class DirState(object):
     def _read_prelude(self):
         """Read in the prelude header of the dirstate file
 
-        This only reads in the stuff that is not connected to the adler
+        This only reads in the stuff that is not connected to the crc
         checksum. The position will be correct to read in the rest of
         the file and check the checksum after this point.
         The next entry in the file should be the number of parents,
@@ -1665,9 +1665,9 @@ class DirState(object):
         header = self._state_file.readline()
         assert header == DirState.HEADER_FORMAT_3, \
             'invalid header line: %r' % (header,)
-        adler_line = self._state_file.readline()
-        assert adler_line.startswith('adler32: '), 'missing adler32 checksum'
-        self.adler_expected = int(adler_line[len('adler32: '):-1])
+        crc_line = self._state_file.readline()
+        assert crc_line.startswith('crc32: '), 'missing crc32 checksum'
+        self.crc_expected = int(crc_line[len('crc32: '):-1])
         num_entries_line = self._state_file.readline()
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
         self._num_entries = int(num_entries_line[len('num_entries: '):-1])

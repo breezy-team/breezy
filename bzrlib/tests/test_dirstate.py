@@ -790,7 +790,7 @@ class TestGetLines(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         try:
             self.assertEqual(['#bazaar dirstate flat format 3\n',
-                'adler32: -1327947603\n',
+                'crc32: 41262208\n',
                 'num_entries: 2\n',
                 '0\x00\n\x00'
                 '0\x00\n\x00'
