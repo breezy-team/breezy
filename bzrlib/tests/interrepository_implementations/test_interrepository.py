@@ -29,6 +29,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 from bzrlib.inventory import Inventory
+import bzrlib.repofmt.weaverepo as weaverepo
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -98,9 +99,9 @@ def check_old_format_lock_error(repository_format):
 
 
 def check_repo_format_for_funky_id_on_win32(repo):
-    if sys.platform == 'win32':
-        if isinstance(repo, (repository.AllInOneRepository,
-                             repository.WeaveMetaDirRepository)):
+    if (isinstance(repo, (weaverepo.AllInOneRepository,
+                          weaverepo.WeaveMetaDirRepository))
+        and sys.platform == 'win32'):
             raise TestSkipped("funky chars does not permitted"
                               " on this platform in repository"
                               " %s" % repo.__class__.__name__)
