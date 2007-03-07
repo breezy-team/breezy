@@ -161,12 +161,10 @@ lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if getattr(os, 'lstat') is not None:
-                os.lstat(f)
-            else:
-                os.stat(f)
+            stat = getattr(os, 'lstat', os.stat)
+            stat(f)
             return True
-        except OSError,e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
