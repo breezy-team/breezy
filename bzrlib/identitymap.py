@@ -18,7 +18,10 @@
 """This module provides an IdentityMap."""
 
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 
 
 class IdentityMap(object):

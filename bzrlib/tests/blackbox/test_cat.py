@@ -73,6 +73,9 @@ class TestCat(TestCaseWithTransport):
         try:
             tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
             tree.commit('add test files')
+            # remove currently uses self._write_inventory - 
+            # work around that for now.
+            tree.flush()
             tree.remove(['d-rev'])
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
@@ -105,3 +108,15 @@ class TestCat(TestCaseWithTransport):
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr('cat', url)
         self.assertEqual('contents of README\n', out)
+
+    def test_cat_no_working_tree(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        wt.branch.bzrdir.destroy_workingtree()
+
+        url = self.get_readonly_url() + '/README'
+        out, err = self.run_bzr('cat', url)
+        self.assertEqual('contents of README\n', out)
+        

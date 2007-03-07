@@ -104,21 +104,22 @@ class TestUserIgnores(TestCaseInTempDir):
         # Create an empty file
         ignores._set_user_ignores([])
 
-        in_patterns = ['foo/', 'bar/']
+        in_patterns = ['foo/', 'bar/', 'baz\\']
         added = ignores.add_unique_user_ignores(in_patterns)
-        out_patterns = [ x.rstrip('/') for x in in_patterns ]
+        out_patterns = [ x.rstrip('/\\') for x in in_patterns ]
         self.assertEqual(out_patterns, added)
         self.assertEqual(set(out_patterns), ignores.get_user_ignores())
 
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
-        ignores._set_user_ignores(['foo', './bar', u'b\xe5z', 'dir1/'])
+        ignores._set_user_ignores(
+            ['foo', './bar', u'b\xe5z', 'dir1/', 'dir3\\'])
 
         added = ignores.add_unique_user_ignores(
-            ['xxx', './bar', 'xxx', 'dir1/', 'dir2/'])
+            ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
         self.assertEqual(['xxx', 'dir2'], added)
         self.assertEqual(set(['foo', './bar', u'b\xe5z', 
-                              'xxx', 'dir1', 'dir2']),
+                              'xxx', 'dir1', 'dir2', 'dir3']),
                          ignores.get_user_ignores())
 
 

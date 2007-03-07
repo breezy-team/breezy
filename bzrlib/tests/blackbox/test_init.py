@@ -24,6 +24,7 @@ from bzrlib import (
     branch as _mod_branch,
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
@@ -75,8 +76,8 @@ class TestInit(ExternalBase):
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: .*'
-            '\[Errno 2\] No such file or directory')
+            r'^bzr: ERROR: No such file: .*'
+            '\[Err(no|or) 2\]')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -109,6 +110,15 @@ class TestInit(ExternalBase):
         self.run_bzr('init')
         self.assertFalse(os.path.exists('.bzrignore'))
 
+    def test_init_unicode(self):
+        # Make sure getcwd can handle unicode filenames
+        try:
+            os.mkdir(u'mu-\xb5')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+        # try to init unicode dir
+        self.run_bzr('init', u'mu-\xb5')
+
 
 class TestSFTPInit(TestCaseWithSFTPServer):
 
@@ -138,11 +148,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr_error(['Already a branch'], 'init', self.get_url())
 
     def test_init_append_revisions_only(self):
-        self.run_bzr('init', '--experimental-branch6', 'normal_branch6')
+        self.run_bzr('init', '--dirstate-with-subtree', 'normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(False, branch._get_append_revisions_only())
         self.run_bzr('init', '--append-revisions-only',
-                     '--experimental-branch6', 'branch6')
+                     '--dirstate-with-subtree', 'branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch._get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'], 'init',
