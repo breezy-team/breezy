@@ -945,6 +945,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         
         A new branch will be created, relative to the path for this tree.
         """
+        self.flush()
         def mkdirs(path):
             segments = osutils.splitpath(path)
             transport = self.branch.bzrdir.root_transport
