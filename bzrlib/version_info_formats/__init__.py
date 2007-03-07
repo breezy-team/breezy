@@ -81,45 +81,54 @@ class VersionInfoBuilder(object):
 
         if self._working_tree is not None:
             basis_tree = self._working_tree.basis_tree()
+            # TODO: jam 20070215 The working tree should actually be locked at
+            #       a higher level, but this will do for now.
+            self._working_tree.lock_read()
         else:
             basis_tree = self._branch.basis_tree()
 
-        # Build up the list from the basis inventory
-        for info in basis_tree.list_files(include_root=True):
-            self._file_revisions[info[0]] = info[-1].revision
+        basis_tree.lock_read()
+        try:
+            # Build up the list from the basis inventory
+            for info in basis_tree.list_files(include_root=True):
+                self._file_revisions[info[0]] = info[-1].revision
 
-        if not self._check or self._working_tree is None:
-            return
+            if not self._check or self._working_tree is None:
+                return
 
-        delta = self._working_tree.changes_from(basis_tree, 
-                                                include_root=True)
+            delta = self._working_tree.changes_from(basis_tree, 
+                                                    include_root=True)
 
-        # Using a 2-pass algorithm for renames. This is because you might have
-        # renamed something out of the way, and then created a new file
-        # in which case we would rather see the new marker
-        # Or you might have removed the target, and then renamed
-        # in which case we would rather see the renamed marker
-        for (old_path, new_path, file_id,
-             kind, text_mod, meta_mod) in delta.renamed:
-            self._clean = False
-            self._file_revisions[old_path] = u'renamed to %s' % (new_path,)
-        for path, file_id, kind in delta.removed:
-            self._clean = False
-            self._file_revisions[path] = 'removed'
-        for path, file_id, kind in delta.added:
-            self._clean = False
-            self._file_revisions[path] = 'new'
-        for (old_path, new_path, file_id,
-             kind, text_mod, meta_mod) in delta.renamed:
-            self._clean = False
-            self._file_revisions[new_path] = u'renamed from %s' % (old_path,)
-        for path, file_id, kind, text_mod, meta_mod in delta.modified:
-            self._clean = False
-            self._file_revisions[path] = 'modified'
+            # Using a 2-pass algorithm for renames. This is because you might have
+            # renamed something out of the way, and then created a new file
+            # in which case we would rather see the new marker
+            # Or you might have removed the target, and then renamed
+            # in which case we would rather see the renamed marker
+            for (old_path, new_path, file_id,
+                 kind, text_mod, meta_mod) in delta.renamed:
+                self._clean = False
+                self._file_revisions[old_path] = u'renamed to %s' % (new_path,)
+            for path, file_id, kind in delta.removed:
+                self._clean = False
+                self._file_revisions[path] = 'removed'
+            for path, file_id, kind in delta.added:
+                self._clean = False
+                self._file_revisions[path] = 'new'
+            for (old_path, new_path, file_id,
+                 kind, text_mod, meta_mod) in delta.renamed:
+                self._clean = False
+                self._file_revisions[new_path] = u'renamed from %s' % (old_path,)
+            for path, file_id, kind, text_mod, meta_mod in delta.modified:
+                self._clean = False
+                self._file_revisions[path] = 'modified'
 
-        for path in self._working_tree.unknowns():
-            self._clean = False
-            self._file_revisions[path] = 'unversioned'
+            for path in self._working_tree.unknowns():
+                self._clean = False
+                self._file_revisions[path] = 'unversioned'
+        finally:
+            basis_tree.unlock()
+            if self._working_tree is not None:
+                self._working_tree.unlock()
 
     def _extract_revision_history(self):
         """Find the messages for all revisions in history."""

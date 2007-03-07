@@ -173,7 +173,8 @@ class Commit(object):
                local=False,
                reporter=None,
                config=None,
-               message_callback=None):
+               message_callback=None,
+               recursive='down'):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
@@ -200,6 +201,8 @@ class Commit(object):
 
         revprops -- Properties for new revision
         :param local: Perform a local only commit.
+        :param recursive: If set to 'down', commit in any subtrees that have
+            pending changes of any sort during this commit.
         """
         mutter('preparing to commit')
 
@@ -214,6 +217,9 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
+            if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
+                if not self.branch.repository.supports_rich_root():
+                    raise errors.RootNotRich()
         if message_callback is None:
             if message is not None:
                 if isinstance(message, str):
@@ -230,6 +236,16 @@ class Commit(object):
         self.rev_id = None
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
+        self.recursive = recursive
+        self.revprops = revprops
+        self.message_callback = message_callback
+        self.timestamp = timestamp
+        self.timezone = timezone
+        self.committer = committer
+        self.specific_files = specific_files
+        self.strict = strict
+        self.verbose = verbose
+        self.local = local
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -238,6 +254,8 @@ class Commit(object):
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_tree = self.work_tree.basis_tree()
+        self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
             if len(self.work_tree.conflicts())>0:
@@ -273,12 +291,13 @@ class Commit(object):
                 self.config = self.branch.get_config()
 
             self.work_inv = self.work_tree.inventory
-            self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
             if specific_files is not None:
                 # Ensure specified files are versioned
                 # (We don't actually need the ids here)
-                tree.find_ids_across_trees(specific_files, 
+                # XXX: Dont we have filter_unversioned to do this more
+                # cheaply?
+                tree.find_ids_across_trees(specific_files,
                                            [self.basis_tree, self.work_tree])
             # one to finish, one for rev and inventory, and one for each
             # inventory entry, and the same for the new inventory.
@@ -293,7 +312,7 @@ class Commit(object):
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
             
-            self.builder = self.branch.get_commit_builder(self.parents, 
+            self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             
             self._remove_deleted()
@@ -393,6 +412,7 @@ class Commit(object):
                     and (this.parent_id == other.parent_id)
                     and (this.kind == other.kind)
                     and (this.executable == other.executable)
+                    and (this.reference_revision == other.reference_revision)
                     )
         if not ie_equal_no_revision(new_root_ie, basis_root_ie):
             return True
@@ -469,6 +489,7 @@ class Commit(object):
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
         cleanups = [self._cleanup_bound_branch,
+                    self.basis_tree.unlock,
                     self.work_tree.unlock,
                     self.pb.finished]
         found_exception = None
@@ -588,6 +609,31 @@ class Commit(object):
             file_id = new_ie.file_id
             try:
                 kind = self.work_tree.kind(file_id)
+                if kind == 'tree-reference' and self.recursive == 'down':
+                    # nested tree: commit in it
+                    sub_tree = WorkingTree.open(self.work_tree.abspath(path))
+                    # FIXME: be more comprehensive here:
+                    # this works when both trees are in --trees repository,
+                    # but when both are bound to a different repository,
+                    # it fails; a better way of approaching this is to 
+                    # finally implement the explicit-caches approach design
+                    # a while back - RBC 20070306.
+                    if (sub_tree.branch.repository.bzrdir.root_transport.base
+                        ==
+                        self.work_tree.branch.repository.bzrdir.root_transport.base):
+                        sub_tree.branch.repository = \
+                            self.work_tree.branch.repository
+                    try:
+                        sub_tree.commit(message=None, revprops=self.revprops,
+                            recursive=self.recursive,
+                            message_callback=self.message_callback,
+                            timestamp=self.timestamp, timezone=self.timezone,
+                            committer=self.committer,
+                            allow_pointless=self.allow_pointless,
+                            strict=self.strict, verbose=self.verbose,
+                            local=self.local, reporter=self.reporter)
+                    except errors.PointlessCommit:
+                        pass
                 if kind != new_ie.kind:
                     new_ie = inventory.make_entry(kind, new_ie.name,
                                                   new_ie.parent_id, file_id)

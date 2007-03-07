@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import re
 
 from bzrlib import (
     cache_utf8,
+    errors,
     inventory,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
@@ -148,6 +149,8 @@ class Serializer_v5(Serializer):
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
+    supported_kinds = set(['file', 'directory', 'symlink'])
+
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
         sio = cStringIO.StringIO()
@@ -190,8 +193,8 @@ class Serializer_v5(Serializer):
     def _append_entry(self, append, ie):
         """Convert InventoryEntry to XML element and append to output."""
         # TODO: should just be a plain assertion
-        assert InventoryEntry.versionable_kind(ie.kind), \
-            'unsupported entry kind %s' % ie.kind
+        if ie.kind not in self.supported_kinds:
+            raise errors.UnsupportedInventoryKind(ie.kind)
 
         append("<")
         append(ie.kind)
@@ -217,6 +220,9 @@ class Serializer_v5(Serializer):
             append('"')
         if ie.text_size is not None:
             append(' text_size="%d"' % ie.text_size)
+        if getattr(ie, 'reference_revision', None) is not None:
+            append(' reference_revision="')
+            append(_encode_and_escape(ie.reference_revision))
         append(" />\n")
         return
 
@@ -324,7 +330,7 @@ class Serializer_v5(Serializer):
                                          parent_id)
             ie.symlink_target = elt.get('symlink_target')
         else:
-            raise BzrError("unknown kind %r" % kind)
+            raise errors.UnsupportedInventoryKind(kind)
         revision = elt.get('revision')
         if revision is not None:
             revision = get_cached(revision)

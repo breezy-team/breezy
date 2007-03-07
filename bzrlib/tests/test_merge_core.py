@@ -49,6 +49,7 @@ class MergeBuilder(object):
            # the tests perform pulls, so need a branch that is writeable.
            wt.lock_write()
            wt.set_root_id(self.tree_root)
+           wt.flush()
            tt = TreeTransform(wt)
            return wt, tt
         self.base, self.base_tt = wt('base')
@@ -77,8 +78,12 @@ class MergeBuilder(object):
             # why does this not do wt.pull() ?
             wt.branch.pull(self.base.branch)
             wt.set_parent_ids([wt.branch.last_revision()])
+            wt.flush()
+            # We maintain a write lock, so make sure changes are flushed to
+            # disk first
             tt.apply()
             wt.commit('branch commit')
+            wt.flush()
             assert len(wt.branch.revision_history()) == 2
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()

@@ -202,7 +202,7 @@ class TestUpdate(ExternalBase):
         """Update a light checkout of a readonly branch"""
         tree = self.make_branch_and_tree('branch')
         readonly_branch = branch.Branch.open(self.get_readonly_url('branch'))
-        checkout = readonly_branch.create_checkout('checkout', 
+        checkout = readonly_branch.create_checkout('checkout',
                                                    lightweight=True)
         tree.commit('empty commit')
         self.runbzr(['update', 'checkout'])
