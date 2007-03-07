@@ -416,8 +416,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.commit('a')
         tree.add(['b'], ['b-id'])
 
-        tree.rename_one('a', u'b\xb5rry')
-        self.assertEqual(u'b\xb5rry', tree.id2path('a-id'))
+        try:
+            tree.rename_one('a', u'b\xb5rry')
+            new_path = u'b\xb5rry'
+        except UnicodeEncodeError:
+            # support running the test on non-unicode platforms
+            tree.rename_one('a', 'c')
+            new_path = 'c'
+        self.assertEqual(new_path, tree.id2path('a-id'))
         tree.commit(u'b\xb5rry')
         tree.unversion(['a-id'])
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a-id')

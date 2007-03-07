@@ -37,6 +37,7 @@ from bzrlib.tests import (
                           default_transport,
                           TestCaseWithTransport,
                           TestLoader,
+                          TestSkipped,
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -207,7 +208,11 @@ class TestCaseWithTree(TestCaseWithBzrDir):
             '1file-in-1topdir',
             '0dir-in-1topdir'
             ]
-        self.build_tree(paths)
+        try:
+            self.build_tree(paths)
+        except UnicodeError:
+            raise TestSkipped(
+                'This platform does not support unicode file paths.')
         tree.add(paths, ids)
         tt = transform.TreeTransform(tree)
         root_transaction_id = tt.trans_id_tree_path('')
