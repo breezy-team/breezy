@@ -394,6 +394,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     """
     old_tree.lock_read()
     try:
+        if extra_trees is not None:
+            for tree in extra_trees:
+                tree.lock_read()
         new_tree.lock_read()
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
@@ -402,6 +405,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                                     extra_trees=extra_trees)
         finally:
             new_tree.unlock()
+            if extra_trees is not None:
+                for tree in extra_trees:
+                    tree.unlock()
     finally:
         old_tree.unlock()
 

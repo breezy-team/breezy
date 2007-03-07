@@ -18,26 +18,26 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import ignores
-import bzrlib
+from bzrlib import (
+    bzrdir,
+    conflicts,
+    errors,
+    workingtree,
+    )
 from bzrlib.branch import Branch
-from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,
     TreeLink,
-    WorkingTree,
     )
+
 
 class TestTreeDirectory(TestCaseWithTransport):
 
@@ -174,13 +174,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        # self.assertContainsRe(t.get('inventory').read(), 
-        #                       '<inventory file_id="[^"]*" format="5">\n'
-        #                       '</inventory>\n',
-        #                      )
-        # WorkingTreeFormat3 doesn't default to creating a unique root id,
-        # because it is incompatible with older bzr versions
-        self.assertContainsRe(t.get('inventory').read(),
+        self.assertEqualDiff(t.get('inventory').read(), 
                               '<inventory format="5">\n'
                               '</inventory>\n',
                              )
@@ -231,7 +225,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
 
     def create_format2_tree(self, url):
         return self.make_branch_and_tree(
-            url, format=bzrlib.bzrdir.BzrDirFormat6())
+            url, format=bzrdir.BzrDirFormat6())
 
     def test_conflicts(self):
         # test backwards compatability
@@ -359,6 +353,6 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', 'hello-id')
-        file_conflict = conflicts.TextConflict('file', 'hello_id')
+        file_conflict = conflicts.TextConflict('file', None, 'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
