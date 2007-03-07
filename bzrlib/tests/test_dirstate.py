@@ -791,6 +791,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_add_forbidden_names(self):
         state = dirstate.DirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
         self.assertRaises(errors.BzrError,
             state.add, '.', 'ass-id', 'directory', None, None)
         self.assertRaises(errors.BzrError,
