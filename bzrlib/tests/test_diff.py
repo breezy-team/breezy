@@ -18,6 +18,7 @@ import os
 from cStringIO import StringIO
 import errno
 import subprocess
+import sys
 from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
@@ -111,11 +112,16 @@ class TestDiff(TestCase):
         self.check_patch(lines)
 
     def test_external_diff_binary_lang_c(self):
-        orig_lang = os.environ.get('LANG')
-        orig_lc_all = os.environ.get('LC_ALL')
+        _old_env = {}
+        langs = ('LANG', 'LC_ALL', 'LANGUAGE')
+        for name in langs:
+            _old_env[name] = os.environ.get(name)
         try:
             os.environ['LANG'] = 'C'
             os.environ['LC_ALL'] = 'C'
+            if sys.platform == 'win32':
+                # only LANGUAGE has effect on win32
+                os.environ['LANGUAGE'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
             # Older versions of diffutils say "Binary files", newer
             # versions just say "Files".
@@ -123,9 +129,11 @@ class TestDiff(TestCase):
                                   '(Binary f|F)iles old and new differ\n')
             self.assertEquals(lines[1:], ['\n'])
         finally:
-            for name, value in [('LANG', orig_lang), ('LC_ALL', orig_lc_all)]:
+            for name in langs:
+                value = _old_env[name]
                 if value is None:
-                    del os.environ[name]
+                    if os.environ.get(name) is not None:
+                        del os.environ[name]
                 else:
                     os.environ[name] = value
 
