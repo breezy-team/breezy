@@ -3238,12 +3238,18 @@ class cmd_join(Command):
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
-        # XXX: Would be better to just raise a nicely printable exception from
-        # the real origin. mbp 20070306
+        repo = containing_tree.branch.repository
+        if not repo.supports_rich_root():
+            raise errors.BzrCommandError(
+                "Can't join trees because %s doesn't support rich root data.\n"
+                "You can use bzr upgrade on the repository."
+                % (repo,))
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
             except errors.BadReferenceTarget, e:
+                # XXX: Would be better to just raise a nicely printable
+                # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.BzrCommandError("Cannot join %s.  %s" %
                                              (tree, e.reason))
         else:

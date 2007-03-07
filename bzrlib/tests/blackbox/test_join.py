@@ -77,3 +77,19 @@ class TestJoin(tests.TestCaseWithTransport):
         self.assertTrue('file1-id' not in base_tree)
         self.assertEqual('subtree-root-id', base_tree.path2id('subtree'))
         self.assertEqual('subtree', base_tree.id2path('subtree-root-id'))
+
+    def test_references_check_repository_support(self):
+        """Users are stopped from adding a reference that can't be committed."""
+        # in 0.15 the default format has a dirstate workingtree, that can
+        # support tree references, but the default repository format 
+        # cannot.
+        tree = self.make_branch_and_tree('tree', format='dirstate')
+        tree2 = self.make_branch_and_tree('tree/subtree')
+        out, err = self.run_bzr('join', '--reference', 'tree/subtree',
+            retcode=3)
+        self.assertContainsRe(err,
+            r"Can't join trees")
+        self.assertContainsRe(err,
+            r"use bzr upgrade")
+
+
