@@ -30,7 +30,6 @@ from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 from bzrlib.repofmt.knitrepo import (
     RepositoryFormatKnit1,
-    RepositoryFormatKnit2,
     )
 
 

@@ -314,7 +314,7 @@ class BundleTester1(TestCaseWithTransport):
 
     def test_mismatched_bundle(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
         self.assertRaises(errors.IncompatibleBundleFormat, serializer.write, 
@@ -323,7 +323,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_matched_bundle(self):
         """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         serializer = BundleSerializerV09('0.9')
         b = self.make_branch('.', format=format)
         serializer.write(b.repository, [], {}, StringIO())
@@ -331,7 +331,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_mismatched_model(self):
         """Try copying a bundle from knit2 to knit1"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         source = self.make_branch_and_tree('source', format=format)
         source.commit('one', rev_id='one-id')
         source.commit('two', rev_id='two-id')
@@ -488,7 +488,7 @@ class V08BundleTester(TestCaseWithTransport):
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
-                             'Working tree has modifications')
+                             'Working tree has modifications: %s' % delta)
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
@@ -891,7 +891,7 @@ class V09BundleKnit2Tester(V08BundleTester):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         return format
 
 

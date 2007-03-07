@@ -284,25 +284,24 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_revision_id(f))
-        self.assertIs(osutils.safe_utf8(f), f)
+        self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_revision_id(u'bargam'))
+        self.assertEqual('bargam',
+                         osutils.safe_revision_id(u'bargam', warn=False))
+
+    def test_from_unicode_deprecated(self):
+        self.assertEqual('bargam',
+            self.callDeprecated([osutils._revision_id_warning],
+                                osutils.safe_revision_id, u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
         self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_revision_id(u'bargam\xae'))
+                         osutils.safe_revision_id(u'bargam\xae', warn=False))
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
                          osutils.safe_revision_id('foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        # This check may eventually go away
-        self.assertRaises(BzrBadParameterNotUnicode,
-                          osutils.safe_revision_id, '\xbb\xbb')
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -312,24 +311,23 @@ class TestSafeRevisionId(TestCase):
 class TestSafeFileId(TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_file_id(f))
+        self.assertEqual('foobar', osutils.safe_file_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_file_id(u'bargam'))
+        self.assertEqual('bargam', osutils.safe_file_id(u'bargam', warn=False))
+
+    def test_from_unicode_deprecated(self):
+        self.assertEqual('bargam',
+            self.callDeprecated([osutils._file_id_warning],
+                                osutils.safe_file_id, u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
         self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_file_id(u'bargam\xae'))
+                         osutils.safe_file_id(u'bargam\xae', warn=False))
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
                          osutils.safe_file_id('foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        # This check may eventually go away
-        self.assertRaises(BzrBadParameterNotUnicode,
-                          osutils.safe_file_id, '\xbb\xbb')
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -558,6 +556,216 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
             [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+
+    def test__walkdirs_utf8(self):
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '2file'
+            ]
+        self.build_tree(tree)
+        expected_dirblocks = [
+                (('', '.'),
+                 [('0file', '0file', 'file'),
+                  ('1dir', '1dir', 'directory'),
+                  ('2file', '2file', 'file'),
+                 ]
+                ),
+                (('1dir', './1dir'),
+                 [('1dir/0file', '0file', 'file'),
+                  ('1dir/1dir', '1dir', 'directory'),
+                 ]
+                ),
+                (('1dir/1dir', './1dir/1dir'),
+                 [
+                 ]
+                ),
+            ]
+        result = []
+        found_bzrdir = False
+        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
+            if len(dirblock) and dirblock[0][1] == '.bzr':
+                # this tests the filtering of selected paths
+                found_bzrdir = True
+                del dirblock[0]
+            result.append((dirdetail, dirblock))
+
+        self.assertTrue(found_bzrdir)
+        self.assertEqual(expected_dirblocks,
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+        # you can search a subdir only, with a supplied prefix.
+        result = []
+        for dirblock in osutils.walkdirs('./1dir', '1dir'):
+            result.append(dirblock)
+        self.assertEqual(expected_dirblocks[1:],
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+
+    def _filter_out_stat(self, result):
+        """Filter out the stat value from the walkdirs result"""
+        for dirdetail, dirblock in result:
+            new_dirblock = []
+            for info in dirblock:
+                # Ignore info[3] which is the stat
+                new_dirblock.append((info[0], info[1], info[2], info[4]))
+            dirblock[:] = new_dirblock
+
+    def test_unicode_walkdirs(self):
+        """Walkdirs should always return unicode paths."""
+        name0 = u'0file-\xb6'
+        name1 = u'1dir-\u062c\u0648'
+        name2 = u'2file-\u0633'
+        tree = [
+            name0,
+            name1 + '/',
+            name1 + '/' + name0,
+            name1 + '/' + name1 + '/',
+            name2,
+            ]
+        try:
+            self.build_tree(tree)
+        except UnicodeError:
+            raise TestSkipped('Could not represent Unicode chars'
+                              ' in current encoding.')
+        expected_dirblocks = [
+                ((u'', u'.'),
+                 [(name0, name0, 'file', './' + name0),
+                  (name1, name1, 'directory', './' + name1),
+                  (name2, name2, 'file', './' + name2),
+                 ]
+                ),
+                ((name1, './' + name1),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1
+                                                        + '/' + name0),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1
+                                                            + '/' + name1),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1 + '/' + name1),
+                 [
+                 ]
+                ),
+            ]
+        result = list(osutils.walkdirs('.'))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks, result)
+        result = list(osutils.walkdirs(u'./'+name1, name1))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks[1:], result)
+
+    def test_unicode__walkdirs_utf8(self):
+        """Walkdirs_utf8 should always return utf8 paths.
+
+        The abspath portion might be in unicode or utf-8
+        """
+        name0 = u'0file-\xb6'
+        name1 = u'1dir-\u062c\u0648'
+        name2 = u'2file-\u0633'
+        tree = [
+            name0,
+            name1 + '/',
+            name1 + '/' + name0,
+            name1 + '/' + name1 + '/',
+            name2,
+            ]
+        try:
+            self.build_tree(tree)
+        except UnicodeError:
+            raise TestSkipped('Could not represent Unicode chars'
+                              ' in current encoding.')
+        name0 = name0.encode('utf8')
+        name1 = name1.encode('utf8')
+        name2 = name2.encode('utf8')
+
+        expected_dirblocks = [
+                (('', '.'),
+                 [(name0, name0, 'file', './' + name0),
+                  (name1, name1, 'directory', './' + name1),
+                  (name2, name2, 'file', './' + name2),
+                 ]
+                ),
+                ((name1, './' + name1),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1
+                                                        + '/' + name0),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1
+                                                            + '/' + name1),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1 + '/' + name1),
+                 [
+                 ]
+                ),
+            ]
+        result = []
+        # For ease in testing, if walkdirs_utf8 returns Unicode, assert that
+        # all abspaths are Unicode, and encode them back into utf8.
+        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
+            self.assertIsInstance(dirdetail[0], str)
+            if isinstance(dirdetail[1], unicode):
+                dirdetail[1] = dirdetail[1].encode('utf8')
+                for info in dirblock:
+                    self.assertIsInstance(info[4], unicode)
+                    info[4] = info[4].encode('utf8')
+            new_dirblock = []
+            for info in dirblock:
+                self.assertIsInstance(info[0], str)
+                self.assertIsInstance(info[1], str)
+                self.assertIsInstance(info[4], str)
+                # Remove the stat information
+                new_dirblock.append((info[0], info[1], info[2], info[4]))
+            result.append((dirdetail, new_dirblock))
+        self.assertEqual(expected_dirblocks, result)
+
+    def test_unicode__walkdirs_unicode_to_utf8(self):
+        """walkdirs_unicode_to_utf8 should be a safe fallback everywhere
+
+        The abspath portion should be in unicode
+        """
+        name0u = u'0file-\xb6'
+        name1u = u'1dir-\u062c\u0648'
+        name2u = u'2file-\u0633'
+        tree = [
+            name0u,
+            name1u + '/',
+            name1u + '/' + name0u,
+            name1u + '/' + name1u + '/',
+            name2u,
+            ]
+        try:
+            self.build_tree(tree)
+        except UnicodeError:
+            raise TestSkipped('Could not represent Unicode chars'
+                              ' in current encoding.')
+        name0 = name0u.encode('utf8')
+        name1 = name1u.encode('utf8')
+        name2 = name2u.encode('utf8')
+
+        # All of the abspaths should be in unicode, all of the relative paths
+        # should be in utf8
+        expected_dirblocks = [
+                (('', '.'),
+                 [(name0, name0, 'file', './' + name0u),
+                  (name1, name1, 'directory', './' + name1u),
+                  (name2, name2, 'file', './' + name2u),
+                 ]
+                ),
+                ((name1, './' + name1u),
+                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                                                        + '/' + name0u),
+                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                                                            + '/' + name1u),
+                 ]
+                ),
+                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                 [
+                 ]
+                ),
+            ]
+        result = list(osutils._walkdirs_unicode_to_utf8('.'))
+        self._filter_out_stat(result)
+        self.assertEqual(expected_dirblocks, result)
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""

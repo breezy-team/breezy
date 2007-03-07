@@ -1,4 +1,32 @@
 IN DEVELOPMENT
+ 
+bzr 0.15rc1  2007-03-07
+
+  SURPRISES:
+
+    * The default disk format has changed. Please run 'bzr upgrade' in your
+      working trees to upgrade. This new default is compatible for network
+      operations, but not for local operations. That is, if you have two
+      versions of bzr installed locally, after upgrading you can only use the
+      bzr 0.15 version. This new default does not enable tags or nested-trees
+      as they are incompatible with bzr versions before 0.15 over the network.
+
+    * For users of bzrlib: Two major changes have been made to the working tree
+      api in bzrlib. The first is that many methods and attributes, including
+      the inventory attribute, are no longer valid for use until one of
+      lock_read/lock_write/lock_tree_write has been called, and become invalid
+      again after unlock is called. This has been done to improve performance
+      and correctness as part of the dirstate development. (Robert Collins,
+      John A Meinel, Martin Pool, and others).
+
+    * For users of bzrlib: The attribute 'tree.inventory' should be considered
+      readonly. Previously it was possible to directly alter this attribute, or
+      its contents, and have the tree notice this. This has been made
+      unsupported - it may work in some tree formats, but in the newer dirstate
+      format such actions will have no effect and will be ignored, or even
+      cause assertions. All operations possible can still be carried out by a
+      combination of the tree API, and the bzrlib.transform API. (Robert
+      Collins, John A Meinel, Martin Pool, and others).
 
   IMPROVEMENTS:
 
@@ -55,7 +83,9 @@ IN DEVELOPMENT
     * Builtin tags support, created and deleted by the ``tag`` command and
       stored in the branch.  Tags can be accessed with the revisionspec
       ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
-      at present.  (Martin Pool)
+      at present. Tags require a network incompatible upgrade. To perform this
+      upgrade, run ``bzr upgrade --dirstate-with-subtree`` in your branch and
+      repositories. (Martin Pool)
 
     * The bzr:// transport now has a well-known port number, 4155, which it will
       use by default.  (Andrew Bennetts, Martin Pool)
@@ -66,8 +96,12 @@ IN DEVELOPMENT
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
 
-    * Added ``bzr status --versioned`` to report only versioned files, 
-      not unknowns. (Kent Gibson)
+    * There is now initial support for managing a forest of trees in bzr,
+      and splitting up existing trees into smaller subtrees, and finally
+      joining trees to make a larger tree. This is the first iteration
+      of this support. To enable the new ``join`` and ``split`` commands,
+      please run ``bzr upgrade --dirstate-with-subtree`` in your working
+      trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
 
   INTERNALS:
 
@@ -95,6 +129,13 @@ IN DEVELOPMENT
     * New method ``Branch.push()`` which should be used when pushing from a
       branch as it makes performance and policy decisions to match the UI
       level command ``push``. (Robert Collins).
+
+    * Add a new method ``Tree.revision_tree`` which allows access to cached
+      trees for arbitrary revisions. This allows the in development dirstate
+      tree format to provide access to the callers to cached copies of 
+      inventory data which are cheaper to access than inventories from the
+      repository.
+      (Robert Collins, Martin Pool)
 
     * New Branch.last_revision_info method, this is being done to allow
       optimization of requests for both the number of revisions and the last

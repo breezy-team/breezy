@@ -33,6 +33,7 @@ import doctest
 import errno
 import logging
 import os
+from pprint import pformat
 import re
 import shlex
 import stat
@@ -101,6 +102,8 @@ MODULES_TO_DOCTEST = [
                       bzrlib.option,
                       bzrlib.store,
                       ]
+
+NUMBERED_DIRS = False   # dirs kind for TestCaseInTempDir (numbered or named)
 
 
 def packages_to_test():
@@ -208,6 +211,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         self.report_test_start(test)
+        test.number = self.count
         self._recordTestStartTime()
 
     def _recordTestStartTime(self):
@@ -324,17 +328,24 @@ class TextTestResult(ExtendedTestResult):
                 + ' ' 
                 + self._shortened_test_description(test))
 
+    def _test_description(self, test):
+        if NUMBERED_DIRS:
+            return '#%d %s' % (self.count,
+                               self._shortened_test_description(test))
+        else:
+            return self._shortened_test_description(test)
+
     def report_error(self, test, err):
         self.error_count += 1
         self.pb.note('ERROR: %s\n    %s\n', 
-            self._shortened_test_description(test),
+            self._test_description(test),
             err[1],
             )
 
     def report_failure(self, test, err):
         self.failure_count += 1
         self.pb.note('FAIL: %s\n    %s\n', 
-            self._shortened_test_description(test),
+            self._test_description(test),
             err[1],
             )
 
@@ -380,30 +391,48 @@ class VerboseTestResult(ExtendedTestResult):
         name = self._shortened_test_description(test)
         # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
         # numbers, plus a trailing blank
-        self.stream.write(self._ellipsize_to_right(name,
-                            osutils.terminal_width()-30))
+        # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
+        if NUMBERED_DIRS:
+            self.stream.write('%5d ' % self.count)
+            self.stream.write(self._ellipsize_to_right(name,
+                                osutils.terminal_width()-36))
+        else:
+            self.stream.write(self._ellipsize_to_right(name,
+                                osutils.terminal_width()-30))
         self.stream.flush()
+
+    def _error_summary(self, err):
+        indent = ' ' * 4
+        if NUMBERED_DIRS:
+            indent += ' ' * 6
+        return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
         self.error_count += 1
-        self.stream.writeln('ERROR %s\n    %s' 
-                % (self._testTimeString(), err[1]))
+        self.stream.writeln('ERROR %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(err)))
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln(' FAIL %s\n    %s'
-                % (self._testTimeString(), err[1]))
+        self.stream.writeln(' FAIL %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(err)))
 
     def report_success(self, test):
         self.stream.writeln('   OK %s' % self._testTimeString())
         for bench_called, stats in getattr(test, '_benchcalls', []):
+            if NUMBERED_DIRS:
+                self.stream.write(' ' * 6)
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
-        print >>self.stream, ' SKIP %s' % self._testTimeString()
-        print >>self.stream, '     %s' % skip_excinfo[1]
+        self.skip_count += 1
+        self.stream.writeln(' SKIP %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(skip_excinfo)))
 
 
 class TextTestRunner(object):
@@ -456,6 +485,10 @@ class TextTestRunner(object):
             self.stream.writeln(")")
         else:
             self.stream.writeln("OK")
+        if result.skip_count > 0:
+            skipped = result.skip_count
+            self.stream.writeln('%d test%s skipped' %
+                                (skipped, skipped != 1 and "s" or ""))
         result.report_cleaning_up()
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will
@@ -608,6 +641,17 @@ class TestCase(unittest.TestCase):
                                   charjunk=lambda x: False)
         return ''.join(difflines)
 
+    def assertEqual(self, a, b, message=''):
+        if a == b:
+            return
+        if message:
+            message += '\n'
+        raise AssertionError("%snot equal:\na = %s\nb = %s\n"
+            % (message,
+               pformat(a, indent=4), pformat(b, indent=4)))
+
+    assertEquals = assertEqual
+
     def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
         
@@ -638,7 +682,7 @@ class TestCase(unittest.TestCase):
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
-            raise AssertionError('pattern "%s" not found in "%s"'
+            raise AssertionError('pattern "%r" not found in "%r"'
                     % (needle_re, haystack))
 
     def assertNotContainsRe(self, haystack, needle_re):
@@ -749,7 +793,7 @@ class TestCase(unittest.TestCase):
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
         if len(call_warnings) == 0:
-            self.fail("No assertion generated by call to %s" %
+            self.fail("No deprecation warning generated by call to %s" %
                 a_callable)
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
@@ -1010,6 +1054,8 @@ class TestCase(unittest.TestCase):
         where it may be useful for debugging.  See also run_captured.
 
         :param stdin: A string to be used as stdin for the command.
+        :param retcode: The status code the command should return
+        :param working_dir: The directory to run the command in
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1503,6 +1549,23 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
+        if NUMBERED_DIRS:       # strongly recommended on Windows
+                                # due the path length limitation (260 chars)
+            candidate_dir = '%s/%dK/%05d' % (self.TEST_ROOT,
+                                             int(self.number/1000),
+                                             self.number)
+            os.makedirs(candidate_dir)
+            self.test_home_dir = candidate_dir + '/home'
+            os.mkdir(self.test_home_dir)
+            self.test_dir = candidate_dir + '/work'
+            os.mkdir(self.test_dir)
+            os.chdir(self.test_dir)
+            # put name of test inside
+            f = file(candidate_dir + '/name', 'w')
+            f.write(self.id())
+            f.close()
+            return
+        # Else NAMED DIRS
         # shorten the name, to avoid test failures due to path length
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')[-100:]
@@ -1660,6 +1723,15 @@ class TestCaseWithTransport(TestCaseInTempDir):
             self.fail("path %s is not a directory; has mode %#o"
                       % (relpath, mode))
 
+    def assertTreesEqual(self, left, right):
+        """Check that left and right have the same content and properties."""
+        # we use a tree delta to check for equality of the content, and we
+        # manually check for equality of other things such as the parents list.
+        self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
+        differences = left.changes_from(right)
+        self.assertFalse(differences.has_changed(),
+            "Trees %r and %r are different: %r" % (left, right, differences))
+
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__server = None
@@ -1707,7 +1779,11 @@ def sort_suite_by_re(suite, pattern):
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None,
-              matching_tests_first=None):
+              matching_tests_first=None,
+              numbered_dirs=False):
+    global NUMBERED_DIRS
+    NUMBERED_DIRS = bool(numbered_dirs)
+
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -1734,7 +1810,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              test_suite_factory=None,
              lsprof_timed=None,
              bench_history=None,
-             matching_tests_first=None):
+             matching_tests_first=None,
+             numbered_dirs=False):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -1757,7 +1834,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
-                     matching_tests_first=matching_tests_first)
+                     matching_tests_first=matching_tests_first,
+                     numbered_dirs=numbered_dirs)
     finally:
         default_transport = old_transport
 
@@ -1786,9 +1864,11 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
+                   'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_docs',
@@ -1841,6 +1921,7 @@ def test_suite():
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_subsume',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
@@ -1863,6 +1944,7 @@ def test_suite():
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
+                   'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
                    ]

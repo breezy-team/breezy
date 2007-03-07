@@ -40,15 +40,15 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
     
-    def assertStatus(self, output_lines, working_tree,
+    def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False):
         """Run status in working_tree and look for output.
         
-        :param output_lines: The lines to look for.
+        :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short)
-        self.assertEqual(output_lines, output_string.splitlines(True))
+        self.assertEqual(expected_lines, output_string.splitlines(True))
     
     def status_string(self, wt, revision=None, short=False):
         # use a real file rather than StringIO because it doesn't handle
@@ -155,7 +155,23 @@ class BranchStatus(TestCaseWithTransport):
         self.assert_("Empty commit 3" in message)
         self.assertEndsWith(message, "...\n")
 
-    def test_branch_status_specific_files(self): 
+    def test_tree_status_ignores(self):
+        """Tests branch status with ignores"""
+        wt = self.make_branch_and_tree('.')
+        self.run_bzr('ignore', '*~')
+        wt.commit('commit .bzrignore')
+        self.build_tree(['foo.c', 'foo.c~'])
+        self.assertStatus([
+                'unknown:\n',
+                '  foo.c\n',
+                ],
+                wt)
+        self.assertStatus([
+                '?   foo.c\n',
+                ],
+                wt, short=True)
+
+    def test_tree_status_specific_files(self):
         """Tests branch status with given specific files"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -168,14 +184,14 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
-                '  dir2\n',
+                '  dir2/\n',
                 '  directory/hello.c\n'
                 ],
                 wt)
 
         self.assertStatus([
                 '?   bye.c\n',
-                '?   dir2\n',
+                '?   dir2/\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -204,12 +220,12 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
-                           '  dir2\n'
+                           '  dir2/\n'
                            ])
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?   dir2\n'])
+        self.assertEquals(tof.readlines(), ['?   dir2/\n'])
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
