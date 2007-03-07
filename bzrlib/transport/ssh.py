@@ -64,9 +64,9 @@ class SSHVendorManager(object):
     """Manager for manage SSH vendors."""
 
     # Note, although at first sign the class interface seems similar to
-    # bzrlib.registry.Registry it is not possible to directly use the Registry
-    # because the class just has "get()" interface instead of the Registry's
-    # "get(key)".
+    # bzrlib.registry.Registry it is not possible/convenient to directly use
+    # the Registry because the class just has "get()" interface instead of the
+    # Registry's "get(key)".
 
     def __init__(self):
         self._ssh_vendors = {}
