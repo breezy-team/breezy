@@ -518,8 +518,7 @@ def is_inside_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname):
             return True
-    else:
-        return False
+    return False
 
 
 def is_inside_or_parent_of_any(dir_list, fname):
@@ -527,8 +526,7 @@ def is_inside_or_parent_of_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname) or is_inside(fname, dirname):
             return True
-    else:
-        return False
+    return False
 
 
 def pumpfile(fromfile, tofile):
