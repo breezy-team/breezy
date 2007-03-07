@@ -65,7 +65,7 @@ from bzrlib.trace import mutter, note
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
-BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
+BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
 # TODO: Maybe include checks for common corruption of newlines, etc?
@@ -654,7 +654,7 @@ class Branch(object):
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = weaverepo.RepositoryFormat7()
         else:
-            format = self.repository.bzrdir.cloning_metadir()
+            format = self.repository.bzrdir.checkout_metadir()
             format.branch_format = self._format
         return format
 
@@ -674,7 +674,8 @@ class Branch(object):
         except errors.FileExists:
             pass
         if lightweight:
-            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            format = self._get_checkout_format()
+            checkout = format.initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()
@@ -685,7 +686,27 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        return checkout.create_workingtree(revision_id)
+        tree = checkout.create_workingtree(revision_id)
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        try:
+            for path, file_id in basis_tree.iter_references():
+                reference_parent = self.reference_parent(file_id, path)
+                reference_parent.create_checkout(tree.abspath(path),
+                    basis_tree.get_reference_revision(file_id, path),
+                    lightweight)
+        finally:
+            basis_tree.unlock()
+        return tree
+
+    def reference_parent(self, file_id, path):
+        """Return the parent branch for a tree-reference file_id
+        :param file_id: The file_id of the tree reference
+        :param path: The path of the file_id in the tree
+        :return: A branch associated with the file_id
+        """
+        # FIXME should provide multiple branches, based on config
+        return Branch.open(self.bzrdir.root_transport.clone(path).base)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -1003,7 +1024,7 @@ class BzrBranchFormat6(BzrBranchFormat5):
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 6\n"
+        return "Bazaar Branch Format 6 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -1333,9 +1354,10 @@ class BzrBranch(Branch):
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
-        get_cached_utf8 = cache_utf8.get_cached_utf8
-        history = [get_cached_utf8(l.rstrip('\r\n')) for l in
-                self.control_files.get('revision-history').readlines()]
+        history = self.control_files.get('revision-history').read().split('\n')
+        if history[-1:] == ['']:
+            # There shouldn't be a trailing newline, but just in case.
+            history.pop()
         return history
 
     @needs_read_lock

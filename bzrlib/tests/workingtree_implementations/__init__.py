@@ -1,6 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# Authors: Robert Collins <robert.collins@canonical.com>
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,7 +49,10 @@ class TestCaseWithWorkingTree(TestCaseWithBzrDir):
 def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
+        'bzrlib.tests.workingtree_implementations.test_add_reference',
+        'bzrlib.tests.workingtree_implementations.test_add',
         'bzrlib.tests.workingtree_implementations.test_basis_inventory',
+        'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
         'bzrlib.tests.workingtree_implementations.test_changes_from',
         'bzrlib.tests.workingtree_implementations.test_commit',
@@ -62,14 +63,21 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_is_ignored',
         'bzrlib.tests.workingtree_implementations.test_locking',
         'bzrlib.tests.workingtree_implementations.test_merge_from_branch',
+        'bzrlib.tests.workingtree_implementations.test_mkdir',
+        'bzrlib.tests.workingtree_implementations.test_move',
+        'bzrlib.tests.workingtree_implementations.test_nested_specifics',
         'bzrlib.tests.workingtree_implementations.test_parents',
+        'bzrlib.tests.workingtree_implementations.test_paths2ids',
         'bzrlib.tests.workingtree_implementations.test_pull',
         'bzrlib.tests.workingtree_implementations.test_put_file',
-        'bzrlib.tests.workingtree_implementations.test_mkdir',
         'bzrlib.tests.workingtree_implementations.test_readonly',
         'bzrlib.tests.workingtree_implementations.test_read_working_inventory',
+        'bzrlib.tests.workingtree_implementations.test_rename_one',
+        'bzrlib.tests.workingtree_implementations.test_revision_tree',
         'bzrlib.tests.workingtree_implementations.test_set_root_id',
+        'bzrlib.tests.workingtree_implementations.test_smart_add',
         'bzrlib.tests.workingtree_implementations.test_unversion',
+        'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

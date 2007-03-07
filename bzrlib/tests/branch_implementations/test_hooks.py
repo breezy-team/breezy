@@ -49,9 +49,9 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
         tree.unlock()
         branch = tree.branch
         Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
-        branch.set_revision_history([u'foo'])
+        branch.set_revision_history(['f\xc2\xb5'])
         self.assertEqual(self.hook_calls,
-            [('set_rh', branch, [u'foo'], True)])
+            [('set_rh', branch, ['f\xc2\xb5'], True)])
 
     def test_set_rh_branch_is_locked(self):
         branch = self.make_branch('source')

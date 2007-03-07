@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -556,7 +556,7 @@ class AlreadyVersionedError(BzrError):
     _fmt = "%(context_info)s%(path)s is already versioned"
 
     def __init__(self, path, context_info=None):
-        """Construct a new NotVersionedError.
+        """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
         which should be in a user friendly form.
@@ -625,7 +625,10 @@ class PathsDoNotExist(BzrError):
 
 class BadFileKindError(BzrError):
 
-    _fmt = "Cannot operate on %(filename)s of unsupported kind %(kind)s"
+    _fmt = 'Cannot operate on "%(filename)s" of unsupported kind "%(kind)s"'
+
+    def __init__(self, filename, kind):
+        BzrError.__init__(self, filename=filename, kind=kind)
 
 
 class ForbiddenControlFileError(BzrError):
@@ -648,6 +651,16 @@ class LockError(BzrError):
         self.message = message
 
 
+class LockActive(LockError):
+
+    _fmt = "The lock for '%(lock_description)s' is in use and cannot be broken."
+
+    internal_error = False
+
+    def __init__(self, lock_description):
+        self.lock_description = lock_description
+
+
 class CommitNotPossible(LockError):
 
     _fmt = "A commit was attempted but we do not have a write lock open."
@@ -667,6 +680,9 @@ class AlreadyCommitted(LockError):
 class ReadOnlyError(LockError):
 
     _fmt = "A write attempt was made in a read only transaction on %(obj)s"
+
+    # TODO: There should also be an error indicating that you need a write
+    # lock and don't have any lock at all... mbp 20070226
 
     def __init__(self, obj):
         self.obj = obj
@@ -804,6 +820,17 @@ class NoSuchRevisionSpec(BzrError):
 
     def __init__(self, spec):
         BzrError.__init__(self, spec=spec)
+
+
+class NoSuchRevisionInTree(NoSuchRevision):
+    """When using Tree.revision_tree, and the revision is not accessible."""
+    
+    _fmt = "The revision id %(revision_id)s is not present in the tree %(tree)s."
+
+    def __init__(self, tree, revision_id):
+        BzrError.__init__(self)
+        self.tree = tree
+        self.revision_id = revision_id
 
 
 class InvalidRevisionSpec(BzrError):
@@ -1372,6 +1399,16 @@ class MissingText(BzrError):
         self.file_id = file_id
 
 
+class DuplicateFileId(BzrError):
+
+    _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
+
+    def __init__(self, file_id, entry):
+        BzrError.__init__(self)
+        self.file_id = file_id
+        self.entry = entry
+
+
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"
@@ -1729,9 +1766,15 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
         BadInventoryFormat.__init__(self, msg=msg)
 
 
+class RootNotRich(BzrError):
+
+    _fmt = """This operation requires rich root data storage"""
+
+
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+
     internal_error = True
 
     def __init__(self, transport):
@@ -1809,6 +1852,44 @@ class ImportNameCollision(BzrError):
     def __init__(self, name):
         BzrError.__init__(self)
         self.name = name
+
+
+class UnsupportedInventoryKind(BzrError):
+    
+    _fmt = """Unsupported entry kind %(kind)s"""
+
+    def __init__(self, kind):
+        self.kind = kind
+
+
+class BadSubsumeSource(BzrError):
+
+    _fmt = """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
+
+
+class SubsumeTargetNeedsUpgrade(BzrError):
+    
+    _fmt = """Subsume target %(other_tree)s needs to be upgraded."""
+
+    def __init__(self, other_tree):
+        self.other_tree = other_tree
+
+
+class BadReferenceTarget(BzrError):
+
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s.  %(reason)s"
+
+    internal_error = True
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
 
 
 class NoSuchTag(BzrError):

@@ -67,16 +67,11 @@ class TextRevisionStore(RevisionStore):
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
-        # TODO: jam 20070209 text_store.add() still requires a unicode file id
-        unicode_revision_id = cache_utf8.decode(revision.revision_id)
-        self.text_store.add(revision_as_file, unicode_revision_id)
+        self.text_store.add(revision_as_file, revision.revision_id)
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore.add_revision_signature_text()."""
-        # TODO: jam 20070209 text_store.add() still requires a unicode file id
-        revision_id_unicode = cache_utf8.decode(revision_id)
-        self.text_store.add(StringIO(signature_text), revision_id_unicode,
-                            "sig")
+        self.text_store.add(StringIO(signature_text), revision_id, "sig")
 
     def all_revision_ids(self, transaction):
         """See RevisionStore.all_revision_ids()."""

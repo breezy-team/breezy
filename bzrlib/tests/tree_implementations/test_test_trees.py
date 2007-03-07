@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_empty_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_no_content(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -35,6 +37,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_abc_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -51,6 +55,8 @@ class TestTreeShapes(TestCaseWithTree):
     def test_abc_tree_content_2_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_2(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -63,10 +69,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('foobar\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_3_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_3(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -79,10 +87,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_4_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_4(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -95,10 +105,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_5_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_5(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -111,10 +123,12 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('bar\n', tree.get_file_text('a-id'))
         self.assertFalse(tree.is_executable('c-id'))
-        
+
     def test_abc_tree_content_6_no_parents(self):
         tree = self.make_branch_and_tree('.')
         tree = self.get_tree_no_parents_abc_content_6(tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -127,6 +141,40 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
+
+    def test_tree_with_subdirs_and_all_content_types(self):
+        # currently this test tree requires unicode. It might be good
+        # to have it simply stop having the single unicode file in it
+        # when dealing with a non-unicode filesystem.
+        tree = self.get_tree_with_subdirs_and_all_content_types()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        tree_root = tree.path2id('')
+        self.assertEqual(
+            set([tree_root,
+                '2file',
+                '1top-dir',
+                '1file-in-1topdir',
+                '0dir-in-1topdir',
+                 u'0utf\u1234file'.encode('utf8'),
+                'symlink',
+                 ]),
+            set(iter(tree)))
+        # note that the order of the paths and fileids is deliberately 
+        # mismatched to ensure that the result order is path based.
+        self.assertEqual(
+            [('', tree_root, 'directory'),
+             ('0file', '2file', 'file'),
+             ('1top-dir', '1top-dir', 'directory'),
+             (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
+             ('symlink', 'symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
+             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
+            [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])
 
     def test_tree_with_utf8(self):
         tree = self.make_branch_and_tree('.')

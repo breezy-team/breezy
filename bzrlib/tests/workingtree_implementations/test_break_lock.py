@@ -66,8 +66,10 @@ class TestBreakLock(TestCaseWithWorkingTree):
         bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\n")
         try:
             self.unused_workingtree.break_lock()
-        except NotImplementedError:
-            # workingtree does not support break_lock
+        except (NotImplementedError, errors.LockActive):
+            # workingtree does not support break_lock,
+            # or does not support breaking a lock held by an alive
+            # object/process.
             self.workingtree.unlock()
             return
         self.assertRaises(errors.LockBroken, self.workingtree.unlock)

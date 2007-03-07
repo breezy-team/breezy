@@ -33,6 +33,7 @@ from bzrlib import (
     delta,
     config,
     errors,
+    globbing,
     ignores,
     log,
     merge as _mod_merge,
@@ -342,6 +343,7 @@ class cmd_add(Command):
             file_ids_from=None):
         import bzrlib.add
 
+        base_tree = None
         if file_ids_from is not None:
             try:
                 base_tree, base_path = WorkingTree.open_containing(
@@ -357,8 +359,14 @@ class cmd_add(Command):
             action = bzrlib.add.AddAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
-        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
-                                              action=action, save=not dry_run)
+        if base_tree:
+            base_tree.lock_read()
+        try:
+            added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
+                action=action, save=not dry_run)
+        finally:
+            if base_tree is not None:
+                base_tree.unlock()
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -430,32 +438,35 @@ class cmd_inventory(Command):
             raise errors.BzrCommandError('invalid kind specified')
 
         work_tree, file_list = tree_files(file_list)
+        work_tree.lock_read()
+        try:
+            if revision is not None:
+                if len(revision) > 1:
+                    raise errors.BzrCommandError(
+                        'bzr inventory --revision takes exactly one revision'
+                        ' identifier')
+                revision_id = revision[0].in_history(work_tree.branch).rev_id
+                tree = work_tree.branch.repository.revision_tree(revision_id)
 
-        if revision is not None:
-            if len(revision) > 1:
-                raise errors.BzrCommandError('bzr inventory --revision takes'
-                                             ' exactly one revision identifier')
-            revision_id = revision[0].in_history(work_tree.branch).rev_id
-            tree = work_tree.branch.repository.revision_tree(revision_id)
-                        
-            # We include work_tree as well as 'tree' here
-            # So that doing '-r 10 path/foo' will lookup whatever file
-            # exists now at 'path/foo' even if it has been renamed, as
-            # well as whatever files existed in revision 10 at path/foo
-            trees = [tree, work_tree]
-        else:
-            tree = work_tree
-            trees = [tree]
+                extra_trees = [work_tree]
+                tree.lock_read()
+            else:
+                tree = work_tree
+                extra_trees = []
 
-        if file_list is not None:
-            file_ids = _mod_tree.find_ids_across_trees(file_list, trees,
-                                                      require_versioned=True)
-            # find_ids_across_trees may include some paths that don't
-            # exist in 'tree'.
-            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                             for file_id in file_ids if file_id in tree)
-        else:
-            entries = tree.inventory.entries()
+            if file_list is not None:
+                file_ids = tree.paths2ids(file_list, trees=extra_trees,
+                                          require_versioned=True)
+                # find_ids_across_trees may include some paths that don't
+                # exist in 'tree'.
+                entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                                 for file_id in file_ids if file_id in tree)
+            else:
+                entries = tree.inventory.entries()
+        finally:
+            tree.unlock()
+            if tree is not work_tree:
+                work_tree.unlock()
 
         for path, entry in entries:
             if kind and kind != entry.kind:
@@ -599,7 +610,7 @@ class cmd_pull(Command):
         old_rh = branch_to.revision_history()
         if tree_to is not None:
             result = tree_to.pull(branch_from, overwrite, rev_id,
-                delta.ChangeReporter(tree_to.inventory))
+                delta.ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
             result = branch_to.pull(branch_from, overwrite, rev_id)
 
@@ -970,12 +981,21 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        old_inv = tree.basis_tree().inventory
-        new_inv = tree.read_working_inventory()
-        renames = list(_mod_tree.find_renames(old_inv, new_inv))
-        renames.sort()
-        for old_name, new_name in renames:
-            self.outf.write("%s => %s\n" % (old_name, new_name))
+        tree.lock_read()
+        try:
+            new_inv = tree.inventory
+            old_tree = tree.basis_tree()
+            old_tree.lock_read()
+            try:
+                old_inv = old_tree.inventory
+                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames.sort()
+                for old_name, new_name in renames:
+                    self.outf.write("%s => %s\n" % (old_name, new_name))
+            finally:
+                old_tree.unlock()
+        finally:
+            tree.unlock()
 
 
 class cmd_update(Command):
@@ -1086,7 +1106,7 @@ class cmd_file_id(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        i = tree.inventory.path2id(relpath)
+        i = tree.path2id(relpath)
         if i is None:
             raise errors.NotVersionedError(filename)
         else:
@@ -1106,12 +1126,13 @@ class cmd_file_path(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        inv = tree.inventory
-        fid = inv.path2id(relpath)
+        fid = tree.path2id(relpath)
         if fid is None:
             raise errors.NotVersionedError(filename)
-        for fip in inv.get_idpath(fid):
-            self.outf.write(fip + '\n')
+        segments = osutils.splitpath(relpath)
+        for pos in range(1, len(segments) + 1):
+            path = osutils.joinpath(segments[:pos])
+            self.outf.write("%s\n" % tree.path2id(path))
 
 
 class cmd_reconcile(Command):
@@ -1422,14 +1443,22 @@ class cmd_deleted(Command):
     @display_command
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
-        old = tree.basis_tree()
-        for path, ie in old.inventory.iter_entries():
-            if not tree.has_id(ie.file_id):
-                self.outf.write(path)
-                if show_ids:
-                    self.outf.write(' ')
-                    self.outf.write(ie.file_id)
-                self.outf.write('\n')
+        tree.lock_read()
+        try:
+            old = tree.basis_tree()
+            old.lock_read()
+            try:
+                for path, ie in old.inventory.iter_entries():
+                    if not tree.has_id(ie.file_id):
+                        self.outf.write(path)
+                        if show_ids:
+                            self.outf.write(' ')
+                            self.outf.write(ie.file_id)
+                        self.outf.write('\n')
+            finally:
+                old.unlock()
+        finally:
+            tree.unlock()
 
 
 class cmd_modified(Command):
@@ -1459,17 +1488,26 @@ class cmd_added(Command):
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
-        basis_inv = wt.basis_tree().inventory
-        inv = wt.inventory
-        for file_id in inv:
-            if file_id in basis_inv:
-                continue
-            if inv.is_root(file_id) and len(basis_inv) == 0:
-                continue
-            path = inv.id2path(file_id)
-            if not os.access(osutils.abspath(path), os.F_OK):
-                continue
-            self.outf.write(path + '\n')
+        wt.lock_read()
+        try:
+            basis = wt.basis_tree()
+            basis.lock_read()
+            try:
+                basis_inv = basis.inventory
+                inv = wt.inventory
+                for file_id in inv:
+                    if file_id in basis_inv:
+                        continue
+                    if inv.is_root(file_id) and len(basis_inv) == 0:
+                        continue
+                    path = inv.id2path(file_id)
+                    if not os.access(osutils.abspath(path), os.F_OK):
+                        continue
+                    self.outf.write(path + '\n')
+            finally:
+                basis.unlock()
+        finally:
+            wt.unlock()
 
 
 class cmd_root(Command):
@@ -1541,8 +1579,7 @@ class cmd_log(Command):
             if fp != '':
                 if tree is None:
                     tree = b.basis_tree()
-                inv = tree.inventory
-                file_id = inv.path2id(fp)
+                file_id = tree.path2id(fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
                         "Path does not have any revision history: %s" %
@@ -1636,8 +1673,7 @@ class cmd_touching_revisions(Command):
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
         b = tree.branch
-        inv = tree.read_working_inventory()
-        file_id = inv.path2id(relpath)
+        file_id = tree.path2id(relpath)
         for revno, revision_id, what in log.find_touching_revisions(b, file_id):
             self.outf.write("%6d %s\n" % (revno, what))
 
@@ -1696,37 +1732,41 @@ class cmd_ls(Command):
         elif tree is None:
             tree = branch.basis_tree()
 
-        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
-            if fp.startswith(relpath):
-                fp = osutils.pathjoin(prefix, fp[len(relpath):])
-                if non_recursive and '/' in fp:
-                    continue
-                if not all and not selection[fc]:
-                    continue
-                if kind is not None and fkind != kind:
-                    continue
-                if verbose:
-                    kindch = entry.kind_character()
-                    outstring = '%-8s %s%s' % (fc, fp, kindch)
-                    if show_ids and fid is not None:
-                        outstring = "%-50s %s" % (outstring, fid)
-                    self.outf.write(outstring + '\n')
-                elif null:
-                    self.outf.write(fp + '\0')
-                    if show_ids:
+        tree.lock_read()
+        try:
+            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
+                if fp.startswith(relpath):
+                    fp = osutils.pathjoin(prefix, fp[len(relpath):])
+                    if non_recursive and '/' in fp:
+                        continue
+                    if not all and not selection[fc]:
+                        continue
+                    if kind is not None and fkind != kind:
+                        continue
+                    if verbose:
+                        kindch = entry.kind_character()
+                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        if show_ids and fid is not None:
+                            outstring = "%-50s %s" % (outstring, fid)
+                        self.outf.write(outstring + '\n')
+                    elif null:
+                        self.outf.write(fp + '\0')
+                        if show_ids:
+                            if fid is not None:
+                                self.outf.write(fid)
+                            self.outf.write('\0')
+                        self.outf.flush()
+                    else:
                         if fid is not None:
-                            self.outf.write(fid)
-                        self.outf.write('\0')
-                    self.outf.flush()
-                else:
-                    if fid is not None:
-                        my_id = fid
-                    else:
-                        my_id = ''
-                    if show_ids:
-                        self.outf.write('%-50s %s\n' % (fp, my_id))
-                    else:
-                        self.outf.write(fp + '\n')
+                            my_id = fid
+                        else:
+                            my_id = ''
+                        if show_ids:
+                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                        else:
+                            self.outf.write(fp + '\n')
+        finally:
+            tree.unlock()
 
 
 class cmd_unknowns(Command):
@@ -1792,8 +1832,11 @@ class cmd_ignore(Command):
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
                                   "NAME_PATTERN or --old-default-rules")
+        name_pattern_list = [globbing.normalize_pattern(p) 
+                             for p in name_pattern_list]
         for name_pattern in name_pattern_list:
-            if name_pattern[0] == '/':
+            if (name_pattern[0] == '/' or 
+                (len(name_pattern) > 1 and name_pattern[1] == ':')):
                 raise errors.BzrCommandError(
                     "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
@@ -1813,7 +1856,7 @@ class cmd_ignore(Command):
         if igns and igns[-1] != '\n':
             igns += '\n'
         for name_pattern in name_pattern_list:
-            igns += name_pattern.rstrip('/') + '\n'
+            igns += name_pattern + '\n'
 
         f = AtomicFile(ifn, 'wb')
         try:
@@ -1822,11 +1865,7 @@ class cmd_ignore(Command):
         finally:
             f.close()
 
-        inv = tree.inventory
-        if inv.path2id('.bzrignore'):
-            mutter('.bzrignore is already versioned')
-        else:
-            mutter('need to make new .bzrignore file versioned')
+        if not tree.path2id('.bzrignore'):
             tree.add(['.bzrignore'])
 
 
@@ -1837,12 +1876,16 @@ class cmd_ignored(Command):
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
-        for path, file_class, kind, file_id, entry in tree.list_files():
-            if file_class != 'I':
-                continue
-            ## XXX: Slightly inefficient since this was already calculated
-            pat = tree.is_ignored(path)
-            print '%-50s %s' % (path, pat)
+        tree.lock_read()
+        try:
+            for path, file_class, kind, file_id, entry in tree.list_files():
+                if file_class != 'I':
+                    continue
+                ## XXX: Slightly inefficient since this was already calculated
+                pat = tree.is_ignored(path)
+                print '%-50s %s' % (path, pat)
+        finally:
+            tree.unlock()
 
 
 class cmd_lookup_revision(Command):
@@ -1928,15 +1971,14 @@ class cmd_cat(Command):
 
         tree = None
         try:
-            tree, relpath = WorkingTree.open_containing(filename)
-            b = tree.branch
-        except (errors.NotBranchError, errors.NotLocalUrl):
+            tree, b, relpath = \
+                    bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        except errors.NotBranchError:
             pass
 
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
         if tree is None:
-            b, relpath = Branch.open_containing(filename)
             tree = b.basis_tree()
         if revision is None:
             revision_id = b.last_revision()
@@ -2120,7 +2162,6 @@ class cmd_upgrade(Command):
                         value_switches=True, title='Branch format'),
                     ]
 
-
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
         if format is None:
@@ -2218,6 +2259,13 @@ class cmd_selftest(Command):
             run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
             disable plugins and list tests as they're run
+
+    For each test, that needs actual disk access, bzr create their own
+    subdirectory in the temporary testing directory (testXXXX.tmp).
+    By default the name of such subdirectory is based on the name of the test.
+    If option '--numbered-dirs' is given, bzr will use sequent numbers
+    of running tests to create such subdirectories. This is default behavior
+    on Windows because of path length limitation.
     """
     # TODO: --list should give a list of all available tests
 
@@ -2260,14 +2308,16 @@ class cmd_selftest(Command):
                                  ' without running tests'),
                      Option('first',
                             help='run all tests, but run specified tests first',
-                            )
+                            ),
+                     Option('numbered-dirs',
+                            help='use numbered dirs for TestCaseInTempDir'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False):
+            first=False, numbered_dirs=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2277,6 +2327,9 @@ class cmd_selftest(Command):
             from bzrlib.tests import clean_selftest_output
             clean_selftest_output()
             return 0
+
+        if numbered_dirs is None and sys.platform == 'win32':
+            numbered_dirs = True
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2308,6 +2361,7 @@ class cmd_selftest(Command):
                               lsprof_timed=lsprof_timed,
                               bench_history=benchfile,
                               matching_tests_first=first,
+                              numbered_dirs=numbered_dirs,
                               )
         finally:
             if benchfile is not None:
@@ -2436,8 +2490,16 @@ class cmd_merge(Command):
             merge_type = _mod_merge.Merge3Merger
 
         if directory is None: directory = u'.'
+        # XXX: jam 20070225 WorkingTree should be locked before you extract its
+        #      inventory. Because merge is a mutating operation, it really
+        #      should be a lock_write() for the whole cmd_merge operation.
+        #      However, cmd_merge open's its own tree in _merge_helper, which
+        #      means if we lock here, the later lock_write() will always block.
+        #      Either the merge helper code should be updated to take a tree,
+        #      (What about tree.merge_from_branch?)
         tree = WorkingTree.open_containing(directory)[0]
-        change_reporter = delta.ChangeReporter(tree.inventory)
+        change_reporter = delta.ChangeReporter(
+            unversioned_filter=tree.is_ignored)
 
         if branch is not None:
             try:
@@ -2907,7 +2969,7 @@ class cmd_annotate(Command):
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
-            file_id = tree.inventory.path2id(relpath)
+            file_id = tree.path2id(relpath)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout,
@@ -3175,6 +3237,59 @@ class cmd_serve(Command):
             sys.stdout.flush()
         server.serve()
 
+class cmd_join(Command):
+    """Combine a subtree into its containing tree.
+    
+    This is marked as a merge of the subtree into the containing tree, and all
+    history is preserved.
+    """
+
+    takes_args = ['tree']
+    takes_options = [Option('reference', 'join by reference')]
+
+    def run(self, tree, reference=False):
+        sub_tree = WorkingTree.open(tree)
+        parent_dir = osutils.dirname(sub_tree.basedir)
+        containing_tree = WorkingTree.open_containing(parent_dir)[0]
+        repo = containing_tree.branch.repository
+        if not repo.supports_rich_root():
+            raise errors.BzrCommandError(
+                "Can't join trees because %s doesn't support rich root data.\n"
+                "You can use bzr upgrade on the repository."
+                % (repo,))
+        if reference:
+            try:
+                containing_tree.add_reference(sub_tree)
+            except errors.BadReferenceTarget, e:
+                # XXX: Would be better to just raise a nicely printable
+                # exception from the real origin.  Also below.  mbp 20070306
+                raise errors.BzrCommandError("Cannot join %s.  %s" %
+                                             (tree, e.reason))
+        else:
+            try:
+                containing_tree.subsume(sub_tree)
+            except errors.BadSubsumeSource, e:
+                raise errors.BzrCommandError("Cannot join %s.  %s" % 
+                                             (tree, e.reason))
+
+
+class cmd_split(Command):
+    """Split a tree into two trees.
+    """
+
+    takes_args = ['tree']
+
+    def run(self, tree):
+        containing_tree, subdir = WorkingTree.open_containing(tree)
+        sub_id = containing_tree.path2id(subdir)
+        if sub_id is None:
+            raise errors.NotVersionedError(subdir)
+        try:
+            containing_tree.extract(sub_id)
+        except errors.RootNotRich:
+            raise errors.UpgradeRequired(containing_tree.branch.base)
+
+
 
 class cmd_tag(Command):
     """Create a tag naming a revision.
@@ -3308,6 +3423,14 @@ def _merge_helper(other_revision, base_revision,
                                      " type %s." % merge_type)
     if reprocess and show_base:
         raise errors.BzrCommandError("Cannot do conflict reduction and show base.")
+    # TODO: jam 20070226 We should really lock these trees earlier. However, we
+    #       only want to take out a lock_tree_write() if we don't have to pull
+    #       any ancestry. But merge might fetch ancestry in the middle, in
+    #       which case we would need a lock_write().
+    #       Because we cannot upgrade locks, for now we live with the fact that
+    #       the tree will be locked multiple times during a merge. (Maybe
+    #       read-only some of the time, but it means things will get read
+    #       multiple times.)
     try:
         merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
                                    pb=pb, change_reporter=change_reporter)

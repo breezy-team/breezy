@@ -223,28 +223,40 @@ class TestCommit(TestCaseWithTransport):
         wt.move(['hello'], 'a')
         r2 = 'test@rev-2'
         wt.commit('two', rev_id=r2, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/hello', 'b'])
+        finally:
+            wt.unlock()
 
         wt.move(['b'], 'a')
         r3 = 'test@rev-3'
         wt.commit('three', rev_id=r3, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/hello', 'a/b'])
-        self.check_inventory_shape(b.repository.get_revision_inventory(r3),
-                                   ['a', 'a/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/hello', 'a/b'])
+            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+                                       ['a', 'a/hello', 'a/b'])
+        finally:
+            wt.unlock()
 
         wt.move(['a/hello'], 'a/b')
         r4 = 'test@rev-4'
         wt.commit('four', rev_id=r4, allow_pointless=False)
-        self.check_inventory_shape(wt.read_working_inventory(),
-                                   ['a', 'a/b/hello', 'a/b'])
+        wt.lock_read()
+        try:
+            self.check_inventory_shape(wt.read_working_inventory(),
+                                       ['a', 'a/b/hello', 'a/b'])
+        finally:
+            wt.unlock()
 
         inv = b.repository.get_revision_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
-        
+
     def test_removed_commit(self):
         """Commit with a removed file"""
         wt = self.make_branch_and_tree('.')
@@ -527,9 +539,13 @@ class TestCommit(TestCaseWithTransport):
         tree.commit('added a, b')
         tree.remove(['a', 'b'])
         tree.commit('removed a', specific_files='a')
-        basis = tree.basis_tree().inventory
-        self.assertIs(None, basis.path2id('a'))
-        self.assertFalse(basis.path2id('b') is None)
+        basis = tree.basis_tree()
+        tree.lock_read()
+        try:
+            self.assertIs(None, basis.path2id('a'))
+            self.assertFalse(basis.path2id('b') is None)
+        finally:
+            tree.unlock()
 
     def test_commit_saves_1ms_timestamp(self):
         """Passing in a timestamp is saved with 1ms resolution"""
@@ -554,6 +570,14 @@ class TestCommit(TestCaseWithTransport):
         timestamp_1ms = round(timestamp, 3)
         self.assertEqual(timestamp_1ms, timestamp)
 
+    def assertBasisTreeKind(self, kind, tree, file_id):
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            self.assertEqual(kind, basis.kind(file_id))
+        finally:
+            basis.unlock()
+
     def test_commit_kind_changes(self):
         if not osutils.has_symlinks():
             raise tests.TestSkipped('Test requires symlink support')
@@ -561,43 +585,43 @@ class TestCommit(TestCaseWithTransport):
         os.symlink('target', 'name')
         tree.add('name', 'a-file-id')
         tree.commit('Added a symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         os.unlink('name')
         self.build_tree(['name'])
         tree.commit('Changed symlink to file')
-        self.assertEqual('file', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
 
         os.unlink('name')
         os.symlink('target', 'name')
         tree.commit('file to symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         os.unlink('name')
         os.mkdir('name')
         tree.commit('symlink to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
         os.rmdir('name')
         os.symlink('target', 'name')
         tree.commit('directory to symlink')
-        self.assertEqual('symlink', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('symlink', tree, 'a-file-id')
 
         # prepare for directory <-> file tests
         os.unlink('name')
         os.mkdir('name')
         tree.commit('symlink to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
         os.rmdir('name')
         self.build_tree(['name'])
         tree.commit('Changed directory to file')
-        self.assertEqual('file', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('file', tree, 'a-file-id')
 
         os.unlink('name')
         os.mkdir('name')
         tree.commit('file to directory')
-        self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+        self.assertBasisTreeKind('directory', tree, 'a-file-id')
 
     def test_commit_unversioned_specified(self):
         """Commit should raise if specified files isn't in basis or worktree"""

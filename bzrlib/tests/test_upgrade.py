@@ -31,17 +31,17 @@ from bzrlib import (
     bzrdir,
     progress,
     repository,
+    workingtree,
+    workingtree_4,
     )
 import bzrlib.branch
 from bzrlib.branch import Branch
-from bzrlib.revision import is_ancestor
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
-import bzrlib.workingtree as workingtree
 
 
-class TestUpgrade(TestCaseInTempDir):
+class TestUpgrade(TestCaseWithTransport):
     
     def test_build_tree(self):
         """Test tree-building test helper"""
@@ -169,7 +169,7 @@ class TestUpgrade(TestCaseInTempDir):
         branch.set_parent('file:///EF')
         branch.set_bound_location('file:///GH')
         branch.set_push_location('file:///IJ')
-        target = bzrdir.format_registry.make_bzrdir('experimental-branch6')
+        target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         converter = branch.bzrdir._format.get_converter(target)
         converter.convert(branch.bzrdir, progress.DummyProgress())
         new_branch = _mod_branch.Branch.open(self.get_url('branch'))
@@ -184,6 +184,63 @@ class TestUpgrade(TestCaseInTempDir):
         branch2 = self.make_branch('branch2', format='knit')
         converter = branch2.bzrdir._format.get_converter(target)
         converter.convert(branch2.bzrdir, progress.DummyProgress())
+        branch2 = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+
+    def test_convert_knit_dirstate_empty(self):
+        # test that asking for an upgrade from knit to dirstate works.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(None, new_tree.last_revision())
+
+    def test_convert_knit_dirstate_content(self):
+        # smoke test for dirstate conversion: we call dirstate primitives,
+        # and its there that the core logic is tested.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(None, new_tree.last_revision())
+
+    def test_convert_knit_one_parent_dirstate(self):
+        # test that asking for an upgrade from knit to dirstate works.
+        tree = self.make_branch_and_tree('tree', format='knit')
+        rev_id = tree.commit('first post')
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(rev_id, new_tree.last_revision())
+        for path in ['basis-inventory-cache', 'inventory', 'last-revision',
+            'pending-merges', 'stat-cache']:
+            self.failIfExists('tree/.bzr/checkout/' + path)
+
+    def test_convert_knit_merges_dirstate(self):
+        tree = self.make_branch_and_tree('tree', format='knit')
+        rev_id = tree.commit('first post')
+        merge_tree = tree.bzrdir.sprout('tree2').open_workingtree()
+        rev_id2 = tree.commit('second post')
+        rev_id3 = merge_tree.commit('second merge post')
+        tree.merge_from_branch(merge_tree.branch)
+        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        converter = tree.bzrdir._format.get_converter(target)
+        converter.convert(tree.bzrdir, progress.DummyProgress())
+        new_tree = workingtree.WorkingTree.open('tree')
+        self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
+        self.assertEqual(rev_id2, new_tree.last_revision())
+        self.assertEqual([rev_id2, rev_id3], new_tree.get_parent_ids())
+        for path in ['basis-inventory-cache', 'inventory', 'last-revision',
+            'pending-merges', 'stat-cache']:
+            self.failIfExists('tree/.bzr/checkout/' + path)
 
 
 _upgrade1_template = \
