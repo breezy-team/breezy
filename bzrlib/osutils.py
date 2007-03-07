@@ -145,15 +145,17 @@ def get_umask():
     return umask
 
 
+_kind_marker_map = {
+    "file": "",
+    _directory_kind: "/",
+    "symlink": "@",
+}
 def kind_marker(kind):
-    if kind == 'file':
-        return ''
-    elif kind == _directory_kind:
-        return '/'
-    elif kind == 'symlink':
-        return '@'
-    else:
+    try:
+        return _kind_marker_map[kind]
+    except KeyError:
         raise errors.BzrError('invalid file kind %r' % kind)
+
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
