@@ -389,8 +389,6 @@ class WorkingTree4(WorkingTree3):
         # check file id is valid unconditionally.
         entry = self._get_entry(file_id=file_id, path=path)
         assert entry[0] is not None, 'what error should this raise'
-        # TODO:
-        # if row stat is valid, use cached sha1, else, get a new sha1.
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
@@ -684,12 +682,16 @@ class WorkingTree4(WorkingTree3):
             rollbacks = []
             def rollback_rename():
                 """A single rename has failed, roll it back."""
+                # roll back everything, even if we encounter trouble doing one
+                # of them.
+                #
+                # TODO: at least log the other exceptions rather than just
+                # losing them mbp 20070307
                 exc_info = None
                 for rollback in reversed(rollbacks):
                     try:
                         rollback()
                     except Exception, e:
-                        import pdb;pdb.set_trace()
                         exc_info = sys.exc_info()
                 if exc_info:
                     raise exc_info[0], exc_info[1], exc_info[2]
@@ -1529,13 +1531,11 @@ class DirStateRevisionTree(Tree):
             self._repository.unlock()
 
     def walkdirs(self, prefix=""):
-        # TODO: jam 20070215 This is the cheap way by cheating and using the
-        #       RevisionTree implementation.
-        #       This should be cleaned up to use the much faster Dirstate code
-        #       This is a little tricky, though, because the dirstate is
-        #       indexed by current path, not by parent path.
-        #       So for now, we just build up the parent inventory, and extract
-        #       it the same way RevisionTree does.
+        # TODO: jam 20070215 This is the lazy way by using the RevisionTree
+        # implementation based on an inventory.  
+        # This should be cleaned up to use the much faster Dirstate code
+        # So for now, we just build up the parent inventory, and extract
+        # it the same way RevisionTree does.
         _directory = 'directory'
         inv = self._get_inventory()
         top_id = inv.path2id(prefix)
@@ -1763,9 +1763,6 @@ class InterDirStateTree(InterTree):
                 tuple will be ignored, and don't want to take the time to
                 decode.
             """
-            # TODO: when a parent has been renamed, dont emit path renames for children,
-            ## if path_info[1] == 'sub':
-            ##     import pdb;pdb.set_trace()
             if source_index is None:
                 source_details = NULL_PARENT_DETAILS
             else:
@@ -1954,7 +1951,8 @@ class InterDirStateTree(InterTree):
                 ## import pdb;pdb.set_trace()
             return ()
         while search_specific_files:
-            # TODO: the pending list should be lexically sorted?
+            # TODO: the pending list should be lexically sorted?  the
+            # interface doesn't require it.
             current_root = search_specific_files.pop()
             searched_specific_files.add(current_root)
             # process the entries for this containing directory: the rest will be
@@ -2034,8 +2032,7 @@ class InterDirStateTree(InterTree):
                     assert current_dir_info[1][bzr_index][0] == '.bzr'
                     del current_dir_info[1][bzr_index]
             # walk until both the directory listing and the versioned metadata
-            # are exhausted. TODO: reevaluate this, perhaps we should stop when
-            # the versioned data runs out.
+            # are exhausted. 
             if (block_index < len(state._dirblocks) and
                 osutils.is_inside(current_root, state._dirblocks[block_index][0])):
                 current_block = state._dirblocks[block_index]
@@ -2140,8 +2137,6 @@ class InterDirStateTree(InterTree):
                         if current_path_info[1] < current_entry[0][1]:
                             # extra file on disk: pass for now, but only
                             # increment the path, not the entry
-                            # import pdb; pdb.set_trace()
-                            # print 'unversioned file'
                             advance_entry = False
                         else:
                             # entry referring to file not present on disk.

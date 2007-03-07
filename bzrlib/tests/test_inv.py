@@ -184,12 +184,6 @@ class TestInventory(TestCase):
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=('bye-id',))])
 
-    def test_version(self):
-        """Inventory remembers the text's version."""
-        inv = Inventory()
-        ie = inv.add_path('foo.txt', 'file')
-        ## XXX
-
     def test_add_recursive(self):
         parent = InventoryDirectory('src-id', 'src', ROOT_ID)
         child = InventoryFile('hello-id', 'hello.c', 'src-id')

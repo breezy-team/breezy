@@ -23,24 +23,23 @@ from bzrlib import errors, tests, workingtree_4
 from bzrlib.osutils import file_kind
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
-# TODO: test diff unversioned dir that exists
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the
 #       child x/a->y/a.
 # TODO: test that renaming a directory x-> does not emit a rename for the child
 #        x/a -> y/a when a supplied_files argument gives either 'x/' or 'y/a'
 #        -> that is, when the renamed parent is not processed by the function.
-# TODO: include dangling in the diff output.
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
-# TODO: test require_versioned
-# TODO: explicitly test specific_files listing a non-dir, and listing a symlink
-#       (it should not follow the link)
 # TODO: test specific_files when the target tree has a file and the source a
 #       dir with children, same id and same path. 
 # TODO: test comparisons between trees with different root ids. mbp 20070301
 #
 # TODO: More comparisons between trees with subtrees in different states.
+#
+# TODO: Many tests start out by setting the tree roots ids the same, maybe
+#       that should just be the default for these tests, by changing
+#       make_branch_and_tree.  mbp 20070307
 
 class TestCompare(TestCaseWithTwoTrees):
 
@@ -928,16 +927,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         #   links_supported = False
         return self.mutable_trees_to_test_trees(tree1, tree2)
 
-    def make_trees_with_subtrees(self):
-        # trees containing tree references
-        # TODO: might have to skip if the format can't do tree references
-        tree1 = self.make_branch_and_tree('tree1')
-        tree2 = self.make_to_branch_and_tree('tree2')
-        self.build_tree(['tree1/fromdir/', 'tree1/common/',
-            'tree2/todir/', 'tree2/common/'])
-        # TODO: actually add the references
-        return self.mutable_trees_to_test_trees(tree1, tree2)
-
     def test_versioned_symlinks(self):
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
@@ -1004,10 +993,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
-
-    def test_trees_with_subtrees(self):
-        tree1, tree2 = self.make_trees_with_subtrees()
-        self.do_iter_changes(tree1, tree2)
 
     def test_trees_with_deleted_dir(self):
         tree1 = self.make_branch_and_tree('tree1')

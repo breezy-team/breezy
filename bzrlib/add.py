@@ -290,7 +290,10 @@ def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
             # XXX: This is wrong; people *might* reasonably be trying to add
             # subtrees as subtrees.  This should probably only be done in formats 
             # which can represent subtrees, and even then perhaps only when
-            # the user asked to add subtrees.  mbp 20070306
+            # the user asked to add subtrees.  At the moment you can add them
+            # specially through 'join --reference', which is perhaps
+            # reasonable: adding a new reference is a special operation and
+            # can have a special behaviour.  mbp 20070306
             mutter("%r is a nested bzr tree", abspath)
         else:
             __add_one(tree, inv, parent_ie, directory, kind, action)

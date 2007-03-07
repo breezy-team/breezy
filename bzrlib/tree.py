@@ -624,15 +624,7 @@ class InterTree(InterObject):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        # this must return a sequence rather than a list so that it can hold a
-        # read-lock for the whole time.
-        #
-        # TODO: this really only needs to lock the trees not the branches, so
-        # could do with lock_tree_read() -- mbp 20070227
         result = []
-        ## self.source.lock_read()
-        ## self.target.lock_read()
-        ## try:
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)

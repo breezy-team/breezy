@@ -30,21 +30,6 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 # TODO:
-# test DirStateRevisionTree : test filtering out of deleted files does not
-#         filter out files called RECYCLED.BIN ;)
-# test 0 parents, 1 parent, 4 parents.
-# test unicode parents, non unicode parents
-# test all change permutations in one and two parents.
-# i.e. file in parent 1, dir in parent 2, symlink in tree.
-# test that renames in the tree result in correct parent paths
-# Test get state from a file, then asking for lines.
-# write a smaller state, and check the file has been truncated.
-# add a entry when its in state deleted
-# revision attribute for root entries.
-# test that utf8 strings are preserved in _row_to_line
-# test parent manipulation
-# test parents that are null in save : i.e. no record in the parent tree for this.
-# todo: _set_data records ghost parents.
 # TESTS to write:
 # general checks for NOT_IN_MEMORY error conditions.
 # set_path_id on a NOT_IN_MEMORY dirstate
@@ -55,6 +40,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 # set_path_id  setting id when state is not in memory
 # set_path_id  setting id when state is in memory unmodified
 # set_path_id  setting id when state is in memory modified
+
 
 class TestCaseWithDirState(TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""

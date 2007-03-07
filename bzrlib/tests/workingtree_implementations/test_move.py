@@ -128,10 +128,6 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b'], 'a')
 
-    # TODO: jam 20070225 What about a test when the target is now a directory,
-    #       but in the past it was a file. Theoretically WorkingTree should
-    #       notice the kind change.
-
     def test_move_unversioned(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'b'])

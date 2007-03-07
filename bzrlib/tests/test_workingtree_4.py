@@ -47,9 +47,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
         self.assertFalse(t.has('last-revision'))
-        # TODO RBC 20060210 do a commit, check the inventory.basis is created 
-        # correctly and last-revision file becomes present.
-        # manually make a dirstate toc check the format is as desired.
         state = dirstate.DirState.on_file(t.local_abspath('dirstate'))
         state.lock_read()
         try:
@@ -88,15 +85,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             return workingtree_4.WorkingTreeFormat4().initialize(dir)
         except errors.NotLocalUrl:
             raise TestSkipped('Not a local URL')
-
-    # TODO: test that dirstate also stores & retrieves the parent list of 
-    # workingtree-parent revisions, including when they have multiple parents.
-    # (in other words, the case when we're constructing a merge of 
-    # revisions which are themselves merges.)
-
-    # The simplest case is that the the workingtree's primary 
-    # parent tree can be retrieved.  This is required for all WorkingTrees, 
-    # and covered by the generic tests.
 
     def test_dirstate_stores_all_parent_inventories(self):
         tree = self.make_workingtree()

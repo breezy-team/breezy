@@ -259,8 +259,6 @@ class DirState(object):
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
 
-    # TODO: jam 20070221 Make sure we handle when there are duplicated records
-    #       (like when we remove + add the same path, or we have a rename)
     # TODO: jam 20070221 Figure out what to do if we have a record that exceeds
     #       the BISECT_PAGE_SIZE. For now, we just have to make it large enough
     #       that we are sure a single record will always fit.
@@ -1554,10 +1552,6 @@ class DirState(object):
             tree_count = 1 + num_present_parents
             entry_size = self._fields_per_entry()
             expected_field_count = entry_size * self._num_entries
-            if len(fields) - cur > expected_field_count:
-                fields = fields[:expected_field_count + cur]
-                trace.mutter('Unexpectedly long dirstate field count!')
-                print "XXX: incorrectly truncated dirstate file bug triggered."
             field_count = len(fields)
             # this checks our adjustment, and also catches file too short.
             assert field_count - cur == expected_field_count, \
@@ -1753,11 +1747,10 @@ class DirState(object):
         :param new_id: The new id to assign to the path. This must be a utf8
             file id (not unicode, and not None).
         """
-        # TODO: start warning here.
-        assert new_id.__class__ == str
+        assert new_id.__class__ == str, \
+            "path_id %r is not a plain string" % (new_id,)
         self._read_dirblocks_if_needed()
         if len(path):
-            import pdb;pdb.set_trace()
             # logic not written
             raise NotImplementedError(self.set_path_id)
         # TODO: check new id is unique
@@ -1922,7 +1915,7 @@ class DirState(object):
         try to keep everything in sorted blocks all the time, but sometimes
         it's easier to sort after the fact.
         """
-        # TODO: Might be faster to do a scwartzian transform?
+        # TODO: Might be faster to do a schwartzian transform?
         def _key(entry):
             # sort by: directory parts, file name, file id
             return entry[0][0].split('/'), entry[0][1], entry[0][2]
@@ -2103,13 +2096,9 @@ class DirState(object):
                     # the test for existing kinds is different: this can be
                     # factored out to a helper though.
                     other_block_index, present = self._find_block_index_from_key(other_key)
-                    if not present:
-                        import pdb; pdb.set_trace()
                     assert present, 'could not find block for %s' % (other_key,)
                     other_entry_index, present = self._find_entry_index(other_key,
                                             self._dirblocks[other_block_index][1])
-                    if not present:
-                        import pdb; pdb.set_trace()
                     assert present, 'could not find entry for %s' % (other_key,)
                     assert path_utf8 is not None
                     self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
