@@ -610,7 +610,7 @@ class cmd_pull(Command):
         old_rh = branch_to.revision_history()
         if tree_to is not None:
             result = tree_to.pull(branch_from, overwrite, rev_id,
-                delta.ChangeReporter(unversioned_filter=tree_to.is_ignored))
+                delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
             result = branch_to.pull(branch_from, overwrite, rev_id)
 
@@ -2498,7 +2498,7 @@ class cmd_merge(Command):
         #      Either the merge helper code should be updated to take a tree,
         #      (What about tree.merge_from_branch?)
         tree = WorkingTree.open_containing(directory)[0]
-        change_reporter = delta.ChangeReporter(
+        change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored)
 
         if branch is not None:
