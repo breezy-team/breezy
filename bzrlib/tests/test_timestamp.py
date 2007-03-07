@@ -21,17 +21,17 @@ from bzrlib import (
 
 class TestPatchHeader(tests.TestCase):
 
-    def test_encode_patch_date(self):
+    def test_format_patch_date(self):
         self.assertEqual('1970-01-01 00:00:00 +0000',
-            timestamp.patch_header_date(0))
+            timestamp.format_patch_date(0))
         self.assertEqual('1970-01-01 05:00:00 +0500',
-            timestamp.patch_header_date(0, 5 * 3600))
+            timestamp.format_patch_date(0, 5 * 3600))
         self.assertEqual('1969-12-31 19:00:00 -0500',
-            timestamp.patch_header_date(0, -5 * 3600))
+            timestamp.format_patch_date(0, -5 * 3600))
         self.assertEqual('1969-12-31 19:00:00 -0500',
-            timestamp.patch_header_date(0, -5 * 3600))
+            timestamp.format_patch_date(0, -5 * 3600))
         self.assertEqual('2007-03-06 10:04:19 -0500',
-            timestamp.patch_header_date(1173193459, -5 * 3600))
+            timestamp.format_patch_date(1173193459, -5 * 3600))
 
     def test_parse_patch_date(self):
         self.assertEqual((0, 0),

@@ -314,8 +314,10 @@ class TestBranch(TestCaseWithBranch):
         from bzrlib.testament import Testament
         strategy = gpg.LoopbackGPGStrategy(None)
         branch.repository.sign_revision('A', strategy)
-        self.assertEqual(Testament.from_revision(branch.repository, 
-                         'A').as_short_text(),
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+                         Testament.from_revision(branch.repository,
+                         'A').as_short_text() +
+                         '-----END PSUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
@@ -327,7 +329,8 @@ class TestBranch(TestCaseWithBranch):
                           branch.repository.has_signature_for_revision_id,
                           'A')
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('FOO', 
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         'FOO-----END PSUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
