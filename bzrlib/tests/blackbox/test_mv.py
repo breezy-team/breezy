@@ -167,7 +167,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
 
-        os.rename('a', 'b')
+        osutils.rename('a', 'b')
         self.run_bzr('mv', 'a', 'b')
         self.assertMoved('a','b')
 
@@ -184,7 +184,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a', 'b'])
 
         os.remove('b')
-        os.rename('a', 'b')
+        osutils.rename('a', 'b')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move a => b. b is already versioned$"],
             'mv', 'a', 'b')
@@ -204,7 +204,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a', 'sub'])
 
-        os.rename('a', 'sub/a')
+        osutils.rename('a', 'sub/a')
         self.run_bzr('mv', 'a', 'sub/a')
         self.assertMoved('a','sub/a')
 
@@ -220,7 +220,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
 
-        os.rename('a', 'sub/a')
+        osutils.rename('a', 'sub/a')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move a => a: sub is not versioned$"],
             'mv', 'a', 'sub/a')
@@ -239,7 +239,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'a2', 'sub'])
 
-        os.rename('a1', 'sub/a1')
+        osutils.rename('a1', 'sub/a1')
         self.run_bzr('mv', 'a1', 'a2', 'sub')
         self.assertMoved('a1','sub/a1')
         self.assertMoved('a2','sub/a2')
@@ -256,7 +256,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'a2'])
 
-        os.rename('a1', 'sub/a1')
+        osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move to sub. sub is not versioned$"],
             'mv', 'a1', 'a2', 'sub')
@@ -278,7 +278,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
 
-        os.rename('a', 'b')
+        osutils.rename('a', 'b')
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a => b because both files exist."
@@ -301,7 +301,7 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
-        os.rename('a', 'b')
+        osutils.rename('a', 'b')
         self.build_tree(['a']) #touch a
 
         self.run_bzr('mv', 'a', 'b', '--after')
@@ -324,8 +324,8 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a1', 'a2', 'sub/', 'sub/a1', 'sub/a2'])
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'a2', 'sub'])
-        os.rename('a1', 'sub/a1')
-        os.rename('a2', 'sub/a2')
+        osutils.rename('a1', 'sub/a1')
+        osutils.rename('a2', 'sub/a2')
         self.build_tree(['a1']) #touch a1
         self.build_tree(['a2']) #touch a2
 
@@ -354,8 +354,8 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a1', 'a2', 'sub/', 'sub/a1', 'sub/a2'])
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'a2', 'sub'])
-        os.rename('a1', 'sub/a1')
-        os.rename('a2', 'sub/a2')
+        osutils.rename('a1', 'sub/a1')
+        osutils.rename('a2', 'sub/a2')
         self.build_tree(['a1']) #touch a1
         self.build_tree(['a2']) #touch a2
 

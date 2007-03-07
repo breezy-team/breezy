@@ -269,23 +269,11 @@ class TestConfigPath(TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        self.old_home = os.environ.get('HOME', None)
-        self.old_appdata = os.environ.get('APPDATA', None)
         os.environ['HOME'] = '/home/bogus'
-        os.environ['APPDATA'] = \
-            r'C:\Documents and Settings\bogus\Application Data'
+        if sys.platform == 'win32':
+            os.environ['BZR_HOME'] = \
+                r'C:\Documents and Settings\bogus\Application Data'
 
-    def tearDown(self):
-        if self.old_home is None:
-            del os.environ['HOME']
-        else:
-            os.environ['HOME'] = self.old_home
-        if self.old_appdata is None:
-            del os.environ['APPDATA']
-        else:
-            os.environ['APPDATA'] = self.old_appdata
-        super(TestConfigPath, self).tearDown()
-    
     def test_config_dir(self):
         if sys.platform == 'win32':
             self.assertEqual(config.config_dir(), 

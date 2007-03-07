@@ -32,16 +32,21 @@ from bzrlib.errors import NotConflicted
 
 # The order of 'path' here is important - do not let it
 # be a sorted list.
+# u'\xe5' == a with circle
+# '\xc3\xae' == u'\xee' == i with hat
+# So these are u'pathg' and 'idg' only with a circle and a hat. (shappo?)
 example_conflicts = ConflictList([ 
-    MissingParent('Not deleting', 'pathg', 'idg'),
-    ContentsConflict('patha', 'ida'), 
-    TextConflict('patha'),
-    PathConflict('pathb', 'pathc', 'idb'),
-    DuplicateID('Unversioned existing file', 'pathc', 'pathc2', 'idc', 'idc'),
-    DuplicateEntry('Moved existing file to',  'pathdd.moved', 'pathd', 'idd', 
-                   None),
-    ParentLoop('Cancelled move', 'pathe', 'path2e', None, 'id2e'),
-    UnversionedParent('Versioned directory', 'pathf', 'idf'),
+    MissingParent('Not deleting', u'p\xe5thg', '\xc3\xaedg'),
+    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'), 
+    TextConflict(u'p\xe5tha'),
+    PathConflict(u'p\xe5thb', u'p\xe5thc', '\xc3\xaedb'),
+    DuplicateID('Unversioned existing file', u'p\xe5thc', u'p\xe5thc2',
+                '\xc3\xaedc', '\xc3\xaedc'),
+    DuplicateEntry('Moved existing file to',  u'p\xe5thdd.moved', u'p\xe5thd',
+                   '\xc3\xaedd', None),
+    ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
+               None, '\xc3\xaed2e'),
+    UnversionedParent('Versioned directory', u'p\xe5thf', '\xc3\xaedf'),
 ])
 
 
@@ -91,18 +96,29 @@ class TestConflictStanzas(TestCase):
         # write and read our example stanza.
         stanza_iter = example_conflicts.to_stanzas()
         processed = ConflictList.from_stanzas(stanza_iter)
-        for o,p in zip(processed, example_conflicts):
+        for o, p in zip(processed, example_conflicts):
             self.assertEqual(o, p)
+
+            self.assertIsInstance(o.path, unicode)
+
+            if o.file_id is not None:
+                self.assertIsInstance(o.file_id, str)
+
+            conflict_path = getattr(o, 'conflict_path', None)
+            if conflict_path is not None:
+                self.assertIsInstance(conflict_path, unicode)
+
+            conflict_file_id = getattr(o, 'conflict_file_id', None)
+            if conflict_file_id is not None:
+                self.assertIsInstance(conflict_file_id, str)
 
     def test_stanzification(self):
         for stanza in example_conflicts.to_stanzas():
-            try:
-                self.assertStartsWith(stanza['file_id'], 'id')
-            except KeyError:
-                pass
-            self.assertStartsWith(stanza['path'], 'path')
-            try:
-                self.assertStartsWith(stanza['conflict_file_id'], 'id')
-                self.assertStartsWith(stanza['conflict_file_path'], 'path')
-            except KeyError:
-                pass
+            if 'file_id' in stanza:
+                # In Stanza form, the file_id has to be unicode.
+                self.assertStartsWith(stanza['file_id'], u'\xeed')
+            self.assertStartsWith(stanza['path'], u'p\xe5th')
+            if 'conflict_path' in stanza:
+                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
+            if 'conflict_file_id' in stanza:
+                self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')

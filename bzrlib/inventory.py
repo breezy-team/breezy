@@ -1006,11 +1006,14 @@ class Inventory(object):
             from_dir = self._byid[from_dir]
 
         if specific_file_ids is not None:
+            # TODO: jam 20070302 This could really be done as a loop rather
+            #       than a bunch of recursive calls.
             parents = set()
+            byid = self._byid
             def add_ancestors(file_id):
-                if file_id not in self:
+                if file_id not in byid:
                     return
-                parent_id = self[file_id].parent_id
+                parent_id = byid[file_id].parent_id
                 if parent_id is None:
                     return
                 if parent_id not in parents:

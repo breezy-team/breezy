@@ -1354,8 +1354,10 @@ class BzrBranch(Branch):
         self.set_revision_history(history)
 
     def _gen_revision_history(self):
-        history = [l.rstrip('\r\n') for l in
-                self.control_files.get('revision-history').readlines()]
+        history = self.control_files.get('revision-history').read().split('\n')
+        if history[-1:] == ['']:
+            # There shouldn't be a trailing newline, but just in case.
+            history.pop()
         return history
 
     @needs_read_lock

@@ -27,6 +27,7 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
+    osutils,
     tests,
     transform,
     )
@@ -229,10 +230,10 @@ class TestCaseWithTree(TestCaseWithBzrDir):
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = [u'TREE_ROOT',
-                    u'f\xf6-id'.encode('utf8'),
-                    u'b\xe5r-id'.encode('utf8'),
-                    u'b\xe1z-id'.encode('utf8'),
+        file_ids = ['TREE_ROOT',
+                    'f\xc3\xb6-id',
+                    'b\xc3\xa5r-id',
+                    'b\xc3\xa1z-id',
                    ]
         try:
             self.build_tree(paths[1:])
@@ -255,7 +256,8 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'.encode('utf8')])
+        self.callDeprecated([osutils._file_id_warning],
+                            tree2.add, [u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
