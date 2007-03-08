@@ -157,6 +157,12 @@ class TestOSUtils(TestCaseInTempDir):
             finally:
                 os.remove('socket')
 
+    def test_kind_marker(self):
+        self.assertEqual(osutils.kind_marker('file'), '')
+        self.assertEqual(osutils.kind_marker('directory'), '/')
+        self.assertEqual(osutils.kind_marker('symlink'), '@')
+        self.assertEqual(osutils.kind_marker('tree-reference'), '>')
+
     def test_get_umask(self):
         if sys.platform == 'win32':
             # umask always returns '0', no way to set it
