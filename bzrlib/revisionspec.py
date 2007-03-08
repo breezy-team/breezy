@@ -379,7 +379,8 @@ class RevisionSpec_revid(RevisionSpec):
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
-        return RevisionInfo.from_revision_id(branch, self.spec, revs)
+        return RevisionInfo.from_revision_id(branch, self.spec.encode('utf-8'),
+                                             revs)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 

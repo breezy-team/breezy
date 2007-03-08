@@ -277,6 +277,12 @@ class TestRevisionSpec_revid(TestRevisionSpec):
                                           revision_id='alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
 
+    def test_unicode(self):
+        """We correctly convert a unicode ui string to an encoded revid."""
+        rev_id = u'\N{SNOWMAN}'.encode('utf-8')
+        self.tree.commit('unicode', rev_id=rev_id)
+        self.assertInHistoryIs(3, rev_id, u'revid:\N{SNOWMAN}')
+
 
 class TestRevisionSpec_last(TestRevisionSpec):
 
