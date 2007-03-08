@@ -453,6 +453,21 @@ class WorkingTree4(WorkingTree3):
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 
+    if not osutils.supports_executable():
+        def is_executable(self, file_id, path=None):
+            file_id = osutils.safe_file_id(file_id)
+            entry = self._get_entry(file_id=file_id, path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][3]
+    else:
+        def is_executable(self, file_id, path=None):
+            if not path:
+                file_id = osutils.safe_file_id(file_id)
+                path = self.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
     @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
