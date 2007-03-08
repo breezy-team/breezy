@@ -26,7 +26,12 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.osutils import has_symlinks
+from bzrlib.tests import (
+        TestCase,
+        TestCaseWithTransport,
+        TestSkipped,
+        )
 
 
 # TODO:
@@ -684,8 +689,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_add_symlink_to_root_no_parents_all_data(self):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
-        ## TODO: windows: dont fail this test. Also, how are symlinks meant to
-        # be represented on windows.
+        # bzr yet don't have support for fake symlinks on windows
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         os.symlink('target', 'a link')
         stat = os.lstat('a link')
         expected_entries = [
@@ -1201,7 +1207,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1286,6 +1293,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         This should not be called if this platform does not have symlink
         support.
         """
+        # caller should care about skipping test on platforms without symlinks
         os.symlink('path/to/foo', 'a')
 
         stat_value = os.lstat('a')
@@ -1320,7 +1328,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_missing_symlink(self):
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         packed_stat = self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1341,7 +1350,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_file(state, entry)
         os.remove('a')
@@ -1357,7 +1367,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
@@ -1365,6 +1376,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1372,6 +1385,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')
