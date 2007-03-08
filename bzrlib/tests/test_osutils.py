@@ -161,7 +161,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(osutils.kind_marker('file'), '')
         self.assertEqual(osutils.kind_marker('directory'), '/')
         self.assertEqual(osutils.kind_marker('symlink'), '@')
-        self.assertEqual(osutils.kind_marker('tree-reference'), '>')
+        self.assertEqual(osutils.kind_marker('tree-reference'), '+')
 
     def test_get_umask(self):
         if sys.platform == 'win32':

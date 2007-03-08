@@ -153,7 +153,7 @@ def kind_marker(kind):
     elif kind == 'symlink':
         return '@'
     elif kind == 'tree-reference':
-        return '>'
+        return '+'
     else:
         raise errors.BzrError('invalid file kind %r' % kind)
 
