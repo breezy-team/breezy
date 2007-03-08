@@ -1359,7 +1359,7 @@ class cmd_diff(Command):
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
-                    'two values separated by a colon.'),
+                    'two values separated by a colon. (eg "old/:new/")'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1380,12 +1380,13 @@ class cmd_diff(Command):
             old_label, new_label = prefix.split(":")
         else:
             raise errors.BzrCommandError(
-                "--prefix expects two values separated by a colon")
+                '--prefix expects two values separated by a colon'
+                ' (eg "old/:new/")')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
-        
+
         try:
             tree1, file_list = internal_tree_files(file_list)
             tree2 = None
