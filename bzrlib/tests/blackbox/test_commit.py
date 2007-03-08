@@ -1,15 +1,15 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -21,6 +21,9 @@ import os
 import re
 import sys
 
+from bzrlib import (
+    ignores,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCommandError
@@ -33,9 +36,22 @@ class TestCommit(ExternalBase):
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
         # If forced, it should succeed, but this is not tested here.
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=3)
+        out,err = self.run_bzr("commit", "-m", "empty", retcode=3)
+        self.assertEqual('', out)
+        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
+                                  ' use --unchanged to commit anyhow\n')
+
+    def test_commit_success(self):
+        """Successful commit should not leave behind a bzr-commit-* file"""
+        self.run_bzr("init")
+        self.run_bzr("commit", "--unchanged", "-m", "message")
+        self.assertEqual('', self.capture('unknowns'))
+
+        # same for unicode messages
+        self.run_bzr("commit", "--unchanged", "-m", u'foo\xb5')
+        self.assertEqual('', self.capture('unknowns'))
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -184,7 +200,7 @@ class TestCommit(ExternalBase):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         os.chdir('this')
         out,err = self.run_bzr("commit", "-m", "added")
         os.chdir('..')
@@ -284,3 +300,61 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1', 'u1')
+
+    def test_commit_respects_spec_for_removals(self):
+        """Commit with a file spec should only commit removals that match"""
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['file-a', 'dir-a/', 'dir-a/file-b'])
+        t.add(['file-a', 'dir-a', 'dir-a/file-b'])
+        t.commit('Create')
+        t.remove(['file-a', 'dir-a/file-b'])
+        os.chdir('dir-a')
+        result = self.run_bzr('commit', '.', '-m' 'removed file-b')[1]
+        self.assertNotContainsRe(result, 'file-a')
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, 'removed:\n  file-a')
+
+    def test_strict_commit(self):
+        """Commit with --strict works if everything is known"""
+        ignores._set_user_ignores([])
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        # A simple change should just work
+        self.run_bzr('commit', '--strict', '-m', 'adding a',
+                     working_dir='tree')
+
+    def test_strict_commit_no_changes(self):
+        """commit --strict gives "no changes" if there is nothing to commit"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # With no changes, it should just be 'no changes'
+        # Make sure that commit is failing because there is nothing to do
+        self.run_bzr_error(['no changes to commit'],
+                           'commit', '--strict', '-m', 'no changes',
+                           working_dir='tree')
+
+        # But --strict doesn't care if you supply --unchanged
+        self.run_bzr('commit', '--strict', '--unchanged', '-m', 'no changes',
+                     working_dir='tree')
+
+    def test_strict_commit_unknown(self):
+        """commit --strict fails if a file is unknown"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # Add one file so there is a change, but forget the other
+        self.build_tree(['tree/b', 'tree/c'])
+        tree.add('b')
+        self.run_bzr_error(['Commit refused because there are unknown files'],
+                           'commit', '--strict', '-m', 'add b',
+                           working_dir='tree')
+
+        # --no-strict overrides --strict
+        self.run_bzr('commit', '--strict', '-m', 'add b', '--no-strict',
+                     working_dir='tree')

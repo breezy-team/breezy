@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,11 +28,13 @@ class TestAdd(ExternalBase):
         """add command prints the names of added files."""
         self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
+        self.build_tree_contents([('.bzrignore', 'CVS\n')])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
+                           'added .bzrignore',
                            'added dir',
                            'added dir/sub.txt',
                            'added top.txt',
@@ -93,9 +95,9 @@ class TestAdd(ExternalBase):
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         from bzrlib.workingtree import WorkingTree
-        
+
         eq = self.assertEqual
-        ass = self.assert_
+        ass = self.assertTrue
         chdir = os.chdir
         
         t = self.make_branch_and_tree('.')
@@ -109,13 +111,85 @@ class TestAdd(ExternalBase):
         
         self.build_tree(['src/foo.c'])
         
+        # add with no arguments in a subdirectory gets only files below that
+        # subdirectory
         chdir('src')
         self.run_bzr('add')
-        
         self.assertEquals(self.capture('unknowns'), 'README\n')
-        eq(len(t.read_working_inventory()), 3)
+        # reopen to see the new changes
+        t = t.bzrdir.open_workingtree()
+        versioned = [path for path, entry in t.iter_entries_by_dir()]
+        self.assertEquals(versioned,
+            ['', 'src', 'src/foo.c'])
                 
+        # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')
         self.assertEquals(self.capture('unknowns'), '')
         self.run_bzr('check')
+
+    def test_add_missing(self):
+        """bzr add foo where foo is missing should error."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('add', 'missing-file', retcode=3)
+
+    def test_add_from(self):
+        base_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b/', 'base/b/c'])
+        base_tree.add(['a', 'b', 'b/c'])
+        base_tree.commit('foo')
+
+        new_tree = self.make_branch_and_tree('new')
+        self.build_tree(['new/a', 'new/b/', 'new/b/c', 'd'])
+
+        os.chdir('new')
+        out, err = self.run_bzr('add', '--file-ids-from', '../base')
+        self.assertEqual('', err)
+        self.assertEqualDiff('added a w/ file id from a\n'
+                             'added b w/ file id from b\n'
+                             'added b/c w/ file id from b/c\n',
+                             out)
+        new_tree = new_tree.bzrdir.open_workingtree()
+        self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
+        self.assertEqual(base_tree.path2id('b'), new_tree.path2id('b'))
+        self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('b/c'))
+
+    def test_add_from_subdir(self):
+        base_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b/', 'base/b/c', 'base/b/d'])
+        base_tree.add(['a', 'b', 'b/c', 'b/d'])
+        base_tree.commit('foo')
+
+        new_tree = self.make_branch_and_tree('new')
+        self.build_tree(['new/c', 'new/d'])
+
+        os.chdir('new')
+        out, err = self.run_bzr('add', '--file-ids-from', '../base/b')
+        self.assertEqual('', err)
+        self.assertEqualDiff('added c w/ file id from b/c\n'
+                             'added d w/ file id from b/d\n',
+                             out)
+
+        new_tree = new_tree.bzrdir.open_workingtree()
+        self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
+        self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
+
+    def test_add_dry_run(self):
+        # ensure that --dry-run actually don't add anything
+        base_tree = self.make_branch_and_tree('.')
+        self.build_tree(['spam'])
+        out = self.run_bzr_captured(['add', '--dry-run'], retcode=0)[0]
+        self.assertEquals('added spam\n', out)
+        out = self.run_bzr_captured(['added'], retcode=0)[0]
+        self.assertEquals('', out)
+
+    def test_add_control_dir(self):
+        """The control dir and its content should be refused."""
+        self.make_branch_and_tree('.')
+        err = self.run_bzr('add', '.bzr', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        err = self.run_bzr('add', '.bzr/README', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        self.build_tree(['.bzr/crescent'])
+        err = self.run_bzr('add', '.bzr/crescent', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')

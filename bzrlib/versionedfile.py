@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -7,30 +7,39 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Versioned text file storage api."""
 
-
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from copy import deepcopy
-from unittest import TestSuite
+import unittest
 
-
-import bzrlib.errors as errors
-from bzrlib.inter import InterObject
-from bzrlib.symbol_versioning import *
-from bzrlib.textmerge import TextMerge
+from bzrlib import (
+    errors,
+    osutils,
+    tsort,
+    revision,
+    ui,
+    )
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib import ui
+""")
+
+from bzrlib.inter import InterObject
+from bzrlib.textmerge import TextMerge
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 class VersionedFile(object):
@@ -51,10 +60,14 @@ class VersionedFile(object):
         self.finished = False
         self._access_mode = access_mode
 
+    @staticmethod
+    def check_not_reserved_id(version_id):
+        revision.check_not_reserved_id(version_id)
+
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
-    
+
     @deprecated_method(zero_eight)
     def names(self):
         """Return a list of all the versions in this versioned file.
@@ -84,6 +97,8 @@ class VersionedFile(object):
         :param sha1: The sha1 of the full text.
         :param delta: The delta instructions. See get_delta for details.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         if self.has_version(version_id):
             raise errors.RevisionAlreadyPresent(version_id, self)
@@ -126,6 +141,8 @@ class VersionedFile(object):
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts)
 
@@ -139,6 +156,8 @@ class VersionedFile(object):
         
         This takes the same parameters as add_lines.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        parents = [osutils.safe_revision_id(v) for v in parents]
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
                                            parent_texts)
@@ -170,8 +189,19 @@ class VersionedFile(object):
         if self._access_mode != 'w':
             raise errors.ReadOnlyObjectDirtiedError(self)
 
+    def enable_cache(self):
+        """Tell this versioned file that it should cache any data it reads.
+        
+        This is advisory, implementations do not have to support caching.
+        """
+        pass
+    
     def clear_cache(self):
-        """Remove any data cached in the versioned file object."""
+        """Remove any data cached in the versioned file object.
+
+        This only needs to be supported if caches are supported
+        """
+        pass
 
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
@@ -181,6 +211,8 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
+        new_version_id = osutils.safe_revision_id(new_version_id)
+        old_version_id = osutils.safe_revision_id(old_version_id)
         self._check_write_ok()
         return self._clone_text(new_version_id, old_version_id, parents)
 
@@ -197,7 +229,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
-    def fix_parents(self, version, new_parents):
+    def fix_parents(self, version_id, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -205,10 +237,12 @@ class VersionedFile(object):
         the parents list must be a superset of the current
         list.
         """
+        version_id = osutils.safe_revision_id(version_id)
+        new_parents = [osutils.safe_revision_id(p) for p in new_parents]
         self._check_write_ok()
-        return self._fix_parents(version, new_parents)
+        return self._fix_parents(version_id, new_parents)
 
-    def _fix_parents(self, version, new_parents):
+    def _fix_parents(self, version_id, new_parents):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
 
@@ -220,7 +254,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_delta)
 
-    def get_deltas(self, versions):
+    def get_deltas(self, version_ids):
         """Get multiple deltas at once for constructing versions.
         
         :return: dict(version_id:(delta_parent, sha1, noeol, delta))
@@ -228,8 +262,8 @@ class VersionedFile(object):
         version_id is the version_id created by that delta.
         """
         result = {}
-        for version in versions:
-            result[version] = self.get_delta(version)
+        for version_id in version_ids:
+            result[version_id] = self.get_delta(version_id)
         return result
 
     def get_sha1(self, version_id):
@@ -251,6 +285,14 @@ class VersionedFile(object):
         """
         return ''.join(self.get_lines(version_id))
     get_string = get_text
+
+    def get_texts(self, version_ids):
+        """Return the texts of listed versions as a list of strings.
+
+        Raises RevisionNotPresent if version is not present in
+        file history.
+        """
+        return [''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
@@ -287,14 +329,14 @@ class VersionedFile(object):
         
         Ghosts are not listed or referenced in the graph.
         :param version_ids: Versions to select.
-                            None means retreive all versions.
+                            None means retrieve all versions.
         """
         result = {}
         if version_ids is None:
             for version in self.versions():
                 result[version] = self.get_parents(version)
         else:
-            pending = set(version_ids)
+            pending = set(osutils.safe_revision_id(v) for v in version_ids)
             while pending:
                 version = pending.pop()
                 if version in result:
@@ -381,14 +423,19 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+                                                pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions, and does not return the
         specific version marker at this point. The api may be changed
         during development to include the version that the versioned file
         thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we dont need it.
+        its better not to have it if we don't need it.
+
+        If a progress bar is supplied, it may be used to indicate progress.
+        The caller is responsible for cleaning up progress bars (because this
+        is an iterator).
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
@@ -446,7 +493,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(VersionedFile.plan_merge)
         
-    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
+    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
@@ -483,7 +530,7 @@ class PlanWeaveMerge(TextMerge):
        
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
-        # on killed-both lines may be too agressive. -- mbp 20060324
+        # on killed-both lines may be too aggressive. -- mbp 20060324
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
@@ -536,7 +583,7 @@ class InterVersionedFile(InterObject):
     InterVersionedFile.get(other).method_name(parameters).
     """
 
-    _optimisers = set()
+    _optimisers = []
     """The available optimised InterVersionedFile types."""
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
@@ -563,7 +610,7 @@ class InterVersionedFile(InterObject):
             target = temp_source
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        order = tsort.topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -621,6 +668,7 @@ class InterVersionedFile(InterObject):
             # None cannot be in source.versions
             return set(self.source.versions())
         else:
+            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
             if ignore_missing:
                 return set(self.source.versions()).intersection(set(version_ids))
             else:
@@ -638,7 +686,7 @@ class InterVersionedFile(InterObject):
 class InterVersionedFileTestProviderAdapter(object):
     """A tool to generate a suite testing multiple inter versioned-file classes.
 
-    This is done by copying the test once for each interversionedfile provider
+    This is done by copying the test once for each InterVersionedFile provider
     and injecting the transport_server, transport_readonly_server,
     versionedfile_factory and versionedfile_factory_to classes into each copy.
     Each copy is also given a new id() to make it easy to identify.
@@ -650,7 +698,7 @@ class InterVersionedFileTestProviderAdapter(object):
         self._formats = formats
     
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for (interversionedfile_class,
              versionedfile_factory,
              versionedfile_factory_to) in self._formats:

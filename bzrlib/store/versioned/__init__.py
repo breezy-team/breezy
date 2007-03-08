@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -22,13 +22,18 @@ import errno
 import os
 from cStringIO import StringIO
 import urllib
+from warnings import warn
 
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import WeaveFile, Weave
 from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import NoSuchFile, FileExists
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method,
+        zero_eight)
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -67,6 +72,7 @@ class VersionedFileStore(TransportStore):
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
+        file_id = osutils.safe_file_id(file_id)
         return self._relpath(file_id)
 
     def __iter__(self):
@@ -83,9 +89,10 @@ class VersionedFileStore(TransportStore):
                         yield file_id
                     break # only one suffix can match
 
-    def has_id(self, fileid):
+    def has_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         suffixes = self._versionedfile_class.get_suffixes()
-        filename = self.filename(fileid)
+        filename = self.filename(file_id)
         for suffix in suffixes:
             if not self._transport.has(filename + suffix):
                 return False
@@ -93,12 +100,14 @@ class VersionedFileStore(TransportStore):
 
     def get_empty(self, file_id, transaction):
         """Get an empty weave, which implies deleting the existing one first."""
+        file_id = osutils.safe_file_id(file_id)
         if self.has_id(file_id):
             self.delete(file_id, transaction)
         return self.get_weave_or_empty(file_id, transaction)
 
     def delete(self, file_id, transaction):
         """Remove file_id from the store."""
+        file_id = osutils.safe_file_id(file_id)
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
         for suffix in suffixes:
@@ -111,25 +120,34 @@ class VersionedFileStore(TransportStore):
     def _put(self, file_id, f):
         fn = self.filename(file_id)
         try:
-            return self._transport.put(fn, f, mode=self._file_mode)
-        except NoSuchFile:
+            return self._transport.put_file(fn, f, mode=self._file_mode)
+        except errors.NoSuchFile:
             if not self._prefixed:
                 raise
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
-            return self._transport.put(fn, f, mode=self._file_mode)
+            return self._transport.put_file(fn, f, mode=self._file_mode)
 
-    def get_weave(self, file_id, transaction):
+    def get_weave(self, file_id, transaction, _filename=None):
+        """Return the VersionedFile for file_id.
+
+        :param _filename: filename that would be returned from self.filename for
+        file_id. This is used to reduce duplicate filename calculations when
+        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        """
+        file_id = osutils.safe_file_id(file_id)
         weave = transaction.map.find_weave(file_id)
         if weave is not None:
             #mutter("cache hit in %s for %s", self, file_id)
             return weave
+        if _filename is None:
+            _filename = self.filename(file_id)
         if transaction.writeable():
-            w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode,
+            w = self._versionedfile_class(_filename, self._transport, self._file_mode,
                                           **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_dirty(w)
         else:
-            w = self._versionedfile_class(self.filename(file_id),
+            w = self._versionedfile_class(_filename,
                                           self._transport,
                                           self._file_mode,
                                           create=False,
@@ -145,40 +163,56 @@ class VersionedFileStore(TransportStore):
 
         Returned as a list of lines.
         """
+        file_id = osutils.safe_file_id(file_id)
         w = self.get_weave(file_id, transaction)
         return w.get_lines(rev_id)
     
-    def _new_weave(self, file_id, transaction):
-        """Make a new weave for file_id and return it."""
-        weave = self._make_new_versionedfile(file_id, transaction)
-        transaction.map.add_weave(file_id, weave)
-        # has to be dirty - its able to mutate on its own.
-        transaction.register_dirty(weave)
-        return weave
-
-    def _make_new_versionedfile(self, file_id, transaction):
-        if self.has_id(file_id):
+    def _make_new_versionedfile(self, file_id, transaction,
+        known_missing=False, _filename=None):
+        """Make a new versioned file.
+        
+        :param _filename: filename that would be returned from self.filename for
+        file_id. This is used to reduce duplicate filename calculations when
+        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        """
+        if not known_missing and self.has_id(file_id):
             self.delete(file_id, transaction)
+        if _filename is None:
+            _filename = self.filename(file_id)
         try:
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True,
+            # we try without making the directory first because thats optimising
+            # for the common case.
+            weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             if not self._prefixed:
-                # unexpected error - NoSuchFile is raised on a missing dir only and that
-                # only occurs when we are prefixed.
+                # unexpected error - NoSuchFile is expected to be raised on a
+                # missing dir only and that only occurs when we are prefixed.
                 raise
             self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, 
+            weave = self._versionedfile_class(_filename, self._transport, 
                                               self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
-        """Return a weave, or an empty one if it doesn't exist.""" 
+        """Return a weave, or an empty one if it doesn't exist."""
+        # This is typically used from 'commit' and 'fetch/push/pull' where 
+        # we scan across many versioned files once. As such the small overhead
+        # of calculating the filename before doing a cache lookup is more than
+        # compensated for by not calculating the filename when making new
+        # versioned files.
+        file_id = osutils.safe_file_id(file_id)
+        _filename = self.filename(file_id)
         try:
-            return self.get_weave(file_id, transaction)
-        except NoSuchFile:
-            return self._new_weave(file_id, transaction)
+            return self.get_weave(file_id, transaction, _filename=_filename)
+        except errors.NoSuchFile:
+            weave = self._make_new_versionedfile(file_id, transaction,
+                known_missing=True, _filename=_filename)
+            transaction.map.add_weave(file_id, weave)
+            # has to be dirty - its able to mutate on its own.
+            transaction.register_dirty(weave)
+            return weave
 
     @deprecated_method(zero_eight)
     def put_weave(self, file_id, weave, transaction):
@@ -190,6 +224,7 @@ class VersionedFileStore(TransportStore):
         Its maintained for backwards compatability but will only work on
         weave stores - pre 0.8 repositories.
         """
+        file_id = osutils.safe_file_id(file_id)
         self._put_weave(file_id, weave, transaction)
 
     def _put_weave(self, file_id, weave, transaction):
@@ -204,6 +239,7 @@ class VersionedFileStore(TransportStore):
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.add_lines(rev_id, parents, new_lines)
         """
+        file_id = osutils.safe_file_id(file_id)
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.add_lines(rev_id, parents, new_lines)
         
@@ -215,6 +251,9 @@ class VersionedFileStore(TransportStore):
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.clone_text(new_rev_id, old_rev_id, parents)
         """
+        file_id = osutils.safe_file_id(file_id)
+        old_rev_id = osutils.safe_revision_id(old_rev_id)
+        new_rev_id = osutils.safe_revision_id(new_rev_id)
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.clone_text(new_rev_id, old_rev_id, parents)
  
@@ -233,7 +272,7 @@ class VersionedFileStore(TransportStore):
             warn("Please pass to_transaction into "
                  "versioned_store.copy_all_ids.", stacklevel=2)
         if not store_from.listable():
-            raise UnlistableStore(store_from)
+            raise errors.UnlistableStore(store_from)
         ids = []
         for count, file_id in enumerate(store_from):
             if pb:
@@ -270,15 +309,18 @@ class VersionedFileStore(TransportStore):
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        for count, f in enumerate(file_ids):
-            mutter("copy weave {%s} into %s", f, self)
-            pb.update('copy', count, len(file_ids))
-            # if we have it in cache, its faster.
-            # joining is fast with knits, and bearable for weaves -
-            # indeed the new case can be optimised if needed.
-            target = self._make_new_versionedfile(f, to_transaction)
-            target.join(from_store.get_weave(f, from_transaction))
-        pb.finished()
+        try:
+            file_ids = [osutils.safe_file_id(f) for f in file_ids]
+            for count, f in enumerate(file_ids):
+                mutter("copy weave {%s} into %s", f, self)
+                pb.update('copy', count, len(file_ids))
+                # if we have it in cache, its faster.
+                # joining is fast with knits, and bearable for weaves -
+                # indeed the new case can be optimised if needed.
+                target = self._make_new_versionedfile(f, to_transaction)
+                target.join(from_store.get_weave(f, from_transaction))
+        finally:
+            pb.finished()
 
     def total_size(self):
         count, bytes =  super(VersionedFileStore, self).total_size()

@@ -1,15 +1,15 @@
-# Copyright (C) 2005 by Aaron Bentley
-
+# Copyright (C) 2005 Aaron Bentley, Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,20 +20,27 @@
 # point down
 
 import os
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 
-import bzrlib
-from bzrlib.commands import register_command
-from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
+from bzrlib import (
+    builtins,
+    commands,
+    errors,
+    osutils,
+    rio,
+    trace,
+    )
+""")
 from bzrlib.option import Option
-from bzrlib.osutils import rename, delete_any
-from bzrlib.rio import Stanza
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 
 
-class cmd_conflicts(bzrlib.commands.Command):
+class cmd_conflicts(commands.Command):
     """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -41,21 +48,29 @@ class cmd_conflicts(bzrlib.commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Use bzr resolve when you have fixed a problem.
+    Conflicts normally are listed as short, human-readable messages.  If --text
+    is supplied, the pathnames of files with text conflicts are listed,
+    instead.  (This is useful for editing all files with text conflicts.)
 
-    (conflicts are determined by the presence of .BASE .TREE, and .OTHER 
-    files.)
+    Use bzr resolve when you have fixed a problem.
 
     See also bzr resolve.
     """
-    def run(self):
+    takes_options = [Option('text', help='list text conflicts by pathname')]
+
+    def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(u'.')[0]
         for conflict in wt.conflicts():
-            print conflict
+            if text:
+                if conflict.typestring != 'text conflict':
+                    continue
+                self.outf.write(conflict.path + '\n')
+            else:
+                self.outf.write(str(conflict) + '\n')
 
 
-class cmd_resolve(bzrlib.commands.Command):
+class cmd_resolve(commands.Command):
     """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -63,9 +78,9 @@ class cmd_resolve(bzrlib.commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Once you have fixed a problem, use "bzr resolve FILE.." to mark
-    individual files as fixed, or "bzr resolve --all" to mark all conflicts as
-    resolved.
+    Once you have fixed a problem, use "bzr resolve" to automatically mark
+    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    resolved, or "bzr resolve --all" to mark all conflicts as resolved.
 
     See also bzr conflicts.
     """
@@ -76,19 +91,29 @@ class cmd_resolve(bzrlib.commands.Command):
         from bzrlib.workingtree import WorkingTree
         if all:
             if file_list:
-                raise BzrCommandError("If --all is specified, no FILE may be provided")
+                raise errors.BzrCommandError("If --all is specified,"
+                                             " no FILE may be provided")
             tree = WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
+            tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
-                raise BzrCommandError("command 'resolve' needs one or more FILE, or --all")
-            tree = WorkingTree.open_containing(file_list[0])[0]
-            to_resolve = [tree.relpath(p) for p in file_list]
-            resolve(tree, to_resolve)
+                un_resolved, resolved = tree.auto_resolve()
+                if len(un_resolved) > 0:
+                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
+                    trace.note('Remaining conflicts:')
+                    for conflict in un_resolved:
+                        trace.note(conflict)
+                    return 1
+                else:
+                    trace.note('All conflicts resolved.')
+                    return 0
+            else:
+                resolve(tree, file_list)
 
 
 def resolve(tree, paths=None, ignore_misses=False):
-    tree.lock_write()
+    tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
         if paths is None:
@@ -99,7 +124,7 @@ def resolve(tree, paths=None, ignore_misses=False):
                 tree_conflicts.select_conflicts(tree, paths, ignore_misses)
         try:
             tree.set_conflicts(new_conflicts)
-        except UnsupportedOperation:
+        except errors.UnsupportedOperation:
             pass
         selected_conflicts.remove_files(tree)
     finally:
@@ -113,7 +138,7 @@ def restore(filename):
     """
     conflicted = False
     try:
-        rename(filename + ".THIS", filename)
+        osutils.rename(filename + ".THIS", filename)
         conflicted = True
     except OSError, e:
         if e.errno != errno.ENOENT:
@@ -131,7 +156,7 @@ def restore(filename):
         if e.errno != errno.ENOENT:
             raise
     if not conflicted:
-        raise NotConflicted(filename)
+        raise errors.NotConflicted(filename)
 
 
 class ConflictList(object):
@@ -198,7 +223,7 @@ class ConflictList(object):
                 continue
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    delete_any(tree.abspath(conflict.path+suffix))
+                    osutils.delete_any(tree.abspath(conflict.path+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
@@ -207,6 +232,7 @@ class ConflictList(object):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
+        :return: a pair of ConflictLists: (not_selected, selected)
         """
         path_set = set(paths)
         ids = {}
@@ -257,12 +283,15 @@ class Conflict(object):
 
     def __init__(self, path, file_id=None):
         self.path = path
-        self.file_id = file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__ and Stanza is purely a Unicode api.
+        self.file_id = osutils.safe_file_id(file_id, warn=False)
 
     def as_stanza(self):
-        s = Stanza(type=self.typestring, path=self.path)
+        s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
-            s.add('file_id', self.file_id)
+            # Stanza requires Unicode apis
+            s.add('file_id', self.file_id.decode('utf8'))
         return s
 
     def _cmp_list(self):
@@ -272,6 +301,9 @@ class Conflict(object):
         if getattr(other, "_cmp_list", None) is None:
             return -1
         return cmp(self._cmp_list(), other._cmp_list())
+
+    def __hash__(self):
+        return hash((type(self), self.path, self.file_id))
 
     def __eq__(self, other):
         return self.__cmp__(other) == 0
@@ -373,7 +405,10 @@ class HandledPathConflict(HandledConflict):
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
-        self.conflict_file_id = conflict_file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__.
+        self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
+                                                     warn=False)
         
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path, 
@@ -383,7 +418,7 @@ class HandledPathConflict(HandledConflict):
         s = HandledConflict.as_stanza(self)
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
-            s.add('conflict_file_id', self.conflict_file_id)
+            s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
             
         return s
 
@@ -428,19 +463,32 @@ class UnversionedParent(HandledConflict):
 
     typestring = 'unversioned parent'
 
-    format = 'Conflict adding versioned files to %(path)s.  %(action)s.'
+    format = 'Conflict because %(path)s is not versioned, but has versioned'\
+             ' children.  %(action)s.'
 
 
 class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
-    Typically, the result of a merge where one tree deleted the directory and
-    the other added a file to it.
+    Typically, the result of a merge where THIS deleted the directory and
+    the OTHER added a file to it.
+    See also: DeletingParent (same situation, reversed THIS and OTHER)
     """
 
     typestring = 'missing parent'
 
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
+
+class DeletingParent(HandledConflict):
+    """An attempt to add files to a directory that is not present.
+    Typically, the result of a merge where one OTHER deleted the directory and
+    the THIS added a file to it.
+    """
+
+    typestring = 'deleting parent'
+
+    format = "Conflict: can't delete %(path)s because it is not empty.  "\
+             "%(action)s."
 
 
 ctype = {}
@@ -454,4 +502,5 @@ def register_types(*conflict_types):
 
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
-               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,)
+               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
+               DeletingParent,)

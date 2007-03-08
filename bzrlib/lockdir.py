@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -96,9 +96,11 @@ Example usage:
 
 import os
 import time
-from warnings import warn
-from StringIO import StringIO
+from cStringIO import StringIO
 
+from bzrlib import (
+    errors,
+    )
 import bzrlib.config
 from bzrlib.errors import (
         DirectoryNotEmpty,
@@ -106,17 +108,18 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
-        LockError,
         LockNotHeld,
         NoSuchFile,
         PathError,
         ResourceBusy,
         UnlockableTransport,
         )
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars
-from bzrlib.rio import RioWriter, read_stanza, Stanza
+from bzrlib.osutils import rand_chars, format_delta
+from bzrlib.rio import read_stanza, Stanza
+import bzrlib.ui
+
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -132,8 +135,10 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
+
 _DEFAULT_TIMEOUT_SECONDS = 300
-_DEFAULT_POLL_SECONDS = 0.5
+_DEFAULT_POLL_SECONDS = 1.0
+
 
 class LockDir(object):
     """Write-lock guarding access to data."""
@@ -161,6 +166,8 @@ class LockDir(object):
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
         self.nonce = rand_chars(20)
+
+        self._report_function = note
 
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
@@ -191,18 +198,30 @@ class LockDir(object):
             raise UnlockableTransport(self.transport)
         try:
             tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
-            self.transport.mkdir(tmpname)
-            sio = StringIO()
-            self._prepare_info(sio)
-            sio.seek(0)
-            # append will create a new file; we use append rather than put
-            # because we don't want to write to a temporary file and rename
-            # into place, because that's going to happen to the whole
-            # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            try:
+                self.transport.mkdir(tmpname)
+            except NoSuchFile:
+                # This may raise a FileExists exception
+                # which is okay, it will be caught later and determined
+                # to be a LockContention.
+                self.create(mode=self._dir_modebits)
+                
+                # After creating the lock directory, try again
+                self.transport.mkdir(tmpname)
+
+            info_bytes = self._prepare_info()
+            # We use put_file_non_atomic because we just created a new unique
+            # directory so we don't have to worry about files existing there.
+            # We'll rename the whole directory into place to get atomic
+            # properties
+            self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
+                                                info_bytes)
+
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
+        except errors.PermissionDenied:
+            raise
         except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
             mutter("contention on %r: %s", self, e)
             raise LockContention(self)
@@ -235,12 +254,8 @@ class LockDir(object):
         self._check_not_locked()
         holder_info = self.peek()
         if holder_info is not None:
-            if bzrlib.ui.ui_factory.get_boolean(
-                "Break lock %s held by %s@%s [process #%s]" % (
-                    self.transport,
-                    holder_info["user"],
-                    holder_info["hostname"],
-                    holder_info["pid"])):
+            lock_info = '\n'.join(self._format_lock_info(holder_info))
+            if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
                 self.force_break(holder_info)
         
     def force_break(self, dead_holder_info):
@@ -327,25 +342,28 @@ class LockDir(object):
         except NoSuchFile, e:
             return None
 
-    def _prepare_info(self, outf):
+    def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
         import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
+        try:
+            user = config.user_email()
+        except errors.NoEmailInUsername:
+            user = config.username()
         s = Stanza(hostname=socket.gethostname(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
-                   user=config.user_email(),
+                   user=user,
                    )
-        RioWriter(outf).write_stanza(s)
+        return s.to_string()
 
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()
 
-    def wait_lock(self, timeout=_DEFAULT_TIMEOUT_SECONDS,
-                  poll=_DEFAULT_POLL_SECONDS):
+    def wait_lock(self, timeout=None, poll=None):
         """Wait a certain period for a lock.
 
         If the lock can be acquired within the bounded time, it
@@ -354,15 +372,44 @@ class LockDir(object):
         approximately `timeout` seconds.  (It may be a bit more if
         a transport operation takes a long time to complete.)
         """
+        if timeout is None:
+            timeout = _DEFAULT_TIMEOUT_SECONDS
+        if poll is None:
+            poll = _DEFAULT_POLL_SECONDS
+
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout
+        deadline_str = None
+        last_info = None
         while True:
             try:
                 self.attempt_lock()
                 return
             except LockContention:
                 pass
+            new_info = self.peek()
+            mutter('last_info: %s, new info: %s', last_info, new_info)
+            if new_info is not None and new_info != last_info:
+                if last_info is None:
+                    start = 'Unable to obtain'
+                else:
+                    start = 'Lock owner changed for'
+                last_info = new_info
+                formatted_info = self._format_lock_info(new_info)
+                if deadline_str is None:
+                    deadline_str = time.strftime('%H:%M:%S',
+                                                 time.localtime(deadline))
+                self._report_function('%s %s\n'
+                                      '%s\n' # held by
+                                      '%s\n' # locked ... ago
+                                      'Will continue to try until %s\n',
+                                      start,
+                                      formatted_info[0],
+                                      formatted_info[1],
+                                      formatted_info[2],
+                                      deadline_str)
+
             if time.time() + poll < deadline:
                 time.sleep(poll)
             else:
@@ -370,10 +417,10 @@ class LockDir(object):
 
     def lock_write(self):
         """Wait for and acquire the lock."""
-        self.attempt_lock()
+        self.wait_lock()
 
     def lock_read(self):
-        """Compatability-mode shared lock.
+        """Compatibility-mode shared lock.
 
         LockDir doesn't support shared read-only locks, so this 
         just pretends that the lock is taken but really does nothing.
@@ -399,4 +446,14 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+
+    def _format_lock_info(self, info):
+        """Turn the contents of peek() into something for the user"""
+        lock_url = self.transport.abspath(self.path)
+        delta = time.time() - int(info['start_time'])
+        return [
+            'lock %s' % (lock_url,),
+            'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
+            'locked %s' % (format_delta(delta),),
+            ]
 

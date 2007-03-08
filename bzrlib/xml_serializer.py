@@ -1,15 +1,15 @@
-# -*- coding: UTF-8 -*-
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -25,16 +25,27 @@
 from bzrlib.trace import mutter, warning
 
 try:
-    from cElementTree import (ElementTree, SubElement, Element,
-                              XMLTreeBuilder, fromstring, tostring)
+    try:
+        # it's in this package in python2.5
+        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
+            XMLTreeBuilder, fromstring, tostring)
+        import xml.etree as elementtree
+    except ImportError:
+        from cElementTree import (ElementTree, SubElement, Element,
+                                  XMLTreeBuilder, fromstring, tostring)
+        import elementtree
+    ParseError = SyntaxError
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
+    # this copy is shipped with bzr
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
+    import util.elementtree as elementtree
+    from xml.parsers.expat import ExpatError as ParseError
 
-from bzrlib.errors import BzrError
+from bzrlib import errors
 
 
 class Serializer(object):
@@ -48,10 +59,16 @@ class Serializer(object):
         return tostring(self._pack_inventory(inv)) + '\n'
 
     def read_inventory_from_string(self, xml_string):
-        return self._unpack_inventory(fromstring(xml_string))
+        try:
+            return self._unpack_inventory(fromstring(xml_string))
+        except ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f):
-        return self._unpack_inventory(self._read_element(f))
+        try:
+            return self._unpack_inventory(self._read_element(f))
+        except ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def write_revision(self, rev, f):
         self._write_element(self._pack_revision(rev), f)
@@ -73,10 +90,9 @@ class Serializer(object):
         return ElementTree().parse(f)
 
 
-# performance tuning for elementree's serialiser. THis should be
+# performance tuning for elementree's serialiser. This should be
 # sent upstream - RBC 20060523.
-# the functions here are patched into elementree at runtime.
-import elementtree.ElementTree
+# the functions here are patched into elementtree at runtime.
 import re
 escape_re = re.compile("[&'\"<>]")
 escape_map = {

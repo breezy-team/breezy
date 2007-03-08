@@ -1,8 +1,17 @@
+=============================
+Specifying revision in Bazaar
+=============================
+
+Description of the subarguments for ``-r`` as used by commands such as
+``bzr log`` and ``bzr merge``.
+
+You can get the online documentation with ``bzr help revisionspec``.
+
 Revision specs and ranges
 =========================
 
-**bzr** has a very expressive way to specify a revision, or a range of revisions.
-We'll take the example of the **log** command.
+``bzr`` has a very expressive way to specify a revision, or a range of revisions.
+We'll take the example of the ``log`` command.
 
 To specify a range of revisions, use for example::
 
@@ -13,10 +22,10 @@ You can omit one bound like::
     $ bzr log -r 1..
     $ bzr log -r ..4
 
-Note::
-    Omitting the lower bound doesn't work on currently released versions.
+Note:
+    Omitting the lower bound doesn't work on versions of ``bzr`` prior to 0.14.
 
-Other commands, like **bzr cat** take only one revision, not a range, like::
+Other commands, like ``bzr cat`` take only one revision, not a range, like::
 
     $ bzr cat -r 42 foo.c
 
@@ -49,7 +58,7 @@ Numbers
 -------
 
 Positive numbers denote revision numbers in the current branch. Revision
-numbers are labelled as "revno" in the output of **bzr log**.  To display
+numbers are labelled as "revno" in the output of ``bzr log``.  To display
 the log for the first ten revisions::
 
     $ bzr log -r ..10
@@ -73,8 +82,8 @@ revno, last
 revid
 -----
 
-**revid** allows specifying a an internal revision ID, as show by **bzr
-testament** and some other commands.
+**revid** allows specifying a an internal revision ID, as shown by ``bzr
+log`` and some other commands.
 
 For example::
 
@@ -89,7 +98,7 @@ before
     that appears before ''rev'' in the revision history, or the revision that
     was current when ''rev'' what comitted.
 
-''rev'' can be any revision specifier.
+''rev'' can be any revision specifier and may be chained.
 
 For example::
 
@@ -122,14 +131,14 @@ Ancestor
 --------
 
 **ancestor**:*path*
-    specifies the common ancestor between the current branch,and a 
+    specifies the common ancestor between the current branch and a 
     different branch. This is the same ancestor that would be used for
     merging purposes.
 
 *path* may be the URL of a remote branch, or the file path to a local branch.
 
 For example, to see what changes were made on a branch since it was forked
-off **../parent**::
+off ``../parent``::
 
     $ bzr diff -r ancestor:../parent
 
@@ -137,9 +146,9 @@ Branch
 ------
 
 branch
-   ''path'' specifies the latest revision in another branch.
+   ``path`` specifies the latest revision in another branch.
 
-''path'' may be the URL of a remote branch, or the file path to a local branch.
+``path`` may be the URL of a remote branch, or the file path to a local branch.
 
 For example, to get the differences between this and another branch::
 

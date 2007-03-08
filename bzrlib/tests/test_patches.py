@@ -1,19 +1,19 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley
+# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 import unittest
@@ -31,7 +31,8 @@ from bzrlib.patches import (MalformedLine,
                             hunk_from_header, 
                             iter_patched, 
                             parse_line,
-                            parse_patch)
+                            parse_patch,
+                            parse_patches)
 
 
 class PatchesTester(unittest.TestCase):
@@ -182,6 +183,42 @@ class PatchesTester(unittest.TestCase):
         patch = parse_patch(self.datafile("insert_top.patch"))
         assert (patch.pos_in_mod(0)==1)
 
+    def testParsePatches(self):
+        """Make sure file names can be extracted from tricky unified diffs"""
+        patchtext = \
+"""--- orig-7
++++ mod-7
+@@ -1,10 +1,10 @@
+ -- a
+--- b
++++ c
+ xx d
+ xx e
+ ++ f
+-++ g
++-- h
+ xx i
+ xx j
+ -- k
+--- l
++++ m
+--- orig-8
++++ mod-8
+@@ -1 +1 @@
+--- A
++++ B
+@@ -1 +1 @@
+--- C
++++ D
+"""
+        filenames = [('orig-7', 'mod-7'),
+                     ('orig-8', 'mod-8')]
+        patches = parse_patches(patchtext.splitlines(True))
+        patch_files = []
+        for patch in patches:
+            patch_files.append((patch.oldname, patch.newname))
+        assert (patch_files == filenames)
+            
 def test():
     patchesTestSuite = unittest.makeSuite(PatchesTester,'test')
     runner = unittest.TextTestRunner(verbosity=0)

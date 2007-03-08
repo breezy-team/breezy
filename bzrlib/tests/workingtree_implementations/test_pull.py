@@ -1,4 +1,4 @@
-# (C) 2006 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,21 +18,13 @@
 from cStringIO import StringIO
 import os
 
-import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
+from bzrlib import errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import basename
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-import bzrlib.workingtree as workingtree
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
 
 
 class TestPull(TestCaseWithWorkingTree):
@@ -49,7 +41,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
         self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.assertEqual('A', tree_b.last_revision())
+        self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_overwrites(self):
         tree_a, tree_b = self.get_pullable_trees()
@@ -58,7 +50,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree_b.pull(tree_a.branch, overwrite=True)
         self.failUnless(tree_b.branch.repository.has_revision('A'))
         self.failUnless(tree_b.branch.repository.has_revision('B'))
-        self.assertEqual('A', tree_b.last_revision())
+        self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_merges_tree_content(self):
         tree_a, tree_b = self.get_pullable_trees()

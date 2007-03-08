@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
+from bzrlib.tests.test_progress import _TTYStringIO
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
 
@@ -63,7 +64,7 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory()
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
         pb = ui_factory.nested_progress_bar()
         try:
             pb.to_messages_file = stdout
@@ -71,10 +72,33 @@ class UITests(TestCase):
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
+            # Since there was no update() call, there should be no clear() call
+            self.failIf(re.search(r'^\r {10,}\r$', stderr.getvalue()) is not None,
+                        'We cleared the stderr without anything to put there')
+        finally:
+            pb.finished()
+
+    def test_progress_note_clears(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        # The PQM redirects the output to a file, so it
+        # defaults to creating a Dots progress bar. we
+        # need to force it to believe we are a TTY
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.to_messages_file = stdout
+            ui_factory._progress_bar_stack.bottom().to_file = stderr
+            # Create a progress update that isn't throttled
+            pb.start_time -= 10
+            pb.update('x', 1, 1)
+            result = pb.note('t')
+            self.assertEqual(None, result)
+            self.assertEqual("t\n", stdout.getvalue())
             # the exact contents will depend on the terminal width and we don't
             # care about that right now - but you're probably running it on at
             # least a 10-character wide terminal :)
-            self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+            self.assertContainsRe(stderr.getvalue(), r'\r {10,}\r$')
         finally:
             pb.finished()
 
@@ -153,10 +177,11 @@ class UITests(TestCase):
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         factory = bzrlib.ui.text.TextUIFactory()
-        factory.stdout = StringIO()
+        factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(
             factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
+        pb.start_time = None
         self.apply_redirected(
             factory.stdin, factory.stdout, factory.stdout, pb.update, "foo", 0, 1)
         self.assertEqual(
@@ -164,6 +189,10 @@ class UITests(TestCase):
             self.apply_redirected(
                 None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
             )
+        # FIXME: This assumes the factory's going to produce a spinner-style
+        # progress bar, but it won't if this is run from a dumb terminal (e.g.
+        # from inside gvim.) -- mbp 20061014
+        #
         # use a regular expression so that we don't depend on the particular
         # screen width - could also set and restore $COLUMN if that has
         # priority on all platforms, but it doesn't at present.
@@ -173,4 +202,4 @@ class UITests(TestCase):
             "\r   *" 
             "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
             output):
-            self.fail("didn't match factory output %r" % factory)
+            self.fail("didn't match factory output %r, %r" % (factory, output))

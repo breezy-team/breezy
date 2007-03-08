@@ -1,4 +1,18 @@
-#!/usr/bin/env python
+# Copyright (C) 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """\
 This is an attempt to take the internal delta object, and represent
 it as a single-file text-only changeset.
@@ -8,13 +22,19 @@ and for applying a changeset.
 
 import sys
 
-from bzrlib.branch import Branch
-from bzrlib.commands import Command, register_command
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    branch,
+    errors,
+    urlutils,
+    )
+from bzrlib.revision import common_ancestor
+""")
+
+from bzrlib.commands import Command
 from bzrlib.option import Option
-from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
-                             NULL_REVISION)
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.trace import note
 
 
 class cmd_send_changeset(Command):
@@ -42,7 +62,7 @@ class cmd_send_changeset(Command):
                 raise BzrCommandError('We do not support rollup-changesets yet.')
             revision = revision[0]
 
-        b = Branch.open_containing('.')
+        b = branch.Branch.open_containing('.')
 
         if not to:
             try:
@@ -64,76 +84,89 @@ class cmd_bundle_revisions(Command):
 
     You can apply it to another tree using 'bzr merge'.
 
-    bzr bundle
-        - Bundle for the last commit
-    bzr bundle BASE
+    bzr bundle-revisions
+        - Generate a bundle relative to a remembered location
+    bzr bundle-revisions BASE
         - Bundle to apply the current tree into BASE
-    bzr bundle --revision A
-        - Bundle for revision A
-    bzr bundle --revision A..B
+    bzr bundle-revisions --revision A
+        - Bundle to apply revision A to remembered location 
+    bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
-    bzr bundle --revision A..B BASE
-        - Bundle to transform revision A of BASE into revision B
-          of the local tree
     """
-    takes_options = ['verbose', 'revision']
+    takes_options = ['verbose', 'revision', 'remember',
+                     Option("output", help="write bundle to specified file",
+                            type=unicode)]
     takes_args = ['base?']
     aliases = ['bundle']
+    encoding_type = 'exact'
 
-    def run(self, base=None, revision=None):
+    def run(self, base=None, revision=None, output=None, remember=False):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
+        target_branch = branch.Branch.open_containing(u'.')[0]
+
         if base is None:
-            base_branch = None
+            base_specified = False
         else:
-            base_branch = Branch.open(base)
+            base_specified = True
 
-        # We don't want to lock the same branch across
-        # 2 different branches
-        target_branch = Branch.open_containing(u'.')[0]
-        if base_branch is not None and target_branch.base == base_branch.base:
-            base_branch = None
-
-        base_revision = None
         if revision is None:
             target_revision = target_branch.last_revision()
-        elif len(revision) == 1:
-            target_revision = revision[0].in_history(target_branch).rev_id
-            if base_branch is not None:
-                base_revision = base_branch.last_revision()
-        elif len(revision) == 2:
-            target_revision = revision[1].in_history(target_branch).rev_id
-            if base_branch is not None:
-                base_revision = revision[0].in_history(base_branch).rev_id
-            else:
+        elif len(revision) < 3:
+            target_revision = revision[-1].in_history(target_branch).rev_id
+            if len(revision) == 2:
+                if base_specified:
+                    raise errors.BzrCommandError('Cannot specify base as well'
+                                                 ' as two revision arguments.')
                 base_revision = revision[0].in_history(target_branch).rev_id
         else:
             raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
 
-        if revision is None or len(revision) == 1:
-            if base_branch is not None:
-                target_branch.repository.fetch(base_branch.repository, 
-                                               base_branch.last_revision())
-                base_revision = common_ancestor(base_branch.last_revision(),
-                                                target_revision,
-                                                target_branch.repository)
-                if base_revision is None:
-                    base_revision = NULL_REVISION
+        if revision is None or len(revision) < 2:
+            submit_branch = target_branch.get_submit_branch()
+            if base is None:
+                base = submit_branch
+            if base is None:
+                base = target_branch.get_parent()
+            if base is None:
+                raise errors.BzrCommandError("No base branch known or"
+                                             " specified.")
+            elif not base_specified:
+                # FIXME:
+                # note() doesn't pay attention to terminal_encoding() so
+                # we must format with 'ascii' to be safe
+                note('Using saved location: %s',
+                     urlutils.unescape_for_display(base, 'ascii'))
+            base_branch = branch.Branch.open(base)
 
-        if base_revision is None:
-            rev = target_branch.repository.get_revision(target_revision)
-            if rev.parent_ids:
-                base_revision = rev.parent_ids[0]
-            else:
-                base_revision = NULL_REVISION
-
-        if base_branch is not None:
+            # We don't want to lock the same branch across
+            # 2 different branches
+            if target_branch.base == base_branch.base:
+                base_branch = target_branch 
+            if submit_branch is None or remember:
+                if base_specified:
+                    target_branch.set_submit_branch(base_branch.base)
+                elif remember:
+                    raise errors.BzrCommandError('--remember requires a branch'
+                                                 ' to be specified.')
             target_branch.repository.fetch(base_branch.repository, 
-                                           revision_id=base_revision)
-            del base_branch
-        write_bundle(target_branch.repository, target_revision, base_revision,
-                     sys.stdout)
+                                           base_branch.last_revision())
+            base_revision = common_ancestor(base_branch.last_revision(),
+                                            target_revision,
+                                            target_branch.repository)
+
+
+        if output is not None:
+            fileobj = file(output, 'wb')
+        else:
+            fileobj = sys.stdout
+        target_branch.repository.lock_read()
+        try:
+            write_bundle(target_branch.repository, target_revision,
+                         base_revision, fileobj)
+        finally:
+            target_branch.repository.unlock()
 
 
 class cmd_verify_changeset(Command):
@@ -146,7 +179,7 @@ class cmd_verify_changeset(Command):
         from read_changeset import read_changeset
         #from bzrlib.xml import serializer_v4
 
-        b, relpath = Branch.open_containing('.')
+        b, relpath = branch.Branch.open_containing('.')
 
         if filename is None or filename == '-':
             f = sys.stdin

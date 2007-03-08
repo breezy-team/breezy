@@ -1,17 +1,17 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -28,6 +28,9 @@ from bzrlib.tests.blackbox import TestUIFactory
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
+from bzrlib.repofmt.knitrepo import (
+    RepositoryFormatKnit1,
+    )
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
@@ -35,41 +38,29 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_repo_format = \
-            bzrlib.repository.RepositoryFormat.get_default_format()
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
 
         ui.ui_factory = TestUIFactory()
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            bzrlib.repository.RepositoryFormat7())
-        # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
-        t = get_transport(self.get_url())
-        t.mkdir('format_5_branch')
-        bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
-        bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
-        d = bzrdir.BzrDir.create('metadir_weave_branch')
-        d.create_repository()
-        d.create_branch()
-        d.create_workingtree()
-        self.run_bzr('checkout',
-                     '--lightweight',
-                     self.get_url('current_format_branch'),
-                     'current_format_checkout')
+        self.make_branch_and_tree('format_5_branch',
+                                  format=bzrdir.BzrDirFormat5())
+
+        current_tree = self.make_branch_and_tree('current_format_branch',
+                                                 format='default')
+        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
+        current_tree.branch.create_checkout(
+            self.get_url('current_format_checkout'), lightweight=True)
 
     def restoreDefaults(self):
-        bzrdir.BzrDirFormat.set_default_format(self.old_format)
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            self.old_repo_format)
         ui.ui_factory = self.old_ui_factory
+        bzrdir.BzrDirFormat._set_default_format(self.old_format)
 
     def test_readonly_url_error(self):
         (out, err) = self.run_bzr_captured(
             ['upgrade', self.get_readonly_url('format_5_branch')], 3)
         self.assertEqual(out, "")
-        self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URL's.\n")
+        self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URLs.\n")
 
     def test_upgrade_up_to_date(self):
         # when up to date we should get a message to that effect
@@ -111,7 +102,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # users can force an upgrade to metadir format.
         url = get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
@@ -135,7 +126,7 @@ finished
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
@@ -152,7 +143,7 @@ finished
         self.assertTrue(isinstance(converted_dir._format,
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
-                                   repository.RepositoryFormatKnit1))
+                                   RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
         self.run_bzr('init-repository', '--format=metaweave', 'repo')

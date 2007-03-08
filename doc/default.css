@@ -1,0 +1,144 @@
+/* from John Arbash Meinel's `Short tutorial' */
+
+body {
+  background-color: #ffffff;
+  color: #303030;
+  margin-top: 50px;
+  margin-left: 50px;
+  margin-right: 50px;
+  margin-bottom: 70px;
+  font-family: Verdana, Geneva, Arial, sans-serif;
+  font-size: small;
+  line-height: 180%
+  }
+
+/* p {
+  text-indent: 3em
+} */
+
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+
+h1.title {
+  text-align: center;
+  color: #000000;
+  font-size: 1.8em;
+  }
+
+
+div.contents p {
+  font-weight: bold;
+  }
+
+div.contents p a:hover {
+  color: inherit;
+  }
+
+h1 {
+  color: #b52b2b; 
+  /* DKREDcolor: #966b72; */
+  /* GREY color: #444444; */
+  font-size: 1.5em;
+  }
+
+h1 a:link {
+  color: inherit;
+  }
+  
+h1 a:hover {
+  color: inherit;
+  }
+
+h1 a:visited {
+  color: inherit;
+  }
+
+h2 {
+  color: #222;
+  /* RED color: #966b72; */
+  text-decoration: underline;
+  font-size: 1.4em;
+  }
+
+h2 a:link {
+  color: inherit;
+  }
+
+h2 a:hover {
+  color: inherit;
+  }
+
+h2 a:visited {
+  color: inherit;
+  }
+
+h3 {
+  color: #966b72; 
+  /* color: #966b72; */
+  }
+
+h3 a:link {
+  color: inherit;
+  }
+
+h3 a:hover {
+  color: inherit;
+  }
+
+h3 a:visited {
+  color: inherit;
+  }
+
+dt {
+  color: #000000;
+  font-weight: bold;
+  }
+/*
+  border: 4px solid blue;
+  padding: 1ex;
+  background: #7777FF;
+        }
+dt:hover 
+  {
+  background-color: black;
+  }
+dt:active
+  {
+  background-color: red;
+  }
+*/
+
+tt, .literal-block {
+  font-family: monospace;
+  }
+
+tt {
+  color: #000000;
+  font-weight: normal;
+  }
+
+.literal-block {
+  margin-left: 5em;
+  color: #000000;
+  font-weight: normal;
+  background-color: #c1d1ff;
+  background-color: #e5ecf9;
+  border: 1px solid #888888;
+  padding: 1em;
+  }
+
+a:link {
+  color: #4c52ff;
+  text-decoration: none;
+  }
+
+a:visited {
+  color: #4c53ff;
+  text-decoration: none;
+  }
+
+a:hover {
+  color: #b52727;
+  text-decoration: none;
+  }

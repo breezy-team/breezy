@@ -1,4 +1,18 @@
-# Copyright (C) 2005, Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Messages and logging for bazaar-ng.
 
@@ -27,26 +41,33 @@ others may be just emitted as messages.
 
 Exceptions are reported in a brief form to stderr so as not to look scary.
 BzrErrors are required to be able to format themselves into a properly
-explanatory message.  This is not true for builtin excexceptions such as
+explanatory message.  This is not true for builtin exceptions such as
 KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
-
-# TODO: in debug mode, stderr should get full tracebacks and also
-# debug messages.  (Is this really needed?)
 
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import sys
 import os
+import sys
+import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_nine,
+        )
 
+lazy_import(globals(), """
+from bzrlib import debug
+""")
 
 _file_handler = None
 _stderr_handler = None
@@ -56,30 +77,12 @@ _trace_depth = 0
 _bzr_log_file = None
 
 
-class QuietFormatter(logging.Formatter):
-    """Formatter that supresses the details of errors.
-
-    This is used by default on stderr so as not to scare the user.
-    """
-    # At first I tried overriding formatException to suppress the
-    # exception details, but that has global effect: no loggers
-    # can get the exception details is we suppress them here.
-
-    def format(self, record):
-        if record.levelno >= logging.WARNING:
-            s = 'bzr: ' + record.levelname + ': '
-        else:
-            s = ''
-        s += record.getMessage()
-        if record.exc_info:
-            s += '\n' + format_exception_short(record.exc_info)
-        return s
-        
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
 
 def note(*args, **kwargs):
+    # FIXME note always emits utf-8, regardless of the terminal encoding
     import bzrlib.ui
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
@@ -97,15 +100,28 @@ error =     _bzr_logger.error
 def mutter(fmt, *args):
     if _trace_file is None:
         return
-    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+    if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
+
+    if isinstance(fmt, unicode):
+        fmt = fmt.encode('utf8')
+
     if len(args) > 0:
-        out = fmt % args
+        # It seems that if we do ascii % (unicode, ascii) we can
+        # get a unicode cannot encode ascii error, so make sure that "fmt"
+        # is a unicode string
+        real_args = []
+        for arg in args:
+            if isinstance(arg, unicode):
+                arg = arg.encode('utf8')
+            real_args.append(arg)
+        out = fmt % tuple(real_args)
     else:
         out = fmt
     out += '\n'
     _trace_file.write(out)
-debug = mutter
+    # TODO: jam 20051227 Consider flushing the trace file to help debugging
+    #_trace_file.flush()
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -121,23 +137,34 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def open_tracefile(tracefilename='~/.bzr.log'):
+def open_tracefile(tracefilename=None):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
     global _file_handler, _bzr_log_file
-    import stat, codecs
+    import codecs
 
-    trace_fname = os.path.join(os.path.expanduser(tracefilename))
+    if tracefilename is None:
+        if sys.platform == 'win32':
+            from bzrlib import win32utils
+            home = win32utils.get_home_location()
+        else:
+            home = os.path.expanduser('~')
+        tracefilename = os.path.join(home, '.bzr.log')
+
+    trace_fname = os.path.expanduser(tracefilename)
     _rollover_trace_maybe(trace_fname)
     try:
         LINE_BUFFERED = 1
-        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        tf = open(trace_fname, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
-        if tf.tell() == 0:
-            tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+        # tf.tell() on windows always return 0 until some writing done
+        tf.write('\n')
+        if tf.tell() <= 2:
+            tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+            tf.write("bug reports to bazaar@lists.canonical.com\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
         datefmt = r'%a %H:%M:%S'
@@ -148,15 +175,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         warning("failed to open trace file: %s" % (e))
 
 
-def log_startup(argv):
-    debug('\n\nbzr %s invoked on python %s (%s)',
-          bzrlib.__version__,
-          '.'.join(map(str, sys.version_info)),
-          sys.platform)
-    debug('  arguments: %r', argv)
-    debug('  working dir: %r', os.getcwdu())
-
-
+@deprecated_function(zero_nine)
 def log_exception(msg=None):
     """Log the last exception to stderr and the trace file.
 
@@ -165,9 +184,6 @@ def log_exception(msg=None):
     """
     if msg:
         error(msg)
-    else:
-        exc_str = format_exception_short(sys.exc_info())
-        error(exc_str)
     log_exception_quietly()
 
 
@@ -179,7 +195,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
-    debug(traceback.format_exc())
+    mutter(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -187,7 +203,6 @@ def enable_default_logging():
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
     _stderr_handler = logging.StreamHandler()
-    _stderr_handler.setFormatter(QuietFormatter())
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
@@ -195,8 +210,7 @@ def enable_default_logging():
     _trace_file = _bzr_log_file
     if _file_handler:
         _file_handler.setLevel(logging.DEBUG)
-    _bzr_logger.setLevel(logging.DEBUG) 
-
+    _bzr_logger.setLevel(logging.DEBUG)
 
 
 def be_quiet(quiet=True):
@@ -259,32 +273,50 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
         enable_default_logging()
 
 
-def format_exception_short(exc_info):
-    """Make a short string form of an exception.
-
-    This is used for display to stderr.  It specially handles exception
-    classes without useful string methods.
-
-    The result has no trailing newline.
-
-    exc_info - typically an exception from sys.exc_info()
-    """
+def report_exception(exc_info, err_file):
     exc_type, exc_object, exc_tb = exc_info
-    try:
-        if exc_type is None:
-            return '(no exception)'
-        if isinstance(exc_object, (BzrError, BzrNewError)):
-            return str(exc_object)
-        else:
-            import traceback
-            tb = traceback.extract_tb(exc_tb)
-            msg = '%s: %s' % (exc_type, exc_object)
-            if msg[-1] == '\n':
-                msg = msg[:-1]
-            if tb:
-                msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
-            return msg
-    except Exception, formatting_exc:
-        # XXX: is this really better than just letting it run up?
-        return '(error formatting exception of type %s: %s)' \
-                % (exc_type, formatting_exc)
+    # Log the full traceback to ~/.bzr.log
+    log_exception_quietly()
+    if (isinstance(exc_object, IOError)
+        and getattr(exc_object, 'errno', None) == errno.EPIPE):
+        print >>err_file, "bzr: broken pipe"
+    elif isinstance(exc_object, KeyboardInterrupt):
+        print >>err_file, "bzr: interrupted"
+    elif not getattr(exc_object, 'internal_error', True):
+        report_user_error(exc_info, err_file)
+    elif isinstance(exc_object, (OSError, IOError)):
+        # Might be nice to catch all of these and show them as something more
+        # specific, but there are too many cases at the moment.
+        report_user_error(exc_info, err_file)
+    else:
+        report_bug(exc_info, err_file)
+
+
+# TODO: Should these be specially encoding the output?
+def report_user_error(exc_info, err_file):
+    """Report to err_file an error that's not an internal error.
+
+    These don't get a traceback unless -Derror was given.
+    """
+    if 'error' in debug.debug_flags:
+        report_bug(exc_info, err_file)
+        return
+    print >>err_file, "bzr: ERROR:", str(exc_info[1])
+
+
+def report_bug(exc_info, err_file):
+    """Report an exception that probably indicates a bug in bzr"""
+    import traceback
+    exc_type, exc_object, exc_tb = exc_info
+    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
+        exc_type.__module__, exc_type.__name__, exc_object)
+    print >>err_file
+    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
+    print >>err_file
+    print >>err_file, 'bzr %s on python %s (%s)' % \
+                       (bzrlib.__version__,
+                        '.'.join(map(str, sys.version_info)),
+                        sys.platform)
+    print >>err_file, 'arguments: %r' % sys.argv
+    print >>err_file
+    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"

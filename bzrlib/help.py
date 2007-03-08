@@ -1,15 +1,15 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,47 +20,29 @@
 # executable files with reasonable names.
 
 # TODO: `help commands --all` should show hidden commands
-import textwrap
-
-global_help = \
-"""Bazaar-NG -- a free distributed version-control tool
-http://bazaar-vcs.org/
-
-Basic commands:
-
-  bzr init           makes this directory a versioned branch
-  bzr branch         make a copy of another branch
-
-  bzr add            make files or directories versioned
-  bzr ignore         ignore a file or pattern
-  bzr mv             move or rename a versioned file
-
-  bzr status         summarize changes in working copy
-  bzr diff           show detailed diffs
-
-  bzr merge          pull in changes from another branch
-  bzr commit         save some or all changes
-
-  bzr log            show history of changes
-  bzr check          validate storage
-
-  bzr help init      more help on e.g. init command
-  bzr help commands  list all commands
-"""
-
 
 import sys
+import textwrap
+
+from bzrlib import (
+    help_topics,
+    osutils,
+    )
 
 
-def help(topic=None, outfile = None):
-    if outfile == None:
+def help(topic=None, outfile=None):
+    """Write the help for the specific topic to outfile"""
+    if outfile is None:
         outfile = sys.stdout
-    if topic == None:
-        outfile.write(global_help)
-    elif topic == 'commands':
-        help_commands(outfile = outfile)
+
+    if topic is None:
+        topic = 'basic'
+
+    if topic in help_topics.topic_registry:
+        txt = help_topics.topic_registry.get_detail(topic)
+        outfile.write(txt)
     else:
-        help_on_command(topic, outfile = outfile)
+        help_on_command(topic, outfile=outfile)
 
 
 def command_usage(cmd_object):
@@ -85,27 +67,41 @@ def command_usage(cmd_object):
     return s
 
 
+def print_command_plugin(cmd_object, outfile, format):
+    """Print the plugin that provides a command object, if any.
+
+    If the cmd_object is provided by a plugin, prints the plugin name to
+    outfile using the provided format string.
+    """
+    plugin_name = cmd_object.plugin_name()
+    if plugin_name is not None:
+        out_str = '(From plugin "%s")' % plugin_name
+        outfile.write(format % out_str)
+
+
 def help_on_command(cmdname, outfile=None):
     from bzrlib.commands import get_cmd_object
 
     cmdname = str(cmdname)
 
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
 
     cmd_object = get_cmd_object(cmdname)
 
     doc = cmd_object.help()
-    if doc == None:
+    if doc is None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    print >>outfile, 'usage:', command_usage(cmd_object) 
+    print >>outfile, 'usage:', command_usage(cmd_object)
 
     if cmd_object.aliases:
         print >>outfile, 'aliases:',
         print >>outfile, ', '.join(cmd_object.aliases)
 
     print >>outfile
+
+    print_command_plugin(cmd_object, outfile, '%s\n\n')
 
     outfile.write(doc)
     if doc[-1] != '\n':
@@ -114,50 +110,62 @@ def help_on_command(cmdname, outfile=None):
 
 
 def help_on_command_options(cmd, outfile=None):
-    from bzrlib.option import Option
-    options = cmd.options()
-    if not options:
-        return
-    if outfile == None:
+    from bzrlib.option import Option, get_optparser
+    if outfile is None:
         outfile = sys.stdout
-    outfile.write('\noptions:\n')
-    for option_name, option in sorted(options.items()):
-        l = '    --' + option_name
-        if option.type is not None:
-            l += ' ' + option.argname.upper()
-        short_name = option.short_name()
-        if short_name:
-            assert len(short_name) == 1
-            l += ', -' + short_name
-        l += (30 - len(l)) * ' ' + option.help
-        # TODO: split help over multiple lines with correct indenting and 
-        # wrapping
-        wrapped = textwrap.fill(l, initial_indent='', subsequent_indent=30*' ')
-        outfile.write(wrapped + '\n')
+    options = cmd.options()
+    outfile.write('\n')
+    outfile.write(get_optparser(options).format_option_help())
 
 
 def help_commands(outfile=None):
     """List all commands"""
+    if outfile is None:
+        outfile = sys.stdout
+    outfile.write(_help_commands_to_text('commands'))
+
+
+def _help_commands_to_text(topic):
+    """Generate the help text for the list of commands"""
     from bzrlib.commands import (builtin_command_names,
                                  plugin_command_names,
                                  get_cmd_object)
-
-    if outfile == None:
-        outfile = sys.stdout
-
-    names = set()                       # to eliminate duplicates
-    names.update(builtin_command_names())
+    out = []
+    if topic == 'hidden-commands':
+        hidden = True
+    else:
+        hidden = False
+    names = set(builtin_command_names()) # to eliminate duplicates
     names.update(plugin_command_names())
-    names = list(names)
-    names.sort()
+    commands = ((n, get_cmd_object(n)) for n in names)
+    shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
+    max_name = max(len(n) for n, o in shown_commands)
+    indent = ' ' * (max_name + 1)
+    width = osutils.terminal_width() - 1
 
-    for cmd_name in names:
-        cmd_object = get_cmd_object(cmd_name)
-        if cmd_object.hidden:
-            continue
-        print >>outfile, command_usage(cmd_object)
+    for cmd_name, cmd_object in sorted(shown_commands):
+        plugin_name = cmd_object.plugin_name()
+        if plugin_name is None:
+            plugin_name = ''
+        else:
+            plugin_name = ' [%s]' % plugin_name
+
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            print >>outfile, '        ' + firstline
-        
+        else:
+            firstline = ''
+        helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
+        lines = textwrap.wrap(helpstring, subsequent_indent=indent,
+                              width=width)
+        for line in lines:
+            out.append(line + '\n')
+    return ''.join(out)
+
+
+help_topics.topic_registry.register("commands",
+                                    _help_commands_to_text,
+                                    "Basic help for all commands")
+help_topics.topic_registry.register("hidden-commands", 
+                                    _help_commands_to_text,
+                                    "All hidden commands")

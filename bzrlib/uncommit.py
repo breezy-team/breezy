@@ -14,18 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Remove the last revision from the history of the current branch.
-"""
+"""Remove the last revision from the history of the current branch."""
+
+# TODO: make the guts of this methods on tree, branch.
 
 import os
-import bzrlib
-from bzrlib.errors import BoundBranchOutOfDate
 
-def test_remove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-    else:
-        print '* file does not exist: %r' % filename
+from bzrlib.branch import Branch
+from bzrlib.errors import BoundBranchOutOfDate
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
@@ -35,7 +31,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
     :param verbose: Print each step as you do it
     :param revno: Remove back to this revision
     """
-    from bzrlib.atomicfile import AtomicFile
     unlockable = []
     try:
         if tree is not None:
@@ -44,6 +39,10 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         
         branch.lock_write()
         unlockable.append(branch)
+
+        pending_merges = []
+        if tree is not None:
+            pending_merges = tree.get_parent_ids()[1:]
 
         master = branch.get_master_branch()
         if master is not None:
@@ -54,13 +53,22 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             raise BoundBranchOutOfDate(branch, master)
         if revno is None:
             revno = len(rh)
+        old_revno, old_tip = branch.last_revision_info()
+        new_revno = revno -1
 
         files_to_remove = []
         for r in range(revno-1, len(rh)):
             rev_id = rh.pop()
+            # NB: performance would be better using the revision graph rather
+            # than the whole revision.
+            rev = branch.repository.get_revision(rev_id)
+            # When we finish popping off the pending merges, we want
+            # them to stay in the order that they used to be.
+            # but we pop from the end, so reverse the order, and
+            # then get the order right at the end
+            pending_merges.extend(reversed(rev.parent_ids[1:]))
             if verbose:
                 print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
-
 
         # Committing before we start removing files, because
         # once we have removed at least one, all the rest are invalid.
@@ -68,8 +76,23 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             if master is not None:
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
+            new_tip = branch.last_revision()
+            if master is None:
+                hook_local = None
+                hook_master = branch
+            else:
+                hook_local = branch
+                hook_master = master
+            for hook in Branch.hooks['post_uncommit']:
+                hook(hook_local, hook_master, old_revno, old_tip, new_revno,
+                    new_tip)
             if tree is not None:
-                tree.set_last_revision(branch.last_revision())
+                if new_tip is not None:
+                    parents = [new_tip]
+                else:
+                    parents = []
+                parents.extend(reversed(pending_merges))
+                tree.set_parent_ids(parents)
     finally:
         for item in reversed(unlockable):
             item.unlock()

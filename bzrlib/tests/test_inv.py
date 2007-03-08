@@ -1,29 +1,30 @@
-# Copyright (C) 2005 by Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
 import os
+import time
 
+from bzrlib import errors, inventory, osutils
 from bzrlib.branch import Branch
-import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry)
-import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks, rename, pathjoin
+    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.osutils import (has_symlinks, rename, pathjoin, is_inside_any, 
+    is_inside_or_parent_of_any)
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transform import TreeTransform
 from bzrlib.uncommit import uncommit
@@ -31,8 +32,15 @@ from bzrlib.uncommit import uncommit
 
 class TestInventory(TestCase):
 
+    def test_add_path(self):
+
+        inv = Inventory(root_id=None)
+        self.assertIs(None, inv.root)
+        ie = inv.add_path("", "directory", "my-root")
+        self.assertEqual("my-root", ie.file_id)
+        self.assertIs(ie, inv.root)
+
     def test_is_within(self):
-        from bzrlib.osutils import is_inside_any
 
         SRC_FOO_C = pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
@@ -44,7 +52,21 @@ class TestInventory(TestCase):
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['src'], 'srccontrol/foo')]:
             self.assertFalse(is_inside_any(dirs, fn))
+
+    def test_is_within_or_parent(self):
+        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
+                         (['src'], 'src/foo.c'),
+                         (['src/bar.c'], 'src'),
+                         (['src/bar.c', 'bla/foo.c'], 'src'),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_or_parent_of_any(dirs, fn))
             
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['srccontrol/foo.c'], 'src'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
+
     def test_ids(self):
         """Test detection of files within selected directories."""
         inv = Inventory()
@@ -61,6 +83,16 @@ class TestInventory(TestCase):
         
         self.assert_('src-id' in inv)
 
+    def test_non_directory_children(self):
+        """Test path2id when a parent directory has no children"""
+        inv = inventory.Inventory('tree_root')
+        inv.add(inventory.InventoryFile('file-id','file', 
+                                        parent_id='tree_root'))
+        inv.add(inventory.InventoryLink('link-id','link', 
+                                        parent_id='tree_root'))
+        self.assertIs(None, inv.path2id('file/subfile'))
+        self.assertIs(None, inv.path2id('link/subfile'))
+
     def test_iter_entries(self):
         inv = Inventory()
         
@@ -72,6 +104,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),
@@ -79,11 +112,85 @@ class TestInventory(TestCase):
             ('src/hello.c', 'hello-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
             
-    def test_version(self):
-        """Inventory remembers the text's version."""
+    def test_iter_entries_by_dir(self):
         inv = Inventory()
-        ie = inv.add_path('foo.txt', 'file')
-        ## XXX
+        
+        for args in [('src', 'directory', 'src-id'), 
+                     ('doc', 'directory', 'doc-id'), 
+                     ('src/hello.c', 'file', 'hello-id'),
+                     ('src/bye.c', 'file', 'bye-id'),
+                     ('zz', 'file', 'zz-id'),
+                     ('src/sub/', 'directory', 'sub-id'),
+                     ('src/zz.c', 'file', 'zzc-id'),
+                     ('src/sub/a', 'file', 'a-id'),
+                     ('Makefile', 'file', 'makefile-id')]:
+            inv.add_path(*args)
+
+        self.assertEqual([
+            ('', ROOT_ID),
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir()])
+            
+        self.assertEqual([
+            ('', ROOT_ID),
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id', ROOT_ID,
+                'hello-id', 'bye-id', 'zz-id', 'src-id', 'makefile-id', 
+                'sub-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id',
+                'hello-id', 'bye-id', 'zz-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id',))])
+
+    def test_add_recursive(self):
+        parent = InventoryDirectory('src-id', 'src', ROOT_ID)
+        child = InventoryFile('hello-id', 'hello.c', 'src-id')
+        parent.children[child.file_id] = child
+        inv = Inventory()
+        inv.add(parent)
+        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
 
 
 class TestInventoryEntry(TestCase):
@@ -159,6 +266,22 @@ class TestInventoryEntry(TestCase):
         self.assertIsInstance(inventory.make_entry("directory", "name", ROOT_ID),
             inventory.InventoryDirectory)
 
+    def test_make_entry_non_normalized(self):
+        orig_normalized_filename = osutils.normalized_filename
+
+        try:
+            osutils.normalized_filename = osutils._accessible_normalized_filename
+            entry = inventory.make_entry("file", u'a\u030a', ROOT_ID)
+            self.assertEqual(u'\xe5', entry.name)
+            self.assertIsInstance(entry, inventory.InventoryFile)
+
+            osutils.normalized_filename = osutils._inaccessible_normalized_filename
+            self.assertRaises(errors.InvalidNormalization,
+                    inventory.make_entry, 'file', u'a\u030a', ROOT_ID)
+        finally:
+            osutils.normalized_filename = orig_normalized_filename
+
+
 class TestEntryDiffing(TestCaseWithTransport):
 
     def setUp(self):
@@ -183,6 +306,8 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.file_1 = self.inv_1['fileid']
         self.file_1b = self.inv_1['binfileid']
         self.tree_2 = self.wt
+        self.tree_2.lock_read()
+        self.addCleanup(self.tree_2.unlock)
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         self.file_2b = self.inv_2['binfileid']
@@ -196,8 +321,8 @@ class TestEntryDiffing(TestCaseWithTransport):
                           "old_label", self.tree_1,
                           "/dev/null", None, None,
                           output)
-        self.assertEqual(output.getvalue(), "--- old_label\t\n"
-                                            "+++ /dev/null\t\n"
+        self.assertEqual(output.getvalue(), "--- old_label\n"
+                                            "+++ /dev/null\n"
                                             "@@ -1,1 +0,0 @@\n"
                                             "-foo\n"
                                             "\n")
@@ -208,8 +333,8 @@ class TestEntryDiffing(TestCaseWithTransport):
                           "new_label", self.tree_1,
                           "/dev/null", None, None,
                           output, reverse=True)
-        self.assertEqual(output.getvalue(), "--- /dev/null\t\n"
-                                            "+++ new_label\t\n"
+        self.assertEqual(output.getvalue(), "--- /dev/null\n"
+                                            "+++ new_label\n"
                                             "@@ -0,0 +1,1 @@\n"
                                             "+foo\n"
                                             "\n")
@@ -220,8 +345,8 @@ class TestEntryDiffing(TestCaseWithTransport):
                           "/dev/null", self.tree_1, 
                           "new_label", self.file_2, self.tree_2,
                           output)
-        self.assertEqual(output.getvalue(), "--- /dev/null\t\n"
-                                            "+++ new_label\t\n"
+        self.assertEqual(output.getvalue(), "--- /dev/null\n"
+                                            "+++ new_label\n"
                                             "@@ -1,1 +1,1 @@\n"
                                             "-foo\n"
                                             "+bar\n"
@@ -290,14 +415,15 @@ class TestSnapshot(TestCaseWithTransport):
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.file_active = self.wt.inventory['fileid']
+        self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2', and we can get
         # its text of 'file contents' out of the weave.
         self.assertEqual(self.file_1.revision, '1')
@@ -312,9 +438,7 @@ class TestSnapshot(TestCaseWithTransport):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
         vf = self.branch.repository.weave_store.get_weave(
@@ -341,20 +465,16 @@ class TestSnapshot(TestCaseWithTransport):
         versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_active.revision, '2')
 
     def test_snapshot_changed(self):
         # This tests that a commit with one different parent results in a new
         # revision id in the entry.
-        self.file_active.name='newname'
-        rename('subdir/file', 'subdir/newname')
+        self.wt.rename_one('subdir/file', 'subdir/newname')
+        self.file_active = self.wt.inventory['fileid']
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.wt,
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
 
@@ -383,9 +503,11 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
-        self.wt.add_pending_merge('B')
+        self.wt.add_parent_tree_id('B')
         self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.repository.get_inventory('D')
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
         self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.repository.get_transaction())
@@ -482,110 +604,41 @@ class TestDescribeChanges(TestCase):
         self.assertEqual(expected_change, change)
 
 
-class TestExecutable(TestCaseWithTransport):
-
-    def test_stays_executable(self):
-        a_id = "a-20051208024829-849e76f7968d7a86"
-        b_id = "b-20051208024829-849e76f7968d7a86"
-        wt = self.make_branch_and_tree('b1')
-        b = wt.branch
-        tt = TreeTransform(wt)
-        tt.new_file('a', tt.root, 'a test\n', a_id, True)
-        tt.new_file('b', tt.root, 'b test\n', b_id, False)
-        tt.apply()
-
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-
-        # reopen the tree and ensure it stuck.
-        wt = wt.bzrdir.open_workingtree()
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
-
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
-
-        wt.commit('adding a,b', rev_id='r1')
-
-        rev_tree = b.repository.revision_tree('r1')
-        self.failUnless(rev_tree.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(rev_tree.is_executable(b_id), "'b' gained an execute bit")
-
-        self.failUnless(rev_tree.inventory[a_id].executable)
-        self.failIf(rev_tree.inventory[b_id].executable)
-
-        # Make sure the entries are gone
-        os.remove('b1/a')
-        os.remove('b1/b')
-        self.failIf(wt.has_id(a_id))
-        self.failIf(wt.has_filename('a'))
-        self.failIf(wt.has_id(b_id))
-        self.failIf(wt.has_filename('b'))
-
-        # Make sure that revert is able to bring them back,
-        # and sets 'a' back to being executable
-
-        wt.revert(['a', 'b'], rev_tree, backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
-
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
-
-        # Now remove them again, and make sure that after a
-        # commit, they are still marked correctly
-        os.remove('b1/a')
-        os.remove('b1/b')
-        wt.commit('removed', rev_id='r2')
-
-        self.assertEqual([], [cn for cn,ie in wt.inventory.iter_entries()])
-        self.failIf(wt.has_id(a_id))
-        self.failIf(wt.has_filename('a'))
-        self.failIf(wt.has_id(b_id))
-        self.failIf(wt.has_filename('b'))
-
-        # Now revert back to the previous commit
-        wt.revert([], rev_tree, backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
-
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
-
-        # Now make sure that 'bzr branch' also preserves the
-        # executable bit
-        # TODO: Maybe this should be a blackbox test
-        d2 = b.bzrdir.clone('b2', revision_id='r1')
-        t2 = d2.open_workingtree()
-        b2 = t2.branch
-        self.assertEquals('r1', b2.last_revision())
-
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
-        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
-
-        # Make sure pull will delete the files
-        t2.pull(b)
-        self.assertEquals('r2', b2.last_revision())
-        self.assertEqual([], [cn for cn,ie in t2.inventory.iter_entries()])
-
-        # Now commit the changes on the first branch
-        # so that the second branch can pull the changes
-        # and make sure that the executable bit has been copied
-        wt.commit('resurrected', rev_id='r3')
-
-        t2.pull(b)
-        self.assertEquals('r3', b2.last_revision())
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
-
-        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
-
-
 class TestRevert(TestCaseWithTransport):
 
     def test_dangling_id(self):
         wt = self.make_branch_and_tree('b1')
+        wt.lock_tree_write()
+        self.addCleanup(wt.unlock)
         self.assertEqual(len(wt.inventory), 1)
         open('b1/a', 'wb').write('a test\n')
         wt.add('a')
         self.assertEqual(len(wt.inventory), 2)
+        wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
+
+
+class TestIsRoot(TestCase):
+    """Ensure our root-checking code is accurate."""
+
+    def test_is_root(self):
+        inv = Inventory('TREE_ROOT')
+        self.assertTrue(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+        inv.root.file_id = 'booga'
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertTrue(inv.is_root('booga'))
+        # works properly even if no root is set
+        inv.root = None
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+
+
+class TestTreeReference(TestCase):
+    
+    def test_create(self):
+        inv = Inventory('tree-root-123')
+        inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
+                              revision='rev', reference_revision='rev2'))

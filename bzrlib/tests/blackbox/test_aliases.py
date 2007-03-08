@@ -1,3 +1,18 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Black-box tests for bzr aliases.
 """
 
@@ -57,9 +72,9 @@ class TestAliases(TestCaseInTempDir):
 
         # If --no-aliases breaks all of bzr, we also get retcode=3
         # So we need to catch the output as well
-        self.assertEquals(bzr_catch_error('--no-aliases', 'c', 'a', 
-                                          retcode=None), 
-                          "bzr: ERROR: unknown command 'c'\n")
+        self.assertEquals(bzr_catch_error('--no-aliases', 'c', 'a',
+                                          retcode=None),
+                          'bzr: ERROR: unknown command "c"\n')
 
         bzr('c', '-r1', '-r2', retcode=3)
         bzr('c1', '-r1', '-r2', retcode=3)

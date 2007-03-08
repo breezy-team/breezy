@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,8 +24,5 @@ class CheckoutBenchmark(Benchmark):
 
     def test_build_kernel_like_tree(self):
         """Checkout of a clean kernel sized tree should be (<10secs)."""
-        self.make_kernel_tree()
-        self.run_bzr('add')
-        self.run_bzr('commit', '-m', 'first post')
-        # on robertc's machine the first sample of this took 105079ms/205417ms
+        self.make_kernel_like_committed_tree(link_bzr=True)
         self.time(self.run_bzr, 'checkout', '--lightweight', '.', 'acheckout')

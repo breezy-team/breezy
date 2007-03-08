@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -14,16 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-# XXX: Can we do any better about making interrupted commits change
-# nothing?  Perhaps the best approach is to integrate commit of
-# AtomicFiles with releasing the lock on the Branch.
-
-# TODO: Separate 'prepare' phase where we find a list of potentially
-# committed files.  We then can then pause the commit to prompt for a
-# commit message, knowing the summary will be the same as what's
-# actually used for the commit.  (But perhaps simpler to simply get
-# the tree status, then use that for a selective commit?)
 
 # The newly committed revision is going to have a shape corresponding
 # to that of the working inventory.  Files that are not in the
@@ -56,54 +46,40 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
-# TODO: Do checks that the tree can be committed *before* running the 
-# editor; this should include checks for a pointless commit and for 
-# unknown or missing files.
-
-# TODO: If commit fails, leave the message in a file somewhere.
-
+# TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
+# the rest of the code; add a deprecation of the old name.
 
 import os
 import re
 import sys
 import time
-import pdb
 
-from binascii import hexlify
 from cStringIO import StringIO
 
-from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import (local_time_offset,
-                            rand_bytes, compact_date,
-                            kind_marker, is_inside_any, quotefn,
-                            sha_file, isdir, isfile,
-                            split_lines)
+from bzrlib import (
+    errors,
+    inventory,
+    tree,
+    )
+from bzrlib.branch import Branch
 import bzrlib.config
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.revision import Revision
+from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
+                            is_inside_or_parent_of_any,
+                            quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
-from bzrlib.symbol_versioning import *
+from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
-
-
-@deprecated_function(zero_seven)
-def commit(*args, **kwargs):
-    """Commit a new revision to a branch.
-
-    Function-style interface for convenience of old callers.
-
-    New code should use the Commit class instead.
-    """
-    ## XXX: Remove this in favor of Branch.commit?
-    Commit().commit(*args, **kwargs)
+import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -137,6 +113,8 @@ class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
+            return
+        if change == 'added' and path == '':
             return
         note("%s %s", change, path)
 
@@ -194,13 +172,15 @@ class Commit(object):
                working_tree=None,
                local=False,
                reporter=None,
-               config=None):
+               config=None,
+               message_callback=None,
+               recursive='down'):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
                   working_tree instead
 
-        message -- the commit message, a mandatory parameter
+        message -- the commit message (it or message_callback is required)
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -221,11 +201,13 @@ class Commit(object):
 
         revprops -- Properties for new revision
         :param local: Perform a local only commit.
+        :param recursive: If set to 'down', commit in any subtrees that have
+            pending changes of any sort during this commit.
         """
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warn("Commit.commit (branch, ...): The branch parameter is "
+            symbol_versioning.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -235,20 +217,35 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
-        if message is None:
-            raise BzrError("The message keyword parameter is required for commit().")
+            if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
+                if not self.branch.repository.supports_rich_root():
+                    raise errors.RootNotRich()
+        if message_callback is None:
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.decode(bzrlib.user_encoding)
+                message_callback = lambda x: message
+            else:
+                raise BzrError("The message or message_callback keyword"
+                               " parameter is required for commit().")
 
-        self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
         self.local = local
         self.master_branch = None
         self.master_locked = False
-        self.rev_id = rev_id
+        self.rev_id = None
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {}
-        if revprops is not None:
-            self.revprops.update(revprops)
+        self.recursive = recursive
+        self.revprops = revprops
+        self.message_callback = message_callback
+        self.timestamp = timestamp
+        self.timezone = timezone
+        self.committer = committer
+        self.specific_files = specific_files
+        self.strict = strict
+        self.verbose = verbose
+        self.local = local
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -257,6 +254,8 @@ class Commit(object):
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_tree = self.work_tree.basis_tree()
+        self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
             if len(self.work_tree.conflicts())>0:
@@ -266,101 +265,100 @@ class Commit(object):
             self._check_bound_branch()
 
             # check for out of date working trees
-            # if we are bound, then self.branch is the master branch and this
-            # test is thus all we need.
-            if self.work_tree.last_revision() != self.master_branch.last_revision():
-                raise errors.OutOfDateTree(self.work_tree)
-    
+            try:
+                first_tree_parent = self.work_tree.get_parent_ids()[0]
+            except IndexError:
+                # if there are no parents, treat our parent as 'None'
+                # this is so that we still consier the master branch
+                # - in a checkout scenario the tree may have no
+                # parents but the branch may do.
+                first_tree_parent = bzrlib.revision.NULL_REVISION
+            old_revno, master_last = self.master_branch.last_revision_info()
+            if master_last != first_tree_parent:
+                if master_last != bzrlib.revision.NULL_REVISION:
+                    raise errors.OutOfDateTree(self.work_tree)
+            if self.branch.repository.has_revision(first_tree_parent):
+                new_revno = old_revno + 1
+            else:
+                # ghost parents never appear in revision history.
+                new_revno = 1
             if strict:
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
                     raise StrictCommitFailed()
-    
-            if timestamp is None:
-                self.timestamp = time.time()
-            else:
-                self.timestamp = long(timestamp)
-                
+                   
             if self.config is None:
-                self.config = bzrlib.config.BranchConfig(self.branch)
-    
-            if rev_id is None:
-                self.rev_id = _gen_revision_id(self.config, self.timestamp)
-            else:
-                self.rev_id = rev_id
-    
-            if committer is None:
-                self.committer = self.config.username()
-            else:
-                assert isinstance(committer, basestring), type(committer)
-                self.committer = committer
-    
-            if timezone is None:
-                self.timezone = local_time_offset()
-            else:
-                self.timezone = int(timezone)
-    
-            if isinstance(message, str):
-                message = message.decode(bzrlib.user_encoding)
-            assert isinstance(message, unicode), type(message)
-            self.message = message
-            self._escape_commit_message()
+                self.config = self.branch.get_config()
 
             self.work_inv = self.work_tree.inventory
-            self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
+            if specific_files is not None:
+                # Ensure specified files are versioned
+                # (We don't actually need the ids here)
+                # XXX: Dont we have filter_unversioned to do this more
+                # cheaply?
+                tree.find_ids_across_trees(specific_files,
+                                           [self.basis_tree, self.work_tree])
             # one to finish, one for rev and inventory, and one for each
             # inventory entry, and the same for the new inventory.
             # note that this estimate is too long when we do a partial tree
             # commit which excludes some new files from being considered.
             # The estimate is corrected when we populate the new inv.
-            self.pb_total = len(self.basis_inv) + len(self.work_inv) + 3 - 1
+            self.pb_total = len(self.work_inv) + 5
             self.pb_count = 0
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
-            self._check_parents_present()
+            
+            self.builder = self.branch.get_commit_builder(self.parents,
+                self.config, timestamp, timezone, committer, revprops, rev_id)
             
             self._remove_deleted()
             self._populate_new_inv()
-            self._store_snapshot()
             self._report_deletes()
 
-            if not (self.allow_pointless
-                    or len(self.parents) > 1
-                    or self.new_inv != self.basis_inv):
-                raise PointlessCommit()
+            self._check_pointless()
 
             self._emit_progress_update()
-            self.inv_sha1 = self.branch.repository.add_inventory(
-                self.rev_id,
-                self.new_inv,
-                self.present_parents
-                )
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
+            self.builder.finish_inventory()
             self._emit_progress_update()
-            self._make_revision()
+            message = message_callback(self)
+            assert isinstance(message, unicode), type(message)
+            self.message = message
+            self._escape_commit_message()
+
+            self.rev_id = self.builder.commit(self.message)
+            self._emit_progress_update()
             # revision data is in the local branch now.
             
             # upload revision data to the master.
-            # this will propogate merged revisions too if needed.
+            # this will propagate merged revisions too if needed.
             if self.bound_branch:
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
                 # now the master has the revision data
                 # 'commit' to the master first so a timeout here causes the local
                 # branch to be out of date
-                self.master_branch.append_revision(self.rev_id)
+                self.master_branch.set_last_revision_info(new_revno,
+                                                          self.rev_id)
 
             # and now do the commit locally.
-            self.branch.append_revision(self.rev_id)
+            self.branch.set_last_revision_info(new_revno, self.rev_id)
 
-            self.work_tree.set_pending_merges([])
-            self.work_tree.set_last_revision(self.rev_id)
+            rev_tree = self.builder.revision_tree()
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
-            self.reporter.completed(self.branch.revno(), self.rev_id)
+            self.reporter.completed(new_revno, self.rev_id)
+            # old style commit hooks - should be deprecated ? (obsoleted in
+            # 0.15)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny
@@ -369,9 +367,82 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
+            # new style commit hooks:
+            if not self.bound_branch:
+                hook_master = self.branch
+                hook_local = None
+            else:
+                hook_master = self.master_branch
+                hook_local = self.branch
+            # With bound branches, when the master is behind the local branch,
+            # the 'old_revno' and old_revid values here are incorrect.
+            # XXX: FIXME ^. RBC 20060206
+            if self.parents:
+                old_revid = self.parents[0]
+            else:
+                old_revid = bzrlib.revision.NULL_REVISION
+            for hook in Branch.hooks['post_commit']:
+                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                    self.rev_id)
             self._emit_progress_update()
         finally:
             self._cleanup()
+        return self.rev_id
+
+    def _any_real_changes(self):
+        """Are there real changes between new_inventory and basis?
+
+        For trees without rich roots, inv.root.revision changes every commit.
+        But if that is the only change, we want to treat it as though there
+        are *no* changes.
+        """
+        new_entries = self.builder.new_inventory.iter_entries()
+        basis_entries = self.basis_inv.iter_entries()
+        new_path, new_root_ie = new_entries.next()
+        basis_path, basis_root_ie = basis_entries.next()
+
+        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
+        def ie_equal_no_revision(this, other):
+            return ((this.file_id == other.file_id)
+                    and (this.name == other.name)
+                    and (this.symlink_target == other.symlink_target)
+                    and (this.text_sha1 == other.text_sha1)
+                    and (this.text_size == other.text_size)
+                    and (this.text_id == other.text_id)
+                    and (this.parent_id == other.parent_id)
+                    and (this.kind == other.kind)
+                    and (this.executable == other.executable)
+                    and (this.reference_revision == other.reference_revision)
+                    )
+        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
+            return True
+
+        for new_ie, basis_ie in zip(new_entries, basis_entries):
+            if new_ie != basis_ie:
+                return True
+
+        # No actual changes present
+        return False
+
+    def _check_pointless(self):
+        if self.allow_pointless:
+            return
+        # A merge with no effect on files
+        if len(self.parents) > 1:
+            return
+        # work around the fact that a newly-initted tree does differ from its
+        # basis
+        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+            raise PointlessCommit()
+        # Shortcut, if the number of entries changes, then we obviously have
+        # a change
+        if len(self.builder.new_inventory) != len(self.basis_inv):
+            return
+        # If length == 1, then we only have the root entry. Which means
+        # that there is no real difference (only the root could be different)
+        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
+            return
+        raise PointlessCommit()
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -403,9 +474,9 @@ class Commit(object):
         #       to local.
         
         # Make sure the local branch is identical to the master
-        master_rh = self.master_branch.revision_history()
-        local_rh = self.branch.revision_history()
-        if local_rh != master_rh:
+        master_info = self.master_branch.last_revision_info()
+        local_info = self.branch.last_revision_info()
+        if local_info != master_info:
             raise errors.BoundBranchOutOfDate(self.branch,
                     self.master_branch)
 
@@ -414,18 +485,11 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
-####        
-####        # Check to see if we have any pending merges. If we do
-####        # those need to be pushed into the master branch
-####        pending_merges = self.work_tree.pending_merges()
-####        if pending_merges:
-####            for revision_id in pending_merges:
-####                self.master_branch.repository.fetch(self.bound_branch.repository,
-####                                                    revision_id=revision_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
         cleanups = [self._cleanup_bound_branch,
+                    self.basis_tree.unlock,
                     self.work_tree.unlock,
                     self.pb.finished]
         found_exception = None
@@ -439,7 +503,7 @@ class Commit(object):
             except Exception, e:
                 found_exception = e
         if found_exception is not None: 
-            # dont do a plan raise, because the last exception may have been
+            # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
             # exc_info and if its the same one do a plain raise otherwise 
@@ -478,41 +542,17 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.work_tree.pending_merges()
-        self.parents = []
-        self.parent_invs = []
-        self.present_parents = []
-        precursor_id = self.branch.last_revision()
-        if precursor_id:
-            self.parents.append(precursor_id)
-        self.parents += pending_merges
-        for revision in self.parents:
+        # TODO: Make sure that this list doesn't contain duplicate 
+        # entries and the order is preserved when doing this.
+        self.parents = self.work_tree.get_parent_ids()
+        self.parent_invs = [self.basis_inv]
+        for revision in self.parents[1:]:
             if self.branch.repository.has_revision(revision):
+                mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)
                 self.parent_invs.append(inventory)
-                self.present_parents.append(revision)
-
-    def _check_parents_present(self):
-        for parent_id in self.parents:
-            mutter('commit parent revision {%s}', parent_id)
-            if not self.branch.repository.has_revision(parent_id):
-                if parent_id == self.branch.last_revision():
-                    warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
-            
-    def _make_revision(self):
-        """Record a new revision object for this commit."""
-        rev = Revision(timestamp=self.timestamp,
-                       timezone=self.timezone,
-                       committer=self.committer,
-                       message=self.message,
-                       inventory_sha1=self.inv_sha1,
-                       revision_id=self.rev_id,
-                       properties=self.revprops)
-        rev.parent_ids = self.parents
-        self.branch.repository.add_revision(self.rev_id, rev, self.new_inv, self.config)
+            else:
+                mutter('commit parent ghost revision {%s}', revision)
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -527,45 +567,94 @@ class Commit(object):
         """
         specific = self.specific_files
         deleted_ids = []
+        deleted_paths = set()
         for path, ie in self.work_inv.iter_entries():
+            if is_inside_any(deleted_paths, path):
+                # The tree will delete the required ids recursively.
+                continue
             if specific and not is_inside_any(specific, path):
                 continue
             if not self.work_tree.has_filename(path):
+                deleted_paths.add(path)
                 self.reporter.missing(path)
-                deleted_ids.append((path, ie.file_id))
-        if deleted_ids:
-            deleted_ids.sort(reverse=True)
-            for path, file_id in deleted_ids:
-                del self.work_inv[file_id]
-            self.work_tree._write_inventory(self.work_inv)
+                deleted_ids.append(ie.file_id)
+        self.work_tree.unversion(deleted_ids)
 
-    def _store_snapshot(self):
-        """Pass over inventory and record a snapshot.
+    def _populate_new_inv(self):
+        """Build revision inventory.
 
-        Entries get a new revision when they are modified in 
-        any way, which includes a merge with a new set of
-        parents that have the same entry. 
+        This creates a new empty inventory. Depending on
+        which files are selected for commit, and what is present in the
+        current tree, the new inventory is populated. inventory entries 
+        which are candidates for modification have their revision set to
+        None; inventory entries that are carried over untouched have their
+        revision set to their prior value.
         """
-        # XXX: Need to think more here about when the user has
-        # made a specific decision on a particular value -- c.f.
-        # mark-merge.  
-
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
-        self._emit_progress_update()
-        for path, ie in self.new_inv.iter_entries():
+        # ESEPARATIONOFCONCERNS: this function is diffing and using the diff
+        # results to create a new inventory at the same time, which results
+        # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
+        # ADHB 11-07-2006
+        mutter("Selecting files for commit with filter %s", self.specific_files)
+        assert self.work_inv.root is not None
+        entries = self.work_inv.iter_entries()
+        if not self.builder.record_root_entry:
+            symbol_versioning.warn('CommitBuilders should support recording'
+                ' the root entry as of bzr 0.10.', DeprecationWarning, 
+                stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
             self._emit_progress_update()
-            previous_entries = ie.find_previous_heads(
-                self.parent_invs,
-                self.weave_store,
-                self.branch.repository.get_transaction())
-            if ie.revision is None:
-                # we are creating a new revision for ie in the history store
-                # and inventory.
-                ie.snapshot(self.rev_id, path, previous_entries,
-                    self.work_tree, self.weave_store,
-                    self.branch.repository.get_transaction())
-            # describe the nature of the change that has occured relative to
+        for path, new_ie in entries:
+            self._emit_progress_update()
+            file_id = new_ie.file_id
+            try:
+                kind = self.work_tree.kind(file_id)
+                if kind == 'tree-reference' and self.recursive == 'down':
+                    # nested tree: commit in it
+                    sub_tree = WorkingTree.open(self.work_tree.abspath(path))
+                    # FIXME: be more comprehensive here:
+                    # this works when both trees are in --trees repository,
+                    # but when both are bound to a different repository,
+                    # it fails; a better way of approaching this is to 
+                    # finally implement the explicit-caches approach design
+                    # a while back - RBC 20070306.
+                    if (sub_tree.branch.repository.bzrdir.root_transport.base
+                        ==
+                        self.work_tree.branch.repository.bzrdir.root_transport.base):
+                        sub_tree.branch.repository = \
+                            self.work_tree.branch.repository
+                    try:
+                        sub_tree.commit(message=None, revprops=self.revprops,
+                            recursive=self.recursive,
+                            message_callback=self.message_callback,
+                            timestamp=self.timestamp, timezone=self.timezone,
+                            committer=self.committer,
+                            allow_pointless=self.allow_pointless,
+                            strict=self.strict, verbose=self.verbose,
+                            local=self.local, reporter=self.reporter)
+                    except errors.PointlessCommit:
+                        pass
+                if kind != new_ie.kind:
+                    new_ie = inventory.make_entry(kind, new_ie.name,
+                                                  new_ie.parent_id, file_id)
+            except errors.NoSuchFile:
+                pass
+            # mutter('check %s {%s}', path, file_id)
+            if (not self.specific_files or 
+                is_inside_or_parent_of_any(self.specific_files, path)):
+                    # mutter('%s selected for commit', path)
+                    ie = new_ie.copy()
+                    ie.revision = None
+            else:
+                # mutter('%s not selected for commit', path)
+                if self.basis_inv.has_id(file_id):
+                    ie = self.basis_inv[file_id].copy()
+                else:
+                    # this entry is new and not being committed
+                    continue
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                path, self.work_tree)
+            # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
                 basis_ie = self.basis_inv[ie.file_id]
@@ -579,75 +668,28 @@ class Commit(object):
             else:
                 self.reporter.snapshot_change(change, path)
 
-    def _populate_new_inv(self):
-        """Build revision inventory.
+        if not self.specific_files:
+            return
 
-        This creates a new empty inventory. Depending on
-        which files are selected for commit, and what is present in the
-        current tree, the new inventory is populated. inventory entries 
-        which are candidates for modification have their revision set to
-        None; inventory entries that are carried over untouched have their
-        revision set to their prior value.
-        """
-        mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory(revision_id=self.rev_id)
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
-        self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
-            self._emit_progress_update()
-            file_id = new_ie.file_id
-            mutter('check %s {%s}', path, new_ie.file_id)
-            if self.specific_files:
-                if not is_inside_any(self.specific_files, path):
-                    mutter('%s not selected for commit', path)
-                    self._carry_entry(file_id)
-                    continue
-                else:
-                    # this is selected, ensure its parents are too.
-                    parent_id = new_ie.parent_id
-                    while parent_id != ROOT_ID:
-                        if not self.new_inv.has_id(parent_id):
-                            ie = self._select_entry(self.work_inv[parent_id])
-                            mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-
-                        ie = self.new_inv[parent_id]
-                        if ie.revision is not None:
-                            ie.revision = None
-                            mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-                        parent_id = ie.parent_id
-            mutter('%s selected for commit', path)
-            self._select_entry(new_ie)
+        # ignore removals that don't match filespec
+        for path, new_ie in self.basis_inv.iter_entries():
+            if new_ie.file_id in self.work_inv:
+                continue
+            if is_inside_any(self.specific_files, path):
+                continue
+            ie = new_ie.copy()
+            ie.revision = None
+            self.builder.record_entry_contents(ie, self.parent_invs, path,
+                                               self.basis_tree)
 
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""
         self.pb.update("Committing", self.pb_count, self.pb_total)
         self.pb_count += 1
 
-    def _select_entry(self, new_ie):
-        """Make new_ie be considered for committing."""
-        ie = new_ie.copy()
-        ie.revision = None
-        self.new_inv.add(ie)
-        return ie
-
-    def _carry_entry(self, file_id):
-        """Carry the file unchanged from the basis revision."""
-        if self.basis_inv.has_id(file_id):
-            self.new_inv.add(self.basis_inv[file_id].copy())
-        else:
-            # this entry is new and not being committed
-            self.pb_total -= 1
-
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.new_inv:
+            if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
-def _gen_revision_id(config, when):
-    """Return new revision-id."""
-    s = '%s-%s-' % (config.user_email(), compact_date(when))
-    s += hexlify(rand_bytes(8))
-    return s
+

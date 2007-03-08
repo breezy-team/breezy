@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -42,11 +42,11 @@ def register_exporter(format, extensions, func, override=False):
     """
     global _exporters, _exporter_extensions
 
-    if not _exporters.has_key(format) or override:
+    if (format not in _exporters) or override:
         _exporters[format] = func
 
     for ext in extensions:
-        if not _exporter_extensions.has_key(ext) or override:
+        if (ext not in _exporter_extensions) or override:
             _exporter_extensions[ext] = format
 
 
@@ -90,7 +90,7 @@ def export(tree, dest, format=None, root=None):
     if root is None:
         root = get_root_name(dest)
 
-    if not _exporters.has_key(format):
+    if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
     return _exporters[format](tree, dest, root)
 
@@ -98,6 +98,8 @@ def export(tree, dest, format=None, root=None):
 def get_root_name(dest):
     """Get just the root name for an export.
 
+    >>> get_root_name('../mytest.tar')
+    'mytest'
     >>> get_root_name('mytar.tar')
     'mytar'
     >>> get_root_name('mytar.tar.bz2')

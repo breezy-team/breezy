@@ -1,30 +1,33 @@
-# Copyright (C) 2005 by Canonical Ltd
-
+# Copyright (C) 2005 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Tests of bound branches (binding, unbinding, commit, etc) command.
-"""
+"""Tests of bound branches (binding, unbinding, commit, etc) command."""
 
 import os
 from cStringIO import StringIO
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    bzrdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
+from bzrlib.tests import TestCaseWithTransport
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -41,15 +44,19 @@ class TestLegacyFormats(TestCaseWithTransport):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('bind', '../master', retcode=3)
         self.assertEqual('', out)
+        # TODO: jam 20060427 Probably something like this really should
+        #       print out the actual path, rather than the URL
+        cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % getcwd(), err)
+                         'upgrade your branch at %s/.\n' % cwd, err)
     
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
         self.assertEqual('', out)
+        cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % getcwd(), err)
+                         'upgrade your branch at %s/.\n' % cwd, err)
 
 
 class TestBoundBranches(TestCaseWithTransport):
@@ -95,14 +102,34 @@ class TestBoundBranches(TestCaseWithTransport):
 
         self.run_bzr('unbind', retcode=3)
 
+    def test_bind_branch6(self):
+        branch1 = self.make_branch('branch1', format='dirstate-with-subtree')
+        os.chdir('branch1')
+        error = self.run_bzr('bind', retcode=3)[1]
+        self.assertContainsRe(error, 'no previous location known')
+
+    def setup_rebind(self, format):
+        branch1 = self.make_branch('branch1')
+        branch2 = self.make_branch('branch2', format=format)
+        branch2.bind(branch1)
+        branch2.unbind()
+
+    def test_rebind_branch6(self):
+        self.setup_rebind('dirstate-with-subtree')
+        os.chdir('branch2')
+        self.run_bzr('bind')
+        b = Branch.open('.')
+        self.assertContainsRe(b.get_bound_location(), '\/branch1\/$')
+
+    def test_rebind_branch5(self):
+        self.setup_rebind('knit')
+        os.chdir('branch2')
+        error = self.run_bzr('bind', retcode=3)[1]
+        self.assertContainsRe(error, 'old locations')
+
     def init_meta_branch(self, path):
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            return BzrDir.create_branch_convenience(
-                path, BzrDirMetaFormat1())
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):
         bzr = self.run_bzr
@@ -230,17 +257,22 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('commit', '-m', 'merged')
         self.check_revno(3)
 
+        # After binding, the revision history should be unaltered
+        base_branch = Branch.open('../base')
+        child_branch = Branch.open('.')
+        # take a copy before
+        base_history = base_branch.revision_history()
+        child_history = child_branch.revision_history()
+
         # After a merge, trying to bind again should succeed
-        # by pushing the new change to base
+        # keeping the new change as a local commit.
         bzr('bind', '../base')
         self.check_revno(3)
-        self.check_revno(3, '../base')
+        self.check_revno(2, '../base')
 
-        # After binding, the revision history should be identical
-        child_rh = bzr('revision-history')[0]
-        os.chdir('../base')
-        base_rh = bzr('revision-history')[0]
-        self.assertEquals(child_rh, base_rh)
+        # and compare the revision history now
+        self.assertEqual(base_history, base_branch.revision_history())
+        self.assertEqual(child_history, child_branch.revision_history())
 
     def test_bind_parent_ahead(self):
         bzr = self.run_bzr
@@ -256,7 +288,8 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1)
         bzr('bind', '../base')
 
-        self.check_revno(2)
+        # binding does not pull data:
+        self.check_revno(1)
         bzr('unbind')
 
         # Check and make sure it also works if parent is ahead multiple
@@ -267,16 +300,16 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(5)
 
         os.chdir('../child')
-        self.check_revno(2)
+        self.check_revno(1)
         bzr('bind', '../base')
-        self.check_revno(5)
+        self.check_revno(1)
 
     def test_bind_child_ahead(self):
         # test binding when the master branches history is a prefix of the 
-        # childs
+        # childs - it should bind ok but the revision histories should not
+        # be altered
         bzr = self.run_bzr
         self.create_branches()
-        return
 
         os.chdir('child')
         bzr('unbind')
@@ -285,7 +318,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1, '../base')
 
         bzr('bind', '../base')
-        self.check_revno(2, '../base')
+        self.check_revno(1, '../base')
 
         # Check and make sure it also works if child is ahead multiple
         bzr('unbind')
@@ -294,9 +327,9 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('commit', '-m', 'child 5', '--unchanged')
         self.check_revno(5)
 
-        self.check_revno(2, '../base')
+        self.check_revno(1, '../base')
         bzr('bind', '../base')
-        self.check_revno(5, '../base')
+        self.check_revno(1, '../base')
 
     def test_commit_after_merge(self):
         bzr = self.run_bzr
@@ -319,8 +352,8 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('merge', '../other')
 
         self.failUnlessExists('c')
-        tree = WorkingTree.open('.')
-        self.assertEqual([new_rev_id], tree.pending_merges())
+        tree = WorkingTree.open('.') # opens child
+        self.assertEqual([new_rev_id], tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision
         bzr('cat-revision', new_rev_id)
@@ -341,7 +374,8 @@ class TestBoundBranches(TestCaseWithTransport):
 
         bzr('cat-revision', new_rev_id)
 
-    def test_pull_overwrite_fails(self):
+    def test_pull_overwrite(self):
+        # XXX: This test should be moved to branch-implemenations/test_pull
         bzr = self.run_bzr
         self.create_branches()
 
@@ -365,17 +399,8 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(2)
         self.check_revno(2, '../base')
 
-        # It might be possible that we want pull --overwrite to
-        # actually succeed.
-        # If we want it, just change this test to make sure that 
-        # both base and child are updated properly
-        bzr('pull', '--overwrite', '../other', retcode=3)
+        bzr('pull', '--overwrite', '../other')
 
-        # It should fail without changing the local revision
-        self.check_revno(2)
-        self.check_revno(2, '../base')
-
-    # TODO: jam 20051230 Test that commit & pull fail when the branch we 
-    #       are bound to is not available
-
-
+        # both the local and master should have been updated.
+        self.check_revno(4)
+        self.check_revno(4, '../base')

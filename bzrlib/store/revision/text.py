@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,8 +24,11 @@ requires access to a inventory weave to produce object graphs.
 from cStringIO import StringIO
 
 
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    osutils,
+    )
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import VersionedFileStore
@@ -76,6 +80,7 @@ class TextRevisionStore(RevisionStore):
         assert self.text_store.listable()
         result_graph = {}
         for rev_id in self.text_store:
+            rev_id = osutils.safe_revision_id(rev_id)
             rev = self.get_revision(rev_id, transaction)
             result_graph[rev_id] = rev.parent_ids
         # remove ghosts
@@ -85,24 +90,27 @@ class TextRevisionStore(RevisionStore):
                     del parents[parents.index(parent)]
         return topo_sort(result_graph.items())
 
-    def get_revision(self, revision_id, transaction):
-        """See RevisionStore.get_revision()."""
-        xml_file = self._get_revision_xml_file(revision_id)
-        try:
-            r = self._serializer.read_revision(xml_file)
-        except SyntaxError, e:
-            raise errors.BzrError('failed to unpack revision_xml',
+    def get_revisions(self, revision_ids, transaction):
+        """See RevisionStore.get_revisions()."""
+        revisions = []
+        for revision_id in revision_ids:
+            xml_file = self._get_revision_xml_file(revision_id)
+            try:
+                r = self._serializer.read_revision(xml_file)
+            except SyntaxError, e:
+                raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
                                    str(e)])
-            
-        assert r.revision_id == revision_id
-        return r
+            xml_file.close()
+            assert r.revision_id == revision_id
+            revisions.append(r)
+        return revisions
 
     def _get_revision_xml_file(self, revision_id):
         try:
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def _get_signature_text(self, revision_id, transaction):
         """See RevisionStore._get_signature_text()."""
@@ -115,7 +123,7 @@ class TextRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.text_store.has_id(revision_id))
- 
+
     def _has_signature(self, revision_id, transaction):
         """See RevisionStore._has_signature()."""
         return self.text_store.has_id(revision_id, suffix='sig')

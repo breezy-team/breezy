@@ -1,27 +1,27 @@
-# Copyright (C) 2005 by Canonical Ltd
-
+# Copyright (C) 2005 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sys
 
-from bzrlib.add import smart_add
 from bzrlib.builtins import merge
-from bzrlib.errors import IllegalPath
-from bzrlib.delta import compare_trees
+from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
 
@@ -35,7 +35,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
         new_tree = self.branch.repository.revision_tree(new_rev)
-        delta = compare_trees(old_tree, new_tree)
+        delta = new_tree.changes_from(old_tree)
 
         l2 = [id for path, id, kind in delta.added] + \
              [id for oldpath, newpath, id, kind, text_modified, \
@@ -77,10 +77,15 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath:
-            # ("File-id with <> not supported with this format")
-            # this is not a skip because newer formats do support this,
-            # and nothin can done to correct this test - its not a bug.
-            return
+            # TODO: jam 20060701 Consider raising a different exception
+            #       newer formats do support this, and nothin can done to 
+            #       correct this test - its not a bug.
+            if sys.platform == 'win32':
+                raise TestSkipped('Old repository formats do not'
+                                  ' support file ids with <> on win32')
+            # This is not a known error condition
+            raise
+
         #-------- end A -----------
 
         d1 = main_branch.bzrdir.clone('branch1')
@@ -100,12 +105,12 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         d2 = main_branch.bzrdir.clone('branch2')
         branch2_branch = d2.open_branch()
         bt2 = d2.open_workingtree()
-        os.chmod("branch2/b",0770)
+        set_executability(bt2, 'b', True)
         bt2.commit("branch2, Commit one", rev_id="rev-J")
 
         #-------- end J -----------
 
-        self.merge(b1, main_wt)
+        main_wt.merge_from_branch(b1)
         main_wt.commit("merge branch1, rev-11", rev_id="rev-C")
 
         #-------- end C -----------
@@ -120,14 +125,14 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end K -----------
 
+        main_wt.merge_from_branch(b1)
         self.touch("main/b")
-        self.merge(b1, main_wt)
         # D gets some funky characters to make sure the unescaping works
         main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
 
         # end D
 
-        self.merge(branch2_branch, main_wt)
+        main_wt.merge_from_branch(branch2_branch)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
@@ -167,13 +172,22 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """This is a wrapper to strip TREE_ROOT if it occurs"""
+        repo = self.branch.repository
+        root_id = self.branch.basis_tree().inventory.root.file_id
+        result = repo.fileids_altered_by_revision_ids(revision_ids)
+        if root_id in result:
+            del result[root_id]
+        return result
+
     def test_fileids_altered_by_revision_ids(self):
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id> quiji%bo': set(['rev-A']),
              }, 
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
+            self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
              }, 
@@ -208,31 +222,66 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                 self.assertEquals(l1, l2)
 
 
+class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
+
+    def test_utf8_file_ids_and_revision_ids(self):
+        main_wt = self.make_branch_and_tree('main')
+        main_branch = main_wt.branch
+        self.build_tree(["main/a"])
+
+        file_id = u'a-f\xedle-id'.encode('utf8')
+        main_wt.add(['a'], [file_id])
+        revision_id = u'r\xe9v-a'.encode('utf8')
+        try:
+            main_wt.commit('a', rev_id=revision_id)
+        except NonAsciiRevisionId:
+            raise TestSkipped('non-ascii revision ids not supported by %s'
+                              % self.repository_format)
+
+        repo = main_wt.branch.repository
+        file_ids = repo.fileids_altered_by_revision_ids([revision_id])
+        root_id = main_wt.basis_tree().path2id('')
+        if root_id in file_ids:
+            self.assertEqual({file_id:set([revision_id]),
+                              root_id:set([revision_id])
+                             }, file_ids)
+        else:
+            self.assertEqual({file_id:set([revision_id])}, file_ids)
+
+
 class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
     def setUp(self):
         super(TestFileIdInvolvedSuperset, self).setUp()
 
+        self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
         self.build_tree(["main/a","main/b","main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id> quiji%bo'])
+                                 'c-funky<file-id> quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath: 
-            return # not an error, and not fixable. New formats are fixed.
+            # TODO: jam 20060701 Consider raising a different exception
+            #       newer formats do support this, and nothin can done to 
+            #       correct this test - its not a bug.
+            if sys.platform == 'win32':
+                raise TestSkipped('Old repository formats do not'
+                                  ' support file ids with <> on win32')
+            # This is not a known error condition
+            raise
 
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
         branch2_wt = branch2_bzrdir.open_workingtree()
-        os.chmod("branch2/b",0770)
+        set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
-        self.merge(branch2_branch, main_wt)
-        os.chmod("main/b",0660)
+        main_wt.merge_from_branch(branch2_branch)
+        set_executability(main_wt, 'b', False)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
@@ -255,3 +304,18 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)
         self.assertSubset(l2, l1)
+
+
+def set_executability(wt, path, executable=True):
+    """Set the executable bit for the file at path in the working tree
+
+    os.chmod() doesn't work on windows. But TreeTransform can mark or
+    unmark a file as executable.
+    """
+    file_id = wt.path2id(path)
+    tt = TreeTransform(wt)
+    try:
+        tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
+        tt.apply()
+    finally:
+        tt.finalize()

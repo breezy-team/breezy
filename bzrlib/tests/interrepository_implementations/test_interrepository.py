@@ -1,21 +1,22 @@
-# (C) 2005, 2006 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Tests for InterRepository implementastions."""
 
+import sys
 
 import bzrlib
 import bzrlib.bzrdir as bzrdir
@@ -27,6 +28,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
+from bzrlib.inventory import Inventory
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -70,16 +72,56 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
         return self.repository_format_to.initialize(made_control)
 
 
+def check_old_format_lock_error(repository_format):
+    """Potentially ignore LockError on old formats.
+
+    On win32, with the old OS locks, we get a failure of double-lock when
+    we open a object in 2 objects and try to lock both.
+
+    On new formats, LockError would be invalid, but for old formats
+    this was not supported on Win32.
+    """
+    if sys.platform != 'win32':
+        raise
+
+    description = repository_format.get_format_description()
+    if description in ("Repository format 4",
+                       "Weave repository format 5",
+                       "Weave repository format 6"):
+        # jam 20060701
+        # win32 OS locks are not re-entrant. So one process cannot
+        # open the same repository twice and lock them both.
+        raise TestSkipped('%s on win32 cannot open the same'
+                          ' repository twice in different objects'
+                          % description)
+    raise
+
+
+def check_repo_format_for_funky_id_on_win32(repo):
+    if sys.platform == 'win32':
+        if isinstance(repo, (repository.AllInOneRepository,
+                             repository.WeaveMetaDirRepository)):
+            raise TestSkipped("funky chars does not permitted"
+                              " on this platform in repository"
+                              " %s" % repo.__class__.__name__)
+
+
 class TestInterRepository(TestCaseWithInterRepository):
 
     def test_interrepository_get_returns_correct_optimiser(self):
         # we assume the optimising code paths are triggered
         # by the type of the repo not the transport - at this point.
         # we may need to update this test if this changes.
-        source_repo = self.make_repository("source")
-        target_repo = self.make_to_repository("target")
-        interrepo = repository.InterRepository.get(source_repo, target_repo)
-        self.assertEqual(self.interrepo_class, interrepo.__class__)
+        #
+        # XXX: This code tests that we get an InterRepository when we try to
+        # convert between the two repositories that it wants to be tested with
+        # -- but that's not necessarily correct.  So for now this is disabled.
+        # mbp 20070206
+        ## source_repo = self.make_repository("source")
+        ## target_repo = self.make_to_repository("target")
+        ## interrepo = repository.InterRepository.get(source_repo, target_repo)
+        ## self.assertEqual(self.interrepo_class, interrepo.__class__)
+        pass
 
     def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
@@ -112,12 +154,18 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        try:
+            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        repo_a.fetch(repo_b)
+        try:
+            repo_a.fetch(repo_b)
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_missing_text_other_location_fails(self):
         source_tree = self.make_branch_and_tree('source')
@@ -134,6 +182,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # for during pull operations
         inv = source.get_inventory('a')
         inv['id'].revision = 'b'
+        inv.revision_id = 'b'
         sha1 = source.add_inventory('b', inv, ['a'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -145,6 +194,35 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.add_revision('b', rev)
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
+
+    def test_fetch_funky_file_id(self):
+        from_tree = self.make_branch_and_tree('tree')
+        if sys.platform == 'win32':
+            from_repo = from_tree.branch.repository
+            check_repo_format_for_funky_id_on_win32(from_repo)
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
+
+    def test_fetch_no_inventory_revision(self):
+        """Old inventories lack revision_ids, so simulate this"""
+        from_tree = self.make_branch_and_tree('tree')
+        if sys.platform == 'win32':
+            from_repo = from_tree.branch.repository
+            check_repo_format_for_funky_id_on_win32(from_repo)
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        old_deserialise = from_tree.branch.repository.deserialise_inventory
+        def deserialise(revision_id, text):
+            inventory = old_deserialise(revision_id, text)
+            inventory.revision_id = None
+            return inventory
+        from_tree.branch.repository.deserialise_inventory = deserialise
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
 
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
@@ -206,7 +284,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = bzrlib.tree.EmptyTree().inventory
+        inv = Inventory(revision_id='ghost')
+        inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
@@ -219,6 +298,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo.add_revision('ghost', rev)
          
         repo = self.make_to_repository('missing_ghost')
+        inv = Inventory(revision_id='with_ghost')
+        inv.root.revision = 'with_ghost'
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,

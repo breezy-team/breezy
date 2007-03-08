@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,10 @@
 """This module provides an IdentityMap."""
 
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 
 
 class IdentityMap(object):

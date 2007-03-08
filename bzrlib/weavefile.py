@@ -1,19 +1,19 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+#
 # Author: Martin Pool <mbp@canonical.com>
 
 
@@ -45,7 +45,7 @@ FORMAT_1 = '# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
-    if format == None or format == 1:
+    if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)
@@ -124,7 +124,11 @@ def _read_weave_v5(f, w):
 
     lines = iter(f.readlines())
     
-    l = lines.next()
+    try:
+        l = lines.next()
+    except StopIteration:
+        raise WeaveFormatError('invalid weave file: no header')
+
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,17 +9,22 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 from cStringIO import StringIO
+import errno
+import subprocess
+from tempfile import TemporaryFile
 
-from bzrlib.diff import internal_diff
-from bzrlib.errors import BinaryFile
+from bzrlib.diff import internal_diff, external_diff, show_diff_trees
+from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.patiencediff
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (TestCase, TestCaseWithTransport,
+                          TestCaseInTempDir, TestSkipped)
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -27,6 +32,22 @@ def udiff_lines(old, new, allow_binary=False):
     internal_diff('old', old, 'new', new, output, allow_binary)
     output.seek(0, 0)
     return output.readlines()
+
+
+def external_udiff_lines(old, new, use_stringio=False):
+    if use_stringio:
+        # StringIO has no fileno, so it tests a different codepath
+        output = StringIO()
+    else:
+        output = TemporaryFile()
+    try:
+        external_diff('old', old, 'new', new, output, diff_opts=['-u'])
+    except NoDiff:
+        raise TestSkipped('external "diff" not present to test')
+    output.seek(0, 0)
+    lines = output.readlines()
+    output.close()
+    return lines
 
 
 class TestDiff(TestCase):
@@ -76,6 +97,50 @@ class TestDiff(TestCase):
         udiff_lines([1023 * 'a' + '\x00'], [], allow_binary=True)
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
 
+    def test_external_diff(self):
+        lines = external_udiff_lines(['boo\n'], ['goo\n'])
+        self.check_patch(lines)
+        self.assertEqual('\n', lines[-1])
+
+    def test_external_diff_no_fileno(self):
+        # Make sure that we can handle not having a fileno, even
+        # if the diff is large
+        lines = external_udiff_lines(['boo\n']*10000,
+                                     ['goo\n']*10000,
+                                     use_stringio=True)
+        self.check_patch(lines)
+
+    def test_external_diff_binary_lang_c(self):
+        orig_lang = os.environ.get('LANG')
+        orig_lc_all = os.environ.get('LC_ALL')
+        try:
+            os.environ['LANG'] = 'C'
+            os.environ['LC_ALL'] = 'C'
+            lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+            # Older versions of diffutils say "Binary files", newer
+            # versions just say "Files".
+            self.assertContainsRe(lines[0],
+                                  '(Binary f|F)iles old and new differ\n')
+            self.assertEquals(lines[1:], ['\n'])
+        finally:
+            for name, value in [('LANG', orig_lang), ('LC_ALL', orig_lc_all)]:
+                if value is None:
+                    del os.environ[name]
+                else:
+                    os.environ[name] = value
+
+    def test_no_external_diff(self):
+        """Check that NoDiff is raised when diff is not available"""
+        # Use os.environ['PATH'] to make sure no 'diff' command is available
+        orig_path = os.environ['PATH']
+        try:
+            os.environ['PATH'] = ''
+            self.assertRaises(NoDiff, external_diff,
+                              'old', ['boo\n'], 'new', ['goo\n'],
+                              StringIO(), diff_opts=['-u'])
+        finally:
+            os.environ['PATH'] = orig_path
+        
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
         output = StringIO()
@@ -83,8 +148,8 @@ class TestDiff(TestCase):
                     u'new_\xe5', ['new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xc2\xb5\t\n',
-                           '+++ new_\xc3\xa5\t\n',
+        self.assertEquals(['--- old_\xc2\xb5\n',
+                           '+++ new_\xc3\xa5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
                            '+new_text\n',
@@ -99,8 +164,8 @@ class TestDiff(TestCase):
                     path_encoding='utf8')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xc2\xb5\t\n',
-                           '+++ new_\xc3\xa5\t\n',
+        self.assertEquals(['--- old_\xc2\xb5\n',
+                           '+++ new_\xc3\xa5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
                            '+new_text\n',
@@ -115,8 +180,8 @@ class TestDiff(TestCase):
                     path_encoding='iso-8859-1')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xb5\t\n',
-                           '+++ new_\xe5\t\n',
+        self.assertEquals(['--- old_\xb5\n',
+                           '+++ new_\xe5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
                            '+new_text\n',
@@ -131,6 +196,165 @@ class TestDiff(TestCase):
                     u'new_\xe5', ['new_text\n'], output)
         self.failUnless(isinstance(output.getvalue(), str),
             'internal_diff should return bytestrings')
+
+
+class TestDiffFiles(TestCaseInTempDir):
+
+    def test_external_diff_binary(self):
+        """The output when using external diff should use diff's i18n error"""
+        # Make sure external_diff doesn't fail in the current LANG
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+
+        cmd = ['diff', '-u', '--binary', 'old', 'new']
+        open('old', 'wb').write('\x00foobar\n')
+        open('new', 'wb').write('foo\x00bar\n')
+        pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                     stdin=subprocess.PIPE)
+        out, err = pipe.communicate()
+        # Diff returns '2' on Binary files.
+        self.assertEqual(2, pipe.returncode)
+        # We should output whatever diff tells us, plus a trailing newline
+        self.assertEqual(out.splitlines(True) + ['\n'], lines)
+
+
+class TestDiffDates(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestDiffDates, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        self.b = self.wt.branch
+        self.build_tree_contents([
+            ('file1', 'file1 contents at rev 1\n'),
+            ('file2', 'file2 contents at rev 1\n')
+            ])
+        self.wt.add(['file1', 'file2'])
+        self.wt.commit(
+            message='Revision 1',
+            timestamp=1143849600, # 2006-04-01 00:00:00 UTC
+            timezone=0,
+            rev_id='rev-1')
+        self.build_tree_contents([('file1', 'file1 contents at rev 2\n')])
+        self.wt.commit(
+            message='Revision 2',
+            timestamp=1143936000, # 2006-04-02 00:00:00 UTC
+            timezone=28800,
+            rev_id='rev-2')
+        self.build_tree_contents([('file2', 'file2 contents at rev 3\n')])
+        self.wt.commit(
+            message='Revision 3',
+            timestamp=1144022400, # 2006-04-03 00:00:00 UTC
+            timezone=-3600,
+            rev_id='rev-3')
+        self.wt.remove(['file2'])
+        self.wt.commit(
+            message='Revision 4',
+            timestamp=1144108800, # 2006-04-04 00:00:00 UTC
+            timezone=0,
+            rev_id='rev-4')
+        self.build_tree_contents([
+            ('file1', 'file1 contents in working tree\n')
+            ])
+        # set the date stamps for files in the working tree to known values
+        os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
+
+    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
+        output = StringIO()
+        if working_tree is not None:
+            extra_trees = (working_tree,)
+        else:
+            extra_trees = ()
+        show_diff_trees(tree1, tree2, output, specific_files=specific_files,
+                        extra_trees=extra_trees, old_label='old/', 
+                        new_label='new/')
+        return output.getvalue()
+
+    def test_diff_rev_tree_working_tree(self):
+        output = self.get_diff(self.wt.basis_tree(), self.wt)
+        # note that the date for old/file1 is from rev 2 rather than from
+        # the basis revision (rev 4)
+        self.assertEqualDiff(output, '''\
+=== modified file 'file1'
+--- old/file1\t2006-04-02 00:00:00 +0000
++++ new/file1\t2006-04-05 00:00:00 +0000
+@@ -1,1 +1,1 @@
+-file1 contents at rev 2
++file1 contents in working tree
+
+''')
+
+    def test_diff_rev_tree_rev_tree(self):
+        tree1 = self.b.repository.revision_tree('rev-2')
+        tree2 = self.b.repository.revision_tree('rev-3')
+        output = self.get_diff(tree1, tree2)
+        self.assertEqualDiff(output, '''\
+=== modified file 'file2'
+--- old/file2\t2006-04-01 00:00:00 +0000
++++ new/file2\t2006-04-03 00:00:00 +0000
+@@ -1,1 +1,1 @@
+-file2 contents at rev 1
++file2 contents at rev 3
+
+''')
+        
+    def test_diff_add_files(self):
+        tree1 = self.b.repository.revision_tree(None)
+        tree2 = self.b.repository.revision_tree('rev-1')
+        output = self.get_diff(tree1, tree2)
+        # the files have the epoch time stamp for the tree in which
+        # they don't exist.
+        self.assertEqualDiff(output, '''\
+=== added file 'file1'
+--- old/file1\t1970-01-01 00:00:00 +0000
++++ new/file1\t2006-04-01 00:00:00 +0000
+@@ -0,0 +1,1 @@
++file1 contents at rev 1
+
+=== added file 'file2'
+--- old/file2\t1970-01-01 00:00:00 +0000
++++ new/file2\t2006-04-01 00:00:00 +0000
+@@ -0,0 +1,1 @@
++file2 contents at rev 1
+
+''')
+
+    def test_diff_remove_files(self):
+        tree1 = self.b.repository.revision_tree('rev-3')
+        tree2 = self.b.repository.revision_tree('rev-4')
+        output = self.get_diff(tree1, tree2)
+        # the file has the epoch time stamp for the tree in which
+        # it doesn't exist.
+        self.assertEqualDiff(output, '''\
+=== removed file 'file2'
+--- old/file2\t2006-04-03 00:00:00 +0000
++++ new/file2\t1970-01-01 00:00:00 +0000
+@@ -1,1 +0,0 @@
+-file2 contents at rev 3
+
+''')
+
+    def test_show_diff_specified(self):
+        """A working tree filename can be used to identify a file"""
+        self.wt.rename_one('file1', 'file1b')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+
+    def test_recursive_diff(self):
+        """Children of directories are matched"""
+        os.mkdir('dir1')
+        os.mkdir('dir2')
+        self.wt.add(['dir1', 'dir2'])
+        self.wt.rename_one('file1', 'dir1/file1')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
+                            working_tree=self.wt)
+        self.assertNotContainsRe(out, 'file1\t')
 
 
 class TestPatienceDiffLib(TestCase):
