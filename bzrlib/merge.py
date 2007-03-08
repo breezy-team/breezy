@@ -806,11 +806,14 @@ class Merge3Merger(object):
             else:
                 winner = "other"
         if winner == "this":
-            if file_status == "modified":
-                executability = self.this_tree.is_executable(file_id)
-                if executability is not None:
-                    trans_id = self.tt.trans_id_file_id(file_id)
-                    self.tt.set_executability(executability, trans_id)
+            # We need to call set_executability even if the file is unmodified,
+            # because we use that value to generate the new inventory. And on
+            # win32, that is all we have to know that the file is or is not
+            # actually executable.
+            executability = self.this_tree.is_executable(file_id)
+            if executability is not None:
+                trans_id = self.tt.trans_id_file_id(file_id)
+                self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
             if file_id in self.other_tree:
