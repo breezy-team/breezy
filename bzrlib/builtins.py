@@ -1336,7 +1336,7 @@ class cmd_diff(Command):
             Difference between the working tree and revision 1
         bzr diff -r1..2
             Difference between revision 2 and revision 1
-        bzr diff --diff-prefix old/:new/
+        bzr diff --prefix old/:new/
             Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
             Show the differences between the two working trees
@@ -1359,7 +1359,7 @@ class cmd_diff(Command):
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
-                    'two values separated by a colon.'),
+                    'two values separated by a colon. (eg "old/:new/")'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1379,13 +1379,14 @@ class cmd_diff(Command):
         elif ':' in prefix:
             old_label, new_label = prefix.split(":")
         else:
-            raise BzrCommandError(
-                "--prefix expects two values separated by a colon")
+            raise errors.BzrCommandError(
+                '--prefix expects two values separated by a colon'
+                ' (eg "old/:new/")')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
-        
+
         try:
             tree1, file_list = internal_tree_files(file_list)
             tree2 = None
