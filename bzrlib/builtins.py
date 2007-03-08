@@ -1336,7 +1336,7 @@ class cmd_diff(Command):
             Difference between the working tree and revision 1
         bzr diff -r1..2
             Difference between revision 2 and revision 1
-        bzr diff --diff-prefix old/:new/
+        bzr diff --prefix old/:new/
             Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
             Show the differences between the two working trees
@@ -1379,7 +1379,7 @@ class cmd_diff(Command):
         elif ':' in prefix:
             old_label, new_label = prefix.split(":")
         else:
-            raise BzrCommandError(
+            raise errors.BzrCommandError(
                 "--prefix expects two values separated by a colon")
 
         if revision and len(revision) > 2:
