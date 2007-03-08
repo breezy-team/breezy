@@ -271,7 +271,10 @@ class ExtendedTestResult(unittest._TextTestResult):
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
-            self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
+            self.stream.write("%s: " % flavour)
+            if NUMBERED_DIRS:
+                self.stream.write('#%d ' % test.number)
+            self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
                 print >>self.stream
                 print >>self.stream, \
