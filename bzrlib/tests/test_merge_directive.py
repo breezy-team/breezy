@@ -23,9 +23,29 @@ from bzrlib import (
     )
 
 
+OUTPUT1 = """# Bazaar merge directive format experimental-1
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+#\x20
+booga"""
+
+
+OUTPUT2 = """# Bazaar merge directive format experimental-1
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+# source_branch: http://example.org
+# message: Hi mom!
+#\x20
+booga"""
+
+
 class TestMergeDirective(tests.TestCase):
 
-    def test_init(self):
+    def test_merge_source(self):
         time = 500.0
         timezone = 5
         self.assertRaises(errors.NoMergeSource, merge_directive.MergeDirective,
@@ -33,21 +53,39 @@ class TestMergeDirective(tests.TestCase):
         self.assertRaises(errors.NoMergeSource, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com',
             patch_type='diff')
-        md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
+        merge_directive.MergeDirective('example:', 'sha', time, timezone,
             'http://example.com', source_branch='http://example.org')
+        md = merge_directive.MergeDirective('null:', 'sha', time, timezone,
+            'http://example.com', patch='blah', patch_type='bundle')
+        self.assertIs(None, md.source_branch)
+        md2 = merge_directive.MergeDirective('null:', 'sha', time, timezone,
+            'http://example.com', patch='blah', patch_type='bundle',
+            source_branch='bar')
+        self.assertEqual('bar', md2.source_branch)
+
+    def test_require_patch(self):
+        time = 500.0
+        timezone = 5
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com',
             patch_type='bundle')
-        md = merge_directive.MergeDirective('null:', 'sha', time, timezone,
-            'http://example.com', patch='blah', patch_type='bundle')
-        self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
-            'example:', 'sha', time, timezone, 'http://example.com',
-            source_branch="http://example.org", patch_type='diff')
         md = merge_directive.MergeDirective('example:', 'sha1', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='', patch_type='diff')
+        self.assertEqual(md.patch, '')
 
     def test_serialization(self):
+        time = 501
+        timezone = 72
+        md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
+            'http://example.com', patch='booga', patch_type='bundle')
+        self.assertEqualDiff(OUTPUT1, ''.join(md.to_lines()))
+        md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
+            'http://example.com', source_branch="http://example.org",
+            patch='booga', patch_type='diff', message="Hi mom!")
+        self.assertEqualDiff(OUTPUT2, ''.join(md.to_lines()))
+
+    def test_roundtrip(self):
         time = 501
         timezone = 72
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
@@ -116,37 +154,6 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         tree_a.commit('Commit of rev2a', rev_id='rev2a')
         return tree_a, tree_b, branch_c
 
-    def test_generate(self):
-        tree_a, tree_b, branch_c = self.make_trees()
-        self.assertRaises(errors.PublicBranchOutOfDate,
-            merge_directive.MergeDirective.from_objects,
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            public_branch=branch_c.base, patch_type='diff')
-        # public branch is not checked if patch format is bundle.
-        md1 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            public_branch=branch_c.base)
-        self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
-        self.assertContainsRe(md1.patch, '\\+content_c')
-        self.assertNotContainsRe(md1.patch, '\\+content_a')
-        # public branch is provided with a bundle, despite possibly being out
-        # of date, because it's not required if a bundle is present.
-        self.assertEqual(md1.source_branch, branch_c.base)
-        branch_c.pull(tree_a.branch)
-        md2 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            patch_type='diff', public_branch=branch_c.base)
-        self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
-        self.assertContainsRe(md1.patch, '\\+content_c')
-        self.assertNotContainsRe(md1.patch, '\\+content_a')
-        md3 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-            patch_type=None, public_branch=branch_c.base,
-            message='Merge message')
-        md3.to_lines()
-        self.assertIs(None, md3.patch)
-        self.assertEqual('Merge message', md3.message)
-
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md2 = merge_directive.MergeDirective.from_objects(
@@ -156,6 +163,46 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertContainsRe(md2.patch, '\\+content_c')
         self.assertNotContainsRe(md2.patch, '\\+\\+\\+ b/')
         self.assertContainsRe(md2.patch, '\\+\\+\\+ file')
+
+    def test_public_branch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        self.assertRaises(errors.PublicBranchOutOfDate,
+            merge_directive.MergeDirective.from_objects,
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            public_branch=branch_c.base, patch_type='diff')
+        # public branch is not checked if patch format is bundle.
+        md1 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            public_branch=branch_c.base)
+        # public branch is provided with a bundle, despite possibly being out
+        # of date, because it's not required if a bundle is present.
+        self.assertEqual(md1.source_branch, branch_c.base)
+        # Once we update the public branch, we can generate a diff.
+        branch_c.pull(tree_a.branch)
+        md3 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            patch_type=None, public_branch=branch_c.base)
+
+    def test_message(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md3 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            patch_type=None, public_branch=branch_c.base,
+            message='Merge message')
+        md3.to_lines()
+        self.assertIs(None, md3.patch)
+        self.assertEqual('Merge message', md3.message)
+
+    def test_generate_bundle(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md1 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            public_branch=branch_c.base)
+        self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
+        self.assertContainsRe(md1.patch, '\\+content_c')
+        self.assertNotContainsRe(md1.patch, '\\+content_a')
+        self.assertContainsRe(md1.patch, '\\+content_c')
+        self.assertNotContainsRe(md1.patch, '\\+content_a')
 
     def test_signing(self):
         time = 501
