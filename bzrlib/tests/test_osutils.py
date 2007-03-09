@@ -241,6 +241,13 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
 
+    def test_kind_marker(self):
+        self.assertEqual("", osutils.kind_marker("file"))
+        self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
+        self.assertEqual("@", osutils.kind_marker("symlink"))
+        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+
+
 class TestSafeUnicode(TestCase):
 
     def test_from_ascii_string(self):
@@ -704,7 +711,8 @@ class TestWalkDirs(TestCaseInTempDir):
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
             self.assertIsInstance(dirdetail[0], str)
             if isinstance(dirdetail[1], unicode):
-                dirdetail[1] = dirdetail[1].encode('utf8')
+                dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
+                dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
                     self.assertIsInstance(info[4], unicode)
                     info[4] = info[4].encode('utf8')
