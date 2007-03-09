@@ -33,11 +33,39 @@ from bzrlib.bundle import serializer as bundle_serializer
 
 class MergeDirective(object):
 
+    """A request to perform a merge into a branch.
+
+    Designed to be serialized and mailed.  It provides all the information
+    needed to perform a merge automatically, by providing at minimum a revision
+    bundle or the location of a branch.
+
+    The serialization format is robust against certain common forms of
+    deterioration caused by mailing.
+
+    The format is also designed to be patch-compatible.  If the directive
+    includes a diff or revision bundle, it should be possible to apply it
+    directly using the standard patch program.
+    """
+
     _format_string = 'Bazaar merge directive format experimental-1'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
                  source_branch=None, message=None):
+        """Constructor.
+
+        :param revision_id: The revision to merge
+        :param testament_sha1: The sha1 of the testament of the revision to
+            merge.
+        :param time: The current POSIX timestamp time
+        :param timezone: The timezone offset
+        :param target_branch: The branch to apply the merge to
+        :param patch: The text of a diff or bundle
+        :param patch_type: None, "diff" or "bundle", depending on the contents
+            of patch
+        :param source_branch: A public location to merge the revision from
+        :param message: The message to use when committing this merge
+        """
         assert patch_type in (None, 'diff', 'bundle')
         if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
@@ -55,6 +83,11 @@ class MergeDirective(object):
 
     @classmethod
     def from_lines(klass, lines):
+        """Deserialize a MergeRequest from an iterable of lines
+
+        :param lines: An iterable of lines
+        :return: a MergeRequest
+        """
         assert lines[0].startswith('# ' + klass._format_string + '\n')
         line_iter = iter(lines[1:])
         stanza = rio.read_patch_stanza(line_iter)
@@ -81,6 +114,10 @@ class MergeDirective(object):
                               patch_type=patch_type, patch=patch, **kwargs)
 
     def to_lines(self):
+        """Serialize as a list of lines
+
+        :return: a list of lines
+        """
         time_str = timestamp.format_patch_date(self.time, self.timezone)
         stanza = rio.Stanza(revision_id=self.revision_id, timestamp=time_str,
                             target_branch=self.target_branch,
@@ -96,10 +133,23 @@ class MergeDirective(object):
         return lines
 
     def to_signed(self, branch):
+        """Serialize as a signed string.
+
+        :param branch: The source branch, to get the signing strategy
+        :return: a string
+        """
         my_gpg = gpg.GPGStrategy(branch.get_config())
         return my_gpg.sign(''.join(self.to_lines()))
 
     def to_email(self, mail_to, branch, sign=False):
+        """Serialize as an email message.
+
+        :param mail_to: The address to mail the message to
+        :param branch: The source branch, to get the signing strategy and
+            source email address
+        :param sign: If True, gpg-sign the email
+        :return: an email message
+        """
         mail_from = branch.get_config().username()
         message = Message.Message()
         message['To'] = mail_to
@@ -120,6 +170,27 @@ class MergeDirective(object):
     def from_objects(klass, repository, revision_id, time, timezone,
                  target_branch, patch_type='bundle',
                  local_target_branch=None, public_branch=None, message=None):
+        """Generate a merge directive from various objects
+
+        :param repository: The repository containing the revision
+        :param revision_id: The revision to merge
+        :param time: The POSIX timestamp of the date the request was issued.
+        :param timezone: The timezone of the request
+        :param target_branch: The url of the branch to merge into
+        :param patch_type: 'bundle', 'diff' or None, depending on the type of
+            patch desired.
+        :param local_target_branch: a local copy of the target branch
+        :param public_branch: location of a public branch containing the target
+            revision.
+        :param message: Message to use when committing the merge
+        :return: The merge directive
+
+        The public branch is always used if supplied.  If the patch_type is
+        not 'bundle', the public branch must be supplied, and will be verified.
+
+        If the message is not supplied, the message from revision_id will be
+        used for the commit.
+        """
         t = testament.StrictTestament3.from_revision(repository, revision_id)
         if patch_type is None:
             patch = None
