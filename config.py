@@ -20,7 +20,7 @@
 
 import os
 
-from bzrlib.config import ConfigObj
+from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
 
 from util import add_ignore
@@ -32,24 +32,25 @@ class DebBuildConfig(object):
   ~/.bazaar/builddeb.conf, finally .bzr-builddeb/default.conf. The value is 
   taken from the first file in which it is specified."""
 
-  def __init__(self, files=None):
+  section = 'BUILDDEB'
+
+  def __init__(self, files, branch=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
-    Pass it a list of tuples (file, secure, add) where file is the location of
+    Pass it a list of tuples (file, secure) where file is the location of
     a config file (that doesn't have to exist, and trusted is True or false,
-    and states whether the file can be trusted for sensitive values. Add
-    indicates whether the file should be added to .bzrignore if it is not
-    already.
+    and states whether the file can be trusted for sensitive values.
 
     The value will be returned from the first in the list that has it,
     unless that key is marked as needing a trusted file and the file isn't
     trusted.
 
-    If the list is empty then it will be set up the default way for builddeb.
+    If branch is not None then it will be used in preference to all others.
+    It will not be considered trusted.
 
-    >>> c = DebBuildConfig([('local.conf', False, False),
-    ... ('user.conf', True, False), ('default.conf', False, False)])
+    >>> c = DebBuildConfig([('local.conf', False),
+    ... ('user.conf', True), ('default.conf', False)])
     >>> print c.orig_dir
     None
     >>> print c.merge
@@ -64,26 +65,16 @@ class DebBuildConfig(object):
     userbuild
     """
     self._config_files = []
-    if files is not None:
-      assert(len(files) > 0)
-      for input in files:
-        if input[2]:
-          add_ignore(input[0])
-        self._config_files.append((ConfigObj(input[0]), input[1]))
-    else:
-      globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
-      localfile = ('.bzr-builddeb/local.conf')
-      defaultfile = ('.bzr-builddeb/default.conf')
-      self._config_files = [(ConfigObj(localfile), False),
-                            (ConfigObj(globalfile), True),
-                            (ConfigObj(defaultfile), False)]
-      add_ignore(localfile)
+    assert(len(files) > 0)
+    for input in files:
+      self._config_files.append((ConfigObj(input[0]), input[1]))
+    self._branch_config = TreeConfig(branch)
 
   def _get_opt(self, config, key):
     """Returns the value for key from config, of None if it is not defined in 
     the file"""
     try:
-      return config.get_value('BUILDDEB', key)
+      return config.get_value(self.section, key)
     except KeyError:
       return None
 
@@ -97,6 +88,12 @@ class DebBuildConfig(object):
     marked as trusted.
     
     """
+    if self._branch_config is not None:
+      if not trusted:
+        value = self._branch_config.get_option(key, section=self.section)
+        if value is not None:
+          mutter("Using %s for %s, taken from the branch", value, key)
+          return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:
         value = self._get_opt(config_file[0], key)
@@ -122,6 +119,12 @@ class DebBuildConfig(object):
     marked as trusted.
     
     """
+    if self._branch_config is not None:
+      if not trusted:
+        value = self._branch_config.get_option(key, section=self.section)
+        if value is not None:
+          mutter("Using %s for %s, taken from the branch", value, key)
+          return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:
         (found, value) = self._get_bool(config_file[0], key)
