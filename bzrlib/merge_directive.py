@@ -230,7 +230,7 @@ class MergeDirective(object):
         tree_1 = repository.revision_tree(ancestor_id)
         tree_2 = repository.revision_tree(revision_id)
         s = StringIO()
-        diff.show_diff_trees(tree_1, tree_2, s)
+        diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
         return s.getvalue()
 
     @staticmethod

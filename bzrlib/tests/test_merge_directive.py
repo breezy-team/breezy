@@ -147,6 +147,16 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertIs(None, md3.patch)
         self.assertEqual('Merge message', md3.message)
 
+    def test_generate_patch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md2 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            patch_type='diff', public_branch=tree_a.branch.base)
+        self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
+        self.assertContainsRe(md2.patch, '\\+content_c')
+        self.assertNotContainsRe(md2.patch, '\\+\\+\\+ b/')
+        self.assertContainsRe(md2.patch, '\\+\\+\\+ file')
+
     def test_signing(self):
         time = 501
         timezone = 72
