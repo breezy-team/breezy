@@ -132,11 +132,12 @@ class BzrNewError(BzrError):
     # readable explanation
 
     def __init__(self, *args, **kwds):
-        # XXX: Use the underlying BzrError to always generate the args attribute
-        # if it doesn't exist.  We can't use super here, because exceptions are
-        # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
+        # XXX: Use the underlying BzrError to always generate the args
+        # attribute if it doesn't exist.  We can't use super here, because
+        # exceptions are old-style classes in python2.4 (but new in 2.5).
+        # --bmc, 20060426
         symbol_versioning.warn('BzrNewError was deprecated in bzr 0.13; '
-             'please convert %s to use BzrError instead' 
+             'please convert %s to use BzrError instead'
              % self.__class__.__name__,
              DeprecationWarning,
              stacklevel=2)
@@ -223,8 +224,8 @@ class NoSuchId(BzrError):
 
 class InventoryModified(BzrError):
 
-    _fmt = ("The current inventory for the tree %(tree)r has been modified, "
-            "so a clean inventory cannot be read without data loss.")
+    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
+            " so a clean inventory cannot be read without data loss.")
 
     internal_error = True
 
@@ -342,7 +343,7 @@ class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
     _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
-         "%(extra)s")
+            "%(extra)s")
 
     def __init__(self, source, dest, extra=None):
         BzrError.__init__(self)
@@ -425,7 +426,8 @@ class UnsupportedProtocol(PathError):
 
 class ShortReadvError(PathError):
 
-    _fmt = "readv() read %(actual)s bytes rather than %(length)s bytes at %(offset)s for %(path)s%(extra)s"
+    _fmt = ("readv() read %(actual)s bytes rather than %(length)s bytes"
+            " at %(offset)s for %(path)s%(extra)s")
 
     internal_error = True
 
@@ -482,7 +484,8 @@ class BranchExistsWithoutWorkingTree(PathError):
 
 class AtomicFileAlreadyClosed(PathError):
 
-    _fmt = "'%(function)s' called on an AtomicFile after it was closed: %(path)s"
+    _fmt = ("'%(function)s' called on an AtomicFile after it was closed:"
+            " %(path)s")
 
     def __init__(self, path, function):
         PathError.__init__(self, path=path, extra=None)
@@ -491,7 +494,8 @@ class AtomicFileAlreadyClosed(PathError):
 
 class InaccessibleParent(PathError):
 
-    _fmt = "Parent not accessible given base %(base)s and relative path %(path)s"
+    _fmt = ("Parent not accessible given base %(base)s and"
+            " relative path %(path)s")
 
     def __init__(self, path, base):
         PathError.__init__(self, path)
@@ -686,7 +690,8 @@ class ReadOnlyError(LockError):
 
 class OutSideTransaction(BzrError):
 
-    _fmt = "A transaction related operation was attempted after the transaction finished."
+    _fmt = ("A transaction related operation was attempted after"
+            " the transaction finished.")
 
 
 class ObjectNotLocked(LockError):
@@ -730,7 +735,8 @@ class LockContention(LockError):
 
 class LockBroken(LockError):
 
-    _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
+    _fmt = ("Lock was broken while still open: %(lock)s"
+            " - check storage consistency!")
 
     internal_error = False
 
@@ -740,7 +746,8 @@ class LockBroken(LockError):
 
 class LockBreakMismatch(LockError):
 
-    _fmt = "Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"
+    _fmt = ("Lock was released and re-acquired before being broken:"
+            " %(lock)s: held by %(holder)r, wanted to break %(target)r")
 
     internal_error = False
 
@@ -796,8 +803,8 @@ class NoSuchRevision(BzrError):
 
 class NotLeftParentDescendant(BzrError):
 
-    _fmt = "Revision %(old_revision)s is not the left parent of"\
-        " %(new_revision)s, but branch %(branch_location)s expects this"
+    _fmt = ("Revision %(old_revision)s is not the left parent of"
+            " %(new_revision)s, but branch %(branch_location)s expects this")
 
     internal_error = True
 
@@ -828,7 +835,8 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = "Requested revision: %(spec)r does not exist in branch: %(branch)s%(extra)s"
+    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
+            " %(branch)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
         BzrError.__init__(self, branch=branch, spec=spec)
@@ -845,9 +853,9 @@ class HistoryMissing(BzrError):
 
 class AppendRevisionsOnlyViolation(BzrError):
 
-    _fmt = 'Operation denied because it would change the main history, '\
-           'which is not permitted by the append_revisions_only setting on'\
-           ' branch "%(location)s".'
+    _fmt = ('Operation denied because it would change the main history,'
+           ' which is not permitted by the append_revisions_only setting on'
+           ' branch "%(location)s".')
 
     def __init__(self, location):
        import bzrlib.urlutils as urlutils
@@ -856,8 +864,9 @@ class AppendRevisionsOnlyViolation(BzrError):
 
 
 class DivergedBranches(BzrError):
-    
-    _fmt = "These branches have diverged.  Use the merge command to reconcile them."""
+
+    _fmt = ("These branches have diverged."
+            " Use the merge command to reconcile them.")
 
     internal_error = False
 
@@ -878,7 +887,8 @@ class NotLefthandHistory(BzrError):
 
 class UnrelatedBranches(BzrError):
 
-    _fmt = "Branches have no common ancestor, and no merge base revision was specified."
+    _fmt = ("Branches have no common ancestor, and"
+            " no merge base revision was specified.")
 
     internal_error = False
 
@@ -894,8 +904,8 @@ class NoCommonAncestor(BzrError):
 
 class NoCommonRoot(BzrError):
 
-    _fmt = "Revisions are not derived from the same root: " \
-           "%(revision_a)s %(revision_b)s."
+    _fmt = ("Revisions are not derived from the same root: "
+           "%(revision_a)s %(revision_b)s.")
 
     def __init__(self, revision_a, revision_b):
         BzrError.__init__(self, revision_a=revision_a, revision_b=revision_b)
@@ -924,8 +934,8 @@ class AmbiguousBase(BzrError):
     def __init__(self, bases):
         warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
                 DeprecationWarning)
-        msg = "The correct base is unclear, because %s are all equally close" %\
-            ", ".join(bases)
+        msg = ("The correct base is unclear, because %s are all equally close"
+                % ", ".join(bases))
         BzrError.__init__(self, msg)
         self.bases = bases
 
@@ -953,7 +963,8 @@ class UnlistableBranch(BzrError):
 
 class BoundBranchOutOfDate(BzrError):
 
-    _fmt = "Bound branch %(branch)s is out of date with master branch %(master)s."
+    _fmt = ("Bound branch %(branch)s is out of date"
+            " with master branch %(master)s.")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
@@ -963,7 +974,8 @@ class BoundBranchOutOfDate(BzrError):
         
 class CommitToDoubleBoundBranch(BzrError):
 
-    _fmt = "Cannot commit to branch %(branch)s. It is bound to %(master)s, which is bound to %(remote)s."
+    _fmt = ("Cannot commit to branch %(branch)s."
+            " It is bound to %(master)s, which is bound to %(remote)s.")
 
     def __init__(self, branch, master, remote):
         BzrError.__init__(self)
@@ -983,7 +995,8 @@ class OverwriteBoundBranch(BzrError):
 
 class BoundBranchConnectionFailure(BzrError):
 
-    _fmt = "Unable to connect to target of bound branch %(branch)s => %(target)s: %(error)s"
+    _fmt = ("Unable to connect to target of bound branch %(branch)s"
+            " => %(target)s: %(error)s")
 
     def __init__(self, branch, target, error):
         BzrError.__init__(self)
@@ -1043,7 +1056,8 @@ class WeaveInvalidChecksum(WeaveError):
 
 class WeaveTextDiffers(WeaveError):
 
-    _fmt = "Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"
+    _fmt = ("Weaves differ on text content. Revision:"
+            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
 
     def __init__(self, revision_id, weave_a, weave_b):
         WeaveError.__init__(self)
@@ -1054,7 +1068,8 @@ class WeaveTextDiffers(WeaveError):
 
 class WeaveTextDiffers(WeaveError):
 
-    _fmt = "Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"
+    _fmt = ("Weaves differ on text content. Revision:"
+            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
 
     def __init__(self, revision_id, weave_a, weave_b):
         WeaveError.__init__(self)
@@ -1157,9 +1172,9 @@ class TransportError(BzrError):
 
 class TooManyConcurrentRequests(BzrError):
 
-    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit. "
-            "Be sure to finish_writing and finish_reading on the "
-            "current request that is open.")
+    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
+            " Be sure to finish_writing and finish_reading on the"
+            " current request that is open.")
 
     internal_error = True
 
@@ -1292,8 +1307,8 @@ class WorkingTreeNotRevision(BzrError):
 
 class CantReprocessAndShowBase(BzrError):
 
-    _fmt = "Can't reprocess and show base, because reprocessing obscures " \
-           "the relationship of conflicting lines to the base"
+    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
+           "the relationship of conflicting lines to the base")
 
 
 class GraphCycleError(BzrError):
@@ -1348,9 +1363,9 @@ class MediumNotConnected(BzrError):
 
 
 class MustUseDecorated(Exception):
-    
-    _fmt = """A decorating function has requested its original command be used."""
-    
+
+    _fmt = "A decorating function has requested its original command be used."
+
 
 class NoBundleFound(BzrError):
 
@@ -1373,7 +1388,8 @@ class BundleNotSupported(BzrError):
 
 class MissingText(BzrError):
 
-    _fmt = "Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"
+    _fmt = ("Branch %(base)s is missing revision"
+            " %(text_revision)s of %(file_id)s")
 
     def __init__(self, branch, text_revision, file_id):
         BzrError.__init__(self)
@@ -1496,7 +1512,8 @@ class BzrBadParameterMissing(BzrBadParameter):
 
 class BzrBadParameterUnicode(BzrBadParameter):
 
-    _fmt = "Parameter %(param)s is unicode but only byte-strings are permitted."
+    _fmt = ("Parameter %(param)s is unicode but"
+            " only byte-strings are permitted.")
 
 
 class BzrBadParameterContainsNewline(BzrBadParameter):
@@ -1613,8 +1630,8 @@ class ConflictFormatError(BzrError):
 
 class CorruptRepository(BzrError):
 
-    _fmt = """An error has been detected in the repository %(repo_path)s.
-Please run bzr reconcile on this repository."""
+    _fmt = ("An error has been detected in the repository %(repo_path)s.\n"
+            "Please run bzr reconcile on this repository.")
 
     def __init__(self, repo):
         BzrError.__init__(self)
@@ -1642,8 +1659,8 @@ class MissingProgressBarFinish(BzrError):
 
 class InvalidProgressBarType(BzrError):
 
-    _fmt = """Environment variable BZR_PROGRESS_BAR='%(bar_type)s is not a supported type
-Select one of: %(valid_types)s"""
+    _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"
+            " is not a supported type Select one of: %(valid_types)s")
 
     def __init__(self, bar_type, valid_types):
         BzrError.__init__(self, bar_type=bar_type, valid_types=valid_types)
@@ -1651,7 +1668,8 @@ Select one of: %(valid_types)s"""
 
 class UnsupportedOperation(BzrError):
 
-    _fmt = "The method %(mname)s is not supported on objects of type %(tname)s."
+    _fmt = ("The method %(mname)s is not supported on"
+            " objects of type %(tname)s.")
 
     def __init__(self, method, method_self):
         self.method = method
@@ -1664,7 +1682,9 @@ class CannotSetRevisionId(UnsupportedOperation):
 
 
 class NonAsciiRevisionId(UnsupportedOperation):
-    """Raised when a commit is attempting to set a non-ascii revision id but cant."""
+    """Raised when a commit is attempting to set a non-ascii revision id
+       but cant.
+    """
 
 
 class BinaryFile(BzrError):
@@ -1683,8 +1703,8 @@ class IllegalPath(BzrError):
 
 class TestamentMismatch(BzrError):
 
-    _fmt = """Testament did not match expected value.  
-       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured 
+    _fmt = """Testament did not match expected value.
+       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured
        {%(measured)s}"""
 
     def __init__(self, revision_id, expected, measured):
@@ -1791,6 +1811,12 @@ class UnknownSSH(BzrError):
         self.vendor = vendor
 
 
+class SSHVendorNotFound(BzrError):
+
+    _fmt = ("Don't know how to handle SSH connections."
+            " Please set BZR_SSH environment variable.")
+
+
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
@@ -1802,7 +1828,8 @@ class GhostRevisionUnusableHere(BzrError):
 
 class IllegalUseOfScopeReplacer(BzrError):
 
-    _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
+    _fmt = ("ScopeReplacer object %(name)r was used incorrectly:"
+            " %(msg)s%(extra)s")
 
     internal_error = True
 
@@ -1830,7 +1857,8 @@ class InvalidImportLine(BzrError):
 
 class ImportNameCollision(BzrError):
 
-    _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
+    _fmt = ("Tried to import an object to the same name as"
+            " an existing object. %(name)s")
 
     internal_error = True
 
@@ -1904,7 +1932,8 @@ class NoSuchTag(BzrError):
 
 class TagsNotSupported(BzrError):
 
-    _fmt = "Tags not supported by %(branch)s; you may be able to use bzr upgrade."
+    _fmt = ("Tags not supported by %(branch)s;"
+            " you may be able to use bzr upgrade.")
 
     def __init__(self, branch):
         self.branch = branch

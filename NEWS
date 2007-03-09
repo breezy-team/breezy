@@ -30,6 +30,8 @@ bzr 0.15rc1  2007-03-07
 
   IMPROVEMENTS:
 
+    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
 
@@ -104,6 +106,9 @@ bzr 0.15rc1  2007-03-07
       trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
 
   INTERNALS:
+
+    * Refactored SSH vendor registration into SSHVendorManager class.
+      (Dmitry Vasiliev)
 
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
