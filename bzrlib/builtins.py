@@ -3335,22 +3335,22 @@ class cmd_merge_directive(Command):
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
-        config_submit_branch = branch.get_submit_branch()
+        stored_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
-            submit_branch = config_submit_branch
+            submit_branch = stored_submit_branch
         else:
-            if config_submit_branch is None:
+            if stored_submit_branch is None:
                 branch.set_submit_branch(submit_branch)
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
             raise errors.BzrCommandError('No submit branch specified or known')
-        config_public_branch = branch.get_config().get_user_option(
-                'public_branch')
+
+        stored_public_branch = branch.get_public_branch()
         if public_branch is None:
-            public_branch = config_public_branch
-        elif config_public_branch is None:
-            branch.get_config().set_user_option('public_branch', public_branch)
+            public_branch = stored_public_branch
+        elif stored_public_branch is None:
+            branch.set_public_branch(public_branch)
         if patch_type != "bundle" and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or'
                                          ' known')

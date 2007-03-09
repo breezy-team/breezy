@@ -455,6 +455,24 @@ class Branch(object):
         """
         raise NotImplementedError(self.get_parent)
 
+    def _set_config_location(self, name, url, config=None,
+                             make_relative=False):
+        if config is None:
+            config = self.get_config()
+        if url is None:
+            url = ''
+        elif make_relative:
+            url = urlutils.relative_url(self.base, url)
+        config.set_user_option(name, url)
+
+    def _get_config_location(self, name, config=None):
+        if config is None:
+            config = self.get_config()
+        location = config.get_user_option(name)
+        if location == '':
+            location = None
+        return location
+
     def get_submit_branch(self):
         """Return the submit location of the branch.
 
@@ -472,6 +490,22 @@ class Branch(object):
         location.
         """
         self.get_config().set_user_option('submit_branch', location)
+
+    def get_public_branch(self):
+        """Return the public location of the branch.
+
+        This is is used by merge directives.
+        """
+        return self._get_config_location('public_branch')
+
+    def set_public_branch(self, location):
+        """Return the submit location of the branch.
+
+        This is the default location for bundle.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        self._set_config_location('public_branch', location)
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
@@ -1947,25 +1981,6 @@ class BzrBranch6(BzrBranch5):
             prev_revision = revision.revision_id
         self.set_last_revision_info(prev_revno + len(revision_ids),
                                     revision_ids[-1])
-
-    def _set_config_location(self, name, url, config=None,
-                             make_relative=False):
-        if config is None:
-            config = self.get_config()
-        if url is None:
-            url = ''
-        elif make_relative:
-            url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url)
-
-
-    def _get_config_location(self, name, config=None):
-        if config is None:
-            config = self.get_config()
-        location = config.get_user_option(name)
-        if location == '':
-            location = None
-        return location
 
     @needs_write_lock
     def _set_parent_location(self, url):

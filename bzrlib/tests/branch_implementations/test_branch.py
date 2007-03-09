@@ -271,6 +271,17 @@ class TestBranch(TestCaseWithBranch):
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
+    def test_public_branch(self):
+        """public location can be queried and set"""
+        branch = self.make_branch('branch')
+        self.assertEqual(branch.get_public_branch(), None)
+        branch.set_public_branch('sftp://example.com')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.com')
+        branch.set_public_branch('sftp://example.net')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.net')
+        branch.set_public_branch(None)
+        self.assertEqual(branch.get_public_branch(), None)
+
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
