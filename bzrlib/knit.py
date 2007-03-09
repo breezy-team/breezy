@@ -1427,7 +1427,7 @@ class _KnitData(_KnitComponentFile):
 
     def add_raw_record(self, raw_data):
         """Append a prepared record to the data file.
-        
+
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
@@ -1440,7 +1440,7 @@ class _KnitData(_KnitComponentFile):
                                    dir_mode=self._dir_mode)
             self._need_to_create = False
             return 0
-        
+
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
@@ -1466,7 +1466,12 @@ class _KnitData(_KnitComponentFile):
                  as (stream, header_record)
         """
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
-        rec = self._check_header(version_id, df.readline())
+        try:
+            rec = self._check_header(version_id, df.readline())
+        except Exception, e:
+            raise KnitCorrupt(self._filename,
+                              "While reading {%s} got %s(%s)"
+                              % (version_id, e.__class__.__name__, str(e)))
         return df, rec
 
     def _check_header(self, version_id, line):
@@ -1487,12 +1492,22 @@ class _KnitData(_KnitComponentFile):
         # 4168 calls to readlines in 330
         df = GzipFile(mode='rb', fileobj=StringIO(data))
 
-        record_contents = df.readlines()
+        try:
+            record_contents = df.readlines()
+        except Exception, e:
+            raise KnitCorrupt(self._filename,
+                              "While reading {%s} got %s(%s)"
+                              % (version_id, e.__class__.__name__, str(e)))
         header = record_contents.pop(0)
         rec = self._check_header(version_id, header)
 
         last_line = record_contents.pop()
-        assert len(record_contents) == int(rec[2])
+        if len(record_contents) != int(rec[2]):
+            raise KnitCorrupt(self._filename,
+                              'incorrect number of lines %s != %s'
+                              ' for version {%s}'
+                              % (len(record_contents), int(rec[2]),
+                                 version_id))
         if last_line != 'end %s\n' % rec[1]:
             raise KnitCorrupt(self._filename,
                               'unexpected version end line %r, wanted %r' 
