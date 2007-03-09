@@ -22,7 +22,7 @@ import bzrlib.bzrdir as bzrdir
 from bzrlib.inventory import Inventory
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.blackbox import TestUIFactory
+from bzrlib.tests import TestUIFactory
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 

@@ -24,8 +24,12 @@ import sys
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.progress import TTYProgressBar, ProgressBarStack
-from bzrlib.tests import TestCase
+from bzrlib.progress import DotsProgressBar, TTYProgressBar, ProgressBarStack
+from bzrlib.tests import (
+    TestUIFactory,
+    StringIOWrapper,
+    TestCase,
+    )
 from bzrlib.tests.test_progress import _TTYStringIO
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
@@ -35,31 +39,53 @@ class UITests(TestCase):
 
     def test_silent_factory(self):
         ui = SilentUIFactory()
+        stdout = StringIO()
+        self.assertEqual(None,
+                         self.apply_redirected(None, stdout, stdout,
+                                               ui.get_password))
+        self.assertEqual('', stdout.getvalue())
+        self.assertEqual(None,
+                         self.apply_redirected(None, stdout, stdout,
+                                               ui.get_password,
+                                               u'Hello\u1234 %(user)s',
+                                               user=u'some\u1234'))
+        self.assertEqual('', stdout.getvalue())
+
+    def test_text_factory_ascii_password(self):
+        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper())
         pb = ui.nested_progress_bar()
         try:
-            # TODO: Test that there is no output from SilentUIFactory
-    
-            self.assertEquals(ui.get_password(), None)
-            self.assertEquals(ui.get_password(u'Hello There \u1234 %(user)s',
-                                              user=u'some\u1234')
-                             , None)
+            self.assertEqual('secret',
+                             self.apply_redirected(ui.stdin, ui.stdout,
+                                                   ui.stdout,
+                                                   ui.get_password))
+            # ': ' is appended to prompt
+            self.assertEqual(': ', ui.stdout.getvalue())
         finally:
             pb.finished()
 
-    def test_text_factory(self):
-        ui = TextUIFactory()
+    def test_text_factory_utf8_password(self):
+        """Test an utf8 password.
+
+        We can't predict what encoding users will have for stdin, so we force
+        it to utf8 to test that we transport the password correctly.
+        """
+        ui = TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = 'utf8'
+        ui.stdout.encoding = ui.stdin.encoding
         pb = ui.nested_progress_bar()
-        pb.finished()
-        # TODO: Test the output from TextUIFactory, perhaps by overriding sys.stdout
-
-        # Unfortunately we can't actually test the ui.get_password() because 
-        # that would actually prompt the user for a password during the test suite
-        # This has been tested manually with both LANG=en_US.utf-8 and LANG=C
-        # print
-        # self.assertEquals(ui.get_password(u"%(user)s please type 'bogus'",
-        #                                   user=u'some\u1234')
-        #                  , 'bogus')
-
+        try:
+            password = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+                                             ui.get_password,
+                                             u'Hello \u1234 %(user)s',
+                                             user=u'some\u1234')
+            # We use StringIO objects, we need to decode them
+            self.assertEqual(u'baz\u1234', password.decode('utf8'))
+            self.assertEqual(u'Hello \u1234 some\u1234: ',
+                             ui.stdout.getvalue().decode('utf8'))
+        finally:
+            pb.finished()
 
     def test_progress_note(self):
         stderr = StringIO()
@@ -136,10 +162,10 @@ class UITests(TestCase):
     def test_text_factory_setting_progress_bar(self):
         # we should be able to choose the progress bar type used.
         factory = bzrlib.ui.text.TextUIFactory(
-            bar_type=bzrlib.progress.DotsProgressBar)
+            bar_type=DotsProgressBar)
         bar = factory.nested_progress_bar()
         bar.finished()
-        self.assertIsInstance(bar, bzrlib.progress.DotsProgressBar)
+        self.assertIsInstance(bar, DotsProgressBar)
 
     def test_cli_stdin_is_default_stdin(self):
         factory = bzrlib.ui.CLIUIFactory()
@@ -176,7 +202,7 @@ class UITests(TestCase):
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = bzrlib.ui.text.TextUIFactory()
+        factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
         factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(
@@ -189,17 +215,7 @@ class UITests(TestCase):
             self.apply_redirected(
                 None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
             )
-        # FIXME: This assumes the factory's going to produce a spinner-style
-        # progress bar, but it won't if this is run from a dumb terminal (e.g.
-        # from inside gvim.) -- mbp 20061014
-        #
-        # use a regular expression so that we don't depend on the particular
-        # screen width - could also set and restore $COLUMN if that has
-        # priority on all platforms, but it doesn't at present.
         output = factory.stdout.getvalue()
-        if not re.match(
-            "\r/ \\[    *\\] foo 0/1"
-            "\r   *" 
-            "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
-            output):
-            self.fail("didn't match factory output %r, %r" % (factory, output))
+        self.assertEqual("foo: .\n"
+                         "what do you want? [y/n]: what do you want? [y/n]: ",
+                         factory.stdout.getvalue())
