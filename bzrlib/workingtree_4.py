@@ -455,6 +455,7 @@ class WorkingTree4(WorkingTree3):
         return path_utf8.decode('utf8')
 
     if not osutils.supports_executable():
+        @needs_read_lock
         def is_executable(self, file_id, path=None):
             file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
@@ -462,6 +463,7 @@ class WorkingTree4(WorkingTree3):
                 return False
             return entry[1][0][3]
     else:
+        @needs_read_lock
         def is_executable(self, file_id, path=None):
             if not path:
                 file_id = osutils.safe_file_id(file_id)
