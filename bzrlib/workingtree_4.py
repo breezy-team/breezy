@@ -346,11 +346,12 @@ class WorkingTree4(WorkingTree3):
                 inv_entry = factory[kind](file_id, name_unicode,
                                           parent_ie.file_id)
                 if kind == 'file':
+                    # This is only needed on win32, where this is the only way
+                    # we know the executable bit.
+                    inv_entry.executable = executable
                     # not strictly needed: working tree
-                    #entry.executable = executable
-                    #entry.text_size = size
-                    #entry.text_sha1 = sha1
-                    pass
+                    #inv_entry.text_size = size
+                    #inv_entry.text_sha1 = sha1
                 elif kind == 'directory':
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
