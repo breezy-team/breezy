@@ -24,7 +24,7 @@ EMAIL1 = """To: pqm@example.com
 From: J. Random Hacker <jrandom@example.com>
 Subject: bar
 
-# Bazaar merge directive format experimental-1
+# Bazaar merge directive format 1
 # revision_id: jrandom@example.com-.*
 # target_branch: ../tree2
 # testament_sha1: .*

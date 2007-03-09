@@ -23,7 +23,7 @@ from bzrlib import (
     )
 
 
-OUTPUT1 = """# Bazaar merge directive format experimental-1
+OUTPUT1 = """# Bazaar merge directive format 1
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -32,7 +32,7 @@ OUTPUT1 = """# Bazaar merge directive format experimental-1
 booga"""
 
 
-OUTPUT2 = """# Bazaar merge directive format experimental-1
+OUTPUT2 = """# Bazaar merge directive format 1
 # revision_id: example:
 # target_branch: http://example.com
 # testament_sha1: sha
@@ -115,7 +115,7 @@ EMAIL1 = """To: pqm@example.com
 From: J. Random Hacker <jrandom@example.com>
 Subject: Commit of rev2a
 
-# Bazaar merge directive format experimental-1
+# Bazaar merge directive format 1
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*
@@ -128,7 +128,7 @@ EMAIL2 = """To: pqm@example.com
 From: J. Random Hacker <jrandom@example.com>
 Subject: Commit of rev2a with special message
 
-# Bazaar merge directive format experimental-1
+# Bazaar merge directive format 1
 # revision_id: rev2a
 # target_branch: (.|\n)*
 # testament_sha1: .*

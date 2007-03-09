@@ -47,7 +47,7 @@ class MergeDirective(object):
     directly using the standard patch program.
     """
 
-    _format_string = 'Bazaar merge directive format experimental-1'
+    _format_string = 'Bazaar merge directive format 1'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
