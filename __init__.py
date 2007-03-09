@@ -62,6 +62,10 @@ export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported",
     type=str)
 
+builddeb_dir = '.bzr-builddeb'
+default_conf = os.path.join(builddeb_dir, 'default.conf')
+global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
+local_conf = os.path.join(builddeb_dir, 'local.conf')
 
 class cmd_builddeb(Command):
   """Builds a Debian package from a branch.
@@ -155,7 +159,16 @@ class cmd_builddeb(Command):
 
     tree, relpath = WorkingTree.open_containing('.')
     
-    config = DebBuildConfig()
+    config = DebBuildConfig([(global_conf, True), (default_conf, False)],
+                            branch=tree.branch)
+
+    tree.lock_read()
+    try:
+      if os.path.exists(local_conf):
+        warning('Please copy the contents of %s ' % local_conf +
+                'to .bzr/branch/branch.conf, as the former is now deprecated')
+    finally:
+      tree.unlock()
 
     if reuse:
       info("Reusing existing build dir")

@@ -8,8 +8,11 @@ bzr-builddeb (0.15~dev0) UNRELEASED; urgency=low
   * Export the package build to the correct directory name, using the upstream
     version rather than the full version. This removes a warning from
     dpkg-source when building and Closes: #409981. Thanks to James Vega.
+  * Using .bzr-builddeb/local.conf is now deprected, please move the contents
+    to .bzr/branch/branch.conf. The local.conf file will not be read in the
+    next version.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 28 Feb 2007 19:16:28 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Fri,  9 Mar 2007 21:31:30 +0000
 
 bzr-builddeb (0.14) UNRELEASED; urgency=low
 
