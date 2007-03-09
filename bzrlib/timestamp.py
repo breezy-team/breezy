@@ -129,12 +129,8 @@ def format_patch_date(secs, offset=0):
     """
     assert offset % 36 == 0
     tm = time.gmtime(secs+offset)
-    if offset < 0:
-        sign = '-'
-    else:
-        sign = '+'
     time_str = time.strftime('%Y-%m-%d %H:%M:%S', tm)
-    return '%s %s%04d' % (time_str, sign, abs(offset/36))
+    return '%s %+05d' % (time_str, abs(offset/36))
 
 
 def parse_patch_date(date_str):

@@ -3316,11 +3316,13 @@ class cmd_merge_directive(Command):
 
     takes_args = ['submit_branch?', 'public_branch?']
 
-    takes_options = [RegistryOption.from_kwargs('patch-type',
-        'The type of patch to include in the directive', title='Patch type',
-        value_switches=True, enum_switch=False,
-        bundle='Bazaar revision bundle (default)', diff='Normal unified diff',
-        plain='No patch, just directive'),
+    takes_options = [
+        RegistryOption.from_kwargs('patch-type',
+            'The type of patch to include in the directive',
+            title='Patch type', value_switches=True, enum_switch=False,
+            bundle='Bazaar revision bundle (default)',
+            diff='Normal unified diff',
+            plain='No patch, just directive'),
         Option('sign', help='GPG-sign the directive'), 'revision',
         Option('mail-to', type=str,
             help='Instead of printing the directive, email to this address'),

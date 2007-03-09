@@ -254,7 +254,7 @@ class RegistryOption(Option):
 
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
-        enum_switch=True, **kwargs):
+                    enum_switch=True, **kwargs):
         """Convenience method to generate string-map registry options
 
         name, help, value_switches and enum_switch are passed to the
