@@ -56,7 +56,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 import bzrlib.commands
-import bzrlib.bundle.serializer
+import bzrlib.timestamp
 import bzrlib.export
 import bzrlib.inventory
 import bzrlib.iterablefile
@@ -93,7 +93,7 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.bundle.serializer,
+                      bzrlib.timestamp,
                       bzrlib.errors,
                       bzrlib.export,
                       bzrlib.inventory,
@@ -1955,6 +1955,7 @@ def test_suite():
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',
+                   'bzrlib.tests.test_merge_directive',
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_nonascii',
@@ -1990,6 +1991,7 @@ def test_suite():
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',
                    'bzrlib.tests.test_textmerge',
+                   'bzrlib.tests.test_timestamp',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',

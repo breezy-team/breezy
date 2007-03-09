@@ -56,7 +56,9 @@ class ReSign(TestCaseInTempDir):
     def assertEqualSignature(self, repo, revision_id):
         """Assert a signature is stored correctly in repository."""
         self.assertEqual(
-            Testament.from_revision(repo, revision_id).as_short_text(),
+            '-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+            Testament.from_revision(repo, revision_id).as_short_text() +
+            '-----END PSUDO-SIGNED CONTENT-----\n',
             repo.get_signature_text(revision_id))
 
     def test_resign(self):
