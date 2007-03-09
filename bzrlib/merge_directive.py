@@ -201,6 +201,11 @@ class MergeDirective(object):
             ancestor_id = _mod_revision.common_ancestor(revision_id,
                                                         submit_revision_id,
                                                         repository)
+            type_handler = {'bundle': klass._generate_bundle,
+                            'diff': klass._generate_diff,
+                            None: lambda x, y, z: None }
+            patch = type_handler[patch_type](repository, revision_id,
+                                             ancestor_id)
             if patch_type == 'bundle':
                 s = StringIO()
                 bundle_serializer.write_bundle(repository, revision_id,
@@ -226,4 +231,11 @@ class MergeDirective(object):
         tree_2 = repository.revision_tree(revision_id)
         s = StringIO()
         diff.show_diff_trees(tree_1, tree_2, s)
+        return s.getvalue()
+
+    @staticmethod
+    def _generate_bundle(repository, revision_id, ancestor_id):
+        s = StringIO()
+        bundle_serializer.write_bundle(repository, revision_id,
+                                       ancestor_id, s)
         return s.getvalue()
