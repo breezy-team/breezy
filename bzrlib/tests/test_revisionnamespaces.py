@@ -282,6 +282,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         rev_id = u'\N{SNOWMAN}'.encode('utf-8')
         self.tree.commit('unicode', rev_id=rev_id)
         self.assertInHistoryIs(3, rev_id, u'revid:\N{SNOWMAN}')
+        self.assertInHistoryIs(3, rev_id, 'revid:' + rev_id)
 
 
 class TestRevisionSpec_last(TestRevisionSpec):
