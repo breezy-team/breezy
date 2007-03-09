@@ -24,6 +24,9 @@ import re
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
+# For backwards-compatibility
+from bzrlib.timestamp import unpack_highres_date, format_highres_date
+
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = '# Bazaar revision bundle v'
