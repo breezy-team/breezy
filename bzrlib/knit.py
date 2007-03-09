@@ -1427,7 +1427,7 @@ class _KnitData(_KnitComponentFile):
 
     def add_raw_record(self, raw_data):
         """Append a prepared record to the data file.
-
+        
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
@@ -1440,7 +1440,7 @@ class _KnitData(_KnitComponentFile):
                                    dir_mode=self._dir_mode)
             self._need_to_create = False
             return 0
-
+        
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
