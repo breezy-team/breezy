@@ -158,3 +158,22 @@ class TestAdd(TestCaseWithWorkingTree):
         # the root should have been changed to be a new unique root.
         self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
         tree.unlock()
+
+    def test_add_previously_added(self):
+        # adding a path that was previously added should work
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        tree.unversion(['foo-id'])
+        tree.add(['foo'], ['foo-id'])
+        self.assertEqual('foo-id', tree.path2id('foo'))
+
+    def test_add_present_in_basis(self):
+        # adding a path that was present in the basis should work.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.add(['foo'], ['foo-id'])
+        tree.commit('add foo')
+        tree.unversion(['foo-id'])
+        tree.add(['foo'], ['foo-id'])
+        self.assertEqual('foo-id', tree.path2id('foo'))
