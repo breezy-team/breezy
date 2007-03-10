@@ -17,13 +17,16 @@
 """builtin bzr commands"""
 
 import os
+from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import smtplib
 import sys
 import tempfile
+import time
 
 import bzrlib
 from bzrlib import (
@@ -37,7 +40,9 @@ from bzrlib import (
     ignores,
     log,
     merge as _mod_merge,
+    merge_directive,
     osutils,
+    registry,
     repository,
     symbol_versioning,
     transport,
@@ -1336,7 +1341,7 @@ class cmd_diff(Command):
             Difference between the working tree and revision 1
         bzr diff -r1..2
             Difference between revision 2 and revision 1
-        bzr diff --diff-prefix old/:new/
+        bzr diff --prefix old/:new/
             Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
             Show the differences between the two working trees
@@ -1359,7 +1364,7 @@ class cmd_diff(Command):
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes to added to old and new filenames, as '
-                    'two values separated by a colon.'),
+                    'two values separated by a colon. (eg "old/:new/")'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -1379,13 +1384,14 @@ class cmd_diff(Command):
         elif ':' in prefix:
             old_label, new_label = prefix.split(":")
         else:
-            raise BzrCommandError(
-                "--prefix expects two values separated by a colon")
+            raise errors.BzrCommandError(
+                '--prefix expects two values separated by a colon'
+                ' (eg "old/:new/")')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
-        
+
         try:
             tree1, file_list = internal_tree_files(file_list)
             tree2 = None
@@ -3289,6 +3295,91 @@ class cmd_split(Command):
         except errors.RootNotRich:
             raise errors.UpgradeRequired(containing_tree.branch.base)
 
+
+
+class cmd_merge_directive(Command):
+    """Generate a merge directive for auto-merge tools.
+
+    A directive requests a merge to be performed, and also provides all the
+    information necessary to do so.  This means it must either include a
+    revision bundle, or the location of a branch containing the desired
+    revision.
+
+    A submit branch (the location to merge into) must be supplied the first
+    time the command is issued.  After it has been supplied once, it will
+    be remembered as the default.
+
+    A public branch is optional if a revision bundle is supplied, but required
+    if --diff or --plain is specified.  It will be remembered as the default
+    after the first use.
+    """
+
+    takes_args = ['submit_branch?', 'public_branch?']
+
+    takes_options = [
+        RegistryOption.from_kwargs('patch-type',
+            'The type of patch to include in the directive',
+            title='Patch type', value_switches=True, enum_switch=False,
+            bundle='Bazaar revision bundle (default)',
+            diff='Normal unified diff',
+            plain='No patch, just directive'),
+        Option('sign', help='GPG-sign the directive'), 'revision',
+        Option('mail-to', type=str,
+            help='Instead of printing the directive, email to this address'),
+        Option('message', type=str, short_name='m',
+            help='Message to use when committing this merge')
+        ]
+
+    def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
+            sign=False, revision=None, mail_to=None, message=None):
+        if patch_type == 'plain':
+            patch_type = None
+        branch = Branch.open('.')
+        stored_submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            submit_branch = stored_submit_branch
+        else:
+            if stored_submit_branch is None:
+                branch.set_submit_branch(submit_branch)
+        if submit_branch is None:
+            submit_branch = branch.get_parent()
+        if submit_branch is None:
+            raise errors.BzrCommandError('No submit branch specified or known')
+
+        stored_public_branch = branch.get_public_branch()
+        if public_branch is None:
+            public_branch = stored_public_branch
+        elif stored_public_branch is None:
+            branch.set_public_branch(public_branch)
+        if patch_type != "bundle" and public_branch is None:
+            raise errors.BzrCommandError('No public branch specified or'
+                                         ' known')
+        if revision is not None:
+            if len(revision) != 1:
+                raise errors.BzrCommandError('bzr merge-directive takes '
+                    'exactly one revision identifier')
+            else:
+                revision_id = revision[0].in_history(branch).rev_id
+        else:
+            revision_id = branch.last_revision()
+        directive = merge_directive.MergeDirective.from_objects(
+            branch.repository, revision_id, time.time(),
+            osutils.local_time_offset(), submit_branch,
+            public_branch=public_branch, patch_type=patch_type,
+            message=message)
+        if mail_to is None:
+            if sign:
+                self.outf.write(directive.to_signed(branch))
+            else:
+                self.outf.writelines(directive.to_lines())
+        else:
+            message = directive.to_email(mail_to, branch, sign)
+            s = smtplib.SMTP()
+            server = branch.get_config().get_user_option('smtp_server')
+            if not server:
+                server = 'localhost'
+            s.connect()
+            s.sendmail(message['From'], message['To'], message.as_string())
 
 
 class cmd_tag(Command):
