@@ -83,6 +83,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             ('zz_dir/subfile', 'file'),
             ], files)
 
+    def test_list_files_kind_change(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/filename'])
+        tree.add('filename', 'file-id')
+        os.unlink('tree/filename')
+        self.build_tree(['tree/filename/'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        result = list(tree.list_files())
+        self.assertEqual(1, len(result))
+        self.assertEqual(('filename', 'V', 'directory', 'file-id'),
+                         result[0][:4])
+
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
         local_base = urlutils.local_path_from_url(branch.base)
