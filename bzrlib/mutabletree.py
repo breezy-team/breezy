@@ -90,6 +90,8 @@ class MutableTree(tree.Tree):
             if kinds is not None:
                 kinds = [kinds]
 
+        files = [path.strip('/') for path in files]
+
         if ids is None:
             ids = [None] * len(files)
         else:
