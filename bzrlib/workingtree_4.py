@@ -1945,7 +1945,7 @@ class InterDirStateTree(InterTree):
                 # implementation will do.
                 if not osutils.is_inside_any(searched_specific_files, target_details[1]):
                     search_specific_files.add(target_details[1])
-            elif source_minikind in 'r' and target_minikind in 'r':
+            elif source_minikind in 'ra' and target_minikind in 'ra':
                 # neither of the selected trees contain this file,
                 # so skip over it. This is not currently directly tested, but
                 # is indirectly via test_too_much.TestCommands.test_conflicts.
