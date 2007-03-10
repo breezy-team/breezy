@@ -1633,7 +1633,10 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Fail if path does not contain 'content'."""
         self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
-        self.assertEqualDiff(content, open(path, 'r').read())
+        f = file(path, 'r')
+        s = f.read()
+        f.close()
+        self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
