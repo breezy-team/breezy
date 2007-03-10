@@ -149,7 +149,10 @@ _kind_marker_map = {
     "file": "",
     _directory_kind: "/",
     "symlink": "@",
+    'tree-reference': '+',
 }
+
+
 def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
