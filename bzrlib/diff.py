@@ -96,14 +96,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     print >>to_file
 
 
-def _set_lang_C():
-    """Set the env vars LANG=C and LC_ALL=C."""
-    osutils.set_or_unset_env('LANG', 'C')
-    osutils.set_or_unset_env('LC_ALL', 'C')
-    osutils.set_or_unset_env('LC_CTYPE', None)
-    osutils.set_or_unset_env('LANGUAGE', None)
-
-
 def _spawn_external_diff(diffcmd, capture_errors=True):
     """Spawn the externall diff process, and return the child handle.
 
@@ -114,15 +106,17 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     :return: A Popen object.
     """
     if capture_errors:
-        if sys.platform == 'win32':
-            # Win32 doesn't support preexec_fn, but that is
-            # okay, because it doesn't support LANG and LC_ALL either.
-            preexec_fn = None
-        else:
-            preexec_fn = _set_lang_C
+        # construct minimal environment
+        env = {}
+        path = os.environ.get('PATH')
+        if path is not None:
+            env['PATH'] = path
+        env['LANGUAGE'] = 'C'   # on win32 only LANGUAGE has effect
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
         stderr = subprocess.PIPE
     else:
-        preexec_fn = None
+        env = None
         stderr = None
 
     try:
@@ -130,7 +124,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=stderr,
-                                preexec_fn=preexec_fn)
+                                env=env)
     except OSError, e:
         if e.errno == errno.ENOENT:
             raise errors.NoDiff(str(e))
