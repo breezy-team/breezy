@@ -59,6 +59,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
+        'bzrlib.tests.workingtree_implementations.test_inv',
         'bzrlib.tests.workingtree_implementations.test_is_control_filename',
         'bzrlib.tests.workingtree_implementations.test_is_ignored',
         'bzrlib.tests.workingtree_implementations.test_locking',
