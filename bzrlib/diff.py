@@ -110,12 +110,9 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
         path = os.environ.get('PATH')
         if path is not None:
             env['PATH'] = path
-        if sys.platform == 'win32':
-            # diffutils+gettext from http://gnuwin32.sf.net use only LANGUAGE
-            env['LANGUAGE'] = 'C'
-        else:
-            env['LANG'] = 'C'
-            env['LC_ALL'] = 'C'
+        env['LANGUAGE'] = 'C'   # on win32 only LANGUAGE has effect
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
         stderr = subprocess.PIPE
     else:
         env = None
