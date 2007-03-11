@@ -1,4 +1,4 @@
-bzr-builddeb (0.15~dev0) UNRELEASED; urgency=low
+bzr-builddeb (0.15~rc1) UNRELEASED; urgency=low
 
   * Version designed to work with bzr 0.15.
   * Bump depends on bzr appropriately.
