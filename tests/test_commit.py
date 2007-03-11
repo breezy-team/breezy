@@ -207,6 +207,19 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual("Commit from Bzr",
             repos.get_revision(repos.generate_revision_id(2, "")).message)
 
+    def test_message_nordic(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message=u"\xe6\xf8\xe5")
+
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+
+        repos = self.olddir.find_repository()
+        self.assertEqual(u"\xe6\xf8\xe5",
+            repos.get_revision(repos.generate_revision_id(2, "")).message.decode("utf-8"))
+
+
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.newdir.open_workingtree()
