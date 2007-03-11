@@ -85,6 +85,11 @@ class TestMergeDirective(tests.TestCase):
             patch='booga', patch_type='diff', message="Hi mom!")
         self.assertEqualDiff(OUTPUT2, ''.join(md.to_lines()))
 
+    def test_deserialize_junk(self):
+        self.assertRaises(errors.NotAMergeDirective,
+                          merge_directive.MergeDirective.from_lines, 'lala')
+
+
     def test_roundtrip(self):
         time = 501
         timezone = 72
