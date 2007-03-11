@@ -4,6 +4,9 @@ bzr-svn 0.3.2	UNRELEASED
 
   * Fix compatibility with Bazaar 0.15.
 
+  * Check for parent paths moving as well in LogWalker.find_latest_change(). 
+    Fixes #84087.
+
 bzr-svn 0.3.1	2007-01-31
 
   BUG FIXES
