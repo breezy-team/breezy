@@ -59,6 +59,20 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
         self.assertEqual("data", new_revision.message)
 
+    def test_commit_message_nordic(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = WorkingTree.open("dc")
+        self.assertEqual(
+            wt.branch.generate_revision_id(1), wt.commit(message=u"\xe6\xf8\xe5"))
+        self.assertEqual(
+                wt.branch.generate_revision_id(1), wt.branch.last_revision())
+        new_revision = wt.branch.repository.get_revision(
+                            wt.branch.last_revision())
+        self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
+        self.assertEqual(u"\xe6\xf8\xe5", new_revision.message.decode("utf-8"))
+
     def test_commit_update(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
