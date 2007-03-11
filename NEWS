@@ -2,8 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * New merge-directive command to generate machine- and human-readable merge
-      requests.  (Aaron Bentley)
+    * New ``merge-directive`` command to generate machine- and human-readable
+      merge requests.  (Aaron Bentley)
+
+    * New ``submit:`` revision specifier makes it easy to diff against the
+      common ancestor with the submit location (Aaron Bentley)
  
 bzr 0.15rc1  2007-03-07
 
