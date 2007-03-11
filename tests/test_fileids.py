@@ -165,7 +165,7 @@ class TestFileIdGenerator(TestCase):
                          generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
 
     def test_generate_file_id_special_char(self):
-        self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c\x8a", 
+        self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c\x8a".encode("utf-8"), 
                          generate_file_id("svn-v2:2@uuid-bp", u"mypath\x2c\x8a"))
 
 class TestFileMapping(TestCase):

@@ -60,7 +60,7 @@ def escape_svn_path(id, unsafe="%/-\t \n"):
     assert "%" in unsafe
     r = [((c in unsafe) and (u'%%%02x' % ord(c)) or c)
          for c in id]
-    return unicode(''.join(r))
+    return unicode(''.join(r)).encode("utf-8")
 
 
 import urllib
@@ -108,7 +108,7 @@ def generate_svn_revision_id(uuid, revnum, path):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return unicode("%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/"))))
+    return unicode("%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))).encode("utf-8")
 
 
 def svk_feature_to_revision_id(feature):

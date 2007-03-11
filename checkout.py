@@ -220,7 +220,7 @@ class SvnWorkingTree(WorkingTree):
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
             if os.path.islink(self.abspath(relpath)):
-                file = InventoryLink(str(id), os.path.basename(relpath), str(parent_id))
+                file = InventoryLink(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
                 file.symlink_target = os.readlink(self.abspath(relpath))
                 file.text_sha1 = None
@@ -228,7 +228,7 @@ class SvnWorkingTree(WorkingTree):
                 file.executable = False
                 inv.add(file)
             else:
-                file = InventoryFile(str(id), os.path.basename(relpath), str(parent_id))
+                file = InventoryFile(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
                 try:
                     data = fingerprint_file(open(self.abspath(relpath)))
@@ -284,17 +284,19 @@ class SvnWorkingTree(WorkingTree):
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)
             entry = entries[""]
+            assert parent_id is None or isinstance(parent_id, str), "%r is not a string" % parent_id
             (id, revid) = find_ids(entry, rootwc)
             if id is None:
                 mutter('no id for %r' % entry.url)
                 return
+            assert isinstance(id, str), "%r is not a string" % id
 
             # First handle directory itself
             if relpath == "":
                 inv.add_path("", 'directory', ROOT_ID)
                 inv.revision_id = revid
             else:
-                inventry = InventoryDirectory(str(id), os.path.basename(relpath), str(parent_id))
+                inventry = InventoryDirectory(id, os.path.basename(relpath), parent_id)
                 inventry.revision = revid
                 inv.add(inventry)
 
@@ -396,12 +398,12 @@ class SvnWorkingTree(WorkingTree):
         if message_callback is not None:
             def log_message_func(items, pool):
                 """ Simple log message provider for unit tests. """
-                return str(message_callback(self))
+                return message_callback(self).encode("utf-8")
         else:
             assert isinstance(message, basestring)
             def log_message_func(items, pool):
                 """ Simple log message provider for unit tests. """
-                return str(message)
+                return message.encode("utf-8")
 
         self.client_ctx.log_msg_baton2 = log_message_func
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
@@ -481,7 +483,7 @@ class SvnWorkingTree(WorkingTree):
                 SVN_PROP_BZR_FILEIDS, "")
         existing = committed + "".join(map(lambda (path, id): "%s\t%s\n" % (path, id), new_entries.items()))
         if existing != "":
-            svn.wc.prop_set(SVN_PROP_BZR_FILEIDS, str(existing), self.basedir, subwc)
+            svn.wc.prop_set(SVN_PROP_BZR_FILEIDS, existing.encode("utf-8"), self.basedir, subwc)
         if wc is None:
             svn.wc.adm_close(subwc)
 
