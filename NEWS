@@ -162,14 +162,21 @@ IN DEVELOPMENT
     * Ignore patterns normalised to use '/' path separator.
       (Kent Gibson, #86451)
 
+    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
+
+    * Fix bzrtools shelve command for removed lines beginning with "--"
+      (Johan Dahlberg, #75577)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
-
-    * Fix bzrtools shelve command for removed lines beginning with "--"
-      (Johan Dahlberg, #75577)
+    * New ``--numbered-dirs`` option to ``bzr selftest`` to use
+      numbered dirs for TestCaseInTempDir. This is default behavior
+      on Windows. Anyone can force named dirs on Windows
+      with ``--no-numbered-dirs``. (Alexander Belchenko)
+      
 
 bzr 0.14  2007-01-23
 
@@ -317,8 +324,6 @@ bzr 0.14rc1  2007-01-16
 
     * Allow plugins import from zip archives.
       (Alexander Belchenko, #68124)
-
-    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
 
 
 bzr 0.13  2006-12-05
