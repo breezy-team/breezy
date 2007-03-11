@@ -668,3 +668,52 @@ class RevisionSpec_branch(RevisionSpec):
         return RevisionInfo(branch, revno, revision_b)
         
 SPEC_TYPES.append(RevisionSpec_branch)
+
+
+class RevisionSpec_ancestor(RevisionSpec):
+    """Selects a common ancestor with a submit branch."""
+
+    help_txt = """Selects a common ancestor with the submit branch.
+
+    Diffing against this shows all the changes that were made in this branch,
+    and is a good predictor of what merge will do.  The submit branch is
+    used by the bundle and merge directive comands.  If no submit branch
+    is specified, the parent branch is used instead.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    examples:
+      $ bzr diff -r submit:
+    """
+    prefix = 'submit:'
+
+    def _match_on(self, branch, revs):
+        from bzrlib.branch import Branch
+
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        submit_location = branch.get_submit_branch()
+        if submit_location is None:
+            submit_location = branch.get_parent()
+        if submit_location is None:
+            raise errors.NoSubmitBranch(branch)
+
+
+        other_branch = Branch.open(submit_location)
+        revision_a = branch.last_revision()
+        revision_b = other_branch.last_revision()
+        for r, b in ((revision_a, branch), (revision_b, other_branch)):
+            if r in (None, revision.NULL_REVISION):
+                raise errors.NoCommits(b)
+        revision_source = revision.MultipleRevisionSources(
+                branch.repository, other_branch.repository)
+        rev_id = revision.common_ancestor(revision_a, revision_b,
+                                          revision_source)
+        try:
+            revno = branch.revision_id_to_revno(rev_id)
+        except errors.NoSuchRevision:
+            revno = None
+        return RevisionInfo(branch, revno, rev_id)
+
+SPEC_TYPES.append(RevisionSpec_ancestor)

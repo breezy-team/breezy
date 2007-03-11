@@ -471,6 +471,15 @@ class NotBranchError(PathError):
        self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
+class NoSubmitBranch(PathError):
+
+    _fmt = 'No submit branch available for branch "%(path)s"'
+
+    def __init__(self, branch):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(branch.base, 'ascii')
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = "Already a branch: %(path)s."
