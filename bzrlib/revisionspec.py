@@ -21,6 +21,7 @@ import re
 
 from bzrlib import (
     errors,
+    osutils,
     revision,
     symbol_versioning,
     trace,
@@ -379,9 +380,10 @@ class RevisionSpec_revid(RevisionSpec):
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
-        revision_id = self.spec
-        if isinstance(revision_id, unicode):
-            revision_id = revision_id.encode('utf-8')
+        # self.spec comes straight from parsing the command line arguments,
+        # so we expect it to be a Unicode string. Switch it to the internal
+        # representation.
+        revision_id = osutils.safe_revision_id(self.spec, warn=False)
         return RevisionInfo.from_revision_id(branch, revision_id, revs)
 
 SPEC_TYPES.append(RevisionSpec_revid)
