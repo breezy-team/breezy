@@ -193,10 +193,12 @@ class MergeDirective(object):
         used for the commit.
         """
         t = testament.StrictTestament3.from_revision(repository, revision_id)
+        submit_branch = _mod_branch.Branch.open(target_branch)
+        if submit_branch.get_public_branch() is not None:
+            target_branch = submit_branch.get_public_branch()
         if patch_type is None:
             patch = None
         else:
-            submit_branch = _mod_branch.Branch.open(target_branch)
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
             ancestor_id = _mod_revision.common_ancestor(revision_id,
