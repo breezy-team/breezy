@@ -697,10 +697,14 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
     def _match_on(self, branch, revs):
         trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
         submit_location = branch.get_submit_branch()
+        location_type = 'submit branch'
         if submit_location is None:
             submit_location = branch.get_parent()
+            location_type = 'parent branch'
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
+        trace.note('Using %s %s', location_type, submit_location)
         return self._find_revision_info(branch, submit_location)
+
 
 SPEC_TYPES.append(RevisionSpec_submit)
