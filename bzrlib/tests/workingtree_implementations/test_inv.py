@@ -29,11 +29,11 @@ from bzrlib.diff import internal_diff
 from bzrlib.osutils import (
     has_symlinks,
     )
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
 
-class TestEntryDiffing(TestCaseWithTransport):
+class TestEntryDiffing(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestEntryDiffing, self).setUp()
@@ -145,7 +145,7 @@ class TestEntryDiffing(TestCaseWithTransport):
                          "=== target changed 'target1' => 'target2'\n")
 
 
-class TestRevert(TestCaseWithTransport):
+class TestRevert(TestCaseWithWorkingTree):
 
     def test_dangling_id(self):
         wt = self.make_branch_and_tree('b1')
@@ -161,7 +161,7 @@ class TestRevert(TestCaseWithTransport):
         self.assertEqual(len(wt.inventory), 1)
 
 
-class TestPreviousHeads(TestCaseWithTransport):
+class TestPreviousHeads(TestCaseWithWorkingTree):
 
     def setUp(self):
         # we want several inventories, that respectively
@@ -228,7 +228,7 @@ class TestPreviousHeads(TestCaseWithTransport):
     # TODO: test two inventories with the same file revision 
 
 
-class TestSnapshot(TestCaseWithTransport):
+class TestSnapshot(TestCaseWithWorkingTree):
 
     def setUp(self):
         # for full testing we'll need a branch
