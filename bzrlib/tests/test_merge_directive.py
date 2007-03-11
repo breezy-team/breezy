@@ -43,6 +43,28 @@ OUTPUT2 = """# Bazaar merge directive format 1
 booga"""
 
 
+INPUT1 = """
+I was thinking today about creating a merge directive.
+
+So I did.
+
+Here it is.
+
+(I've pasted it in the body of this message)
+
+Aaron
+
+# Bazaar merge directive format 1\r
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+# source_branch: http://example.org
+# message: Hi mom!
+#\x20
+booga""".splitlines(True)
+
+
 class TestMergeDirective(tests.TestCase):
 
     def test_merge_source(self):
@@ -89,6 +111,17 @@ class TestMergeDirective(tests.TestCase):
         self.assertRaises(errors.NotAMergeDirective,
                           merge_directive.MergeDirective.from_lines, 'lala')
 
+    def test_deserialize_leading_junk(self):
+        md = merge_directive.MergeDirective.from_lines(INPUT1)
+        self.assertEqual('example:', md.revision_id)
+        self.assertEqual('sha', md.testament_sha1)
+        self.assertEqual('http://example.com', md.target_branch)
+        self.assertEqual('http://example.org', md.source_branch)
+        self.assertEqual(501, md.time)
+        self.assertEqual(72, md.timezone)
+        self.assertEqual('booga', md.patch)
+        self.assertEqual('diff', md.patch_type)
+        self.assertEqual('Hi mom!', md.message)
 
     def test_roundtrip(self):
         time = 501

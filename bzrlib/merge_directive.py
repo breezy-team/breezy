@@ -88,9 +88,12 @@ class MergeDirective(object):
         :param lines: An iterable of lines
         :return: a MergeRequest
         """
-        if not lines[0].startswith('# ' + klass._format_string):
+        line_iter = iter(lines)
+        for line in line_iter:
+            if line.startswith('# ' + klass._format_string):
+                break
+        else:
             raise errors.NotAMergeDirective(lines[0])
-        line_iter = iter(lines[1:])
         stanza = rio.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
