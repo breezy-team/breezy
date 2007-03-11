@@ -732,6 +732,26 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         finally:
             transform.finalize()
 
+    def test_iter_changes_move_missing(self):
+        """Test moving ids with no files around"""
+        self.wt.set_root_id('toor_eert')
+        # Need two steps because versioning a non-existant file is a conflict.
+        transform, root = self.get_transform()
+        transform.new_directory('floater', root, 'floater-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        transform.delete_contents(transform.trans_id_tree_path('floater'))
+        transform.apply()
+        transform, root = self.get_transform()
+        floater = transform.trans_id_tree_path('floater')
+        try:
+            transform.adjust_path('flitter', root, floater)
+            self.assertEqual([('floater-id', ('floater', 'flitter'), False,
+            (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
+            (None, None), (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
     def test_iter_changes_pointless(self):
         """Ensure that no-ops are not treated as modifications"""
         self.wt.set_root_id('eert_toor')
