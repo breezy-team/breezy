@@ -423,6 +423,10 @@ class SvnWorkingTree(WorkingTree):
         return revid
 
     def add(self, files, ids=None):
+        if isinstance(files, str):
+            files = [files]
+            if isinstance(ids, str):
+                ids = [ids]
         if ids:
             ids = copy(ids)
             ids.reverse()

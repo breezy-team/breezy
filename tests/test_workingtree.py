@@ -57,6 +57,29 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
 
+    def test_add_nolist(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        tree = WorkingTree.open("dc")
+        tree.add("bl")
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertFalse(inv.has_filename("aa"))
+
+    def test_add_nolist_withid(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        tree = WorkingTree.open("dc")
+        tree.add("bl", "bloe")
+
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertFalse(inv.has_filename("aa"))
+        self.assertEqual("bloe", tree.inventory.path2id("bl"))
+
     def test_add_not_recursive(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl/file": "data"})
