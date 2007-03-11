@@ -477,3 +477,19 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
+
+
+class TestRevisionSpec_submit(TestRevisionSpec):
+
+    def test_submit_branch(self):
+        # Common ancestor of trees is 'alt_r2'
+        self.assertRaises(errors.NoSubmitBranch, self.get_in_history,
+                          'submit:')
+        self.tree.branch.set_parent('../tree2')
+        self.assertInHistoryIs(None, 'alt_r2', 'submit:')
+        self.tree.branch.set_parent('bogus')
+        self.assertRaises(errors.NotBranchError, self.get_in_history,
+            'submit:')
+        # submit branch overrides parent branch
+        self.tree.branch.set_submit_branch('tree2')
+        self.assertInHistoryIs(None, 'alt_r2', 'submit:')

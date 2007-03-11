@@ -477,8 +477,7 @@ class RevisionSpec_tag(RevisionSpec):
 
     help_txt = """Selects a revision identified by a tag name.
 
-    Tags are stored in the repository and created by the 'tag'
-    command.
+    Tags are stored in the branch and created by the 'tag' command.
     """
 
     prefix = 'tag:'
@@ -619,10 +618,14 @@ class RevisionSpec_ancestor(RevisionSpec):
     prefix = 'ancestor:'
 
     def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        return self._find_revision_info(branch, self.spec)
+
+    @staticmethod
+    def _find_revision_info(branch, other_location):
         from bzrlib.branch import Branch
 
-        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
-        other_branch = Branch.open(self.spec)
+        other_branch = Branch.open(other_location)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
@@ -637,7 +640,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, rev_id)
-        
+
+
 SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
@@ -668,3 +672,39 @@ class RevisionSpec_branch(RevisionSpec):
         return RevisionInfo(branch, revno, revision_b)
         
 SPEC_TYPES.append(RevisionSpec_branch)
+
+
+class RevisionSpec_submit(RevisionSpec_ancestor):
+    """Selects a common ancestor with a submit branch."""
+
+    help_txt = """Selects a common ancestor with the submit branch.
+
+    Diffing against this shows all the changes that were made in this branch,
+    and is a good predictor of what merge will do.  The submit branch is
+    used by the bundle and merge directive comands.  If no submit branch
+    is specified, the parent branch is used instead.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    examples:
+      $ bzr diff -r submit:
+    """
+
+    prefix = 'submit:'
+
+    def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        submit_location = branch.get_submit_branch()
+        location_type = 'submit branch'
+        if submit_location is None:
+            submit_location = branch.get_parent()
+            location_type = 'parent branch'
+        if submit_location is None:
+            raise errors.NoSubmitBranch(branch)
+        trace.note('Using %s %s', location_type, submit_location)
+        return self._find_revision_info(branch, submit_location)
+
+
+SPEC_TYPES.append(RevisionSpec_submit)
