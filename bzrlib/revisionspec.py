@@ -477,8 +477,7 @@ class RevisionSpec_tag(RevisionSpec):
 
     help_txt = """Selects a revision identified by a tag name.
 
-    Tags are stored in the repository and created by the 'tag'
-    command.
+    Tags are stored in the branch and created by the 'tag' command.
     """
 
     prefix = 'tag:'
