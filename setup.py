@@ -154,9 +154,9 @@ try:
     from Pyrex.Distutils import build_ext
 except ImportError:
     # try to build the extension from the prior generated source.
-    print ("Pyrex not available, while bzr will build"
-           ", you cannot modify the C extensions.")
-    from distutils.command import build_ext
+    print ("Pyrex not available, while bzr will build, "
+           "you cannot modify the C extensions.")
+    from distutils.command.build_ext import build_ext
     from distutils.extension import Extension
     #ext_modules.append(
     #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
