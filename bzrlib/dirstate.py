@@ -420,8 +420,11 @@ class DirState(object):
         else:
             raise errors.BzrError('unknown kind %r' % kind)
         entry_index, present = self._find_entry_index(entry_key, block)
-        assert not present, "basename %r already added" % basename
-        block.insert(entry_index, entry_data)
+        if not present:
+            block.insert(entry_index, entry_data)
+        else:
+            assert block[entry_index][1][0][0] == 'a', " %r(%r) already added" % (basename, file_id)
+            block[entry_index][1][0] = entry_data[1][0]
 
         if kind == 'directory':
            # insert a new dirblock

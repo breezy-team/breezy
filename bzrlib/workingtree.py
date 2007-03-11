@@ -945,6 +945,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         
         A new branch will be created, relative to the path for this tree.
         """
+        self.flush()
         def mkdirs(path):
             segments = osutils.splitpath(path)
             transport = self.branch.bzrdir.root_transport
@@ -1012,6 +1013,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.put('inventory', sio)
         self._inventory_is_modified = False
 
+    def _kind(self, relpath):
+        return osutils.file_kind(self.abspath(relpath))
+
     def list_files(self, include_root=False):
         """Recursively list all files as (path, class, kind, id, entry).
 
@@ -1032,7 +1036,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             yield ('', 'V', 'directory', inv.root.file_id, inv.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
-        file_kind = osutils.file_kind
+        file_kind = self._kind
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
@@ -1097,12 +1101,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             c = '?'
 
                 fk = file_kind(fap)
-
-                if f_ie:
-                    if f_ie.kind != fk:
-                        raise errors.BzrCheckError(
-                            "file %r entered as kind %r id %r, now of kind %r"
-                            % (fap, f_ie.kind, f_ie.file_id, fk))
 
                 # make a last minute entry
                 if f_ie:

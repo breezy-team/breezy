@@ -148,7 +148,7 @@ def show_tree_status(wt, show_unchanged=None,
             if short:
                 changes = new._iter_changes(old, show_unchanged, specific_files,
                     require_versioned=False, want_unversioned=want_unversioned)
-                reporter = _mod_delta.ChangeReporter(output_file=to_file,
+                reporter = _mod_delta._ChangeReporter(output_file=to_file,
                     unversioned_filter=new.is_ignored)
                 _mod_delta.report_changes(changes, reporter)
             else:
