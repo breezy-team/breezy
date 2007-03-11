@@ -619,10 +619,14 @@ class RevisionSpec_ancestor(RevisionSpec):
     prefix = 'ancestor:'
 
     def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        return self._find_revision_info(branch, self.spec)
+
+    @staticmethod
+    def _find_revision_info(branch, other_location):
         from bzrlib.branch import Branch
 
-        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
-        other_branch = Branch.open(self.spec)
+        other_branch = Branch.open(other_location)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
@@ -637,7 +641,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, rev_id)
-        
+
+
 SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
@@ -670,7 +675,7 @@ class RevisionSpec_branch(RevisionSpec):
 SPEC_TYPES.append(RevisionSpec_branch)
 
 
-class RevisionSpec_ancestor(RevisionSpec):
+class RevisionSpec_submit(RevisionSpec_ancestor):
     """Selects a common ancestor with a submit branch."""
 
     help_txt = """Selects a common ancestor with the submit branch.
@@ -687,33 +692,16 @@ class RevisionSpec_ancestor(RevisionSpec):
     examples:
       $ bzr diff -r submit:
     """
+
     prefix = 'submit:'
 
     def _match_on(self, branch, revs):
-        from bzrlib.branch import Branch
-
         trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
         submit_location = branch.get_submit_branch()
         if submit_location is None:
             submit_location = branch.get_parent()
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
+        return self._find_revision_info(branch, submit_location)
 
-
-        other_branch = Branch.open(submit_location)
-        revision_a = branch.last_revision()
-        revision_b = other_branch.last_revision()
-        for r, b in ((revision_a, branch), (revision_b, other_branch)):
-            if r in (None, revision.NULL_REVISION):
-                raise errors.NoCommits(b)
-        revision_source = revision.MultipleRevisionSources(
-                branch.repository, other_branch.repository)
-        rev_id = revision.common_ancestor(revision_a, revision_b,
-                                          revision_source)
-        try:
-            revno = branch.revision_id_to_revno(rev_id)
-        except errors.NoSuchRevision:
-            revno = None
-        return RevisionInfo(branch, revno, rev_id)
-
-SPEC_TYPES.append(RevisionSpec_ancestor)
+SPEC_TYPES.append(RevisionSpec_submit)
