@@ -106,13 +106,6 @@ bzr 0.15rc1  2007-03-07
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
 
-    * There is now initial support for managing a forest of trees in bzr,
-      and splitting up existing trees into smaller subtrees, and finally
-      joining trees to make a larger tree. This is the first iteration
-      of this support. To enable the new ``join`` and ``split`` commands,
-      please run ``bzr upgrade --dirstate-with-subtree`` in your working
-      trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
-
   INTERNALS:
 
     * Refactored SSH vendor registration into SSHVendorManager class.
@@ -180,6 +173,18 @@ bzr 0.15rc1  2007-03-07
     * Branch.push, pull, merge now return Result objects with information
       about what happened, rather than a scattering of various methods.  These
       are also passed to the post hooks.  (Martin Pool)
+
+    * File formats and architecture is in place for managing a forest of trees
+      in bzr, and splitting up existing trees into smaller subtrees, and
+      finally joining trees to make a larger tree. This is the first iteration
+      of this support, and the user-facing aspects still require substantial
+      work.  If you wish to experiment with it, use ``bzr upgrade
+      --dirstate-with-subtree`` in your working trees and repositories.
+      You can use the hidden commands ``split`` and ``join`` and to create
+      and manipulate nested trees, but please consider using the nested-trees
+      branch, which contains substantial UI improvements, instead.
+      http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/
+      (Aaron Bentley, Martin Pool, Robert Collins).
 
   BUGFIXES:
 
