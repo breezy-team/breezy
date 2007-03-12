@@ -168,6 +168,19 @@ class TestFileIdGenerator(TestCase):
         self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c\x8a".encode("utf-8"), 
                          generate_file_id("svn-v2:2@uuid-bp", u"mypath\x2c\x8a"))
 
+    def test_generate_svn_file_id(self):
+        self.assertEqual("svn-v2:2@uuid-bp-path", 
+                generate_svn_file_id("uuid", 2, "bp", "path"))
+
+    def test_generate_svn_file_id_nordic(self):
+        self.assertEqual("svn-v2:2@uuid-bp-\xc3\xa6\xc3\xb8\xc3\xa5", 
+                generate_svn_file_id("uuid", 2, "bp", u"\xe6\xf8\xe5"))
+
+    def test_generate_svn_file_id_nordic_branch(self):
+        self.assertEqual("svn-v2:2@uuid-\xc3\xa6-\xc3\xa6\xc3\xb8\xc3\xa5", 
+                generate_svn_file_id("uuid", 2, u"\xe6", u"\xe6\xf8\xe5"))
+
+
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {}

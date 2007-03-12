@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat, PullResult
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
@@ -112,16 +112,24 @@ class TestPush(TestCaseWithSubversionRepository):
         self.newdir = self.olddir.sprout("dc")
 
     def test_empty(self):
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
+        self.assertEqual(0, int(self.olddir.open_branch().pull(
+                                self.newdir.open_branch())))
+
+    def test_empty_result(self):
+        result = self.olddir.open_branch().pull(self.newdir.open_branch())
+        self.assertIsInstance(result, PullResult)
+        self.assertEqual(result.old_revno, self.olddir.open_branch().revno())
+        self.assertEqual(result.master_branch, None)
+        self.assertEqual(result.target_branch.bzrdir.transport.base, self.olddir.transport.base)
+        self.assertEqual(result.source_branch.bzrdir.transport.base, self.newdir.transport.base)
 
     def test_child(self):
         self.build_tree({'sc/foo/bar': "data"})
         self.client_add("sc/foo/bar")
         self.client_commit("sc", "second message")
 
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
+        self.assertEqual(0, int(self.olddir.open_branch().pull(
+                                self.newdir.open_branch())))
 
     def test_diverged(self):
         self.build_tree({'sc/foo/bar': "data"})

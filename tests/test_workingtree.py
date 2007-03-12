@@ -173,6 +173,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         self.client_commit("dc", "Bla")
+        self.client_update("dc")
         tree = WorkingTree.open("dc")
         os.remove("dc/bl")
         tree.revert(["bl"])
