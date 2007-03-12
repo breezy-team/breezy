@@ -24,9 +24,6 @@ from bzrlib import (
     errors,
     inventory,
     )
-from bzrlib.osutils import (
-    has_symlinks,
-    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -61,8 +58,6 @@ class TestSnapshot(TestCaseWithWorkingTree):
         self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
         self.wt.add(['subdir', 'subdir/file'],
                                        ['dirid', 'fileid'])
-        if has_symlinks():
-            pass
         self.wt.commit('message_1', rev_id = '1')
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
