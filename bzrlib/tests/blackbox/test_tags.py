@@ -60,6 +60,11 @@ class TestTagging(TestCaseWithTransport):
         # can also create tags using -r
         self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
         self.assertEquals(t.branch.tags.lookup_tag('tag2'), 'first-revid')
+        # regression test: make sure a unicode revision from the user
+        # gets turned into a str object properly. The use of a unicode
+        # object for the revid is intentional.
+        self.run_bzr('tag', '-d', 'branch', 'tag3', u'-rrevid:first-revid')
+        self.assertEquals(t.branch.tags.lookup_tag('tag3'), 'first-revid')
         # can also delete an existing tag
         out, err = self.run_bzr('tag', '--delete', '-d', 'branch', 'tag2')
         # cannot replace an existing tag normally
