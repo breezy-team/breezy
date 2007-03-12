@@ -102,15 +102,24 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         sendmail_calls = []
         def sendmail(self, from_, to, message):
             sendmail_calls.append((self, from_, to, message))
+        connect_calls = []
+        def connect(self, host='localhost', port=0):
+            connect_calls.append((self, host, port))
         old_sendmail = smtplib.SMTP.sendmail
         smtplib.SMTP.sendmail = sendmail
+        old_connect = smtplib.SMTP.connect
+        smtplib.SMTP.connect = connect
         try:
             md_text = self.run_bzr('merge-directive', '--mail-to',
                                    'pqm@example.com', '--plain', '../tree2',
                                    '.')[0]
         finally:
             smtplib.SMTP.sendmail = old_sendmail
+            smtplib.SMTP.connect = old_connect
         self.assertEqual('', md_text)
+        self.assertEqual(1, len(connect_calls))
+        call = connect_calls[0]
+        self.assertEqual(('localhost', 0), call[1:3])
         self.assertEqual(1, len(sendmail_calls))
         call = sendmail_calls[0]
         self.assertEqual(('J. Random Hacker <jrandom@example.com>',
