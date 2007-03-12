@@ -364,8 +364,8 @@ class WorkingTree4(WorkingTree3):
                 elif kind == 'tree-reference':
                     assert self._repo_supports_tree_reference
                     inv_entry.reference_revision = link_or_sha1 or None
-                else:
-                    assert 'unknown kind'
+                elif kind != 'symlink':
+                    assert False, 'unknown kind'
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid, ('file_id %s already in'
                     ' inventory as %s' % (file_id, inv_byid[file_id]))
