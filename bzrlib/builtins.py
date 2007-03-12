@@ -2296,13 +2296,13 @@ class cmd_selftest(Command):
     takes_args = ['testspecs*']
     takes_options = ['verbose',
                      Option('one', help='stop when one test fails'),
-                     Option('keep-output', 
+                     Option('keep-output',
                             help='keep output directories when tests fail'),
-                     Option('transport', 
+                     Option('transport',
                             help='Use a different transport by default '
                                  'throughout the test suite.',
                             type=get_transport_type),
-                     Option('benchmark', help='run the bzr bencharks.'),
+                     Option('benchmark', help='run the bzr benchmarks.'),
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
@@ -2313,7 +2313,7 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      Option('first',
-                            help='run all tests, but run specified tests first',
+                            help='run all tests, but run specified tests first'
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
