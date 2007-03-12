@@ -791,6 +791,40 @@ Content-length: 10
 
 PROPS-END
 
+Node-path: u\xc3\xa1
+Node-path: bla
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 5
+Text-content-md5: 49803c8f7913948eb3e30bae749ae6bd
+Content-length: 15
+
+PROPS-END
+bloe
+
+
+Revision-number: 2
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: x\xc3\xa1
+Node-action: delete
+
 """)
         os.mkdir("old")
 

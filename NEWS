@@ -9,6 +9,8 @@ bzr-svn 0.3.2	UNRELEASED
 
   * Handle unicode characters in commit messages. Fixes #85551.
 
+  * Handle unicode characters in filenames (#54736)
+
 bzr-svn 0.3.1	2007-01-31
 
   BUG FIXES
