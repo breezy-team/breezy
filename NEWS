@@ -25,6 +25,9 @@ IN DEVELOPMENT
     * Fix ``RevisionSpec_revid`` to handle the Unicode strings passed in
       from the command line. (Marien Zwart, #90501)
 
+    * Fix ``TreeTransform._iter_changes`` when both the source and
+      destination are missing. (Aaron Bentley, #88842)
+
  
 bzr 0.15rc1  2007-03-07
 
