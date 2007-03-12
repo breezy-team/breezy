@@ -68,6 +68,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_ls',
                      'bzrlib.tests.blackbox.test_merge',
+                     'bzrlib.tests.blackbox.test_merge_directive',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
@@ -122,45 +123,3 @@ class ExternalBase(TestCaseWithTransport):
             return self.run_bzr_captured(args, retcode=retcode)[0]
         else:
             return self.run_bzr_captured(args, retcode=retcode)
-
-
-class TestUIFactory(ui.CLIUIFactory):
-    """A UI Factory for testing - hide the progress bar but emit note()s."""
-
-    def __init__(self,
-                 stdout=None,
-                 stderr=None):
-        super(TestUIFactory, self).__init__()
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
-
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressBar.finished()."""
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
-        self.stdout.write((fmt_string + "\n") % args)
-
-    def progress_bar(self):
-        return self
-    
-    def nested_progress_bar(self):
-        return self
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""

@@ -44,7 +44,7 @@ class TestReportChanges(tests.TestCase):
         result = []
         def result_line(format, *args):
             result.append(format % args)
-        reporter = _mod_delta.ChangeReporter(result_line,
+        reporter = _mod_delta._ChangeReporter(result_line,
             unversioned_filter=unversioned_filter)
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
