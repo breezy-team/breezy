@@ -17,7 +17,6 @@
 from bzrlib import (
     errors,
     tests,
-    mutabletree,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -92,18 +91,3 @@ class TestFileIds(TestCaseWithTree):
             self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         finally:
             tree.unlock()
-
-
-class TestInventory(TestCaseWithTree):
-
-    def test_symlink(self):
-        tree = self.get_tree_with_subdirs_and_all_content_types()
-        if isinstance(tree, mutabletree.MutableTree):
-            raise TestSkipped(
-                'symlinks not accurately represented in working trees')
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        inv = tree.inventory
-        entry = inv[inv.path2id('symlink')]
-        self.assertEqual(entry.kind, 'symlink')
-        self.assertEqual(entry.symlink_target, 'link-target')

@@ -21,9 +21,11 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.diff import internal_diff
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     has_symlinks,
     )
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
 
@@ -206,3 +208,26 @@ class TestPreviousHeads(TestCaseWithTree):
                          self.get_previous_heads([self.inv_D, self.inv_B]))
 
     # TODO: test two inventories with the same file revision 
+
+
+class TestInventory(TestCaseWithTree):
+
+    def setUp(self):
+        super(TestInventory, self).setUp()
+        self.tree = self.get_tree_with_subdirs_and_all_content_types()
+        self.tree.lock_read()
+        self.addCleanup(self.tree.unlock)
+        # Commenting out the following line still fails.
+        self.inv = self.tree.inventory
+
+    def test_symlink_target(self):
+        if isinstance(self.tree, MutableTree):
+            raise TestSkipped(
+                'symlinks not accurately represented in working trees')
+        entry = self.inv[self.inv.path2id('symlink')]
+        self.assertEqual(entry.symlink_target, 'link-target')
+
+    def test_symlink(self):
+        entry = self.inv[self.inv.path2id('symlink')]
+        self.assertEqual(entry.kind, 'symlink')
+        self.assertEqual(None, entry.text_size)
