@@ -172,7 +172,7 @@ class SvnBranch(Branch):
         else:
             return None
 
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None, delta_reporter=None):
         source.lock_read()
         try:
             old_count = len(self.revision_history())
