@@ -260,14 +260,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        try:
-            test.tearDown()
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.addError(test, test.__exc_info())
-        else:
-            unittest.TestResult.addSuccess(self, test)
+        unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
