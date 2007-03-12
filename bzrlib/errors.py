@@ -1876,6 +1876,12 @@ class ImportNameCollision(BzrError):
         self.name = name
 
 
+class NotAMergeDirective(BzrError):
+    """File starting with %(firstline)r is not a merge directive"""
+    def __init__(self, firstline):
+        BzrError.__init__(self, firstline=firstline)
+
+
 class NoMergeSource(BzrError):
     """Raise if no merge source was specified for a merge directive"""
 

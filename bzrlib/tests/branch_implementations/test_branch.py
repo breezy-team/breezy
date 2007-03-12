@@ -328,7 +328,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
                          Testament.from_revision(branch.repository,
                          'A').as_short_text() +
-                         '-----END PSUDO-SIGNED CONTENT-----\n',
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
@@ -341,7 +341,7 @@ class TestBranch(TestCaseWithBranch):
                           'A')
         wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                         'FOO-----END PSUDO-SIGNED CONTENT-----\n',
+                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
