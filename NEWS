@@ -7,6 +7,21 @@ IN DEVELOPMENT
 
     * New ``submit:`` revision specifier makes it easy to diff against the
       common ancestor with the submit location (Aaron Bentley)
+
+    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
+  INTERNALS:
+
+    * Refactored SSH vendor registration into SSHVendorManager class.
+      (Dmitry Vasiliev)
+
+  BUGFIXES:
+
+    * New ``--numbered-dirs`` option to ``bzr selftest`` to use
+      numbered dirs for TestCaseInTempDir. This is default behavior
+      on Windows. Anyone can force named dirs on Windows
+      with ``--no-numbered-dirs``. (Alexander Belchenko)
+
  
 bzr 0.15rc1  2007-03-07
 
@@ -37,8 +52,6 @@ bzr 0.15rc1  2007-03-07
       Collins, John A Meinel, Martin Pool, and others).
 
   IMPROVEMENTS:
-
-    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
@@ -114,9 +127,6 @@ bzr 0.15rc1  2007-03-07
       trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
 
   INTERNALS:
-
-    * Refactored SSH vendor registration into SSHVendorManager class.
-      (Dmitry Vasiliev)
 
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
@@ -229,11 +239,6 @@ bzr 0.15rc1  2007-03-07
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
-    * New ``--numbered-dirs`` option to ``bzr selftest`` to use
-      numbered dirs for TestCaseInTempDir. This is default behavior
-      on Windows. Anyone can force named dirs on Windows
-      with ``--no-numbered-dirs``. (Alexander Belchenko)
-      
 
 bzr 0.14  2007-01-23
 
