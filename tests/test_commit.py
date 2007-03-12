@@ -256,3 +256,26 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertTrue(wt.branch.last_revision() in 
              repos.get_ancestry(repos.generate_revision_id(3, "")))
 
+class TestPushNested(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestPushNested, self).setUp()
+        self.repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/foo/trunk/bla': "data"})
+        self.client_add("sc/foo")
+        self.client_commit("sc", "foo")
+
+        self.olddir = BzrDir.open("sc/foo/trunk")
+        os.mkdir("dc")
+        self.newdir = self.olddir.sprout("dc")
+
+    def test_simple(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        repos = self.olddir.find_repository()
+        self.client_update("sc")
+        self.assertTrue(os.path.exists("sc/foo/trunk/file"))
+        self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
