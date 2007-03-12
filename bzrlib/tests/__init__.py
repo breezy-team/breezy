@@ -260,7 +260,14 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        unittest.TestResult.addSuccess(self, test)
+        try:
+            test.tearDown()
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.addError(test, test.__exc_info())
+        else:
+            unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -986,8 +993,11 @@ class TestCase(unittest.TestCase):
         """
         # TODO: Perhaps this should keep running cleanups even if 
         # one of them fails?
-        for cleanup_fn in reversed(self._cleanups):
-            cleanup_fn()
+
+        # Actually pop the cleanups from the list so tearDown running
+        # twice is safe (this happens for skipped tests).
+        while self._cleanups:
+            self._cleanups.pop()()
 
     def log(self, *args):
         mutter(*args)

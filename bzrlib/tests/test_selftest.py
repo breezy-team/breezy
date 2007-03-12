@@ -719,39 +719,50 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        class SkippedSetupTest(unittest.TestCase):
+        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        test = unittest.FunctionTestCase(skipping_test)
+        result = self.run_test_runner(runner, test)
+        self.assertTrue(result.wasSuccessful())
+
+    def test_skipped_from_setup(self):
+        class SkippedSetupTest(TestCase):
 
             def setUp(self):
+                self.counter = 1
+                self.addCleanup(self.cleanup)
                 raise TestSkipped('skipped setup')
 
             def test_skip(self):
                 self.fail('test reached')
 
-            def tearDown(self):
-                self.fail('teardown reached')
+            def cleanup(self):
+                self.counter -= 1
 
-        class SkippedTest(unittest.TestCase):
+        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        test = SkippedSetupTest('test_skip')
+        result = self.run_test_runner(runner, test)
+        self.assertTrue(result.wasSuccessful())
+        # Check if cleanup was called the right number of times.
+        self.assertEqual(0, test.counter)
+
+    def test_skipped_from_test(self):
+        class SkippedTest(TestCase):
 
             def setUp(self):
                 self.counter = 1
+                self.addCleanup(self.cleanup)
 
             def test_skip(self):
                 raise TestSkipped('skipped test')
 
-            def tearDown(self):
+            def cleanup(self):
                 self.counter -= 1
 
         runner = TextTestRunner(stream=self._log_file, keep_output=True)
-        test = unittest.FunctionTestCase(skipping_test)
-        result = self.run_test_runner(runner, test)
-        self.assertTrue(result.wasSuccessful())
-        test = SkippedSetupTest('test_skip')
-        result = self.run_test_runner(runner, test)
-        self.assertTrue(result.wasSuccessful())
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
-        # Check if tearDown was called the right number of times.
+        # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
 
     def test_bench_history(self):
