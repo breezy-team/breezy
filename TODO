@@ -17,3 +17,4 @@
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
 - free memory!
 - report changes to delta editor in Branch.pull()
+- add tests for objects returned by WorkingTree.pull(), Branch.pull()

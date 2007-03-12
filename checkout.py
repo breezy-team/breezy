@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from binascii import hexlify
+from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
                            NoRepositoryPresent, BzrError)
@@ -455,7 +456,12 @@ class SvnWorkingTree(WorkingTree):
 
         return self.base_tree
 
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None, delta_reporter=None):
+        result = PullResult()
+        result.source_branch = source
+        result.master_branch = None
+        result.target_branch = self.branch
+        (result.old_revno, result.old_revid) = self.branch.last_revision_info()
         if stop_revision is None:
             stop_revision = self.branch.last_revision()
         rev = svn.core.svn_opt_revision_t()
@@ -463,7 +469,9 @@ class SvnWorkingTree(WorkingTree):
         rev.value.number = self.branch.repository.parse_revision_id(stop_revision)[1]
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
         self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
-        return fetched-rev.value.number
+        result.new_revid = self.branch.generate_revision_id(fetched)
+        result.new_revno = self.branch.revision_id_to_revno(result.new_revid)
+        return result
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
