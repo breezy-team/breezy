@@ -45,7 +45,7 @@ def show_version():
         print repr(bzrlib.__path__)
     else:
         print bzrlib.__path__[0]
-    print "Using bazaar configuration dir:", config.config_dir()
+    print "Using bazaar configuration:", config.config_dir()
     print
     print bzrlib.__copyright__
     print "http://bazaar-vcs.org/"
