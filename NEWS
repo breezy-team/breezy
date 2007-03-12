@@ -22,6 +22,9 @@ IN DEVELOPMENT
       on Windows. Anyone can force named dirs on Windows
       with ``--no-numbered-dirs``. (Alexander Belchenko)
 
+    * Fix ``RevisionSpec_revid`` to handle the Unicode strings passed in
+      from the command line. (Marien Zwart, #90501)
+
  
 bzr 0.15rc1  2007-03-07
 
