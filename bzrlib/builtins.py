@@ -3246,12 +3246,27 @@ class cmd_serve(Command):
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
     
-    This is marked as a merge of the subtree into the containing tree, and all
-    history is preserved.
+    This command is for experimental use only.  It requires the target tree
+    to be in dirstate-with-subtree format, which cannot be converted into
+    earlier formats.
+
+    The TREE argument should be an independent tree, inside another tree, but
+    not part of it.  (Such trees can be produced by "bzr split", but also by
+    running "bzr branch" with the target inside a tree.)
+
+    The result is a combined tree, with the subtree no longer an independant
+    part.  This is marked as a merge of the subtree into the containing tree,
+    and all history is preserved.
+
+    If --reference is specified, the subtree retains its independence.  It can
+    be branched by itself, and can be part of multiple projects at the same
+    time.  But operations performed in the containing tree, such as commit
+    and merge, will recurse into the subtree.
     """
 
     takes_args = ['tree']
     takes_options = [Option('reference', 'join by reference')]
+    hidden = True
 
     def run(self, tree, reference=False):
         sub_tree = WorkingTree.open(tree)
@@ -3281,9 +3296,22 @@ class cmd_join(Command):
 
 class cmd_split(Command):
     """Split a tree into two trees.
+
+    This command is for experimental use only.  It requires the target tree
+    to be in dirstate-with-subtree format, which cannot be converted into
+    earlier formats.
+
+    The TREE argument should be a subdirectory of a working tree.  That
+    subdirectory will be converted into an independent tree, with its own
+    branch.  Commits in the top-level tree will not apply to the new subtree.
+    If you want that behavior, do "bzr join --reference TREE".
+
+    To undo this operation, do "bzr join TREE".
     """
 
     takes_args = ['tree']
+
+    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
