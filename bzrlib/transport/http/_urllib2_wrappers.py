@@ -709,9 +709,14 @@ class ProxyHandler(urllib2.ProxyHandler):
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()
-        type, r_type = urllib.splittype(proxy)
-        host, XXX = urllib.splithost(r_type)
-        if '@' in host:
+        scheme, r_scheme = urllib.splittype(proxy)
+        if self._debuglevel > 0:
+            print 'scheme: %s, r_scheme: %s' % (scheme, r_scheme)
+        host, XXX = urllib.splithost(r_scheme)
+        if host is None:
+            raise errors.InvalidURL(proxy,
+                                    'Invalid syntax in proxy env variable')
+        elif '@' in host:
             user_pass, host = host.split('@', 1)
             if ':' in user_pass:
                 user, password = user_pass.split(':', 1)

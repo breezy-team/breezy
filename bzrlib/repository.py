@@ -60,6 +60,9 @@ from bzrlib.trace import mutter, note, warning
 _deprecation_warning_done = False
 
 
+######################################################################
+# Repositories
+
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -920,10 +923,8 @@ for _name in [
 
 for _name in [
         'KnitRepository',
-        'KnitRepository2',
         'RepositoryFormatKnit',
         'RepositoryFormatKnit1',
-        'RepositoryFormatKnit2',
         ]:
     __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
 
@@ -1036,6 +1037,9 @@ can be called to obtain one.
 """
 
 
+#####################################################################
+# Repository Formats
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1066,6 +1070,9 @@ class RepositoryFormat(object):
     def __eq__(self, other):
         # format objects are generally stateless
         return isinstance(other, self.__class__)
+
+    def __ne__(self, other):
+        return not self == other
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -1133,7 +1140,7 @@ class RepositoryFormat(object):
         from bzrlib.store.revision.text import TextRevisionStore
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
-        text_store =TextStore(transport.clone(name),
+        text_store = TextStore(transport.clone(name),
                               prefixed=prefixed,
                               compressed=compressed,
                               dir_mode=dir_mode,
@@ -1251,9 +1258,9 @@ format_registry.register_lazy(
 format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 2\n',
+    'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'bzrlib.repofmt.knitrepo',
-    'RepositoryFormatKnit2',
+    'RepositoryFormatKnit3',
     )
 
 
@@ -1334,10 +1341,12 @@ class InterSameDataRepository(InterRepository):
             return False
         if not isinstance(target, Repository):
             return False
-        if source._format.rich_root_data == target._format.rich_root_data:
-            return True
-        else:
+        if source._format.rich_root_data != target._format.rich_root_data:
             return False
+        if source._serializer != target._serializer:
+            return False
+        else:
+            return True 
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):
@@ -1643,13 +1652,13 @@ class InterKnit1and2(InterKnitRepo):
 
     @staticmethod
     def is_compatible(source, target):
-        """Be compatible with Knit1 source and Knit2 target"""
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit2
+        """Be compatible with Knit1 source and Knit3 target"""
+        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit3
         try:
             from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1, \
-                    RepositoryFormatKnit2
+                    RepositoryFormatKnit3
             return (isinstance(source._format, (RepositoryFormatKnit1)) and
-                    isinstance(target._format, (RepositoryFormatKnit2)))
+                    isinstance(target._format, (RepositoryFormatKnit3)))
         except AttributeError:
             return False
 
@@ -1759,10 +1768,10 @@ class InterRepositoryTestProviderAdapter(object):
         # here.
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
-                       knitrepo.RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit3()))
         result.append((InterKnit1and2,
                        knitrepo.RepositoryFormatKnit1(),
-                       knitrepo.RepositoryFormatKnit2()))
+                       knitrepo.RepositoryFormatKnit3()))
         return result
 
 
@@ -1972,6 +1981,14 @@ class CommitBuilder(object):
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+
+    def modified_reference(self, file_id, file_parents):
+        """Record the modification of a reference.
 
         :param file_id: The file_id of the link to record.
         :param file_parents: The per-file parent revision ids.

@@ -114,34 +114,38 @@ class TestGlobster(TestCase):
             (u'[a-z]',
              [u'a', u'q', u'f'],
              [u'A', u'Q', u'F']),
-            (ur'[^a-z]',
+            (u'[^a-z]',
              [u'A', u'Q', u'F'],
              [u'a', u'q', u'f']),
             (u'[!a-z]foo',
              [u'Afoo', u'.foo'],
              [u'afoo', u'ABfoo']),
-            (ur'foo[!a-z]bar',
+            (u'foo[!a-z]bar',
              [u'fooAbar', u'foo.bar'],
              [u'foojbar']),
-            (ur'[\x20-\x30\u8336]',
+            (u'[\x20-\x30\u8336]',
              [u'\040', u'\044', u'\u8336'],
              [u'\x1f']),
-            (ur'[^\x20-\x30\u8336]',
+            (u'[^\x20-\x30\u8336]',
              [u'\x1f'],
              [u'\040', u'\044', u'\u8336']),
             ])
 
     def test_regex(self):
         self.assertMatch([
-            (ur'RE:(a|b|c+)',
+            (u'RE:(a|b|c+)',
              [u'a', u'b', u'ccc'],
              [u'd', u'aa', u'c+', u'-a']),
-            (ur'RE:(?:a|b|c+)',
+            (u'RE:(?:a|b|c+)',
              [u'a', u'b', u'ccc'],
              [u'd', u'aa', u'c+', u'-a']),
-            (ur'RE:(?P<a>.)(?P=a)',
+            (u'RE:(?P<a>.)(?P=a)',
              [u'a'],
              [u'ab', u'aa', u'aaa']),
+            # test we can handle odd numbers of trailing backslashes
+            (u'RE:a\\\\\\',
+             [u'a\\'],
+             [u'a', u'ab', u'aa', u'aaa']),
             ])
 
     def test_question_mark(self):
@@ -224,6 +228,29 @@ class TestGlobster(TestCase):
             (u'./f*',
              [u'foo'],
              [u'foo/bar', u'foo/.bar', u'x/foo/y']),
+            ])
+
+    def test_backslash(self):
+        self.assertMatch([
+            (u'.\\foo',
+             [u'foo'],
+             [u'\u8336/foo', u'barfoo', u'x/y/foo']),
+            (u'.\\f*',
+             [u'foo'],
+             [u'foo/bar', u'foo/.bar', u'x/foo/y']),
+            (u'foo\\**\\x',
+             [u'foo/x', u'foo/bar/x'],
+             [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
+            ])
+
+    def test_trailing_slash(self):
+        self.assertMatch([
+            (u'./foo/',
+             [u'foo'],
+             [u'\u8336/foo', u'barfoo', u'x/y/foo']),
+            (u'.\\foo\\',
+             [u'foo'],
+             [u'foo/', u'\u8336/foo', u'barfoo', u'x/y/foo']),
             ])
 
     def test_leading_asterisk_dot(self):

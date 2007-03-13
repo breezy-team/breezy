@@ -89,6 +89,12 @@ class PyCurlTransport(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         super(PyCurlTransport, self).__init__(base)
+        if base.startswith('https'):
+            # Check availability of https into pycurl supported
+            # protocols
+            supported = pycurl.version_info()[8]
+            if 'https' not in supported:
+                raise DependencyNotPresent('pycurl', 'no https support')
         self.cabundle = ca_bundle.get_ca_path()
         if from_transport is not None:
             self._curl = from_transport._curl

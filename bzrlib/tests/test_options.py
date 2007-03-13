@@ -157,6 +157,10 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--two', '--one',
                                           '--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
+        options = [option.RegistryOption('format', '', registry, str,
+                   enum_switch=False)]
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--format', 'two'])
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
@@ -164,6 +168,17 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
+
+    def test_from_kwargs(self):
+        my_option = option.RegistryOption.from_kwargs('my-option',
+            help='test option', short='be short', be_long='go long')
+        self.assertEqual(['my-option'],
+            [x[0] for x in my_option.iter_switches()])
+        my_option = option.RegistryOption.from_kwargs('my-option',
+            help='test option', title="My option", short='be short',
+            be_long='go long', value_switches=True)
+        self.assertEqual(['my-option', 'be-long', 'short'],
+            [x[0] for x in my_option.iter_switches()])
 
     def test_help(self):
         registry = bzrdir.BzrDirFormatRegistry()

@@ -18,6 +18,8 @@
 
 from cStringIO import StringIO
 import difflib
+import gzip
+import sha
 
 from bzrlib import (
     errors,
@@ -33,6 +35,7 @@ from bzrlib.knit import (
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
+    _KnitData,
     _KnitIndex,
     WeaveToKnit,
     )
@@ -109,10 +112,130 @@ class MockTransport(object):
         else:
             return StringIO("\n".join(self.file_lines))
 
+    def readv(self, relpath, offsets):
+        fp = self.get(relpath)
+        for offset, size in offsets:
+            fp.seek(offset)
+            yield offset, fp.read(size)
+
     def __getattr__(self, name):
         def queue_call(*args, **kwargs):
             self.calls.append((name, args, kwargs))
         return queue_call
+
+
+class LowLevelKnitDataTests(TestCase):
+
+    def create_gz_content(self, text):
+        sio = StringIO()
+        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file.write(text)
+        gz_file.close()
+        return sio.getvalue()
+
+    def test_valid_knit_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+
+        contents = data.read_records(records)
+        self.assertEqual({'rev-id-1':(['foo\n', 'bar\n'], sha1sum)}, contents)
+
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_not_enough_lines(self):
+        sha1sum = sha.new('foo\n').hexdigest()
+        # record says 2 lines data says 1
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw won't detect that sort of mismatch/corruption
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_too_many_lines(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        # record says 1 lines data says 2
+        gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw won't detect that sort of mismatch/corruption
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_mismatched_version_id(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        # We are asking for rev-id-2, but the data is rev-id-1
+        records = [('rev-id-2', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice if we request the wrong version.
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
+
+    def test_uncompressed_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        txt = ('version rev-id-1 2 %s\n'
+               'foo\n'
+               'bar\n'
+               'end rev-id-1\n'
+               % (sha1sum,))
+        transport = MockTransport([txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(txt))]
+
+        # We don't have valid gzip data ==> corrupt
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice the bad data
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
+
+    def test_corrupted_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        # Change 2 bytes in the middle to \xff
+        gz_txt = gz_txt[:10] + '\xff\xff' + gz_txt[12:]
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice if we request the wrong version.
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
 
 
 class LowLevelKnitIndexTests(TestCase):
