@@ -183,21 +183,22 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'short']
+    takes_options = ['show-ids', 'revision', 'short',
+                     Option('versioned', help='Only show versioned files')]
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, show_ids=False, file_list=None, revision=None, short=False):
+    def run(self, show_ids=False, file_list=None, revision=None, short=False,
+            versioned=False):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
-                         to_file=self.outf,
-                         short=short)
+                         to_file=self.outf, short=short, versioned=versioned)
 
 
 class cmd_cat_revision(Command):
@@ -2296,13 +2297,13 @@ class cmd_selftest(Command):
     takes_args = ['testspecs*']
     takes_options = ['verbose',
                      Option('one', help='stop when one test fails'),
-                     Option('keep-output', 
+                     Option('keep-output',
                             help='keep output directories when tests fail'),
-                     Option('transport', 
+                     Option('transport',
                             help='Use a different transport by default '
                                  'throughout the test suite.',
                             type=get_transport_type),
-                     Option('benchmark', help='run the bzr bencharks.'),
+                     Option('benchmark', help='run the bzr benchmarks.'),
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
@@ -2313,7 +2314,7 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      Option('first',
-                            help='run all tests, but run specified tests first',
+                            help='run all tests, but run specified tests first'
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
@@ -3246,12 +3247,27 @@ class cmd_serve(Command):
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
     
-    This is marked as a merge of the subtree into the containing tree, and all
-    history is preserved.
+    This command is for experimental use only.  It requires the target tree
+    to be in dirstate-with-subtree format, which cannot be converted into
+    earlier formats.
+
+    The TREE argument should be an independent tree, inside another tree, but
+    not part of it.  (Such trees can be produced by "bzr split", but also by
+    running "bzr branch" with the target inside a tree.)
+
+    The result is a combined tree, with the subtree no longer an independant
+    part.  This is marked as a merge of the subtree into the containing tree,
+    and all history is preserved.
+
+    If --reference is specified, the subtree retains its independence.  It can
+    be branched by itself, and can be part of multiple projects at the same
+    time.  But operations performed in the containing tree, such as commit
+    and merge, will recurse into the subtree.
     """
 
     takes_args = ['tree']
     takes_options = [Option('reference', 'join by reference')]
+    hidden = True
 
     def run(self, tree, reference=False):
         sub_tree = WorkingTree.open(tree)
@@ -3281,9 +3297,22 @@ class cmd_join(Command):
 
 class cmd_split(Command):
     """Split a tree into two trees.
+
+    This command is for experimental use only.  It requires the target tree
+    to be in dirstate-with-subtree format, which cannot be converted into
+    earlier formats.
+
+    The TREE argument should be a subdirectory of a working tree.  That
+    subdirectory will be converted into an independent tree, with its own
+    branch.  Commits in the top-level tree will not apply to the new subtree.
+    If you want that behavior, do "bzr join --reference TREE".
+
+    To undo this operation, do "bzr join TREE".
     """
 
     takes_args = ['tree']
+
+    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)

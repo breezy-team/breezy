@@ -51,7 +51,7 @@ class LoopbackGPGStrategy(object):
 
     def sign(self, content):
         return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
-                "-----END PSUDO-SIGNED CONTENT-----\n")
+                "-----END PSEUDO-SIGNED CONTENT-----\n")
 
 
 def _set_gpg_tty():

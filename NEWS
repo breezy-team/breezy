@@ -8,8 +8,32 @@ IN DEVELOPMENT
     * New ``submit:`` revision specifier makes it easy to diff against the
       common ancestor with the submit location (Aaron Bentley)
 
+    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
     * Merge now autodetects the correct line-ending style for its conflict
       markers.  (Aaron Bentley)
+
+  INTERNALS:
+
+    * Refactored SSH vendor registration into SSHVendorManager class.
+      (Dmitry Vasiliev)
+
+  BUGFIXES:
+
+    * New ``--numbered-dirs`` option to ``bzr selftest`` to use
+      numbered dirs for TestCaseInTempDir. This is default behavior
+      on Windows. Anyone can force named dirs on Windows
+      with ``--no-numbered-dirs``. (Alexander Belchenko)
+
+    * Fix ``RevisionSpec_revid`` to handle the Unicode strings passed in
+      from the command line. (Marien Zwart, #90501)
+
+    * Fix ``TreeTransform._iter_changes`` when both the source and
+      destination are missing. (Aaron Bentley, #88842)
+
+    * Fix commit of merges with symlinks in dirstate trees.
+      (Marien Zwart)
+
  
 bzr 0.15rc1  2007-03-07
 
@@ -40,8 +64,6 @@ bzr 0.15rc1  2007-03-07
       Collins, John A Meinel, Martin Pool, and others).
 
   IMPROVEMENTS:
-
-    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
@@ -109,17 +131,7 @@ bzr 0.15rc1  2007-03-07
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
 
-    * There is now initial support for managing a forest of trees in bzr,
-      and splitting up existing trees into smaller subtrees, and finally
-      joining trees to make a larger tree. This is the first iteration
-      of this support. To enable the new ``join`` and ``split`` commands,
-      please run ``bzr upgrade --dirstate-with-subtree`` in your working
-      trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
-
   INTERNALS:
-
-    * Refactored SSH vendor registration into SSHVendorManager class.
-      (Dmitry Vasiliev)
 
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
@@ -184,6 +196,18 @@ bzr 0.15rc1  2007-03-07
       about what happened, rather than a scattering of various methods.  These
       are also passed to the post hooks.  (Martin Pool)
 
+    * File formats and architecture is in place for managing a forest of trees
+      in bzr, and splitting up existing trees into smaller subtrees, and
+      finally joining trees to make a larger tree. This is the first iteration
+      of this support, and the user-facing aspects still require substantial
+      work.  If you wish to experiment with it, use ``bzr upgrade
+      --dirstate-with-subtree`` in your working trees and repositories.
+      You can use the hidden commands ``split`` and ``join`` and to create
+      and manipulate nested trees, but please consider using the nested-trees
+      branch, which contains substantial UI improvements, instead.
+      http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/
+      (Aaron Bentley, Martin Pool, Robert Collins).
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
@@ -222,14 +246,16 @@ bzr 0.15rc1  2007-03-07
     * Ignore patterns normalised to use '/' path separator.
       (Kent Gibson, #86451)
 
+    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
+
+    * Fix bzrtools shelve command for removed lines beginning with "--"
+      (Johan Dahlberg, #75577)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
-
-    * Fix bzrtools shelve command for removed lines beginning with "--"
-      (Johan Dahlberg, #75577)
 
 bzr 0.14  2007-01-23
 
@@ -377,8 +403,6 @@ bzr 0.14rc1  2007-01-16
 
     * Allow plugins import from zip archives.
       (Alexander Belchenko, #68124)
-
-    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
 
 
 bzr 0.13  2006-12-05
