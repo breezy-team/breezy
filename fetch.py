@@ -103,6 +103,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return generate_file_id(self.revid, new_path)
 
     def delete_entry(self, path, revnum, parent_id, pool):
+        path = path.decode("utf-8")
         del self.inventory[self._get_old_id(parent_id, path)]
 
     def close_directory(self, id):
@@ -114,6 +115,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                 file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
+        path = path.decode("utf-8")
         file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
@@ -193,6 +195,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        path = path.decode("utf-8")
         self.is_symlink = False
         self.is_executable = None
         self.file_data = ""

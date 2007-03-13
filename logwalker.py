@@ -228,7 +228,7 @@ class LogWalker(object):
             extra = " or path like '%s/%%'" % path.strip("/")
         else:
             extra = ""
-        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+        query = "select rev from changed_path where (path='%s' or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
+from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.config import TreeConfig
 from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
@@ -174,17 +174,21 @@ class SvnBranch(Branch):
             return None
 
     def pull(self, source, overwrite=False, stop_revision=None):
+        result = PullResult()
+        result.source_branch = source
+        result.master_branch = None
+        result.target_branch = self
         source.lock_read()
         try:
-            old_count = len(self.revision_history())
+            (result.old_revno, result.old_revid) = self.last_revision_info()
             try:
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if overwrite:
                     raise NotImplementedError('overwrite not supported for Subversion branches')
                 raise
-            new_count = len(self.revision_history())
-            return new_count - old_count
+            (result.new_revno, result.new_revid) = self.last_revision_info()
+            return result
         finally:
             source.unlock()
 

@@ -30,6 +30,13 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+  * Check for parent paths moving as well in LogWalker.find_latest_change(). 
+    Fixes #84087.
+
+  * Handle unicode characters in commit messages. Fixes #85551.
+
+  * Handle unicode characters in filenames (#54736)
+
 bzr-svn 0.3.1	2007-01-31
 
   BUG FIXES

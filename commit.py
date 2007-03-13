@@ -292,7 +292,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         
         mutter('obtaining commit editor')
         self.editor, editor_baton = self.repository.transport.get_commit_editor(
-            message, done, None, False)
+            message.encode("utf-8"), done, None, False)
 
         if self.branch.last_revision() is None:
             self.base_revnum = 0

@@ -89,6 +89,7 @@ class TreeBuildEditor(svn.delta.Editor):
         return ROOT_ID
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+        path = path.decode("utf-8")
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
@@ -142,6 +143,7 @@ class TreeBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        path = path.decode("utf-8")
         self.is_symlink = False
         self.is_executable = False
         return path

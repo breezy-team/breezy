@@ -14,10 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat, PullResult
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 import os
@@ -58,6 +59,20 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
         self.assertEqual("data", new_revision.message)
 
+    def test_commit_message_nordic(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = WorkingTree.open("dc")
+        self.assertEqual(
+            wt.branch.generate_revision_id(1), wt.commit(message=u"\xe6\xf8\xe5"))
+        self.assertEqual(
+                wt.branch.generate_revision_id(1), wt.branch.last_revision())
+        new_revision = wt.branch.repository.get_revision(
+                            wt.branch.last_revision())
+        self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
+        self.assertEqual(u"\xe6\xf8\xe5", new_revision.message.decode("utf-8"))
+
     def test_commit_update(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -82,113 +97,6 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:merge", 1))
 
-class TestCommitFromBazaar(TestCaseWithSubversionRepository):
-    def setUp(self):
-        super(TestCommitFromBazaar, self).setUp()
-        self.repos_url = self.make_repository('d')
-        source = BzrDir.open("svn+"+self.repos_url)
-        os.mkdir('dc')
-        self.checkout = BzrDirFormat.get_default_format().initialize('dc')
-        BranchReferenceFormat().initialize(self.checkout, source.open_branch())
-
-    def test_simple_commit(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/bla': "data"})
-        wt.add('bla')
-        wt.commit(message='commit from Bazaar')
-        self.assertNotEqual(None, wt.branch.last_revision())
-
-    def test_commit_executable(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/bla': "data"})
-        wt.add('bla')
-        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0755)
-        wt.commit(message='commit from Bazaar')
-
-        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
-        self.assertTrue(inv[inv.path2id("bla")].executable)
-
-    def test_commit_symlink(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/bla': "data"})
-        wt.add('bla')
-        os.symlink('bla', 'dc/foo')
-        wt.add('foo')
-        wt.commit(message='commit from Bazaar')
-
-        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
-        self.assertEqual('symlink', inv[inv.path2id("foo")].kind)
-        self.assertEqual('bla', inv[inv.path2id("foo")].symlink_target)
-
-    def test_commit_remove_executable(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/bla': "data"})
-        wt.add('bla')
-        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0755)
-        wt.commit(message='commit from Bazaar')
-
-        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0644)
-        wt.commit(message='remove executable')
-
-        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
-        self.assertFalse(inv[inv.path2id("bla")].executable)
-
-    def test_commit_parents(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
-        wt.add('bla')
-        wt.commit(message="data")
-        wt.add('foo')
-        wt.add('foo/bla')
-        self.assertTrue(wt.inventory.has_filename("bla"))
-        self.assertTrue(wt.inventory.has_filename("foo/bla"))
-        wt.set_pending_merges(["some-ghost-revision"])
-        wt.commit(message="data")
-        self.assertEqual([
-            wt.branch.generate_revision_id(1),
-            "some-ghost-revision"],
-            wt.branch.repository.revision_parents(wt.branch.last_revision()))
-        self.assertEqual("some-ghost-revision\n", 
-                self.client_get_prop(self.repos_url, "bzr:merge", 2))
-
-    def test_commit_fileids(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/file': 'data'})
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-        self.assertEqual("file\t%s\n" % wt.inventory.path2id("file"), 
-                self.client_get_prop(self.repos_url, "bzr:file-ids", 1))
-
-    def test_commit_fileids_added(self):
-    
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
-
-        svn.client.checkout2(self.repos_url, "db", 
-                rev, rev, True, False, self.client_ctx)
-
-        self.build_tree({'dc/file1': 'data', 'db/file2': "otherdata"})
-        self.client_add("db/file2")
-        self.client_commit("db", "amesg")
-        branch = Branch.open(self.repos_url)
-        inv = branch.repository.get_inventory(branch.last_revision())
-        wt = self.checkout.create_workingtree()
-        self.assertEqual(wt.inventory.root.file_id, inv.root.file_id)
-        wt.add('file1')
-        wt.commit(message="Commit from Bzr")
-        self.assertEqual("file1\t%s\n" % wt.inventory.path2id("file1"), 
-                self.client_get_prop(self.repos_url, "bzr:file-ids", 2))
-
-    def test_commit_branchnick(self):
-        wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
-        wt.add('bla')
-        wt.commit(message="data")
-        wt.add('foo')
-        wt.add('foo/bla')
-        wt.commit(message="data", revprops={"branch-nick": "mybranch"})
-        self.assertEqual("mybranch", 
-                self.client_get_prop(self.repos_url, "bzr:revprop:branch-nick", 2))
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -204,16 +112,24 @@ class TestPush(TestCaseWithSubversionRepository):
         self.newdir = self.olddir.sprout("dc")
 
     def test_empty(self):
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
+        self.assertEqual(0, int(self.olddir.open_branch().pull(
+                                self.newdir.open_branch())))
+
+    def test_empty_result(self):
+        result = self.olddir.open_branch().pull(self.newdir.open_branch())
+        self.assertIsInstance(result, PullResult)
+        self.assertEqual(result.old_revno, self.olddir.open_branch().revno())
+        self.assertEqual(result.master_branch, None)
+        self.assertEqual(result.target_branch.bzrdir.transport.base, self.olddir.transport.base)
+        self.assertEqual(result.source_branch.bzrdir.transport.base, self.newdir.transport.base)
 
     def test_child(self):
         self.build_tree({'sc/foo/bar': "data"})
         self.client_add("sc/foo/bar")
         self.client_commit("sc", "second message")
 
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
+        self.assertEqual(0, int(self.olddir.open_branch().pull(
+                                self.newdir.open_branch())))
 
     def test_diverged(self):
         self.build_tree({'sc/foo/bar': "data"})
@@ -299,6 +215,19 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual("Commit from Bzr",
             repos.get_revision(repos.generate_revision_id(2, "")).message)
 
+    def test_message_nordic(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message=u"\xe6\xf8\xe5")
+
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+
+        repos = self.olddir.find_repository()
+        self.assertEqual(u"\xe6\xf8\xe5",
+            repos.get_revision(repos.generate_revision_id(2, "")).message.decode("utf-8"))
+
+
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.newdir.open_workingtree()
@@ -327,3 +256,26 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertTrue(wt.branch.last_revision() in 
              repos.get_ancestry(repos.generate_revision_id(3, "")))
 
+class TestPushNested(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestPushNested, self).setUp()
+        self.repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/foo/trunk/bla': "data"})
+        self.client_add("sc/foo")
+        self.client_commit("sc", "foo")
+
+        self.olddir = BzrDir.open("sc/foo/trunk")
+        os.mkdir("dc")
+        self.newdir = self.olddir.sprout("dc")
+
+    def test_simple(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+        repos = self.olddir.find_repository()
+        self.client_update("sc")
+        self.assertTrue(os.path.exists("sc/foo/trunk/file"))
+        self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
