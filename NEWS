@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
     * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
+    * Merge now autodetects the correct line-ending style for its conflict
+      markers.  (Aaron Bentley)
+
   INTERNALS:
 
     * Refactored SSH vendor registration into SSHVendorManager class.
