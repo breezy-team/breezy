@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
     * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
+    * Added ``bzr status --versioned`` to report only versioned files, 
+      not unknowns. (Kent Gibson)
+
     * Merge now autodetects the correct line-ending style for its conflict
       markers.  (Aaron Bentley)
 
