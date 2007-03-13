@@ -353,11 +353,12 @@ class WorkingTree4(WorkingTree3):
                 inv_entry = factory[kind](file_id, name_unicode,
                                           parent_ie.file_id)
                 if kind == 'file':
+                    # This is only needed on win32, where this is the only way
+                    # we know the executable bit.
+                    inv_entry.executable = executable
                     # not strictly needed: working tree
-                    #entry.executable = executable
-                    #entry.text_size = size
-                    #entry.text_sha1 = sha1
-                    pass
+                    #inv_entry.text_size = size
+                    #inv_entry.text_sha1 = sha1
                 elif kind == 'directory':
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
@@ -463,6 +464,23 @@ class WorkingTree4(WorkingTree3):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
+
+    if not osutils.supports_executable():
+        @needs_read_lock
+        def is_executable(self, file_id, path=None):
+            file_id = osutils.safe_file_id(file_id)
+            entry = self._get_entry(file_id=file_id, path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][3]
+    else:
+        @needs_read_lock
+        def is_executable(self, file_id, path=None):
+            if not path:
+                file_id = osutils.safe_file_id(file_id)
+                path = self.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     @needs_read_lock
     def __iter__(self):
