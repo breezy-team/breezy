@@ -647,7 +647,7 @@ class ForbiddenControlFileError(BzrError):
 
 class LockError(BzrError):
 
-    _fmt = "Lock error: %(message)s"
+    _fmt = "Lock error: %(msg)s"
 
     internal_error = True
 
@@ -657,7 +657,10 @@ class LockError(BzrError):
     #
     # New code should prefer to raise specific subclasses
     def __init__(self, message):
-        self.message = message
+        # Python 2.5 uses a slot for StandardError.message,
+        # so use a different variable name
+        # so it is exposed in self.__dict__
+        self.msg = message
 
 
 class LockActive(LockError):
