@@ -1052,7 +1052,7 @@ def do_catching_redirections(action, transport, redirected):
     """Execute an action with given transport catching redirections.
 
     This is a facility provided for callers needing to follow redirections
-    silently. The silent is relative: it is the caller responsability to
+    silently. The silence is relative: it is the caller responsability to
     inform the user about each redirection or only inform the user of a user
     via the exception parameter.
 
@@ -1061,7 +1061,6 @@ def do_catching_redirections(action, transport, redirected):
     :param transport: The initial transport used.
     :param redirected: A callable receiving the redirected transport and the 
                   RedirectRequested exception.
-    :param exception: The exception raised if too much redirections occur.
 
     :return: Whatever 'action' returns
     """
@@ -1080,14 +1079,14 @@ def do_catching_redirections(action, transport, redirected):
     else:
         # Loop exited without resolving redirect ? Either the
         # user has kept a very very very old reference or a loop
-        # occured in the redirections.  Nothing we can cure here:
+        # occurred in the redirections.  Nothing we can cure here:
         # tell the user. Note that as the user has been informed
         # about each redirection (it is the caller responsibility
         # to do that in redirected via the provided
         # redirection_notice). The caller may provide more
-        # informations if needed (like what file or directory we
+        # information if needed (like what file or directory we
         # were trying to act upon when the redirection loop
-        # occured).
+        # occurred).
         raise errors.TooManyRedirections
 
 

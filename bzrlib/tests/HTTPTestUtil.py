@@ -179,7 +179,7 @@ class TestCaseWithWebserver(TestCaseWithTransport):
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
     """A support class providing readonly urls on two servers that are http://.
 
-    We setup two webservers to allows various tests involving
+    We set up two webservers to allows various tests involving
     proxies or redirections from one server to the other.
     """
     def setUp(self):
@@ -262,7 +262,7 @@ class HTTPServerRedirecting(HttpServer):
 class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
    """A support class providing redirections from one server to another.
 
-   We setup two webservers to allows various tests involving
+   We set up two webservers to allows various tests involving
    redirections.
    The 'old' server is redirected to the 'new' server.
    """
