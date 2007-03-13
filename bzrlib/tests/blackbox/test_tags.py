@@ -99,6 +99,10 @@ class TestTagging(TestCaseWithTransport):
         b1.tags.set_tag('tag4', 'second-revid')
         self.run_bzr('merge', '-d', 'branch2', 'branch1')
         self.assertEquals(b2.tags.lookup_tag('tag4'), 'second-revid')
+        # pushing to a new location copies the tag across
+        self.run_bzr('push', '-d', 'branch1', 'branch3')
+        b3 = Branch.open('branch3')
+        self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
 
     def test_list_tags(self):
         t = self.make_branch_and_tree('branch1')
