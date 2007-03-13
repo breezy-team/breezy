@@ -121,7 +121,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
                           'pqm@example.com'), call[1:3])
         self.assertContainsRe(call[3], EMAIL1)
 
-    def test_manual_pull(self):
+    def test_manual_pull_raw(self):
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
@@ -154,3 +154,37 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.run_bzr('pull', '../directive')
         wt = workingtree.WorkingTree.open('.')
         self.assertEqual('bar-id', wt.last_revision())
+
+    def test_manual_merge_raw(self):
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               '-r', '2', self.tree1.basedir, '--plain')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('merge', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+
+    def test_manual_merge_user_r(self):
+        """If the user supplies -r, it overrides the directive's revision"""
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               self.tree1.basedir, '--plain')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('merge', '-r', '2', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+
+    def test_manual_merge_bundle(self):
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               '-r', '2', '/dev/null', '--bundle')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('merge', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.get_parent_ids()[1])

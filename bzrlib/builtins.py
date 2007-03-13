@@ -2516,16 +2516,23 @@ class cmd_merge(Command):
 
         if branch is not None:
             try:
-                reader = bundle.read_bundle_from_url(branch)
+                reader, directive = bundle.read_bundle_or_directive_from_url(
+                    branch)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
             else:
-                conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                         reprocess, show_base, change_reporter)
-                if conflicts == 0:
-                    return 0
+                if reader is None:
+                    branch = directive.source_branch
+                    if revision is None:
+                        revision = [RevisionSpec.from_string('revid:' +
+                            directive.revision_id)]
                 else:
-                    return 1
+                    conflicts = merge_bundle(reader, tree, not force,
+                        merge_type, reprocess, show_base, change_reporter)
+                    if conflicts == 0:
+                        return 0
+                    else:
+                        return 1
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
