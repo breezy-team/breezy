@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -97,7 +97,8 @@ class TestInit(ExternalBase):
 
     def test_init_existing_without_workingtree(self):
         # make a repository
-        self.run_bzr('init-repo', '.')
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
         # make a branch; by default without a working tree
         self.run_bzr('init', 'subdir')
         # fail
