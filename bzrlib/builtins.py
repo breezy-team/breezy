@@ -52,6 +52,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
+from bzrlib.bundle import serializer as bundle_serializer
 from bzrlib.conflicts import ConflictList
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
@@ -579,9 +580,13 @@ class cmd_pull(Command):
         reader = None
         if location is not None:
             try:
-                reader = bundle.read_bundle_from_url(location)
+                reader, directive = bundle.read_bundle_or_directive_from_url(
+                    location)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
+            else:
+                if directive is not None and reader is None:
+                    location = directive.source_branch
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -605,7 +610,9 @@ class cmd_pull(Command):
 
         rev_id = None
         if revision is None:
-            if reader is not None:
+            if directive is not None:
+                rev_id = directive.revision_id
+            elif reader is not None:
                 rev_id = reader.target
         elif len(revision) == 1:
             rev_id = revision[0].in_history(branch_from).rev_id

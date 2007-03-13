@@ -17,7 +17,11 @@
 import os
 import smtplib
 
-from bzrlib import gpg, tests
+from bzrlib import (
+    gpg,
+    tests,
+    workingtree,
+    )
 
 
 EMAIL1 = """To: pqm@example.com
@@ -25,7 +29,7 @@ From: J. Random Hacker <jrandom@example.com>
 Subject: bar
 
 # Bazaar merge directive format 1
-# revision_id: jrandom@example.com-.*
+# revision_id: bar-id
 # target_branch: ../tree2
 # testament_sha1: .*
 # timestamp: .*
@@ -36,15 +40,15 @@ Subject: bar
 class TestMergeDirective(tests.TestCaseWithTransport):
 
     def prepare_merge_directive(self):
-        tree1 = self.make_branch_and_tree('tree1')
+        self.tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
-        tree1.branch.get_config().set_user_option('email',
+        self.tree1.branch.get_config().set_user_option('email',
             'J. Random Hacker <jrandom@example.com>')
-        tree1.add('file')
-        tree1.commit('foo')
-        tree2=tree1.bzrdir.sprout('tree2').open_workingtree()
+        self.tree1.add('file')
+        self.tree1.commit('foo')
+        self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
-        tree1.commit('bar')
+        self.tree1.commit('bar', rev_id='bar-id')
         os.chdir('tree1')
 
     def test_merge_directive(self):
@@ -116,3 +120,37 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(('J. Random Hacker <jrandom@example.com>',
                           'pqm@example.com'), call[1:3])
         self.assertContainsRe(call[3], EMAIL1)
+
+    def test_manual_pull(self):
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               '-r', '2', self.tree1.basedir, '--plain')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('pull', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.last_revision())
+
+    def test_manual_pull_user_r(self):
+        """If the user supplies -r, it overrides the directive's revision"""
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               self.tree1.basedir, '--plain')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('pull', '-r', '2', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.last_revision())
+
+    def test_manual_pull_bundle(self):
+        self.prepare_merge_directive()
+        self.tree1.commit('baz', rev_id='baz-id')
+        md_text = self.run_bzr('merge-directive', self.tree2.basedir,
+                               '-r', '2', '/dev/null', '--bundle')[0]
+        self.build_tree_contents([('../directive', md_text)])
+        os.chdir('../tree2')
+        self.run_bzr('pull', '../directive')
+        wt = workingtree.WorkingTree.open('.')
+        self.assertEqual('bar-id', wt.last_revision())

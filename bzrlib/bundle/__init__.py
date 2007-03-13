@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from StringIO import StringIO
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -26,11 +28,15 @@ from bzrlib.transport import get_transport as _get_transport
 
 
 def read_bundle_from_url(url):
+    return read_bundle_or_directive_from_url(url, _do_directive=False)[0]
+
+def read_bundle_or_directive_from_url(url, _do_directive=True):
     """Read a bundle from a given URL.
 
     :return: A BundleReader, may raise NotABundle if the target 
             is not a proper bundle.
     """
+    from bzrlib.merge_directive import MergeDirective
     url = urlutils.normalize_url(url)
     url, filename = urlutils.split(url, exclude_trailing_slash=False)
     if not filename:
@@ -44,7 +50,15 @@ def read_bundle_from_url(url):
     try:
         t = _get_transport(url)
         f = t.get(filename)
-        return _serializer.read_bundle(f)
+        if _do_directive:
+            directive = MergeDirective.from_lines(f.readlines())
+            if directive.patch_type == 'bundle':
+                reader = _serializer.read_bundle(StringIO(directive.patch))
+            else:
+                reader = None
+            return reader, directive
+        else:
+            return _serializer.read_bundle(f), None
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:
@@ -56,4 +70,6 @@ def read_bundle_from_url(url):
         # StubSFTPServer does fail during get() (because of prefetch) 
         # so it has an opportunity to translate the error.
         raise errors.NotABundle(str(e))
-
+    except errors.NotAMergeDirective:
+        f.seek(0)
+        return _serializer.read_bundle(f), None
