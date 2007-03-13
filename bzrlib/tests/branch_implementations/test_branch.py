@@ -118,12 +118,10 @@ class TestBranch(TestCaseWithBranch):
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
-        get_transport(self.get_url()).mkdir('b1')
-        get_transport(self.get_url()).mkdir('b2')
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
         b2 = self.make_branch('b2')
-        file('b1/foo', 'w').write('hello')
+        wt.bzrdir.root_transport.put_bytes('foo', 'hello')
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
@@ -136,10 +134,11 @@ class TestBranch(TestCaseWithBranch):
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo'])
+        transport = tree_a.bzrdir.root_transport
+        self.build_tree(['foo'], transport=transport)
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        self.build_tree(['a/vla'])
+        self.build_tree(['vla'], transport=transport)
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 
@@ -337,23 +336,37 @@ class TestBranch(TestCaseWithBranch):
                          d2.open_repository().get_signature_text('A'))
 
     def test_nicks(self):
-        """Branch nicknames"""
+        """Test explicit and implicit branch nicknames.
+        
+        Nicknames are implicitly the name of the branch's directory, unless an
+        explicit nickname is set.  That is, an explicit nickname always
+        overrides the implicit one.
+        """
+        # Make a branch in a directory called 'bzr.dev'
         t = get_transport(self.get_url())
         t.mkdir('bzr.dev')
         branch = self.make_branch('bzr.dev')
+        # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
+        # Move the branch to a different directory, 'bzr.ab'.  Now that branch
+        # will report its nick as 'bzr.ab'.
         t.move('bzr.dev', 'bzr.ab')
         branch = Branch.open(self.get_url('bzr.ab'))
         self.assertEqual(branch.nick, 'bzr.ab')
+        # Set the branch nick explicitly.  This will ensure there's a branch
+        # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        self.failUnless(
-            t.has(
-                t.relpath(
-                    branch.control_files.controlfilename("branch.conf")
-                    )
-                )
-            )
+        try:
+            controlfilename = branch.control_files.controlfilename
+        except AttributeError:
+            # remote branches don't have control_files
+            pass
+        else:
+            self.failUnless(
+                t.has(t.relpath(controlfilename("branch.conf"))))
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = Branch.open(self.get_url('integration'))
@@ -377,8 +390,9 @@ class TestBranch(TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
-        repo.bzrdir.root_transport.mkdir('child')
-        child_dir = self.bzrdir_format.initialize('child')
+        child_transport = repo.bzrdir.root_transport.clone('child')
+        child_transport.mkdir('.')
+        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -448,8 +462,8 @@ class TestBranch(TestCaseWithBranch):
         """A lightweight checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
-        source_branch = bzrlib.branch.Branch.open(
-            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -460,8 +474,8 @@ class TestBranch(TestCaseWithBranch):
         """A regular checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
-        source_branch = bzrlib.branch.Branch.open(
-            'readonly+' + tree_a.branch.bzrdir.root_transport.base)
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)

@@ -230,6 +230,17 @@ class ProbeDontUseRequest(SmartServerRequest):
         return SmartServerResponse((answer,))
 
 
+class SmartServerIsReadonly(SmartServerRequest):
+    # XXX: this request method belongs somewhere else.
+
+    def do(self):
+        if self._backing_transport.is_readonly():
+            answer = 'yes'
+        else:
+            answer = 'no'
+        return SmartServerResponse((answer,))
+
+
 request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
@@ -294,5 +305,7 @@ request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
+request_handlers.register_lazy(
+    'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
 request_handlers.register_lazy(
     'probe_dont_use', 'bzrlib.smart.request', 'ProbeDontUseRequest')

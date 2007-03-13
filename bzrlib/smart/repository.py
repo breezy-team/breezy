@@ -153,6 +153,8 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = repository.lock_write(token=token)
         except errors.LockContention, e:
             return SmartServerResponse(('LockContention',))
+        except errors.UnlockableTransport:
+            return SmartServerResponse(('UnlockableTransport',))
         repository.leave_lock_in_place()
         repository.unlock()
         if token is None:

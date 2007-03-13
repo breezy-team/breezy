@@ -47,12 +47,18 @@ from bzrlib.transport.memory import MemoryTransport
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(BasicRemoteObjectTests, self).setUp()
         self.transport_server = server.SmartTCPServer_for_testing
+        super(BasicRemoteObjectTests, self).setUp()
         self.transport = self.get_transport()
         self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
+
+    def test_is_readonly(self):
+        # XXX: this is a poor way to test RemoteTransport, but currently there's
+        # no easy way to substitute in a fake client on a transport like we can
+        # with RemoteBzrDir/Branch/Repository.
+        self.assertEqual(self.transport.is_readonly(), False)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport)
@@ -88,6 +94,20 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         fmt = BzrDirFormat.find_format(self.transport)
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
+
+
+class ReadonlyRemoteTransportTests(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        self.transport_server = server.ReadonlySmartTCPServer_for_testing
+        super(ReadonlyRemoteTransportTests, self).setUp()
+
+    def test_is_readonly_yes(self):
+        # XXX: this is a poor way to test RemoteTransport, but currently there's
+        # no easy way to substitute in a fake client on a transport like we can
+        # with RemoteBzrDir/Branch/Repository.
+        transport = self.get_readonly_transport()
+        self.assertEqual(transport.is_readonly(), True)
 
 
 class FakeProtocol(object):
@@ -298,6 +318,22 @@ class TestBranchControlGetBranchConf(tests.TestCase):
         self.assertEqual('config file body', result.read())
 
 
+class TestBranchLockWrite(tests.TestCase):
+
+    def test_lock_write_unlockable(self):
+        client = FakeClient([(('UnlockableTransport', ), '')])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        self.assertRaises(errors.UnlockableTransport, branch.lock_write)
+        self.assertEqual(
+            [('call', 'Branch.lock_write', ('///quack/', '', ''))],
+            client._calls)
+
+
 class TestRemoteRepository(tests.TestCase):
 
     def setup_fake_client_and_repository(self, responses, transport_path):
@@ -470,7 +506,7 @@ class TestRepositoryLockWrite(TestRemoteRepository):
             responses, transport_path)
         result = repo.lock_write()
         self.assertEqual(
-            [('call', 'Repository.lock_write', ('///quack/',))],
+            [('call', 'Repository.lock_write', ('///quack/', ''))],
             client._calls)
         self.assertEqual('a token', result)
 
@@ -481,7 +517,17 @@ class TestRepositoryLockWrite(TestRemoteRepository):
             responses, transport_path)
         self.assertRaises(errors.LockContention, repo.lock_write)
         self.assertEqual(
-            [('call', 'Repository.lock_write', ('///quack/',))],
+            [('call', 'Repository.lock_write', ('///quack/', ''))],
+            client._calls)
+
+    def test_lock_write_unlockable(self):
+        responses = [(('UnlockableTransport', ), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        self.assertRaises(errors.UnlockableTransport, repo.lock_write)
+        self.assertEqual(
+            [('call', 'Repository.lock_write', ('///quack/', ''))],
             client._calls)
 
 
@@ -496,7 +542,7 @@ class TestRepositoryUnlock(TestRemoteRepository):
         repo.lock_write()
         repo.unlock()
         self.assertEqual(
-            [('call', 'Repository.lock_write', ('///quack/',)),
+            [('call', 'Repository.lock_write', ('///quack/', '')),
              ('call', 'Repository.unlock', ('///quack/', 'a token'))],
             client._calls)
 
@@ -525,5 +571,4 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
-
 

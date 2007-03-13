@@ -33,8 +33,7 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http',
-               'readonly+bzr']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -802,8 +801,15 @@ class RemoteTransport(transport.Transport):
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
-        return False
-                                                   
+        resp = self._call2('Transport.is_readonly')
+        if resp == ('yes', ):
+            return True
+        elif resp == ('no', ):
+            return False
+        else:
+            self._translate_error(resp)
+        assert False, 'weird response %r' % (resp,)
+
     def get_smart_client(self):
         return self._medium
 

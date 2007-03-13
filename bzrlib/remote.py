@@ -315,6 +315,8 @@ class RemoteRepository(object):
             return token
         elif response[0] == 'LockContention':
             raise errors.LockContention('(remote lock)')
+        elif response[0] == 'UnlockableTransport':
+            raise errors.UnlockableTransport(self.bzrdir.root_transport)
         else:
             assert False, 'unexpected response code %s' % (response,)
 
@@ -674,6 +676,8 @@ class RemoteBranch(branch.Branch):
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'TokenMismatch':
             raise errors.TokenMismatch(tokens, '(remote tokens)')
+        elif response[0] == 'UnlockableTransport':
+            raise errors.UnlockableTransport(self.bzrdir.root_transport)
         else:
             assert False, 'unexpected response code %r' % (response,)
             
@@ -843,6 +847,12 @@ class RemoteBranch(branch.Branch):
     def set_last_revision_info(self, revno, revision_id):
         self._ensure_real()
         return self._real_branch.set_last_revision_info(revno, revision_id)
+
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        self._ensure_real()
+        return self._real_branch.generate_revision_history(
+            revision_id, last_rev=last_rev, other_branch=other_branch)
 
 
 class RemoteWorkingTree(object):

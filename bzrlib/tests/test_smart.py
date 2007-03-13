@@ -395,6 +395,14 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
         self.assertEqual(
             SmartServerResponse(('LockContention',)), response)
 
+    def test_lock_write_on_readonly_transport(self):
+        backing = self.get_readonly_transport()
+        request = smart.branch.SmartServerBranchRequestLockWrite(backing)
+        branch = self.make_branch('.')
+        response = request.execute('')
+        self.assertEqual(
+            SmartServerResponse(('UnlockableTransport',)), response)
+
 
 class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
 
@@ -650,6 +658,14 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
         self.assertEqual(
             SmartServerResponse(('LockContention',)), response)
 
+    def test_lock_write_on_readonly_transport(self):
+        backing = self.get_readonly_transport()
+        request = smart.repository.SmartServerRepositoryLockWrite(backing)
+        repository = self.make_repository('.')
+        response = request.execute('')
+        self.assertEqual(
+            SmartServerResponse(('UnlockableTransport',)), response)
+
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
 
@@ -680,6 +696,23 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
         response = request.execute(backing.local_abspath(''), 'some token')
         self.assertEqual(
             SmartServerResponse(('TokenMismatch',)), response)
+
+
+class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
+
+    def test_is_readonly_no(self):
+        backing = self.get_transport()
+        request = smart.request.SmartServerIsReadonly(backing)
+        response = request.execute()
+        self.assertEqual(
+            SmartServerResponse(('no',)), response)
+
+    def test_is_readonly_yes(self):
+        backing = self.get_readonly_transport()
+        request = smart.request.SmartServerIsReadonly(backing)
+        response = request.execute()
+        self.assertEqual(
+            SmartServerResponse(('yes',)), response)
 
 
 class TestHandlers(tests.TestCase):
@@ -732,3 +765,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.unlock'),
             smart.repository.SmartServerRepositoryUnlock)
+        self.assertEqual(
+            smart.request.request_handlers.get('Transport.is_readonly'),
+            smart.request.SmartServerIsReadonly)
