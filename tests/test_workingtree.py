@@ -168,7 +168,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(tree.is_control_filename(".svn"))
         self.assertFalse(tree.is_control_filename(".bzr"))
 
-    def test_revert(self):
+    def notest_revert(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
