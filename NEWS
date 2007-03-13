@@ -28,6 +28,9 @@ IN DEVELOPMENT
     * Fix ``TreeTransform._iter_changes`` when both the source and
       destination are missing. (Aaron Bentley, #88842)
 
+    * Fix commit of merges with symlinks in dirstate trees.
+      (Marien Zwart)
+
  
 bzr 0.15rc1  2007-03-07
 
