@@ -2,6 +2,50 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New ``merge-directive`` command to generate machine- and human-readable
+      merge requests.  (Aaron Bentley)
+
+    * New ``submit:`` revision specifier makes it easy to diff against the
+      common ancestor with the submit location (Aaron Bentley)
+
+  INTERNALS:
+ 
+    * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
+      so that a seperate LockableFiles instance can share a lock if it has the
+      right token.  (Andrew Bennetts, Robert Collins)
+
+bzr 0.15rc1  2007-03-07
+
+  SURPRISES:
+
+    * The default disk format has changed. Please run 'bzr upgrade' in your
+      working trees to upgrade. This new default is compatible for network
+      operations, but not for local operations. That is, if you have two
+      versions of bzr installed locally, after upgrading you can only use the
+      bzr 0.15 version. This new default does not enable tags or nested-trees
+      as they are incompatible with bzr versions before 0.15 over the network.
+
+    * For users of bzrlib: Two major changes have been made to the working tree
+      api in bzrlib. The first is that many methods and attributes, including
+      the inventory attribute, are no longer valid for use until one of
+      lock_read/lock_write/lock_tree_write has been called, and become invalid
+      again after unlock is called. This has been done to improve performance
+      and correctness as part of the dirstate development. (Robert Collins,
+      John A Meinel, Martin Pool, and others).
+
+    * For users of bzrlib: The attribute 'tree.inventory' should be considered
+      readonly. Previously it was possible to directly alter this attribute, or
+      its contents, and have the tree notice this. This has been made
+      unsupported - it may work in some tree formats, but in the newer dirstate
+      format such actions will have no effect and will be ignored, or even
+      cause assertions. All operations possible can still be carried out by a
+      combination of the tree API, and the bzrlib.transform API. (Robert
+      Collins, John A Meinel, Martin Pool, and others).
+
+  IMPROVEMENTS:
+
+    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
 
@@ -52,13 +96,33 @@ IN DEVELOPMENT
       "bzr unbind", you can "bzr bind" to bind to the previously-selected
       bind location.
 
+    * Builtin tags support, created and deleted by the ``tag`` command and
+      stored in the branch.  Tags can be accessed with the revisionspec
+      ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
+      at present. Tags require a network incompatible upgrade. To perform this
+      upgrade, run ``bzr upgrade --dirstate-with-subtree`` in your branch and
+      repositories. (Martin Pool)
+
     * The bzr:// transport now has a well-known port number, 4155, which it will
       use by default.  (Andrew Bennetts, Martin Pool)
 
     * Bazaar now looks for user-installed plugins before looking for site-wide
       plugins. (Jonathan Lange)
 
+    * ``bzr resolve`` now detects and marks resolved text conflicts.
+      (Aaron Bentley)
+
+    * There is now initial support for managing a forest of trees in bzr,
+      and splitting up existing trees into smaller subtrees, and finally
+      joining trees to make a larger tree. This is the first iteration
+      of this support. To enable the new ``join`` and ``split`` commands,
+      please run ``bzr upgrade --dirstate-with-subtree`` in your working
+      trees and repositories. (Aaron Bentley, Martin Pool, Robert Collins).
+
   INTERNALS:
+
+    * Refactored SSH vendor registration into SSHVendorManager class.
+      (Dmitry Vasiliev)
 
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
@@ -84,6 +148,13 @@ IN DEVELOPMENT
     * New method ``Branch.push()`` which should be used when pushing from a
       branch as it makes performance and policy decisions to match the UI
       level command ``push``. (Robert Collins).
+
+    * Add a new method ``Tree.revision_tree`` which allows access to cached
+      trees for arbitrary revisions. This allows the in development dirstate
+      tree format to provide access to the callers to cached copies of 
+      inventory data which are cheaper to access than inventories from the
+      repository.
+      (Robert Collins, Martin Pool)
 
     * New Branch.last_revision_info method, this is being done to allow
       optimization of requests for both the number of revisions and the last
@@ -112,9 +183,9 @@ IN DEVELOPMENT
       you pass a Unicode string rather than an 8-bit string. Callers need
       to be updated to encode first. (John Arbash Meinel)
 
-    * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
-      so that a seperate LockableFiles instance can share a lock if it has the
-      right token.  (Andrew Bennetts, Robert Collins)
+    * Branch.push, pull, merge now return Result objects with information
+      about what happened, rather than a scattering of various methods.  These
+      are also passed to the post hooks.  (Martin Pool)
 
   BUGFIXES:
 
@@ -145,11 +216,30 @@ IN DEVELOPMENT
     * ``bzr init`` works with unicode argument LOCATION.
       (Alexander Belchenko, #85599)
 
+    * Raise DependencyNotPresent if pycurl do not support https. (Vincent
+      Ladeuil, #85305)
+
+    * Invalid proxy env variables should not cause a traceback.
+      (Vincent Ladeuil, #87765)
+
+    * Ignore patterns normalised to use '/' path separator.
+      (Kent Gibson, #86451)
+
+    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
+
+    * Fix bzrtools shelve command for removed lines beginning with "--"
+      (Johan Dahlberg, #75577)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
+    * New ``--numbered-dirs`` option to ``bzr selftest`` to use
+      numbered dirs for TestCaseInTempDir. This is default behavior
+      on Windows. Anyone can force named dirs on Windows
+      with ``--no-numbered-dirs``. (Alexander Belchenko)
+      
 
 bzr 0.14  2007-01-23
 
@@ -298,8 +388,6 @@ bzr 0.14rc1  2007-01-16
     * Allow plugins import from zip archives.
       (Alexander Belchenko, #68124)
 
-    * bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
-
 
 bzr 0.13  2006-12-05
     
@@ -444,7 +532,7 @@ bzr 0.12rc1  2006-10-23
       commands such as log, diff etc. (Robert Collins)
 
     * revisions can now be specified using dotted-decimal revision numbers.
-      For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
+      For instance, ``bzr diff -r 1.2.1..1.2.3``. (Robert Collins)
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
@@ -858,7 +946,7 @@ bzr 0.9.0  2006-08-11
      and normalize the parent based on root, allowing access across
      different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
      (Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
-      #42517, #42514)
+     #42517, #42514)
 
    * On Unix, detect terminal width using an ioctl not just $COLUMNS.
      Use terminal width for single-line logs from ``bzr log --line`` and
@@ -1206,7 +1294,9 @@ bzr 0.8  2006-05-08
     * Pull now accepts a --revision argument (Erik Bågfors)
 
     * 'bzr re-sign' now allows multiple revisions to be supplied on the command
-      line. You can now use the following command to sign all of your old commits.
+      line. You can now use the following command to sign all of your old
+      commits::
+
         find .bzr/revision-store// -name my@email-* \
           | sed 's/.*\/\/..\///' \
           | xargs bzr re-sign

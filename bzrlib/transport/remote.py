@@ -23,13 +23,23 @@ imported from bzrlib.smart.
 __all__ = ['RemoteTransport', 'SmartTCPTransport', 'SmartSSHTransport']
 
 from cStringIO import StringIO
+import os
+import socket
+import sys
+import tempfile
+import threading
 import urllib
 import urlparse
 
 from bzrlib import (
+    bzrdir,
     errors,
+    revision,
+    trace,
     transport,
+    urlutils,
     )
+from bzrlib.bundle.serializer import write_bundle
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
@@ -359,6 +369,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param backing_transport: Transport for the directory served.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
+        if sys.platform == 'win32':
+            # force binary mode for files
+            import msvcrt
+            for f in (in_file, out_file):
+                fileno = getattr(f, 'fileno', None)
+                if fileno:
+                    msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
         self._out = out_file
 

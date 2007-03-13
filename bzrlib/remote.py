@@ -549,6 +549,11 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.iter_reverse_revision_history(revision_id)
 
+    @property
+    def _serializer(self):
+        self._ensure_real()
+        return self._real_repository._serializer
+
 
 class RemoteBranchLockableFiles(object):
     """A 'LockableFiles' implementation that talks to a smart server.
@@ -853,6 +858,11 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.generate_revision_history(
             revision_id, last_rev=last_rev, other_branch=other_branch)
+
+    @property
+    def tags(self):
+        self._ensure_real()
+        return self._real_branch.tags
 
 
 class RemoteWorkingTree(object):

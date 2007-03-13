@@ -316,15 +316,22 @@ def parse_patch(iter_lines):
 
 def iter_file_patch(iter_lines):
     saved_lines = []
+    orig_range = 0
     for line in iter_lines:
         if line.startswith('=== ') or line.startswith('*** '):
             continue
         if line.startswith('#'):
             continue
+        elif orig_range > 0:
+            if line.startswith('-') or line.startswith(' '):
+                orig_range -= 1
         elif line.startswith('--- '):
             if len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []
+        elif line.startswith('@@'):
+            hunk = hunk_from_header(line)
+            orig_range = hunk.orig_range
         saved_lines.append(line)
     if len(saved_lines) > 0:
         yield saved_lines

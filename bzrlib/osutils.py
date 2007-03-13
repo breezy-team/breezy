@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ from bzrlib import (
 """)
 
 import bzrlib
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
     zero_nine,
@@ -144,26 +145,29 @@ def get_umask():
     return umask
 
 
+_kind_marker_map = {
+    "file": "",
+    _directory_kind: "/",
+    "symlink": "@",
+    'tree-reference': '+',
+}
+
+
 def kind_marker(kind):
-    if kind == 'file':
-        return ''
-    elif kind == _directory_kind:
-        return '/'
-    elif kind == 'symlink':
-        return '@'
-    else:
+    try:
+        return _kind_marker_map[kind]
+    except KeyError:
         raise errors.BzrError('invalid file kind %r' % kind)
+
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if getattr(os, 'lstat') is not None:
-                os.lstat(f)
-            else:
-                os.stat(f)
+            stat = getattr(os, 'lstat', os.stat)
+            stat(f)
             return True
-        except OSError,e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
@@ -517,8 +521,7 @@ def is_inside_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname):
             return True
-    else:
-        return False
+    return False
 
 
 def is_inside_or_parent_of_any(dir_list, fname):
@@ -526,8 +529,7 @@ def is_inside_or_parent_of_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname) or is_inside(fname, dirname):
             return True
-    else:
-        return False
+    return False
 
 
 def pumpfile(fromfile, tofile):
@@ -748,7 +750,7 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, list)
+    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
@@ -904,29 +906,50 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-def safe_revision_id(unicode_or_utf8_string):
+_revision_id_warning = ('Unicode revision ids were deprecated in bzr 0.15.'
+                        ' Revision id generators should be creating utf8'
+                        ' revision ids.')
+
+
+def safe_revision_id(unicode_or_utf8_string, warn=True):
     """Revision ids should now be utf8, but at one point they were unicode.
 
-    This is the same as safe_utf8, except it uses the cached encode functions
-    to save a little bit of performance.
+    :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 revision id.
     """
-    if unicode_or_utf8_string is None:
-        return None
-    if isinstance(unicode_or_utf8_string, str):
-        # TODO: jam 20070209 Eventually just remove this check.
-        try:
-            utf8_str = cache_utf8.get_cached_utf8(unicode_or_utf8_string)
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
-        return utf8_str
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_revision_id_warning, DeprecationWarning,
+                               stacklevel=2)
     return cache_utf8.encode(unicode_or_utf8_string)
 
 
-# TODO: jam 20070217 We start by just re-using safe_revision_id, but ultimately
-#       we want to use a different dictionary cache, because trapping file ids
-#       and revision ids in the same dict seemed to have a noticable effect on
-#       performance.
-safe_file_id = safe_revision_id
+_file_id_warning = ('Unicode file ids were deprecated in bzr 0.15. File id'
+                    ' generators should be creating utf8 file ids.')
+
+
+def safe_file_id(unicode_or_utf8_string, warn=True):
+    """File ids should now be utf8, but at one point they were unicode.
+
+    This is the same as safe_utf8, except it uses the cached encode functions
+    to save a little bit of performance.
+
+    :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 file id.
+    """
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_file_id_warning, DeprecationWarning,
+                               stacklevel=2)
+    return cache_utf8.encode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
@@ -1055,7 +1078,7 @@ def walkdirs(top, prefix=""):
     
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
-    [(relpath, basename, kind, lstat), ...]),
+    [(directory-relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
      - directory-path-from-root is the path including top for this directory. 
@@ -1079,31 +1102,127 @@ def walkdirs(top, prefix=""):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    lstat = os.lstat
-    pending = []
+    _lstat = os.lstat
     _directory = _directory_kind
     _listdir = os.listdir
-    pending = [(prefix, "", _directory, None, top)]
+    _kind_from_mode = _formats.get
+    pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
-        dirblock = []
-        currentdir = pending.pop()
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-        top = currentdir[4]
-        if currentdir[0]:
-            relroot = currentdir[0] + '/'
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + u'/'
         else:
-            relroot = ""
+            relprefix = ''
+        top_slash = top + u'/'
+
+        dirblock = []
+        append = dirblock.append
         for name in sorted(_listdir(top)):
-            abspath = top + '/' + name
-            statvalue = lstat(abspath)
-            dirblock.append((relroot + name, name,
-                file_kind_from_stat_mode(statvalue.st_mode),
-                statvalue, abspath))
-        yield (currentdir[0], top), dirblock
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name, name, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
         # push the user specified dirs from dirblock
-        for dir in reversed(dirblock):
-            if dir[2] == _directory:
-                pending.append(dir)
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+def _walkdirs_utf8(top, prefix=""):
+    """Yield data about all the directories in a tree.
+
+    This yields the same information as walkdirs() only each entry is yielded
+    in utf-8. On platforms which have a filesystem encoding of utf8 the paths
+    are returned as exact byte-strings.
+
+    :return: yields a tuple of (dir_info, [file_info])
+        dir_info is (utf8_relpath, path-from-top)
+        file_info is (utf8_relpath, utf8_name, kind, lstat, path-from-top)
+        if top is an absolute path, path-from-top is also an absolute path.
+        path-from-top might be unicode or utf8, but it is the correct path to
+        pass to os functions to affect the file in question. (such as os.lstat)
+    """
+    fs_encoding = sys.getfilesystemencoding()
+    if (sys.platform == 'win32' or
+        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
+        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
+    else:
+        return _walkdirs_fs_utf8(top, prefix=prefix)
+
+
+def _walkdirs_fs_utf8(top, prefix=""):
+    """See _walkdirs_utf8.
+
+    This sub-function is called when we know the filesystem is already in utf8
+    encoding. So we don't need to transcode filenames.
+    """
+    _lstat = os.lstat
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = _formats.get
+
+    # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+    # But we don't actually uses 1-3 in pending, so set them to None
+    pending = [(safe_utf8(prefix), None, None, None, safe_utf8(top))]
+    while pending:
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + '/'
+        else:
+            relprefix = ''
+        top_slash = top + '/'
+
+        dirblock = []
+        append = dirblock.append
+        for name in sorted(_listdir(top)):
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name, name, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+def _walkdirs_unicode_to_utf8(top, prefix=""):
+    """See _walkdirs_utf8
+
+    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
+    Unicode paths.
+    This is currently the fallback code path when the filesystem encoding is
+    not UTF-8. It may be better to implement an alternative so that we can
+    safely handle paths that are not properly decodable in the current
+    encoding.
+    """
+    _utf8_encode = codecs.getencoder('utf8')
+    _lstat = os.lstat
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = _formats.get
+
+    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
+    while pending:
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + '/'
+        else:
+            relprefix = ''
+        top_slash = top + u'/'
+
+        dirblock = []
+        append = dirblock.append
+        for name in sorted(_listdir(top)):
+            name_utf8 = _utf8_encode(name)[0]
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
 def copy_tree(from_path, to_path, handlers={}):

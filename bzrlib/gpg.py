@@ -50,7 +50,8 @@ class LoopbackGPGStrategy(object):
         """Real strategies take a configuration."""
 
     def sign(self, content):
-        return content
+        return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
+                "-----END PSUDO-SIGNED CONTENT-----\n")
 
 
 def _set_gpg_tty():

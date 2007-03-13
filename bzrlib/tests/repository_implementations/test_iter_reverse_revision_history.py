@@ -18,6 +18,7 @@
 
 from bzrlib import (
     errors,
+    osutils,
     tests,
     )
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -71,6 +72,7 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
             tree2.commit('rev-2-4', rev_id='rev-2-4')
 
             tree1.commit('rev-1-2', rev_id='rev-1-2')
+            tree1.flush() # workaround merge using _write_inventory
             tree1.merge_from_branch(tree2.branch)
             tree1.commit('rev-1-3', rev_id='rev-1-3')
 
@@ -121,9 +123,10 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
         self.assertRevHistoryList(['rev-\xc3\xa5', 'rev-\xc2\xb5'],
                                   repo, 'rev-\xc3\xa5')
 
-        # TODO: jam 20070216 Eventually unicode will be deprecated
-        self.assertRevHistoryList(['rev-\xc3\xa5', 'rev-\xc2\xb5'],
-                                  repo, u'rev-\xe5')
+        self.callDeprecated([osutils._revision_id_warning],
+                            self.assertRevHistoryList,
+                                ['rev-\xc3\xa5', 'rev-\xc2\xb5'],
+                                repo, u'rev-\xe5')
 
     def test_merged_history(self):
         tree1, tree2 = self.create_merged_history()

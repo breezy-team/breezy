@@ -35,6 +35,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff(
             "The smart server method 'class name' is disabled.", str(error))
 
+    def test_duplicate_file_id(self):
+        error = errors.DuplicateFileId('a_file_id', 'foo')
+        self.assertEqualDiff('File id {a_file_id} already exists in inventory'
+                             ' as foo', str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -50,6 +55,12 @@ class TestErrors(TestCaseWithTransport):
                          str(error))
         error = errors.InstallFailed([None])
         self.assertEqual("Could not install revisions:\nNone", str(error))
+
+    def test_lock_active(self):
+        error = errors.LockActive("lock description")
+        self.assertEqualDiff("The lock for 'lock description' is in use and "
+            "cannot be broken.",
+            str(error))
 
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
@@ -85,6 +96,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("The file id anid is not present in the tree "
             "atree.",
             str(error))
+
+    def test_no_such_revision_in_tree(self):
+        error = errors.NoSuchRevisionInTree("atree", "anid")
+        self.assertEqualDiff("The revision id anid is not present in the tree "
+            "atree.",
+            str(error))
+        self.assertIsInstance(error, errors.NoSuchRevision)
 
     def test_not_write_locked(self):
         error = errors.NotWriteLocked('a thing to repr')

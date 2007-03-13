@@ -32,6 +32,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import getpass
+
 from bzrlib import (
     progress,
     )
@@ -63,11 +65,14 @@ class UIFactory(object):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user 
-                 canceled the request.
+
+        :return: The password string, return None if the user canceled the
+                 request. Note that we do not touch the encoding, users may
+                 have whatever they see fit and the password should be
+                 transported as is.
         """
         raise NotImplementedError(self.get_password)
-        
+
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
@@ -104,12 +109,31 @@ class CLIUIFactory(UIFactory):
         self.clear_term()
         # FIXME: make a regexp and handle case variations as well.
         while True:
-            self.prompt(prompt)
+            self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
             if line in ('y\n', 'yes\n'):
                 return True
             if line in ('n\n', 'no\n'):
                 return False
+
+    def get_non_echoed_password(self, prompt):
+        return getpass.getpass(prompt)
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        prompt += ': '
+        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return self.get_non_echoed_password(prompt)
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""

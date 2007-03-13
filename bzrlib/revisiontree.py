@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     osutils,
+    revision,
     )
 from bzrlib.tree import Tree
 
@@ -28,10 +29,6 @@ class RevisionTree(Tree):
     """Tree viewing a previous revision.
 
     File text can be retrieved from the text store.
-
-    TODO: Some kind of `__repr__` method, but a good one
-           probably means knowing the branch and revision number,
-           or at least passing a description to the constructor.
     """
     
     def __init__(self, branch, inv, revision_id):
@@ -45,16 +42,19 @@ class RevisionTree(Tree):
         self._inventory = inv
         self._revision_id = osutils.safe_revision_id(revision_id)
 
+    def supports_tree_reference(self):
+        return True
+
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 
         A RevisionTree's parents match the revision graph.
         """
-        if self._revision_id not in (None, 'null:'):
+        if self._revision_id in (None, revision.NULL_REVISION):
+            parent_ids = []
+        else:
             parent_ids = self._repository.get_revision(
                 self._revision_id).parent_ids
-        else:
-            parent_ids = []
         return parent_ids
         
     def get_revision_id(self):
@@ -128,6 +128,13 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
+    def get_reference_revision(self, file_id, path=None):
+        return self.inventory[file_id].reference_revision
+
+    def get_root_id(self):
+        if self.inventory.root:
+            return self.inventory.root.file_id
+
     def kind(self, file_id):
         file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].kind
@@ -144,7 +151,38 @@ class RevisionTree(Tree):
     def lock_read(self):
         self._repository.lock_read()
 
+    def __repr__(self):
+        return '<%s instance at %x, rev_id=%r>' % (
+            self.__class__.__name__, id(self), self._revision_id)
+
     def unlock(self):
         self._repository.unlock()
 
-
+    def walkdirs(self, prefix=""):
+        _directory = 'directory'
+        inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[currentdir[4]]
+            for name, child in entry.sorted_children():
+                toppath = relroot + name
+                dirblock.append((toppath, name, child.kind, None,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)

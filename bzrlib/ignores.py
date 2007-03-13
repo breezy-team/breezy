@@ -18,7 +18,10 @@
 
 import errno
 
-from bzrlib import config
+from bzrlib import (
+    config,
+    globbing,
+    )
 
 # This was the full ignore list for bzr 0.8
 # please keep these sorted (in C locale order) to aid merging
@@ -99,10 +102,10 @@ def parse_ignore_file(f):
     """Read in all of the lines in the file and turn it into an ignore list"""
     ignored = set()
     for line in f.read().decode('utf8').split('\n'):
-        line = line.rstrip('/\r\n')
+        line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
-        ignored.add(line)
+        ignored.add(globbing.normalize_pattern(line))
     return ignored
 
 
@@ -163,7 +166,7 @@ def add_unique_user_ignores(new_ignores):
     ignored = get_user_ignores()
     to_add = []
     for ignore in new_ignores:
-        ignore = ignore.rstrip('/')
+        ignore = globbing.normalize_pattern(ignore)
         if ignore not in ignored:
             ignored.add(ignore)
             to_add.append(ignore)
