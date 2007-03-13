@@ -113,20 +113,22 @@ if have_fcntl:
 
     class _fcntl_WriteLock(_fcntl_FileLock):
 
-        open_locks = {}
+        _open_locks = set()
 
         def __init__(self, filename):
             # standard IO errors get exposed directly.
             super(_fcntl_WriteLock, self).__init__()
-            self._open(filename, 'rb+')
             self.filename = realpath(filename)
-            if self.filename in self.open_locks:
+            if (self.filename in _fcntl_WriteLock._open_locks
+                or self.filename in _fcntl_ReadLock._open_locks):
                 self._clear_f()
-                raise LockContention(self.filename)
+                raise errors.LockContention(self.filename)
+
+            self._open(filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
             # at thisi point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
-            self.open_locks[self.filename] = self.filename
+            _fcntl_WriteLock._open_locks.add(self.filename)
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
@@ -137,19 +139,24 @@ if have_fcntl:
                     self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise LockError(e)
+                raise errors.LockError(e)
 
         def unlock(self):
-            del self.open_locks[self.filename]
+            _fcntl_WriteLock._open_locks.remove(self.filename)
             self._unlock()
 
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
-        open_locks = {}
+        _open_locks = {}
 
         def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
+            self.filename = realpath(filename)
+            if self.filename in _fcntl_WriteLock._open_locks:
+                raise errors.LockContention(self.filename)
+            _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
+            _fcntl_ReadLock._open_locks[self.filename] += 1
             self._open(filename, 'rb')
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
@@ -158,9 +165,14 @@ if have_fcntl:
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise LockError(e)
+                raise errors.LockError(e)
 
         def unlock(self):
+            count = _fcntl_ReadLock._open_locks[self.filename]
+            if count == 1:
+                del _fcntl_ReadLock._open_locks[self.filename]
+            else:
+                _fcntl_ReadLock._open_locks[self.filename] = count - 1
             self._unlock()
 
 

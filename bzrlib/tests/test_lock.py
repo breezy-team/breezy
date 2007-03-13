@@ -99,14 +99,21 @@ class TestLock(tests.TestCaseInTempDir):
         # Taking out a lock on a locked file should raise LockContention
         self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
 
-    def _disabled_test_read_then_write_excludes(self):
+    def test_read_then_write_excludes(self):
         """If a file is read-locked, taking out a write lock should fail."""
         a_lock = lock.ReadLock('a-file')
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
         self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
 
-    def _disabled_test_write_then_read_excludes(self):
+    def test_read_unlock_write(self):
+        """Make sure that unlocking allows us to lock write"""
+        a_lock = lock.ReadLock('a-file')
+        a_lock.unlock()
+        a_lock = lock.WriteLock('a-file')
+        a_lock.unlock()
+
+    def test_write_then_read_excludes(self):
         """If a file is write-locked, taking out a read lock should fail.
 
         The file is exclusively owned by the write lock, so we shouldn't be
@@ -116,3 +123,34 @@ class TestLock(tests.TestCaseInTempDir):
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
         self.assertRaises(errors.LockContention, lock.ReadLock, 'a-file')
+
+    def test_write_unlock_read(self):
+        """If we have removed the write lock, we can grab a read lock."""
+        a_lock = lock.WriteLock('a-file')
+        a_lock.unlock()
+        a_lock = lock.ReadLock('a-file')
+        a_lock.unlock()
+
+    def test_multiple_read_unlock_write(self):
+        """We can only grab a write lock if all read locks are done."""
+        a_lock = b_lock = c_lock = None
+        try:
+            a_lock = lock.ReadLock('a-file')
+            b_lock = lock.ReadLock('a-file')
+            self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
+            a_lock.unlock()
+            a_lock = None
+            self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
+            b_lock.unlock()
+            b_lock = None
+            c_lock = lock.WriteLock('a-file')
+            c_lock.unlock()
+            c_lock = None
+        finally:
+            # Cleanup as needed
+            if a_lock is not None:
+                a_lock.unlock()
+            if b_lock is not None:
+                b_lock.unlock()
+            if c_lock is not None:
+                c_lock.unlock()
