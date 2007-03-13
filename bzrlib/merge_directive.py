@@ -98,14 +98,15 @@ class MergeDirective(object):
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
             patch = None
+            patch_type = None
         else:
             patch = ''.join(patch_lines)
-        try:
-            bundle_serializer.read_bundle(StringIO(patch))
-        except errors.NotABundle:
-            patch_type = 'diff'
-        else:
-            patch_type = 'bundle'
+            try:
+                bundle_serializer.read_bundle(StringIO(patch))
+            except errors.NotABundle:
+                patch_type = 'diff'
+            else:
+                patch_type = 'bundle'
         time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',

@@ -147,6 +147,10 @@ class TestMergeDirective(tests.TestCase):
         self.assertContainsRe(md3.to_lines()[0],
             '^# Bazaar merge directive format ')
         self.assertEqual("Hi mom!", md3.message)
+        md3.patch_type = None
+        md3.patch = None
+        md4 = merge_directive.MergeDirective.from_lines(md3.to_lines())
+        self.assertIs(None, md4.patch_type)
 
 
 EMAIL1 = """To: pqm@example.com
