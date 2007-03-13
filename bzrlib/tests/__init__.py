@@ -1634,8 +1634,10 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
         f = file(path, 'r')
-        s = f.read()
-        f.close()
+        try:
+            s = f.read()
+        finally:
+            f.close()
         self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):

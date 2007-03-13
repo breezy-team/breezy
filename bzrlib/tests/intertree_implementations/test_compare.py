@@ -21,7 +21,6 @@ import shutil
 
 from bzrlib import errors, tests, workingtree_4
 from bzrlib.osutils import file_kind, has_symlinks
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 # TODO: test the include_root option.
@@ -930,7 +929,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_versioned_symlinks(self):
         if not has_symlinks():
-            raise TestSkipped("No symlink support")
+            raise tests.TestSkipped("No symlink support")
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         tree1.lock_read()
@@ -956,7 +955,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_versioned_symlinks_specific_files(self):
         if not has_symlinks():
-            raise TestSkipped("No symlink support")
+            raise tests.TestSkipped("No symlink support")
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         tree1.lock_read()

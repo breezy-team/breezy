@@ -689,7 +689,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_add_symlink_to_root_no_parents_all_data(self):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
-        # bzr yet don't have support for fake symlinks on windows
+        # bzr doesn't support fake symlinks on windows, yet.
         if not has_symlinks():
             raise TestSkipped("No symlink support")
         os.symlink('target', 'a link')
