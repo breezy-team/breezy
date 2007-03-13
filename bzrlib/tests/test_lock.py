@@ -77,6 +77,9 @@ class TestLock(tests.TestCaseInTempDir):
         # You should be able to read and write to the lock file.
         txt = a_lock.f.read()
         self.assertEqual('contents of a-file\n', txt)
+        # Win32 requires that you call seek() when switching between a read
+        # operation and a write operation.
+        a_lock.f.seek(0, 2)
         a_lock.f.write('more content\n')
         a_lock.f.seek(0)
         txt = a_lock.f.read()
