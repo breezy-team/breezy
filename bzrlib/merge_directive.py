@@ -115,6 +115,7 @@ class MergeDirective(object):
                 kwargs[key] = stanza.get(key)
             except KeyError:
                 pass
+        kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
         return MergeDirective(time=time, timezone=timezone,
                               patch_type=patch_type, patch=patch, **kwargs)
 
