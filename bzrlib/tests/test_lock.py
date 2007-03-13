@@ -19,6 +19,7 @@
 from bzrlib import (
     errors,
     lock,
+    osutils,
     tests,
     )
 
@@ -55,6 +56,20 @@ class TestLock(tests.TestCaseInTempDir):
         txt = a_lock.f.read()
         self.assertEqual('foo\n', txt)
 
+    def test_readonly_file(self):
+        """If the file is readonly, we can take a read lock.
+
+        But we shouldn't be able to take a write lock.
+        """
+        osutils.make_readonly('a-file')
+        # Make sure the file is read-only (on all platforms)
+        self.assertRaises(IOError, open, 'a-file', 'rb+')
+        a_lock = lock.ReadLock('a-file')
+        a_lock.unlock()
+
+        # TODO: jam 20070313 This should be a specific subclass
+        self.assertRaises(errors.ReadOnlyLockError, lock.WriteLock, 'a-file')
+
     def test_write_lock(self):
         """Smoke test for write locks."""
         a_lock = lock.WriteLock('a-file')
@@ -80,3 +95,21 @@ class TestLock(tests.TestCaseInTempDir):
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
         self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
+
+    def _disabled_test_read_then_write_excludes(self):
+        """If a file is read-locked, taking out a write lock should fail."""
+        a_lock = lock.ReadLock('a-file')
+        self.addCleanup(a_lock.unlock)
+        # Taking out a lock on a locked file should raise LockContention
+        self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
+
+    def _disabled_test_write_then_read_excludes(self):
+        """If a file is write-locked, taking out a read lock should fail.
+
+        The file is exclusively owned by the write lock, so we shouldn't be
+        able to take out a shared read lock.
+        """
+        a_lock = lock.WriteLock('a-file')
+        self.addCleanup(a_lock.unlock)
+        # Taking out a lock on a locked file should raise LockContention
+        self.assertRaises(errors.LockContention, lock.ReadLock, 'a-file')

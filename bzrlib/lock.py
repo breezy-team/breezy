@@ -38,6 +38,7 @@ import errno
 import os
 import sys
 
+from bzrlib import errors
 from bzrlib.errors import LockError, LockContention
 from bzrlib.osutils import realpath
 from bzrlib.trace import mutter
@@ -96,7 +97,12 @@ try:
 
         def __init__(self, filename):
             # standard IO errors get exposed directly.
-            self._open(filename, 'rb+')
+            try:
+                self._open(filename, 'rb+')
+            except IOError, e:
+                if e.errno in (errno.EACCES, errno.EPERM):
+                    raise errors.ReadOnlyLockError(e)
+                raise
             self.filename = realpath(filename)
             if self.filename in self.open_locks:
                 self._clear_f()
@@ -124,8 +130,9 @@ try:
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
+        open_locks = {}
+
         def __init__(self, filename):
-            # standard IO errors get exposed directly.
             self._open(filename, 'rb')
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a

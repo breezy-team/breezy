@@ -697,6 +697,15 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
+class ReadOnlyLockError(LockError):
+    
+    _fmt = "Cannot acquire write lock on %(fname)s. File is readonly."
+
+    def __init__(self, fname):
+        LockError.__init__(self, '')
+        self.fname = fname
+
+
 class OutSideTransaction(BzrError):
 
     _fmt = ("A transaction related operation was attempted after"
