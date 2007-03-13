@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
     * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
 
+    * Added ``bzr status --versioned`` to report only versioned files, 
+      not unknowns. (Kent Gibson)
+
   INTERNALS:
 
     * Refactored SSH vendor registration into SSHVendorManager class.
