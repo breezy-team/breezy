@@ -657,6 +657,9 @@ class LockError(BzrError):
     #
     # New code should prefer to raise specific subclasses
     def __init__(self, message):
+        # Python 2.5 uses a slot for StandardError.message,
+        # so use a different variable name
+        # so it is exposed in self.__dict__
         self.msg = message
 
 
