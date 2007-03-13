@@ -30,6 +30,7 @@ from bzrlib import (
     osutils,
     patiencediff,
     textfile,
+    timestamp,
     )
 """)
 
@@ -110,12 +111,9 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
         path = os.environ.get('PATH')
         if path is not None:
             env['PATH'] = path
-        if sys.platform == 'win32':
-            # diffutils+gettext from http://gnuwin32.sf.net use only LANGUAGE
-            env['LANGUAGE'] = 'C'
-        else:
-            env['LANG'] = 'C'
-            env['LC_ALL'] = 'C'
+        env['LANGUAGE'] = 'C'   # on win32 only LANGUAGE has effect
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
         stderr = subprocess.PIPE
     else:
         env = None
@@ -487,8 +485,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    tm = time.gmtime(tree.get_file_mtime(file_id, path))
-    return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
+    return timestamp.format_patch_date(tree.get_file_mtime(file_id, path))
 
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):

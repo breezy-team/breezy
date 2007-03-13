@@ -700,11 +700,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.do_iter_changes(tree1, tree2, include_unchanged=True))
 
     def test_compare_subtrees(self):
-        """want_unchanged should generate a list of unchanged entries."""
         tree1 = self.make_branch_and_tree('1')
         if not tree1.supports_tree_reference():
-            raise tests.TestSkipped('Tree %s does not support references'
-                % (tree1,))
+            return
         tree1.set_root_id('root-id')
         subtree1 = self.make_branch_and_tree('1/sub')
         subtree1.set_root_id('subtree-id')
@@ -712,8 +710,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         tree2 = self.make_to_branch_and_tree('2')
         if not tree2.supports_tree_reference():
-            raise tests.TestSkipped('Tree %s does not support references'
-                % (tree2,))
+            return
         tree2.set_root_id('root-id')
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
@@ -744,6 +741,36 @@ class TestIterChanges(TestCaseWithTwoTrees):
              (False, False))],
                          list(tree2._iter_changes(tree1,
                              include_unchanged=True)))
+
+    def test_disk_in_subtrees_skipped(self):
+        """subtrees are considered not-in-the-current-tree.
+        
+        This test tests the trivial case, where the basis has no paths in the
+        current trees subtree.
+        """
+        tree1 = self.make_branch_and_tree('1')
+        tree1.set_root_id('root-id')
+        tree2 = self.make_to_branch_and_tree('2')
+        if not tree2.supports_tree_reference():
+            return
+        tree2.set_root_id('root-id')
+        subtree2 = self.make_to_branch_and_tree('2/sub')
+        subtree2.set_root_id('subtree-id')
+        tree2.add(['sub'], ['subtree-id'])
+        self.build_tree(['2/sub/file'])
+        subtree2.add(['file'])
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        # this should filter correctly from above
+        self.assertEqual([self.added(tree2, 'subtree-id')],
+            self.do_iter_changes(tree1, tree2, want_unversioned=True))
+        # and when the path is named
+        self.assertEqual([self.added(tree2, 'subtree-id')],
+            self.do_iter_changes(tree1, tree2, specific_files=['sub'],
+                want_unversioned=True))
 
     def test_default_ignores_unversioned_files(self):
         tree1 = self.make_branch_and_tree('tree1')

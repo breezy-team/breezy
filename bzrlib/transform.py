@@ -1047,7 +1047,7 @@ class TreeTransform(object):
                 to_path = final_paths.get_path(to_trans_id)
             if from_kind != to_kind:
                 modified = True
-            elif to_kind in ('file' or 'symlink') and (
+            elif to_kind in ('file', 'symlink') and (
                 to_trans_id != from_trans_id or
                 to_trans_id in self._new_contents):
                 modified = True
@@ -1419,7 +1419,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
         if change_reporter:
-            change_reporter = delta.ChangeReporter(
+            change_reporter = delta._ChangeReporter(
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt._iter_changes(), change_reporter)
         for conflict in conflicts:
