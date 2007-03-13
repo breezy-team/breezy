@@ -52,7 +52,6 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.bundle import serializer as bundle_serializer
 from bzrlib.conflicts import ConflictList
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
