@@ -1,8 +1,5 @@
 Jelmer Vernooij <jelmer@samba.org>
 
-contains (nowadays very small) parts of svn2bzr originally by:
-Gustavo Niemeyer <gustavo@niemeyer.net>
-
 Thanks to David Allouche, Erik Bågfors, Aaron Bentley, Max Bowser, 
 Jerry Carter, Robert Collins, Wouter van Heyst, David James, Matthias Klose,
 John Arbash Meinel, Stefan Metzmacher, Andrew Mitchell, 
