@@ -7,6 +7,9 @@ IN DEVELOPMENT
 
     * New ``submit:`` revision specifier makes it easy to diff against the
       common ancestor with the submit location (Aaron Bentley)
+
+    * Merge now autodetects the correct line-ending style for its conflict
+      markers.  (Aaron Bentley)
  
 bzr 0.15rc1  2007-03-07
 
