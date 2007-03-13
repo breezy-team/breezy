@@ -46,6 +46,9 @@ from bzrlib.trace import mutter
 
 class _base_Lock(object):
 
+    def __init__(self):
+        self.f = None
+
     def _open(self, filename, filemode):
         try:
             self.f = open(filename, filemode)
@@ -60,6 +63,12 @@ class _base_Lock(object):
             self.f = open(filename, 'wb+')
             return self.f
 
+    def _clear_f(self):
+        """Clear the self.f attribute cleanly."""
+        if self.f:
+            self.f.close()
+            self.f = None
+
     def __del__(self):
         if self.f:
             from warnings import warn
@@ -70,25 +79,33 @@ class _base_Lock(object):
         raise NotImplementedError()
 
 
-############################################################
-# msvcrt locks
-
-
+have_pywin32 = have_fcntl = False
 try:
     import fcntl
+    have_fcntl = True
+except ImportError:
+    try:
+        import win32con, win32file, pywintypes, winerror
+        have_pywin32 = True
+    except ImportError:
+        try:
+            import msvcrt
+        except ImportError:
+            raise NotImplementedError("please write a locking method "
+                                      "for platform %r" % sys.platform)
+
+
+if have_fcntl:
+    LOCK_SH = fcntl.LOCK_SH
+    LOCK_NB = fcntl.LOCK_NB
+    lock_EX = fcntl.LOCK_EX
+
 
     class _fcntl_FileLock(_base_Lock):
-
-        f = None
 
         def _unlock(self):
             fcntl.lockf(self.f, fcntl.LOCK_UN)
             self._clear_f()
-
-        def _clear_f(self):
-            """Clear the self.f attribute cleanly."""
-            self.f.close()
-            del self.f
 
 
     class _fcntl_WriteLock(_fcntl_FileLock):
@@ -97,6 +114,7 @@ try:
 
         def __init__(self, filename):
             # standard IO errors get exposed directly.
+            super(_fcntl_WriteLock, self).__init__()
             try:
                 self._open(filename, 'rb+')
             except IOError, e:
@@ -106,7 +124,7 @@ try:
             self.filename = realpath(filename)
             if self.filename in self.open_locks:
                 self._clear_f()
-                raise LockContention("Lock already held.")
+                raise LockContention(self.filename)
             # reserve a slot for this lock - even if the lockf call fails,
             # at thisi point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
@@ -133,6 +151,7 @@ try:
         open_locks = {}
 
         def __init__(self, filename):
+            super(_fcntl_ReadLock, self).__init__()
             self._open(filename, 'rb')
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
@@ -150,144 +169,146 @@ try:
     WriteLock = _fcntl_WriteLock
     ReadLock = _fcntl_ReadLock
 
-
-except ImportError:
-    try:
-        import win32con, win32file, pywintypes
-
-
-        LOCK_SH = 0 # the default
-        LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-        LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
-
-        class _w32c_FileLock(_base_Lock):
-            def _lock(self, filename, openmode, lockmode):
-                try:
-                    self._open(filename, openmode)
-                    self.hfile = win32file._get_osfhandle(self.f.fileno())
-                    overlapped = pywintypes.OVERLAPPED()
-                    win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000, overlapped)
-                except Exception, e:
-                    if self.f:
-                        self.f.close()
-                        self.f = None
-                    raise LockError(e)
-
-            def unlock(self):
-                try:
-                    overlapped = pywintypes.OVERLAPPED()
-                    win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
-                    self.f.close()
-                    self.f = None
-                except Exception, e:
-                    raise LockError(e)
+elif have_pywin32:
+    LOCK_SH = 0 # the default
+    LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
+    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
 
 
-        class _w32c_ReadLock(_w32c_FileLock):
-            def __init__(self, filename):
-                _w32c_FileLock._lock(self, filename, 'rb',
-                                     LOCK_NB)
+    class _w32c_FileLock(_base_Lock):
 
-        class _w32c_WriteLock(_w32c_FileLock):
-            def __init__(self, filename):
-                _w32c_FileLock._lock(self, filename, 'rb+',
-                                     LOCK_EX + LOCK_NB)
+        def _lock(self, filename, openmode, lockmode):
+            try:
+                self._open(filename, openmode)
+            except IOError, e:
+                if e.errno in (errno.EACCES, errno.EPERM):
+                    raise errors.ReadOnlyLockError(e)
+                raise
+
+            self.hfile = win32file._get_osfhandle(self.f.fileno())
+            overlapped = pywintypes.OVERLAPPED()
+            try:
+                win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000, overlapped)
+            except pywintypes.error, e:
+                self._clear_f()
+                if e.args[0] in (winerror.ERROR_LOCK_VIOLATION,):
+                    raise errors.LockContention(filename)
+                ## import pdb; pdb.set_trace()
+                raise
+            except Exception, e:
+                self._clear_f()
+                raise LockError(e)
+
+        def unlock(self):
+            try:
+                overlapped = pywintypes.OVERLAPPED()
+                win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
+                self._clear_f()
+            except Exception, e:
+                raise LockError(e)
 
 
-        WriteLock = _w32c_WriteLock
-        ReadLock = _w32c_ReadLock
+    class _w32c_ReadLock(_w32c_FileLock):
+        def __init__(self, filename):
+            super(_w32c_ReadLock, self).__init__()
+            self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
-    except ImportError:
+    class _w32c_WriteLock(_w32c_FileLock):
+        def __init__(self, filename):
+            super(_w32c_WriteLock, self).__init__()
+            self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+
+
+    WriteLock = _w32c_WriteLock
+    ReadLock = _w32c_ReadLock
+
+else:
+    LOCK_SH = 1
+    LOCK_EX = 2
+    LOCK_NB = 4
+
+
+    # Unfortunately, msvcrt.locking() doesn't distinguish between
+    # read locks and write locks. Also, the way the combinations
+    # work to get non-blocking is not the same, so we
+    # have to write extra special functions here.
+
+    class _msvc_FileLock(_base_Lock):
+
+        def unlock(self):
+            _msvc_unlock(self.f)
+            self._clear_f()
+
+
+    class _msvc_ReadLock(_msvc_FileLock):
+        def __init__(self, filename):
+            super(_msvc_ReadLock, self).__init__()
+            self._open(filename, 'rb')
+            _msvc_lock(self.f, LOCK_SH | LOCK_NB)
+
+
+    class _msvc_WriteLock(_msvc_FileLock):
+        def __init__(self, filename):
+            super(_msvc_WriteLock, self).__init__()
+            self._open(filename, 'rb+')
+            _msvc_lock(self.f, LOCK_EX | LOCK_NB)
+
+
+    def _msvc_lock(f, flags):
         try:
-            import msvcrt
+            # Unfortunately, msvcrt.LK_RLCK is equivalent to msvcrt.LK_LOCK
+            # according to the comments, LK_RLCK is open the lock for writing.
+
+            # Unfortunately, msvcrt.locking() also has the side effect that it
+            # will only block for 10 seconds at most, and then it will throw an
+            # exception, this isn't terrible, though.
+            if type(f) == file:
+                fpos = f.tell()
+                fn = f.fileno()
+                f.seek(0)
+            else:
+                fn = f
+                fpos = os.lseek(fn, 0,0)
+                os.lseek(fn, 0,0)
+
+            if flags & _msvc_FileLock.LOCK_SH:
+                if flags & _msvc_FileLock.LOCK_NB:
+                    lock_mode = msvcrt.LK_NBLCK
+                else:
+                    lock_mode = msvcrt.LK_LOCK
+            elif flags & _msvc_FileLock.LOCK_EX:
+                if flags & _msvc_FileLock.LOCK_NB:
+                    lock_mode = msvcrt.LK_NBRLCK
+                else:
+                    lock_mode = msvcrt.LK_RLCK
+            else:
+                raise ValueError('Invalid lock mode: %r' % flags)
+            try:
+                msvcrt.locking(fn, lock_mode, -1)
+            finally:
+                os.lseek(fn, fpos, 0)
+        except Exception, e:
+            raise LockError(e)
 
 
-            # Unfortunately, msvcrt.locking() doesn't distinguish between
-            # read locks and write locks. Also, the way the combinations
-            # work to get non-blocking is not the same, so we
-            # have to write extra special functions here.
+    def _msvc_unlock(f):
+        try:
+            if type(f) == file:
+                fpos = f.tell()
+                fn = f.fileno()
+                f.seek(0)
+            else:
+                fn = f
+                fpos = os.lseek(fn, 0,0)
+                os.lseek(fn, 0,0)
+
+            try:
+                msvcrt.locking(fn, msvcrt.LK_UNLCK, -1)
+            finally:
+                os.lseek(fn, fpos, 0)
+        except Exception, e:
+            raise LockError(e)
 
 
-            class _msvc_FileLock(_base_Lock):
-                LOCK_SH = 1
-                LOCK_EX = 2
-                LOCK_NB = 4
-
-                def unlock(self):
-                    _msvc_unlock(self.f)
-                    self.f.close()
-                    self.f = None
-
-
-            class _msvc_ReadLock(_msvc_FileLock):
-                def __init__(self, filename):
-                    _msvc_lock(self._open(filename, 'rb'),
-                               self.LOCK_SH | self.LOCK_NB)
-
-
-            class _msvc_WriteLock(_msvc_FileLock):
-                def __init__(self, filename):
-                    _msvc_lock(self._open(filename, 'rb+'),
-                               self.LOCK_EX | self.LOCK_NB)
-
-
-            def _msvc_lock(f, flags):
-                try:
-                    # Unfortunately, msvcrt.LK_RLCK is equivalent to msvcrt.LK_LOCK
-                    # according to the comments, LK_RLCK is open the lock for writing.
-
-                    # Unfortunately, msvcrt.locking() also has the side effect that it
-                    # will only block for 10 seconds at most, and then it will throw an
-                    # exception, this isn't terrible, though.
-                    if type(f) == file:
-                        fpos = f.tell()
-                        fn = f.fileno()
-                        f.seek(0)
-                    else:
-                        fn = f
-                        fpos = os.lseek(fn, 0,0)
-                        os.lseek(fn, 0,0)
-
-                    if flags & _msvc_FileLock.LOCK_SH:
-                        if flags & _msvc_FileLock.LOCK_NB:
-                            lock_mode = msvcrt.LK_NBLCK
-                        else:
-                            lock_mode = msvcrt.LK_LOCK
-                    elif flags & _msvc_FileLock.LOCK_EX:
-                        if flags & _msvc_FileLock.LOCK_NB:
-                            lock_mode = msvcrt.LK_NBRLCK
-                        else:
-                            lock_mode = msvcrt.LK_RLCK
-                    else:
-                        raise ValueError('Invalid lock mode: %r' % flags)
-                    try:
-                        msvcrt.locking(fn, lock_mode, -1)
-                    finally:
-                        os.lseek(fn, fpos, 0)
-                except Exception, e:
-                    raise LockError(e)
-
-            def _msvc_unlock(f):
-                try:
-                    if type(f) == file:
-                        fpos = f.tell()
-                        fn = f.fileno()
-                        f.seek(0)
-                    else:
-                        fn = f
-                        fpos = os.lseek(fn, 0,0)
-                        os.lseek(fn, 0,0)
-
-                    try:
-                        msvcrt.locking(fn, msvcrt.LK_UNLCK, -1)
-                    finally:
-                        os.lseek(fn, fpos, 0)
-                except Exception, e:
-                    raise LockError(e)
-
-
-            WriteLock = _msvc_WriteLock
-            ReadLock = _msvc_ReadLock
-        except ImportError:
-            raise NotImplementedError("please write a locking method "
-                                      "for platform %r" % sys.platform)
+    WriteLock = _msvc_WriteLock
+    ReadLock = _msvc_ReadLock
