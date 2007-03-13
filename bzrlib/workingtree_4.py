@@ -362,10 +362,14 @@ class WorkingTree4(WorkingTree3):
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
-                    assert self._repo_supports_tree_reference
+                    assert self._repo_supports_tree_reference, \
+                        "repository of %r " \
+                        "doesn't support tree references " \
+                        "required by entry %r" \
+                        % (self, name)
                     inv_entry.reference_revision = link_or_sha1 or None
-                else:
-                    assert 'unknown kind'
+                elif kind != 'symlink':
+                    raise AssertionError("unknown kind %r" % kind)
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid, ('file_id %s already in'
                     ' inventory as %s' % (file_id, inv_byid[file_id]))
@@ -1400,7 +1404,7 @@ class DirStateRevisionTree(Tree):
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
                     inv_entry.executable = False
-                    inv_entry.text_size = size
+                    inv_entry.text_size = None
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = fingerprint or None

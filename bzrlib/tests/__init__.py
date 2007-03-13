@@ -993,8 +993,11 @@ class TestCase(unittest.TestCase):
         """
         # TODO: Perhaps this should keep running cleanups even if 
         # one of them fails?
-        for cleanup_fn in reversed(self._cleanups):
-            cleanup_fn()
+
+        # Actually pop the cleanups from the list so tearDown running
+        # twice is safe (this happens for skipped tests).
+        while self._cleanups:
+            self._cleanups.pop()()
 
     def log(self, *args):
         mutter(*args)
