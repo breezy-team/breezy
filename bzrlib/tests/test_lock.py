@@ -17,6 +17,7 @@
 """Tests for OS level locks."""
 
 from bzrlib import (
+    errors,
     lock,
     tests,
     )
@@ -73,3 +74,9 @@ class TestLock(tests.TestCaseInTempDir):
         b_lock = lock.ReadLock('a-file')
         self.addCleanup(b_lock.unlock)
 
+    def test_multiple_write_locks_exclude(self):
+        """Taking out more than one write lock should fail."""
+        a_lock = lock.WriteLock('a-file')
+        self.addCleanup(a_lock.unlock)
+        # Taking out a lock on a locked file should raise LockContention
+        self.assertRaises(errors.LockContention, lock.WriteLock, 'a-file')
