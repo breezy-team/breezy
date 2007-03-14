@@ -67,6 +67,7 @@ def test_suite():
     result = tests.TestSuite()
     test_lock_implementations = [
         'bzrlib.tests.per_lock.test_lock',
+        'bzrlib.tests.per_lock.test_temporary_write_lock',
         ]
     adapter = LockTestProviderAdapter(lock._lock_classes)
     loader = tests.TestLoader()

@@ -154,10 +154,10 @@ if have_fcntl:
 
         _open_locks = {}
 
-        def __init__(self, filename):
+        def __init__(self, filename, _ignore_write_lock=False):
             super(_fcntl_ReadLock, self).__init__()
             self.filename = osutils.realpath(filename)
-            if self.filename in _fcntl_WriteLock._open_locks:
+            if not _ignore_write_lock and self.filename in _fcntl_WriteLock._open_locks:
                 raise errors.LockContention(self.filename)
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
@@ -178,6 +178,74 @@ if have_fcntl:
             else:
                 _fcntl_ReadLock._open_locks[self.filename] = count - 1
             self._unlock()
+
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            assert self.filename not in _fcntl_WriteLock._open_locks
+            return _fcntl_TemporaryWriteLock(self)
+
+
+    class _fcntl_TemporaryWriteLock(_base_Lock):
+        """A token used when grabbing a temporary_write_lock.
+
+        Call restore_read_lock() when you are done with the write lock.
+        """
+
+        def __init__(self, read_lock):
+            super(_fcntl_TemporaryWriteLock, self).__init__()
+            self._read_lock = read_lock
+            self.filename = read_lock.filename
+
+            count = _fcntl_ReadLock._open_locks[self.filename]
+            if count > 1:
+                # Something else also has a read-lock, so we cannot grab a
+                # write lock.
+                raise errors.LockContention(self.filename)
+
+            assert self.filename not in _fcntl_WriteLock._open_locks
+
+            # See if we can open the file for writing. Another process might
+            # have a read lock. We don't use self._open() because we don't want
+            # to create the file if it exists. That would have already been
+            # done by _fcntl_ReadLock
+            try:
+                new_f = open(self.filename, 'rb+')
+            except IOError, e:
+                if e.errno in (errno.EACCES, errno.EPERM):
+                    raise errors.ReadOnlyLockError(self.filename, str(e))
+                raise
+            try:
+                # LOCK_NB will cause IOError to be raised if we can't grab a
+                # lock right away.
+                fcntl.lockf(new_f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except IOError, e:
+                # TODO: Raise a more specific error based on the type of error
+                raise errors.LockError(e)
+            _fcntl_WriteLock._open_locks.add(self.filename)
+
+            self.f = new_f
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock.
+
+            For fcntl, since we never released the read lock, just release the
+            write lock, and return the original lock.
+            """
+            fcntl.lockf(self.f, fcntl.LOCK_UN)
+            self._clear_f()
+            _fcntl_WriteLock._open_locks.remove(self.filename)
+            # Avoid reference cycles
+            read_lock = self._read_lock
+            self._read_lock = None
+            return read_lock
 
 
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
