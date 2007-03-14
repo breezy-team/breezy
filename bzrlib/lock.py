@@ -26,7 +26,7 @@ any way that works on the current platform.
 
 It is not specified whether these locks are reentrant (i.e. can be
 taken repeatedly by a single process) or whether they exclude
-different threads in a single process.  That reentrancy is provided by 
+different threads in a single process.  That reentrancy is provided by
 LockableFiles.
 
 This defines two classes: ReadLock and WriteLock, which can be
@@ -61,7 +61,7 @@ class _base_Lock(object):
 
             # maybe this is an old branch (before may 2005)
             mutter("trying to create missing branch lock %r", filename)
-            
+
             self.f = open(filename, 'wb+')
             return self.f
 
@@ -76,7 +76,7 @@ class _base_Lock(object):
             from warnings import warn
             warn("lock on %r not released" % self.f)
             self.unlock()
-            
+
     def unlock(self):
         raise NotImplementedError()
 
@@ -86,16 +86,20 @@ try:
     import fcntl
     have_fcntl = True
 except ImportError:
-    try:
-        import win32con, win32file, pywintypes, winerror, msvcrt
-        have_pywin32 = True
-    except ImportError:
-        try:
-            import ctypes, msvcrt
-            have_ctypes = True
-        except ImportError:
-            raise NotImplementedError("please write a locking method "
-                                      "for platform %r" % sys.platform)
+    have_fcntl = False
+try:
+    import win32con, win32file, pywintypes, winerror, msvcrt
+    have_pywin32 = True
+except ImportError:
+    have_pywin32 = False
+try:
+    import ctypes, msvcrt
+    have_ctypes = True
+except ImportError:
+    have_ctypes = False
+
+
+_lock_classes = []
 
 
 if have_fcntl:
@@ -164,10 +168,9 @@ if have_fcntl:
             self._unlock()
 
 
-    WriteLock = _fcntl_WriteLock
-    ReadLock = _fcntl_ReadLock
+    _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
 
-elif have_pywin32:
+if have_pywin32:
     LOCK_SH = 0 # the default
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
@@ -212,10 +215,9 @@ elif have_pywin32:
             super(_w32c_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
 
-    WriteLock = _w32c_WriteLock
-    ReadLock = _w32c_ReadLock
-else:
-    assert have_ctypes, "We should have ctypes installed"
+    _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
+
+if have_ctypes:
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
@@ -242,7 +244,7 @@ else:
     #     PVOID Pointer;
     #   };
     #   HANDLE hEvent;
-    # } OVERLAPPED, 
+    # } OVERLAPPED,
 
     class _inner_struct(ctypes.Structure):
         _fields_ = [('Offset', ctypes.c_uint), # DWORD
@@ -311,6 +313,46 @@ else:
             super(_ctypes_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
 
-    WriteLock = _ctypes_WriteLock
-    ReadLock = _ctypes_ReadLock
+    _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
 
+
+if len(_lock_classes) == 0:
+    raise NotImplementedError("We only have support for"
+                              " fcntl, pywin32 or ctypes locking."
+                              " If your platform (windows) does not"
+                              " support fcntl locks, you must have"
+                              " either pywin32 or ctypes installed.")
+
+# We default to using the first available lock class.
+_lock_type, WriteLock, ReadLock = _lock_classes[0]
+
+
+class LockTreeTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple lock formats at once.
+
+    This is done by copying the test once for each lock and injecting the
+    read_lock and write_lock classes.
+    They are also given a new test id.
+    """
+
+    def __init__(self, lock_classes):
+        self._lock_classes = lock_classes
+
+    def _clone_test(self, test, write_lock, read_lock, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.write_lock = write_lock
+        new_test.read_lock = read_lock
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+
+    def adapt(self, test):
+        from bzrlib.tests import TestSuite
+        result = TestSuite()
+        for name, write_lock, read_lock in self._lock_classes:
+            new_test = self._clone_test(test, write_lock, read_lock, name)
+            result.addTest(new_test)
+        return result
