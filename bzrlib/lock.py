@@ -35,6 +35,7 @@ unlock() method.
 """
 
 import errno
+import sys
 
 from bzrlib import (
     errors,
@@ -170,7 +171,7 @@ if have_fcntl:
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
 
 
-if have_pywin32:
+if have_pywin32 and sys.platform == 'win32':
     LOCK_SH = 0 # the default
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
@@ -220,7 +221,7 @@ if have_pywin32:
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
-if have_ctypes:
+if have_ctypes and sys.platform == 'win32':
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
