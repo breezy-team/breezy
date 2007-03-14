@@ -1106,7 +1106,11 @@ class SFTPFullAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1153,10 +1157,11 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        if sys.platform == 'win32':
-            return self._get_sftp_url(urlutils.escape(self._homedir))
-        else:
-            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

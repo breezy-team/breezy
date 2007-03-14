@@ -750,6 +750,24 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir/bdir')
         self.assertRaises(PathError, t.rmdir, 'adir')
 
+    def test_rmdir_empty_but_similar_prefix(self):
+        """rmdir does not get confused by sibling paths.
+        
+        A naive implementation of MemoryTransport would refuse to rmdir
+        ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
+        uses "path.startswith(dir)" on all file paths to determine if directory
+        is empty.
+        """
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.mkdir('foo')
+        t.put_bytes('foo-bar', '')
+        t.mkdir('foo-baz')
+        t.rmdir('foo')
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'foo')
+        self.failUnless(t.has('foo-bar'))
+
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
         if t.is_readonly():
