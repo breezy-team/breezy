@@ -43,12 +43,13 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
+        tcs = self.server.test_case_server
+        tcs.log('webserver - %s - - [%s] %s "%s" "%s"',
+                self.address_string(),
+                self.log_date_time_string(),
+                format % args,
+                self.headers.get('referer', '-'),
+                self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -247,10 +248,15 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
+
+    def __init__(self, server_address, RequestHandlerClass,
+                 test_case_server):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
+                                           RequestHandlerClass)
+        # test_case_server can be used to communicate between the
+        # tests and the server, allowing dynamic behaviors to be
+        # defined from the tests cases.
+        self.test_case_server = test_case_server
 
 
 class HttpServer(Server):

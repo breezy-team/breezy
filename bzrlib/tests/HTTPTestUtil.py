@@ -120,7 +120,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         """Hand the request off to a smart server instance."""
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        transport = get_transport(self.server.test_case._home_dir)
+        transport = get_transport(self.server.test_case_server._home_dir)
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -232,7 +232,7 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
         """Redirect a single HTTP request to another host"""
         valid = TestingHTTPRequestHandler.parse_request(self)
         if valid:
-            rhost, rport = self.server.test_case.redirected_to_address()
+            rhost, rport = self.server.test_case_server.redirected_to_address()
             if rhost is not None and rport is not None:
                 # Just redirect permanently
                 self.send_response(301)

@@ -556,7 +556,8 @@ class BzrDir(object):
             return get_transport(target)
 
         try:
-            transport, format = do_catching_redirections(find_format, transport,
+            transport, format = do_catching_redirections(find_format,
+                                                         transport,
                                                          redirected)
         except errors.TooManyRedirections:
             raise errors.NotBranchError(base)
