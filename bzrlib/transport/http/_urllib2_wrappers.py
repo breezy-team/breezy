@@ -503,9 +503,9 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # of creating a new one, but the urllib2.Request object
         # has a too complicated creation process to provide a
         # simple enough equivalent update process. Instead, when
-        # redirecting, we only update the original request with a
-        # reference to the following request in the redirect
-        # chain.
+        # redirecting, we only update the following request in
+        # the redirect chain with a reference to the parent
+        # request .
 
         # Some codes make no sense in our context and are treated
         # as errors:
@@ -542,7 +542,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             raise urllib2.HTTPError(req.get_full_url(), code, msg, headers, fp)
 
-    def http_error_30x(self, req, fp, code, msg, headers):
+    def http_error_302(self, req, fp, code, msg, headers):
         """Requests the redirected to URI.
 
         Copied from urllib2 to be able to fake_close the
@@ -596,24 +596,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
         return self.parent.open(redirected_req)
 
-    http_error_302 = http_error_303 = http_error_307 = http_error_30x
-
-    def http_error_301(self, req, fp, code, msg, headers):
-        response = self.http_error_30x(req, fp, code, msg, headers)
-        # If one or several 301 responses occur during the
-        # redirection chain, we MUST update the original request
-        # to indicate where the URI where finally found.
-
-        original_req = req
-        while original_req.parent is not None:
-            original_req = original_req.parent
-        if original_req.redirected_to is None:
-            # Only the last occurring 301 (the deepest in the
-            # recursive call chain) should be taken into
-            # account i.e. the first occurring here when
-            # redirected_to has not yet been set.
-            original_req.redirected_to = req.redirected_to
-        return response
+    http_error_301 = http_error_303 = http_error_307 = http_error_302
 
 
 class ProxyHandler(urllib2.ProxyHandler):

@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 import errno
 from SimpleHTTPServer import SimpleHTTPRequestHandler
+import re
 import socket
 import urlparse
 
@@ -232,14 +233,17 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
         """Redirect a single HTTP request to another host"""
         valid = TestingHTTPRequestHandler.parse_request(self)
         if valid:
-            rhost, rport = self.server.test_case_server.redirected_to_address()
-            if rhost is not None and rport is not None:
-                # Just redirect permanently
-                self.send_response(301)
-                target = 'http://%s:%s%s' % (rhost, rport, self.path)
+            tcs = self.server.test_case_server
+            code, target = tcs.is_redirected(self.path)
+            if code is not None and target is not None:
+                # Redirect as instructed
+                self.send_response(code)
                 self.send_header('Location', target)
                 self.end_headers()
                 return False # The job is done
+            else:
+                # We leave the parent class serve the request
+                pass
         return valid
 
 
@@ -248,15 +252,38 @@ class HTTPServerRedirecting(HttpServer):
 
     def __init__(self, request_handler=RedirectRequestHandler):
         HttpServer.__init__(self, request_handler)
-        self._redirect_to_host = None
-        self._redirect_to_port = None
+        # redirections is a list of tuples (source, target, code)
+        # - source is a regexp for the paths requested
+        # - target is a replacement for re.sub describing where
+        #   the request will be redirected
+        # - code is the http error code associated to the
+        #   redirection (301 permanent, 302 temporarry, etc
+        self.redirections = []
 
-    def redirect_to(self, redir_host, redir_port):
-        self._redirect_to_host = redir_host
-        self._redirect_to_port = redir_port
+    def redirect_to(self, host, port):
+        """Redirect all requests to a specific host:port"""
+        self.redirections = [('(.*)',
+                              r'http://%s:%s\1' % (host, port) ,
+                              301)]
 
-    def redirected_to_address(self):
-        return self._redirect_to_host, self._redirect_to_port
+    def is_redirected(self, path):
+        """Is the path redirected by this server.
+
+        :param path: the requested relative path
+
+        :returns: a tuple (code, target) if a matching
+             redirection is found, (None, None) otherwise.
+        """
+        code = None
+        target = None
+        for (rsource, rtarget, rcode) in self.redirections:
+            target, match = re.subn(rsource, rtarget, path)
+            if match:
+                code = rcode
+                break # The first match wins
+            else:
+                target = None
+        return code, target
 
 
 class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):

@@ -254,8 +254,9 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                            RequestHandlerClass)
         # test_case_server can be used to communicate between the
-        # tests and the server, allowing dynamic behaviors to be
-        # defined from the tests cases.
+        # tests and the server (or the request handler and the
+        # server), allowing dynamic behaviors to be defined from
+        # the tests cases.
         self.test_case_server = test_case_server
 
 

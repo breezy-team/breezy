@@ -62,6 +62,7 @@ from bzrlib.transport import (
 from bzrlib.transport.http import (
     extract_auth,
     HttpTransportBase,
+    _urllib2_wrappers,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 
@@ -953,13 +954,6 @@ class TestRanges_pycurl(TestWithTransport_pycurl,
                         TestCaseWithWebserver):
     """Test the Range header in GET methods for pycurl implementation"""
 
-# FIXME: http implementations do not redirect silently anymore
-# (they do not redirect at all in fact). The mechanism is still
-# in place at the _urllib2_wrappers.Request level and tests
-# should be written to exercise it. For the pycurl implementation
-# the redirection have been deleted as we may deprecate pycurl
-# and I have no place to keep a working implementation.
-#  -- vila 20070212
 
 class TestHTTPRedirections(object):
     """Test redirection between http servers.
@@ -1014,6 +1008,92 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
                                   TestHTTPRedirections,
                                   TestCaseWithRedirectedWebserver):
     """Tests redirections for pycurl implementation"""
+
+
+class RedirectedRequest(_urllib2_wrappers.Request):
+    """Request following redirections"""
+
+    init_orig = _urllib2_wrappers.Request.__init__
+
+    def __init__(self, method, url, *args, **kwargs):
+        RedirectedRequest.init_orig(self, method, url, args, kwargs)
+        self.follow_redirections = True
+
+
+class TestHTTPSilentRedirections_urllib(TestCaseWithRedirectedWebserver):
+    """Test redirections provided by urllib.
+
+    http implementations do not redirect silently anymore (they
+    do not redirect at all in fact). The mechanism is still in
+    place at the _urllib2_wrappers.Request level and these tests
+    exercise it.
+
+    For the pycurl implementation
+    the redirection have been deleted as we may deprecate pycurl
+    and I have no place to keep a working implementation.
+    -- vila 20070212
+    """
+
+    _transport = HttpTransport_urllib
+
+    def setUp(self):
+        super(TestHTTPSilentRedirections_urllib, self).setUp()
+        self.setup_redirected_request()
+        self.addCleanup(self.cleanup_redirected_request)
+        self.build_tree_contents([('a','a'),
+                                  ('1/',),
+                                  ('1/a', 'redirected once'),
+                                  ('2/',),
+                                  ('2/a', 'redirected twice'),
+                                  ('3/',),
+                                  ('3/a', 'redirected thrice'),
+                                  ('4/',),
+                                  ('4/a', 'redirected 4 times'),
+                                  ('5/',),
+                                  ('5/a', 'redirected 5 times'),
+                                  ],)
+
+        self.old_transport = self._transport(self.old_server.get_url())
+
+    def setup_redirected_request(self):
+        self.original_class = _urllib2_wrappers.Request
+        _urllib2_wrappers.Request = RedirectedRequest
+
+    def cleanup_redirected_request(self):
+        _urllib2_wrappers.Request = self.original_class
+
+    def create_transport_secondary_server(self):
+        """Create the secondary server, redirections are defined in the tests"""
+        return HTTPServerRedirecting()
+
+    def test_one_redirection(self):
+        t = self.old_transport
+
+        req = RedirectedRequest('GET', t.abspath('a'))
+        req.follow_redirections = True
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = \
+            [('(.*)', r'%s/1\1' % (new_prefix), 301),]
+        self.assertEquals('redirected once',t._perform(req).read())
+
+    def test_five_redirections(self):
+        t = self.old_transport
+
+        req = RedirectedRequest('GET', t.abspath('a'))
+        req.follow_redirections = True
+        old_prefix = 'http://%s:%s' % (self.old_server.host,
+                                       self.old_server.port)
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = \
+            [('/1(.*)', r'%s/2\1' % (old_prefix), 302),
+             ('/2(.*)', r'%s/3\1' % (old_prefix), 303),
+             ('/3(.*)', r'%s/4\1' % (old_prefix), 307),
+             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
+             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
+             ]
+        self.assertEquals('redirected 5 times',t._perform(req).read())
 
 
 class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
