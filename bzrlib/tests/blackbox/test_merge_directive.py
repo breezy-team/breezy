@@ -40,6 +40,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
         tree1.branch.get_config().set_user_option('email',
             'J. Random Hacker <jrandom@example.com>')
+        tree1.branch.get_config().set_user_option('smtp_server', 'bogushost')
         tree1.add('file')
         tree1.commit('foo')
         tree2=tree1.bzrdir.sprout('tree2').open_workingtree()
@@ -119,7 +120,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual('', md_text)
         self.assertEqual(1, len(connect_calls))
         call = connect_calls[0]
-        self.assertEqual(('localhost', 0), call[1:3])
+        self.assertEqual(('bogushost', 0), call[1:3])
         self.assertEqual(1, len(sendmail_calls))
         call = sendmail_calls[0]
         self.assertEqual(('J. Random Hacker <jrandom@example.com>',

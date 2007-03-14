@@ -3410,7 +3410,7 @@ class cmd_merge_directive(Command):
             server = branch.get_config().get_user_option('smtp_server')
             if not server:
                 server = 'localhost'
-            s.connect()
+            s.connect(server)
             s.sendmail(message['From'], message['To'], message.as_string())
 
 
