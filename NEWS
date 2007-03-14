@@ -46,7 +46,6 @@ IN DEVELOPMENT
     * Switch the ``bzr init-repo`` default from --no-trees to --trees. 
       (Wouter van Heyst, #53483)
 
-
     * Take smtp_server from user config into account.
       (vila, #92195)
  
