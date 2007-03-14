@@ -698,12 +698,13 @@ class ReadOnlyError(LockError):
 
 
 class ReadOnlyLockError(LockError):
-    
-    _fmt = "Cannot acquire write lock on %(fname)s. File is readonly."
 
-    def __init__(self, fname):
+    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
+
+    def __init__(self, fname, msg):
         LockError.__init__(self, '')
         self.fname = fname
+        self.msg = msg
 
 
 class OutSideTransaction(BzrError):

@@ -48,21 +48,23 @@ class _base_Lock(object):
 
     def __init__(self):
         self.f = None
+        self.filename = None
 
     def _open(self, filename, filemode):
+        self.filename = realpath(filename)
         try:
-            self.f = open(filename, filemode)
+            self.f = open(self.filename, filemode)
             return self.f
         except IOError, e:
             if e.errno in (errno.EACCES, errno.EPERM):
-                raise errors.ReadOnlyLockError(e)
+                raise errors.ReadOnlyLockError(self.filename, str(e))
             if e.errno != errno.ENOENT:
                 raise
 
             # maybe this is an old branch (before may 2005)
-            mutter("trying to create missing branch lock %r", filename)
+            mutter("trying to create missing lock %r", self.filename)
 
-            self.f = open(filename, 'wb+')
+            self.f = open(self.filename, 'wb+')
             return self.f
 
     def _clear_f(self):
@@ -123,7 +125,6 @@ if have_fcntl:
             # standard IO errors get exposed directly.
             super(_fcntl_WriteLock, self).__init__()
             self._open(filename, 'rb+')
-            self.filename = realpath(filename)
             if self.filename in self.open_locks:
                 self._clear_f()
                 raise LockContention(self.filename)
@@ -326,33 +327,3 @@ if len(_lock_classes) == 0:
 # We default to using the first available lock class.
 _lock_type, WriteLock, ReadLock = _lock_classes[0]
 
-
-class LockTreeTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple lock formats at once.
-
-    This is done by copying the test once for each lock and injecting the
-    read_lock and write_lock classes.
-    They are also given a new test id.
-    """
-
-    def __init__(self, lock_classes):
-        self._lock_classes = lock_classes
-
-    def _clone_test(self, test, write_lock, read_lock, variation):
-        """Clone test for adaption."""
-        new_test = deepcopy(test)
-        new_test.write_lock = write_lock
-        new_test.read_lock = read_lock
-        def make_new_test_id():
-            new_id = "%s(%s)" % (test.id(), variation)
-            return lambda: new_id
-        new_test.id = make_new_test_id()
-        return new_test
-
-    def adapt(self, test):
-        from bzrlib.tests import TestSuite
-        result = TestSuite()
-        for name, write_lock, read_lock in self._lock_classes:
-            new_test = self._clone_test(test, write_lock, read_lock, name)
-            result.addTest(new_test)
-        return result
