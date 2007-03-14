@@ -55,7 +55,7 @@ class TestTagMerging(TestCaseWithTransport):
         return bzrdir.BzrDir.create_branch_convenience(relpath, format=old_bdf)
 
     def make_branch_supporting_tags(self, relpath):
-        return self.make_branch(relpath, format='dirstate-with-subtree')
+        return self.make_branch(relpath, format='dirstate-tags')
 
     def test_merge_not_possible(self):
         # test merging between branches which do and don't support tags

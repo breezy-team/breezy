@@ -2289,6 +2289,14 @@ format_registry.register_metadir('dirstate',
     # directly from workingtree_4 triggers a circular import.
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('dirstate-tags',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    help='New in 0.15: Fast local operations and improved scaling for '
+        'network operations. Additionally adds support for versioning nested '
+        'bzr branches. Incompatible with bzr < 0.15.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
