@@ -35,13 +35,12 @@ unlock() method.
 """
 
 import errno
-import os
-import sys
 
-from bzrlib import errors
-from bzrlib.errors import LockError, LockContention
-from bzrlib.osutils import realpath
-from bzrlib.trace import mutter
+from bzrlib import (
+    errors,
+    osutils,
+    trace,
+    )
 
 
 class _base_Lock(object):
@@ -51,7 +50,7 @@ class _base_Lock(object):
         self.filename = None
 
     def _open(self, filename, filemode):
-        self.filename = realpath(filename)
+        self.filename = osutils.realpath(filename)
         try:
             self.f = open(self.filename, filemode)
             return self.f
@@ -62,7 +61,7 @@ class _base_Lock(object):
                 raise
 
             # maybe this is an old branch (before may 2005)
-            mutter("trying to create missing lock %r", self.filename)
+            trace.mutter("trying to create missing lock %r", self.filename)
 
             self.f = open(self.filename, 'wb+')
             return self.f
@@ -83,7 +82,6 @@ class _base_Lock(object):
         raise NotImplementedError()
 
 
-have_ctypes = have_pywin32 = have_fcntl = False
 try:
     import fcntl
     have_fcntl = True
@@ -127,7 +125,7 @@ if have_fcntl:
             self._open(filename, 'rb+')
             if self.filename in self.open_locks:
                 self._clear_f()
-                raise LockContention(self.filename)
+                raise errors.LockContention(self.filename)
             # reserve a slot for this lock - even if the lockf call fails,
             # at thisi point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
@@ -142,7 +140,7 @@ if have_fcntl:
                     self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise LockError(e)
+                raise errors.LockError(e)
 
         def unlock(self):
             del self.open_locks[self.filename]
@@ -163,13 +161,14 @@ if have_fcntl:
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise LockError(e)
+                raise errors.LockError(e)
 
         def unlock(self):
             self._unlock()
 
 
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
+
 
 if have_pywin32:
     LOCK_SH = 0 # the default
@@ -195,7 +194,7 @@ if have_pywin32:
                 raise
             except Exception, e:
                 self._clear_f()
-                raise LockError(e)
+                raise errors.LockError(e)
 
         def unlock(self):
             overlapped = pywintypes.OVERLAPPED()
@@ -203,7 +202,7 @@ if have_pywin32:
                 win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
                 self._clear_f()
             except Exception, e:
-                raise LockError(e)
+                raise errors.LockError(e)
 
 
     class _w32c_ReadLock(_w32c_FileLock):
@@ -211,12 +210,15 @@ if have_pywin32:
             super(_w32c_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+
     class _w32c_WriteLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
 
+
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
+
 
 if have_ctypes:
     # These constants were copied from the win32con.py module.
@@ -309,20 +311,22 @@ if have_ctypes:
             super(_ctypes_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
 
+
     _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
 
 
 if len(_lock_classes) == 0:
-    raise NotImplementedError("We only have support for"
-                              " fcntl, pywin32 or ctypes locking."
-                              " If your platform (windows) does not"
-                              " support fcntl locks, you must have"
-                              " either pywin32 or ctypes installed.")
+    raise NotImplementedError(
+        "We must have one of fcntl, pywin32, or ctypes available"
+        " to support OS locking."
+        )
+
 
 # We default to using the first available lock class.
 _lock_type, WriteLock, ReadLock = _lock_classes[0]
