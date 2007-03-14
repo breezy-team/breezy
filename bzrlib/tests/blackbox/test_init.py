@@ -149,11 +149,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr_error(['Already a branch'], 'init', self.get_url())
 
     def test_init_append_revisions_only(self):
-        self.run_bzr('init', '--dirstate-with-subtree', 'normal_branch6')
+        self.run_bzr('init', '--dirstate-tags', 'normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(False, branch._get_append_revisions_only())
         self.run_bzr('init', '--append-revisions-only',
-                     '--dirstate-with-subtree', 'branch6')
+                     '--dirstate-tags', 'branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch._get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'], 'init',

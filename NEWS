@@ -131,7 +131,7 @@ bzr 0.15rc1  2007-03-07
       stored in the branch.  Tags can be accessed with the revisionspec
       ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
       at present. Tags require a network incompatible upgrade. To perform this
-      upgrade, run ``bzr upgrade --dirstate-with-subtree`` in your branch and
+      upgrade, run ``bzr upgrade --dirstate-tags`` in your branch and
       repositories. (Martin Pool)
 
     * The bzr:// transport now has a well-known port number, 4155, which it will
