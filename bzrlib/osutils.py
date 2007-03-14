@@ -145,26 +145,29 @@ def get_umask():
     return umask
 
 
+_kind_marker_map = {
+    "file": "",
+    _directory_kind: "/",
+    "symlink": "@",
+    'tree-reference': '+',
+}
+
+
 def kind_marker(kind):
-    if kind == 'file':
-        return ''
-    elif kind == _directory_kind:
-        return '/'
-    elif kind == 'symlink':
-        return '@'
-    else:
+    try:
+        return _kind_marker_map[kind]
+    except KeyError:
         raise errors.BzrError('invalid file kind %r' % kind)
+
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if getattr(os, 'lstat') is not None:
-                os.lstat(f)
-            else:
-                os.stat(f)
+            stat = getattr(os, 'lstat', os.stat)
+            stat(f)
             return True
-        except OSError,e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
@@ -518,8 +521,7 @@ def is_inside_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname):
             return True
-    else:
-        return False
+    return False
 
 
 def is_inside_or_parent_of_any(dir_list, fname):
@@ -527,8 +529,7 @@ def is_inside_or_parent_of_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname) or is_inside(fname, dirname):
             return True
-    else:
-        return False
+    return False
 
 
 def pumpfile(fromfile, tofile):

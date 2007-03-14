@@ -157,6 +157,12 @@ class TestOSUtils(TestCaseInTempDir):
             finally:
                 os.remove('socket')
 
+    def test_kind_marker(self):
+        self.assertEqual(osutils.kind_marker('file'), '')
+        self.assertEqual(osutils.kind_marker('directory'), '/')
+        self.assertEqual(osutils.kind_marker('symlink'), '@')
+        self.assertEqual(osutils.kind_marker('tree-reference'), '+')
+
     def test_get_umask(self):
         if sys.platform == 'win32':
             # umask always returns '0', no way to set it
@@ -239,6 +245,13 @@ class TestOSUtils(TestCaseInTempDir):
         # Dereferences parent symlinks in absolute paths
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
+
+
+    def test_kind_marker(self):
+        self.assertEqual("", osutils.kind_marker("file"))
+        self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
+        self.assertEqual("@", osutils.kind_marker("symlink"))
+        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
 
 
 class TestSafeUnicode(TestCase):
@@ -704,7 +717,8 @@ class TestWalkDirs(TestCaseInTempDir):
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
             self.assertIsInstance(dirdetail[0], str)
             if isinstance(dirdetail[1], unicode):
-                dirdetail[1] = dirdetail[1].encode('utf8')
+                dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
+                dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
                     self.assertIsInstance(info[4], unicode)
                     info[4] = info[4].encode('utf8')
