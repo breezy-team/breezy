@@ -169,19 +169,19 @@ class TestFileIdGenerator(TestCase):
                 generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))
 
     def test_generate_file_id_special_char(self):
-        self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c\x8a".encode("utf-8"), 
-                         generate_file_id("svn-v2:2@uuid-bp", u"mypath\x2c\x8a"))
+        self.assertEqual("2@uuid:bp:mypath%2C%C2%8A",
+                         generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
 
     def test_generate_svn_file_id(self):
-        self.assertEqual("svn-v2:2@uuid-bp-path", 
+        self.assertEqual("2@uuid:bp:path", 
                 generate_svn_file_id("uuid", 2, "bp", "path"))
 
     def test_generate_svn_file_id_nordic(self):
-        self.assertEqual("svn-v2:2@uuid-bp-\xc3\xa6\xc3\xb8\xc3\xa5", 
+        self.assertEqual("2@uuid:bp:%C3%A6%C3%B8%C3%A5", 
                 generate_svn_file_id("uuid", 2, "bp", u"\xe6\xf8\xe5"))
 
     def test_generate_svn_file_id_nordic_branch(self):
-        self.assertEqual("svn-v2:2@uuid-\xc3\xa6-\xc3\xa6\xc3\xb8\xc3\xa5", 
+        self.assertEqual("2@uuid:%C3%A6:%C3%A6%C3%B8%C3%A5", 
                 generate_svn_file_id("uuid", 2, u"\xe6", u"\xe6\xf8\xe5"))
 
 

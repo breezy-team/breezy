@@ -58,6 +58,8 @@ SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 import urllib
 
 def escape_svn_path(x):
+    if isinstance(x, unicode):
+        x = x.encode("utf-8")
     return urllib.quote(x, "")
 unescape_svn_path = urllib.unquote
 

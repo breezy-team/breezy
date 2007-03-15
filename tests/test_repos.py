@@ -2025,7 +2025,7 @@ class RevisionIdMappingTest(TestCase):
                          generate_svn_revision_id("myuuid", 5, "branch\x2c"))
 
     def test_generate_revid_nordic(self):
-        self.assertEqual("svn-v%d:5@myuuid-branch\xc3\xa6" % MAPPING_VERSION, 
+        self.assertEqual("svn-v%d-undefined:myuuid:branch%%C3%%A6:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, u"branch\xe6"))
 
     def test_parse_revid_simple(self):
@@ -2080,7 +2080,7 @@ class EscapeTest(TestCase):
         self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))
 
     def test_escape_svn_path_nordic(self):
-        self.assertEqual(u"foobar\xe6".encode("utf-8"), escape_svn_path(u"foobar\xe6"))
+        self.assertEqual("foobar%C3%A6", escape_svn_path(u"foobar\xe6"))
 
 
 class SvnRepositoryFormatTests(TestCase):
