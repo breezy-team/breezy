@@ -1051,3 +1051,38 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.deleted(tree1, 'e-id'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_trees_with_unknowns(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+        self.build_tree(['tree1/a/',
+                         'tree2/a/',
+                         'tree2/a/unknown_dir/',
+                         'tree2/a/unknown_file',
+                         'tree2/a/unknown_dir/file',
+                         'tree2/unknown_root_file',
+                        ])
+        tree1.add(['a'], ['a-id'])
+        tree2.add(['a'], ['a-id'])
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        expected = sorted([
+            self.unchanged(tree1, root_id),
+            self.unchanged(tree1, 'a-id'),
+            self.unversioned(tree2, 'a/unknown_dir'),
+            self.unversioned(tree2, 'a/unknown_file'),
+            self.unversioned(tree2, 'unknown_root_file'),
+            # a/unknown_dir/file should not be included because we should not
+            # recurse into unknown_dir
+            # self.unversioned(tree2, 'a/unknown_dir/file'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              include_unchanged=True,
+                                              require_versioned=False,
+                                              want_unversioned=True))
