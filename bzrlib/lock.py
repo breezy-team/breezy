@@ -234,11 +234,9 @@ if have_fcntl:
             self.f = new_f
 
         def restore_read_lock(self):
-            """Restore the original ReadLock.
-
-            For fcntl, since we never released the read lock, just release the
-            write lock, and return the original lock.
-            """
+            """Restore the original ReadLock."""
+            # For fcntl, since we never released the read lock, just release the
+            # write lock, and return the original lock.
             fcntl.lockf(self.f, fcntl.LOCK_UN)
             self._clear_f()
             _fcntl_WriteLock._open_locks.remove(self.filename)
@@ -291,11 +289,33 @@ if have_pywin32:
             super(_w32c_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            # I can't find a way to upgrade a read lock to a write lock without
+            # unlocking first. So here, we do just that.
+            self.unlock()
+            return _w32c_WriteLock(self.filename)
+
 
     class _w32c_WriteLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock."""
+            # For win32 we had to completely let go of the original lock, so we
+            # just unlock and create a new read lock.
+            self.unlock()
+            return _w32c_ReadLock(self.filename)
 
 
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
@@ -392,11 +412,32 @@ if have_ctypes:
             super(_ctypes_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            # I can't find a way to upgrade a read lock to a write lock without
+            # unlocking first. So here, we do just that.
+            self.unlock()
+            return _w32c_WriteLock(self.filename)
 
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock."""
+            # For win32 we had to completely let go of the original lock, so we
+            # just unlock and create a new read lock.
+            self.unlock()
+            return _w32c_ReadLock(self.filename)
 
 
     _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
