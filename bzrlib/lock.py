@@ -279,7 +279,7 @@ if have_ctypes and sys.platform == 'win32':
                                  0,          # DWORD dwReserved
                                  0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                  0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                 ctypes.by_ref(overlapped), # lpOverlapped
+                                 ctypes.byref(overlapped), # lpOverlapped
                                 )
             if result == 0:
                 self._clear_f()
@@ -295,7 +295,7 @@ if have_ctypes and sys.platform == 'win32':
                                    0,          # DWORD dwReserved
                                    0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                    0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                   ctypes.by_ref(overlapped), # lpOverlapped
+                                   ctypes.byref(overlapped), # lpOverlapped
                                   )
             self._clear_f()
             if result == 0:
