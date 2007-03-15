@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -768,6 +768,96 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_replace_nordic(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb556ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x\xc3\xa1
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Node-path: u\xc3\xa1
+Node-path: bla
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 5
+Text-content-md5: 49803c8f7913948eb3e30bae749ae6bd
+Content-length: 15
+
+PROPS-END
+bloe
+
+
+Revision-number: 2
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: x\xc3\xa1
+Node-action: delete
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "")))
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, ""))
+        self.assertTrue(inv1.has_filename(u"x\xe1"))
 
     def test_fetch_replace_with_subreplace(self):
         filename = os.path.join(self.test_dir, "dumpfile")
@@ -1935,6 +2025,10 @@ class RevisionIdMappingTest(TestCase):
         self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch\x2c"))
 
+    def test_generate_revid_nordic(self):
+        self.assertEqual("svn-v%d:5@myuuid-branch\xc3\xa6" % MAPPING_VERSION, 
+                         generate_svn_revision_id("myuuid", 5, u"branch\xe6"))
+
     def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4),
                          parse_svn_revision_id(
@@ -1985,6 +2079,10 @@ class EscapeTest(TestCase):
 
     def test_unescape_svn_path_percent(self):
         self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))
+
+    def test_escape_svn_path_nordic(self):
+        self.assertEqual(u"foobar\xe6".encode("utf-8"), escape_svn_path(u"foobar\xe6"))
+
 
 class SvnRepositoryFormatTests(TestCase):
     def setUp(self):

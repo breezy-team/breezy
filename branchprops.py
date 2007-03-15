@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,10 +44,12 @@ class BranchPropertyList:
 
         return props
 
-    def get_properties(self, path, revnum):
+    def get_properties(self, path, origrevnum):
+        assert path is not None
+        assert isinstance(origrevnum, int) and origrevnum >= 0
         proplist = {}
-        revnum = self.log.find_latest_change(path, revnum)
-        assert revnum is not None
+        revnum = self.log.find_latest_change(path, origrevnum)
+        assert revnum is not None, "can't find latest change for %r:%r" % (path, origrevnum)
 
         proplist = {}
         for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):

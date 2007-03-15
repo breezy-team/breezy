@@ -31,10 +31,6 @@ import svn.client
 
 from errors import convert_svn_error
 
-# Some older versions of the Python bindings need to be 
-# explicitly initialized
-svn.ra.initialize()
-
 svn_config = svn.core.svn_config_get_config(None)
 
 
@@ -120,6 +116,33 @@ class SvnRaTransport(Transport):
                 raise NotBranchError(path=url)
             raise
 
+    class Reporter:
+        def __init__(self, (reporter, report_baton)):
+            self._reporter = reporter
+            self._baton = report_baton
+
+        def set_path(self, path, revnum, start_empty, lock_token, pool=None):
+            svn.ra.reporter2_invoke_set_path(self._reporter, self._baton, 
+                        path, revnum, start_empty, lock_token, pool)
+
+        def delete_path(self, path, pool=None):
+            svn.ra.reporter2_invoke_delete_path(self._reporter, self._baton,
+                    path, pool)
+
+        def link_path(self, path, url, revision, start_empty, lock_token, 
+                      pool=None):
+            svn.ra.reporter2_invoke_link_path(self._reporter, self._baton,
+                    path, url, revision, start_empty, lock_token,
+                    pool)
+
+        def finish_report(self, pool=None):
+            svn.ra.reporter2_invoke_finish_report(self._reporter, 
+                    self._baton, pool)
+
+        def abort_report(self, pool=None):
+            svn.ra.reporter2_invoke_abort_report(self._reporter, 
+                    self._baton, pool)
+
     def lock(self):
         assert (not self.is_locked)
         self.is_locked = True
@@ -166,7 +189,7 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
         mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
-        return svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs)
+        return self.Reporter(svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs))
 
     @need_lock
     @convert_svn_error
@@ -242,7 +265,7 @@ class SvnRaTransport(Transport):
     @convert_svn_error
     def do_update(self, revnum, path, *args, **kwargs):
         mutter('svn update -r %r %r' % (revnum, path))
-        return svn.ra.do_update(self._ra, revnum, path, *args, **kwargs)
+        return self.Reporter(svn.ra.do_update(self._ra, revnum, path, *args, **kwargs))
 
     @need_lock
     @convert_svn_error

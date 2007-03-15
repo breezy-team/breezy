@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ except ImportError:
     # get the message out any way we can
     from warnings import warn as warning
 
-__version__ = '0.3.0'
-required_bzr_version = (0,15)
+__version__ = '0.4.0'
+required_bzr_version = (0,16)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -117,6 +117,7 @@ import svn.core
 subr_version = svn.core.svn_subr_version()
 
 if subr_version.major == 1 and subr_version.minor < 4:
+    from bzrlib.trace import warning
     warning('Subversion version too old for working tree support.')
 else:
     BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)

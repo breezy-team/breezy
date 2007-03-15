@@ -219,6 +219,8 @@ class LogWalker(object):
         :param path: Path to check for changes
         :param revnum: First revision to check
         """
+        assert isinstance(path, basestring)
+        assert isinstance(revnum, int) and revnum >= 0
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
@@ -226,7 +228,7 @@ class LogWalker(object):
             extra = " or path like '%s/%%'" % path.strip("/")
         else:
             extra = ""
-        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+        query = "select rev from changed_path where (path='%s' or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":
@@ -298,11 +300,10 @@ class LogWalker(object):
         edit, baton = svn.delta.make_editor(editor, pool)
         root_repos = self.transport.get_repos_root()
         self.transport.reparent(os.path.join(root_repos, path))
-        reporter, reporter_baton = self.transport.do_update(
+        reporter = self.transport.do_update(
                         revnum, "", True, edit, baton, pool)
-        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", revnum, 
-                                         True, None, pool)
-        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        reporter.set_path("", revnum, True, None, pool)
+        reporter.finish_report(pool)
         return editor.files
 
     def get_previous(self, path, revnum):

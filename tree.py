@@ -31,7 +31,7 @@ import md5
 from cStringIO import StringIO
 import urllib
 
-import svn.core, svn.wc, svn.delta, svn.ra
+import svn.core, svn.wc, svn.delta
 from svn.core import SubversionException, Pool
 
 def apply_txdelta_handler(src_stream, target_stream, pool):
@@ -55,8 +55,7 @@ class SvnRevisionTree(RevisionTree):
         self._revision_id = revision_id
         (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
-        self._inventory = Inventory(root_id=self.id_map[""][0])
-        self._inventory.revision_id = revision_id
+        self._inventory = Inventory()
         pool = Pool()
         (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
         self._inventory = Inventory()
@@ -65,12 +64,11 @@ class SvnRevisionTree(RevisionTree):
         self.file_data = {}
         editor, baton = svn.delta.make_editor(self.editor, pool)
         root_repos = repository.transport.get_repos_root()
-        reporter, reporter_baton = repository.transport.do_switch(
+        reporter = repository.transport.do_switch(
                 self.revnum, "", True, 
                 os.path.join(root_repos, self.branch_path), editor, baton, pool)
-        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, 
-                True, None, pool)
-        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        reporter.set_path("", 0, True, None, pool)
+        reporter.finish_report(pool)
         pool.destroy()
 
      def get_file_lines(self, file_id):
@@ -90,9 +88,14 @@ class TreeBuildEditor(svn.delta.Editor):
         self.revnum = revnum
 
     def open_root(self, revnum, baton):
-        return self.tree.id_map[""][0]
+        file_id, revision_id = self.tree.id_map[""]
+        ie = self.tree._inventory.add_path("", 'directory', file_id)
+        ie.revision = revision_id
+        self.tree._inventory.revision_id = revision_id
+        return file_id
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+        path = path.decode("utf-8")
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
@@ -146,6 +149,7 @@ class TreeBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        path = path.decode("utf-8")
         self.is_symlink = False
         self.is_executable = False
         return path
@@ -201,8 +205,7 @@ class SvnBasisTree(RevisionTree):
     """Optimized version of SvnRevisionTree."""
     def __init__(self, workingtree):
         self.workingtree = workingtree
-        self._revision_id = workingtree.branch.repository.generate_revision_id(
-                workingtree.base_revnum, workingtree.branch.branch_path)
+        self._revision_id = workingtree.branch.generate_revision_id(workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, workingtree.branch.branch_path)
         self._inventory = Inventory()

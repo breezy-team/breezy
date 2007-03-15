@@ -102,8 +102,8 @@ def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return unicode("%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
-                   escape_svn_path(path.strip("/")), revnum))
+    return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
+                   escape_svn_path(path.strip("/")), revnum)
 
 
 def svk_feature_to_revision_id(feature):
