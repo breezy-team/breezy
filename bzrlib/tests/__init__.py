@@ -711,8 +711,13 @@ class TestCase(unittest.TestCase):
         return ''.join(difflines)
 
     def assertEqual(self, a, b, message=''):
-        if a == b:
-            return
+        try:
+            if a == b:
+                return
+        except UnicodeError, e:
+            # If we can't compare without getting a UnicodeError, then
+            # obviously they are different
+            mutter('UnicodeError: %s', e)
         if message:
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"

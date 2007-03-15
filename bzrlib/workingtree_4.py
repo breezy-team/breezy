@@ -1913,7 +1913,7 @@ class InterDirStateTree(InterTree):
                 return ((entry[0][2], (old_path, path), content_change,
                         (True, True),
                         (source_parent_id, target_parent_id),
-                        (old_basename, entry[0][1]),
+                        (utf8_decode(old_basename)[0], utf8_decode(entry[0][1])[0]),
                         (_minikind_to_kind[source_minikind], target_kind),
                         (source_exec, target_exec)),)
             elif source_minikind in 'a' and target_minikind in 'fdlt':
@@ -1938,7 +1938,7 @@ class InterDirStateTree(InterTree):
                             (False, True),
                             (None, parent_id),
                             (None, entry[0][1]),
-                            (None, path_info[2]),
+                            (None, utf8_decode(path_info[2])[0]),
                             (None, target_exec)),)
                 else:
                     # but its not on disk: we deliberately treat this as just
@@ -1957,7 +1957,7 @@ class InterDirStateTree(InterTree):
                 return ((entry[0][2], (old_path, None), True,
                         (True, False),
                         (parent_id, None),
-                        (entry[0][1], None),
+                        (utf8_decode(entry[0][1])[0], None),
                         (_minikind_to_kind[source_minikind], None),
                         (source_details[3], None)),)
             elif source_minikind in 'fdlt' and target_minikind in 'r':
@@ -1983,11 +1983,12 @@ class InterDirStateTree(InterTree):
             # TODO: the pending list should be lexically sorted?  the
             # interface doesn't require it.
             current_root = search_specific_files.pop()
+            current_root_unicode = current_root.decode('utf8')
             searched_specific_files.add(current_root)
             # process the entries for this containing directory: the rest will be
             # found by their parents recursively.
             root_entries = _entries_for_path(current_root)
-            root_abspath = self.target.abspath(current_root)
+            root_abspath = self.target.abspath(current_root_unicode)
             try:
                 root_stat = os.lstat(root_abspath)
             except OSError, e:
@@ -2029,13 +2030,13 @@ class InterDirStateTree(InterTree):
                             ((utf8_decode(result[1][0])[0]),
                              utf8_decode(result[1][1])[0]),) + result[2:]
                         yield result
-            if want_unversioned and not path_handled:
+            if want_unversioned and not path_handled and root_dir_info:
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield (None, (None, current_root), True, (False, False),
+                yield (None, (None, current_root_unicode), True, (False, False),
                     (None, None),
-                    (None, splitpath(current_root)[-1]),
+                    (None, splitpath(current_root_unicode)[-1]),
                     (None, root_dir_info[2]), (None, new_executable))
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
@@ -2225,11 +2226,12 @@ class InterDirStateTree(InterTree):
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 if want_unversioned:
-                                    yield (None, (None, current_path_info[0]),
+                                    yield (None,
+                                        (None, utf8_decode(current_path_info[0])[0]),
                                         True,
                                         (False, False),
                                         (None, None),
-                                        (None, current_path_info[1]),
+                                        (None, utf8_decode(current_path_info[1])[0]),
                                         (None, current_path_info[2]),
                                         (None, new_executable))
                             # dont descend into this unversioned path if it is
