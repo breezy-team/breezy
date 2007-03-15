@@ -301,3 +301,39 @@ class TestLogFile(TestCaseWithTransport):
         tree.commit('revision 1')
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log', 'tree/file')
+
+    def test_log_file(self):
+        """The log for a particular file should only list revs for that file"""
+        tree = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
+        tree.add('file1')
+        tree.commit('add file1')
+        tree.add('file2')
+        tree.commit('add file2')
+        tree.add('file3')
+        tree.commit('add file3')
+        self.run_bzr('branch', 'parent', 'child')
+        print >> file('child/file2', 'wb'), 'hello'
+        self.run_bzr('commit', '-m', 'branch 1', 'child')
+        os.chdir('parent')
+        self.run_bzr('merge', '../child')
+        self.run_bzr('commit', '-m', 'merge branch')
+        
+        log = self.run_bzr('log', 'file1')[0]
+        self.assertContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')
+        log = self.run_bzr('log', 'file2')[0]
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')
+        log = self.run_bzr('log', 'file3')[0]
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')

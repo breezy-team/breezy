@@ -48,6 +48,9 @@ IN DEVELOPMENT
 
     * Take smtp_server from user config into account.
       (vila, #92195)
+
+    * Fix ``bzr log <file>`` so it only logs the revisions that changed
+      the file, and does it faster. (Kent Gibson, #51980, #69477)
  
 bzr 0.15rc1  2007-03-07
 

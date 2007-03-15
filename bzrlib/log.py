@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -221,8 +221,18 @@ def _show_log(branch,
         symbol_versioning.warn('LogFormatters should provide show_merge_revno '
             'instead of show_merge since bzr 0.11.',
             DeprecationWarning, stacklevel=3)
-    view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, include_merges=include_merges))
+    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
+                          direction, include_merges=include_merges)
+    if specific_fileid:
+        # find all the revisions that change the specific file
+        sfw = branch.repository.weave_store.get_weave(specific_fileid,
+                    branch.repository.get_transaction())
+        sfw_revids = set(sfw.versions())
+        # filter from the view the revisions that did not change this file
+        view_revisions = [(r, n, d) for r, n, d in view_revs_iter if
+                          r in sfw_revids]
+    else:
+        view_revisions = list(view_revs_iter)
 
     def iter_revisions():
         # r = revision, n = revno, d = merge depth
@@ -233,7 +243,7 @@ def _show_log(branch,
         while revision_ids:
             cur_deltas = {}
             revisions = repository.get_revisions(revision_ids[:num])
-            if verbose or specific_fileid:
+            if verbose:
                 delta_revisions = [r for r in revisions if
                                    r.revision_id in zeros]
                 deltas = repository.get_deltas_for_revisions(delta_revisions)
@@ -241,7 +251,7 @@ def _show_log(branch,
                                         delta_revisions), deltas))
             for revision in revisions:
                 # The delta value will be None unless
-                # 1. verbose or specific_fileid is specified, and
+                # 1. verbose is specified, and
                 # 2. the revision is a mainline revision
                 yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
@@ -257,15 +267,6 @@ def _show_log(branch,
 
         if merge_depth == 0:
             # a mainline revision.
-                
-            if specific_fileid:
-                if not delta.touches_file_id(specific_fileid):
-                    continue
-    
-            if not verbose:
-                # although we calculated it, throw it away without display
-                delta = None
-
             lf.show(revno, rev, delta)
         else:
             if show_merge_revno is None:
