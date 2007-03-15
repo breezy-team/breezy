@@ -1291,12 +1291,13 @@ class cmd_init_repository(Command):
     shared storage.
 
     example:
-        bzr init-repo repo
+        bzr init-repo --no-trees repo
         bzr init repo/trunk
         bzr checkout --lightweight repo/trunk trunk-checkout
         cd trunk-checkout
         (add files here)
     """
+
     takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
@@ -1304,11 +1305,13 @@ class cmd_init_repository(Command):
                             registry=bzrdir.format_registry,
                             converter=bzrdir.format_registry.make_bzrdir,
                             value_switches=True, title='Repository format'),
-                     Option('trees',
-                             help='Allows branches in repository to have'
-                             ' a working tree')]
+                     Option('no-trees',
+                             help='Branches in the repository will default to'
+                                  'not having a working tree'),
+                    ]
     aliases = ["init-repo"]
-    def run(self, location, format=None, trees=False):
+
+    def run(self, location, format=None, no_trees=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
 
@@ -1323,7 +1326,7 @@ class cmd_init_repository(Command):
 
         newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(trees)
+        repo.set_make_working_trees(not no_trees)
 
 
 class cmd_diff(Command):
@@ -3407,7 +3410,7 @@ class cmd_merge_directive(Command):
             server = branch.get_config().get_user_option('smtp_server')
             if not server:
                 server = 'localhost'
-            s.connect()
+            s.connect(server)
             s.sendmail(message['From'], message['To'], message.as_string())
 
 

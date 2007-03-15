@@ -81,6 +81,17 @@ class TestFormatRegistry(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6')
+        my_format_registry.register_metadir(
+            'hidden format',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+            'Experimental successor to knit.  Use at your own risk.',
+            branch_format='bzrlib.branch.BzrBranchFormat6', hidden=True)
+        my_format_registry.register('hiddenweave', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', hidden=True)
+        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.bzrdir',
+            'BzrDirFormat6', 'Format registered lazily', deprecated=True,
+            hidden=True)
         return my_format_registry
 
     def test_format_registry(self):
@@ -122,6 +133,7 @@ class TestFormatRegistry(TestCase):
             '  knit/default:\n    \(native\) Format using knits\n')
         self.assertContainsRe(deprecated, 
             '  lazy:\n    \(native\) Format registered lazily\n')
+        self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
         default_factory = bzrdir.format_registry.get('default')

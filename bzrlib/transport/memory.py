@@ -192,11 +192,11 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
         for path in self._files:
-            if path.startswith(_abspath):
+            if path.startswith(_abspath + '/'):
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath),
                                       relpath)
         for path in self._dirs:
-            if path.startswith(_abspath) and path != _abspath:
+            if path.startswith(_abspath + '/') and path != _abspath:
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
         if not _abspath in self._dirs:
             raise NoSuchFile(relpath)

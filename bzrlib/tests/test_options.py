@@ -138,6 +138,8 @@ class OptionTests(TestCase):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
         registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('hidden', 'RepositoryFormatKnit1',
+            'two help', hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', '', registry, str)]
         opts, args = self.parse(options, ['--format', 'one'])
@@ -187,6 +189,8 @@ class OptionTests(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'two help',
             )
+        registry.register_metadir('hidden', 'RepositoryFormat7', 'hidden help',
+            hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
@@ -195,6 +199,7 @@ class OptionTests(TestCase):
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
         self.assertContainsRe(value, 'Formats:\n *--format')
+        self.assertNotContainsRe(value, 'hidden help')
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')

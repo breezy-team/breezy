@@ -35,6 +35,7 @@ unlock() method.
 """
 
 import errno
+import sys
 
 from bzrlib import (
     errors,
@@ -254,7 +255,7 @@ if have_fcntl:
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
 
 
-if have_pywin32:
+if have_pywin32 and sys.platform == 'win32':
     LOCK_SH = 0 # the default
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
@@ -330,7 +331,7 @@ if have_pywin32:
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
-if have_ctypes:
+if have_ctypes and sys.platform == 'win32':
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
@@ -383,13 +384,12 @@ if have_ctypes:
 
             self.hfile = msvcrt.get_osfhandle(self.f.fileno())
             overlapped = OVERLAPPED()
-            p_overlapped = ctypes.pointer(overlapped)
             result = _LockFileEx(self.hfile, # HANDLE hFile
                                  lockmode,   # DWORD dwFlags
                                  0,          # DWORD dwReserved
                                  0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                  0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                 p_overlapped, # lpOverlapped
+                                 ctypes.byref(overlapped), # lpOverlapped
                                 )
             if result == 0:
                 self._clear_f()
@@ -401,12 +401,11 @@ if have_ctypes:
 
         def unlock(self):
             overlapped = OVERLAPPED()
-            p_overlapped = ctypes.pointer(overlapped)
             result = _UnlockFileEx(self.hfile, # HANDLE hFile
                                    0,          # DWORD dwReserved
                                    0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                    0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                   p_overlapped, # lpOverlapped
+                                   ctypes.byref(overlapped), # lpOverlapped
                                   )
             self._clear_f()
             if result == 0:

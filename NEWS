@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  NOTES WHEN UPGRADING:
+        
+    * Release 0.15rc2 of bzr changes the ``bzr init-repo`` command to
+      default to ``--trees`` instead of ``--no-trees``.
+      Existing shared repositories are not affected.
+
   IMPROVEMENTS:
 
     * New ``merge-directive`` command to generate machine- and human-readable
@@ -9,6 +15,9 @@ IN DEVELOPMENT
       common ancestor with the submit location (Aaron Bentley)
 
     * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
+    * Added ``bzr status --versioned`` to report only versioned files, 
+      not unknowns. (Kent Gibson)
 
     * Merge now autodetects the correct line-ending style for its conflict
       markers.  (Aaron Bentley)
@@ -33,7 +42,12 @@ IN DEVELOPMENT
 
     * Fix commit of merges with symlinks in dirstate trees.
       (Marien Zwart)
+    
+    * Switch the ``bzr init-repo`` default from --no-trees to --trees. 
+      (Wouter van Heyst, #53483)
 
+    * Take smtp_server from user config into account.
+      (vila, #92195)
  
 bzr 0.15rc1  2007-03-07
 
@@ -119,7 +133,7 @@ bzr 0.15rc1  2007-03-07
       stored in the branch.  Tags can be accessed with the revisionspec
       ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned 
       at present. Tags require a network incompatible upgrade. To perform this
-      upgrade, run ``bzr upgrade --dirstate-with-subtree`` in your branch and
+      upgrade, run ``bzr upgrade --dirstate-tags`` in your branch and
       repositories. (Martin Pool)
 
     * The bzr:// transport now has a well-known port number, 4155, which it will
