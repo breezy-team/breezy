@@ -1713,7 +1713,7 @@ class DirState(object):
                 self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
             finally:
                 if grabbed_write_lock:
-                    self._lock_token = wlock.restore_read_lock()
+                    self._lock_token = self._lock_token.restore_read_lock()
                     self._state_file = self._lock_token.f
                     # TODO: jam 20070315 We should validate the disk file has
                     #       not changed contents. Since restore_read_lock may
