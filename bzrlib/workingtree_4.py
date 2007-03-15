@@ -1937,8 +1937,8 @@ class InterDirStateTree(InterTree):
                     return ((entry[0][2], (None, path), True,
                             (False, True),
                             (None, parent_id),
-                            (None, entry[0][1]),
-                            (None, utf8_decode(path_info[2])[0]),
+                            (None, utf8_decode(entry[0][1])[0]),
+                            (None, path_info[2]),
                             (None, target_exec)),)
                 else:
                     # but its not on disk: we deliberately treat this as just
