@@ -51,6 +51,7 @@ class TestLock(TestCaseWithLock):
         self.addCleanup(a_lock.unlock)
         txt = a_lock.f.read()
         self.assertEqual('', txt)
+        a_lock.f.seek(0)
         a_lock.f.write('foo\n')
         a_lock.f.seek(0)
         txt = a_lock.f.read()
@@ -67,7 +68,6 @@ class TestLock(TestCaseWithLock):
         a_lock = self.read_lock('a-file')
         a_lock.unlock()
 
-        # TODO: jam 20070313 This should be a specific subclass
         self.assertRaises(errors.ReadOnlyLockError, self.write_lock, 'a-file')
 
     def test_write_lock(self):
