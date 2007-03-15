@@ -274,13 +274,12 @@ if have_ctypes and sys.platform == 'win32':
 
             self.hfile = msvcrt.get_osfhandle(self.f.fileno())
             overlapped = OVERLAPPED()
-            p_overlapped = ctypes.pointer(overlapped)
             result = _LockFileEx(self.hfile, # HANDLE hFile
                                  lockmode,   # DWORD dwFlags
                                  0,          # DWORD dwReserved
                                  0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                  0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                 p_overlapped, # lpOverlapped
+                                 ctypes.by_ref(overlapped), # lpOverlapped
                                 )
             if result == 0:
                 self._clear_f()
@@ -292,12 +291,11 @@ if have_ctypes and sys.platform == 'win32':
 
         def unlock(self):
             overlapped = OVERLAPPED()
-            p_overlapped = ctypes.pointer(overlapped)
             result = _UnlockFileEx(self.hfile, # HANDLE hFile
                                    0,          # DWORD dwReserved
                                    0x7fffffff, # DWORD nNumberOfBytesToLockLow
                                    0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                   p_overlapped, # lpOverlapped
+                                   ctypes.by_ref(overlapped), # lpOverlapped
                                   )
             self._clear_f()
             if result == 0:
