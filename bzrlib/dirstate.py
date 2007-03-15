@@ -1692,20 +1692,18 @@ class DirState(object):
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
 
-            wlock = None
+            grabbed_write_lock = False
             if self._lock_state != 'w':
-                try:
-                    wlock = self._lock_token.temporary_write_lock()
-                except errors.LockError, e:
-                    # We can't grab a write lock, re-open the read lock.
-                    self._lock_token = lock.ReadLock(self._filename)
-                    self._state_file = self._lock_token.f
-                    # TODO: jam 20070315 We should validate that the file on
-                    #       disk has not been modified.
+                grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
+                # Switch over to the new lock, as the old one may be closed.
+                # TODO: jam 20070315 We should validate the disk file has
+                #       not changed contents. Since temporary_write_lock may
+                #       not be an atomic operation.
+                self._lock_token = new_lock
+                self._state_file = new_lock.f
+                if not grabbed_write_lock:
+                    # We couldn't grab a write lock, so we switch back to a read one
                     return
-                else:
-                    self._lock_token = wlock
-                    self._state_file = wlock.f
             try:
                 self._state_file.seek(0)
                 self._state_file.writelines(self.get_lines())
@@ -1714,7 +1712,7 @@ class DirState(object):
                 self._header_state = DirState.IN_MEMORY_UNMODIFIED
                 self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
             finally:
-                if wlock is not None:
+                if grabbed_write_lock:
                     self._lock_token = wlock.restore_read_lock()
                     self._state_file = self._lock_token.f
                     # TODO: jam 20070315 We should validate the disk file has

@@ -190,7 +190,12 @@ if have_fcntl:
             :return: A token which can be used to switch back to a read lock.
             """
             assert self.filename not in _fcntl_WriteLock._open_locks
-            return _fcntl_TemporaryWriteLock(self)
+            try:
+                wlock = _fcntl_TemporaryWriteLock(self)
+            except errors.LockError:
+                # We didn't unlock, so we can just return 'self'
+                return False, self
+            return True, wlock
 
 
     class _fcntl_TemporaryWriteLock(_base_Lock):
@@ -302,7 +307,11 @@ if have_pywin32:
             # I can't find a way to upgrade a read lock to a write lock without
             # unlocking first. So here, we do just that.
             self.unlock()
-            return _w32c_WriteLock(self.filename)
+            try:
+                wlock = _w32c_WriteLock(self.filename)
+            except errors.LockError:
+                return False, _w32c_ReadLock(self.filename)
+            return True, wlock
 
 
     class _w32c_WriteLock(_w32c_FileLock):
@@ -425,7 +434,11 @@ if have_ctypes:
             # I can't find a way to upgrade a read lock to a write lock without
             # unlocking first. So here, we do just that.
             self.unlock()
-            return _ctypes_WriteLock(self.filename)
+            try:
+                wlock = _ctypes_WriteLock(self.filename)
+            except errors.LockError:
+                return False, _ctypes_ReadLock(self.filename)
+            return True, wlock
 
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
