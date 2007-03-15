@@ -53,9 +53,6 @@ class SvnRevisionTree(RevisionTree):
      def __init__(self, repository, revision_id, inventory=None):
         self._repository = repository
         self._revision_id = revision_id
-        (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
-        self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
-        self._inventory = Inventory()
         pool = Pool()
         (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
         self._inventory = Inventory()

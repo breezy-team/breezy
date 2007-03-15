@@ -347,6 +347,7 @@ class InterSvnRepository(InterRepository):
             return
 
         repos_root = self.source.transport.get_repos_root()
+
         needed.reverse()
         prev_revid = None
         transport = self.source.transport

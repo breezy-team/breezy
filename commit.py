@@ -98,7 +98,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = []
-
+        
     def _generate_revision_if_needed(self):
         pass
 
@@ -127,9 +127,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
-    def _dir_process(self, file_id, baton):
-        path = self.new_inventory.id2path(file_id)
-        mutter('processing %r (%r)' % (path, file_id))
+    def _dir_process(self, path, file_id, baton):
+        mutter('processing %r' % path)
         if path == "":
             # Set all the revprops
             for prop, value in self._svnprops.items():
@@ -267,7 +266,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Handle this directory
             if child_ie.file_id in self.modified_dirs:
-                self._dir_process(child_ie.file_id, child_baton)
+                self._dir_process(self.new_inventory.id2path(child_ie.file_id), 
+                        child_ie.file_id, child_baton)
 
             svn.delta.editor_invoke_close_directory(self.editor, child_baton, 
                                              self.pool)
@@ -311,7 +311,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         branch_batons = self.open_branch_batons(root,
                                 self.branch.branch_path.split("/"))
 
-        self._dir_process(self.new_inventory.root.file_id, branch_batons[-1])
+        self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
 
         branch_batons.reverse()
         for baton in branch_batons:

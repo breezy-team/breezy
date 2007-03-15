@@ -1992,7 +1992,6 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
 
         self.assertTrue(inventory[inventory.path2id("foo/bla")].executable)
 
-
     def test_symlink(self):
         os.symlink('foo/bla', 'dc/bar')
         self.client_add('dc/bar')
