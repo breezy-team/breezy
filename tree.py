@@ -86,7 +86,11 @@ class TreeBuildEditor(svn.delta.Editor):
         self.revnum = revnum
 
     def open_root(self, revnum, baton):
-        return ROOT_ID
+        file_id, revision_id = self.tree.id_map[""]
+        ie = self.tree._inventory.add_path("", 'directory', file_id)
+        ie.revision = revision_id
+        self.tree._inventory.revision_id = revision_id
+        return file_id
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         path = path.decode("utf-8")
@@ -199,8 +203,7 @@ class SvnBasisTree(RevisionTree):
     """Optimized version of SvnRevisionTree."""
     def __init__(self, workingtree):
         self.workingtree = workingtree
-        self._revision_id = workingtree.branch.repository.generate_revision_id(
-                workingtree.base_revnum, workingtree.branch.branch_path)
+        self._revision_id = workingtree.branch.generate_revision_id(workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, workingtree.branch.branch_path)
         self._inventory = Inventory()

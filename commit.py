@@ -33,7 +33,8 @@ import os
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
-    def __init__(self, repository, branch, parents, config, revprops):
+    def __init__(self, repository, branch, parents, config, revprops, 
+                 old_inv=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
@@ -85,11 +86,15 @@ class SvnCommitBuilder(RootCommitBuilder):
         assert (self.branch.last_revision() is None or 
                 self.branch.last_revision() in parents)
 
-        if self.branch.last_revision() is None:
-            self.old_inv = Inventory(ROOT_ID)
+        if old_inv is None:
+            if self.branch.last_revision() is None:
+                self.old_inv = Inventory(ROOT_ID)
+            else:
+                self.old_inv = self.repository.get_inventory(
+                                   self.branch.last_revision())
         else:
-            self.old_inv = self.repository.get_inventory(
-                               self.branch.last_revision())
+            self.old_inv = old_inv
+            assert self.old_inv.revision_id == self.branch.last_revision()
 
         self.modified_files = {}
         self.modified_dirs = []
@@ -374,13 +379,23 @@ def push_as_merged(target, source, revision_id):
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
-    mutter('committing %r on top of %r' % (revision_id, 
-                                  target.last_revision()))
+    # revision on top of which to commit
+    prev_revid = target.last_revision()
+
+    mutter('committing %r on top of %r' % (revision_id, prev_revid))
 
     old_tree = source.repository.revision_tree(revision_id)
-    new_tree = target.repository.revision_tree(target.last_revision())
+    if source.repository.has_revision(prev_revid):
+        new_tree = source.repository.revision_tree(prev_revid)
+    else:
+        new_tree = target.repository.revision_tree(prev_revid)
 
-    builder = target.get_commit_builder([revision_id, target.last_revision()])
+    builder = SvnCommitBuilder(target.repository, target, 
+                               [revision_id, prev_revid],
+                               target.get_config(),
+                               rev.properties, 
+                               new_tree.inventory)
+                         
     delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
 

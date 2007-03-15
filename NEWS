@@ -24,6 +24,12 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+bzr-svn 0.3.3	UNRELEASED
+
+  IMPROVEMENTS
+
+  * Don't do extra checkout before push if possible. (#91885)
+
 bzr-svn 0.3.2	2007-03-13
 
   BUG FIXES
