@@ -425,7 +425,7 @@ if have_ctypes:
             # I can't find a way to upgrade a read lock to a write lock without
             # unlocking first. So here, we do just that.
             self.unlock()
-            return _w32c_WriteLock(self.filename)
+            return _ctypes_WriteLock(self.filename)
 
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
@@ -437,7 +437,7 @@ if have_ctypes:
             # For win32 we had to completely let go of the original lock, so we
             # just unlock and create a new read lock.
             self.unlock()
-            return _w32c_ReadLock(self.filename)
+            return _ctypes_ReadLock(self.filename)
 
 
     _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
