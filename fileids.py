@@ -143,8 +143,6 @@ class FileIdMap(object):
 
     def get_map(self, uuid, revnum, branch, renames_cb):
         """Make sure the map is up to date until revnum."""
-        if renames_cb is None:
-            renames_cb = lambda x: {}
         # First, find the last cached map
         todo = []
         next_parent_revs = []

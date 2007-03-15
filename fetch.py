@@ -48,7 +48,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)
-        assert self.inventory.root is None or revnum > 0
         self.revid = revid
         self.id_map = id_map
         self.source = source
@@ -83,7 +82,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return rev
 
     def open_root(self, base_revnum, baton):
-        file_id, revision_id = self.id_map[""]
+        file_id = self.id_map[""]
         if self.inventory.root is None:
             self.dir_baserev[file_id] = []
             ie = self.inventory.add_path("", 'directory', file_id)
@@ -91,8 +90,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             self.dir_baserev[file_id] = [self.inventory.revision_id]
             ie = self.inventory[file_id]
 
-        if ie is not None:
-            ie.revision = revision_id
+        ie.revision = self.revid
         return file_id
 
     def _get_existing_id(self, parent_id, path):

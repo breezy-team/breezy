@@ -107,11 +107,11 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
         elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
-            if id != self.tree.id_map[""][0]:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
                 return
         elif name == SVN_PROP_BZR_FILEIDS:
-            if id != self.tree.id_map[""][0]:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_FILEIDS)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
