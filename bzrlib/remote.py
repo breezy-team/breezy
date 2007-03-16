@@ -350,6 +350,7 @@ class RemoteRepository(object):
         :param repository: The repository to fallback to for non-hpss
             implemented operations.
         """
+        assert not isinstance(repository, RemoteRepository)
         self._real_repository = repository
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
@@ -554,6 +555,15 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._serializer
 
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        self._ensure_real()
+        return self._real_repository.store_revision_signature(
+            gpg_strategy, plaintext, revision_id)
+
+    def has_signature_for_revision_id(self, revision_id):
+        self._ensure_real()
+        return self._real_repository.has_signature_for_revision_id(revision_id)
+
 
 class RemoteBranchLockableFiles(object):
     """A 'LockableFiles' implementation that talks to a smart server.
@@ -620,7 +630,11 @@ class RemoteBranch(branch.Branch):
         if real_branch is not None:
             self._real_branch = real_branch
             # Give the remote repository the matching real repo.
-            self.repository._set_real_repository(self._real_branch.repository)
+            real_repo = self._real_branch.repository
+            if isinstance(real_repo, RemoteRepository):
+                real_repo._ensure_real()
+                real_repo = real_repo._real_repository
+            self.repository._set_real_repository(real_repo)
             # Give the branch the remote repository to let fast-pathing happen.
             self._real_branch.repository = self.repository
         else:
@@ -644,7 +658,11 @@ class RemoteBranch(branch.Branch):
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch()
             # Give the remote repository the matching real repo.
-            self.repository._set_real_repository(self._real_branch.repository)
+            real_repo = self._real_branch.repository
+            if isinstance(real_repo, RemoteRepository):
+                real_repo._ensure_real()
+                real_repo = real_repo._real_repository
+            self.repository._set_real_repository(real_repo)
             # Give the branch the remote repository to let fast-pathing happen.
             self._real_branch.repository = self.repository
             # XXX: deal with _lock_mode == 'w'
@@ -843,7 +861,7 @@ class RemoteBranch(branch.Branch):
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         self._ensure_real()
-        self._real_branch.push(
+        return self._real_branch.push(
             target, overwrite=overwrite, stop_revision=stop_revision)
 
     def is_locked(self):
@@ -863,6 +881,15 @@ class RemoteBranch(branch.Branch):
     def tags(self):
         self._ensure_real()
         return self._real_branch.tags
+
+    def set_push_location(self, location):
+        self._ensure_real()
+        return self._real_branch.set_push_location(location)
+
+    def update_revisions(self, other, stop_revision=None):
+        self._ensure_real()
+        return self._real_branch.update_revisions(
+            other, stop_revision=stop_revision)
 
 
 class RemoteWorkingTree(object):

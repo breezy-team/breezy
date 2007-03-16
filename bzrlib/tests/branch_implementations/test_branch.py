@@ -204,15 +204,16 @@ class TestBranch(TestCaseWithBranch):
         # test sprouting with a prefix of the revision-history.
         # also needs not-on-revision-history behaviour defined.
         wt_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/one'])
+        self.build_tree(['one'], transport=wt_a.bzrdir.root_transport)
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
-        self.build_tree(['a/two'])
+        self.build_tree(['two'], transport=wt_a.bzrdir.root_transport)
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
         repo_b = self.make_repository('b')
-        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
-        br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
+        repo_a = wt_a.branch.repository
+        repo_a.copy_content_into(repo_b)
+        br_b = wt_a.branch.sprout(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
     def get_parented_branch(self):
@@ -497,13 +498,13 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(rev_id, checkout.last_revision())
 
     def test_set_revision_history(self):
-        br = self.get_branch()
+        tree = self.make_branch_and_tree('a')
+        tree.commit('a commit', rev_id='rev1')
+        br = tree.branch
         br.set_revision_history(["rev1"])
         self.assertEquals(br.revision_history(), ["rev1"])
         br.set_revision_history([])
         self.assertEquals(br.revision_history(), [])
-        br.set_revision_history(["rev2", "rev1"])
-        self.assertEquals(br.revision_history(), ["rev2", "rev1"])
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -708,6 +709,8 @@ class TestFormat(TestCaseWithBranch):
         try:
             self.branch_format.get_format_string()
         except NotImplementedError:
+            return
+        if self.branch_format.get_format_string() == 'Remote BZR Branch':
             return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))

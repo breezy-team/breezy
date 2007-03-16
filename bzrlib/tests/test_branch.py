@@ -314,7 +314,7 @@ class TestBranchReference(TestCaseWithTransport):
         # then this file read will fail.
         self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
-            bzrlib.branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+            _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
 
 
 class TestHooks(TestCase):

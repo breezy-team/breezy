@@ -21,6 +21,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
+from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
@@ -100,7 +101,7 @@ class TestPush(TestCaseWithBranch):
         source = self.make_branch_and_tree('source')
         target = self.make_branch('target')
 
-        self.build_tree(['source/a'])
+        self.build_tree(['a'], transport=source.bzrdir.root_transport)
         source.add(['a'])
         source.commit('a')
 
@@ -129,8 +130,11 @@ class TestPush(TestCaseWithBranch):
         except (errors.UninitializableFormat):
             # Cannot create these branches
             return
-        tree = a_branch.bzrdir.create_workingtree()
-        self.build_tree(['repo/tree/a'])
+        try:
+            tree = a_branch.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            tree = a_branch.create_checkout('checkout', lightweight=True)
+        self.build_tree(['a'], transport=tree.bzrdir.root_transport)
         tree.add(['a'])
         tree.commit('a')
 
@@ -174,6 +178,12 @@ class TestPushHook(TestCaseWithBranch):
         source.push(target)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
+        if isinstance(source, RemoteBranch):
+            # XXX: at the moment, push on remote branches is just delegated to
+            # the file-level branch object, so we adjust the expected result
+            # accordingly.  In the future, when RemoteBranch implements push
+            # directly, this should be unnecessary.
+            source = source._real_branch
         self.assertEqual([
             ('post_push', source, None, target.base, 0, NULL_REVISION,
              0, NULL_REVISION, True, None, True)
