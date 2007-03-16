@@ -305,6 +305,13 @@ class WorkingTree4(WorkingTree3):
         self._inventory = None
         self._dirty = False
 
+    @needs_tree_write_lock
+    def _gather_kinds(self, files, kinds):
+        """See MutableTree._gather_kinds."""
+        for pos, f in enumerate(files):
+            if kinds[pos] is None:
+                kinds[pos] = self._kind(f)
+
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
         
@@ -346,19 +353,24 @@ class WorkingTree4(WorkingTree3):
                 inv_entry = factory[kind](file_id, name_unicode,
                                           parent_ie.file_id)
                 if kind == 'file':
+                    # This is only needed on win32, where this is the only way
+                    # we know the executable bit.
+                    inv_entry.executable = executable
                     # not strictly needed: working tree
-                    #entry.executable = executable
-                    #entry.text_size = size
-                    #entry.text_sha1 = sha1
-                    pass
+                    #inv_entry.text_size = size
+                    #inv_entry.text_sha1 = sha1
                 elif kind == 'directory':
                     # add this entry to the parent map.
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
-                    assert self._repo_supports_tree_reference
+                    assert self._repo_supports_tree_reference, \
+                        "repository of %r " \
+                        "doesn't support tree references " \
+                        "required by entry %r" \
+                        % (self, name)
                     inv_entry.reference_revision = link_or_sha1 or None
-                else:
-                    assert 'unknown kind'
+                elif kind != 'symlink':
+                    raise AssertionError("unknown kind %r" % kind)
                 # These checks cost us around 40ms on a 55k entry tree
                 assert file_id not in inv_byid, ('file_id %s already in'
                     ' inventory as %s' % (file_id, inv_byid[file_id]))
@@ -452,6 +464,23 @@ class WorkingTree4(WorkingTree3):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
+
+    if not osutils.supports_executable():
+        @needs_read_lock
+        def is_executable(self, file_id, path=None):
+            file_id = osutils.safe_file_id(file_id)
+            entry = self._get_entry(file_id=file_id, path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][3]
+    else:
+        @needs_read_lock
+        def is_executable(self, file_id, path=None):
+            if not path:
+                file_id = osutils.safe_file_id(file_id)
+                path = self.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     @needs_read_lock
     def __iter__(self):
@@ -1393,7 +1422,7 @@ class DirStateRevisionTree(Tree):
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
                     inv_entry.executable = False
-                    inv_entry.text_size = size
+                    inv_entry.text_size = None
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = fingerprint or None
@@ -1863,7 +1892,6 @@ class InterDirStateTree(InterTree):
                         last_source_parent[0] = old_dirname
                         last_source_parent[1] = source_parent_id
                         last_source_parent[2] = source_parent_entry
-
                 new_dirname = entry[0][0]
                 if new_dirname == last_target_parent[0]:
                     target_parent_id = last_target_parent[1]
@@ -1939,7 +1967,7 @@ class InterDirStateTree(InterTree):
                 # implementation will do.
                 if not osutils.is_inside_any(searched_specific_files, target_details[1]):
                     search_specific_files.add(target_details[1])
-            elif source_minikind in 'r' and target_minikind in 'r':
+            elif source_minikind in 'ra' and target_minikind in 'ra':
                 # neither of the selected trees contain this file,
                 # so skip over it. This is not currently directly tested, but
                 # is indirectly via test_too_much.TestCommands.test_conflicts.
@@ -1950,6 +1978,7 @@ class InterDirStateTree(InterTree):
                     % (source_minikind, target_minikind))
                 ## import pdb;pdb.set_trace()
             return ()
+
         while search_specific_files:
             # TODO: the pending list should be lexically sorted?  the
             # interface doesn't require it.
@@ -2008,29 +2037,32 @@ class InterDirStateTree(InterTree):
                     (None, None),
                     (None, splitpath(current_root)[-1]),
                     (None, root_dir_info[2]), (None, new_executable))
-            dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
             if block_index == 0:
                 # we have processed the total root already, but because the
                 # initial key matched it we should skip it here.
                 block_index +=1
-            try:
-                current_dir_info = dir_iterator.next()
-            except OSError, e:
-                if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                    # there may be directories in the inventory even though
-                    # this path is not a file on disk: so mark it as end of
-                    # iterator
-                    current_dir_info = None
-                else:
-                    raise
+            if root_dir_info and root_dir_info[2] == 'tree-reference':
+                current_dir_info = None
             else:
-                if current_dir_info[0][0] == '':
-                    # remove .bzr from iteration
-                    bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
-                    assert current_dir_info[1][bzr_index][0] == '.bzr'
-                    del current_dir_info[1][bzr_index]
+                dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
+                try:
+                    current_dir_info = dir_iterator.next()
+                except OSError, e:
+                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                        # there may be directories in the inventory even though
+                        # this path is not a file on disk: so mark it as end of
+                        # iterator
+                        current_dir_info = None
+                    else:
+                        raise
+                else:
+                    if current_dir_info[0][0] == '':
+                        # remove .bzr from iteration
+                        bzr_index = bisect_left(current_dir_info[1], ('.bzr',))
+                        assert current_dir_info[1][bzr_index][0] == '.bzr'
+                        del current_dir_info[1][bzr_index]
             # walk until both the directory listing and the versioned metadata
             # are exhausted. 
             if (block_index < len(state._dirblocks) and
@@ -2202,10 +2234,14 @@ class InterDirStateTree(InterTree):
                                         (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
-                            if current_path_info[2] in (
-                                'directory', 'tree-referene'):
+                            if current_path_info[2] in ('directory'):
                                 del current_dir_info[1][path_index]
                                 path_index -= 1
+                        # dont descend the disk iterator into any tree 
+                        # paths.
+                        if current_path_info[2] == 'tree-reference':
+                            del current_dir_info[1][path_index]
+                            path_index -= 1
                         path_index += 1
                         if path_index < len(current_dir_info[1]):
                             current_path_info = current_dir_info[1][path_index]

@@ -50,6 +50,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
         self.tree1.commit('bar', rev_id='bar-id')
         os.chdir('tree1')
+        return tree1, tree2
 
     def test_merge_directive(self):
         self.prepare_merge_directive()
@@ -101,20 +102,34 @@ class TestMergeDirective(tests.TestCaseWithTransport):
             gpg.GPGStrategy = old_strategy
         self.assertContainsRe(md_text, '^-----BEGIN PSEUDO-SIGNED CONTENT')
 
-    def test_mail(self):
-        self.prepare_merge_directive()
+    def run_bzr_fakemail(self, *args, **kwargs):
         sendmail_calls = []
         def sendmail(self, from_, to, message):
             sendmail_calls.append((self, from_, to, message))
+        connect_calls = []
+        def connect(self, host='localhost', port=0):
+            connect_calls.append((self, host, port))
         old_sendmail = smtplib.SMTP.sendmail
         smtplib.SMTP.sendmail = sendmail
+        old_connect = smtplib.SMTP.connect
+        smtplib.SMTP.connect = connect
         try:
-            md_text = self.run_bzr('merge-directive', '--mail-to',
-                                   'pqm@example.com', '--plain', '../tree2',
-                                   '.')[0]
+            result = self.run_bzr(*args, **kwargs)
         finally:
             smtplib.SMTP.sendmail = old_sendmail
+            smtplib.SMTP.connect = old_connect
+        return result + (connect_calls, sendmail_calls)
+
+    def test_mail_default(self):
+        tree1, tree2 = self.prepare_merge_directive()
+        md_text, errr, connect_calls, sendmail_calls =\
+            self.run_bzr_fakemail('merge-directive', '--mail-to',
+                                  'pqm@example.com', '--plain', '../tree2',
+                                  '.')
         self.assertEqual('', md_text)
+        self.assertEqual(1, len(connect_calls))
+        call = connect_calls[0]
+        self.assertEqual(('localhost', 0), call[1:3])
         self.assertEqual(1, len(sendmail_calls))
         call = sendmail_calls[0]
         self.assertEqual(('J. Random Hacker <jrandom@example.com>',
@@ -188,3 +203,13 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.run_bzr('merge', '../directive')
         wt = workingtree.WorkingTree.open('.')
         self.assertEqual('bar-id', wt.get_parent_ids()[1])
+
+    def test_mail_uses_config(self):
+        tree1, tree2 = self.prepare_merge_directive()
+        tree1.branch.get_config().set_user_option('smtp_server', 'bogushost')
+        md_text, errr, connect_calls, sendmail_calls =\
+            self.run_bzr_fakemail('merge-directive', '--mail-to',
+                                  'pqm@example.com', '--plain', '../tree2',
+                                  '.')
+        call = connect_calls[0]
+        self.assertEqual(('bogushost', 0), call[1:3])

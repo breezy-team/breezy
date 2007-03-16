@@ -272,7 +272,10 @@ class ExtendedTestResult(unittest._TextTestResult):
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
-            self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
+            self.stream.write("%s: " % flavour)
+            if NUMBERED_DIRS:
+                self.stream.write('#%d ' % test.number)
+            self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
                 print >>self.stream
                 print >>self.stream, \
@@ -423,8 +426,6 @@ class VerboseTestResult(ExtendedTestResult):
     def report_success(self, test):
         self.stream.writeln('   OK %s' % self._testTimeString())
         for bench_called, stats in getattr(test, '_benchcalls', []):
-            if NUMBERED_DIRS:
-                self.stream.write(' ' * 6)
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
         self.stream.flush()
@@ -995,8 +996,11 @@ class TestCase(unittest.TestCase):
         """
         # TODO: Perhaps this should keep running cleanups even if 
         # one of them fails?
-        for cleanup_fn in reversed(self._cleanups):
-            cleanup_fn()
+
+        # Actually pop the cleanups from the list so tearDown running
+        # twice is safe (this happens for skipped tests).
+        while self._cleanups:
+            self._cleanups.pop()()
 
     def log(self, *args):
         mutter(*args)
@@ -1694,7 +1698,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Fail if path does not contain 'content'."""
         self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
-        self.assertEqualDiff(content, open(path, 'r').read())
+        f = file(path, 'r')
+        try:
+            s = f.read()
+        finally:
+            f.close()
+        self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
@@ -1842,9 +1851,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
-              numbered_dirs=False):
+              numbered_dirs=None):
     global NUMBERED_DIRS
-    NUMBERED_DIRS = bool(numbered_dirs)
+    if numbered_dirs is not None:
+        NUMBERED_DIRS = bool(numbered_dirs)
 
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -1873,7 +1883,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None,
              matching_tests_first=None,
-             numbered_dirs=False):
+             numbered_dirs=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
