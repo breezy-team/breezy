@@ -434,10 +434,9 @@ class BundleInfo(object):
             valid_actions[action](kind, extra, lines)
 
     def get_target_revision(self, target_repo):
+        """Install the target revision and return its revision-id"""
         apply_bundle.install_bundle(target_repo, self)
         return self.target
-
-
 
 
 class BundleTree(Tree):
