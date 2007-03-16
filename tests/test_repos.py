@@ -425,7 +425,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_get_revision_graph_empty(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual({generate_svn_file_id(repository.uuid, 0, "", ""): []}, 
+        self.assertEqual({}, 
                 repository.get_revision_graph(NULL_REVISION))
 
     def test_get_revision_graph_invalid(self):
@@ -437,7 +437,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_get_revision_graph_all_empty(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open(repos_url)
-        self.assertEqual({generate_svn_file_id(repository.uuid, 0, "", ""): []}, 
+        self.assertEqual({repository.generate_revision_id(0, ""): []}, 
                 repository.get_revision_graph())
 
     def test_get_revision_graph_all(self):
@@ -1808,6 +1808,29 @@ Node-copyfrom-path: x
         self.assertFalse(newrepos.has_revision(
             oldrepos.generate_revision_id(2, "")))
 
+    def test_fetch_copy_root_id_kept(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "added branches") #2
+
+        self.client_copy("dc/trunk", "dc/branches/foobranch")
+        self.client_commit("dc", "added branch foobranch") #3
+
+        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
+                                   TrunkBranchingScheme()).find_repository()
+
+        tree = repos.revision_tree(
+             repos.generate_revision_id(3, "branches/foobranch"))
+
+        self.assertEqual(generate_svn_file_id(repos.uuid, 1, "trunk", ""), tree.inventory.root.file_id)
+
     def test_fetch_odd(self):
         repos_url = self.make_client('d', 'dc')
 
@@ -1943,7 +1966,7 @@ Node-copyfrom-path: x
         oldrepos.copy_content_into(newrepos)
 
         rev = newrepos.get_revision(oldrepos.generate_revision_id(1, ""))
-        self.assertEqual([], rev.parent_ids)
+        self.assertEqual([oldrepos.generate_revision_id(0, "")], rev.parent_ids)
 
     def test_set_branching_scheme(self):
         repos_url = self.make_client('d', 'dc')

@@ -294,6 +294,8 @@ class SvnWorkingTree(WorkingTree):
 
             # First handle directory itself
             inv.add_path(relpath, 'directory', id, parent_id).revision = revid
+            if relpath == "":
+                inv.revision_id = revid
 
             for name in entries:
                 if name == "":

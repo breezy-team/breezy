@@ -156,7 +156,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         if name == SVN_PROP_BZR_MERGE:
-            if id != self.id_map[""][0]:
+            if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
                 return
             

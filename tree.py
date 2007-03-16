@@ -205,7 +205,7 @@ class SvnBasisTree(RevisionTree):
         self._revision_id = workingtree.branch.generate_revision_id(workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, workingtree.branch.branch_path)
-        self._inventory = Inventory()
+        self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, wc):
@@ -244,6 +244,8 @@ class SvnBasisTree(RevisionTree):
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
             ie.revision = revid
+            if relpath == "":
+                self._inventory.revision_id = revid
 
             for name in entries:
                 if name == "":
