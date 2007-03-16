@@ -94,7 +94,11 @@ class RevisionBuildEditor(svn.delta.Editor):
                 file_id = self.old_inventory.root.file_id
             self.dir_baserev[file_id] = [self.old_inventory.root.revision]
 
-        ie = self.inventory.add_path("", 'directory', file_id)
+        if self.inventory.root is not None and \
+                file_id == self.inventory.root.file_id:
+            ie = self.inventory.root
+        else:
+            ie = self.inventory.add_path("", 'directory', file_id)
         ie.revision = self.revid
         return file_id
 
