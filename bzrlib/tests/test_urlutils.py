@@ -197,10 +197,8 @@ class TestUrlToPath(TestCase):
             joined = urlutils.join(*args)
             self.assertEqual(expected, joined)
 
-        # Test a single element
-        test('foo', 'foo')
-
         # Test relative path joining
+        test('foo', 'foo') # relative fragment with nothing is preserved.
         test('foo/bar', 'foo', 'bar')
         test('http://foo/bar', 'http://foo', 'bar')
         test('http://foo/bar', 'http://foo', '.', 'bar')
@@ -210,6 +208,7 @@ class TestUrlToPath(TestCase):
         test('http://foo/baz', 'http://foo/bar/', '../baz')
 
         # Absolute paths
+        test('http://foo', 'http://foo') # abs url with nothing is preserved.
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
@@ -225,10 +224,14 @@ class TestUrlToPath(TestCase):
         
         # Invalid joinings
         # Cannot go above root
+        # Implicitly at root:
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '../baz')
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '/..')
+        # Joining from a path explicitly under the root.
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo/a', '../../b')
 
     def test_joinpath(self):
         def test(expected, *args):
