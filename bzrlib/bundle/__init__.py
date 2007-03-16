@@ -30,11 +30,11 @@ from bzrlib.transport import get_transport as _get_transport
 def read_bundle_from_url(url):
     return read_bundle_or_directive_from_url(url, _do_directive=False)[0]
 
-def read_bundle_or_directive_from_url(url, _do_directive=True):
-    """Read a bundle from a given URL.
+def read_mergeable_from_url(url, _do_directive=True):
+    """Read mergable object from a given URL.
 
-    :return: A BundleReader, may raise NotABundle if the target 
-            is not a proper bundle.
+    :return: An object supporting get_target_revision.  Raises NotABundle if
+        the target is not a mergeable type.
     """
     from bzrlib.merge_directive import MergeDirective
     url = urlutils.normalize_url(url)
@@ -52,13 +52,9 @@ def read_bundle_or_directive_from_url(url, _do_directive=True):
         f = t.get(filename)
         if _do_directive:
             directive = MergeDirective.from_lines(f.readlines())
-            if directive.patch_type == 'bundle':
-                reader = _serializer.read_bundle(StringIO(directive.patch))
-            else:
-                reader = None
-            return reader, directive
+            return directive
         else:
-            return _serializer.read_bundle(f), None
+            return _serializer.read_bundle(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:

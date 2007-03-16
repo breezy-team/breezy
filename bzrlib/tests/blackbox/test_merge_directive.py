@@ -133,16 +133,16 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual('bar-id', wt.last_revision())
 
     def test_manual_pull_user_r(self):
-        """If the user supplies -r, it overrides the directive's revision"""
+        """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
                                self.tree1.basedir, '--plain')[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
-        self.run_bzr('pull', '-r', '2', '../directive')
-        wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.last_revision())
+        self.run_bzr_error(
+            ('Cannot use -r with merge directives or bundles',),
+            'pull', '-r', '2', '../directive')
 
     def test_manual_pull_bundle(self):
         self.prepare_merge_directive()
@@ -167,16 +167,16 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual('bar-id', wt.get_parent_ids()[1])
 
     def test_manual_merge_user_r(self):
-        """If the user supplies -r, it overrides the directive's revision"""
+        """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
                                self.tree1.basedir, '--plain')[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
-        self.run_bzr('merge', '-r', '2', '../directive')
-        wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+        self.run_bzr_error(
+            ('Cannot use -r with merge directives or bundles',),
+            'merge', '-r', '2', '../directive')
 
     def test_manual_merge_bundle(self):
         self.prepare_merge_directive()
