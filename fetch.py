@@ -82,14 +82,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         return rev
 
     def open_root(self, base_revnum, baton):
-        file_id = self.id_map[""]
-        if self.inventory.root is None:
+        if self.old_inventory.root is None:
+            # First time the root is set
+            file_id = generate_file_id(self.revid, "")
             self.dir_baserev[file_id] = []
-            ie = self.inventory.add_path("", 'directory', file_id)
         else:
-            self.dir_baserev[file_id] = [self.inventory.revision_id]
-            ie = self.inventory[file_id]
+            assert self.old_inventory.root.revision is not None
+            if self.id_map.has_key(""):
+                file_id = self.id_map[""]
+            else:
+                file_id = self.old_inventory.root.file_id
+            self.dir_baserev[file_id] = [self.old_inventory.root.revision]
 
+        ie = self.inventory.add_path("", 'directory', file_id)
         ie.revision = self.revid
         return file_id
 
@@ -364,7 +369,7 @@ class InterSvnRepository(InterRepository):
                 parent_revid = parents[revid]
 
                 if parent_revid is None:
-                    parent_inv = Inventory()
+                    parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:

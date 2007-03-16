@@ -42,7 +42,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(1, len(list(walker.follow_path("", 1))))
+        self.assertEqual(2, len(list(walker.follow_path("", 1))))
 
     def test_get_revision_paths(self):
         repos_url = self.make_client("a", "dc")
@@ -74,7 +74,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(1, len(list(walker.follow_path("", 1))))
+        self.assertEqual(2, len(list(walker.follow_path("", 1))))
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
@@ -274,8 +274,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         for (branch, paths, rev) in walker.follow_path("", 1):
            self.assertEqual(branch, "")
-           self.assertTrue(paths.has_key("foo"))
-           self.assertEqual(rev, 1)
+           self.assertTrue(rev == 0 or paths.has_key("foo"))
+           self.assertTrue(rev in (0,1))
 
     def test_follow_history_nohist(self):
         repos_url = self.make_client("a", "dc")
@@ -294,8 +294,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         for (branch, paths, rev) in walker.follow_path("", 1):
            self.assertEqual(branch, "")
-           self.assertTrue(paths.has_key("foo"))
-           self.assertEqual(rev, 1)
+           self.assertTrue(rev == 0 or paths.has_key("foo"))
+           self.assertTrue(rev in (0,1))
 
         iter = walker.follow_path("", 2)
         self.assertRaises(NoSuchRevision, list, iter)
@@ -403,6 +403,16 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(("trunk", 1), walker.get_previous("anotherfile", 2))
+
+    def test_get_revision_info_zero(self):
+        repos_url = self.make_client("a", "dc")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        info = walker.get_revision_info(0)
+
+        self.assertEqual("", info[0])
+        self.assertEqual(None, info[1])
 
     def test_get_revision_info(self):
         repos_url = self.make_client("a", "dc")

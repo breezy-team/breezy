@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import RevisionNotPresent, NotBranchError
-from bzrlib.inventory import ROOT_ID
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -147,7 +146,9 @@ class FileIdMap(object):
         todo = []
         next_parent_revs = []
         if revnum == 0:
-            return {}
+            assert branch == ""
+            return {"": (generate_svn_file_id(uuid, revnum, branch, ""), 
+                    self.repos.generate_revision_id(revnum, branch))}
 
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
@@ -164,7 +165,7 @@ class FileIdMap(object):
             return map
 
         if len(next_parent_revs) == 0:
-            if self._log.scheme.is_branch(""):
+            if self.repos.scheme.is_branch(""):
                 map = {"": (generate_svn_file_id(uuid, 0, "", ""), NULL_REVISION)}
             else:
                 map = {}

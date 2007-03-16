@@ -102,8 +102,7 @@ def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     assert isinstance(revnum, int)
     assert isinstance(path, basestring)
     assert revnum >= 0
-    if revnum == 0:
-        return NULL_REVISION
+    assert revnum > 0 or path == ""
     return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
                    escape_svn_path(path.strip("/")), revnum)
 
@@ -264,8 +263,9 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, rev) in self.follow_branch(path, revnum - 1):
-            ancestry.append(self.generate_revision_id(rev, branch))
+        if revnum > 0:
+            for (branch, rev) in self.follow_branch(path, revnum - 1):
+                ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
 
@@ -454,7 +454,7 @@ class SvnRepository(Repository):
             self.get_revision(revision_id))
 
     def follow_history(self, revnum):
-        while revnum > 0:
+        while revnum >= 0:
             yielded_paths = []
             paths = self._log.get_revision_paths(revnum)
             for p in paths:
@@ -476,7 +476,7 @@ class SvnRepository(Repository):
             raise errors.NotSvnBranchPath(branch_path, revnum)
         branch_path = branch_path.strip("/")
 
-        while revnum > 0:
+        while revnum >= 0:
             paths = self._log.get_revision_paths(revnum, branch_path)
             if paths == {}:
                 revnum-=1

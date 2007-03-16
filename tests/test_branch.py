@@ -17,7 +17,6 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 from bzrlib.errors import NoSuchFile
-from bzrlib.inventory import ROOT_ID
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
@@ -28,6 +27,7 @@ import svn.core, svn.client
 
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
+from fileids import generate_svn_file_id
 import format
 from repository import MAPPING_VERSION, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
@@ -37,7 +37,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         branch = Branch.open(repos_url)
         branch.revision_history()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
     def test_set_parent(self):
         repos_url = self.make_client('a', 'dc')
@@ -48,7 +48,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(branch.generate_revision_id(0),
+                         branch.last_revision())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -78,7 +79,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_root_id_empty(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual(ROOT_ID, branch.get_root_id())
+        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 0, "", ""), branch.get_root_id())
 
     def test_get_root_id_trunk(self):
         repos_url = self.make_client('a', 'dc')
@@ -86,7 +87,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "msg")
         branch = Branch.open("svn+"+repos_url+"/trunk")
-        self.assertEqual(ROOT_ID, branch.get_root_id())
+        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 1, "trunk", ""), branch.get_root_id())
 
     def test_break_lock(self):
         repos_url = self.make_client('a', 'dc')
@@ -127,7 +128,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
 
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual([], branch.revision_history())
+        self.assertEqual([branch.generate_revision_id(0)], branch.revision_history())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -136,7 +137,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual([repos.generate_revision_id(1, "")], 
+        self.assertEqual([repos.generate_revision_id(0, ""), 
+                    repos.generate_revision_id(1, "")], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -146,6 +148,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
+            repos.generate_revision_id(0, ""),
             repos.generate_revision_id(1, ""),
             repos.generate_revision_id(2, "")],
             branch.revision_history())

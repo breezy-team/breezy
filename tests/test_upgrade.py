@@ -250,7 +250,8 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message='fix it again', rev_id="anotherrev")
 
         upgrade_branch(b, oldrepos, allow_change=True)
-        self.assertEqual([oldrepos.generate_revision_id(1, ""),
+        self.assertEqual([oldrepos.generate_revision_id(0, ""),
+                          oldrepos.generate_revision_id(1, ""),
                           "customrev-svn%d-upgrade" % MAPPING_VERSION,
                           "anotherrev-svn%d-upgrade" % MAPPING_VERSION
                           ], b.revision_history())
