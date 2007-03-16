@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
@@ -69,8 +69,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=parent_ids)
 
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            self._svn_revprops[2], None) #date
+        if self._svn_revprops[2] is not None:
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(
+                self._svn_revprops[2], None) #date
+        else:
+            rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
 
         rev.committer = self._svn_revprops[0] # author
@@ -82,12 +85,25 @@ class RevisionBuildEditor(svn.delta.Editor):
         return rev
 
     def open_root(self, base_revnum, baton):
-        if self.inventory.revision_id is None:
-            self.dir_baserev[ROOT_ID] = []
+        if self.old_inventory.root is None:
+            # First time the root is set
+            file_id = generate_file_id(self.revid, "")
+            self.dir_baserev[file_id] = []
         else:
-            self.dir_baserev[ROOT_ID] = [self.inventory.revision_id]
-        self.inventory.revision_id = self.revid
-        return ROOT_ID
+            assert self.old_inventory.root.revision is not None
+            if self.id_map.has_key(""):
+                file_id = self.id_map[""]
+            else:
+                file_id = self.old_inventory.root.file_id
+            self.dir_baserev[file_id] = [self.old_inventory.root.revision]
+
+        if self.inventory.root is not None and \
+                file_id == self.inventory.root.file_id:
+            ie = self.inventory.root
+        else:
+            ie = self.inventory.add_path("", 'directory', file_id)
+        ie.revision = self.revid
+        return file_id
 
     def _get_existing_id(self, parent_id, path):
         if self.id_map.has_key(path):
@@ -107,12 +123,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         del self.inventory[self._get_old_id(parent_id, path)]
 
     def close_directory(self, id):
-        if id != ROOT_ID:
-            self.inventory[id].revision = self.revid
+        self.inventory[id].revision = self.revid
 
-            file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
-            if not file_weave.has_version(self.revid):
-                file_weave.add_lines(self.revid, self.dir_baserev[id], [])
+        file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
+        if not file_weave.has_version(self.revid):
+            file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
         path = path.decode("utf-8")
@@ -148,7 +163,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         if name == SVN_PROP_BZR_MERGE:
-            if id != ROOT_ID:
+            if id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
                 return
             
@@ -361,7 +376,7 @@ class InterSvnRepository(InterRepository):
                 parent_revid = parents[revid]
 
                 if parent_revid is None:
-                    parent_inv = Inventory()
+                    parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:

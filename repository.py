@@ -50,6 +50,7 @@ from tree import SvnRevisionTree
 MAPPING_VERSION = 3
 REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
+SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
@@ -101,8 +102,7 @@ def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     assert isinstance(revnum, int)
     assert isinstance(path, basestring)
     assert revnum >= 0
-    if revnum == 0:
-        return NULL_REVISION
+    assert revnum > 0 or path == ""
     return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
                    escape_svn_path(path.strip("/")), revnum)
 
@@ -263,8 +263,9 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, rev) in self.follow_branch(path, revnum - 1):
-            ancestry.append(self.generate_revision_id(rev, branch))
+        if revnum > 0:
+            for (branch, rev) in self.follow_branch(path, revnum - 1):
+                ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
 
@@ -297,7 +298,7 @@ class SvnRepository(Repository):
             revision_id = NULL_REVISION
 
         if revision_id == NULL_REVISION:
-            inventory = Inventory()
+            inventory = Inventory(root_id=None)
             inventory.revision_id = revision_id
             return RevisionTree(self, inventory, revision_id)
 
@@ -382,7 +383,10 @@ class SvnRepository(Repository):
         if rev.committer is None:
             rev.committer = ""
 
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
+        if date is not None:
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
+        else:
+            rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
         rev.properties = bzr_props
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
@@ -453,7 +457,7 @@ class SvnRepository(Repository):
             self.get_revision(revision_id))
 
     def follow_history(self, revnum):
-        while revnum > 0:
+        while revnum >= 0:
             yielded_paths = []
             paths = self._log.get_revision_paths(revnum)
             for p in paths:
@@ -475,7 +479,7 @@ class SvnRepository(Repository):
             raise errors.NotSvnBranchPath(branch_path, revnum)
         branch_path = branch_path.strip("/")
 
-        while revnum > 0:
+        while revnum >= 0:
             paths = self._log.get_revision_paths(revnum, branch_path)
             if paths == {}:
                 revnum-=1

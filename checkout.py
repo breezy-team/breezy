@@ -293,13 +293,9 @@ class SvnWorkingTree(WorkingTree):
             assert isinstance(id, str), "%r is not a string" % id
 
             # First handle directory itself
+            inv.add_path(relpath, 'directory', id, parent_id).revision = revid
             if relpath == "":
-                inv.add_path("", 'directory', ROOT_ID)
                 inv.revision_id = revid
-            else:
-                inventry = InventoryDirectory(id, os.path.basename(relpath), parent_id)
-                inventry.revision = revid
-                inv.add(inventry)
 
             for name in entries:
                 if name == "":

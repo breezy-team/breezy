@@ -17,8 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              ROOT_ID)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.osutils as osutils
@@ -108,11 +107,11 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
         elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
-            if id != ROOT_ID:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
                 return
         elif name == SVN_PROP_BZR_FILEIDS:
-            if id != self.tree.id_map[""][0]:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_FILEIDS)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
@@ -206,7 +205,7 @@ class SvnBasisTree(RevisionTree):
         self._revision_id = workingtree.branch.generate_revision_id(workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, workingtree.branch.branch_path)
-        self._inventory = Inventory()
+        self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, wc):
@@ -245,6 +244,8 @@ class SvnBasisTree(RevisionTree):
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
             ie.revision = revid
+            if relpath == "":
+                self._inventory.revision_id = revid
 
             for name in entries:
                 if name == "":

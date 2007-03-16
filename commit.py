@@ -19,7 +19,7 @@ from svn.core import Pool, SubversionException
 
 from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
                            DivergedBranches)
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder
 from bzrlib.trace import mutter, warning
@@ -88,7 +88,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if old_inv is None:
             if self.branch.last_revision() is None:
-                self.old_inv = Inventory(ROOT_ID)
+                self.old_inv = Inventory(root_id=None)
             else:
                 self.old_inv = self.repository.get_inventory(
                                    self.branch.last_revision())

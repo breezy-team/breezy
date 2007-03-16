@@ -85,6 +85,13 @@ def check_pysqlite_version():
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
 check_bzrlib_version(required_bzr_version)
+
+def check_workingtree_format():
+    try:
+        from bzrlib.workingtree import WorkingTreeFormat4
+    except ImportError:
+        warning('this version of bzr-svn requires WorkingTreeFormat4 to be available to work properly')
+check_workingtree_format()
 check_subversion_version()
 check_pysqlite_version()
 

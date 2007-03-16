@@ -16,7 +16,7 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestSkipped, TestCase
@@ -153,7 +153,7 @@ def sha1(str):
 
 class TestFileIdGenerator(TestCase):
     def test_generate_file_id_root(self):
-        self.assertEqual(ROOT_ID, generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), ""))
+        self.assertEqual("2@uuid:bp:", generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), ""))
 
     def test_generate_file_id_path(self):
         self.assertEqual("2@uuid:bp:mypath", 
@@ -207,7 +207,7 @@ class TestFileMapping(TestCase):
 
     def test_simple_add(self):
         map = self.apply_mappings({generate_svn_revision_id("uuid", 1, ""): {"": ('A', None, None), "foo": ('A', None, None)}})
-        self.assertEqual({'': ('TREE_ROOT', generate_svn_revision_id("uuid", 1, "")),
+        self.assertEqual({'': ('1@uuid::', generate_svn_revision_id("uuid", 1, "")),
             'foo': ("1@uuid::foo", 
                                        generate_svn_revision_id("uuid", 1, ""))
                          }, map)
@@ -270,7 +270,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.repos = Repository.open(self.repos_url)
 
     def test_empty(self):
-        self.assertEqual({"": (ROOT_ID, None)}, 
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 0, "", ""), self.repos.generate_revision_id(0, ""))}, 
                          self.repos.get_fileid_map(0, ""))
 
     def test_empty_trunk(self):
@@ -278,7 +278,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(1, "trunk"))}, self.repos.get_fileid_map(1, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(1, "trunk"))}, self.repos.get_fileid_map(1, "trunk"))
 
     def test_change_parent(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -288,7 +288,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk/file": 'data'})
         self.client_add("dc/trunk/file")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(2, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(2, "trunk"))
 
     def test_change_updates(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -300,7 +300,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_sibling_unrelated(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -313,7 +313,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_copy(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -326,7 +326,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_copy("dc/trunk/file", "dc/trunk/bar")
         self.client_commit("dc", "Msg")
         self.assertEqual({
-            "": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), 
+            "": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), 
             "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_copy_nested_modified(self):
@@ -341,7 +341,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk/bar/file": "data2"})
         self.client_commit("dc", "Msg")
         self.assertEqual({
-          "": (ROOT_ID, 
+          "": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), 
             self.repos.generate_revision_id(3, "trunk")), 
           "dir": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "dir"), 
                 self.repos.generate_revision_id(2, "trunk")),
