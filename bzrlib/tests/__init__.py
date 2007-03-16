@@ -1805,9 +1805,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            if not os.path.exists('_checkouts'):
-                os.mkdir('_checkouts')
-            return b.create_checkout('_checkouts/' + relpath, lightweight=True)
+            return b.create_checkout(relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
