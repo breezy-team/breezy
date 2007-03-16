@@ -411,8 +411,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         info = walker.get_revision_info(0)
 
-        self.assertEqual("", info[0])
+        self.assertEqual(None, info[0])
         self.assertEqual(None, info[1])
+        self.assertEqual(None, info[2])
 
     def test_get_revision_info(self):
         repos_url = self.make_client("a", "dc")

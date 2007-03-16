@@ -208,6 +208,8 @@ class LogWalker(object):
         :returns: Tuple with author, log message and date of the revision.
         """
         assert revnum >= 0
+        if revnum == 0:
+            return (None, None, None)
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()

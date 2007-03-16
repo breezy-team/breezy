@@ -383,7 +383,10 @@ class SvnRepository(Repository):
         if rev.committer is None:
             rev.committer = ""
 
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
+        if date is not None:
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
+        else:
+            rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
         rev.properties = bzr_props
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))

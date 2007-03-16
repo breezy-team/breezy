@@ -69,8 +69,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=parent_ids)
 
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            self._svn_revprops[2], None) #date
+        if self._svn_revprops[2] is not None:
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(
+                self._svn_revprops[2], None) #date
+        else:
+            rev.timestamp = 0 # FIXME: Obtain repository creation time
         rev.timezone = None
 
         rev.committer = self._svn_revprops[0] # author

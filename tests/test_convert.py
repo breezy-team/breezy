@@ -209,7 +209,7 @@ PROPS-END
         branch_path = os.path.join(self.test_dir, "f")
         convert_repository(dumpfile, branch_path, NoBranchingScheme())
         branch = Repository.open(branch_path)
-        self.assertEqual([], branch.all_revision_ids())
+        self.assertEqual(['svn-v3-undefined:6987ef2d-cd6b-461f-9991-6f1abef3bd59::0'], branch.all_revision_ids())
         Branch.open(branch_path)
 
     def test_dumpfile_open_empty_trunk(self):
