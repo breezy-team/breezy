@@ -28,7 +28,7 @@ from bzrlib.transport import get_transport as _get_transport
 
 
 def read_bundle_from_url(url):
-    return read_bundle_or_directive_from_url(url, _do_directive=False)[0]
+    return read_mergeable_from_url(url, _do_directive=False)
 
 def read_mergeable_from_url(url, _do_directive=True):
     """Read mergable object from a given URL.
@@ -68,4 +68,4 @@ def read_mergeable_from_url(url, _do_directive=True):
         raise errors.NotABundle(str(e))
     except errors.NotAMergeDirective:
         f.seek(0)
-        return _serializer.read_bundle(f), None
+        return _serializer.read_bundle(f)

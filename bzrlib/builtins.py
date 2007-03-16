@@ -569,6 +569,7 @@ class cmd_pull(Command):
         from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
         rev_id = None
+        mergeable = None
         if directory is None:
             directory = u'.'
         try:
@@ -2501,6 +2502,7 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
+        other_rev_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2521,7 +2523,6 @@ class cmd_merge(Command):
                 mergeable = bundle.read_mergeable_from_url(
                     branch)
             except errors.NotABundle:
-                other_rev_id = None
                 pass # Continue on considering this url a Branch
             else:
                 if revision is not None:
@@ -2574,7 +2575,8 @@ class cmd_merge(Command):
                 base = [branch, revision[0].in_history(base_branch).revno]
                 other = [branch1, revision[1].in_history(other_branch).revno]
 
-        if tree.branch.get_parent() is None or remember:
+        if ((tree.branch.get_parent() is None or remember) and
+            other_branch is not None):
             tree.branch.set_parent(other_branch.base)
 
         # pull tags now... it's a bit inconsistent to do it ahead of copying

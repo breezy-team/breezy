@@ -50,7 +50,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
         self.tree1.commit('bar', rev_id='bar-id')
         os.chdir('tree1')
-        return tree1, tree2
+        return self.tree1, self.tree2
 
     def test_merge_directive(self):
         self.prepare_merge_directive()
