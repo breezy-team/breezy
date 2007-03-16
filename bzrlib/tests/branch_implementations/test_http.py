@@ -32,7 +32,6 @@ class HTTPBranchTests(TestCaseWithBranch):
 
     def get_parent_and_child(self):
         os.makedirs('parent/path/to')
-        import pdb; pdb.set_trace()
         wt_a = self.make_branch_and_tree('parent/path/to/a')
         self.build_tree(['parent/path/to/a/one'])
         wt_a.add(['one'])
