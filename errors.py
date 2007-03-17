@@ -49,3 +49,8 @@ def convert_svn_error(unbound):
     convert.__doc__ = unbound.__doc__
     convert.__name__ = unbound.__name__
     return convert
+
+
+class NoCheckoutSupport(BzrError):
+
+    _fmt = 'Subversion version too old for working tree support.'

@@ -46,6 +46,8 @@ import urllib
 import svn.core, svn.wc
 from svn.core import SubversionException, Pool
 
+from bzrlib.plugins.svn.errors import NoCheckoutSupport
+
 class WorkingTreeInconsistent(BzrError):
     _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
 
@@ -665,6 +667,9 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
         if isinstance(transport, LocalTransport) and \
             transport.has(svn.wc.get_adm_dir()):
+            subr_version = svn.core.svn_subr_version()
+            if subr_version.major == 1 and subr_version.minor < 4:
+                raise NoCheckoutSupport()
             return format
 
         raise NotBranchError(path=transport.base)
