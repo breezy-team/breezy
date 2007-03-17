@@ -116,11 +116,7 @@ BzrDirFormat.register_control_format(format.SvnFormat)
 import svn.core
 subr_version = svn.core.svn_subr_version()
 
-if subr_version.major == 1 and subr_version.minor < 4:
-    from bzrlib.trace import warning
-    warning('Subversion version too old for working tree support.')
-else:
-    BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
+BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
