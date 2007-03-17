@@ -1643,7 +1643,7 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        utf8_decode = cache_utf8._utf8_decode_with_None
+        utf8_decode_or_none = cache_utf8._utf8_decode_with_None
         _minikind_to_kind = dirstate.DirState._minikind_to_kind
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
@@ -1983,11 +1983,12 @@ class InterDirStateTree(InterTree):
             # TODO: the pending list should be lexically sorted?  the
             # interface doesn't require it.
             current_root = search_specific_files.pop()
+            current_root_unicode = current_root.decode('utf8')
             searched_specific_files.add(current_root)
             # process the entries for this containing directory: the rest will be
             # found by their parents recursively.
             root_entries = _entries_for_path(current_root)
-            root_abspath = self.target.abspath(current_root)
+            root_abspath = self.target.abspath(current_root_unicode)
             try:
                 root_stat = os.lstat(root_abspath)
             except OSError, e:
@@ -2025,18 +2026,30 @@ class InterDirStateTree(InterTree):
                         or result[6][0] != result[6][1] # kind
                         or result[7][0] != result[7][1] # executable
                         ):
-                        result = (result[0],
-                            ((utf8_decode(result[1][0])[0]),
-                             utf8_decode(result[1][1])[0]),) + result[2:]
-                        yield result
-            if want_unversioned and not path_handled:
+                        yield (result[0],
+                               (utf8_decode_or_none(result[1][0]),
+                                utf8_decode_or_none(result[1][1])),
+                               result[2],
+                               result[3],
+                               result[4],
+                               (utf8_decode_or_none(result[5][0]),
+                                utf8_decode_or_none(result[5][1])),
+                               result[6],
+                               result[7],
+                              )
+            if want_unversioned and not path_handled and root_dir_info:
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield (None, (None, current_root), True, (False, False),
-                    (None, None),
-                    (None, splitpath(current_root)[-1]),
-                    (None, root_dir_info[2]), (None, new_executable))
+                yield (None,
+                       (None, current_root_unicode),
+                       True,
+                       (False, False),
+                       (None, None),
+                       (None, splitpath(current_root_unicode)[-1]),
+                       (None, root_dir_info[2]),
+                       (None, new_executable)
+                      )
             initial_key = (current_root, '', '')
             block_index, _ = state._find_block_index_from_key(initial_key)
             if block_index == 0:
@@ -2111,10 +2124,17 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
-                                    result = (result[0],
-                                        ((utf8_decode(result[1][0])[0]),
-                                         utf8_decode(result[1][1])[0]),) + result[2:]
-                                    yield result
+                                    yield (result[0],
+                                           (utf8_decode_or_none(result[1][0]),
+                                            utf8_decode_or_none(result[1][1])),
+                                           result[2],
+                                           result[3],
+                                           result[4],
+                                           (utf8_decode_or_none(result[5][0]),
+                                            utf8_decode_or_none(result[5][1])),
+                                           result[6],
+                                           result[7],
+                                          )
                         block_index +=1
                         if (block_index < len(state._dirblocks) and
                             osutils.is_inside(current_root,
@@ -2161,10 +2181,17 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
-                                result = (result[0],
-                                    ((utf8_decode(result[1][0])[0]),
-                                     utf8_decode(result[1][1])[0]),) + result[2:]
-                                yield result
+                                yield (result[0],
+                                       (utf8_decode_or_none(result[1][0]),
+                                        utf8_decode_or_none(result[1][1])),
+                                       result[2],
+                                       result[3],
+                                       result[4],
+                                       (utf8_decode_or_none(result[5][0]),
+                                        utf8_decode_or_none(result[5][1])),
+                                       result[6],
+                                       result[7],
+                                      )
                     elif current_entry[0][1] != current_path_info[1]:
                         if current_path_info[1] < current_entry[0][1]:
                             # extra file on disk: pass for now, but only
@@ -2186,10 +2213,17 @@ class InterDirStateTree(InterTree):
                                     or result[6][0] != result[6][1] # kind
                                     or result[7][0] != result[7][1] # executable
                                     ):
-                                    result = (result[0],
-                                        ((utf8_decode(result[1][0])[0]),
-                                         utf8_decode(result[1][1])[0]),) + result[2:]
-                                    yield result
+                                    yield (result[0],
+                                           (utf8_decode_or_none(result[1][0]),
+                                            utf8_decode_or_none(result[1][1])),
+                                           result[2],
+                                           result[3],
+                                           result[4],
+                                           (utf8_decode_or_none(result[5][0]),
+                                            utf8_decode_or_none(result[5][1])),
+                                           result[6],
+                                           result[7],
+                                          )
                             advance_path = False
                     else:
                         for result in _process_entry(current_entry, current_path_info):
@@ -2205,10 +2239,17 @@ class InterDirStateTree(InterTree):
                                 or result[6][0] != result[6][1] # kind
                                 or result[7][0] != result[7][1] # executable
                                 ):
-                                result = (result[0],
-                                    ((utf8_decode(result[1][0])[0]),
-                                     utf8_decode(result[1][1])[0]),) + result[2:]
-                                yield result
+                                yield (result[0],
+                                       (utf8_decode_or_none(result[1][0]),
+                                        utf8_decode_or_none(result[1][1])),
+                                       result[2],
+                                       result[3],
+                                       result[4],
+                                       (utf8_decode_or_none(result[5][0]),
+                                        utf8_decode_or_none(result[5][1])),
+                                       result[6],
+                                       result[7],
+                                      )
                     if advance_entry and current_entry is not None:
                         entry_index += 1
                         if entry_index < len(current_block[1]):
@@ -2225,11 +2266,12 @@ class InterDirStateTree(InterTree):
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 if want_unversioned:
-                                    yield (None, (None, current_path_info[0]),
+                                    yield (None,
+                                        (None, utf8_decode_or_none(current_path_info[0])),
                                         True,
                                         (False, False),
                                         (None, None),
-                                        (None, current_path_info[1]),
+                                        (None, utf8_decode_or_none(current_path_info[1])),
                                         (None, current_path_info[2]),
                                         (None, new_executable))
                             # dont descend into this unversioned path if it is
