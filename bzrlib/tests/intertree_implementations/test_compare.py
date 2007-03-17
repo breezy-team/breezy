@@ -1006,10 +1006,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
         a_id = u'\u03b1-id'.encode('utf8')
         added_id = u'\u03c9_added_id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree2/\u03b1/',
-                         u'tree2/\u03b1/\u03c9-added',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/\u03c9-added',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         tree1.add([u'\u03b1'], [a_id])
         tree2.add([u'\u03b1', u'\u03b1/\u03c9-added'], [a_id, added_id])
 
@@ -1031,10 +1034,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
         a_id = u'\u03b1-id'.encode('utf8')
         deleted_id = u'\u03c9_deleted_id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree1/\u03b1/\u03c9-deleted',
-                         u'tree2/\u03b1/',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree1/\u03b1/\u03c9-deleted',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         tree1.add([u'\u03b1', u'\u03b1/\u03c9-deleted'], [a_id, deleted_id])
         tree2.add([u'\u03b1'], [a_id])
 
@@ -1056,11 +1062,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
         a_id = u'\u03b1-id'.encode('utf8')
         mod_id = u'\u03c9_mod_id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree1/\u03b1/\u03c9-modified',
-                         u'tree2/\u03b1/',
-                         u'tree2/\u03b1/\u03c9-modified',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree1/\u03b1/\u03c9-modified',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/\u03c9-modified',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         tree1.add([u'\u03b1', u'\u03b1/\u03c9-modified'], [a_id, mod_id])
         tree2.add([u'\u03b1', u'\u03b1/\u03c9-modified'], [a_id, mod_id])
 
@@ -1082,9 +1091,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
         a_id = u'\u03b1-id'.encode('utf8')
         rename_id = u'\u03c9_rename_id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree2/\u03b1/',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         self.build_tree_contents([(u'tree1/\u03c9-source', 'contents\n'),
                                   (u'tree2/\u03b1/\u03c9-target', 'contents\n'),
                                  ])
@@ -1109,9 +1121,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         a_id = u'\u03b1-id'.encode('utf8')
         subfile_id = u'\u03c9-subfile-id'.encode('utf8')
         rootfile_id = u'\u03c9-root-id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree2/\u03b1/',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         self.build_tree_contents([
             (u'tree1/\u03b1/\u03c9-subfile', 'sub contents\n'),
             (u'tree2/\u03b1/\u03c9-subfile', 'sub contents\n'),
@@ -1153,13 +1168,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
         a_id = u'\u03b1-id'.encode('utf8')
-        self.build_tree([u'tree1/\u03b1/',
-                         u'tree2/\u03b1/',
-                         u'tree2/\u03b1/unknown_dir/',
-                         u'tree2/\u03b1/unknown_file',
-                         u'tree2/\u03b1/unknown_dir/file',
-                         u'tree2/\u03c9-unknown_root_file',
-                        ])
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/unknown_dir/',
+                             u'tree2/\u03b1/unknown_file',
+                             u'tree2/\u03b1/unknown_dir/file',
+                             u'tree2/\u03c9-unknown_root_file',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
         tree1.add([u'\u03b1'], [a_id])
         tree2.add([u'\u03b1'], [a_id])
 
