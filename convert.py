@@ -29,7 +29,7 @@ from bzrlib.repository import Repository
 from bzrlib.trace import info, mutter
 from bzrlib.transport import get_transport
 import bzrlib.urlutils as urlutils
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
@@ -110,7 +110,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
             if all:
                 source_repos.copy_content_into(target_repos)
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             branches = source_repos.find_branches(pb=pb)
             existing_branches = filter(lambda (bp, revnum, exists): exists, 
@@ -118,7 +118,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
         finally:
             pb.finished()
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
                        
         try:
             i = 0

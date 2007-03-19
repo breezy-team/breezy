@@ -20,7 +20,7 @@ import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 from copy import copy
 from cStringIO import StringIO
@@ -363,7 +363,7 @@ class InterSvnRepository(InterRepository):
         transport = self.source.transport
         self.target.lock_write()
         if pb is None:
-            pb = ui_factory.nested_progress_bar()
+            pb = ui.ui_factory.nested_progress_bar()
             nested_pb = pb
         else:
             nested_pb = None

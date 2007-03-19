@@ -18,7 +18,7 @@
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 from repository import (MAPPING_VERSION, parse_svn_revision_id, 
                         unescape_svn_path, generate_svn_revision_id)
@@ -90,7 +90,7 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
     oldinv = repository.get_revision_inventory(oldrevid)
     total = len(oldinv)
-    pb = ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         for path, ie in oldinv.iter_entries():
             pb.update('upgrading revision', i, total)
@@ -188,7 +188,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             for x in graph:
                 if revid in graph[x]:
                     yield x
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         try:
             for revid in graph:
@@ -231,7 +231,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             pb.finished()
 
         # Make sure all the required current version revisions are present
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         try:
             for revid in needed_revs:
@@ -241,7 +241,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         finally:
             pb.finished()
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         total = len(needs_upgrading)
         try:

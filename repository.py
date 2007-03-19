@@ -29,7 +29,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
 
 from svn.core import SubversionException, Pool
 import svn.core

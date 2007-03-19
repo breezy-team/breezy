@@ -29,21 +29,24 @@ except ImportError:
     from warnings import warn as warning
 
 __version__ = '0.4.0'
-required_bzr_version = (0,16)
+compatible_bzr_versions = [(0,15),(0,16)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
 
-    If version is < desired version, assume incompatible.
-    If version == desired version, assume completely compatible
-    If version == desired version + 1, assume compatible, with deprecations
+    If version is < all compatible version, assume incompatible.
+    If version is compatible version + 1, assume compatible, with deprecations
     Otherwise, assume incompatible.
     """
-    desired_plus = (desired[0], desired[1]+1)
     bzrlib_version = bzrlib.version_info[:2]
-    if bzrlib_version == desired:
+    if bzrlib_version in desired:
         return
-    if bzrlib_version < desired:
+    try:
+        from bzrlib.trace import warning
+    except ImportError:
+        # get the message out any way we can
+        from warnings import warn as warning
+    if bzrlib_version < desired[0]:
         warning('Installed bzr version %s is too old to be used with bzr-svn'
                 ' %s.' % (bzrlib.__version__, __version__))
         # Not using BzrNewError, because it may not exist.
@@ -52,7 +55,7 @@ def check_bzrlib_version(desired):
         warning('bzr-svn is not up to date with installed bzr version %s.'
                 ' \nThere should be a newer version of bzr-svn available.' 
                 % (bzrlib.__version__))
-        if bzrlib_version != desired_plus:
+        if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise Exception, 'Version mismatch'
 
 def check_subversion_version():
@@ -85,13 +88,7 @@ def check_pysqlite_version():
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
 check_bzrlib_version(required_bzr_version)
-
-def check_workingtree_format():
-    try:
-        from bzrlib.workingtree import WorkingTreeFormat4
-    except ImportError:
-        warning('this version of bzr-svn requires WorkingTreeFormat4 to be available to work properly')
-check_workingtree_format()
+check_bzrlib_version(compatible_bzr_versions)
 check_subversion_version()
 check_pysqlite_version()
 
