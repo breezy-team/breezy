@@ -32,7 +32,8 @@ import svn.core, svn.ra
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
-                SVN_PROP_BZR_REVPROP_PREFIX, SvnRepositoryFormat)
+                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVPROP_PREFIX, 
+                SvnRepositoryFormat)
 from tree import apply_txdelta_handler
 
 
@@ -169,7 +170,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        else:
+        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
+              name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported file property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
@@ -191,7 +193,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        else:
+        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
+              name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
