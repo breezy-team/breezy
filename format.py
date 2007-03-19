@@ -17,7 +17,6 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
 from bzrlib.lockable_files import TransportLock
-from bzrlib.ui import ui_factory
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 

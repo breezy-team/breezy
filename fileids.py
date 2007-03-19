@@ -19,7 +19,7 @@ from bzrlib.inventory import ROOT_ID
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 import bzrlib.urlutils as urlutils
 from warnings import warn
 
@@ -168,7 +168,7 @@ class FileIdMap(object):
             map = {"": (ROOT_ID, None)} # No history -> empty map
         todo.reverse()
         
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1

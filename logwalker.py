@@ -17,7 +17,7 @@
 from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import DummyProgress
 from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 import os
 
@@ -100,7 +100,7 @@ class LogWalker(object):
         """
         to_revnum = max(self.last_revnum, to_revnum)
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
 
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
