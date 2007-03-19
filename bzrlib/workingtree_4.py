@@ -1985,12 +1985,6 @@ class InterDirStateTree(InterTree):
                 ## import pdb;pdb.set_trace()
             return ()
 
-        not_dir_exceptions = (OSError,)
-        if sys.platform == 'win32':
-            # os.listdir('file') raises WindowsError on win32, rather than
-            # raising an OSError
-            not_dir_exceptions = (OSError, WindowsError)
-
         while search_specific_files:
             # TODO: the pending list should be lexically sorted?  the
             # interface doesn't require it.
@@ -2074,11 +2068,10 @@ class InterDirStateTree(InterTree):
                 dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
                 try:
                     current_dir_info = dir_iterator.next()
-                except not_dir_exceptions, e:
-                    errno = getattr(e, 'errno', None)
-                    winerrno = getattr(e, 'winerror', None)
-                    if (errno in (errno.ENOENT, errno.ENOTDIR)
-                        or winerrno in (ERROR_DIRECTORY,)):
+                except OSError, e:
+                    if (e.errno in (errno.ENOENT, errno.ENOTDIR)
+                        or (sys.platform == 'win32'
+                            and e.errno in (ERROR_DIRECTORY,))):
                         # there may be directories in the inventory even though
                         # this path is not a file on disk: so mark it as end of
                         # iterator
