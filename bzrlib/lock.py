@@ -155,10 +155,10 @@ if have_fcntl:
 
         _open_locks = {}
 
-        def __init__(self, filename, _ignore_write_lock=False):
+        def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
             self.filename = osutils.realpath(filename)
-            if not _ignore_write_lock and self.filename in _fcntl_WriteLock._open_locks:
+            if self.filename in _fcntl_WriteLock._open_locks:
                 raise errors.LockContention(self.filename)
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
