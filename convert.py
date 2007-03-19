@@ -29,7 +29,7 @@ from bzrlib.repository import Repository
 from bzrlib.trace import info, mutter
 from bzrlib.transport import get_transport
 import bzrlib.urlutils as urlutils
-mport bzrlib.ui as ui
+import bzrlib.ui as ui
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
