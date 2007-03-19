@@ -87,7 +87,6 @@ def check_pysqlite_version():
         warning('Needs at least sqlite 3.3.x')
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
-check_bzrlib_version(required_bzr_version)
 check_bzrlib_version(compatible_bzr_versions)
 check_subversion_version()
 check_pysqlite_version()
