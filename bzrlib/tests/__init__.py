@@ -120,6 +120,7 @@ def packages_to_test():
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
+    import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.tree_implementations
@@ -132,6 +133,7 @@ def packages_to_test():
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
+            bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.tree_implementations,
@@ -709,8 +711,13 @@ class TestCase(unittest.TestCase):
         return ''.join(difflines)
 
     def assertEqual(self, a, b, message=''):
-        if a == b:
-            return
+        try:
+            if a == b:
+                return
+        except UnicodeError, e:
+            # If we can't compare without getting a UnicodeError, then
+            # obviously they are different
+            mutter('UnicodeError: %s', e)
         if message:
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"
