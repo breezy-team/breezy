@@ -322,6 +322,52 @@ def show_component_info(control, repository, branch=None, working=None,
     _show_repository_stats(stats)
 
 
+def describe_layout(repository=None, branch=None, tree=None):
+    """Convert a control directory layout into a user-understandable term
+
+    Common outputs include "Standalone tree", "Repository branch" and
+    "Checkout".  Uncommon outputs include "Unshared repository with trees"
+    and "Empty control directory"
+    """
+    if repository is None:
+        return 'Empty control directory'
+    if branch is None and tree is None:
+        if repository.is_shared():
+            phrase = 'Shared repository'
+        else:
+            phrase = 'Unshared repository'
+        if repository.make_working_trees():
+            phrase += ' with trees'
+        return phrase
+    else:
+        if repository.is_shared():
+            independence = "Repository "
+        else:
+            independence = "Standalone "
+        if tree is not None:
+            phrase = "tree"
+        else:
+            phrase = "branch"
+        if branch is None and tree is not None:
+            phrase = "branchless tree"
+        else:
+            if (tree is not None and tree.bzrdir.root_transport.base !=
+                branch.bzrdir.root_transport.base):
+                if independence == 'Standalone ':
+                    independence = ''
+                phrase = "Lightweight checkout"
+            elif branch.get_bound_location() is not None:
+                if independence == 'Standalone ':
+                    independence = ''
+                if tree is None:
+                    phrase = "Bound branch"
+                else:
+                    phrase = "Checkout"
+        if independence != "":
+            phrase = phrase.lower()
+        return "%s%s" % (independence, phrase)
+
+
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
