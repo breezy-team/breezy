@@ -51,6 +51,9 @@ IN DEVELOPMENT
 
     * Restore Unicode filename handling for versioned and unversioned files.
       (John Arbash Meinel, #92608)
+
+    * Don't fail during ``bzr commit`` if a file is marked removed, and
+      the containing directory is auto-removed.  (John Arbash Meinel, #93681)
  
 bzr 0.15rc1  2007-03-07
 
