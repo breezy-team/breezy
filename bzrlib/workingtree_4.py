@@ -1163,8 +1163,10 @@ class WorkingTree4(WorkingTree3):
                 entry_index = 0
                 while entry_index < len(block[1]):
                     # Mark this file id as having been removed
-                    ids_to_unversion.discard(block[1][entry_index][0][2])
-                    if not state._make_absent(block[1][entry_index]):
+                    entry = block[1][entry_index]
+                    ids_to_unversion.discard(entry[0][2])
+                    if (entry[1][0][0] == 'a'
+                        or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
                 # dirblocks)
