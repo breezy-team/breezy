@@ -50,7 +50,7 @@ class TestInfo(ExternalBase):
         branch1 = tree1.branch
         out, err = self.runbzr('info standalone')
         self.assertEqualDiff(
-"""Standalone tree
+"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -87,7 +87,7 @@ Revision store:
         branch2.set_push_location(branch1.bzrdir.root_transport.base)
         out, err = self.runbzr('info branch --verbose')
         self.assertEqualDiff(
-"""Standalone tree
+"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -142,7 +142,7 @@ Revision store:
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: knit)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -196,7 +196,7 @@ Revision store:
         branch4.bzrdir.open_workingtree().update()
         out, err = self.runbzr('info checkout --verbose')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: knit)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -243,7 +243,7 @@ Revision store:
         branch5 = tree5.branch
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout
+"""Lightweight checkout (format: dirstate / dirstate-tags)
 Location:
  light checkout root: %s
   checkout of branch: %s
@@ -289,7 +289,7 @@ Revision store:
         # Out of date branched standalone branch will not be detected
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
-"""Standalone tree
+"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -332,7 +332,7 @@ Revision store:
         # Out of date bound branch
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: knit)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -382,7 +382,7 @@ Revision store:
         # Out of date checkout
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: knit)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -428,7 +428,7 @@ Revision store:
         # Out of date lightweight checkout
         out, err = self.runbzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout
+"""Lightweight checkout (format: dirstate / dirstate-tags)
 Location:
  light checkout root: %s
   checkout of branch: %s
@@ -474,7 +474,7 @@ Revision store:
         repo = branch.repository
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
-"""Standalone branch
+"""Standalone branch (format: dirstate / knit)
 Location:
   branch root: %s
 
@@ -504,7 +504,7 @@ Revision store:
         repo.set_make_working_trees(False)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Shared repository
+"""Shared repository (format: dirstate / dirstate-tags / knit)
 Location:
   shared repository: %s
 
@@ -526,7 +526,7 @@ Revision store:
             format=format)
         out, err = self.runbzr('info repo/branch')
         self.assertEqualDiff(
-"""Repository branch
+"""Repository branch (format: dirstate / knit)
 Location:
   shared repository: %s
   repository branch: branch
@@ -570,7 +570,7 @@ Revision store:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout
+"""Lightweight checkout (format: dirstate / dirstate-tags)
 Location:
  light checkout root: %s
    shared repository: %s
@@ -616,7 +616,7 @@ Revision store:
         # Out of date checkout
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: dirstate)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -658,7 +658,7 @@ Revision store:
         tree3.add('b')
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
-"""Checkout
+"""Checkout (format: dirstate)
 Location:
        checkout root: %s
   checkout of branch: %s
@@ -705,7 +705,7 @@ Revision store:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout
+"""Lightweight checkout (format: dirstate / dirstate-tags)
 Location:
  light checkout root: %s
    shared repository: %s
@@ -753,7 +753,7 @@ Revision store:
         # Show info about shared branch
         out, err = self.runbzr('info repo/branch --verbose')
         self.assertEqualDiff(
-"""Repository branch
+"""Repository branch (format: dirstate / knit)
 Location:
   shared repository: %s
   repository branch: branch
@@ -786,7 +786,7 @@ Revision store:
         # Show info about repository with revisions
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Shared repository
+"""Shared repository (format: dirstate / dirstate-tags / knit)
 Location:
   shared repository: %s
 
@@ -814,7 +814,7 @@ Revision store:
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Shared repository with trees
+"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
 Location:
   shared repository: %s
 
@@ -841,7 +841,7 @@ Revision store:
         # Empty first branch
         out, err = self.runbzr('info repo/branch1 --verbose')
         self.assertEqualDiff(
-"""Repository tree
+"""Repository tree (format: knit)
 Location:
     shared repository: %s
   repository checkout: branch1
@@ -884,7 +884,7 @@ Revision store:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
-"""Repository tree
+"""Repository tree (format: knit)
 Location:
     shared repository: %s
   repository checkout: branch1
@@ -927,7 +927,7 @@ Revision store:
         # Out of date second branch
         out, err = self.runbzr('info repo/branch2 --verbose')
         self.assertEqualDiff(
-"""Repository tree
+"""Repository tree (format: knit)
 Location:
     shared repository: %s
   repository checkout: branch2
@@ -973,7 +973,7 @@ Revision store:
         tree2.pull(branch1)
         out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
-"""Repository tree
+"""Repository tree (format: knit)
 Location:
     shared repository: %s
   repository checkout: branch2
@@ -1020,7 +1020,7 @@ Revision store:
         # Show info about repository with revisions
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Shared repository with trees
+"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
 Location:
   shared repository: %s
 
@@ -1051,7 +1051,7 @@ Revision store:
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Shared repository with trees
+"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
 Location:
   shared repository: %s
 
@@ -1075,7 +1075,7 @@ Revision store:
         control.create_workingtree()
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
-"""Repository tree
+"""Repository tree (format: knit)
 Location:
     shared repository: %s
   repository checkout: .
@@ -1141,6 +1141,8 @@ Revision store:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
+        format = {True: 'dirstate / dirstate-tags',
+                  False: 'dirstate'}[light_checkout]
         if repo_locked or branch_locked or tree_locked:
             def locked_message(a_bool):
                 if a_bool:
@@ -1183,7 +1185,7 @@ Revision store:
             verbose_info = ''
             
         self.assertEqualDiff(
-"""%s
+"""%s (format: %s)
 Location:
 %s
 %s
@@ -1210,6 +1212,7 @@ Revision store:
          0 revisions
          0 KiB
 """ %  (description,
+        format,
         tree_data,
         branch_data,
         lco_tree._format.get_format_description(),
@@ -1335,7 +1338,7 @@ Revision store:
         # U U U
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
-"""Standalone tree
+"""Standalone tree (format: weave)
 Location:
   branch root: %s
 
@@ -1369,7 +1372,7 @@ Revision store:
         tree.lock_write()
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
-"""Standalone tree
+"""Standalone tree (format: weave)
 Location:
   branch root: %s
 

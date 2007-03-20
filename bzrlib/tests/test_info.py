@@ -59,15 +59,31 @@ class TestInfo(tests.TestCaseWithTransport):
                                  checkout))
 
     def assertTreeDescription(self, format):
-        tree = self.make_branch_and_tree('%s_tree' % format, format=format)
+        self.make_branch_and_tree('%s_tree' % format, format=format)
         tree = workingtree.WorkingTree.open('%s_tree' % format)
         self.assertEqual(format, info.describe_format(tree.bzrdir,
             tree.branch.repository, tree.branch, tree))
 
+    def assertCheckoutDescription(self, format, expected=None):
+        if expected is None:
+            expected = format
+        branch = self.make_branch('%s_cobranch' % format, format=format)
+        # this ought to be easier...
+        branch.create_checkout('%s_co' % format,
+            lightweight=True).bzrdir.destroy_workingtree()
+        control = bzrdir.BzrDir.open('%s_co' % format)
+        control._format.workingtree_format = \
+            bzrdir.format_registry.make_bzrdir(format).workingtree_format
+        control.create_workingtree()
+        tree = workingtree.WorkingTree.open('%s_co' % format)
+        self.assertEqual(expected, info.describe_format(tree.bzrdir,
+            tree.branch.repository, tree.branch, tree))
+
+
     def assertBranchDescription(self, format, expected=None):
         if expected is None:
             expected = format
-        branch = self.make_branch('%s_branch' % format, format=format)
+        self.make_branch('%s_branch' % format, format=format)
         branch = _mod_branch.Branch.open('%s_branch' % format)
         self.assertEqual(expected, info.describe_format(branch.bzrdir,
             branch.repository, branch, None))
@@ -75,7 +91,7 @@ class TestInfo(tests.TestCaseWithTransport):
     def assertRepoDescription(self, format, expected=None):
         if expected is None:
             expected = format
-        repo = self.make_repository('%s_repo' % format, format=format)
+        self.make_repository('%s_repo' % format, format=format)
         repo = _mod_repository.Repository.open('%s_repo' % format)
         self.assertEqual(expected, info.describe_format(repo.bzrdir,
             repo, None, None))
@@ -85,6 +101,16 @@ class TestInfo(tests.TestCaseWithTransport):
             if key == 'default':
                 continue
             self.assertTreeDescription(key)
+
+        for key in bzrdir.format_registry.keys():
+            if key in ('default', 'weave'):
+                continue
+            expected = None
+            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
+                expected = 'dirstate / dirstate-tags'
+            if key in ('knit', 'metaweave'):
+                expected = 'knit / metaweave'
+            self.assertCheckoutDescription(key, expected)
 
         for key in bzrdir.format_registry.keys():
             if key == 'default':

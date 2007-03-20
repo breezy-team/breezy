@@ -302,7 +302,9 @@ def show_component_info(control, repository, branch=None, working=None,
     verbose=1):
     """Write info about all bzrdir components to stdout"""
     verbose = {False: 1, True: 2}.get(verbose, verbose)
-    print describe_layout(repository, branch, working)
+    layout = describe_layout(repository, branch, working)
+    format = describe_format(control, repository, branch, working)
+    print "%s (format: %s)" % (layout, format)
     _show_location_info(repository, branch, working)
     if branch is not None:
         _show_related_info(branch)
@@ -378,6 +380,11 @@ def describe_format(control, repository, branch, tree):
     If no matching candidate is found, "unnamed" is returned.
     """
     candidates  = []
+    if (branch is not None and tree is not None and
+        branch.bzrdir.root_transport.base !=
+        tree.bzrdir.root_transport.base):
+        branch = None
+        repository = None
     for key in bzrdir.format_registry.keys():
         format = bzrdir.format_registry.make_bzrdir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
@@ -396,6 +403,10 @@ def describe_format(control, repository, branch, tree):
     if len(candidates) == 0:
         return 'unnamed'
     new_candidates = [c for c in candidates if c != 'default']
+    if len(new_candidates) > 0:
+        candidates = new_candidates
+    new_candidates = [c for c in candidates if not
+        bzrdir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
         candidates = new_candidates
     return ' / '.join(candidates)
