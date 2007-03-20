@@ -52,6 +52,9 @@ IN DEVELOPMENT
     * Restore Unicode filename handling for versioned and unversioned files.
       (John Arbash Meinel, #92608)
 
+    * Don't fail during ``bzr commit`` if a file is marked removed, and
+      the containing directory is auto-removed.  (John Arbash Meinel, #93681)
+
     * ``bzr status FILENAME`` failed on Windows because of an uncommon
       errno. (``ERROR_DIRECTORY == 267 != ENOTDIR``).
       (Wouter van Heyst, John Arbash Meinel, #90819)
