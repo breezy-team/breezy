@@ -27,6 +27,10 @@ IN DEVELOPMENT
     * Refactored SSH vendor registration into SSHVendorManager class.
       (Dmitry Vasiliev)
 
+    * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
+      lock to an OS write lock. Linux can do this without unlocking, Win32
+      needs to unlock in between. (John Arbash Meinel)
+
   BUGFIXES:
 
     * New ``--numbered-dirs`` option to ``bzr selftest`` to use
