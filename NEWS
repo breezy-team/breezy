@@ -54,6 +54,10 @@ IN DEVELOPMENT
 
     * Don't fail during ``bzr commit`` if a file is marked removed, and
       the containing directory is auto-removed.  (John Arbash Meinel, #93681)
+
+    * ``bzr status FILENAME`` failed on Windows because of an uncommon
+      errno. (``ERROR_DIRECTORY == 267 != ENOTDIR``).
+      (Wouter van Heyst, John Arbash Meinel, #90819)
  
 bzr 0.15rc1  2007-03-07
 
