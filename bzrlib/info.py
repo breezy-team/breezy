@@ -301,6 +301,7 @@ def show_component_info(control, repository, branch=None, working=None,
     verbose=1):
     """Write info about all bzrdir components to stdout"""
     verbose = {False: 1, True: 2}.get(verbose, verbose)
+    print describe_layout(repository, branch, working)
     _show_location_info(repository, branch, working)
     if branch is not None:
         _show_related_info(branch)
