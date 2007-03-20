@@ -28,7 +28,7 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight)
+        zero_eight, zero_sixteen)
 
 
 def plural(n, base='', pl=None):
@@ -264,89 +264,89 @@ def _show_repository_stats(stats):
         print '  %8d KiB' % (stats['size']/1024)
 
 
+def show_bzrdir_info(a_bzrdir, verbose=False):
+    """Output to stdout the 'info' for a_bzrdir."""
+    try:
+        tree = a_bzrdir.open_workingtree()
+    except (NoWorkingTree, NotLocalUrl):
+        tree = None
+        try:
+            branch = a_bzrdir.open_branch()
+        except NotBranchError:
+            branch = None
+            try:
+                repository = a_bzrdir.open_repository()
+            except NoRepositoryPresent:
+                # Return silently; cmd_info already returned NotBranchError
+                # if no bzrdir could be opened.
+                return
+            else:
+                lockable = repository
+        else:
+            repository = branch.repository
+            lockable = branch
+    else:
+        branch = tree.branch
+        repository = branch.repository
+        lockable = tree
+
+    lockable.lock_read()
+    try:
+        show_component_info(a_bzrdir, repository, branch, tree, verbose)
+    finally:
+        lockable.unlock()
+
+
+def show_component_info(control, repository, branch=None, working=None,
+    verbose=1):
+    """Write info about all bzrdir components to stdout"""
+    verbose = {False: 1, True: 2}.get(verbose, verbose)
+    _show_location_info(repository, branch, working)
+    if branch is not None:
+        _show_related_info(branch)
+    _show_format_info(control, repository, branch, working)
+    _show_locking_info(repository, branch, working)
+    if branch is not None:
+        _show_missing_revisions_branch(branch)
+    if working is not None:
+        _show_missing_revisions_working(working)
+        _show_working_stats(working)
+    elif branch is not None:
+        _show_missing_revisions_branch(branch)
+    if branch is not None:
+        stats = _show_branch_stats(branch, verbose==2)
+    else:
+        stats = repository.gather_stats()
+    if branch is None and working is None:
+        _show_repository_info(repository)
+    _show_repository_stats(stats)
+
+
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
     return show_bzrdir_info(b.bzrdir)
 
 
-def show_bzrdir_info(a_bzrdir, verbose=False):
-    """Output to stdout the 'info' for a_bzrdir."""
-    try:
-        working = a_bzrdir.open_workingtree()
-        working.lock_read()
-        try:
-            show_tree_info(working, verbose)
-        finally:
-            working.unlock()
-        return
-    except (NoWorkingTree, NotLocalUrl):
-        pass
-
-    try:
-        branch = a_bzrdir.open_branch()
-        branch.lock_read()
-        try:
-            show_branch_info(branch, verbose)
-        finally:
-            branch.unlock()
-        return
-    except NotBranchError:
-        pass
-
-    try:
-        repository = a_bzrdir.open_repository()
-        repository.lock_read()
-        try:
-            show_repository_info(repository, verbose)
-        finally:
-            repository.unlock()
-        return
-    except NoRepositoryPresent:
-        pass
-
-    # Return silently, cmd_info already returned NotBranchError if no bzrdir
-    # could be opened.
-
-
+@deprecated_function(zero_sixteen)
 def show_tree_info(working, verbose):
     """Output to stdout the 'info' for working."""
     branch = working.branch
     repository = branch.repository
     control = working.bzrdir
-
-    _show_location_info(repository, branch, working)
-    _show_related_info(branch)
-    _show_format_info(control, repository, branch, working)
-    _show_locking_info(repository, branch, working)
-    _show_missing_revisions_branch(branch)
-    _show_missing_revisions_working(working)
-    _show_working_stats(working)
-    stats = _show_branch_stats(branch, verbose)
-    _show_repository_stats(stats)
+    show_component_info(control, repository, branch, working, verbose)
 
 
+@deprecated_function(zero_sixteen)
 def show_branch_info(branch, verbose):
     """Output to stdout the 'info' for branch."""
     repository = branch.repository
     control = branch.bzrdir
-
-    _show_location_info(repository, branch)
-    _show_related_info(branch)
-    _show_format_info(control, repository, branch)
-    _show_locking_info(repository, branch)
-    _show_missing_revisions_branch(branch)
-    stats = _show_branch_stats(branch, verbose)
-    _show_repository_stats(stats)
+    show_component_info(control, repository, branch, verbose=verbose)
 
 
+@deprecated_function(zero_sixteen)
 def show_repository_info(repository, verbose):
     """Output to stdout the 'info' for repository."""
     control = repository.bzrdir
-
-    _show_location_info(repository)
-    _show_format_info(control, repository)
-    _show_locking_info(repository)
-    _show_repository_info(repository)
-    stats = repository.gather_stats()
-    _show_repository_stats(stats)
+    show_component_info(control, repository, verbose=verbose)
