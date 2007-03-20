@@ -20,6 +20,7 @@ import time
 
 
 from bzrlib import (
+    bzrdir,
     diff,
     osutils,
     urlutils,
@@ -367,6 +368,37 @@ def describe_layout(repository=None, branch=None, tree=None):
             phrase = phrase.lower()
         return "%s%s" % (independence, phrase)
 
+
+def describe_format(control, repository, branch, tree):
+    """Determine the format of an existing control directory
+
+    Several candidates may be found.  If so, the names are returned as a
+    single string, separated by slashes.
+
+    If no matching candidate is found, "unnamed" is returned.
+    """
+    candidates  = []
+    for key in bzrdir.format_registry.keys():
+        format = bzrdir.format_registry.make_bzrdir(key)
+        if isinstance(format, bzrdir.BzrDirMetaFormat1):
+            if (tree and format.workingtree_format !=
+                tree._format):
+                continue
+            if (branch and format.get_branch_format() !=
+                branch._format):
+                continue
+            if (repository and format.repository_format !=
+                repository._format):
+                continue
+        if format.__class__ is not control._format.__class__:
+            continue
+        candidates.append(key)
+    if len(candidates) == 0:
+        return 'unnamed'
+    new_candidates = [c for c in candidates if c != 'default']
+    if len(new_candidates) > 0:
+        candidates = new_candidates
+    return ' / '.join(candidates)
 
 @deprecated_function(zero_eight)
 def show_info(b):
