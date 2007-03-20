@@ -19,7 +19,7 @@ pyflakes-nounused:
 	pyflakes bzrlib | grep -v ' imported but unused'
 
 clean:
-	./setup.py clean
+	python setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp
 
