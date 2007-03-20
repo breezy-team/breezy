@@ -199,12 +199,12 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertFalse(wt.has_filename('d'))
         wt.unlock()
 
-    def test_commit_deleted_subtree_with_rename(self):
+    def test_commit_deleted_subtree_with_removed(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         wt.commit('first')
-        wt.rename_one('b/c', 'b/d')
+        wt.remove('b/c')
         this_dir = self.get_transport()
         this_dir.delete_tree('b')
         wt.lock_write()
@@ -215,7 +215,6 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
-        self.assertFalse(wt.has_filename('b/d'))
         wt.unlock()
 
     def test_commit_move_new(self):
