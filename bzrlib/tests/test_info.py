@@ -51,6 +51,6 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual('Repository checkout',
             info.describe_layout(tree.branch.repository, tree.branch, tree))
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
-        self.assertEqual('Repository lightweight checkout',
+        self.assertEqual('Lightweight checkout',
             info.describe_layout(checkout.branch.repository, checkout.branch,
                                  checkout))

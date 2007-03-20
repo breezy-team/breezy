@@ -354,8 +354,7 @@ def describe_layout(repository=None, branch=None, tree=None):
         else:
             if (tree is not None and tree.bzrdir.root_transport.base !=
                 branch.bzrdir.root_transport.base):
-                if independence == 'Standalone ':
-                    independence = ''
+                independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
                 if independence == 'Standalone ':

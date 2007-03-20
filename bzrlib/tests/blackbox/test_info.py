@@ -570,7 +570,7 @@ Revision store:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Repository lightweight checkout
+"""Lightweight checkout
 Location:
  light checkout root: %s
    shared repository: %s
@@ -705,7 +705,7 @@ Revision store:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Repository lightweight checkout
+"""Lightweight checkout
 Location:
  light checkout root: %s
    shared repository: %s
@@ -1136,7 +1136,7 @@ Revision store:
         """
         out, err = self.runbzr('info %s' % command_string)
         description = {
-            (True, True): 'Repository lightweight checkout',
+            (True, True): 'Lightweight checkout',
             (True, False): 'Repository checkout',
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
