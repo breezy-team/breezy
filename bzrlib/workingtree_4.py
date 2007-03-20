@@ -96,6 +96,12 @@ from bzrlib.tree import Tree
 from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 
 
+# This is the Windows equivalent of ENOTDIR
+# It is defined in pywin32.winerror, but we don't want a strong dependency for
+# just an error code.
+ERROR_DIRECTORY = 267
+
+
 class WorkingTree4(WorkingTree3):
     """This is the Format 4 working tree.
 
@@ -2063,10 +2069,17 @@ class InterDirStateTree(InterTree):
                 try:
                     current_dir_info = dir_iterator.next()
                 except OSError, e:
-                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                        # there may be directories in the inventory even though
-                        # this path is not a file on disk: so mark it as end of
-                        # iterator
+                    # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
+                    # python 2.5 has e.errno == EINVAL,
+                    #            and e.winerror == ERROR_DIRECTORY
+                    e_winerror = getattr(e, 'winerror', None)
+                    # there may be directories in the inventory even though
+                    # this path is not a file on disk: so mark it as end of
+                    # iterator
+                    if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+                        current_dir_info = None
+                    elif (sys.platform == 'win32'
+                          and ERROR_DIRECTORY in (e.errno, e_winerror)):
                         current_dir_info = None
                     else:
                         raise
