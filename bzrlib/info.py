@@ -301,11 +301,16 @@ def show_bzrdir_info(a_bzrdir, verbose=False):
 def show_component_info(control, repository, branch=None, working=None,
     verbose=1):
     """Write info about all bzrdir components to stdout"""
-    verbose = {False: 1, True: 2}.get(verbose, verbose)
+    if verbose is False:
+        verbose = 1
+    if verbose is True:
+        verbose = 2
     layout = describe_layout(repository, branch, working)
     format = describe_format(control, repository, branch, working)
     print "%s (format: %s)" % (layout, format)
     _show_location_info(repository, branch, working)
+    if verbose == 0:
+        return
     if branch is not None:
         _show_related_info(branch)
     _show_format_info(control, repository, branch, working)
