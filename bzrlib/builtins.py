@@ -2728,7 +2728,6 @@ class cmd_revert(Command):
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
-    aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
         if file_list is not None:
@@ -3410,7 +3409,7 @@ class cmd_merge_directive(Command):
             server = branch.get_config().get_user_option('smtp_server')
             if not server:
                 server = 'localhost'
-            s.connect()
+            s.connect(server)
             s.sendmail(message['From'], message['To'], message.as_string())
 
 
