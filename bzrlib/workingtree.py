@@ -280,7 +280,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # This will be acquired on lock_read() or lock_write()
             self._inventory_is_modified = False
             self._inventory = None
-            self._inventory_fp = None
         else:
             # the caller of __init__ has provided an inventory,
             # we assume they know what they are doing - as its only
