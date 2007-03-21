@@ -750,7 +750,7 @@ class LockContention(LockError):
     # bits?
 
     internal_error = False
-    
+
     def __init__(self, lock):
         self.lock = lock
 
