@@ -88,6 +88,12 @@ class Merge3(object):
                     reprocess=False):
         """Return merge in cvs-like form.
         """
+        newline = '\n'
+        if len(self.a) > 0:
+            if self.a[0].endswith('\r\n'):
+                newline = '\r\n'
+            elif self.a[0].endswith('\r'):
+                newline = '\r'
         if base_marker and reprocess:
             raise CantReprocessAndShowBase()
         if name_a:
@@ -111,17 +117,17 @@ class Merge3(object):
                 for i in range(t[1], t[2]):
                     yield self.b[i]
             elif what == 'conflict':
-                yield start_marker + '\n'
+                yield start_marker + newline
                 for i in range(t[3], t[4]):
                     yield self.a[i]
                 if base_marker is not None:
-                    yield base_marker + '\n'
+                    yield base_marker + newline
                     for i in range(t[1], t[2]):
                         yield self.base[i]
-                yield mid_marker + '\n'
+                yield mid_marker + newline
                 for i in range(t[5], t[6]):
                     yield self.b[i]
-                yield end_marker + '\n'
+                yield end_marker + newline
             else:
                 raise ValueError(what)
         

@@ -37,3 +37,13 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.assertEqual('subtree-revision',
             tree.inventory['subtree-id'].reference_revision)
+
+    def test_extract_while_locked(self):
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            return
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['subtree/'])
+        tree.add(['subtree'], ['subtree-id'])
+        subtree = tree.extract('subtree-id')

@@ -17,6 +17,8 @@
 
 """Tests for the WorkingTree.merge_from_branch api."""
 
+import os
+
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -49,3 +51,18 @@ class TestMergeFromBranch(TestCaseWithWorkingTree):
             to_revision=self.second_rev)
         self.assertEqual([self.to_second_rev, self.second_rev],
             self.tree_to.get_parent_ids())
+
+    def test_compare_after_merge(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'text-a')])
+        tree_a.add('file')
+        tree_a.commit('added file')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        os.unlink('tree_a/file')
+        tree_a.commit('deleted file')
+        self.build_tree_contents([('tree_b/file', 'text-b')])
+        tree_b.commit('changed file')
+        tree_a.merge_from_branch(tree_b.branch)
+        tree_a.lock_read()
+        self.addCleanup(tree_a.unlock)
+        list(tree_a._iter_changes(tree_a.basis_tree()))

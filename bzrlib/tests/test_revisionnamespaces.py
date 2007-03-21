@@ -67,11 +67,11 @@ class TestRevisionSpec(TestCaseWithTransport):
     def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
         rev_info = self.get_in_history(revision_spec)
         self.assertEqual(exp_revno, rev_info.revno,
-                         'Revision spec: %s returned wrong revno: %s != %s'
+                         'Revision spec: %r returned wrong revno: %r != %r'
                          % (revision_spec, exp_revno, rev_info.revno))
         self.assertEqual(exp_revision_id, rev_info.rev_id,
-                         'Revision spec: %s returned wrong revision id:'
-                         ' %s != %s'
+                         'Revision spec: %r returned wrong revision id:'
+                         ' %r != %r'
                          % (revision_spec, exp_revision_id, rev_info.rev_id))
 
     def assertInvalid(self, revision_spec, extra=''):
@@ -277,6 +277,13 @@ class TestRevisionSpec_revid(TestRevisionSpec):
                                           revision_id='alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
 
+    def test_unicode(self):
+        """We correctly convert a unicode ui string to an encoded revid."""
+        revision_id = u'\N{SNOWMAN}'.encode('utf-8')
+        self.tree.commit('unicode', rev_id=revision_id)
+        self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
+        self.assertInHistoryIs(3, revision_id, 'revid:' + revision_id)
+
 
 class TestRevisionSpec_last(TestRevisionSpec):
 
@@ -477,3 +484,19 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
+
+
+class TestRevisionSpec_submit(TestRevisionSpec):
+
+    def test_submit_branch(self):
+        # Common ancestor of trees is 'alt_r2'
+        self.assertRaises(errors.NoSubmitBranch, self.get_in_history,
+                          'submit:')
+        self.tree.branch.set_parent('../tree2')
+        self.assertInHistoryIs(None, 'alt_r2', 'submit:')
+        self.tree.branch.set_parent('bogus')
+        self.assertRaises(errors.NotBranchError, self.get_in_history,
+            'submit:')
+        # submit branch overrides parent branch
+        self.tree.branch.set_submit_branch('tree2')
+        self.assertInHistoryIs(None, 'alt_r2', 'submit:')

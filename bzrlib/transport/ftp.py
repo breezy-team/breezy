@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -161,6 +161,7 @@ class FtpTransport(Transport):
         if ('no such file' in s
             or 'could not open' in s
             or 'no such dir' in s
+            or 'could not create file' in s # vsftpd
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):

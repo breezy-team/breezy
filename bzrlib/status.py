@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,8 @@ def show_tree_status(wt, show_unchanged=None,
                      to_file=None,
                      show_pending=True,
                      revision=None,
-                     short=False):
+                     short=False,
+                     versioned=False):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision. 
@@ -106,7 +107,8 @@ def show_tree_status(wt, show_unchanged=None,
         If not None it must be a RevisionSpec list.
         If one revision show compared it with working tree.
         If two revisions show status between first and second.
-    :param short: If True, gives short SVN-style status lines
+    :param short: If True, gives short SVN-style status lines.
+    :param versioned: If True, only shows versioned files.
     """
     if show_unchanged is not None:
         warn("show_status_trees with show_unchanged has been deprecated "
@@ -142,16 +144,17 @@ def show_tree_status(wt, show_unchanged=None,
         new.lock_read()
         try:
             _raise_if_nonexistent(specific_files, old, new)
+            want_unversioned = not versioned
             if short:
                 changes = new._iter_changes(old, show_unchanged, specific_files,
-                    require_versioned=False, want_unversioned=True)
-                reporter = _mod_delta.ChangeReporter(output_file=to_file,
+                    require_versioned=False, want_unversioned=want_unversioned)
+                reporter = _mod_delta._ChangeReporter(output_file=to_file,
                     unversioned_filter=new.is_ignored)
                 _mod_delta.report_changes(changes, reporter)
             else:
                 delta = new.changes_from(old, want_unchanged=show_unchanged,
                                       specific_files=specific_files,
-                                      want_unversioned=True)
+                                      want_unversioned=want_unversioned)
                 # filter out unknown files. We may want a tree method for
                 # this
                 delta.unversioned = [unversioned for unversioned in
