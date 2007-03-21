@@ -131,6 +131,7 @@ class TestMergeDirective(tests.TestCase):
             patch='booga', patch_type='diff')
         md2 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual('example:', md2.revision_id)
+        self.assertIsInstance(md2.revision_id, str)
         self.assertEqual('sha', md2.testament_sha1)
         self.assertEqual('http://example.com', md2.target_branch)
         self.assertEqual('http://example.org', md2.source_branch)
@@ -147,6 +148,10 @@ class TestMergeDirective(tests.TestCase):
         self.assertContainsRe(md3.to_lines()[0],
             '^# Bazaar merge directive format ')
         self.assertEqual("Hi mom!", md3.message)
+        md3.patch_type = None
+        md3.patch = None
+        md4 = merge_directive.MergeDirective.from_lines(md3.to_lines())
+        self.assertIs(None, md4.patch_type)
 
 
 EMAIL1 = """To: pqm@example.com

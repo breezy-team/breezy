@@ -18,7 +18,10 @@
 import os
 import shutil
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import PointlessCommit, BzrError
 from bzrlib.tests.test_revision import make_branches
