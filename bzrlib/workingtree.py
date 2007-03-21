@@ -208,41 +208,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                  _internal=False,
                  _format=None,
                  _bzrdir=None):
-        """Construct a WorkingTree for basedir.
+        """Construct a WorkingTree instance. This is not a public API.
 
-        If the branch is not supplied, it is opened automatically.
-        If the branch is supplied, it must be the branch for this basedir.
-        (branch.base is not cross checked, because for remote branches that
-        would be meaningless).
+        :param branch: A branch to override probing for the branch.
         """
         self._format = _format
         self.bzrdir = _bzrdir
         if not _internal:
-            # not created via open etc.
-            warnings.warn("WorkingTree() is deprecated as of bzr version 0.8. "
-                 "Please use bzrdir.open_workingtree or WorkingTree.open().",
-                 DeprecationWarning,
-                 stacklevel=2)
-            wt = WorkingTree.open(basedir)
-            self._branch = wt.branch
-            self.basedir = wt.basedir
-            self._control_files = wt._control_files
-            self._hashcache = wt._hashcache
-            self._set_inventory(wt._inventory, dirty=False)
-            self._format = wt._format
-            self.bzrdir = wt.bzrdir
+            raise errors.BzrError("Please use bzrdir.open_workingtree or "
+                "WorkingTree.open() to obtain a WorkingTree.")
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
         if deprecated_passed(branch):
-            if not _internal:
-                warnings.warn("WorkingTree(..., branch=XXX) is deprecated"
-                     " as of bzr 0.8. Please use bzrdir.open_workingtree() or"
-                     " WorkingTree.open().",
-                     DeprecationWarning,
-                     stacklevel=2
-                     )
             self._branch = branch
         else:
             self._branch = self.bzrdir.open_branch()

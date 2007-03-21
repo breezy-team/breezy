@@ -543,57 +543,12 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, *args, **kwargs):
+    def clone(self, to_bzrdir, revision_id=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
         
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        # for API compatibility, until 0.8 releases we provide the old api:
-        # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
-        # after 0.8 releases, the *args and **kwargs should be changed:
-        # def clone(self, to_bzrdir, revision_id=None):
-        if (kwargs.get('to_location', None) or
-            kwargs.get('revision', None) or
-            kwargs.get('basis_branch', None) or
-            (len(args) and isinstance(args[0], basestring))):
-            # backwards compatibility api:
-            warn("Branch.clone() has been deprecated for BzrDir.clone() from"
-                 " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
-            # get basis_branch
-            if len(args) > 2:
-                basis_branch = args[2]
-            else:
-                basis_branch = kwargs.get('basis_branch', None)
-            if basis_branch:
-                basis = basis_branch.bzrdir
-            else:
-                basis = None
-            # get revision
-            if len(args) > 1:
-                revision_id = args[1]
-            else:
-                revision_id = kwargs.get('revision', None)
-            # get location
-            if len(args):
-                url = args[0]
-            else:
-                # no default to raise if not provided.
-                url = kwargs.get('to_location')
-            return self.bzrdir.clone(url,
-                                     revision_id=revision_id,
-                                     basis=basis).open_branch()
-        # new cleaner api.
-        # generate args by hand 
-        if len(args) > 1:
-            revision_id = args[1]
-        else:
-            revision_id = kwargs.get('revision_id', None)
-        if len(args):
-            to_bzrdir = args[0]
-        else:
-            # no default to raise if not provided.
-            to_bzrdir = kwargs.get('to_bzrdir')
         result = self._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
@@ -1183,25 +1138,12 @@ class BzrBranch(Branch):
     it's writable, and can be accessed via the normal filesystem API.
     """
     
-    def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
-                 relax_version_check=DEPRECATED_PARAMETER, _format=None,
+    def __init__(self, _format=None,
                  _control_files=None, a_bzrdir=None, _repository=None):
-        """Create new branch object at a particular location.
-
-        transport -- A Transport object, defining how to access files.
-        
-        init -- If True, create new control files in a previously
-             unversioned directory.  If False, the branch must already
-             be versioned.
-
-        relax_version_check -- If true, the usual check for the branch
-            version is not applied.  This is intended only for
-            upgrade/recovery type use; it's not guaranteed that
-            all operations will work on old format branches.
-        """
+        """Create new branch object at a particular location."""
         Branch.__init__(self)
         if a_bzrdir is None:
-            self.bzrdir = bzrdir.BzrDir.open(transport.base)
+            raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
         # self._transport used to point to the directory containing the
@@ -1213,32 +1155,6 @@ class BzrBranch(Branch):
             raise ValueError('BzrBranch _control_files is None')
         self.control_files = _control_files
         self._transport = _control_files._transport
-        if deprecated_passed(init):
-            warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
-                 "deprecated as of bzr 0.8. Please use Branch.create().",
-                 DeprecationWarning,
-                 stacklevel=2)
-            if init:
-                # this is slower than before deprecation, oh well never mind.
-                # -> its deprecated.
-                self._initialize(transport.base)
-        self._check_format(_format)
-        if deprecated_passed(relax_version_check):
-            warn("BzrBranch.__init__(..., relax_version_check=XXX_: The "
-                 "relax_version_check parameter is deprecated as of bzr 0.8. "
-                 "Please use BzrDir.open_downlevel, or a BzrBranchFormat's "
-                 "open() method.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            if (not relax_version_check
-                and not self._format.is_supported()):
-                raise errors.UnsupportedFormatError(format=fmt)
-        if deprecated_passed(transport):
-            warn("BzrBranch.__init__(transport=XXX...): The transport "
-                 "parameter is deprecated as of bzr 0.8. "
-                 "Please use Branch.open, or bzrdir.open_branch().",
-                 DeprecationWarning,
-                 stacklevel=2)
         self.repository = _repository
 
     def __str__(self):
@@ -1278,22 +1194,6 @@ class BzrBranch(Branch):
     def abspath(self, name):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
-
-    def _check_format(self, format):
-        """Identify the branch format if needed.
-
-        The format is stored as a reference to the format object in
-        self._format for code that needs to check it later.
-
-        The format parameter is either None or the branch format class
-        used to open this branch.
-
-        FIXME: DELETE THIS METHOD when pre 0.8 support is removed.
-        """
-        if format is None:
-            format = BranchFormat.find_format(self.bzrdir)
-        self._format = format
-        mutter("got branch format %s", self._format)
 
     @needs_read_lock
     def get_root_id(self):

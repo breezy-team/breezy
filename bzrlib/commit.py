@@ -159,7 +159,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch=DEPRECATED_PARAMETER, message=None,
+               message=None,
                timestamp=None,
                timezone=None,
                committer=None,
@@ -176,9 +176,6 @@ class Commit(object):
                message_callback=None,
                recursive='down'):
         """Commit working copy as a new revision.
-
-        branch -- the deprecated branch to commit to. New callers should pass in 
-                  working_tree instead
 
         message -- the commit message (it or message_callback is required)
 
@@ -206,14 +203,8 @@ class Commit(object):
         """
         mutter('preparing to commit')
 
-        if deprecated_passed(branch):
-            symbol_versioning.warn("Commit.commit (branch, ...): The branch parameter is "
-                 "deprecated as of bzr 0.8. Please use working_tree= instead.",
-                 DeprecationWarning, stacklevel=2)
-            self.branch = branch
-            self.work_tree = self.branch.bzrdir.open_workingtree()
-        elif working_tree is None:
-            raise BzrError("One of branch and working_tree must be passed into commit().")
+        if working_tree is None:
+            raise BzrError("working_tree must be passed into commit().")
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
