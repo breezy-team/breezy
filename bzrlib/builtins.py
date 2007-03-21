@@ -1307,7 +1307,7 @@ class cmd_init_repository(Command):
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
-                                  'not having a working tree'),
+                                  ' not having a working tree'),
                     ]
     aliases = ["init-repo"]
 
