@@ -14,59 +14,64 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test branch responses when accessed over http"""
+"""Test branches with inaccessible parents."""
 
 import os
 
 from bzrlib import branch, errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.transport.local import LocalURLServer
+from bzrlib.transport.chroot import ChrootServer
 
 
-class HTTPBranchTests(TestCaseWithBranch):
-    """Tests that use an HTTP server against each branch implementation"""
+class InaccessibleParentTests(TestCaseWithBranch):
+    """Tests with branches with "inaccessible" parents.
+    
+    An "inaccessible" parent location is one that cannot be represented, e.g. if
+    a child branch says its parent is at "../../my-parent", but that child is at
+    "http://host/one" then that parent location is inaccessible.  These
+    branches' get_parent method will raise InaccessibleParent.
+    """
 
     def setUp(self):
-        super(HTTPBranchTests, self).setUp()
-        self.transport_readonly_server = HttpServer
+        super(InaccessibleParentTests, self).setUp()
+        if self.vfs_transport_factory is LocalURLServer:
+            self.vfs_transport_factory = ChrootServer
 
-    def get_parent_and_child(self):
-        os.makedirs('parent/path/to')
-        wt_a = self.make_branch_and_tree('parent/path/to/a')
-        self.build_tree(['parent/path/to/a/one'])
-        wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+    def get_branch_with_invalid_parent(self):
+        """Get a branch whose get_parent will raise InaccessibleParent."""
+        self.build_tree(
+            ['parent/', 'parent/path/', 'parent/path/to/',
+             'child/', 'child/path/', 'child/path/to/'],
+            transport=self.get_transport())
+        self.make_branch('parent/path/to/a').bzrdir.sprout(self.get_url('child/path/to/b'))
 
-        os.makedirs('child/path/to')
-        branch_b = wt_a.bzrdir.sprout('child/path/to/b', revision_id='1').open_branch()
-        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
-
-        return wt_a.branch, branch_b
+        # The child branch internally will have recorded that its parent is at
+        # "../../../../parent/path/to/a" or similar.  So we move the child
+        # branch up several directories, so that its parent path will point to
+        # somewhere outside the directory served by the HTTP server.  Thus its
+        # parent is now inaccessible.
+        self.get_transport().rename('child/path/to/b', 'b')
+        branch_b = branch.Branch.open(self.get_readonly_url('b'))
+        return branch_b
 
     def test_get_parent_invalid(self):
-        self.get_parent_and_child()
-
-        # Now change directory, and access the child through http
-        os.chdir('child/path/to')
-        branch_b = branch.Branch.open(self.get_readonly_url('b'))
+        # When you have a branch whose parent URL cannot be calculated, this
+        # exception will be raised.
+        branch_b = self.get_branch_with_invalid_parent()
         self.assertRaises(errors.InaccessibleParent, branch_b.get_parent)
 
     def test_clone_invalid_parent(self):
-        self.get_parent_and_child()
-
-        # Now change directory, and access the child through http
-        os.chdir('child/path/to')
-        branch_b = branch.Branch.open(self.get_readonly_url('b'))
-
+        # If clone can't determine the location of the parent of the branch
+        # being cloned, then the new branch will have no parent set.
+        branch_b = self.get_branch_with_invalid_parent()
         branch_c = branch_b.bzrdir.clone('c').open_branch()
         self.assertEqual(None, branch_c.get_parent())
 
     def test_sprout_invalid_parent(self):
-        self.get_parent_and_child()
-
-        # Now change directory, and access the child through http
-        os.chdir('child/path/to')
-        branch_b = branch.Branch.open(self.get_readonly_url('b'))
-
+        # A sprouted branch will have a parent of the branch it was sprouted
+        # from, even if that branch has an invalid parent.
+        branch_b = self.get_branch_with_invalid_parent()
         branch_c = branch_b.bzrdir.sprout('c').open_branch()
         self.assertEqual(branch_b.base, branch_c.get_parent())
