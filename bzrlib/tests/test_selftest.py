@@ -48,6 +48,7 @@ from bzrlib.tests import (
                           TestSkipped,
                           TestSuite,
                           TextTestRunner,
+                          UnavailableFeature,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -853,6 +854,26 @@ class TestTestResult(TestCase):
             ],
             pb.calls[1:])
     
+    def test_unavailable_exception(self):
+        """An UnavailableFeature being raised should invoke addNotSupported."""
+        class InstrumentedTestResult(ExtendedTestResult):
+
+            def report_test_start(self, test): pass
+            def addNotSupported(self, test, feature):
+                self._call = test, feature
+        result = InstrumentedTestResult(None, None, None, None)
+        feature = Feature()
+        def test_function():
+            raise UnavailableFeature(feature)
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        # it should invoke 'addNotSupported'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(feature, result._call[1])
+        # and not count as an error
+        self.assertEqual(0, result.error_count)
+
 
 class TestRunner(TestCase):
 
@@ -991,15 +1012,11 @@ class TestRunner(TestCase):
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertEqual([
-            '',
-            '----------------------------------------------------------------------',
-            'Ran 2 tests in 0.000s',
-            '',
             'OK',
             "Missing feature 'Feature1' skipped 1 tests.",
             "Missing feature 'Feature2' skipped 1 tests.",
             ],
-            lines)
+            lines[-3:])
 
     def test_bench_history(self):
         # tests that the running the benchmark produces a history file
@@ -1169,6 +1186,20 @@ class TestTestCase(TestCase):
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
         self.assertRaises(KnownFailure, self.knownFailure, "A Failure")
+
+    def test_requireFeature_available(self):
+        """self.requireFeature(available) is a no-op."""
+        class Available(Feature):
+            def _probe(self):return True
+        feature = Available()
+        self.requireFeature(feature)
+
+    def test_requireFeature_unavailable(self):
+        """self.requireFeature(unavailable) raises UnavailableFeature."""
+        class Unavailable(Feature):
+            def _probe(self):return False
+        feature = Unavailable()
+        self.assertRaises(UnavailableFeature, self.requireFeature, feature)
 
     def test_run_no_parameters(self):
         test = SampleTestCase('_test_pass')
@@ -1430,3 +1461,11 @@ class TestFeature(TestCase):
             pass
         feature = NamedFeature()
         self.assertEqual('NamedFeature', str(feature))
+
+
+class TestUnavailableFeature(TestCase):
+
+    def test_access_feature(self):
+        feature = Feature()
+        exception = UnavailableFeature(feature)
+        self.assertIs(feature, exception.args[0])

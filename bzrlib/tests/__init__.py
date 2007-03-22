@@ -231,11 +231,13 @@ class ExtendedTestResult(unittest._TextTestResult):
             setKeepLogfile()
 
     def addError(self, test, err):
+        self.extractBenchmarkTime(test)
+        self._cleanupLogFile(test)
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)
+        elif isinstance(err[1], UnavailableFeature):
+            return self.addNotSupported(test, err[1].args[0])
         unittest.TestResult.addError(self, test, err)
-        self._cleanupLogFile(test)
-        self.extractBenchmarkTime(test)
         self.error_count += 1
         self.report_error(test, err)
         if self.stop_early:
@@ -272,7 +274,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
-        self.extractBenchmarkTime(test)
         self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -323,14 +324,14 @@ class TextTestResult(ExtendedTestResult):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, num_tests)
         if pb is None:
-            self.pb = ui.ui_factory.nested_progress_bar()
+            self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
         else:
             self.pb = pb
             self._supplied_pb = True
         self.pb.show_pct = False
         self.pb.show_spinner = False
-        self.pb.show_eta = False, 
+        self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
 
@@ -609,6 +610,13 @@ class KnownFailure(AssertionError):
     indicators of partially completed code or of future work. We have an
     explicit error for them so that we can ensure that they are always visible:
     KnownFailures are always shown in the output of bzr selftest.
+    """
+
+
+class UnavailableFeature(Exception):
+    """A feature required for this test was not available.
+
+    The feature should be used to construct the exception.
     """
 
 
@@ -1128,6 +1136,14 @@ class TestCase(unittest.TestCase):
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
+
+    def requireFeature(self, feature):
+        """This test requires a specific feature is available.
+
+        :raises UnavailableFeature: When feature is not available.
+        """
+        if not feature.available():
+            raise UnavailableFeature(feature)
 
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
