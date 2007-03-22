@@ -1287,8 +1287,7 @@ class cmd_init_repository(Command):
     """Create a shared repository to hold branches.
 
     New branches created under the repository directory will store their revisions
-    in the repository, not in the branch directory, if the branch format supports
-    shared storage.
+    in the repository, not in the branch directory.
 
     example:
         bzr init-repo --no-trees repo
@@ -1307,7 +1306,7 @@ class cmd_init_repository(Command):
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
-                                  'not having a working tree'),
+                                  ' not having a working tree'),
                     ]
     aliases = ["init-repo"]
 
