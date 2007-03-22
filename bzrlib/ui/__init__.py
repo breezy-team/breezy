@@ -36,6 +36,7 @@ import getpass
 
 from bzrlib import (
     progress,
+    trace,
     )
 """)
 
@@ -97,7 +98,17 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
-
+    def recommend_upgrade(self,
+        current_format_name,
+        basedir):
+        trace.warning("%s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %s",
+            current_format_name,
+            basedir)
+            
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories."""
 

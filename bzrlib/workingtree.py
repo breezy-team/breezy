@@ -70,6 +70,7 @@ from bzrlib import (
     textui,
     trace,
     transform,
+    ui,
     urlutils,
     xml5,
     xml6,
@@ -1426,11 +1427,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             [subp for subp in self.extras() if not self.is_ignored(subp)])
 
     def _warn_deprecated_format(self):
-        trace.warning("%s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  bzr upgrade %s",
+        ui.ui_factory.recommend_upgrade(
             self._format.get_format_description(),
             self.basedir)
 
