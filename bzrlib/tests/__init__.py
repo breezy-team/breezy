@@ -182,6 +182,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.known_failure_count = 0
         self.skip_count = 0
+        self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
     
@@ -254,6 +255,11 @@ class ExtendedTestResult(unittest._TextTestResult):
     def addKnownFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
@@ -344,6 +350,8 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d known failures' % self.known_failure_count
         if self.skip_count:
             a += ', %d skipped' % self.skip_count
+        if self.unsupported:
+            a += ', %d missing features' % len(self.unsupported)
         a += ']'
         return a
 
@@ -393,6 +401,9 @@ class TextTestResult(ExtendedTestResult):
                 # progress bar...
                 self.pb.note('SKIP: %s', skip_excinfo[1])
 
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+                  
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
 
@@ -466,6 +477,12 @@ class VerboseTestResult(ExtendedTestResult):
                 % (self._testTimeString(),
                    self._error_summary(skip_excinfo)))
 
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+        self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
+                %(self._testTimeString(), feature))
+                  
+
 
 class TextTestRunner(object):
     stop_on_failure = False
@@ -529,6 +546,10 @@ class TextTestRunner(object):
             skipped = result.skip_count
             self.stream.writeln('%d test%s skipped' %
                                 (skipped, skipped != 1 and "s" or ""))
+        if result.unsupported:
+            for feature, count in sorted(result.unsupported.items()):
+                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                    (feature, count))
         result.report_cleaning_up()
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will

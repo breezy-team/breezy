@@ -781,6 +781,78 @@ class TestTestResult(TestCase):
             pass
         return unittest.FunctionTestCase(passing_test)
 
+    def test_add_not_supported(self):
+        """Test the behaviour of invoking addNotSupported."""
+        class InstrumentedTestResult(ExtendedTestResult):
+            def report_test_start(self, test): pass
+            def report_unsupported(self, test, feature):
+                self._call = test, feature
+        result = InstrumentedTestResult(None, None, None, None)
+        test = SampleTestCase('_test_pass')
+        feature = Feature()
+        result.startTest(test)
+        result.addNotSupported(test, feature)
+        # it should invoke 'report_unsupported'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(feature, result._call[1])
+        # the result should be successful.
+        self.assertTrue(result.wasSuccessful())
+        # it should record the test against a count of tests not run due to
+        # this feature.
+        self.assertEqual(1, result.unsupported['Feature'])
+        # and invoking it again should increment that counter
+        result.addNotSupported(test, feature)
+        self.assertEqual(2, result.unsupported['Feature'])
+
+    def test_verbose_report_unsupported(self):
+        # verbose test output formatting
+        result_stream = StringIO()
+        result = bzrlib.tests.VerboseTestResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        test = self.get_passing_test()
+        feature = Feature()
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        prefix = len(result_stream.getvalue())
+        result.report_unsupported(test, feature)
+        output = result_stream.getvalue()[prefix:]
+        lines = output.splitlines()
+        self.assertEqual(lines, ['NODEP                   0ms', "    The feature 'Feature' is not available."])
+    
+    def test_text_report_unsupported(self):
+        # text test output formatting
+        pb = MockProgress()
+        result = bzrlib.tests.TextTestResult(
+            None,
+            descriptions=0,
+            verbosity=1,
+            pb=pb,
+            )
+        test = self.get_passing_test()
+        feature = Feature()
+        # this seeds the state to handle reporting the test.
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        result.report_unsupported(test, feature)
+        # no output on unsupported features
+        self.assertEqual(
+            [('update', '[1 in 0s] passing_test', None, None)
+            ],
+            pb.calls)
+        # the number of missing features should be printed in the progress
+        # summary, so check for that.
+        result.unsupported = {'foo':0, 'bar':0}
+        test.run(result)
+        self.assertEqual(
+            [
+            ('update', '[2 in 0s, 2 missing features] passing_test', None, None),
+            ],
+            pb.calls[1:])
+    
 
 class TestRunner(TestCase):
 
@@ -827,10 +899,9 @@ class TestRunner(TestCase):
             'AssertionError: foo',
             '',
             '----------------------------------------------------------------------',
-            'Ran 2 tests in 0.002s',
             '',
             'FAILED (failures=1, known_failure_count=1)'],
-            lines[0:5] + lines[6:])
+            lines[0:5] + lines[6:10] + lines[11:])
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
@@ -900,6 +971,35 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
+
+    def test_unsupported_features_listed(self):
+        """When unsupported features are encountered they are detailed."""
+        class Feature1(Feature):
+            def _probe(self): return False
+        class Feature2(Feature):
+            def _probe(self): return False
+        # create sample tests
+        test1 = SampleTestCase('_test_pass')
+        test1._test_needs_features = [Feature1()]
+        test2 = SampleTestCase('_test_pass')
+        test2._test_needs_features = [Feature2()]
+        test = unittest.TestSuite()
+        test.addTest(test1)
+        test.addTest(test2)
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        lines = stream.getvalue().splitlines()
+        self.assertEqual([
+            '',
+            '----------------------------------------------------------------------',
+            'Ran 2 tests in 0.000s',
+            '',
+            'OK',
+            "Missing feature 'Feature1' skipped 1 tests.",
+            "Missing feature 'Feature2' skipped 1 tests.",
+            ],
+            lines)
 
     def test_bench_history(self):
         # tests that the running the benchmark produces a history file
