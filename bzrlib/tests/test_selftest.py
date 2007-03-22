@@ -39,6 +39,7 @@ from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
+                          Feature,
                           KnownFailure,
                           TestCase,
                           TestCaseInTempDir,
@@ -1296,3 +1297,36 @@ class TestKnownFailure(TestCase):
         # a KnownFailure is an assertion error for compatability with unaware
         # runners.
         self.assertIsInstance(KnownFailure(""), AssertionError)
+
+
+class TestFeature(TestCase):
+
+    def test_caching(self):
+        """Feature._probe is called by the feature at most once."""
+        class InstrumentedFeature(Feature):
+            def __init__(self):
+                Feature.__init__(self)
+                self.calls = []
+            def _probe(self):
+                self.calls.append('_probe')
+                return False
+        feature = InstrumentedFeature()
+        feature.available()
+        self.assertEqual(['_probe'], feature.calls)
+        feature.available()
+        self.assertEqual(['_probe'], feature.calls)
+
+    def test_named_str(self):
+        """Feature.__str__ should thunk to feature_name()."""
+        class NamedFeature(Feature):
+            def feature_name(self):
+                return 'symlinks'
+        feature = NamedFeature()
+        self.assertEqual('symlinks', str(feature))
+
+    def test_default_str(self):
+        """Feature.__str__ should default to __class__.__name__."""
+        class NamedFeature(Feature):
+            pass
+        feature = NamedFeature()
+        self.assertEqual('NamedFeature', str(feature))

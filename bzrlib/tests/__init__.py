@@ -2156,3 +2156,31 @@ def clean_selftest_output(root=None, quiet=False):
             if not quiet:
                 print 'delete directory:', i
             shutil.rmtree(i)
+
+
+class Feature(object):
+    """An operating system Feature."""
+
+    def __init__(self):
+        self._available = None
+
+    def available(self):
+        """Is the feature available?
+
+        :return: True if the feature is available.
+        """
+        if self._available is None:
+            self._available = self._probe()
+        return self._available
+
+    def _probe(self):
+        """Implement this method in concrete features.
+
+        :return: True if the feature is available.
+        """
+        raise NotImplementedError
+
+    def __str__(self):
+        if getattr(self, 'feature_name', None):
+            return self.feature_name()
+        return self.__class__.__name__
