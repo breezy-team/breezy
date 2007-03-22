@@ -1020,6 +1020,19 @@ class TestCase(unittest.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def run(self, result=None):
+        if result is None: result = self.defaultTestResult()
+        for feature in getattr(self, '_test_needs_features', []):
+            if not feature.available():
+                result.startTest(self)
+                if getattr(result, 'addNotSupported', None):
+                    result.addNotSupported(self, feature)
+                else:
+                    result.addSuccess(self)
+                result.stopTest(self)
+                return
+        return unittest.TestCase.run(self, result)
+
     def tearDown(self):
         self._runCleanups()
         unittest.TestCase.tearDown(self)

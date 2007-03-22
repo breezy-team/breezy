@@ -978,6 +978,12 @@ class TestRunner(TestCase):
         self.assertEqual(log, test._log_contents)
 
 
+class SampleTestCase(TestCase):
+
+    def _test_pass(self):
+        pass
+
+
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
@@ -1062,6 +1068,63 @@ class TestTestCase(TestCase):
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
         self.assertRaises(KnownFailure, self.knownFailure, "A Failure")
+
+    def test_run_no_parameters(self):
+        test = SampleTestCase('_test_pass')
+        test.run()
+    
+    def test_run_enabled_unittest_result(self):
+        """Test we revert to regular behaviour when the test is enabled."""
+        test = SampleTestCase('_test_pass')
+        class EnabledFeature(object):
+            def available(self):
+                return True
+        test._test_needs_features = [EnabledFeature()]
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual([], result.errors)
+        self.assertEqual([], result.failures)
+
+    def test_run_disabled_unittest_result(self):
+        """Test our compatability for disabled tests with unittest results."""
+        test = SampleTestCase('_test_pass')
+        class DisabledFeature(object):
+            def available(self):
+                return False
+        test._test_needs_features = [DisabledFeature()]
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual([], result.errors)
+        self.assertEqual([], result.failures)
+
+    def test_run_disabled_supporting_result(self):
+        """Test disabled tests behaviour with support aware results."""
+        test = SampleTestCase('_test_pass')
+        class DisabledFeature(object):
+            def available(self):
+                return False
+        the_feature = DisabledFeature()
+        test._test_needs_features = [the_feature]
+        class InstrumentedTestResult(unittest.TestResult):
+            def __init__(self):
+                unittest.TestResult.__init__(self)
+                self.calls = []
+            def startTest(self, test):
+                self.calls.append(('startTest', test))
+            def stopTest(self, test):
+                self.calls.append(('stopTest', test))
+            def addNotSupported(self, test, feature):
+                self.calls.append(('addNotSupported', test, feature))
+        result = InstrumentedTestResult()
+        test.run(result)
+        self.assertEqual([
+            ('startTest', test),
+            ('addNotSupported', test, the_feature),
+            ('stopTest', test),
+            ],
+            result.calls)
 
 
 @symbol_versioning.deprecated_function(zero_eleven)
