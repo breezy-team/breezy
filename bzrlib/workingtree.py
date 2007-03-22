@@ -68,6 +68,7 @@ from bzrlib import (
     revisiontree,
     repository,
     textui,
+    trace,
     transform,
     urlutils,
     xml5,
@@ -285,6 +286,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the Format factory and creation methods that are
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
+        self._after_opening()
+
+    def _after_opening(self):
+        """Called after the workingtree is opened.
+        """
+        self._warn_deprecated_format()
 
     branch = property(
         fget=lambda self: self._branch,
@@ -1417,7 +1424,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # prevent race conditions with the lock
         return iter(
             [subp for subp in self.extras() if not self.is_ignored(subp)])
-    
+
+    def _warn_deprecated_format(self):
+        trace.warning("%s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %s",
+            self._format.get_format_description(),
+            self.basedir)
+
     @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.

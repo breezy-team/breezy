@@ -1,5 +1,11 @@
 bzr 0.15 (not finalised)
 
+  CHANGES:
+ 
+    * A warning is now displayed when opening working trees in older 
+      formats, to encourage people to upgrade to WorkingTreeFormat4.
+      (Martin Pool)
+
   INTERNALS:
 
     * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
