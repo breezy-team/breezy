@@ -2297,6 +2297,17 @@ class WorkingTree2(WorkingTree):
      - uses the branch last-revision.
     """
 
+    def __init__(self, *args, **kwargs):
+        super(WorkingTree2, self).__init__(*args, **kwargs)
+        # WorkingTree2 has more of a constraint that self._inventory must
+        # exist. Because this is an older format, we don't mind the overhead
+        # caused by the extra computation here.
+
+        # Newer WorkingTree's should only have self._inventory set when they
+        # have a read lock.
+        if self._inventory is None:
+            self.read_working_inventory()
+
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
 
