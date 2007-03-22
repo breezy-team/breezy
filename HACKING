@@ -295,7 +295,7 @@ lazy fashion do::
 At this point, all of these exist as a ``ImportReplacer`` object, ready to
 be imported once a member is accessed. Also, when importing a module into
 the local namespace, which is likely to clash with variable names, it is
-recommended to prefix it as ``_mod_<module>``. This makes it clean that
+recommended to prefix it as ``_mod_<module>``. This makes it clearer that
 the variable is a module, and these object should be hidden anyway, since
 they shouldn't be imported into other namespaces.
 
@@ -376,7 +376,7 @@ FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
 
 For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
-See bzrlib/selftest/test_sampler.py for a template test script.
+See bzrlib/tests/test_sampler.py for a template test script.
 
 Tests can be written for the UI or for individual areas of the library.
 Choose whichever is appropriate: if adding a new command, or a new command 
