@@ -180,6 +180,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.num_tests = num_tests
         self.error_count = 0
         self.failure_count = 0
+        self.known_failure_count = 0
         self.skip_count = 0
         self.count = 0
         self._overall_start_time = time.time()
@@ -221,31 +222,38 @@ class ExtendedTestResult(unittest._TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def addError(self, test, err):
-        if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)    
-        unittest.TestResult.addError(self, test, err)
+    def _cleanupLogFile(self, test):
         # We can only do this if we have one of our TestCases, not if
         # we have a doctest.
         setKeepLogfile = getattr(test, 'setKeepLogfile', None)
         if setKeepLogfile is not None:
             setKeepLogfile()
+
+    def addError(self, test, err):
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)
+        unittest.TestResult.addError(self, test, err)
+        self._cleanupLogFile(test)
         self.extractBenchmarkTime(test)
+        self.error_count += 1
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
 
     def addFailure(self, test, err):
-        unittest.TestResult.addFailure(self, test, err)
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
+        self._cleanupLogFile(test)
         self.extractBenchmarkTime(test)
+        if isinstance(err[1], KnownFailure):
+            return self.addKnownFailure(test, err)
+        unittest.TestResult.addFailure(self, test, err)
+        self.failure_count += 1
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
+
+    def addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
@@ -301,9 +309,19 @@ class ExtendedTestResult(unittest._TextTestResult):
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
 
-    def __init__(self, *args, **kw):
-        ExtendedTestResult.__init__(self, *args, **kw)
-        self.pb = self.ui.nested_progress_bar()
+    def __init__(self, stream, descriptions, verbosity,
+                 bench_history=None,
+                 num_tests=None,
+                 pb=None,
+                 ):
+        ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
+            bench_history, num_tests)
+        if pb is None:
+            self.pb = ui.ui_factory.nested_progress_bar()
+            self._supplied_pb = False
+        else:
+            self.pb = pb
+            self._supplied_pb = True
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False, 
@@ -322,6 +340,8 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d errors' % self.error_count
         if self.failure_count:
             a += ', %d failed' % self.failure_count
+        if self.known_failure_count:
+            a += ', %d known failures' % self.known_failure_count
         if self.skip_count:
             a += ', %d skipped' % self.skip_count
         a += ']'
@@ -342,18 +362,20 @@ class TextTestResult(ExtendedTestResult):
             return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.pb.note('ERROR: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.pb.note('FAIL: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
+
+    def report_known_failure(self, test, err):
+        self.pb.note('XFAIL: %s\n%s\n',
+            self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -375,7 +397,8 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update('cleaning up...')
 
     def finished(self):
-        self.pb.finished()
+        if not self._supplied_pb:
+            self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -414,14 +437,17 @@ class VerboseTestResult(ExtendedTestResult):
         return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.stream.writeln('ERROR %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.stream.writeln(' FAIL %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(err)))
+
+    def report_known_failure(self, test, err):
+        self.stream.writeln('XFAIL %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
@@ -430,6 +456,8 @@ class VerboseTestResult(ExtendedTestResult):
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
+        # flush the stream so that we get smooth output. This verbose mode is
+        # used to show the output in PQM.
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
@@ -486,9 +514,17 @@ class TextTestRunner(object):
             if errored:
                 if failed: self.stream.write(", ")
                 self.stream.write("errors=%d" % errored)
+            if result.known_failure_count:
+                if failed or errored: self.stream.write(", ")
+                self.stream.write("known_failure_count=%d" %
+                    result.known_failure_count)
             self.stream.writeln(")")
         else:
-            self.stream.writeln("OK")
+            if result.known_failure_count:
+                self.stream.writeln("OK (known_failures=%d)" %
+                    result.known_failure_count)
+            else:
+                self.stream.writeln("OK")
         if result.skip_count > 0:
             skipped = result.skip_count
             self.stream.writeln('%d test%s skipped' %
@@ -543,6 +579,16 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class KnownFailure(AssertionError):
+    """Indicates that a test failed in a precisely expected manner.
+
+    Such failures dont block the whole test suite from passing because they are
+    indicators of partially completed code or of future work. We have an
+    explicit error for them so that we can ensure that they are always visible:
+    KnownFailures are always shown in the output of bzr selftest.
+    """
 
 
 class CommandFailed(Exception):
@@ -969,6 +1015,10 @@ class TestCase(unittest.TestCase):
 
     def _restoreHooks(self):
         bzrlib.branch.Branch.hooks = self._preserved_hooks
+
+    def knownFailure(self, reason):
+        """This test has failed for some known reason."""
+        raise KnownFailure(reason)
 
     def tearDown(self):
         self._runCleanups()

@@ -38,6 +38,8 @@ from bzrlib.repofmt import weaverepo
 from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.tests import (
                           ChrootedTestCase,
+                          ExtendedTestResult,
+                          KnownFailure,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
@@ -690,6 +692,94 @@ class TestTestResult(TestCase):
         self.assertContainsRe(output,
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
+    def test_known_failure(self):
+        """A KnownFailure being raised should trigger several result actions."""
+        class InstrumentedTestResult(ExtendedTestResult):
+
+            def report_test_start(self, test): pass
+            def report_known_failure(self, test, err):
+                self._call = test, err
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            raise KnownFailure('failed!')
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        # it should invoke 'report_known_failure'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(KnownFailure, result._call[1][0])
+        self.assertIsInstance(result._call[1][1], KnownFailure)
+        # we dont introspec the traceback, if the rest is ok, it would be
+        # exceptional for it not to be.
+        # it should update the known_failure_count on the object.
+        self.assertEqual(1, result.known_failure_count)
+        # the result should be successful.
+        self.assertTrue(result.wasSuccessful())
+
+    def test_verbose_report_known_failure(self):
+        # verbose test output formatting
+        result_stream = StringIO()
+        result = bzrlib.tests.VerboseTestResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        test = self.get_passing_test()
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        prefix = len(result_stream.getvalue())
+        # the err parameter has the shape:
+        # (class, exception object, traceback)
+        # KnownFailures dont get their tracebacks shown though, so we
+        # can skip that.
+        err = (KnownFailure, KnownFailure('foo'), None)
+        result.report_known_failure(test, err)
+        output = result_stream.getvalue()[prefix:]
+        lines = output.splitlines()
+        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
+    
+    def test_text_report_known_failure(self):
+        # text test output formatting
+        pb = MockProgress()
+        result = bzrlib.tests.TextTestResult(
+            None,
+            descriptions=0,
+            verbosity=1,
+            pb=pb,
+            )
+        test = self.get_passing_test()
+        # this seeds the state to handle reporting the test.
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        # the err parameter has the shape:
+        # (class, exception object, traceback)
+        # KnownFailures dont get their tracebacks shown though, so we
+        # can skip that.
+        err = (KnownFailure, KnownFailure('foo'), None)
+        result.report_known_failure(test, err)
+        self.assertEqual(
+            [
+            ('update', '[1 in 0s] passing_test', None, None),
+            ('note', 'XFAIL: %s\n%s\n', ('passing_test', err[1]))
+            ],
+            pb.calls)
+        # known_failures should be printed in the summary, so if we run a test
+        # after there are some known failures, the update prefix should match
+        # this.
+        result.known_failure_count = 3
+        test.run(result)
+        self.assertEqual(
+            [
+            ('update', '[2 in 0s, 3 known failures] passing_test', None, None),
+            ],
+            pb.calls[2:])
+
+    def get_passing_test(self):
+        """Return a test object that can't be run usefully."""
+        def passing_test():
+            pass
+        return unittest.FunctionTestCase(passing_test)
+
 
 class TestRunner(TestCase):
 
@@ -711,6 +801,51 @@ class TestRunner(TestCase):
             return testrunner.run(test)
         finally:
             TestCaseInTempDir.TEST_ROOT = old_root
+
+    def test_known_failure_failed_run(self):
+        # run a test that generates a known failure which should be printed in
+        # the final output when real failures occur.
+        def known_failure_test():
+            raise KnownFailure('failed')
+        test = unittest.TestSuite()
+        test.addTest(unittest.FunctionTestCase(known_failure_test))
+        def failing_test():
+            raise AssertionError('foo')
+        test.addTest(unittest.FunctionTestCase(failing_test))
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        lines = stream.getvalue().splitlines()
+        self.assertEqual([
+            '',
+            '======================================================================',
+            'FAIL: unittest.FunctionTestCase (failing_test)',
+            '----------------------------------------------------------------------',
+            'Traceback (most recent call last):',
+            '    raise AssertionError(\'foo\')',
+            'AssertionError: foo',
+            '',
+            '----------------------------------------------------------------------',
+            'Ran 2 tests in 0.002s',
+            '',
+            'FAILED (failures=1, known_failure_count=1)'],
+            lines[0:5] + lines[6:])
+
+    def test_known_failure_ok_run(self):
+        # run a test that generates a known failure which should be printed in the final output.
+        def known_failure_test():
+            raise KnownFailure('failed')
+        test = unittest.FunctionTestCase(known_failure_test)
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        self.assertEqual(
+            '\n'
+            '----------------------------------------------------------------------\n'
+            'Ran 1 test in 0.000s\n'
+            '\n'
+            'OK (known_failures=1)\n',
+            stream.getvalue())
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -924,6 +1059,10 @@ class TestTestCase(TestCase):
         self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
 
+    def test_knownFailure(self):
+        """Self.knownFailure() should raise a KnownFailure exception."""
+        self.assertRaises(KnownFailure, self.knownFailure, "A Failure")
+
 
 @symbol_versioning.deprecated_function(zero_eleven)
 def sample_deprecated_function():
@@ -1085,3 +1224,12 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
+
+
+class TestKnownFailure(TestCase):
+
+    def test_known_failure(self):
+        """Check that KnownFailure is defined appropriately."""
+        # a KnownFailure is an assertion error for compatability with unaware
+        # runners.
+        self.assertIsInstance(KnownFailure(""), AssertionError)
