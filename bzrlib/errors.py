@@ -471,6 +471,15 @@ class NotBranchError(PathError):
        self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
+class NoSubmitBranch(PathError):
+
+    _fmt = 'No submit branch available for branch "%(path)s"'
+
+    def __init__(self, branch):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(branch.base, 'ascii')
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = "Already a branch: %(path)s."
@@ -638,7 +647,7 @@ class ForbiddenControlFileError(BzrError):
 
 class LockError(BzrError):
 
-    _fmt = "Lock error: %(message)s"
+    _fmt = "Lock error: %(msg)s"
 
     internal_error = True
 
@@ -648,7 +657,10 @@ class LockError(BzrError):
     #
     # New code should prefer to raise specific subclasses
     def __init__(self, message):
-        self.message = message
+        # Python 2.5 uses a slot for StandardError.message,
+        # so use a different variable name
+        # so it is exposed in self.__dict__
+        self.msg = message
 
 
 class LockActive(LockError):
@@ -686,6 +698,16 @@ class ReadOnlyError(LockError):
 
     def __init__(self, obj):
         self.obj = obj
+
+
+class ReadOnlyLockError(LockError):
+
+    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
+
+    def __init__(self, fname, msg):
+        LockError.__init__(self, '')
+        self.fname = fname
+        self.msg = msg
 
 
 class OutSideTransaction(BzrError):
@@ -728,7 +750,7 @@ class LockContention(LockError):
     # bits?
 
     internal_error = False
-    
+
     def __init__(self, lock):
         self.lock = lock
 
@@ -1865,6 +1887,12 @@ class ImportNameCollision(BzrError):
     def __init__(self, name):
         BzrError.__init__(self)
         self.name = name
+
+
+class NotAMergeDirective(BzrError):
+    """File starting with %(firstline)r is not a merge directive"""
+    def __init__(self, firstline):
+        BzrError.__init__(self, firstline=firstline)
 
 
 class NoMergeSource(BzrError):

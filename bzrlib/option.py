@@ -277,9 +277,13 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]
+                if getattr(self.registry.get_info(key), 'hidden', False):
+                    help = optparse.SUPPRESS_HELP
+                else:
+                    help = self.registry.get_help(key)
                 parser.add_option(action='callback',
                               callback=self._optparse_value_callback(key),
-                                  help=self.registry.get_help(key),
+                                  help=help,
                                   *option_strings)
 
     def _optparse_value_callback(self, cb_value):

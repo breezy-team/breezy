@@ -1692,37 +1692,32 @@ class DirState(object):
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
 
-            if self._lock_state == 'w':
-                out_file = self._state_file
-                wlock = None
-            else:
-                # Try to grab a write lock so that we can update the file.
-                try:
-                    wlock = lock.WriteLock(self._filename)
-                except (errors.LockError, errors.LockContention), e:
-                    # We couldn't grab the lock, so just leave things dirty in
-                    # memory.
+            grabbed_write_lock = False
+            if self._lock_state != 'w':
+                grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
+                # Switch over to the new lock, as the old one may be closed.
+                # TODO: jam 20070315 We should validate the disk file has
+                #       not changed contents. Since temporary_write_lock may
+                #       not be an atomic operation.
+                self._lock_token = new_lock
+                self._state_file = new_lock.f
+                if not grabbed_write_lock:
+                    # We couldn't grab a write lock, so we switch back to a read one
                     return
-                except IOError, e:
-                    # This may be a read-only tree, or someone else may have a
-                    # ReadLock. so handle the case when we cannot grab a write
-                    # lock
-                    if e.errno in (errno.ENOENT, errno.EPERM, errno.EACCES,
-                                   errno.EAGAIN):
-                        # Ignore these errors and just don't save anything
-                        return
-                    raise
-                out_file = wlock.f
             try:
-                out_file.seek(0)
-                out_file.writelines(self.get_lines())
-                out_file.truncate()
-                out_file.flush()
+                self._state_file.seek(0)
+                self._state_file.writelines(self.get_lines())
+                self._state_file.truncate()
+                self._state_file.flush()
                 self._header_state = DirState.IN_MEMORY_UNMODIFIED
                 self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
             finally:
-                if wlock is not None:
-                    wlock.unlock()
+                if grabbed_write_lock:
+                    self._lock_token = self._lock_token.restore_read_lock()
+                    self._state_file = self._lock_token.f
+                    # TODO: jam 20070315 We should validate the disk file has
+                    #       not changed contents. Since restore_read_lock may
+                    #       not be an atomic operation.
 
     def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.

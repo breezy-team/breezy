@@ -43,6 +43,28 @@ OUTPUT2 = """# Bazaar merge directive format 1
 booga"""
 
 
+INPUT1 = """
+I was thinking today about creating a merge directive.
+
+So I did.
+
+Here it is.
+
+(I've pasted it in the body of this message)
+
+Aaron
+
+# Bazaar merge directive format 1\r
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+# source_branch: http://example.org
+# message: Hi mom!
+#\x20
+booga""".splitlines(True)
+
+
 class TestMergeDirective(tests.TestCase):
 
     def test_merge_source(self):
@@ -85,6 +107,22 @@ class TestMergeDirective(tests.TestCase):
             patch='booga', patch_type='diff', message="Hi mom!")
         self.assertEqualDiff(OUTPUT2, ''.join(md.to_lines()))
 
+    def test_deserialize_junk(self):
+        self.assertRaises(errors.NotAMergeDirective,
+                          merge_directive.MergeDirective.from_lines, 'lala')
+
+    def test_deserialize_leading_junk(self):
+        md = merge_directive.MergeDirective.from_lines(INPUT1)
+        self.assertEqual('example:', md.revision_id)
+        self.assertEqual('sha', md.testament_sha1)
+        self.assertEqual('http://example.com', md.target_branch)
+        self.assertEqual('http://example.org', md.source_branch)
+        self.assertEqual(501, md.time)
+        self.assertEqual(72, md.timezone)
+        self.assertEqual('booga', md.patch)
+        self.assertEqual('diff', md.patch_type)
+        self.assertEqual('Hi mom!', md.message)
+
     def test_roundtrip(self):
         time = 501
         timezone = 72
@@ -93,6 +131,7 @@ class TestMergeDirective(tests.TestCase):
             patch='booga', patch_type='diff')
         md2 = merge_directive.MergeDirective.from_lines(md.to_lines())
         self.assertEqual('example:', md2.revision_id)
+        self.assertIsInstance(md2.revision_id, str)
         self.assertEqual('sha', md2.testament_sha1)
         self.assertEqual('http://example.com', md2.target_branch)
         self.assertEqual('http://example.org', md2.source_branch)
@@ -109,6 +148,10 @@ class TestMergeDirective(tests.TestCase):
         self.assertContainsRe(md3.to_lines()[0],
             '^# Bazaar merge directive format ')
         self.assertEqual("Hi mom!", md3.message)
+        md3.patch_type = None
+        md3.patch = None
+        md4 = merge_directive.MergeDirective.from_lines(md3.to_lines())
+        self.assertIs(None, md4.patch_type)
 
 
 EMAIL1 = """To: pqm@example.com
@@ -182,6 +225,19 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         md3 = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
             patch_type=None, public_branch=branch_c.base)
+
+    def test_use_public_submit_branch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        branch_c.pull(tree_a.branch)
+        md = merge_directive.MergeDirective.from_objects(
+             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+             patch_type=None, public_branch=branch_c.base)
+        self.assertEqual(md.target_branch, tree_b.branch.base)
+        tree_b.branch.set_public_branch('http://example.com')
+        md2 = merge_directive.MergeDirective.from_objects(
+              tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+              patch_type=None, public_branch=branch_c.base)
+        self.assertEqual(md2.target_branch, 'http://example.com')
 
     def test_message(self):
         tree_a, tree_b, branch_c = self.make_trees()
