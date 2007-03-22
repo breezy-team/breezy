@@ -8,6 +8,10 @@ bzr 0.15 (not finalised)
       lock to an OS write lock. Linux can do this without unlocking, Win32
       needs to unlock in between. (John Arbash Meinel)
 
+    * Fix minor performance regression with bzr-0.15 on pre-dirstate
+      trees. (We were reading the working inventory too many times).
+      (John Arbash Meinel)
+
   BUGFIXES:
 
     * Take smtp_server from user config into account.
