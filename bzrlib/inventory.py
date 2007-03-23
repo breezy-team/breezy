@@ -491,6 +491,8 @@ class InventoryEntry(object):
         # renamed
         elif previous_ie.name != self.name:
             compatible = False
+        elif previous_ie.kind != self.kind:
+            compatible = False
         return compatible
 
     def _read_tree_state(self, path, work_tree):

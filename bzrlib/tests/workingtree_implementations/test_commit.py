@@ -109,7 +109,6 @@ class TestCommit(TestCaseWithWorkingTree):
         from another. When committed it should commit the new kind.
         """
         wt = self.make_branch_and_tree('.')
-        wt.lock_write()
         self.build_tree(['a'])
         wt.add(['a'])
         wt.commit('commit one')
