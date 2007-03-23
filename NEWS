@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  TESTING:
+
+    * Added ``bzrlib.strace.strace`` which will strace a single callable and
+      return a StraceResult object which contains just the syscalls involved
+      in running it. (Robert Collins)
+
 bzr 0.15 (not finalised)
 
   INTERNALS:
