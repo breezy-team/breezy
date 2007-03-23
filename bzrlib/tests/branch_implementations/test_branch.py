@@ -95,6 +95,27 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
         self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
 
+    def test_revision_ids_are_utf8(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+
+        br = self.get_branch()
+        br.fetch(wt.branch)
+        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        rh = br.revision_history()
+        self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
+        for revision_id in rh:
+            self.assertIsInstance(revision_id, str)
+        last = br.last_revision()
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
+        revno, last = br.last_revision_info()
+        self.assertEqual(3, revno)
+        self.assertEqual('rev3', last)
+        self.assertIsInstance(last, str)
+
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
         get_transport(self.get_url()).mkdir('b1')
@@ -250,6 +271,17 @@ class TestBranch(TestCaseWithBranch):
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
+    def test_public_branch(self):
+        """public location can be queried and set"""
+        branch = self.make_branch('branch')
+        self.assertEqual(branch.get_public_branch(), None)
+        branch.set_public_branch('sftp://example.com')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.com')
+        branch.set_public_branch('sftp://example.net')
+        self.assertEqual(branch.get_public_branch(), 'sftp://example.net')
+        branch.set_public_branch(None)
+        self.assertEqual(branch.get_public_branch(), None)
+
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
@@ -293,8 +325,10 @@ class TestBranch(TestCaseWithBranch):
         from bzrlib.testament import Testament
         strategy = gpg.LoopbackGPGStrategy(None)
         branch.repository.sign_revision('A', strategy)
-        self.assertEqual(Testament.from_revision(branch.repository, 
-                         'A').as_short_text(),
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+                         Testament.from_revision(branch.repository,
+                         'A').as_short_text() +
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
@@ -306,7 +340,8 @@ class TestBranch(TestCaseWithBranch):
                           branch.repository.has_signature_for_revision_id,
                           'A')
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('FOO', 
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):

@@ -26,6 +26,7 @@ from StringIO import StringIO
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     progress,
     )
 from bzrlib.errors import (
@@ -213,36 +214,36 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(expected_delta, deltas['noeol'])
         # smoke tests for eol support - two noeol in a row same content
         expected_deltas = (('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
-                          [(0, 1, 2, [(u'noeolsecond', 'line\n'), (u'noeolsecond', 'line\n')])]),
+                          [(0, 1, 2, [('noeolsecond', 'line\n'), ('noeolsecond', 'line\n')])]),
                           ('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
                            [(0, 0, 1, [('noeolsecond', 'line\n')]), (1, 1, 0, [])]))
         self.assertEqual(['line\n', 'line'], f.get_lines('noeolsecond'))
         self.assertTrue(deltas['noeolsecond'] in expected_deltas)
         # two no-eol in a row, different content
         expected_delta = ('noeolsecond', '8bb553a84e019ef1149db082d65f3133b195223b', True, 
-                          [(1, 2, 1, [(u'noeolnotshared', 'phone\n')])])
+                          [(1, 2, 1, [('noeolnotshared', 'phone\n')])])
         self.assertEqual(['line\n', 'phone'], f.get_lines('noeolnotshared'))
         self.assertEqual(expected_delta, deltas['noeolnotshared'])
         # eol folling a no-eol with content change
         expected_delta = ('noeol', 'a61f6fb6cfc4596e8d88c34a308d1e724caf8977', False, 
-                          [(0, 1, 1, [(u'eol', 'phone\n')])])
+                          [(0, 1, 1, [('eol', 'phone\n')])])
         self.assertEqual(['phone\n'], f.get_lines('eol'))
         self.assertEqual(expected_delta, deltas['eol'])
         # eol folling a no-eol with content change
         expected_delta = ('noeol', '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
-                          [(0, 1, 1, [(u'eolline', 'line\n')])])
+                          [(0, 1, 1, [('eolline', 'line\n')])])
         self.assertEqual(['line\n'], f.get_lines('eolline'))
         self.assertEqual(expected_delta, deltas['eolline'])
         # eol with no parents
         expected_delta = (None, '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, 
-                          [(0, 0, 1, [(u'noeolbase', 'line\n')])])
+                          [(0, 0, 1, [('noeolbase', 'line\n')])])
         self.assertEqual(['line'], f.get_lines('noeolbase'))
         self.assertEqual(expected_delta, deltas['noeolbase'])
         # eol with two parents, in inverse insertion order
         expected_deltas = (('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
-                            [(0, 1, 1, [(u'eolbeforefirstparent', 'line\n')])]),
+                            [(0, 1, 1, [('eolbeforefirstparent', 'line\n')])]),
                            ('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
-                            [(0, 1, 1, [(u'eolbeforefirstparent', 'line\n')])]))
+                            [(0, 1, 1, [('eolbeforefirstparent', 'line\n')])]))
         self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
         #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
 
@@ -668,8 +669,11 @@ class VersionedFileTestMixIn(object):
         # add_lines_with_ghosts api.
         vf = self.get_file()
         # add a revision with ghost parents
+        # The preferred form is utf8, but we should translate when needed
+        parent_id_unicode = u'b\xbfse'
+        parent_id_utf8 = parent_id_unicode.encode('utf8')
         try:
-            vf.add_lines_with_ghosts(u'notbxbfse', [u'b\xbfse'], [])
+            vf.add_lines_with_ghosts('notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
             self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
@@ -681,33 +685,42 @@ class VersionedFileTestMixIn(object):
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
-        self.assertEqual([u'notbxbfse'], vf.get_ancestry(u'notbxbfse'))
-        self.assertEqual([], vf.get_parents(u'notbxbfse'))
-        self.assertEqual({u'notbxbfse':[]}, vf.get_graph())
-        self.assertFalse(vf.has_version(u'b\xbfse'))
+        self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
+        self.assertEqual([], vf.get_parents('notbxbfse'))
+        self.assertEqual({'notbxbfse':[]}, vf.get_graph())
+        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
+                         vf.has_version, parent_id_unicode))
+        self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry_with_ghosts([u'notbxbfse']))
-        self.assertEqual([u'b\xbfse'], vf.get_parents_with_ghosts(u'notbxbfse'))
-        self.assertEqual({u'notbxbfse':[u'b\xbfse']}, vf.get_graph_with_ghosts())
-        self.assertTrue(vf.has_ghost(u'b\xbfse'))
+        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
+        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
+        self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
+        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
+                        vf.has_ghost, parent_id_unicode))
+        self.assertTrue(vf.has_ghost(parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
-        vf.add_lines(u'b\xbfse', [], [])
-        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry([u'notbxbfse']))
-        self.assertEqual([u'b\xbfse'], vf.get_parents(u'notbxbfse'))
-        self.assertEqual({u'b\xbfse':[],
-                          u'notbxbfse':[u'b\xbfse'],
+        self.callDeprecated([osutils._revision_id_warning],
+                            vf.add_lines, parent_id_unicode, [], [])
+        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
+        self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
+        self.assertEqual({parent_id_utf8:[],
+                          'notbxbfse':[parent_id_utf8],
                           },
                          vf.get_graph())
-        self.assertTrue(vf.has_version(u'b\xbfse'))
+        self.assertTrue(self.callDeprecated([osutils._revision_id_warning],
+                        vf.has_version, parent_id_unicode))
+        self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry_with_ghosts([u'notbxbfse']))
-        self.assertEqual([u'b\xbfse'], vf.get_parents_with_ghosts(u'notbxbfse'))
-        self.assertEqual({u'b\xbfse':[],
-                          u'notbxbfse':[u'b\xbfse'],
+        self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
+        self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
+        self.assertEqual({parent_id_utf8:[],
+                          'notbxbfse':[parent_id_utf8],
                           },
                          vf.get_graph_with_ghosts())
-        self.assertFalse(vf.has_ghost(u'b\xbfse'))
+        self.assertFalse(self.callDeprecated([osutils._revision_id_warning],
+                         vf.has_ghost, parent_id_unicode))
+        self.assertFalse(vf.has_ghost(parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent

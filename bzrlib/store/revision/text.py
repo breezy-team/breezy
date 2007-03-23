@@ -24,8 +24,11 @@ requires access to a inventory weave to produce object graphs.
 from cStringIO import StringIO
 
 
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    osutils,
+    )
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import VersionedFileStore
@@ -77,6 +80,7 @@ class TextRevisionStore(RevisionStore):
         assert self.text_store.listable()
         result_graph = {}
         for rev_id in self.text_store:
+            rev_id = osutils.safe_revision_id(rev_id)
             rev = self.get_revision(rev_id, transaction)
             result_graph[rev_id] = rev.parent_ids
         # remove ghosts
@@ -100,7 +104,7 @@ class TextRevisionStore(RevisionStore):
             xml_file.close()
             assert r.revision_id == revision_id
             revisions.append(r)
-        return revisions 
+        return revisions
 
     def _get_revision_xml_file(self, revision_id):
         try:
@@ -119,7 +123,7 @@ class TextRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.text_store.has_id(revision_id))
- 
+
     def _has_signature(self, revision_id, transaction):
         """See RevisionStore._has_signature()."""
         return self.text_store.has_id(revision_id, suffix='sig')

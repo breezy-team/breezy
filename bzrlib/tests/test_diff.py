@@ -22,6 +22,7 @@ from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
+import bzrlib.osutils as osutils
 import bzrlib.patiencediff
 from bzrlib.tests import (TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
@@ -111,11 +112,10 @@ class TestDiff(TestCase):
         self.check_patch(lines)
 
     def test_external_diff_binary_lang_c(self):
-        orig_lang = os.environ.get('LANG')
-        orig_lc_all = os.environ.get('LC_ALL')
+        old_env = {}
+        for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
+            old_env[lang] = osutils.set_or_unset_env(lang, 'C')
         try:
-            os.environ['LANG'] = 'C'
-            os.environ['LC_ALL'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
             # Older versions of diffutils say "Binary files", newer
             # versions just say "Files".
@@ -123,11 +123,8 @@ class TestDiff(TestCase):
                                   '(Binary f|F)iles old and new differ\n')
             self.assertEquals(lines[1:], ['\n'])
         finally:
-            for name, value in [('LANG', orig_lang), ('LC_ALL', orig_lc_all)]:
-                if value is None:
-                    del os.environ[name]
-                else:
-                    os.environ[name] = value
+            for lang, old_val in old_env.iteritems():
+                osutils.set_or_unset_env(lang, old_val)
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
