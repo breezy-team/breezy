@@ -1152,7 +1152,7 @@ class BzrDirMeta1(BzrDir):
         format = WorkingTreeFormat.find_format(self)
         self._check_supported(format, unsupported,
             recommend_upgrade,
-            basedir=self.transport.base)
+            basedir=self.root_transport.base)
         return format.open(self, _found=True)
 
 
