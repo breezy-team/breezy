@@ -320,9 +320,3 @@ def test_bencode():
         return
     assert 0
 
-try:
-    import psyco
-    psyco.bind(bdecode)
-    psyco.bind(bencode)
-except ImportError:
-    pass

@@ -2360,6 +2360,7 @@ class Converter3to4(object):
         # tree during upgrade.
         tree._control_files.lock_write()
         try:
+            tree.read_working_inventory()
             self.create_dirstate_data(tree)
             self.update_format(tree)
             self.remove_xml_files(tree)
