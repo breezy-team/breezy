@@ -193,6 +193,9 @@ class InventoryEntry(object):
             if self.file_id in inv:
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
+                if ie.kind != self.kind:
+                    # Can't be a candidate if the kind has changed.
+                    continue
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
