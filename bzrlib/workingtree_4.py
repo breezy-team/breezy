@@ -149,7 +149,6 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = None
         self._inventory = None
         #-------------
-        self._after_opening()
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -1225,6 +1224,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
     """
+
+    upgrade_recommended = False
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""

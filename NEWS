@@ -11,6 +11,10 @@ bzr 0.15 (not finalised)
     * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
       lock to an OS write lock. Linux can do this without unlocking, Win32
       needs to unlock in between. (John Arbash Meinel)
+ 
+    * New parameter ``recommend_upgrade`` to BzrDir.open_workingtree 
+      to silence (when false) warnings about opening old formats.
+      (Martin Pool)
 
   BUGFIXES:
 

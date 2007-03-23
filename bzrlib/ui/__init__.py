@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,6 +101,8 @@ class UIFactory(object):
     def recommend_upgrade(self,
         current_format_name,
         basedir):
+        # this should perhaps be in the TextUIFactory and the default can do
+        # nothing
         trace.warning("%s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "
@@ -108,6 +110,7 @@ class UIFactory(object):
             "  bzr upgrade %s",
             current_format_name,
             basedir)
+
             
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories."""
@@ -171,6 +174,9 @@ class SilentUIFactory(CLIUIFactory):
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):
+        pass
+
+    def recommend_upgrade(self, *args):
         pass
 
 

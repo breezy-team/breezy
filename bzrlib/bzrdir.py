@@ -46,6 +46,7 @@ from bzrlib import (
     registry,
     revision as _mod_revision,
     symbol_versioning,
+    ui,
     urlutils,
     xml4,
     xml5,
@@ -109,14 +110,32 @@ class BzrDir(object):
         source_repo_format.check_conversion_target(target_repo_format)
 
     @staticmethod
-    def _check_supported(format, allow_unsupported):
-        """Check whether format is a supported format.
+    def _check_supported(format, allow_unsupported,
+        recommend_upgrade=True,
+        basedir=None):
+        """Give an error or warning on old formats.
 
-        If allow_unsupported is True, this is a no-op.
+        :param format: may be any kind of format - workingtree, branch, 
+        or repository.
+
+        :param allow_unsupported: If true, allow opening 
+        formats that are strongly deprecated, and which may 
+        have limited functionality.
+
+        :param recommend_upgrade: If true (default), warn
+        the user through the ui object that they may wish
+        to upgrade the object.
         """
+        # TODO: perhaps move this into the format itself.
+        # mbp 20070323
         if not allow_unsupported and not format.is_supported():
             # see open_downlevel to open legacy branches.
             raise errors.UnsupportedFormatError(format=format)
+        if recommend_upgrade \
+            and getattr(format, 'upgrade_recommended', False):
+            ui.ui_factory.recommend_upgrade(
+                format.get_format_description(),
+                basedir)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
@@ -527,7 +546,8 @@ class BzrDir(object):
         :param _unsupported: private.
         """
         format = BzrDirFormat.find_format(transport)
-        BzrDir._check_supported(format, _unsupported)
+        BzrDir._check_supported(format, _unsupported,
+            basedir=transport.base)
         return format.open(transport, _found=True)
 
     def open_branch(self, unsupported=False):
@@ -641,7 +661,7 @@ class BzrDir(object):
         workingtree and discards it, and that's somewhat expensive.) 
         """
         try:
-            self.open_workingtree()
+            self.open_workingtree(recommend_upgrade=False)
             return True
         except errors.NoWorkingTree:
             return False
@@ -844,13 +864,15 @@ class BzrDirPreSplitOut(BzrDir):
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
+        # because this format creates the workingtree when the bzrdir is
+        # created
         # clone and sprout will have set the revision_id
         # and that will have set it for us, its only
         # specific uses of create_workingtree in isolation
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be 
         # done on this format anyway. So - acceptable wart.
-        result = self.open_workingtree()
+        result = self.open_workingtree(recommend_upgrade=False)
         if revision_id is not None:
             if revision_id == _mod_revision.NULL_REVISION:
                 result.set_parent_ids([])
@@ -962,10 +984,14 @@ class BzrDir5(BzrDirPreSplitOut):
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False):
+    def open_workingtree(self, _unsupported=False,
+            recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat2
-        return WorkingTreeFormat2().open(self, _found=True)
+        wt_format = WorkingTreeFormat2()
+        # we don't warn here about upgrades; that ought to be handled for the
+        # bzrdir as a whole
+        return wt_format.open(self, _found=True)
 
 
 class BzrDir6(BzrDirPreSplitOut):
@@ -979,8 +1005,11 @@ class BzrDir6(BzrDirPreSplitOut):
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False):
+    def open_workingtree(self, _unsupported=False,
+        recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
+        # we don't warn here about upgrades; that ought to be handled for the
+        # bzrdir as a whole
         from bzrlib.workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)
 
@@ -1013,7 +1042,7 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
-        wt = self.open_workingtree()
+        wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
         wt.revert([], old_tree=empty)
@@ -1093,7 +1122,8 @@ class BzrDirMeta1(BzrDir):
         except errors.NotBranchError:
             pass
         try:
-            if not isinstance(self.open_workingtree()._format,
+            my_wt = self.open_workingtree(recommend_upgrade=False)
+            if not isinstance(my_wt._format,
                               format.workingtree_format.__class__):
                 # the workingtree needs an upgrade.
                 return True
@@ -1115,11 +1145,14 @@ class BzrDirMeta1(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def open_workingtree(self, unsupported=False):
+    def open_workingtree(self, unsupported=False,
+            recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         format = WorkingTreeFormat.find_format(self)
-        self._check_supported(format, unsupported)
+        self._check_supported(format, unsupported,
+            recommend_upgrade,
+            basedir=self.transport.base)
         return format.open(self, _found=True)
 
 
@@ -2109,7 +2142,7 @@ class ConvertMetaToMeta(Converter):
                 branch_converter = _mod_branch.Converter5to6()
                 branch_converter.convert(branch)
         try:
-            tree = self.bzrdir.open_workingtree()
+            tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         else:
