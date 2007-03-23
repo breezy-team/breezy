@@ -29,6 +29,12 @@ bzr 0.15 (not finalised)
 
     * ``bzr checkout source`` should create a local branch in the same
       format as source. (John Arbash Meinel, #93854)
+
+    * ``bzr commit`` with a kind change was failing to update the
+      last-changed-revision for directories.  The
+      InventoryDirectory._unchanged only looked at the parent_id and name,
+      ignoring the fact that the kind could have changed, too.
+      (John Arbash Meinel, #90111)
  
 
 bzr 0.15rc2  2007-03-14
