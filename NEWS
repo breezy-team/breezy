@@ -1,10 +1,26 @@
+IN DEVELOPMENT
+
 bzr 0.15 (not finalised)
+
+  CHANGES:
+ 
+    * A warning is now displayed when opening working trees in older 
+      formats, to encourage people to upgrade to WorkingTreeFormat4.
+      (Martin Pool)
 
   INTERNALS:
 
     * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
       lock to an OS write lock. Linux can do this without unlocking, Win32
       needs to unlock in between. (John Arbash Meinel)
+ 
+    * New parameter ``recommend_upgrade`` to BzrDir.open_workingtree 
+      to silence (when false) warnings about opening old formats.
+      (Martin Pool)
+
+    * Fix minor performance regression with bzr-0.15 on pre-dirstate
+      trees. (We were reading the working inventory too many times).
+      (John Arbash Meinel)
 
   BUGFIXES:
 
@@ -20,6 +36,15 @@ bzr 0.15 (not finalised)
     * ``bzr status FILENAME`` failed on Windows because of an uncommon
       errno. (``ERROR_DIRECTORY == 267 != ENOTDIR``).
       (Wouter van Heyst, John Arbash Meinel, #90819)
+
+    * ``bzr checkout source`` should create a local branch in the same
+      format as source. (John Arbash Meinel, #93854)
+
+    * ``bzr commit`` with a kind change was failing to update the
+      last-changed-revision for directories.  The
+      InventoryDirectory._unchanged only looked at the parent_id and name,
+      ignoring the fact that the kind could have changed, too.
+      (John Arbash Meinel, #90111)
  
 
 bzr 0.15rc2  2007-03-14

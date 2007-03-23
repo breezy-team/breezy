@@ -1225,6 +1225,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - uses a LockDir to guard access to it.
     """
 
+    upgrade_recommended = False
+
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
@@ -2358,6 +2360,7 @@ class Converter3to4(object):
         # tree during upgrade.
         tree._control_files.lock_write()
         try:
+            tree.read_working_inventory()
             self.create_dirstate_data(tree)
             self.update_format(tree)
             self.remove_xml_files(tree)

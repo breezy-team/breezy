@@ -68,7 +68,9 @@ from bzrlib import (
     revisiontree,
     repository,
     textui,
+    trace,
     transform,
+    ui,
     urlutils,
     xml5,
     xml6,
@@ -277,8 +279,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             hc.write()
 
         if _inventory is None:
+            # This will be acquired on lock_read() or lock_write()
             self._inventory_is_modified = False
-            self.read_working_inventory()
+            self._inventory = None
         else:
             # the caller of __init__ has provided an inventory,
             # we assume they know what they are doing - as its only
@@ -1417,7 +1420,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # prevent race conditions with the lock
         return iter(
             [subp for subp in self.extras() if not self.is_ignored(subp)])
-    
+
     @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
@@ -2296,6 +2299,17 @@ class WorkingTree2(WorkingTree):
      - uses the branch last-revision.
     """
 
+    def __init__(self, *args, **kwargs):
+        super(WorkingTree2, self).__init__(*args, **kwargs)
+        # WorkingTree2 has more of a constraint that self._inventory must
+        # exist. Because this is an older format, we don't mind the overhead
+        # caused by the extra computation here.
+
+        # Newer WorkingTree's should only have self._inventory set when they
+        # have a read lock.
+        if self._inventory is None:
+            self.read_working_inventory()
+
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
 
@@ -2441,6 +2455,8 @@ class WorkingTreeFormat(object):
 
     requires_rich_root = False
 
+    upgrade_recommended = False
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2495,12 +2511,13 @@ class WorkingTreeFormat(object):
         del klass._formats[format.get_format_string()]
 
 
-
 class WorkingTreeFormat2(WorkingTreeFormat):
     """The second working tree format. 
 
     This format modified the hash cache from the format 1 hash cache.
     """
+
+    upgrade_recommended = True
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -2570,11 +2587,11 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
+        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
-
+        return wt
 
 class WorkingTreeFormat3(WorkingTreeFormat):
     """The second working tree format updated to record a format marker.
@@ -2587,6 +2604,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         - is new in bzr 0.8
         - uses a LockDir to guard access for writes.
     """
+    
+    upgrade_recommended = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
@@ -2677,7 +2696,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        return wt
 
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.

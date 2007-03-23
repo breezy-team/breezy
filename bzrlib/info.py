@@ -273,7 +273,8 @@ def show_info(b):
 def show_bzrdir_info(a_bzrdir, verbose=False):
     """Output to stdout the 'info' for a_bzrdir."""
     try:
-        working = a_bzrdir.open_workingtree()
+        working = a_bzrdir.open_workingtree(
+            recommend_upgrade=False)
         working.lock_read()
         try:
             show_tree_info(working, verbose)
