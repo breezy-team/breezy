@@ -2,6 +2,8 @@ IN DEVELOPMENT
 
 bzr 0.15 (not finalised)
 
+bzr 0.15rc3  2007-03-24
+
   CHANGES:
  
     * A warning is now displayed when opening working trees in older 
