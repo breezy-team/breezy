@@ -27,7 +27,7 @@ from cStringIO import StringIO
 import md5
 import os
 
-from svn.core import SubversionException, Pool
+from svn.core import Pool
 import svn.core, svn.ra
 
 from fileids import generate_file_id
@@ -44,6 +44,9 @@ def md5_strings(strings):
 
 
 class RevisionBuildEditor(svn.delta.Editor):
+    """Implementation of the Subversion commit editor interface that builds a 
+    Bazaar revision.
+    """
     def __init__(self, source, target, branch_path, prev_inventory, revid, 
                  svn_revprops, id_map):
         self.branch_path = branch_path
@@ -62,6 +65,10 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.pool = Pool()
 
     def _get_revision(self, revid):
+        """Creates the revision object.
+
+        :param revid: Revision id of the revision to create.
+        """
         if self._parent_ids is None:
             self._parent_ids = ""
 
@@ -115,7 +122,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             if not file_weave.has_version(self.revid):
                 file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
-    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
+    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
+                      pool):
         path = path.decode("utf-8")
         file_id = self._get_new_id(parent_id, path)
 
@@ -213,7 +221,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_id = self._get_existing_id(parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
-        file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
+        file_weave = self.weave_store.get_weave_or_empty(base_file_id, 
+                                                         self.transact)
         self.file_data = file_weave.get_text(base_revid)
         self.file_stream = None
         if self.file_id == base_file_id:
@@ -235,7 +244,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        file_weave = self.weave_store.get_weave_or_empty(self.file_id, self.transact)
+        file_weave = self.weave_store.get_weave_or_empty(self.file_id, 
+                                                         self.transact)
         if not file_weave.has_version(self.revid):
             file_weave.add_lines(self.revid, self.file_parents, lines)
 
@@ -275,9 +285,11 @@ class RevisionBuildEditor(svn.delta.Editor):
     def apply_textdelta(self, file_id, base_checksum):
         actual_checksum = md5.new(self.file_data).hexdigest(),
         assert (base_checksum is None or base_checksum == actual_checksum,
-            "base checksum mismatch: %r != %r" % (base_checksum, actual_checksum))
+            "base checksum mismatch: %r != %r" % (base_checksum, 
+                                                  actual_checksum))
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream, self.pool)
+        return apply_txdelta_handler(StringIO(self.file_data), 
+                                     self.file_stream, self.pool)
 
 
 class InterSvnRepository(InterRepository):
@@ -295,7 +307,8 @@ class InterSvnRepository(InterRepository):
         for (branch, revnum) in self.source.follow_history(
                                                 self.source._latest_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
-            parents[revid] = self.source._mainline_revision_parent(branch, revnum)
+            parents[revid] = self.source._mainline_revision_parent(branch, 
+                                                                   revnum)
 
             if not self.target.has_revision(revid):
                 needed.append(revid)
@@ -356,6 +369,7 @@ class InterSvnRepository(InterRepository):
         else:
             nested_pb = None
         num = 0
+        prev_inv = None
         try:
             for revid in needed:
                 (branch, revnum) = self.source.parse_revision_id(revid)
@@ -368,6 +382,7 @@ class InterSvnRepository(InterRepository):
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:
+                    assert prev_inv is not None
                     parent_inv = prev_inv
 
                 changes = self.source._log.get_revision_paths(revnum, branch)
@@ -376,9 +391,9 @@ class InterSvnRepository(InterRepository):
                                             revnum, branch, changes, renames)
 
                 editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                             parent_inv, revid, 
-                                         self.source._log.get_revision_info(revnum),
-                                         id_map)
+                             parent_inv, revid, 
+                             self.source._log.get_revision_info(revnum),
+                             id_map)
 
                 pool = Pool()
                 edit, edit_baton = svn.delta.make_editor(editor, pool)
@@ -392,7 +407,8 @@ class InterSvnRepository(InterRepository):
                     svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
                         "", revnum, True, None, pool)
                 else:
-                    (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
+                    (parent_branch, parent_revnum) = \
+                            self.source.parse_revision_id(parent_revid)
                     transport.reparent("%s/%s" % (repos_root, parent_branch))
 
                     if parent_branch != branch:
@@ -409,7 +425,8 @@ class InterSvnRepository(InterRepository):
                         "", parent_revnum, False, None, pool)
 
                 transport.lock()
-                svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+                svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, 
+                                                      pool)
                 transport.unlock()
 
                 prev_inv = editor.inventory

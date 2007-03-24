@@ -299,7 +299,7 @@ class SvnRepository(Repository):
         for revid in revids:
             yield self.revision_tree(revid)
 
-    def revision_tree(self, revision_id, inventory=None):
+    def revision_tree(self, revision_id):
         if revision_id is None:
             revision_id = NULL_REVISION
 
@@ -308,7 +308,7 @@ class SvnRepository(Repository):
             inventory.revision_id = revision_id
             return RevisionTree(self, inventory, revision_id)
 
-        return SvnRevisionTree(self, revision_id, inventory)
+        return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
         (path, revnum) = self.parse_revision_id(revid)

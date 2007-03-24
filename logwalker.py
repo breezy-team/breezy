@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
-from bzrlib.progress import DummyProgress
-from bzrlib.trace import mutter
+from bzrlib.errors import NoSuchRevision
 import bzrlib.ui as ui
 
 import os
@@ -31,8 +29,6 @@ try:
     import sqlite3
 except ImportError:
     from pysqlite2 import dbapi2 as sqlite3
-
-shelves = {}
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -104,7 +100,6 @@ class LogWalker(object):
 
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
-            paths = {}
             if orig_paths is None:
                 orig_paths = {}
             for p in orig_paths:
@@ -175,7 +170,7 @@ class LogWalker(object):
                     revnum = revpaths[path][2]
                     path = revpaths[path][1]
                     continue
-            revnum-=1
+            revnum -= 1
 
     def get_revision_paths(self, revnum, path=None):
         """Obtain dictionary with all the changes in a particular revision.

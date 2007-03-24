@@ -16,3 +16,4 @@
 - free memory!
 - report changes to delta editor in Branch.pull()
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
+- blackbox tests

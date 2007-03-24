@@ -18,7 +18,6 @@ from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 
 from svn.core import SubversionException
 import svn.core, svn.repos
@@ -62,8 +61,10 @@ class SvnRemoteAccess(BzrDir):
         """
         raise NotImplementedError(SvnRemoteAccess.clone)
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False,
+            recurse='down'):
         """See BzrDir.sprout()."""
+        # FIXME: Use recurse
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.find_repository()
         if force_new_repo:
@@ -155,7 +156,7 @@ class SvnFormat(BzrDirFormat):
     def _open(self, transport):
         try: 
             return SvnRemoteAccess(transport, self)
-        except SubversionException, (msg, num):
+        except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
                 raise NotBranchError(transport.base)
             raise
