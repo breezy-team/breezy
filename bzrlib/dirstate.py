@@ -2193,6 +2193,34 @@ class DirState(object):
                 "dirblock for %r is not sorted:\n%s" % \
                 (dirblock[0], pformat(dirblock))
 
+        # Make sure that all renamed entries point to the correct location.
+        for entry in self._iter_entries():
+            for tree_index, tree_state in enumerate(entry[1]):
+                if tree_state[0] == 'r': # Renamed entry
+                    target_location = tree_state[1]
+                    other_entry = self._get_entry(tree_index,
+                                                  path_utf8=target_location)
+                    this_path = osutils.pathjoin(entry[0][0], entry[0][1])
+                    other_path = osutils.pathjoin(other_entry[0][0],
+                                                  other_entry[0][1])
+                    assert entry[0][2] == other_entry[0][2], \
+                        ('A rename entry points to a record with a different'
+                         ' file id. %s => %s'
+                         % (pformat(entry), pformat(other_entry)))
+                    if len(entry[1]) == 2: # Check the rename is symmetric
+                        if tree_index == 0:
+                            other_index = 1
+                        else:
+                            other_index = 0
+                        assert other_entry[1][other_index][0] == 'r', \
+                            ('a rename points to a record which doesn\'t'
+                             ' point back. %s => %s'
+                             % (pformat(entry), pformat(other_entry)))
+                        assert other_entry[1][other_index][1] == this_path, \
+                            ('a rename points to a record which points to a'
+                             ' different location. %s => %s'
+                             % (pformat(entry), pformat(other_entry)))
+
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
         self._header_state = DirState.NOT_IN_MEMORY
