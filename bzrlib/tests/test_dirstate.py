@@ -206,7 +206,11 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
-        state._validate()
+        state.lock_read()
+        try:
+            state._validate()
+        finally:
+            state.unlock()
 
     def test_2_parents_empty_to_dirstate(self):
         # create a parent by doing a commit
@@ -223,7 +227,11 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
-        state._validate()
+        state.lock_read()
+        try:
+            state._validate()
+        finally:
+            state.unlock()
 
     def test_empty_unknowns_are_ignored_to_dirstate(self):
         """We should be able to create a dirstate for an empty tree."""
@@ -533,9 +541,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
-        state._validate()
         state.lock_read()
         try:
+            state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
         finally:
             state.unlock()

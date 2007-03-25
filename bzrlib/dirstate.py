@@ -2167,8 +2167,11 @@ class DirState(object):
 
         This can be useful in debugging; it shouldn't be necessary in 
         normal code.
+
+        This must be called with a lock held.
         """
         from pprint import pformat
+        # TODO: All entries should have the same length?
         if len(self._dirblocks) > 0:
             assert self._dirblocks[0][0] == '', \
                     "dirblocks don't start with root block:\n" + \
@@ -2192,6 +2195,53 @@ class DirState(object):
             assert dirblock[1] == sorted(dirblock[1]), \
                 "dirblock for %r is not sorted:\n%s" % \
                 (dirblock[0], pformat(dirblock))
+
+        # Make sure that all renamed entries point to the correct location.
+        for entry in self._iter_entries():
+            for tree_index, tree_state in enumerate(entry[1]):
+                if tree_state[0] == 'r': # Renamed entry
+                    target_location = tree_state[1]
+                    other_entry = self._get_entry(tree_index,
+                                                  path_utf8=target_location)
+                    this_path = osutils.pathjoin(entry[0][0], entry[0][1])
+                    other_path = osutils.pathjoin(other_entry[0][0],
+                                                  other_entry[0][1])
+                    assert entry[0][2] == other_entry[0][2], \
+                        ('A rename entry points to a record with a different'
+                         ' file id. %s => %s'
+                         % (pformat(entry), pformat(other_entry)))
+                    # there must be 'rename' pointers between all occurrences
+                    # of this file_id in all trees.
+                    #
+                    # TODO: If there's only a single tree (no basis
+                    # revisions), there must not be any rename markers.
+                    #
+                    # TODO: If there's more than 2 trees, we should still be
+                    # able to check that all the renames line up but it'll be
+                    # more complicated.
+                    #
+                    # these are disabled because i think the assertions
+                    # they encode are wrong: there is no necessary link
+                    # between the rename pointers in one tree and in another.
+                    # -- mbp 20070325
+                    #
+                    ## if len(entry[1]) == 2: # Check the rename is symmetric
+                    ##     if tree_index == 0:
+                    ##         other_index = 1
+                    ##     else:
+                    ##         other_index = 0
+                    ##     assert other_entry[1][other_index][0] == 'r', \
+                    ##         ('a rename points to a record which '
+                    ##          'does not have a reverse rename pointer '
+                    ##          '\n%s => %s'
+                    ##          % (pformat(entry), pformat(other_entry)))
+                    ##     assert other_entry[1][other_index][1] == this_path, \
+                    ##         ('a rename points to a record which points to a'
+                    ##          ' different location.\n'
+                    ##          '%s => %s\n'
+                    ##          'this_path=%s\n'
+                    ##          % (pformat(entry), pformat(other_entry),
+                    ##             this_path))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
