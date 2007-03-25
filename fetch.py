@@ -27,7 +27,7 @@ from cStringIO import StringIO
 import md5
 import os
 
-from svn.core import SubversionException, Pool
+from svn.core import Pool
 import svn.core
 
 from fileids import generate_file_id

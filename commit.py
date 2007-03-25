@@ -17,8 +17,7 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
-from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
-                           DivergedBranches)
+from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder

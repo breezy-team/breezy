@@ -18,8 +18,7 @@ from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
                            NoRepositoryPresent, BzrError)
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              InventoryLink, ROOT_ID)
+from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import fingerprint_file

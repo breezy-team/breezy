@@ -17,7 +17,6 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import Inventory
-from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 

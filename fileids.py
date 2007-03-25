@@ -14,13 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import RevisionNotPresent, NotBranchError
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.errors import NotBranchError
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-import os
 import sha
 
 from repository import (escape_svn_path, generate_svn_revision_id, 
