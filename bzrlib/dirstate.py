@@ -2167,6 +2167,8 @@ class DirState(object):
 
         This can be useful in debugging; it shouldn't be necessary in 
         normal code.
+
+        This must be called with a lock held.
         """
         from pprint import pformat
         if len(self._dirblocks) > 0:
