@@ -22,7 +22,6 @@ import bzrlib.ui as ui
 import os
 import sha
 
-import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
                         parse_svn_revision_id)
 
@@ -107,7 +106,7 @@ class FileIdMap(object):
     def load(self, revid):
         map = {}
         for filename, create_revid, id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
-            map[filename] = (id.encode("utf-8"),create_revid.encode("utf-8"))
+            map[filename] = (id.encode("utf-8"), create_revid.encode("utf-8"))
 
         return map
 

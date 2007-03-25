@@ -175,7 +175,7 @@ class SvnFormat(BzrDirFormat):
                 "non-local transports")
 
         local_path = transport._local_base.rstrip("/")
-        repos = svn.repos.create(local_path, '', '', None, None)
+        svn.repos.create(local_path, '', '', None, None)
         return self.open(SvnRaTransport(transport.base), _found=True)
 
     def is_supported(self):

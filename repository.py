@@ -17,10 +17,8 @@
 import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
-                           NoSuchRevision, NotBranchError, 
-                           UninitializableFormat)
-from bzrlib.graph import Graph
+from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
+                           NotBranchError, UninitializableFormat)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
@@ -34,13 +32,11 @@ from svn.core import SubversionException, Pool
 import svn.core
 
 import os
-from cStringIO import StringIO
 try:
     import sqlite3
 except ImportError:
     from pysqlite2 import dbapi2 as sqlite3
 
-import branch
 from branchprops import BranchPropertyList
 import errors
 import logwalker
@@ -413,12 +409,7 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.fileids_altered_by_revision_ids)
 
     def fileid_involved_by_set(self, changes):
-        ids = []
-
-        for revid in changes:
-            pass #FIXME
-
-        return ids
+        raise NotImplementedError(self.fileid_involved_by_set)
 
     def generate_revision_id(self, revnum, path):
         """Generate a unambiguous revision id. 
@@ -472,7 +463,7 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-            revnum-=1
+            revnum -= 1
 
     def follow_branch(self, branch_path, revnum):
         assert branch_path is not None
@@ -484,7 +475,7 @@ class SvnRepository(Repository):
         while revnum > 0:
             paths = self._log.get_revision_paths(revnum, branch_path)
             if paths == {}:
-                revnum-=1
+                revnum -= 1
                 continue
             yield (branch_path, revnum)
             # FIXME: what if one of the parents of branch_path was moved?
@@ -500,7 +491,7 @@ class SvnRepository(Repository):
                 revnum = paths[branch_path][2]
                 branch_path = paths[branch_path][1]
                 continue
-            revnum-=1
+            revnum -= 1
 
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None

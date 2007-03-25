@@ -19,8 +19,6 @@ from bzrlib.errors import NoRepositoryPresent
 from bzrlib.tests import TestCase
 
 from checkout import SvnWorkingTreeFormat
-from format import SvnRemoteAccess
-from repository import SvnRepository
 from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTreeFormat(TestCase):
@@ -41,17 +39,17 @@ class TestWorkingTreeFormat(TestCase):
 
 class TestCheckout(TestCaseWithSubversionRepository):
     def test_not_for_writing(self):
-        repos_url = self.make_client("d", "dc")
+        self.make_client("d", "dc")
         x = BzrDir.create_branch_convenience("dc/foo")
         self.assertFalse(hasattr(x.repository, "uuid"))
 
     def test_open_repository(self):
-        repos_url = self.make_client("d", "dc")
+        self.make_client("d", "dc")
         x = BzrDir.open("dc")
         self.assertRaises(NoRepositoryPresent, x.open_repository)
 
     def test_find_repository(self):
-        repos_url = self.make_client("d", "dc")
+        self.make_client("d", "dc")
         x = BzrDir.open("dc")
         self.assertTrue(hasattr(x.find_repository(), "uuid"))
 

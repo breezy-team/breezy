@@ -16,26 +16,21 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, BzrError, UninitializableFormat
+from bzrlib.errors import NoSuchRevision, UninitializableFormat
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
-from bzrlib.trace import mutter
-from bzrlib.transport.local import LocalTransport
 
 import os
 
 import svn.fs
 
 from convert import load_dumpfile
-import errors
 import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-import repository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
                         MAPPING_VERSION, escape_svn_path, unescape_svn_path,

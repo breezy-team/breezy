@@ -116,7 +116,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                        
         try:
             i = 0
-            for (branch, revnum, exists) in existing_branches:
+            for (branch, revnum, _) in existing_branches:
                 if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
                     continue
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
