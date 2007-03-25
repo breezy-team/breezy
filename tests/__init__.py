@@ -228,6 +228,7 @@ def test_suite():
     suite = TestSuite()
 
     testmod_names = [
+            'test_blackbox',
             'test_branch', 
             'test_branchprops', 
             'test_checkout',
