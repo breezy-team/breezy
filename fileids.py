@@ -18,17 +18,14 @@ from bzrlib.errors import RevisionNotPresent, NotBranchError
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 import bzrlib.ui as ui
-import bzrlib.urlutils as urlutils
-from warnings import warn
 
 import os
 import sha
 
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
-                        parse_svn_revision_id, MAPPING_VERSION)
+                        parse_svn_revision_id)
 
 def generate_svn_file_id(uuid, revnum, branch, path):
     """Create a file id identifying a Subversion file.
@@ -80,8 +77,6 @@ def get_local_changes(paths, scheme, uuid, get_children=None):
         new_paths[new_p] = data
     return new_paths
 
-dbs = {}
-
 
 class FileIdMap(object):
     """ File id store. 
@@ -107,7 +102,7 @@ class FileIdMap(object):
 
     def load(self, revid):
         map = {}
-        for filename,create_revid,id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
+        for filename, create_revid, id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
             map[filename] = (id.encode("utf-8"),create_revid.encode("utf-8"))
 
         return map

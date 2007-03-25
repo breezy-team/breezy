@@ -22,7 +22,7 @@ from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId,
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
@@ -151,10 +151,10 @@ class SvnCommitBuilder(RootCommitBuilder):
                     child_ie.parent_id != self.new_inventory[child_ie.file_id].parent_id or
                     # ... name changed
                     self.new_inventory[child_ie.file_id].name != child_name):
-                       mutter('removing %r' % child_ie.file_id)
-                       svn.delta.editor_invoke_delete_entry(self.editor, 
-                               os.path.join(self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)), 
-                               self.base_revnum, baton, self.pool)
+                    mutter('removing %r' % child_ie.file_id)
+                    svn.delta.editor_invoke_delete_entry(self.editor, 
+                            os.path.join(self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)), 
+                            self.base_revnum, baton, self.pool)
 
         # Loop over file members of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -289,13 +289,14 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def commit(self, message):
         def done(revision, date, author):
+            assert revision > 0
             self.revnum = revision
-            assert self.revnum > 0
             self.date = date
             self.author = author
             mutter('committed %r, author: %r, date: %r' % (revision, author, date))
         
         mutter('obtaining commit editor')
+        self.revnum = None
         self.editor, editor_baton = self.repository.transport.get_commit_editor(
             message.encode("utf-8"), done, None, False)
 
@@ -320,6 +321,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
 
+        assert self.revnum is not None
         revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)
 
@@ -399,7 +401,7 @@ def push_as_merged(target, source, revision_id):
     delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
 
-    for (name, ie) in inv.entries():
+    for (_, ie) in inv.entries():
         if not delta.touches_file_id(ie.file_id):
             continue
 
