@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, NoSuchFile
+from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -28,10 +27,7 @@ import svn.wc
 import os
 
 from fileids import generate_svn_file_id
-import format
-import checkout
 from repository import MAPPING_VERSION
-import tree
 from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
@@ -260,7 +256,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Bla")
         self.build_tree({"dc/bl": "data2"})
         tree = WorkingTree.open("dc")
-        basis = tree.basis_tree()
+        tree.basis_tree()
         delta = tree.changes_from(tree.basis_tree())
         self.assertEqual("bl", delta.modified[0][0])
  
@@ -347,7 +343,6 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
 
     def test_symlink(self):
         self.make_client('a', 'dc')
-        import os
         os.symlink("target", "dc/bla")
         self.client_add("dc/bla")
         tree = WorkingTree.open("dc")
@@ -393,7 +388,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         tree = WorkingTree.open("dc")
-        orig_tree = tree.basis_tree()
+        tree.basis_tree()
         tree.commit(message_callback=lambda x: "data")
 
     def test_commit_callback_unicode(self):
@@ -401,7 +396,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         tree = WorkingTree.open("dc")
-        orig_tree = tree.basis_tree()
+        tree.basis_tree()
         tree.commit(message_callback=lambda x: u"data")
 
     def test_commit_message_unicode(self):
@@ -420,7 +415,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.make_checkout(repos_url + "/branches/foobranch", "de")
         tree = WorkingTree.open("de")
         self.build_tree({'de/file': "foo"})
-        orig_tree = tree.basis_tree()
+        tree.basis_tree()
         tree.commit(message="data")
 
     def test_update_after_commit(self):

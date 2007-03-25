@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
@@ -23,12 +23,9 @@ from bzrlib.trace import mutter
 import os
 from unittest import TestCase
 
-import svn.core, svn.client
-
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 from fileids import generate_svn_file_id
-import format
 from repository import MAPPING_VERSION, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
@@ -477,13 +474,13 @@ foohosts""")
                           weave.versions())
 
     def test_check(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         branch = Branch.open('d')
         result = branch.check()
         self.assertEqual(branch, result.branch) 
  
     def test_generate_revision_id(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         branch = Branch.open('d')
         self.assertEqual("svn-v%d-undefined:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
 
@@ -542,7 +539,7 @@ foohosts""")
         self.assertFalse(os.path.exists("e/.bzr"))
 
     def test_fetch_branch(self):
-        repos_url = self.make_client('d', 'sc')
+        self.make_client('d', 'sc')
 
         self.build_tree({'sc/foo/bla': "data"})
         self.client_add("sc/foo")
@@ -605,7 +602,7 @@ foohosts""")
     def test_ghost_workingtree(self):
         # Looks like bazaar has trouble creating a working tree of a 
         # revision that has ghost parents
-        repos_url = self.make_client('d', 'sc')
+        self.make_client('d', 'sc')
 
         self.build_tree({'sc/foo/bla': "data"})
         self.client_add("sc/foo")

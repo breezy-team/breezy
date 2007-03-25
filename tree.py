@@ -14,15 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from binascii import hexlify
-from bzrlib.bzrdir import BzrDirFormat
-from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
-from bzrlib.lockable_files import TransportLock, LockableFiles
-from bzrlib.lockdir import LockDir
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.progress import DummyProgress
-from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -32,7 +25,7 @@ from cStringIO import StringIO
 import urllib
 
 import svn.core, svn.wc, svn.delta
-from svn.core import SubversionException, Pool
+from svn.core import Pool
 
 def apply_txdelta_handler(src_stream, target_stream, pool):
     assert hasattr(src_stream, 'read')
@@ -50,7 +43,7 @@ def apply_txdelta_handler(src_stream, target_stream, pool):
     return wrapper
 
 class SvnRevisionTree(RevisionTree):
-     def __init__(self, repository, revision_id, inventory=None):
+    def __init__(self, repository, revision_id):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
@@ -68,7 +61,7 @@ class SvnRevisionTree(RevisionTree):
         reporter.finish_report(pool)
         pool.destroy()
 
-     def get_file_lines(self, file_id):
+    def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])
 
 

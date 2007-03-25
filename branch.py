@@ -87,7 +87,7 @@ class SvnBranch(Branch):
             rev.kind = svn.core.svn_opt_revision_head
         else:
             assert revision_id in self.revision_history()
-            (bp, revnum) = self.repository.parse_revision_id(revision_id)
+            (_, revnum) = self.repository.parse_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
             mutter('hist: %r' % self.revision_history())
@@ -226,7 +226,7 @@ class SvnBranch(Branch):
         pass
 
     def get_parent(self):
-        return self.bzrdir.root_transport.base
+        return self.base
 
     def set_parent(self, url):
         pass # FIXME: Use svn.client.switch()

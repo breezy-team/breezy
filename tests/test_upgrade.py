@@ -15,14 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoRepositoryPresent, InvalidRevisionId
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.trace import mutter
 
 from fileids import generate_svn_file_id
-import repository
-from repository import SvnRepository, MAPPING_VERSION, REVISION_ID_PREFIX
+from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (change_revision_parent, upgrade_repository, upgrade_branch,
                      UpgradeChangesContent, parse_legacy_revision_id,
@@ -264,7 +262,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f")
-        newrepos = dir.create_repository()
+        dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
         file("f/a", "w").write("b")
@@ -287,7 +285,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f")
-        newrepos = dir.create_repository()
+        dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
         file("f/a", "w").write("c")

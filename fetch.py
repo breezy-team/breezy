@@ -352,6 +352,7 @@ class InterSvnRepository(InterRepository):
 
     def copy_content(self, revision_id=None, basis=None, pb=None):
         """See InterRepository.copy_content."""
+        # FIXME: Use basis
         # Dictionary with paths as keys, revnums as values
 
         # Loop over all the revnums until revision_id

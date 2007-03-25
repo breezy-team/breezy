@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.repos
 import os
 import bzrlib
 from bzrlib import osutils
@@ -47,7 +46,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         abspath = os.path.join(self.test_dir, relpath)
         repos_url = "file://%s" % abspath
 
-        repos = svn.repos.create(abspath, '', '', None, None)
+        svn.repos.create(abspath, '', '', None, None)
 
         revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
 
@@ -209,7 +208,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
 
 def test_suite():
-    from unittest import TestSuite, TestLoader
+    from unittest import TestSuite
     
     from bzrlib.tests import TestUtil
 
@@ -218,6 +217,7 @@ def test_suite():
     suite = TestSuite()
 
     testmod_names = [
+            'test_blackbox',
             'test_branch', 
             'test_branchprops', 
             'test_checkout',

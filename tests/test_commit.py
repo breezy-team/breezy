@@ -14,23 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchReferenceFormat, PullResult
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.branch import PullResult
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches
-from bzrlib.inventory import Inventory
-from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 import os
-import format
-import checkout
-import svn.core
-from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 
 class TestNativeCommit(TestCaseWithSubversionRepository):
     def test_simple_commit(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
@@ -46,7 +40,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertTrue(new_inventory.has_filename("foo/bla"))
 
     def test_commit_message(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
@@ -60,7 +54,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("data", new_revision.message)
 
     def test_commit_message_nordic(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
@@ -74,7 +68,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual(u"\xe6\xf8\xe5", new_revision.message.decode("utf-8"))
 
     def test_commit_update(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")

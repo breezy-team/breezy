@@ -20,10 +20,6 @@ from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
 
-from cStringIO import StringIO
-import os
-from tempfile import mktemp
-
 from svn.core import SubversionException, Pool
 import svn.ra
 import svn.core
@@ -109,7 +105,7 @@ class SvnRaTransport(Transport):
             mutter('opening SVN RA connection to %r' % self.svn_url)
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
-        except SubversionException, (msg, num):
+        except SubversionException, (_, num):
             if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
                        svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
                        svn.core.SVN_ERR_BAD_URL):
