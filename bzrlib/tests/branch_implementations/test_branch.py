@@ -615,6 +615,48 @@ class TestBranchTransaction(TestCaseWithBranch):
         self.get_branch().unlock()
 
 
+class TestRevisionHistoryCaching(TestCaseWithBranch):
+
+    def get_instrumented_branch(self):
+        # Get a branch and monkey patch it to log calls to _gen_revision_history
+        branch = self.get_branch()
+        calls = []
+        real_gen_revision_history = branch._gen_revision_history
+        def fake_gen_revision_history():
+            calls.append('_gen_revision_history')
+            return real_gen_revision_history()
+        branch._gen_revision_history = fake_gen_revision_history
+        return branch, calls
+
+    def test_revision_history_when_unlocked(self):
+        """Repeated calls to revision history will call _gen_revision_history
+        each time when the branch is not locked.
+        """
+        branch, calls = self.get_instrumented_branch()
+        # Repeatedly call revision_history.
+        # _gen_revision_history will called each time, because the branch is not
+        # locked, so the history might have changed between calls.
+        branch.revision_history()
+        branch.revision_history()
+        self.assertEqual(
+            ['_gen_revision_history', '_gen_revision_history'], calls)
+
+    def test_revision_history_when_locked(self):
+        """Repeated calls to revision history will only call
+        _gen_revision_history once while the branch is locked.
+        """
+        branch, calls = self.get_instrumented_branch()
+        # Lock the branch, then repeatedly call revision_history.
+        # _gen_revision_history will only be called once.
+        branch.lock_read()
+        try:
+            branch.revision_history()
+            branch.revision_history()
+            self.assertEqual(['_gen_revision_history'], calls)
+        finally:
+            branch.unlock()
+
+
 class TestBranchPushLocations(TestCaseWithBranch):
 
     def test_get_push_location_unset(self):
