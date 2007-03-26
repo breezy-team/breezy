@@ -2092,5 +2092,17 @@ class TestDirstateValidation(TestCaseWithDirState):
         self.assertContainsRe(str(e),
             "doesn't match directory name")
 
+    def test_dirblock_missing_rename(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
         # make another entry for a-id, without a correct 'r' pointer to
         # the real occurrence in the working tree
+        last_dirblock[1].append(
+            (('h', 'z', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e),
+            'file a-id is absent in row')
