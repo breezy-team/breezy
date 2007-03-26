@@ -1,6 +1,10 @@
-IN DEVELOPMENT
+bzr 0.15rc3  2007-03-26
 
-bzr 0.15 (not finalised)
+  CHANGES:
+ 
+    * A warning is now displayed when opening working trees in older 
+      formats, to encourage people to upgrade to WorkingTreeFormat4.
+      (Martin Pool)
 
   IMPROVEMENTS:
 
@@ -14,20 +18,6 @@ bzr 0.15 (not finalised)
       bzrlib.transport.do_catching_redirections provide an easy transition
       path.  
       (vila)
-
-  BUGFIXES:
-
-    * Correctly handles mutiple permanent http redirections.
-     (vila, #88780)
-
-
-bzr 0.15rc3  2007-03-24
-
-  CHANGES:
- 
-    * A warning is now displayed when opening working trees in older 
-      formats, to encourage people to upgrade to WorkingTreeFormat4.
-      (Martin Pool)
 
   INTERNALS:
 
@@ -71,6 +61,9 @@ bzr 0.15rc3  2007-03-24
       the directory. So that there was a chance it would break commit,
       etc. (John Arbash Meinel, #94037)
  
+    * Correctly handles mutiple permanent http redirections.
+     (vila, #88780)
+
 
 bzr 0.15rc2  2007-03-14
 
