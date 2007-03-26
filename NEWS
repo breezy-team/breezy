@@ -2,6 +2,25 @@ IN DEVELOPMENT
 
 bzr 0.15 (not finalised)
 
+  IMPROVEMENTS:
+
+    * HTTP redirections are now taken into account when a branch (or a
+      bundle) is accessed for the first time. A message is issued at each
+      redirection to inform the user. In the past, http redirections were
+      silently followed for each request which significantly degraded the
+      performances. The http redirections are not followed anymore by
+      default, instead a RedirectRequested exception is raised. For bzrlib
+      users needing to follow http redirections anyway,
+      bzrlib.transport.do_catching_redirections provide an easy transition
+      path.  
+      (vila)
+
+  BUGFIXES:
+
+    * Correctly handles mutiple permanent http redirections.
+     (vila, #88780)
+
+
 bzr 0.15rc3  2007-03-24
 
   CHANGES:
