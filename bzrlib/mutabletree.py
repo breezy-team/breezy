@@ -144,6 +144,39 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._add)
 
     @needs_write_lock
+    def apply_inventory_delta(self, changes):
+        """Apply changes to the inventory as an atomic operation.
+
+        The argument is a set of changes to apply.  It must describe a
+        valid result, but the order is not important.  Specifically,
+        intermediate stages *may* be invalid, such as when two files
+        swap names.
+
+        The changes should be structured as a list of tuples, of the form
+        (old_path, new_path, file_id, new_entry).  For creation, old_path
+        must be None.  For deletion, new_path and new_entry must be None.
+        file_id is always non-None.  For renames and other mutations, all
+        values must be non-None.
+
+        If the new_entry is a directory, its children should be an empty
+        dict.  Children are handled by apply_inventory_delta itself.
+
+        :param changes: The list of tuples"""
+        self.flush()
+        inv = self.inventory
+        children = {}
+        for old_path, file_id in sorted(((op, f) for op, np, f, e in changes
+                                        if op is not None), reverse=True):
+            children[file_id] = getattr(inv[file_id], 'children', {})
+            inv.remove_recursive_id(file_id)
+        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+                                          changes if np is not None):
+            if getattr(new_entry, 'children', None) is not None:
+                new_entry.children = children.get(new_entry.file_id, {})
+            inv.add(new_entry)
+        self._write_inventory(inv)
+
+    @needs_write_lock
     def commit(self, message=None, revprops=None, *args,
                **kwargs):
         # avoid circular imports

@@ -124,3 +124,60 @@ class TestSnapshot(TestCaseWithWorkingTree):
                                   self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
+
+
+class TestApplyInventoryDelta(TestCaseWithWorkingTree):
+
+    def test_add(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        root_id = wt.get_root_id()
+        wt.apply_inventory_delta([(None, 'bar/foo', 'foo-id',
+            inventory.InventoryFile('foo-id', 'foo', parent_id='bar-id')),
+            (None, 'bar', 'bar-id', inventory.InventoryDirectory('bar-id',
+            'bar', parent_id=root_id))])
+        self.assertEqual('bar/foo', wt.inventory.id2path('foo-id'))
+        self.assertEqual('bar', wt.inventory.id2path('bar-id'))
+
+    def test_remove(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
+        wt.apply_inventory_delta([('foo', None, 'foo-id', None),
+                                  ('foo/bar', None, 'bar-id', None)])
+        self.assertIs(None, wt.path2id('foo'))
+
+    def test_rename_file(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar', 'baz/'])
+        wt.add(['foo', 'foo/bar', 'baz'],
+               ['foo-id', 'bar-id', 'baz-id'])
+        wt.apply_inventory_delta([('foo/bar', 'baz/bar', 'bar-id',
+            inventory.InventoryFile('bar-id', 'bar', 'baz-id'))])
+        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+
+    def test_rename_swap(self):
+        """Test the swap-names edge case.
+
+        foo and bar should swap names, but retain their children.  If this
+        works, any simpler rename ought to work.
+        """
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar', 'baz/', 'baz/qux'])
+        wt.add(['foo', 'foo/bar', 'baz', 'baz/qux'],
+               ['foo-id', 'bar-id', 'baz-id', 'qux-id'])
+        wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
+            inventory.InventoryDirectory('foo-id', 'baz', root_id)),
+            ('baz', 'foo', 'baz-id',
+            inventory.InventoryDirectory('baz-id', 'foo', root_id))])
+        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+        self.assertEqual('foo/qux', wt.id2path('qux-id'))
