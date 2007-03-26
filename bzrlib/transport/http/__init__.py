@@ -143,7 +143,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._qualified_proto = apparent_proto
         # range hint is handled dynamically throughout the life
-        # of the object. We start by trying mulri-range requests
+        # of the object. We start by trying multi-range requests
         # and if the server returns bougs results, we retry with
         # single range requests and, finally, we forget about
         # range if the server really can't understand. Once
@@ -226,17 +226,15 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param byte_range: None to get the whole file;
-            or [(start,end)] to fetch parts of a file.
+        :param ranges: None to get the whole file;
+            or [(start,end)+], a list of tuples to fetch parts of a file.
+        :param tail_amount: The amount to get from the end of the file.
 
         :returns: (http_code, result_file)
-
-        Note that the current http implementations can only fetch one range at
-        a time through this call.
         """
         raise NotImplementedError(self._get)
 
