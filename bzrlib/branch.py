@@ -322,7 +322,7 @@ class Branch(object):
         """
         self._revision_history_cache = rev_history
 
-    def _clear_cached_data(self):
+    def _clear_cached_state(self):
         """Clear any cached data on this branch, e.g. cached revision history.
 
         This means the next call to revision_history will need to call
@@ -1353,7 +1353,7 @@ class BzrBranch(Branch):
             self.repository.unlock()
         if not self.control_files.is_locked():
             # we just released the lock
-            self._clear_cached_data()
+            self._clear_cached_state()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
@@ -1929,7 +1929,7 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
-        self._clear_cached_data()
+        self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()
