@@ -322,8 +322,8 @@ class Branch(object):
         """
         self._revision_history_cache = rev_history
 
-    def _clear_revision_history_cache(self):
-        """Clear the cached revision history to rev_history.
+    def _clear_cached_data(self):
+        """Clear any cached data on this branch, e.g. cached revision history.
 
         This means the next call to revision_history will need to call
         _gen_revision_history.
@@ -340,9 +340,8 @@ class Branch(object):
         revision history, i.e. it does not cache the result, so repeated calls
         may be expensive.
 
-        This is intended to be overridden by concrete subclasses, rather than
-        overriding revision_history, so that subclasses do not need to deal with
-        caching logic.
+        Concrete subclasses should override this instead of revision_history so
+        that subclasses do not need to deal with caching logic.
         
         This API is semi-public; it only for use by subclasses, all other code
         should consider it to be private.
@@ -357,9 +356,10 @@ class Branch(object):
         do so.
         """
         if self._revision_history_cache is not None:
-            return self._revision_history_cache
-        history = self._gen_revision_history()
-        self._cache_revision_history(history)
+            history = self._revision_history_cache
+        else:
+            history = self._gen_revision_history()
+            self._cache_revision_history(history)
         return list(history)
 
     def revno(self):
@@ -1353,7 +1353,7 @@ class BzrBranch(Branch):
             self.repository.unlock()
         if not self.control_files.is_locked():
             # we just released the lock
-            self._clear_revision_history_cache()
+            self._clear_cached_data()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
@@ -1929,7 +1929,7 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
-        self._clear_revision_history_cache()
+        self._clear_cached_data()
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()
