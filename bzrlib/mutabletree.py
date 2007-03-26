@@ -143,7 +143,7 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self._add)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -167,6 +167,8 @@ class MutableTree(tree.Tree):
         children = {}
         for old_path, file_id in sorted(((op, f) for op, np, f, e in changes
                                         if op is not None), reverse=True):
+            if file_id not in inv:
+                continue
             children[file_id] = getattr(inv[file_id], 'children', {})
             inv.remove_recursive_id(file_id)
         for new_path, new_entry in sorted((np, e) for op, np, f, e in
