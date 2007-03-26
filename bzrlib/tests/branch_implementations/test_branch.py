@@ -704,17 +704,35 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         will not need the revision_history.  Thus the branch will not to call
         _gen_revision_history in this situation.
         """
-        branch, calls = self.get_instrumented_branch()
-        # Lock the branch, set the revision history, then repeatedly call
-        # revision_history.
-        branch.lock_write()
-        branch.set_last_revision_info(0, None)
+        a_branch, calls = self.get_instrumented_branch()
+        # Lock the branch, set the last revision info, then call
+        # last_revision_info.
+        a_branch.lock_write()
+        a_branch.set_last_revision_info(0, None)
         del calls[:]
         try:
-            branch.last_revision_info()
+            a_branch.last_revision_info()
             self.assertEqual([], calls)
         finally:
-            branch.unlock()
+            a_branch.unlock()
+
+    def test_set_last_revision_info_uncaches_revision_history_for_format6(self):
+        if not isinstance(self.branch_format, branch.BzrBranchFormat6):
+            return
+        a_branch, calls = self.get_instrumented_branch()
+        # Lock the branch, cache the revision history.
+        a_branch.lock_write()
+        a_branch.revision_history()
+        # Set the last revision info, clearing the cache.
+        a_branch.set_last_revision_info(0, None)
+        del calls[:]
+        try:
+            a_branch.revision_history()
+            self.assertEqual(['_gen_revision_history'], calls)
+        finally:
+            a_branch.unlock()
+
+        
 
 
 class TestBranchPushLocations(TestCaseWithBranch):
