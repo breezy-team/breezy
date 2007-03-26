@@ -738,17 +738,17 @@ class TreeTransform(object):
         conflicts = self.find_conflicts()
         if len(conflicts) != 0:
             raise MalformedTransform(conflicts=conflicts)
-        limbo_inv = {}
         inv = self._tree.inventory
+        inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             child_pb.update('Apply phase', 0, 2)
-            self._apply_removals(inv, limbo_inv)
+            self._apply_removals(inv, inventory_delta)
             child_pb.update('Apply phase', 1, 2)
-            modified_paths = self._apply_insertions(inv, limbo_inv)
+            modified_paths = self._apply_insertions(inv, inventory_delta)
         finally:
             child_pb.finished()
-        self._tree.apply_inventory_delta(self.__inventory_delta)
+        self._tree.apply_inventory_delta(inventory_delta)
         self.__done = True
         self.finalize()
         return _TransformResults(modified_paths)
@@ -757,14 +757,13 @@ class TreeTransform(object):
         """Generate the limbo name of a file"""
         return pathjoin(self._limbodir, trans_id)
 
-    def _apply_removals(self, inv, limbo_inv):
+    def _apply_removals(self, inv, inventory_delta):
         """Perform tree operations that remove directory/inventory names.
         
         That is, delete files that are to be deleted, and put any files that
         need renaming into limbo.  This must be done in strict child-to-parent
         order.
         """
-        self.__inventory_delta = []
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -788,12 +787,11 @@ class TreeTransform(object):
                     else:
                         file_id = self.tree_file_id(trans_id)
                     assert file_id is not None
-                    self.__inventory_delta.append((path, None, file_id,
-                                                  None))
+                    inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
 
-    def _apply_insertions(self, inv, limbo_inv):
+    def _apply_insertions(self, inv, inventory_delta):
         """Perform tree operations that insert directory/inventory names.
         
         That is, create any files that need to be created, and restore from
@@ -862,9 +860,9 @@ class TreeTransform(object):
                         old_path = inv.id2path(new_entry.file_id)
                     else:
                         old_path = None
-                    self.__inventory_delta.append((old_path, path,
-                                                   new_entry.file_id,
-                                                   new_entry))
+                    inventory_delta.append((old_path, path,
+                                            new_entry.file_id,
+                                            new_entry))
         finally:
             child_pb.finished()
         return modified_paths
