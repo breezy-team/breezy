@@ -2181,13 +2181,15 @@ class DirState(object):
         from pprint import pformat
         self._read_dirblocks_if_needed()
         if len(self._dirblocks) > 0:
-            assert self._dirblocks[0][0] == '', \
+            if not self._dirblocks[0][0] == '':
+                raise AssertionError(
                     "dirblocks don't start with root block:\n" + \
-                    pformat(dirblocks)
+                    pformat(dirblocks))
         if len(self._dirblocks) > 1:
-            assert self._dirblocks[1][0] == '', \
+            if not self._dirblocks[1][0] == '':
+                raise AssertionError(
                     "dirblocks missing root directory:\n" + \
-                    pformat(dirblocks)
+                    pformat(dirblocks))
         # the dirblocks are sorted by their path components, name, and dir id
         dir_names = [d[0].split('/')
                 for d in self._dirblocks[1:]]
@@ -2202,12 +2204,15 @@ class DirState(object):
             # then by id.  also accumulate all ids in the dirstate for later
             # use.
             for entry in dirblock[1]:
-                assert dirblock[0] == entry[0][0], \
-                    "entry key for %r doesn't match directory name in\n%r" % \
-                    (entry, pformat(dirblock))
-            assert dirblock[1] == sorted(dirblock[1]), \
-                "dirblock for %r is not sorted:\n%s" % \
-                (dirblock[0], pformat(dirblock))
+                if dirblock[0] != entry[0][0]:
+                    raise AssertionError(
+                        "entry key for %r"
+                        "doesn't match directory name in\n%r" %
+                        (entry, pformat(dirblock)))
+            if dirblock[1] != sorted(dirblock[1]):
+                raise AssertionError(
+                    "dirblock for %r is not sorted:\n%s" % \
+                    (dirblock[0], pformat(dirblock)))
 
         # For each file id, for each tree: either
         # the file id is not present at all; all rows with that id in the
@@ -2223,10 +2228,11 @@ class DirState(object):
         for entry in self._iter_entries():
             file_id = entry[0][2]
             this_path = osutils.pathjoin(entry[0][0], entry[0][1])
-            assert len(entry[1]) == tree_count, \
+            if len(entry[1]) != tree_count:
+                raise AssertionError(
                 "wrong number of entry details for row\n%s" \
                 ",\nexpected %d" % \
-                (pformat(entry), tree_count)
+                (pformat(entry), tree_count))
             for tree_index, tree_state in enumerate(entry[1]):
                 this_tree_map = id_path_maps[tree_index]
                 minikind = tree_state[0]
@@ -2236,21 +2242,24 @@ class DirState(object):
                     # any later mention of this file must be consistent with
                     # what was said before
                     if minikind == 'a':
-                        assert previous_path is None, \
+                        if previous_path is not None:
+                            raise AssertionError(
                             "file %s is absent in row %r but also present " \
                             "at %r"% \
-                            (file_id, entry, previous_path)
+                            (file_id, entry, previous_path))
                     elif minikind == 'r':
                         target_location = tree_state[1]
-                        assert previous_path == target_location, \
+                        if previous_path != target_location:
+                            raise AssertionError(
                             "file %s relocation in row %r but also at %r" \
-                            % (file_id, entry, previous_path)
+                            % (file_id, entry, previous_path))
                     else:
                         # a file, directory, etc - may have been previously
                         # pointed to by a relocation, which must point here
-                        assert previous_path == this_path, \
+                        if previous_path != this_path:
+                            raise AssertionError(
                             "entry %r inconsistent with previous path %r" % \
-                            (entry, previous_path)
+                            (entry, previous_path))
                 else:
                     if minikind == 'a':
                         # absent; should not occur anywhere else
