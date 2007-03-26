@@ -2063,3 +2063,34 @@ class TestDirstateValidation(TestCaseWithDirState):
             state._validate()
         finally:
             state.unlock()
+
+    def test_dirblock_not_sorted(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
+        # we're appending to the dirblock, but this name comes before some of
+        # the existing names; that's wrong
+        last_dirblock[1].append(
+            (('h', 'aaaa', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e), 'not sorted')
+
+    def test_dirblock_name_mismatch(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
+        # add an entry with the wrong directory name
+        last_dirblock[1].append(
+            (('', 'z', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e),
+            "doesn't match directory name")
+
+        # make another entry for a-id, without a correct 'r' pointer to
+        # the real occurrence in the working tree

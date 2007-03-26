@@ -2191,13 +2191,30 @@ class DirState(object):
                 pformat(dir_names))
         for dirblock in self._dirblocks:
             # within each dirblock, the entries are sorted by filename and
-            # then by id.
+            # then by id.  also accumulate all ids in the dirstate for later
+            # use.
+            for entry in dirblock[1]:
+                assert dirblock[0] == entry[0][0], \
+                    "entry key for %r doesn't match directory name in\n%r" % \
+                    (entry, pformat(dirblock))
             assert dirblock[1] == sorted(dirblock[1]), \
                 "dirblock for %r is not sorted:\n%s" % \
                 (dirblock[0], pformat(dirblock))
 
+        # For each file id, for each tree: either
+        # the file id is not present at all; all rows with that id in the
+        # key have it marked as 'absent'
+        # OR the file id is present under exactly one name; any other entries 
+        # that mention that id point to the correct name.
+        #
+        # We check this with a dict per tree pointing either to the present
+        # name, or None if absent.
+
+        all_file_ids = set()
         # Make sure that all renamed entries point to the correct location.
         for entry in self._iter_entries():
+            file_id = entry[0][2]
+            all_file_ids.add(file_id)
             for tree_index, tree_state in enumerate(entry[1]):
                 if tree_state[0] == 'r': # Renamed entry
                     target_location = tree_state[1]
