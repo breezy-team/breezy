@@ -748,7 +748,7 @@ class TreeTransform(object):
             modified_paths = self._apply_insertions(inv, limbo_inv)
         finally:
             child_pb.finished()
-        self._tree._write_inventory(inv)
+        self._tree.apply_inventory_delta(self.__inventory_delta)
         self.__done = True
         self.finalize()
         return _TransformResults(modified_paths)
@@ -764,6 +764,7 @@ class TreeTransform(object):
         need renaming into limbo.  This must be done in strict child-to-parent
         order.
         """
+        self.__inventory_delta = []
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -786,12 +787,9 @@ class TreeTransform(object):
                         file_id = self._tree.inventory.root.file_id
                     else:
                         file_id = self.tree_file_id(trans_id)
-                    del inv[file_id]
-                elif trans_id in self._new_name or trans_id in self._new_parent:
-                    file_id = self.tree_file_id(trans_id)
-                    if file_id is not None:
-                        limbo_inv[trans_id] = inv[file_id]
-                        inv.remove_recursive_id(file_id)
+                    assert file_id is not None
+                    self.__inventory_delta.append((path, None, file_id,
+                                                  None))
         finally:
             child_pb.finished()
 
@@ -807,6 +805,7 @@ class TreeTransform(object):
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
+                new_entry = None
                 child_pb.update('adding file', num, len(new_paths))
                 try:
                     kind = self._new_contents[trans_id]
@@ -829,35 +828,51 @@ class TreeTransform(object):
                     if kind is None:
                         kind = file_kind(self._tree.abspath(path))
                     if trans_id in self._new_reference_revision:
-                        entry = inventory.TreeReference(self._new_id[trans_id], 
+                        new_entry = inventory.TreeReference(
+                            self._new_id[trans_id],
                             self._new_name[trans_id], 
                             self.final_file_id(self._new_parent[trans_id]),
                             None, self._new_reference_revision[trans_id])
-                        inv.add(entry)
                     else:
-                        inv.add_path(path, kind, self._new_id[trans_id])
-                elif trans_id in self._new_name or trans_id in\
-                    self._new_parent:
-                    entry = limbo_inv.get(trans_id)
-                    if entry is not None:
-                        entry.name = self.final_name(trans_id)
-                        parent_path = os.path.dirname(path)
-                        entry.parent_id = \
-                            self._tree.inventory.path2id(parent_path)
-                        inv.add(entry)
+                        new_entry = inventory.make_entry(kind,
+                            self.final_name(trans_id),
+                            self.final_file_id(self.final_parent(trans_id)),
+                            self._new_id[trans_id])
+                else:
+                    if trans_id in self._new_name or trans_id in\
+                        self._new_parent or\
+                        trans_id in self._new_executability:
+                        file_id = self.final_file_id(trans_id)
+                        if file_id is not None:
+                            entry = inv[file_id]
+                            new_entry = entry.copy()
 
-                # requires files and inventory entries to be in place
+                    if trans_id in self._new_name or trans_id in\
+                        self._new_parent:
+                            if new_entry is not None:
+                                new_entry.name = self.final_name(trans_id)
+                                parent = self.final_parent(trans_id)
+                                parent_id = self.final_file_id(parent)
+                                new_entry.parent_id = parent_id
+
                 if trans_id in self._new_executability:
-                    self._set_executability(path, inv, trans_id)
+                    self._set_executability(path, new_entry, trans_id)
+                if new_entry is not None:
+                    if new_entry.file_id in inv:
+                        old_path = inv.id2path(new_entry.file_id)
+                    else:
+                        old_path = None
+                    self.__inventory_delta.append((old_path, path,
+                                                   new_entry.file_id,
+                                                   new_entry))
         finally:
             child_pb.finished()
         return modified_paths
 
-    def _set_executability(self, path, inv, trans_id):
+    def _set_executability(self, path, entry, trans_id):
         """Set the executability of versioned files """
-        file_id = inv.path2id(path)
         new_executability = self._new_executability[trans_id]
-        inv[file_id].executable = new_executability
+        entry.executable = new_executability
         if supports_executable():
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
