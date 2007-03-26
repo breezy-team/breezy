@@ -62,11 +62,17 @@ from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 from bzrlib.weave import Weave
 """)
 
-from bzrlib.trace import mutter, note
+from bzrlib.trace import (
+    mutter,
+    note,
+    )
 from bzrlib.transport.local import LocalTransport
 
 
@@ -545,9 +551,37 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
-        format = BzrDirFormat.find_format(transport)
-        BzrDir._check_supported(format, _unsupported,
-            basedir=transport.base)
+        base = transport.base
+
+        def find_format(transport):
+            return transport, BzrDirFormat.find_format(transport)
+
+        def redirected(transport, e, redirection_notice):
+            qualified_source = e.get_source_url()
+            relpath = transport.relpath(qualified_source)
+            if not e.target.endswith(relpath):
+                # Not redirected to a branch-format, not a branch
+                raise errors.NotBranchError(path=e.target)
+            target = e.target[:-len(relpath)]
+            note('%s is%s redirected to %s',
+                 transport.base, e.permanently, target)
+            # Let's try with a new transport
+            qualified_target = e.get_target_url()[:-len(relpath)]
+            # FIXME: If 'transport' has a qualifier, this should
+            # be applied again to the new transport *iff* the
+            # schemes used are the same. It's a bit tricky to
+            # verify, so I'll punt for now
+            # -- vila20070212
+            return get_transport(target)
+
+        try:
+            transport, format = do_catching_redirections(find_format,
+                                                         transport,
+                                                         redirected)
+        except errors.TooManyRedirections:
+            raise errors.NotBranchError(base)
+
+        BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
     def open_branch(self, unsupported=False):
@@ -1339,7 +1373,7 @@ class BzrDirFormat(object):
 
     @classmethod
     def register_control_format(klass, format):
-        """Register a format that does not use '.bzrdir' for its control dir.
+        """Register a format that does not use '.bzr' for its control dir.
 
         TODO: This should be pulled up into a 'ControlDirFormat' base class
         which BzrDirFormat can inherit from, and renamed to register_format 
@@ -1369,10 +1403,6 @@ class BzrDirFormat(object):
     @classmethod
     def unregister_control_format(klass, format):
         klass._control_formats.remove(format)
-
-
-# register BzrDirFormat as a control format
-BzrDirFormat.register_control_format(BzrDirFormat)
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -1631,6 +1661,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
                                   __set_workingtree_format)
 
 
+# Register bzr control format
+BzrDirFormat.register_control_format(BzrDirFormat)
+
+# Register bzr formats
 BzrDirFormat.register_format(BzrDirFormat4())
 BzrDirFormat.register_format(BzrDirFormat5())
 BzrDirFormat.register_format(BzrDirFormat6())
