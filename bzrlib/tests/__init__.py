@@ -796,6 +796,9 @@ class TestCase(unittest.TestCase):
     def assertRaises(self, excClass, func, *args, **kwargs):
         """Assert that a callable raises a particular exception.
 
+        :param excClass: As for the except statement, this may be either an
+        exception class, or a tuple of classes.
+
         Returns the exception so that you can examine it.
         """
         try:
@@ -806,6 +809,7 @@ class TestCase(unittest.TestCase):
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
             else:
+                # probably a tuple
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
