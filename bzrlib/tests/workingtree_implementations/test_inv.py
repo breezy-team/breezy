@@ -181,3 +181,13 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
             inventory.InventoryDirectory('baz-id', 'foo', root_id))])
         self.assertEqual('baz/bar', wt.id2path('bar-id'))
         self.assertEqual('foo/qux', wt.id2path('qux-id'))
+
+    def test_replace_root(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+
+        root_id = wt.get_root_id()
+        wt.apply_inventory_delta([('', None, root_id, None),
+            (None, '', 'root-id',
+             inventory.InventoryDirectory('root-id', '', None))])
