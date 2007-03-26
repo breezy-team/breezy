@@ -12,6 +12,12 @@ bzr 0.15 (not finalised)
       trees. (We were reading the working inventory too many times).
       (John Arbash Meinel)
 
+    * Remove ``Branch.get_transaction()`` in favour of a simple cache of
+      ``revision_history``.  Branch subclasses should override
+      ``_gen_revision_history`` rather than ``revision_history`` to make use of
+      this cache, and call ``_clear_revision_history_cache`` and
+      ``_cache_revision_history`` at appropriate times.
+
   BUGFIXES:
 
     * Take smtp_server from user config into account.

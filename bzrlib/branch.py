@@ -1300,29 +1300,6 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    def _finish_transaction(self):
-        """Exit the current transaction."""
-        return self.control_files._finish_transaction()
-
-    def get_transaction(self):
-        """Return the current active transaction.
-
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        # this is an explicit function so that we can do tricky stuff
-        # when the storage in rev_storage is elsewhere.
-        # we probably need to hook the two 'lock a location' and 
-        # 'have a transaction' together more delicately, so that
-        # we can have two locks (branch and storage) and one transaction
-        # ... and finishing the transaction unlocks both, but unlocking
-        # does not. - RBC 20051121
-        return self.control_files.get_transaction()
-
-    def _set_transaction(self, transaction):
-        """Set a new active transaction."""
-        return self.control_files._set_transaction(transaction)
-
     def abspath(self, name):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
