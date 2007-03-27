@@ -20,7 +20,7 @@ import os
 import shutil
 
 from bzrlib import errors, tests, workingtree_4
-from bzrlib.osutils import file_kind
+from bzrlib.osutils import file_kind, has_symlinks
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 # TODO: test the include_root option.
@@ -358,6 +358,18 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1.unlock()
             tree2.unlock()
 
+    def mutable_trees_to_locked_test_trees(self, tree1, tree2):
+        """Convert the working trees into test trees.
+
+        Read lock them, and add the unlock to the cleanup.
+        """
+        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
+        return tree1, tree2
+
     def make_tree_with_special_names(self):
         """Create a tree with filenames chosen to exercise the walk order."""
         tree1 = self.make_branch_and_tree('tree1')
@@ -365,7 +377,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         paths, path_ids = self._create_special_names(tree2, 'tree2')
         tree2.commit('initial', rev_id='rev-1')
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         return (tree1, tree2, paths, path_ids)
 
     def make_trees_with_special_names(self):
@@ -378,7 +390,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         paths, path_ids = self._create_special_names(tree1, 'tree1')
         paths, path_ids = self._create_special_names(tree2, 'tree2')
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         return (tree1, tree2, paths, path_ids)
 
     def _create_special_names(self, tree, base_path):
@@ -489,17 +501,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        tree2.lock_read()
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected_results = sorted([
             self.added(tree2, 'root-id'),
             self.added(tree2, 'a-id'),
             self.added(tree2, 'b-id'),
             self.added(tree2, 'c-id'),
             self.deleted(tree1, 'empty-root-id')])
-        tree1.unlock()
-        tree2.unlock()
         self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
 
     def test_empty_to_abc_content_a_only(self):
@@ -507,40 +515,28 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        tree2.lock_read()
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(
             [self.added(tree2, 'a-id')],
             self.do_iter_changes(tree1, tree2, specific_files=['a']))
-        tree1.unlock()
-        tree2.unlock()
 
     def test_abc_content_to_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        tree2.lock_read()
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(
             [self.deleted(tree1, 'a-id')],
             self.do_iter_changes(tree1, tree2, specific_files=['a']))
-        tree1.unlock()
-        tree2.unlock()
 
     def test_empty_to_abc_content_a_and_c_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        tree2.lock_read()
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected_result = [self.added(tree2, 'a-id'), self.added(tree2, 'c-id')]
-        tree1.unlock()
-        tree2.unlock()
         self.assertEqual(expected_result,
             self.do_iter_changes(tree1, tree2, specific_files=['a', 'b/c']))
 
@@ -549,9 +545,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        tree2.lock_read()
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         def deleted(file_id):
             entry = tree1.inventory[file_id]
             path = tree1.id2path(file_id)
@@ -563,8 +557,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.added(tree2, 'empty-root-id'),
             deleted('root-id'), deleted('a-id'),
             deleted('b-id'), deleted('c-id')])
-        tree1.unlock()
-        tree2.unlock()
         self.assertEqual(
             expected_results,
             self.do_iter_changes(tree1, tree2))
@@ -669,11 +661,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.build_tree(['tree2/directory/'])
         tree2.add(['directory'], ['file-id'])
         os.rmdir('tree2/directory')
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
         root_id = tree1.path2id('')
         expected = sorted([
             self.missing('file-id', 'file', 'directory', root_id, 'file'),
@@ -686,12 +675,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         root_id = tree1.path2id('')
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+
         self.assertEqual(sorted([self.unchanged(tree1, root_id),
             self.unchanged(tree1, 'b-id'),
             ('a-id', ('a', 'd'), True, (True, True),
@@ -715,11 +701,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
         tree2.add_reference(subtree2)
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
         self.assertEqual([], list(tree2._iter_changes(tree1)))
         subtree1.commit('commit', rev_id='commit-a')
         self.assertEqual([
@@ -759,11 +742,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(['sub'], ['subtree-id'])
         self.build_tree(['2/sub/file'])
         subtree2.add(['file'])
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # this should filter correctly from above
         self.assertEqual([self.added(tree2, 'subtree-id')],
             self.do_iter_changes(tree1, tree2, want_unversioned=True))
@@ -781,11 +761,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.add(['a', 'c'], ['a-id', 'c-id'])
         tree2.add(['a', 'c'], ['a-id', 'c-id'])
 
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
         # We should ignore the fact that 'b' exists in tree-2
         # because the want_unversioned parameter was not given.
@@ -805,11 +781,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         links_supported = True
         # except ???:
         #   links_supported = False
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected = [
             self.unversioned(tree2, 'file'),
             self.unversioned(tree2, 'dir'),
@@ -829,11 +801,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         links_supported = True
         # except ???:
         #   links_supported = False
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected = [
             self.unversioned(tree2, 'file'),
             self.unversioned(tree2, 'dir'),
@@ -871,12 +839,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.add(['file', 'dir', 'link'], ['file-id', 'dir-id', 'link-id'])
         tree2.add(['movedfile', 'moveddir', 'movedlink'],
             ['file-id', 'dir-id', 'link-id'])
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         root_id = tree1.path2id('')
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
         expected = [
             self.renamed(tree1, tree2, 'dir-id', False),
             self.renamed(tree1, tree2, 'file-id', True),
@@ -952,15 +916,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # except ???:
         #   raise TestSkipped('OS does not support symlinks')
         #   links_supported = False
-        return self.mutable_trees_to_test_trees(tree1, tree2)
+        return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):
+        if not has_symlinks():
+            raise tests.TestSkipped("No symlink support")
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
         expected = [
             self.unchanged(tree1, tree1.path2id('')),
             self.added(tree2, 'added'),
@@ -979,12 +941,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 want_unversioned=True))
 
     def test_versioned_symlinks_specific_files(self):
+        if not has_symlinks():
+            raise tests.TestSkipped("No symlink support")
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
         expected = [
             self.added(tree2, 'added'),
             self.content_changed(tree2, 'changed'),
@@ -1004,19 +964,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_tree_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_tree_with_special_names()
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
         expected = sorted(self.added(tree2, f_id) for f_id in path_ids)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
     def test_trees_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_trees_with_special_names()
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
         expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
@@ -1032,11 +984,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                   ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id', 'g-id'])
         tree2.add(['a', 'f', 'f/g'], ['a-id', 'f-id', 'g-id'])
 
-        tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # We should notice that 'b' and all its children are deleted
         expected = sorted([
             self.content_changed(tree2, 'a-id'),
@@ -1047,3 +995,219 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.deleted(tree1, 'e-id'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+
+    def test_added_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        added_id = u'\u03c9_added_id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/\u03c9-added',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        tree1.add([u'\u03b1'], [a_id])
+        tree2.add([u'\u03b1', u'\u03b1/\u03c9-added'], [a_id, added_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([self.added(tree2, added_id)],
+                         self.do_iter_changes(tree1, tree2))
+        self.assertEqual([self.added(tree2, added_id)],
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1']))
+
+    def test_deleted_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        deleted_id = u'\u03c9_deleted_id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree1/\u03b1/\u03c9-deleted',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        tree1.add([u'\u03b1', u'\u03b1/\u03c9-deleted'], [a_id, deleted_id])
+        tree2.add([u'\u03b1'], [a_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([self.deleted(tree1, deleted_id)],
+                         self.do_iter_changes(tree1, tree2))
+        self.assertEqual([self.deleted(tree1, deleted_id)],
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1']))
+
+    def test_modified_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        mod_id = u'\u03c9_mod_id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree1/\u03b1/\u03c9-modified',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/\u03c9-modified',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        tree1.add([u'\u03b1', u'\u03b1/\u03c9-modified'], [a_id, mod_id])
+        tree2.add([u'\u03b1', u'\u03b1/\u03c9-modified'], [a_id, mod_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([self.content_changed(tree1, mod_id)],
+                         self.do_iter_changes(tree1, tree2))
+        self.assertEqual([self.content_changed(tree1, mod_id)],
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1']))
+
+    def test_renamed_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        rename_id = u'\u03c9_rename_id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        self.build_tree_contents([(u'tree1/\u03c9-source', 'contents\n'),
+                                  (u'tree2/\u03b1/\u03c9-target', 'contents\n'),
+                                 ])
+        tree1.add([u'\u03b1', u'\u03c9-source'], [a_id, rename_id])
+        tree2.add([u'\u03b1', u'\u03b1/\u03c9-target'], [a_id, rename_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([self.renamed(tree1, tree2, rename_id, False)],
+                         self.do_iter_changes(tree1, tree2))
+        self.assertEqual([self.renamed(tree1, tree2, rename_id, False)],
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1']))
+
+    def test_unchanged_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        subfile_id = u'\u03c9-subfile-id'.encode('utf8')
+        rootfile_id = u'\u03c9-root-id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        self.build_tree_contents([
+            (u'tree1/\u03b1/\u03c9-subfile', 'sub contents\n'),
+            (u'tree2/\u03b1/\u03c9-subfile', 'sub contents\n'),
+            (u'tree1/\u03c9-rootfile', 'root contents\n'),
+            (u'tree2/\u03c9-rootfile', 'root contents\n'),
+            ])
+        tree1.add([u'\u03b1', u'\u03b1/\u03c9-subfile', u'\u03c9-rootfile'],
+                  [a_id, subfile_id, rootfile_id])
+        tree2.add([u'\u03b1', u'\u03b1/\u03c9-subfile', u'\u03c9-rootfile'],
+                  [a_id, subfile_id, rootfile_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.unchanged(tree1, root_id),
+            self.unchanged(tree1, a_id),
+            self.unchanged(tree1, subfile_id),
+            self.unchanged(tree1, rootfile_id),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              include_unchanged=True))
+
+        # We should also be able to select just a subset
+        expected = sorted([
+            self.unchanged(tree1, a_id),
+            self.unchanged(tree1, subfile_id),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1'],
+                                              include_unchanged=True))
+
+    def test_unknown_unicode(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+        # u'\u03b1' == GREEK SMALL LETTER ALPHA
+        # u'\u03c9' == GREEK SMALL LETTER OMEGA
+        a_id = u'\u03b1-id'.encode('utf8')
+        try:
+            self.build_tree([u'tree1/\u03b1/',
+                             u'tree2/\u03b1/',
+                             u'tree2/\u03b1/unknown_dir/',
+                             u'tree2/\u03b1/unknown_file',
+                             u'tree2/\u03b1/unknown_dir/file',
+                             u'tree2/\u03c9-unknown_root_file',
+                            ])
+        except UnicodeError:
+            raise tests.TestSkipped("Could not create Unicode files.")
+        tree1.add([u'\u03b1'], [a_id])
+        tree2.add([u'\u03b1'], [a_id])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.unversioned(tree2, u'\u03b1/unknown_dir'),
+            self.unversioned(tree2, u'\u03b1/unknown_file'),
+            self.unversioned(tree2, u'\u03c9-unknown_root_file'),
+            # a/unknown_dir/file should not be included because we should not
+            # recurse into unknown_dir
+            # self.unversioned(tree2, 'a/unknown_dir/file'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              require_versioned=False,
+                                              want_unversioned=True))
+        self.assertEqual([], # Without want_unversioned we should get nothing
+                         self.do_iter_changes(tree1, tree2))
+
+        # We should also be able to select just a subset
+        expected = sorted([
+            self.unversioned(tree2, u'\u03b1/unknown_dir'),
+            self.unversioned(tree2, u'\u03b1/unknown_file'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1'],
+                                              require_versioned=False,
+                                              want_unversioned=True))
+        self.assertEqual([], # Without want_unversioned we should get nothing
+                         self.do_iter_changes(tree1, tree2,
+                                              specific_files=[u'\u03b1']))

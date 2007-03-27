@@ -88,20 +88,28 @@ class MergeDirective(object):
         :param lines: An iterable of lines
         :return: a MergeRequest
         """
-        assert lines[0].startswith('# ' + klass._format_string + '\n')
-        line_iter = iter(lines[1:])
+        line_iter = iter(lines)
+        for line in line_iter:
+            if line.startswith('# ' + klass._format_string):
+                break
+        else:
+            if len(lines) > 0:
+                raise errors.NotAMergeDirective(lines[0])
+            else:
+                raise errors.NotAMergeDirective('')
         stanza = rio.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
             patch = None
+            patch_type = None
         else:
             patch = ''.join(patch_lines)
-        try:
-            bundle_serializer.read_bundle(StringIO(patch))
-        except errors.NotABundle:
-            patch_type = 'diff'
-        else:
-            patch_type = 'bundle'
+            try:
+                bundle_serializer.read_bundle(StringIO(patch))
+            except errors.NotABundle:
+                patch_type = 'diff'
+            else:
+                patch_type = 'bundle'
         time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
@@ -110,6 +118,7 @@ class MergeDirective(object):
                 kwargs[key] = stanza.get(key)
             except KeyError:
                 pass
+        kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
         return MergeDirective(time=time, timezone=timezone,
                               patch_type=patch_type, patch=patch, **kwargs)
 
@@ -192,10 +201,12 @@ class MergeDirective(object):
         used for the commit.
         """
         t = testament.StrictTestament3.from_revision(repository, revision_id)
+        submit_branch = _mod_branch.Branch.open(target_branch)
+        if submit_branch.get_public_branch() is not None:
+            target_branch = submit_branch.get_public_branch()
         if patch_type is None:
             patch = None
         else:
-            submit_branch = _mod_branch.Branch.open(target_branch)
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
             ancestor_id = _mod_revision.common_ancestor(revision_id,
