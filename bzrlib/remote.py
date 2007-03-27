@@ -231,6 +231,9 @@ class RemoteRepository(object):
         assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
         if response[0][0] == 'ok':
             coded = response[1].read_body_bytes()
+            if coded == '':
+                # no revisions in this repository!
+                return {}
             lines = coded.split('\n')
             revision_graph = {}
             # FIXME
@@ -621,6 +624,8 @@ class RemoteBranch(branch.Branch):
             format, usually accessing the data via the VFS.
         :param _client: Private parameter for testing.
         """
+        #branch.Branch.__init__(self)
+        self._revision_history_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -753,6 +758,7 @@ class RemoteBranch(branch.Branch):
     def unlock(self):
         self._lock_count -= 1
         if not self._lock_count:
+            self._clear_cached_state()
             mode = self._lock_mode
             self._lock_mode = None
             if self._real_branch is not None:
@@ -794,11 +800,8 @@ class RemoteBranch(branch.Branch):
             last_revision = NULL_REVISION
         return (revno, last_revision)
 
-    def revision_history(self):
-        """See Branch.revision_history()."""
-        # XXX: TODO: this does not cache the revision history for the duration
-        # of a lock, which is a bug - see the code for regular branches
-        # for details.
+    def _gen_revision_history(self):
+        """See Branch._gen_revision_history()."""
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.revision_history', path)
         assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
@@ -824,6 +827,7 @@ class RemoteBranch(branch.Branch):
         else:
             assert response == ('ok',), (
                 'unexpected response code %r' % (response,))
+        self._cache_revision_history(rev_history)
 
     def get_parent(self):
         self._ensure_real()
@@ -869,6 +873,7 @@ class RemoteBranch(branch.Branch):
 
     def set_last_revision_info(self, revno, revision_id):
         self._ensure_real()
+        self._clear_cached_state()
         return self._real_branch.set_last_revision_info(revno, revision_id)
 
     def generate_revision_history(self, revision_id, last_rev=None,
