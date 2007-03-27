@@ -853,15 +853,20 @@ class SmartTCPServer(object):
         for hook in SmartTCPServer.hooks['server_started']:
             hook(self.backing_transport.base, self.get_url())
         try:
-            while not self._should_terminate:
-                try:
-                    self.accept_and_serve()
-                except socket_timeout:
-                    # just check if we're asked to stop
-                    pass
-                except socket_error, e:
-                    trace.warning("client disconnected: %s", e)
-                    pass
+            try:
+                while not self._should_terminate:
+                    try:
+                        self.accept_and_serve()
+                    except socket_timeout:
+                        # just check if we're asked to stop
+                        pass
+                    except socket_error, e:
+                        trace.warning("client disconnected: %s", e)
+                        pass
+            except Exception, e:
+                trace.error("Unhandled smart server error.")
+                trace.log_exception_quietly()
+                raise
         finally:
             try:
                 self._server_socket.close()
