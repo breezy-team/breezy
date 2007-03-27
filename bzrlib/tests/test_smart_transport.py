@@ -822,14 +822,14 @@ class SmartTCPTests(tests.TestCase):
 class TestServerSocketUsage(SmartTCPTests):
 
     def test_server_closes_listening_sock_on_shutdown(self):
-        """The server should close its listening socket when its stopped."""
+        """The server should close its listening socket when it's stopped."""
         self.setUpServer()
-        # clean up the server and initial transport (which wont have connected)
-        server = self.server
+        # clean up the server and initial transport (which wont have connected):
         # force a connection, which uses the listening socket to synchronise
         # with the server thread, so that when we shut it down it has already
         # executed the 'self._should_terminate = False' line in the server
         # method.
+        server = self.server
         self.transport.has('.')
         self.tearDownServer()
         # make a new connection to break out the inner loop in the server.
@@ -838,6 +838,8 @@ class TestServerSocketUsage(SmartTCPTests):
         transport.has('.')
         # and close it.
         transport.disconnect()
+        # this del probably is not needed, but I wanted to be clear about what
+        # we are testing: having objects hanging around is not part of the test.
         del transport
         while server._server_thread.isAlive():
             # this is fugly: we should have an event for the server we can
