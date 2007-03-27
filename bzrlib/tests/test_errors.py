@@ -110,6 +110,11 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
+    def test_read_only_lock_error(self):
+        error = errors.ReadOnlyLockError('filename', 'error message')
+        self.assertEqualDiff("Cannot acquire write lock on filename."
+                             " error message", str(error))
+
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "

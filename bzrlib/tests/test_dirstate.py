@@ -26,7 +26,12 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.osutils import has_symlinks
+from bzrlib.tests import (
+        TestCase,
+        TestCaseWithTransport,
+        TestSkipped,
+        )
 
 
 # TODO:
@@ -362,6 +367,102 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def test_can_save_in_read_lock(self):
+        self.build_tree(['a-file'])
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            # No stat and no sha1 sum.
+            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.save()
+        finally:
+            state.unlock()
+
+        # Now open in readonly mode
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            # The current sha1 sum should be empty
+            self.assertEqual('', entry[1][0][1])
+            # We should have a real entry.
+            self.assertNotEqual((None, None), entry)
+            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            # We should have gotten a real sha1
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
+
+            # The dirblock has been updated
+            self.assertEqual(sha1sum, entry[1][0][1])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+
+            del entry
+            # Now, since we are the only one holding a lock, we should be able
+            # to save and have it written to disk
+            state.save()
+        finally:
+            state.unlock()
+
+        # Re-open the file, and ensure that the state has been updated.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            self.assertEqual(sha1sum, entry[1][0][1])
+        finally:
+            state.unlock()
+
+    def test_save_fails_quietly_if_locked(self):
+        """If dirstate is locked, save will fail without complaining."""
+        self.build_tree(['a-file'])
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            # No stat and no sha1 sum.
+            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.save()
+        finally:
+            state.unlock()
+
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            # We should have gotten a real sha1
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+
+            # Now, before we try to save, grab another dirstate, and take out a
+            # read lock.
+            # TODO: jam 20070315 Ideally this would be locked by another
+            #       process. To make sure the file is really OS locked.
+            state2 = dirstate.DirState.on_file('dirstate')
+            state2.lock_read()
+            try:
+                # This won't actually write anything, because it couldn't grab
+                # a write lock. But it shouldn't raise an error, either.
+                # TODO: jam 20070315 We should probably distinguish between
+                #       being dirty because of 'update_entry'. And dirty
+                #       because of real modification. So that save() *does*
+                #       raise a real error if it fails when we have real
+                #       modifications.
+                state.save()
+            finally:
+                state2.unlock()
+        finally:
+            state.unlock()
+        
+        # The file on disk should not be modified.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            self.assertEqual('', entry[1][0][1])
+        finally:
+            state.unlock()
+
 
 class TestDirStateInitialize(TestCaseWithDirState):
 
@@ -684,8 +785,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_add_symlink_to_root_no_parents_all_data(self):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
-        ## TODO: windows: dont fail this test. Also, how are symlinks meant to
-        # be represented on windows.
+        # bzr doesn't support fake symlinks on windows, yet.
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         os.symlink('target', 'a link')
         stat = os.lstat('a link')
         expected_entries = [
@@ -1201,7 +1303,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1286,6 +1389,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         This should not be called if this platform does not have symlink
         support.
         """
+        # caller should care about skipping test on platforms without symlinks
         os.symlink('path/to/foo', 'a')
 
         stat_value = os.lstat('a')
@@ -1320,7 +1424,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_missing_symlink(self):
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         packed_stat = self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1341,7 +1446,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_file(state, entry)
         os.remove('a')
@@ -1357,7 +1463,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
@@ -1365,6 +1472,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1372,6 +1481,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')

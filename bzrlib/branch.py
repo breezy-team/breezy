@@ -98,6 +98,7 @@ class Branch(object):
 
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._make_tags()
+        self._revision_history_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -326,9 +327,56 @@ class Branch(object):
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
+    def _cache_revision_history(self, rev_history):
+        """Set the cached revision history to rev_history.
+
+        The revision_history method will use this cache to avoid regenerating
+        the revision history.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_history_cache = rev_history
+
+    def _clear_cached_state(self):
+        """Clear any cached data on this branch, e.g. cached revision history.
+
+        This means the next call to revision_history will need to call
+        _gen_revision_history.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_history_cache = None
+
+    def _gen_revision_history(self):
+        """Return sequence of revision hashes on to this branch.
+        
+        Unlike revision_history, this method always regenerates or rereads the
+        revision history, i.e. it does not cache the result, so repeated calls
+        may be expensive.
+
+        Concrete subclasses should override this instead of revision_history so
+        that subclasses do not need to deal with caching logic.
+        
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        raise NotImplementedError(self._gen_revision_history)
+
+    @needs_read_lock
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch."""
-        raise NotImplementedError(self.revision_history)
+        """Return sequence of revision hashes on to this branch.
+        
+        This method will cache the revision history for as long as it is safe to
+        do so.
+        """
+        if self._revision_history_cache is not None:
+            history = self._revision_history_cache
+        else:
+            history = self._gen_revision_history()
+            self._cache_revision_history(history)
+        return list(history)
 
     def revno(self):
         """Return current revision number for this branch.
@@ -665,6 +713,7 @@ class Branch(object):
         else:
             if parent:
                 destination.set_parent(parent)
+        self.tags.merge_to(destination.tags)
 
     @needs_read_lock
     def check(self):
@@ -709,7 +758,7 @@ class Branch(object):
             format = bzrdir.BzrDirMetaFormat1()
         else:
             format = self.repository.bzrdir.checkout_metadir()
-            format.branch_format = self._format
+            format.set_branch_format(self._format)
         return format
 
     def create_checkout(self, to_location, revision_id=None,
@@ -1292,29 +1341,6 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    def _finish_transaction(self):
-        """Exit the current transaction."""
-        return self.control_files._finish_transaction()
-
-    def get_transaction(self):
-        """Return the current active transaction.
-
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        # this is an explicit function so that we can do tricky stuff
-        # when the storage in rev_storage is elsewhere.
-        # we probably need to hook the two 'lock a location' and 
-        # 'have a transaction' together more delicately, so that
-        # we can have two locks (branch and storage) and one transaction
-        # ... and finishing the transaction unlocks both, but unlocking
-        # does not. - RBC 20051121
-        return self.control_files.get_transaction()
-
-    def _set_transaction(self, transaction):
-        """Set a new active transaction."""
-        return self.control_files._set_transaction(transaction)
-
     def abspath(self, name):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
@@ -1379,6 +1405,9 @@ class BzrBranch(Branch):
             self.control_files.unlock()
         finally:
             self.repository.unlock()
+        if not self.control_files.is_locked():
+            # we just released the lock
+            self._clear_cached_state()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
@@ -1418,19 +1447,7 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
         self._write_revision_history(rev_history)
-        transaction = self.get_transaction()
-        history = transaction.map.find_revision_history()
-        if history is not None:
-            # update the revision history in the identity map.
-            history[:] = list(rev_history)
-            # this call is disabled because revision_history is 
-            # not really an object yet, and the transaction is for objects.
-            # transaction.register_dirty(history)
-        else:
-            transaction.map.add_revision_history(rev_history)
-            # this call is disabled because revision_history is 
-            # not really an object yet, and the transaction is for objects.
-            # transaction.register_clean(history)
+        self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
@@ -1447,21 +1464,6 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
-
-    @needs_read_lock
-    def revision_history(self):
-        """See Branch.revision_history."""
-        transaction = self.get_transaction()
-        history = transaction.map.find_revision_history()
-        if history is not None:
-            # mutter("cache hit for revision-history in %s", self)
-            return list(history)
-        history = self._gen_revision_history()
-        transaction.map.add_revision_history(history)
-        # this call is disabled because revision_history is 
-        # not really an object yet, and the transaction is for objects.
-        # transaction.register_clean(history, precious=True)
-        return list(history)
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
@@ -1976,10 +1978,7 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
-        transaction = self.get_transaction()
-        cached_history = transaction.map.find_revision_history()
-        if cached_history is not None:
-            transaction.map.remove_object(cached_history)
+        self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()

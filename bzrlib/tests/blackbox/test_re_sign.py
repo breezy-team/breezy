@@ -58,7 +58,7 @@ class ReSign(TestCaseInTempDir):
         self.assertEqual(
             '-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
             Testament.from_revision(repo, revision_id).as_short_text() +
-            '-----END PSUDO-SIGNED CONTENT-----\n',
+            '-----END PSEUDO-SIGNED CONTENT-----\n',
             repo.get_signature_text(revision_id))
 
     def test_resign(self):

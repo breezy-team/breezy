@@ -2197,9 +2197,10 @@ BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat)
 
 class BzrDirFormatInfo(object):
 
-    def __init__(self, native, deprecated):
+    def __init__(self, native, deprecated, hidden):
         self.deprecated = deprecated
         self.native = native
+        self.hidden = hidden
 
 
 class BzrDirFormatRegistry(registry.Registry):
@@ -2212,7 +2213,8 @@ class BzrDirFormatRegistry(registry.Registry):
     def register_metadir(self, key,
              repository_format, help, native=True, deprecated=False,
              branch_format=None,
-             tree_format=None):
+             tree_format=None,
+             hidden=False):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
@@ -2250,9 +2252,10 @@ class BzrDirFormatRegistry(registry.Registry):
             if repository_format is not None:
                 bd.repository_format = _load(repository_format)
             return bd
-        self.register(key, helper, help, native, deprecated)
+        self.register(key, helper, help, native, deprecated, hidden)
 
-    def register(self, key, factory, help, native=True, deprecated=False):
+    def register(self, key, factory, help, native=True, deprecated=False,
+                 hidden=False):
         """Register a BzrDirFormat factory.
         
         The factory must be a callable that takes one parameter: the key.
@@ -2262,12 +2265,12 @@ class BzrDirFormatRegistry(registry.Registry):
         supplied directly.
         """
         registry.Registry.register(self, key, factory, help, 
-            BzrDirFormatInfo(native, deprecated))
+            BzrDirFormatInfo(native, deprecated, hidden))
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
-                      deprecated=False):
+                      deprecated=False, hidden=False):
         registry.Registry.register_lazy(self, key, module_name, member_name, 
-            help, BzrDirFormatInfo(native, deprecated))
+            help, BzrDirFormatInfo(native, deprecated, hidden))
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
@@ -2323,7 +2326,9 @@ class BzrDirFormatRegistry(registry.Registry):
         deprecated_pairs = []
         for key, help in help_pairs:
             info = self.get_info(key)
-            if info.deprecated:
+            if info.hidden:
+                continue
+            elif info.deprecated:
                 deprecated_pairs.append((key, help))
             else:
                 output += wrapped(key, help, info)
@@ -2361,6 +2366,14 @@ format_registry.register_metadir('dirstate',
     # directly from workingtree_4 triggers a circular import.
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('dirstate-tags',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    help='New in 0.15: Fast local operations and improved scaling for '
+        'network operations. Additionally adds support for tags.'
+        ' Incompatible with bzr < 0.15.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -2368,5 +2381,6 @@ format_registry.register_metadir('dirstate-with-subtree',
         'bzr branches. Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
     )
 format_registry.set_default('dirstate')

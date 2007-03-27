@@ -322,7 +322,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
                          Testament.from_revision(branch.repository,
                          'A').as_short_text() +
-                         '-----END PSUDO-SIGNED CONTENT-----\n',
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
@@ -335,7 +335,7 @@ class TestBranch(TestCaseWithBranch):
                           'A')
         wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                         'FOO-----END PSUDO-SIGNED CONTENT-----\n',
+                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
@@ -593,55 +593,6 @@ class TestDecorators(TestCase):
         branch = TestDecorator()
         self.assertRaises(RuntimeError, branch.except_with_write)
         self.assertEqual(['lw', 'ul'], branch._calls)
-
-
-class TestBranchTransaction(TestCaseWithBranch):
-
-    def setUp(self):
-        super(TestBranchTransaction, self).setUp()
-        self.branch = None
-        
-    def test_default_get_transaction(self):
-        """branch.get_transaction on a new branch should give a PassThrough."""
-        self.failUnless(isinstance(self.get_branch().get_transaction(),
-                                   transactions.PassThroughTransaction))
-
-    def test__set_new_transaction(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-
-    def test__set_over_existing_transaction_raises(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-        self.assertRaises(errors.LockError,
-                          self.get_branch()._set_transaction,
-                          transactions.ReadOnlyTransaction())
-
-    def test_finish_no_transaction_raises(self):
-        self.assertRaises(errors.LockError, self.get_branch()._finish_transaction)
-
-    def test_finish_readonly_transaction_works(self):
-        self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
-        self.get_branch()._finish_transaction()
-        self.assertEqual(None, self.get_branch().control_files._transaction)
-
-    def test_unlock_calls_finish(self):
-        self.get_branch().lock_read()
-        transaction = InstrumentedTransaction()
-        self.get_branch().control_files._transaction = transaction
-        self.get_branch().unlock()
-        self.assertEqual(['finish'], transaction.calls)
-
-    def test_lock_read_acquires_ro_transaction(self):
-        self.get_branch().lock_read()
-        self.failUnless(isinstance(self.get_branch().get_transaction(),
-                                   transactions.ReadOnlyTransaction))
-        self.get_branch().unlock()
-        
-    def test_lock_write_acquires_write_transaction(self):
-        self.get_branch().lock_write()
-        # cannot use get_transaction as its magic
-        self.failUnless(isinstance(self.get_branch().control_files._transaction,
-                                   transactions.WriteTransaction))
-        self.get_branch().unlock()
 
 
 class TestBranchPushLocations(TestCaseWithBranch):

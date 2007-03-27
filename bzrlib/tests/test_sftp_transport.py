@@ -17,6 +17,7 @@
 
 import os
 import socket
+import sys
 import threading
 import time
 
@@ -106,11 +107,18 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
 
     def test__remote_path(self):
         t = self.get_transport()
+        # This test require unix-like absolute path
+        test_dir = self.test_dir
+        if sys.platform == 'win32':
+            # using hack suggested by John Meinel.
+            # TODO: write another mock server for this test
+            #       and use absolute path without drive letter
+            test_dir = '/' + test_dir
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(self.test_dir + '/relative', t._remote_path('relative'))
+        self.assertEqual(test_dir + '/relative', t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
-        root_segments = self.test_dir.split('/')
+        root_segments = test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
         self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
