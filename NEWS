@@ -1,10 +1,19 @@
 IN DEVELOPMENT
 
   INTERNALS:
- 
+
+    * bzrlib API compatability with 0.8 has been dropped, cleaning up some
+      code paths. (Robert Collins)
+
     * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
       so that a seperate LockableFiles instance can share a lock if it has the
       right token.  (Andrew Bennetts, Robert Collins)
+
+  TESTING:
+
+    * Added ``bzrlib.strace.strace`` which will strace a single callable and
+      return a StraceResult object which contains just the syscalls involved
+      in running it. (Robert Collins)
 
 
 bzr 0.15 (not finalised)
