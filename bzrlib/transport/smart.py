@@ -950,8 +950,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def get_url(self):
         """Return the url of the server"""
-        host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
+        return "bzr://%s:%d%s" % (self._sockname[0], self._sockname[1], urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
