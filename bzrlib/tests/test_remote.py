@@ -72,7 +72,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_repository(self):
         b = BzrDir.open_from_transport(self.transport)
         repo = b.open_repository()
-        revid = u'\xc823123123'
+        revid = u'\xc823123123'.encode('utf8')
         self.assertFalse(repo.has_revision(revid))
         self.local_wt.commit(message='test commit', rev_id=revid)
         self.assertTrue(repo.has_revision(revid))
@@ -81,7 +81,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertEqual([], b.revision_history())
         r1 = self.local_wt.commit('1st commit')
-        r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8')
+        r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
         self.assertEqual([r1, r2], b.revision_history())
 
     def test_find_correct_format(self):
@@ -191,8 +191,8 @@ class TestBranchLastRevisionInfo(tests.TestCase):
 
     def test_non_empty_branch(self):
         # in a non-empty branch we also decode the response properly
-
-        client = FakeClient([(('ok', '2', u'\xc8'.encode('utf8')), )])
+        revid = u'\xc8'.encode('utf8')
+        client = FakeClient([(('ok', '2', revid), )])
         transport = MemoryTransport()
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
@@ -204,7 +204,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
         self.assertEqual(
             [('call', 'Branch.last_revision_info', ('///kwaak/',))],
             client._calls)
-        self.assertEqual((2, u'\xc8'), result)
+        self.assertEqual((2, revid), result)
 
 
 class TestBranchSetLastRevision(tests.TestCase):
@@ -370,13 +370,13 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                       'revisions: 2\n'
                       'size: 18\n')]
         transport_path = 'quick'
-        revid = u'\xc8'
+        revid = u'\xc8'.encode('utf8')
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         result = repo.gather_stats(revid)
         self.assertEqual(
             [('call2', 'Repository.gather_stats',
-              ('///quick/', revid.encode('utf8'), 'no'))],
+              ('///quick/', revid, 'no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18,
                           'firstrev': (123456.300, 3600),
@@ -392,13 +392,13 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                       'revisions: 2\n'
                       'size: 18\n')]
         transport_path = 'buick'
-        revid = u'\xc8'
+        revid = u'\xc8'.encode('utf8')
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         result = repo.gather_stats(revid, True)
         self.assertEqual(
             [('call2', 'Repository.gather_stats',
-              ('///buick/', revid.encode('utf8'), 'yes'))],
+              ('///buick/', revid, 'yes'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18,
                           'committers': 128,
@@ -422,10 +422,10 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
 
     def test_none_revision(self):
         # with none we want the entire graph
-        r1 = u'\u0e33'
-        r2 = u'\u0dab'
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
         lines = [' '.join([r2, r1]), r1]
-        encoded_body = '\n'.join(lines).encode('utf8')
+        encoded_body = '\n'.join(lines)
 
         responses = [(('ok', ), encoded_body)]
         transport_path = 'sinhala'
@@ -440,11 +440,11 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
     def test_specific_revision(self):
         # with a specific revision we want the graph for that
         # with none we want the entire graph
-        r11 = u'\u0e33'
-        r12 = u'\xc9'
-        r2 = u'\u0dab'
+        r11 = u'\u0e33'.encode('utf8')
+        r12 = u'\xc9'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
         lines = [' '.join([r2, r11, r12]), r11, r12]
-        encoded_body = '\n'.join(lines).encode('utf8')
+        encoded_body = '\n'.join(lines)
 
         responses = [(('ok', ), encoded_body)]
         transport_path = 'sinhala'
@@ -452,7 +452,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             responses, transport_path)
         result = repo.get_revision_graph(r2)
         self.assertEqual(
-            [('call2', 'Repository.get_revision_graph', ('///sinhala/', r2.encode('utf8')))],
+            [('call2', 'Repository.get_revision_graph', ('///sinhala/', r2))],
             client._calls)
         self.assertEqual({r11: [], r12: [], r2: [r11, r12], }, result)
 
