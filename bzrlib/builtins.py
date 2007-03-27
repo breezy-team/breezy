@@ -1210,8 +1210,8 @@ class cmd_init(Command):
 
     If there is a repository in a parent directory of the location, then 
     the history of the branch will be stored in the repository.  Otherwise
-    init creates a standalone branch which carries its own history in
-    the .bzr directory.
+    init creates a standalone branch which carries its own history
+    in the .bzr directory.
 
     If there is already a branch at the location but it has no working tree,
     the tree can be populated with 'bzr checkout'.
@@ -1925,7 +1925,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
-    If branch is omitted then the branch containing the current working directory will be used.
+    If branch is omitted then the branch containing the current working
+    directory will be used.
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
@@ -1967,7 +1968,8 @@ class cmd_cat(Command):
 
     If no revision is nominated, the last revision is used.
 
-    Take care to redirect standard output when using this command on a binary file. 
+    Note: Take care to redirect standard output when using this command on a
+    binary file. 
     """
 
     takes_options = ['revision', 'name-from-revision']
