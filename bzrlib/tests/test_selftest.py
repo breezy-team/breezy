@@ -38,6 +38,9 @@ from bzrlib.repofmt import weaverepo
 from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.tests import (
                           ChrootedTestCase,
+                          ExtendedTestResult,
+                          Feature,
+                          KnownFailure,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
@@ -45,6 +48,7 @@ from bzrlib.tests import (
                           TestSkipped,
                           TestSuite,
                           TextTestRunner,
+                          UnavailableFeature,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -690,6 +694,186 @@ class TestTestResult(TestCase):
         self.assertContainsRe(output,
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
+    def test_known_failure(self):
+        """A KnownFailure being raised should trigger several result actions."""
+        class InstrumentedTestResult(ExtendedTestResult):
+
+            def report_test_start(self, test): pass
+            def report_known_failure(self, test, err):
+                self._call = test, err
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            raise KnownFailure('failed!')
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        # it should invoke 'report_known_failure'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(KnownFailure, result._call[1][0])
+        self.assertIsInstance(result._call[1][1], KnownFailure)
+        # we dont introspec the traceback, if the rest is ok, it would be
+        # exceptional for it not to be.
+        # it should update the known_failure_count on the object.
+        self.assertEqual(1, result.known_failure_count)
+        # the result should be successful.
+        self.assertTrue(result.wasSuccessful())
+
+    def test_verbose_report_known_failure(self):
+        # verbose test output formatting
+        result_stream = StringIO()
+        result = bzrlib.tests.VerboseTestResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        test = self.get_passing_test()
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        prefix = len(result_stream.getvalue())
+        # the err parameter has the shape:
+        # (class, exception object, traceback)
+        # KnownFailures dont get their tracebacks shown though, so we
+        # can skip that.
+        err = (KnownFailure, KnownFailure('foo'), None)
+        result.report_known_failure(test, err)
+        output = result_stream.getvalue()[prefix:]
+        lines = output.splitlines()
+        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
+    
+    def test_text_report_known_failure(self):
+        # text test output formatting
+        pb = MockProgress()
+        result = bzrlib.tests.TextTestResult(
+            None,
+            descriptions=0,
+            verbosity=1,
+            pb=pb,
+            )
+        test = self.get_passing_test()
+        # this seeds the state to handle reporting the test.
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        # the err parameter has the shape:
+        # (class, exception object, traceback)
+        # KnownFailures dont get their tracebacks shown though, so we
+        # can skip that.
+        err = (KnownFailure, KnownFailure('foo'), None)
+        result.report_known_failure(test, err)
+        self.assertEqual(
+            [
+            ('update', '[1 in 0s] passing_test', None, None),
+            ('note', 'XFAIL: %s\n%s\n', ('passing_test', err[1]))
+            ],
+            pb.calls)
+        # known_failures should be printed in the summary, so if we run a test
+        # after there are some known failures, the update prefix should match
+        # this.
+        result.known_failure_count = 3
+        test.run(result)
+        self.assertEqual(
+            [
+            ('update', '[2 in 0s, 3 known failures] passing_test', None, None),
+            ],
+            pb.calls[2:])
+
+    def get_passing_test(self):
+        """Return a test object that can't be run usefully."""
+        def passing_test():
+            pass
+        return unittest.FunctionTestCase(passing_test)
+
+    def test_add_not_supported(self):
+        """Test the behaviour of invoking addNotSupported."""
+        class InstrumentedTestResult(ExtendedTestResult):
+            def report_test_start(self, test): pass
+            def report_unsupported(self, test, feature):
+                self._call = test, feature
+        result = InstrumentedTestResult(None, None, None, None)
+        test = SampleTestCase('_test_pass')
+        feature = Feature()
+        result.startTest(test)
+        result.addNotSupported(test, feature)
+        # it should invoke 'report_unsupported'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(feature, result._call[1])
+        # the result should be successful.
+        self.assertTrue(result.wasSuccessful())
+        # it should record the test against a count of tests not run due to
+        # this feature.
+        self.assertEqual(1, result.unsupported['Feature'])
+        # and invoking it again should increment that counter
+        result.addNotSupported(test, feature)
+        self.assertEqual(2, result.unsupported['Feature'])
+
+    def test_verbose_report_unsupported(self):
+        # verbose test output formatting
+        result_stream = StringIO()
+        result = bzrlib.tests.VerboseTestResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        test = self.get_passing_test()
+        feature = Feature()
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        prefix = len(result_stream.getvalue())
+        result.report_unsupported(test, feature)
+        output = result_stream.getvalue()[prefix:]
+        lines = output.splitlines()
+        self.assertEqual(lines, ['NODEP                   0ms', "    The feature 'Feature' is not available."])
+    
+    def test_text_report_unsupported(self):
+        # text test output formatting
+        pb = MockProgress()
+        result = bzrlib.tests.TextTestResult(
+            None,
+            descriptions=0,
+            verbosity=1,
+            pb=pb,
+            )
+        test = self.get_passing_test()
+        feature = Feature()
+        # this seeds the state to handle reporting the test.
+        result.startTest(test)
+        result.extractBenchmarkTime(test)
+        result.report_unsupported(test, feature)
+        # no output on unsupported features
+        self.assertEqual(
+            [('update', '[1 in 0s] passing_test', None, None)
+            ],
+            pb.calls)
+        # the number of missing features should be printed in the progress
+        # summary, so check for that.
+        result.unsupported = {'foo':0, 'bar':0}
+        test.run(result)
+        self.assertEqual(
+            [
+            ('update', '[2 in 0s, 2 missing features] passing_test', None, None),
+            ],
+            pb.calls[1:])
+    
+    def test_unavailable_exception(self):
+        """An UnavailableFeature being raised should invoke addNotSupported."""
+        class InstrumentedTestResult(ExtendedTestResult):
+
+            def report_test_start(self, test): pass
+            def addNotSupported(self, test, feature):
+                self._call = test, feature
+        result = InstrumentedTestResult(None, None, None, None)
+        feature = Feature()
+        def test_function():
+            raise UnavailableFeature(feature)
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        # it should invoke 'addNotSupported'.
+        self.assertEqual(2, len(result._call))
+        self.assertEqual(test, result._call[0])
+        self.assertEqual(feature, result._call[1])
+        # and not count as an error
+        self.assertEqual(0, result.error_count)
+
 
 class TestRunner(TestCase):
 
@@ -711,6 +895,50 @@ class TestRunner(TestCase):
             return testrunner.run(test)
         finally:
             TestCaseInTempDir.TEST_ROOT = old_root
+
+    def test_known_failure_failed_run(self):
+        # run a test that generates a known failure which should be printed in
+        # the final output when real failures occur.
+        def known_failure_test():
+            raise KnownFailure('failed')
+        test = unittest.TestSuite()
+        test.addTest(unittest.FunctionTestCase(known_failure_test))
+        def failing_test():
+            raise AssertionError('foo')
+        test.addTest(unittest.FunctionTestCase(failing_test))
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        lines = stream.getvalue().splitlines()
+        self.assertEqual([
+            '',
+            '======================================================================',
+            'FAIL: unittest.FunctionTestCase (failing_test)',
+            '----------------------------------------------------------------------',
+            'Traceback (most recent call last):',
+            '    raise AssertionError(\'foo\')',
+            'AssertionError: foo',
+            '',
+            '----------------------------------------------------------------------',
+            '',
+            'FAILED (failures=1, known_failure_count=1)'],
+            lines[0:5] + lines[6:10] + lines[11:])
+
+    def test_known_failure_ok_run(self):
+        # run a test that generates a known failure which should be printed in the final output.
+        def known_failure_test():
+            raise KnownFailure('failed')
+        test = unittest.FunctionTestCase(known_failure_test)
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        self.assertEqual(
+            '\n'
+            '----------------------------------------------------------------------\n'
+            'Ran 1 test in 0.000s\n'
+            '\n'
+            'OK (known_failures=1)\n',
+            stream.getvalue())
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -764,6 +992,31 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
+
+    def test_unsupported_features_listed(self):
+        """When unsupported features are encountered they are detailed."""
+        class Feature1(Feature):
+            def _probe(self): return False
+        class Feature2(Feature):
+            def _probe(self): return False
+        # create sample tests
+        test1 = SampleTestCase('_test_pass')
+        test1._test_needs_features = [Feature1()]
+        test2 = SampleTestCase('_test_pass')
+        test2._test_needs_features = [Feature2()]
+        test = unittest.TestSuite()
+        test.addTest(test1)
+        test.addTest(test2)
+        stream = StringIO()
+        runner = TextTestRunner(stream=stream)
+        result = self.run_test_runner(runner, test)
+        lines = stream.getvalue().splitlines()
+        self.assertEqual([
+            'OK',
+            "Missing feature 'Feature1' skipped 1 tests.",
+            "Missing feature 'Feature2' skipped 1 tests.",
+            ],
+            lines[-3:])
 
     def test_bench_history(self):
         # tests that the running the benchmark produces a history file
@@ -841,6 +1094,12 @@ class TestRunner(TestCase):
         log = test._get_log()
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
+
+
+class SampleTestCase(TestCase):
+
+    def _test_pass(self):
+        pass
 
 
 class TestTestCase(TestCase):
@@ -923,6 +1182,81 @@ class TestTestCase(TestCase):
         self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
         self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+
+    def test_knownFailure(self):
+        """Self.knownFailure() should raise a KnownFailure exception."""
+        self.assertRaises(KnownFailure, self.knownFailure, "A Failure")
+
+    def test_requireFeature_available(self):
+        """self.requireFeature(available) is a no-op."""
+        class Available(Feature):
+            def _probe(self):return True
+        feature = Available()
+        self.requireFeature(feature)
+
+    def test_requireFeature_unavailable(self):
+        """self.requireFeature(unavailable) raises UnavailableFeature."""
+        class Unavailable(Feature):
+            def _probe(self):return False
+        feature = Unavailable()
+        self.assertRaises(UnavailableFeature, self.requireFeature, feature)
+
+    def test_run_no_parameters(self):
+        test = SampleTestCase('_test_pass')
+        test.run()
+    
+    def test_run_enabled_unittest_result(self):
+        """Test we revert to regular behaviour when the test is enabled."""
+        test = SampleTestCase('_test_pass')
+        class EnabledFeature(object):
+            def available(self):
+                return True
+        test._test_needs_features = [EnabledFeature()]
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual([], result.errors)
+        self.assertEqual([], result.failures)
+
+    def test_run_disabled_unittest_result(self):
+        """Test our compatability for disabled tests with unittest results."""
+        test = SampleTestCase('_test_pass')
+        class DisabledFeature(object):
+            def available(self):
+                return False
+        test._test_needs_features = [DisabledFeature()]
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual([], result.errors)
+        self.assertEqual([], result.failures)
+
+    def test_run_disabled_supporting_result(self):
+        """Test disabled tests behaviour with support aware results."""
+        test = SampleTestCase('_test_pass')
+        class DisabledFeature(object):
+            def available(self):
+                return False
+        the_feature = DisabledFeature()
+        test._test_needs_features = [the_feature]
+        class InstrumentedTestResult(unittest.TestResult):
+            def __init__(self):
+                unittest.TestResult.__init__(self)
+                self.calls = []
+            def startTest(self, test):
+                self.calls.append(('startTest', test))
+            def stopTest(self, test):
+                self.calls.append(('stopTest', test))
+            def addNotSupported(self, test, feature):
+                self.calls.append(('addNotSupported', test, feature))
+        result = InstrumentedTestResult()
+        test.run(result)
+        self.assertEqual([
+            ('startTest', test),
+            ('addNotSupported', test, the_feature),
+            ('stopTest', test),
+            ],
+            result.calls)
 
 
 @symbol_versioning.deprecated_function(zero_eleven)
@@ -1085,3 +1419,53 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
+
+
+class TestKnownFailure(TestCase):
+
+    def test_known_failure(self):
+        """Check that KnownFailure is defined appropriately."""
+        # a KnownFailure is an assertion error for compatability with unaware
+        # runners.
+        self.assertIsInstance(KnownFailure(""), AssertionError)
+
+
+class TestFeature(TestCase):
+
+    def test_caching(self):
+        """Feature._probe is called by the feature at most once."""
+        class InstrumentedFeature(Feature):
+            def __init__(self):
+                Feature.__init__(self)
+                self.calls = []
+            def _probe(self):
+                self.calls.append('_probe')
+                return False
+        feature = InstrumentedFeature()
+        feature.available()
+        self.assertEqual(['_probe'], feature.calls)
+        feature.available()
+        self.assertEqual(['_probe'], feature.calls)
+
+    def test_named_str(self):
+        """Feature.__str__ should thunk to feature_name()."""
+        class NamedFeature(Feature):
+            def feature_name(self):
+                return 'symlinks'
+        feature = NamedFeature()
+        self.assertEqual('symlinks', str(feature))
+
+    def test_default_str(self):
+        """Feature.__str__ should default to __class__.__name__."""
+        class NamedFeature(Feature):
+            pass
+        feature = NamedFeature()
+        self.assertEqual('NamedFeature', str(feature))
+
+
+class TestUnavailableFeature(TestCase):
+
+    def test_access_feature(self):
+        feature = Feature()
+        exception = UnavailableFeature(feature)
+        self.assertIs(feature, exception.args[0])

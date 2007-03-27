@@ -2243,7 +2243,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        print branch.nick 
+        print branch.nick
 
 
 class cmd_selftest(Command):
