@@ -1366,12 +1366,14 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_retire_bzrdir(self):
         bd = self.make_bzrdir('.')
+        transport = bd.root_transport
         # must not overwrite existing directories
-        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',])
-        self.failUnlessExists('.bzr')
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
+            transport=transport)
+        self.failUnless(transport.has('.bzr'))
         bd.retire_bzrdir()
-        self.failIfExists('.bzr')
-        self.failUnlessExists('.bzr.retired.1')
+        self.failIf(transport.has('.bzr'))
+        self.failUnless(transport.has('.bzr.retired.1'))
 
 class TestBreakLock(TestCaseWithBzrDir):
 
