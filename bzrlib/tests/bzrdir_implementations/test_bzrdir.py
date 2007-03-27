@@ -316,12 +316,12 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_clone_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -337,12 +337,12 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
         # by default cloning into a shared repo uses the shared repo.
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -357,12 +357,12 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_branch_and_repo_into_shared_repo_force_new_repo(self):
         # by default cloning into a shared repo uses the shared repo.
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -402,8 +402,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='1')
         self.assertEqual('1', target.open_branch().last_revision())
