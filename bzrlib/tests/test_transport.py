@@ -26,6 +26,7 @@ from bzrlib.errors import (
     ConnectionError,
     DependencyNotPresent,
     FileExists,
+    InvalidURLJoin,
     NoSuchFile,
     PathNotChild,
     TransportNotPossible,
@@ -36,10 +37,12 @@ from bzrlib.transport import (_CoalescedOffset,
                               _get_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
+                              _protocol_handlers,
                               register_lazy_transport,
                               _set_protocol_handlers,
                               Transport,
                               )
+from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
@@ -291,85 +294,89 @@ class TestMemoryTransport(TestCase):
 class ChrootDecoratorTransportTest(TestCase):
     """Chroot decoration specific tests."""
 
-    def test_construct(self):
-        from bzrlib.transport import chroot
-        transport = chroot.ChrootTransportDecorator('chroot+memory:///pathA/')
-        self.assertEqual('memory:///pathA/', transport.chroot_url)
-        self.assertEqual('/', transport.chroot_relative)
-        transport = chroot.ChrootTransportDecorator('chroot+memory:///pathA')
-        self.assertEqual('memory:///pathA/', transport.chroot_url)
-        self.assertEqual('/', transport.chroot_relative)
-        transport = chroot.ChrootTransportDecorator(
-            'chroot+memory:///path/B', chroot='memory:///path/')
-        self.assertEqual('memory:///path/', transport.chroot_url)
-        self.assertEqual('/B/', transport.chroot_relative)
-
     def test_abspath(self):
         # The abspath is always relative to the chroot_url.
-        transport = get_transport('chroot+memory:///foo/bar/')
-        self.assertEqual('chroot+memory:///foo/bar/', transport.abspath('/'))
+        server = ChrootServer(get_transport('memory:///foo/bar/'))
+        server.setUp()
+        transport = get_transport(server.get_url())
+        self.assertEqual(server.get_url(), transport.abspath('/'))
 
         subdir_transport = transport.clone('subdir')
-        self.assertEqual(
-            'chroot+memory:///foo/bar/', subdir_transport.abspath('/'))
-
-    def test_abspath_invalid(self):
-        # You cannot have a url like "scheme:///chroot_root/..", which tries to
-        # reference a location above chroot_url.
-        transport = get_transport('chroot+memory:///foo/bar/')
-
-        self.assertRaises(PathNotChild, transport.abspath, '..')
-        self.assertRaises(PathNotChild, transport.abspath, '../..')
-        self.assertRaises(PathNotChild, transport.abspath, 'foo/../..')
-        self.assertRaises(PathNotChild, transport.abspath, '/..')
-        self.assertRaises(PathNotChild, transport.abspath, '/foo/../..')
+        self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
+        server.tearDown()
 
     def test_clone(self):
-        transport = get_transport('chroot+memory:///foo/bar')
+        server = ChrootServer(get_transport('memory:///foo/bar/'))
+        server.setUp()
+        transport = get_transport(server.get_url())
         # relpath from root and root path are the same
         relpath_cloned = transport.clone('foo')
         abspath_cloned = transport.clone('/foo')
-        self.assertEqual(relpath_cloned.base, abspath_cloned.base)
-        self.assertEqual(relpath_cloned.chroot_url, abspath_cloned.chroot_url)
-        self.assertEqual(relpath_cloned.chroot_relative,
-            abspath_cloned.chroot_relative)
-        transport = transport.clone('subdir')
-        # clone preserves chroot_url and adjusts chroot_relative
-        self.assertEqual('memory:///foo/bar/', transport.chroot_url)
-        self.assertEqual('/subdir/', transport.chroot_relative)
-        transport = transport.clone('/otherdir')
-        # clone preserves chroot_url and adjusts chroot_relative
-        self.assertEqual('memory:///foo/bar/', transport.chroot_url)
-        self.assertEqual('/otherdir/', transport.chroot_relative)
+        self.assertEqual(server, relpath_cloned.server)
+        self.assertEqual(server, abspath_cloned.server)
+        server.tearDown()
     
-    def test_clone_to_root(self):
-        # cloning to "/" (and similarly any offset beginning with "/") goes to
-        # the chroot_url, not to root of the decorated transport.
-        transport = get_transport('chroot+memory:///foo/bar/baz/')
-        transport.clone('subdir')
-        # now clone to "/" will take us back to the initial location, not to
-        # "chroot_memory:///".
-        transport.clone('/')
-        self.assertEqual('chroot+memory:///foo/bar/baz/', transport.base)
+    def test_chroot_url_preserves_chroot(self):
+        """Calling get_transport on a chroot transport's base should produce a
+        transport with exactly the same behaviour as the original chroot
+        transport.
 
-    def test_clone_offset(self):
-        # transport.clone('some offset') should call clone('some offset') on the
-        # decorated transport, not some surprising variation like
-        # ('/some offset').
-        from bzrlib.transport import chroot
-        decorated_transport = FakeTransport()
-        transport = chroot.ChrootTransportDecorator(
-            'chroot+fake:///', _decorated=decorated_transport)
-        transport.clone('foo/bar')
-        self.assertEqual([('clone', 'foo/bar')] , decorated_transport.calls)
+        This is so that it is not possible to escape a chroot by doing::
+            url = chroot_transport.base
+            parent_url = urlutils.join(url, '..')
+            new_transport = get_transport(parent_url)
+        """
+        server = ChrootServer(get_transport('memory:///path/subpath'))
+        server.setUp()
+        transport = get_transport(server.get_url())
+        new_transport = get_transport(transport.base)
+        self.assertEqual(transport.server, new_transport.server)
+        self.assertEqual(transport.base, new_transport.base)
+        server.tearDown()
+        
+    def test_urljoin_preserves_chroot(self):
+        """Using urlutils.join(url, '..') on a chroot URL should not produce a
+        URL that escapes the intended chroot.
 
-    def test_clone_multiple_levels(self):
-        url='chroot+memory:///hello/'
-        transport = get_transport(url)
-        transport = transport.clone("subdir1")
-        transport = transport.clone("subdir2")
-        self.assertEqual(
-            'chroot+memory:///hello/subdir1/subdir2/', transport.base)
+        This is so that it is not possible to escape a chroot by doing::
+            url = chroot_transport.base
+            parent_url = urlutils.join(url, '..')
+            new_transport = get_transport(parent_url)
+        """
+        server = ChrootServer(get_transport('memory:///path/'))
+        server.setUp()
+        transport = get_transport(server.get_url())
+        self.assertRaises(
+            InvalidURLJoin, urlutils.join, transport.base, '..')
+        server.tearDown()
+
+
+class ChrootServerTest(TestCase):
+
+    def test_construct(self):
+        backing_transport = MemoryTransport()
+        server = ChrootServer(backing_transport)
+        self.assertEqual(backing_transport, server.backing_transport)
+
+    def test_setUp(self):
+        backing_transport = MemoryTransport()
+        server = ChrootServer(backing_transport)
+        server.setUp()
+        self.assertTrue(server.scheme in _protocol_handlers.keys())
+
+    def test_tearDown(self):
+        backing_transport = MemoryTransport()
+        server = ChrootServer(backing_transport)
+        server.setUp()
+        server.tearDown()
+        self.assertFalse(server.scheme in _protocol_handlers.keys())
+
+    def test_get_url(self):
+        backing_transport = MemoryTransport()
+        server = ChrootServer(backing_transport)
+        server.setUp()
+        self.assertEqual('chroot-%d:///' % id(server), server.get_url())
+        server.tearDown()
 
 
 class FakeTransport(object):
@@ -534,11 +541,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         super(TestTransportImplementation, self).setUp()
         self._server = self.transport_server()
         self._server.setUp()
+        self.addCleanup(self._server.tearDown)
 
-    def tearDown(self):
-        super(TestTransportImplementation, self).tearDown()
-        self._server.tearDown()
-        
     def get_transport(self):
         """Return a connected transport to the local directory."""
         base_url = self._server.get_url()

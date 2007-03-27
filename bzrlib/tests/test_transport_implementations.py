@@ -81,8 +81,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_has_root_works(self):
         current_transport = self.get_transport()
-        if isinstance(current_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')
         self.assertTrue(root.has(''))
@@ -1013,8 +1011,6 @@ class TransportTests(TestTransportImplementation):
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
         t1 = self.get_transport()
-        if isinstance(t1, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
 
         self.build_tree(['a', 'b/', 'b/c'], transport=t1)
 
@@ -1047,8 +1043,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_clone_to_root(self):
         orig_transport = self.get_transport()
-        if isinstance(orig_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # Repeatedly go up to a parent directory until we're at the root
         # directory of this transport
         root_transport = orig_transport
@@ -1077,8 +1071,6 @@ class TransportTests(TestTransportImplementation):
     def test_clone_from_root(self):
         """At the root, cloning to a simple dir should just do string append."""
         orig_transport = self.get_transport()
-        if isinstance(orig_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('/')")
         root_transport = orig_transport.clone('/')
         self.assertEqual(root_transport.base + '.bzr/',
             root_transport.clone('.bzr').base)
@@ -1099,8 +1091,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_relpath_at_root(self):
         t = self.get_transport()
-        if isinstance(t, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # clone all the way to the top
         new_transport = t.clone('..')
         while new_transport.base != t.base:
@@ -1116,8 +1106,6 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
-        if isinstance(transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
@@ -1142,8 +1130,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_abspath_at_root(self):
         t = self.get_transport()
-        if isinstance(t, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # clone all the way to the top
         new_transport = t.clone('..')
         while new_transport.base != t.base:
@@ -1248,8 +1234,6 @@ class TransportTests(TestTransportImplementation):
         # check that our server (whatever it is) is accessable reliably
         # via get_transport and multiple connections share content.
         transport = self.get_transport()
-        if isinstance(transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         if transport.is_readonly():
             return
         transport.put_bytes('foo', 'bar')

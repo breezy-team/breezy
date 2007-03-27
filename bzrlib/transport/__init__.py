@@ -107,6 +107,13 @@ def register_lazy_transport(scheme, module, classname):
     register_transport(scheme, _loader)
 
 
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    _protocol_handlers[scheme].remove(factory)
+    if _protocol_handlers[scheme] == []:
+        del _protocol_handlers[scheme]
+
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return _protocol_handlers
@@ -137,6 +144,8 @@ def _get_transport_modules():
                 modules.add(factory.module)
             else:
                 modules.add(factory.__module__)
+    # Add chroot directly, because there is not handler registered for it.
+    modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
     return result
@@ -1089,7 +1098,11 @@ class Server(object):
         raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect."""
+        """Return a url for this protocol, that will fail to connect.
+        
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
         raise NotImplementedError
 
 
@@ -1182,8 +1195,6 @@ register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTran
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
-register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
-                        'ChrootTransportDecorator')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+',

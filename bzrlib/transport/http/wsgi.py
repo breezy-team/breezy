@@ -95,8 +95,14 @@ class SmartWSGIApp(object):
         # accidentally let people access locations they shouldn't.
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
-        self.backing_transport = chroot.ChrootTransportDecorator(
-            'chroot+' + backing_transport.base, _decorated=backing_transport)
+        self.chroot_server = chroot.ChrootServer(backing_transport)
+        self.chroot_server.setUp()
+        self.backing_transport = get_transport(self.chroot_server.get_url())
+        # XXX: explain why not:
+        #self.chroot_server.tearDown()
+
+        #self.backing_transport = chroot.ChrootTransportDecorator(
+        #    'chroot+' + backing_transport.base, _decorated=backing_transport)
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""

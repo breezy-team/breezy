@@ -22,7 +22,7 @@ from bzrlib import branch, errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.chroot import ChrootServer
+from bzrlib.transport.chroot import TestingChrootServer
 
 
 class InaccessibleParentTests(TestCaseWithBranch):
@@ -37,7 +37,7 @@ class InaccessibleParentTests(TestCaseWithBranch):
     def setUp(self):
         super(InaccessibleParentTests, self).setUp()
         if self.vfs_transport_factory is LocalURLServer:
-            self.vfs_transport_factory = ChrootServer
+            self.vfs_transport_factory = TestingChrootServer
 
     def get_branch_with_invalid_parent(self):
         """Get a branch whose get_parent will raise InaccessibleParent."""

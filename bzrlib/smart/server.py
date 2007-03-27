@@ -113,18 +113,24 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
-        return transport.get_transport('chroot+' + backing_transport_server.get_url())
+        return transport.get_transport(backing_transport_server.get_url())
 
     def setUp(self, backing_transport_server=None):
         """Set up server for testing"""
+        from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             from bzrlib.transport.local import LocalURLServer
             backing_transport_server = LocalURLServer()
-        self.backing_transport = self.get_backing_transport(backing_transport_server)
+        self.chroot_server = ChrootServer(
+            self.get_backing_transport(backing_transport_server))
+        self.chroot_server.setUp()
+        self.backing_transport = transport.get_transport(
+            self.chroot_server.get_url())
         self.start_background_thread()
 
     def tearDown(self):
         self.stop_background_thread()
+        self.chroot_server.tearDown()
 
     def get_url(self):
         """Return the url of the server"""
@@ -141,6 +147,6 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
-        url = 'chroot+readonly+' + backing_transport_server.get_url()
+        url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
 
