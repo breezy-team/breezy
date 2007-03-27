@@ -26,10 +26,11 @@ import tempfile
 # want to move feature to its own module though.
 from bzrlib.tests import Feature
 
+
 def strace(function, *args, **kwargs):
     """Invoke strace on function.
 
-    :return: A StraceResult.
+    :return: a tuple: function-result, a StraceResult.
     """
     # capture strace output to a file
     log_file = tempfile.TemporaryFile()
@@ -43,7 +44,7 @@ def strace(function, *args, **kwargs):
         stdout=log_file_fd)
     # TODO? confirm its started (test suite should be sufficient)
     # (can loop on proc.pid, but that may not indicate started and attached.)
-    function(*args, **kwargs)
+    result = function(*args, **kwargs)
     # stop strace
     os.kill(proc.pid, signal.SIGQUIT)
     proc.communicate()
@@ -51,7 +52,7 @@ def strace(function, *args, **kwargs):
     log_file.seek(0)
     log = log_file.read()
     log_file.close()
-    return StraceResult(log)
+    return result, StraceResult(log)
 
 
 class StraceResult(object):
