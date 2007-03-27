@@ -188,7 +188,7 @@ rstx_foot = """
 Environment
 ===========
 **BZRPATH**
-                Path where **%(bzrcmd)s** is to look for external command.
+                Path where **%(bzrcmd)s** is to look for shell plugin external commands.
 
 **BZR_EMAIL**
                 E-Mail address of the user. Overrides default user config.
@@ -216,7 +216,7 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the users default configuration. The section ``[DEFAULT]`` is
+Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.
 The section ``[ALIASES]`` can be used to create command aliases for
 commonly used options.
