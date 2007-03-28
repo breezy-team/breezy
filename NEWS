@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+
+    * Deprecate Branch.get_root_id() because branches don't have root ids,
+      rather than fixing bug #96847.  (Aaron Bentley)
+
+
 bzr 0.15 (not finalised)
 
   INTERNALS:
