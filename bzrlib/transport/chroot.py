@@ -32,7 +32,14 @@ from bzrlib.transport.memory import MemoryTransport
 
 
 class ChrootServer(Server):
-    """Server for chroot transports."""
+    """User space 'chroot' facility.
+    
+    The server's get_url returns the url for a chroot transport mapped to the
+    backing transport. The url is of the form chroot-xxx:/// so parent
+    directories of the backing transport are not visible. The chroot url will
+    not allow '..' sequences to result in requests to the chroot affecting
+    directories outside the backing transport.
+    """
 
     def __init__(self, backing_transport):
         self.backing_transport = backing_transport
@@ -53,6 +60,10 @@ class ChrootServer(Server):
 
 
 class ChrootTransport(Transport):
+    """A ChrootTransport.
+
+    Please see ChrootServer for details.
+    """
 
     def __init__(self, server, base):
         self.server = server
