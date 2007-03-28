@@ -25,7 +25,7 @@ from bzrlib.workingtree import WorkingTree
 RENAMES = False
 
 import svn.repos, svn.wc
-from bzrlib.plugins.svn.errors import NoCheckoutSupport
+from errors import NoCheckoutSupport
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
