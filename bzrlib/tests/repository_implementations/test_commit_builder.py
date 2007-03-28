@@ -88,7 +88,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         if tree.branch.repository.supports_rich_root():
             raise tests.TestSkipped('Format requires root')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        self.build_tree(['foo'])
         tree.add('foo', 'foo-id')
         tree.lock_write()
         try:

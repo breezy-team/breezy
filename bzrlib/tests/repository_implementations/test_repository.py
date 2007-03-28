@@ -85,8 +85,7 @@ class TestRepository(TestCaseWithRepository):
         # such as signatures[not tested yet] etc etc.
         # when changing to the current default format.
         tree_a = self.make_branch_and_tree('a')
-        transport = tree_a.bzrdir.root_transport
-        self.build_tree(['foo'], transport=transport)
+        self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         bzrdirb = self.make_bzrdir('b')
@@ -196,8 +195,7 @@ class TestRepository(TestCaseWithRepository):
         # it is defined as a convenience function with the underlying 
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
-        transport = tree_a.bzrdir.root_transport
-        self.build_tree(['foo'], transport=transport)
+        self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
@@ -211,8 +209,7 @@ class TestRepository(TestCaseWithRepository):
 
     def test_fetch_knit2(self):
         tree_a = self.make_branch_and_tree('a', '')
-        transport = tree_a.bzrdir.root_transport
-        self.build_tree(['foo'], transport=transport)
+        self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
@@ -244,11 +241,10 @@ class TestRepository(TestCaseWithRepository):
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
-        transport = tree_a.bzrdir.root_transport
-        self.build_tree(['foo'], transport=transport)
+        self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        self.build_tree(['vla'], transport=transport)
+        self.build_tree(['a/vla'])
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 

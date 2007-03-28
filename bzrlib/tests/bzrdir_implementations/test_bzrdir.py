@@ -904,7 +904,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
-        tree.bzrdir.root_transport.mkdir('subdir')
+        self.build_tree(['source/subdir/'])
         tree.add('subdir')
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -930,7 +930,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
-        self.build_tree(['foo'], transport=dir.root_transport)
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
@@ -953,7 +953,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # This smoke test just checks the revision-id is right. Tree specific
         # tests will check corner cases.
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
@@ -964,7 +964,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_sprout_bzrdir_incomplete_source_with_basis(self):
         # ensure that basis really does grab from the basis by having incomplete source
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         source = self.make_branch_and_tree('source')

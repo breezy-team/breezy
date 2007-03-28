@@ -120,12 +120,11 @@ class TestBranch(TestCaseWithBranch):
         """Test fetch-revision operation."""
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        b2 = self.make_branch('b2')
-        wt.bzrdir.root_transport.put_bytes('foo', 'hello')
+        self.build_tree_contents([('b1/foo', 'hello')])
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
-        mutter('start fetch')
+        b2 = self.make_branch('b2')
         self.assertEqual((1, []), b2.fetch(b1))
 
         rev = b2.repository.get_revision('revision-1')
@@ -134,11 +133,10 @@ class TestBranch(TestCaseWithBranch):
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
-        transport = tree_a.bzrdir.root_transport
-        self.build_tree(['foo'], transport=transport)
+        self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        self.build_tree(['vla'], transport=transport)
+        self.build_tree(['a/vla'])
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 
@@ -152,7 +150,7 @@ class TestBranch(TestCaseWithBranch):
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         tree_a = self.make_branch_and_tree('a')
-        tree_a.bzrdir.root_transport.put_bytes_non_atomic('b', 'b')
+        self.build_tree_contents([('a/b', 'b')])
         tree_a.add('b')
         tree_a.commit("silly commit", rev_id='A')
 
@@ -181,11 +179,10 @@ class TestBranch(TestCaseWithBranch):
         #       what should that behaviour be ? Emailed the list.
         # First, make a branch with two commits.
         wt_a = self.make_branch_and_tree('a')
-        transport = wt_a.bzrdir.root_transport
-        self.build_tree(['one'], transport=transport)
+        self.build_tree(['a/one'])
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
-        self.build_tree(['two'], transport=transport)
+        self.build_tree(['a/two'])
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
         # Now make a copy of the repository.
@@ -204,10 +201,10 @@ class TestBranch(TestCaseWithBranch):
         # test sprouting with a prefix of the revision-history.
         # also needs not-on-revision-history behaviour defined.
         wt_a = self.make_branch_and_tree('a')
-        self.build_tree(['one'], transport=wt_a.bzrdir.root_transport)
+        self.build_tree(['a/one'])
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
-        self.build_tree(['two'], transport=wt_a.bzrdir.root_transport)
+        self.build_tree(['a/two'])
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
         repo_b = self.make_repository('b')
@@ -218,7 +215,7 @@ class TestBranch(TestCaseWithBranch):
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
-        self.build_tree(['one'], transport=wt_a.bzrdir.root_transport)
+        self.build_tree(['a/one'])
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
@@ -357,9 +354,7 @@ class TestBranch(TestCaseWithBranch):
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
         """
-        # Make a branch in a directory called 'bzr.dev'
         t = get_transport(self.get_url())
-        t.mkdir('bzr.dev')
         branch = self.make_branch('bzr.dev')
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -391,7 +386,6 @@ class TestBranch(TestCaseWithBranch):
 
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
-        get_transport(self.get_url()).mkdir('bzr.dev')
         wt = self.make_branch_and_tree('bzr.dev')
         branch = wt.branch
         branch.nick = "My happy branch"

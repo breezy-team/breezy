@@ -101,7 +101,7 @@ class TestPush(TestCaseWithBranch):
         source = self.make_branch_and_tree('source')
         target = self.make_branch('target')
 
-        self.build_tree(['a'], transport=source.bzrdir.root_transport)
+        self.build_tree(['source/a'])
         source.add(['a'])
         source.commit('a')
 
@@ -133,8 +133,8 @@ class TestPush(TestCaseWithBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            tree = a_branch.create_checkout('checkout', lightweight=True)
-        self.build_tree(['a'], transport=tree.bzrdir.root_transport)
+            tree = a_branch.create_checkout('repo/tree', lightweight=True)
+        self.build_tree(['repo/tree/a'])
         tree.add(['a'])
         tree.commit('a')
 
