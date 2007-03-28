@@ -99,7 +99,7 @@ class SmartWSGIApp(object):
         self.backing_transport = get_transport(self.chroot_server.get_url())
         # While the chroot server can technically be torn down at this point,
         # as all it does is remove the scheme registration from transport's 
-        # protocol dictionary, we dont *just in case* there are parts of 
+        # protocol dictionary, we don't *just in case* there are parts of 
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
         #self.chroot_server.tearDown()

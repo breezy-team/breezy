@@ -5,8 +5,10 @@ IN DEVELOPMENT
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
       code paths. (Robert Collins)
 
-    * Rewritten chroot transport that prevents accidental chroot escapes when
-      using urlutils against the transport's url.
+    * Change the format of chroot urls so that they can be safely manipulated
+      by generic url utilities without causing the resulting urls to have
+      escaped the chroot. A side effect of this is that creating a chroot
+      requires an explicit action using a ChrootServer.
       (Robert Collins, Andrew Bennetts)
 
   TESTING:
