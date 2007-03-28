@@ -61,8 +61,6 @@ def test_suite():
     # use.
     combinations = [(format, format._matchingbzrdir) for format in 
          BranchFormat._formats.values() + _legacy_formats]
-    # TODO: To usefully test the SmartServer, we need to specify the bzrdir
-    # format, branch format, and also the transport.
     adapter = BranchTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created

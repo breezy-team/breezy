@@ -650,8 +650,6 @@ class TestFormat(TestCaseWithBranch):
             self.branch_format.get_format_string()
         except NotImplementedError:
             return
-        if self.branch_format.get_format_string() == 'Remote BZR Branch':
-            return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
 
