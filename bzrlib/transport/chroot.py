@@ -129,7 +129,15 @@ class ChrootTransport(Transport):
 class TestingChrootServer(ChrootServer):
 
     def __init__(self):
-        ChrootServer.__init__(self, get_transport('.'))
+        """TestingChrootServer is not usable until setUp is called."""
+
+    def setUp(self, backing_server=None):
+        """Setup the Chroot on backing_server."""
+        if backing_server is not None:
+            self.backing_transport = get_transport(backing_server.get_url())
+        else:
+            self.backing_transport = get_transport('.')
+        ChrootServer.setUp(self)
 
 
 def get_test_permutations():
