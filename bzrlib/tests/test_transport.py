@@ -22,16 +22,15 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import urlutils
-from bzrlib.errors import (
-    ConnectionError,
-    DependencyNotPresent,
-    FileExists,
-    InvalidURLJoin,
-    NoSuchFile,
-    PathNotChild,
-    TransportNotPossible,
-    UnsupportedProtocol,
-    )
+from bzrlib.errors import (ConnectionError,
+                           DependencyNotPresent,
+                           FileExists,
+                           InvalidURLJoin,
+                           NoSuchFile,
+                           PathNotChild,
+                           TransportNotPossible,
+                           UnsupportedProtocol,
+                           )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
                               _get_protocol_handlers,
@@ -72,7 +71,7 @@ class TestTransport(TestCase):
             _set_protocol_handlers(my_handlers)
             register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
             register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__],
+            self.assertEqual([SampleHandler.__module__, 'bzrlib.transport.chroot'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
@@ -377,21 +376,6 @@ class ChrootServerTest(TestCase):
         server.setUp()
         self.assertEqual('chroot-%d:///' % id(server), server.get_url())
         server.tearDown()
-
-
-class FakeTransport(object):
-    # XXX: FakeTransport copied from test_wsgi.py
-
-    def __init__(self):
-        self.calls = []
-        self.base = 'fake:///'
-
-    def abspath(self, relpath):
-        return 'fake:///' + relpath
-
-    def clone(self, relpath):
-        self.calls.append(('clone', relpath))
-        return self
 
 
 class ReadonlyDecoratorTransportTest(TestCase):

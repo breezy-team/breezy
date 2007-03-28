@@ -98,11 +98,12 @@ class SmartWSGIApp(object):
         self.chroot_server = chroot.ChrootServer(backing_transport)
         self.chroot_server.setUp()
         self.backing_transport = get_transport(self.chroot_server.get_url())
-        # XXX: explain why not:
+        # While the chroot server can technically be torn down at this point,
+        # as all it does is remove the scheme registration from transport's 
+        # protocol dictionary, we dont *just in case* there are parts of 
+        # bzrlib that will invoke 'get_transport' on urls rather than cloning
+        # around the existing transport.
         #self.chroot_server.tearDown()
-
-        #self.backing_transport = chroot.ChrootTransportDecorator(
-        #    'chroot+' + backing_transport.base, _decorated=backing_transport)
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""

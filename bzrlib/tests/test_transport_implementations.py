@@ -38,7 +38,7 @@ from bzrlib.osutils import getcwd
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, chroot
+from bzrlib.transport import memory
 from bzrlib.smart import medium
 import bzrlib.transport
 

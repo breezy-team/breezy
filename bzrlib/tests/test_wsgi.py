@@ -85,8 +85,8 @@ class TestWSGI(tests.TestCase):
     def test_smart_wsgi_app_uses_given_relpath(self):
         # XXX XXX XXX update comment
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
-        # WSGI environ to construct the transport for this request, by cloning
-        # its base transport with the given relpath.
+        # WSGI environ to clone from its backing transport to get a specific
+        # transport for this request.
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
         wsgi_app.backing_transport = transport

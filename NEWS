@@ -5,6 +5,10 @@ IN DEVELOPMENT
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
       code paths. (Robert Collins)
 
+    * Rewritten chroot transport that prevents accidental chroot escapes when
+      using urlutils against the transport's url.
+      (Robert Collins, Andrew Bennetts)
+
     * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
       so that a seperate LockableFiles instance can share a lock if it has the
       right token.  (Andrew Bennetts, Robert Collins)
