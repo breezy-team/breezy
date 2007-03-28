@@ -24,7 +24,9 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
 
     def test_trivial_read(self):
         tree = self.make_branch_and_tree('t1')
+        tree.lock_read()
         self.assertIsInstance(tree.read_working_inventory(), inventory.Inventory)
+        tree.unlock()
 
     def test_read_after_inventory_modification(self):
         tree = self.make_branch_and_tree('tree')
@@ -35,6 +37,12 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
             tree.set_root_id('new-root')
             # having dirtied the inventory, we can now expect an 
             # InventoryModified exception when doing a read_working_inventory()
-            self.assertRaises(errors.InventoryModified, tree.read_working_inventory)
+            # OR, the call can be ignored and hte changes preserved
+            try:
+                tree.read_working_inventory()
+            except errors.InventoryModified:
+                pass
+            else:
+                self.assertEqual('new-root', tree.path2id(''))
         finally:
             tree.unlock()

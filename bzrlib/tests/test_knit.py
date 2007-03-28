@@ -18,6 +18,8 @@
 
 from cStringIO import StringIO
 import difflib
+import gzip
+import sha
 
 from bzrlib import (
     errors,
@@ -33,6 +35,7 @@ from bzrlib.knit import (
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
+    _KnitData,
     _KnitIndex,
     WeaveToKnit,
     )
@@ -109,10 +112,130 @@ class MockTransport(object):
         else:
             return StringIO("\n".join(self.file_lines))
 
+    def readv(self, relpath, offsets):
+        fp = self.get(relpath)
+        for offset, size in offsets:
+            fp.seek(offset)
+            yield offset, fp.read(size)
+
     def __getattr__(self, name):
         def queue_call(*args, **kwargs):
             self.calls.append((name, args, kwargs))
         return queue_call
+
+
+class LowLevelKnitDataTests(TestCase):
+
+    def create_gz_content(self, text):
+        sio = StringIO()
+        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file.write(text)
+        gz_file.close()
+        return sio.getvalue()
+
+    def test_valid_knit_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+
+        contents = data.read_records(records)
+        self.assertEqual({'rev-id-1':(['foo\n', 'bar\n'], sha1sum)}, contents)
+
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_not_enough_lines(self):
+        sha1sum = sha.new('foo\n').hexdigest()
+        # record says 2 lines data says 1
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw won't detect that sort of mismatch/corruption
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_too_many_lines(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        # record says 1 lines data says 2
+        gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw won't detect that sort of mismatch/corruption
+        raw_contents = list(data.read_records_iter_raw(records))
+        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+
+    def test_mismatched_version_id(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        # We are asking for rev-id-2, but the data is rev-id-1
+        records = [('rev-id-2', 0, len(gz_txt))]
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice if we request the wrong version.
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
+
+    def test_uncompressed_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        txt = ('version rev-id-1 2 %s\n'
+               'foo\n'
+               'bar\n'
+               'end rev-id-1\n'
+               % (sha1sum,))
+        transport = MockTransport([txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(txt))]
+
+        # We don't have valid gzip data ==> corrupt
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice the bad data
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
+
+    def test_corrupted_data(self):
+        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        # Change 2 bytes in the middle to \xff
+        gz_txt = gz_txt[:10] + '\xff\xff' + gz_txt[12:]
+        transport = MockTransport([gz_txt])
+        data = _KnitData(transport, 'filename', mode='r')
+        records = [('rev-id-1', 0, len(gz_txt))]
+
+        self.assertRaises(errors.KnitCorrupt, data.read_records, records)
+
+        # read_records_iter_raw will notice if we request the wrong version.
+        self.assertRaises(errors.KnitCorrupt, list,
+                          data.read_records_iter_raw(records))
 
 
 class LowLevelKnitIndexTests(TestCase):
@@ -156,23 +279,27 @@ class LowLevelKnitIndexTests(TestCase):
             transport.calls.pop(0))
 
     def test_read_utf8_version_id(self):
+        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KnitIndex.HEADER,
-            u"version-\N{CYRILLIC CAPITAL LETTER A}"
-                u" option 0 1 :".encode("utf-8")
+            '%s option 0 1 :' % (utf8_revision_id,)
             ])
         index = _KnitIndex(transport, "filename", "r")
-        self.assertTrue(
-            index.has_version(u"version-\N{CYRILLIC CAPITAL LETTER A}"))
+        # _KnitIndex is a private class, and deals in utf8 revision_ids, not
+        # Unicode revision_ids.
+        self.assertTrue(index.has_version(utf8_revision_id))
+        self.assertFalse(index.has_version(unicode_revision_id))
 
     def test_read_utf8_parents(self):
+        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KnitIndex.HEADER,
-            u"version option 0 1"
-                u" .version-\N{CYRILLIC CAPITAL LETTER A} :".encode("utf-8")
+            "version option 0 1 .%s :" % (utf8_revision_id,)
             ])
         index = _KnitIndex(transport, "filename", "r")
-        self.assertEqual([u"version-\N{CYRILLIC CAPITAL LETTER A}"],
+        self.assertEqual([utf8_revision_id],
             index.get_parents_with_ghosts("version"))
 
     def test_read_ignore_corrupted_lines(self):
@@ -184,7 +311,7 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
         self.assertEqual(1, index.num_versions())
-        self.assertTrue(index.has_version(u"version"))
+        self.assertTrue(index.has_version("version"))
 
     def test_read_corrupted_header(self):
         transport = MockTransport(['not a bzr knit index header\n'])
@@ -201,11 +328,11 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
         self.assertEqual(2, index.num_versions())
-        self.assertEqual(1, index.lookup(u"version"))
-        self.assertEqual((3, 4), index.get_position(u"version"))
-        self.assertEqual(["options3"], index.get_options(u"version"))
-        self.assertEqual([u"parent", u"other"],
-            index.get_parents_with_ghosts(u"version"))
+        self.assertEqual(1, index.lookup("version"))
+        self.assertEqual((3, 4), index.get_position("version"))
+        self.assertEqual(["options3"], index.get_options("version"))
+        self.assertEqual(["parent", "other"],
+            index.get_parents_with_ghosts("version"))
 
     def test_read_compressed_parents(self):
         transport = MockTransport([
@@ -215,32 +342,32 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 0 :",
             ])
         index = _KnitIndex(transport, "filename", "r")
-        self.assertEqual([u"a"], index.get_parents(u"b"))
-        self.assertEqual([u"b", u"a"], index.get_parents(u"c"))
+        self.assertEqual(["a"], index.get_parents("b"))
+        self.assertEqual(["b", "a"], index.get_parents("c"))
 
     def test_write_utf8_version_id(self):
+        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
         index = _KnitIndex(transport, "filename", "r")
-        index.add_version(u"version-\N{CYRILLIC CAPITAL LETTER A}",
-            ["option"], 0, 1, [])
+        index.add_version(utf8_revision_id, ["option"], 0, 1, [])
         self.assertEqual(("append_bytes", ("filename",
-            u"\nversion-\N{CYRILLIC CAPITAL LETTER A}"
-                u" option 0 1  :".encode("utf-8")),
+            "\n%s option 0 1  :" % (utf8_revision_id,)),
             {}),
             transport.calls.pop(0))
 
     def test_write_utf8_parents(self):
+        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KnitIndex.HEADER
             ])
         index = _KnitIndex(transport, "filename", "r")
-        index.add_version(u"version", ["option"], 0, 1,
-            [u"version-\N{CYRILLIC CAPITAL LETTER A}"])
+        index.add_version("version", ["option"], 0, 1, [utf8_revision_id])
         self.assertEqual(("append_bytes", ("filename",
-            u"\nversion option 0 1"
-                u" .version-\N{CYRILLIC CAPITAL LETTER A} :".encode("utf-8")),
+            "\nversion option 0 1 .%s :" % (utf8_revision_id,)),
             {}),
             transport.calls.pop(0))
 
@@ -249,11 +376,11 @@ class LowLevelKnitIndexTests(TestCase):
         index = _KnitIndex(transport, "filename", "w", create=True)
         self.assertEqual([], index.get_graph())
 
-        index.add_version(u"a", ["option"], 0, 1, [u"b"])
-        self.assertEqual([(u"a", [u"b"])], index.get_graph())
+        index.add_version("a", ["option"], 0, 1, ["b"])
+        self.assertEqual([("a", ["b"])], index.get_graph())
 
-        index.add_version(u"c", ["option"], 0, 1, [u"d"])
-        self.assertEqual([(u"a", [u"b"]), (u"c", [u"d"])],
+        index.add_version("c", ["option"], 0, 1, ["d"])
+        self.assertEqual([("a", ["b"]), ("c", ["d"])],
             sorted(index.get_graph()))
 
     def test_get_ancestry(self):
@@ -267,14 +394,14 @@ class LowLevelKnitIndexTests(TestCase):
         index = _KnitIndex(transport, "filename", "r")
 
         self.assertEqual([], index.get_ancestry([]))
-        self.assertEqual([u"a"], index.get_ancestry([u"a"]))
-        self.assertEqual([u"a", u"b"], index.get_ancestry([u"b"]))
-        self.assertEqual([u"a", u"b", u"c"], index.get_ancestry([u"c"]))
-        self.assertEqual([u"a", u"b", u"c", u"d"], index.get_ancestry([u"d"]))
-        self.assertEqual([u"a", u"b"], index.get_ancestry([u"a", u"b"]))
-        self.assertEqual([u"a", u"b", u"c"], index.get_ancestry([u"a", u"c"]))
+        self.assertEqual(["a"], index.get_ancestry(["a"]))
+        self.assertEqual(["a", "b"], index.get_ancestry(["b"]))
+        self.assertEqual(["a", "b", "c"], index.get_ancestry(["c"]))
+        self.assertEqual(["a", "b", "c", "d"], index.get_ancestry(["d"]))
+        self.assertEqual(["a", "b"], index.get_ancestry(["a", "b"]))
+        self.assertEqual(["a", "b", "c"], index.get_ancestry(["a", "c"]))
 
-        self.assertRaises(RevisionNotPresent, index.get_ancestry, [u"e"])
+        self.assertRaises(RevisionNotPresent, index.get_ancestry, ["e"])
 
     def test_get_ancestry_with_ghosts(self):
         transport = MockTransport([
@@ -287,23 +414,23 @@ class LowLevelKnitIndexTests(TestCase):
         index = _KnitIndex(transport, "filename", "r")
 
         self.assertEqual([], index.get_ancestry_with_ghosts([]))
-        self.assertEqual([u"a"], index.get_ancestry_with_ghosts([u"a"]))
-        self.assertEqual([u"a", u"e", u"b"],
-            index.get_ancestry_with_ghosts([u"b"]))
-        self.assertEqual([u"a", u"g", u"f", u"c"],
-            index.get_ancestry_with_ghosts([u"c"]))
-        self.assertEqual([u"a", u"g", u"f", u"c", u"k", u"j", u"h", u"d"],
-            index.get_ancestry_with_ghosts([u"d"]))
-        self.assertEqual([u"a", u"e", u"b"],
-            index.get_ancestry_with_ghosts([u"a", u"b"]))
-        self.assertEqual([u"a", u"g", u"f", u"c"],
-            index.get_ancestry_with_ghosts([u"a", u"c"]))
+        self.assertEqual(["a"], index.get_ancestry_with_ghosts(["a"]))
+        self.assertEqual(["a", "e", "b"],
+            index.get_ancestry_with_ghosts(["b"]))
+        self.assertEqual(["a", "g", "f", "c"],
+            index.get_ancestry_with_ghosts(["c"]))
+        self.assertEqual(["a", "g", "f", "c", "k", "j", "h", "d"],
+            index.get_ancestry_with_ghosts(["d"]))
+        self.assertEqual(["a", "e", "b"],
+            index.get_ancestry_with_ghosts(["a", "b"]))
+        self.assertEqual(["a", "g", "f", "c"],
+            index.get_ancestry_with_ghosts(["a", "c"]))
         self.assertEqual(
-            [u"a", u"g", u"f", u"c", u"e", u"b", u"k", u"j", u"h", u"d"],
-            index.get_ancestry_with_ghosts([u"b", u"d"]))
+            ["a", "g", "f", "c", "e", "b", "k", "j", "h", "d"],
+            index.get_ancestry_with_ghosts(["b", "d"]))
 
         self.assertRaises(RevisionNotPresent,
-            index.get_ancestry_with_ghosts, [u"e"])
+            index.get_ancestry_with_ghosts, ["e"])
 
     def test_num_versions(self):
         transport = MockTransport([
@@ -314,15 +441,15 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(0, index.num_versions())
         self.assertEqual(0, len(index))
 
-        index.add_version(u"a", ["option"], 0, 1, [])
+        index.add_version("a", ["option"], 0, 1, [])
         self.assertEqual(1, index.num_versions())
         self.assertEqual(1, len(index))
 
-        index.add_version(u"a", ["option2"], 1, 2, [])
+        index.add_version("a", ["option2"], 1, 2, [])
         self.assertEqual(1, index.num_versions())
         self.assertEqual(1, len(index))
 
-        index.add_version(u"b", ["option"], 0, 1, [])
+        index.add_version("b", ["option"], 0, 1, [])
         self.assertEqual(2, index.num_versions())
         self.assertEqual(2, len(index))
 
@@ -334,14 +461,14 @@ class LowLevelKnitIndexTests(TestCase):
 
         self.assertEqual([], index.get_versions())
 
-        index.add_version(u"a", ["option"], 0, 1, [])
-        self.assertEqual([u"a"], index.get_versions())
+        index.add_version("a", ["option"], 0, 1, [])
+        self.assertEqual(["a"], index.get_versions())
 
-        index.add_version(u"a", ["option"], 0, 1, [])
-        self.assertEqual([u"a"], index.get_versions())
+        index.add_version("a", ["option"], 0, 1, [])
+        self.assertEqual(["a"], index.get_versions())
 
-        index.add_version(u"b", ["option"], 0, 1, [])
-        self.assertEqual([u"a", u"b"], index.get_versions())
+        index.add_version("b", ["option"], 0, 1, [])
+        self.assertEqual(["a", "b"], index.get_versions())
 
     def test_idx_to_name(self):
         transport = MockTransport([
@@ -351,10 +478,10 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual(u"a", index.idx_to_name(0))
-        self.assertEqual(u"b", index.idx_to_name(1))
-        self.assertEqual(u"b", index.idx_to_name(-1))
-        self.assertEqual(u"a", index.idx_to_name(-2))
+        self.assertEqual("a", index.idx_to_name(0))
+        self.assertEqual("b", index.idx_to_name(1))
+        self.assertEqual("b", index.idx_to_name(-1))
+        self.assertEqual("a", index.idx_to_name(-2))
 
     def test_lookup(self):
         transport = MockTransport([
@@ -364,8 +491,8 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual(0, index.lookup(u"a"))
-        self.assertEqual(1, index.lookup(u"b"))
+        self.assertEqual(0, index.lookup("a"))
+        self.assertEqual(1, index.lookup("b"))
 
     def test_add_version(self):
         transport = MockTransport([
@@ -373,35 +500,35 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        index.add_version(u"a", ["option"], 0, 1, [u"b"])
+        index.add_version("a", ["option"], 0, 1, ["b"])
         self.assertEqual(("append_bytes",
             ("filename", "\na option 0 1 .b :"),
             {}), transport.calls.pop(0))
-        self.assertTrue(index.has_version(u"a"))
+        self.assertTrue(index.has_version("a"))
         self.assertEqual(1, index.num_versions())
-        self.assertEqual((0, 1), index.get_position(u"a"))
-        self.assertEqual(["option"], index.get_options(u"a"))
-        self.assertEqual([u"b"], index.get_parents_with_ghosts(u"a"))
+        self.assertEqual((0, 1), index.get_position("a"))
+        self.assertEqual(["option"], index.get_options("a"))
+        self.assertEqual(["b"], index.get_parents_with_ghosts("a"))
 
-        index.add_version(u"a", ["opt"], 1, 2, [u"c"])
+        index.add_version("a", ["opt"], 1, 2, ["c"])
         self.assertEqual(("append_bytes",
             ("filename", "\na opt 1 2 .c :"),
             {}), transport.calls.pop(0))
-        self.assertTrue(index.has_version(u"a"))
+        self.assertTrue(index.has_version("a"))
         self.assertEqual(1, index.num_versions())
-        self.assertEqual((1, 2), index.get_position(u"a"))
-        self.assertEqual(["opt"], index.get_options(u"a"))
-        self.assertEqual([u"c"], index.get_parents_with_ghosts(u"a"))
+        self.assertEqual((1, 2), index.get_position("a"))
+        self.assertEqual(["opt"], index.get_options("a"))
+        self.assertEqual(["c"], index.get_parents_with_ghosts("a"))
 
-        index.add_version(u"b", ["option"], 2, 3, [u"a"])
+        index.add_version("b", ["option"], 2, 3, ["a"])
         self.assertEqual(("append_bytes",
             ("filename", "\nb option 2 3 0 :"),
             {}), transport.calls.pop(0))
-        self.assertTrue(index.has_version(u"b"))
+        self.assertTrue(index.has_version("b"))
         self.assertEqual(2, index.num_versions())
-        self.assertEqual((2, 3), index.get_position(u"b"))
-        self.assertEqual(["option"], index.get_options(u"b"))
-        self.assertEqual([u"a"], index.get_parents_with_ghosts(u"b"))
+        self.assertEqual((2, 3), index.get_position("b"))
+        self.assertEqual(["option"], index.get_options("b"))
+        self.assertEqual(["a"], index.get_parents_with_ghosts("b"))
 
     def test_add_versions(self):
         transport = MockTransport([
@@ -410,24 +537,24 @@ class LowLevelKnitIndexTests(TestCase):
         index = _KnitIndex(transport, "filename", "r")
 
         index.add_versions([
-            (u"a", ["option"], 0, 1, [u"b"]),
-            (u"a", ["opt"], 1, 2, [u"c"]),
-            (u"b", ["option"], 2, 3, [u"a"])
+            ("a", ["option"], 0, 1, ["b"]),
+            ("a", ["opt"], 1, 2, ["c"]),
+            ("b", ["option"], 2, 3, ["a"])
             ])
         self.assertEqual(("append_bytes", ("filename",
             "\na option 0 1 .b :"
             "\na opt 1 2 .c :"
             "\nb option 2 3 0 :"
             ), {}), transport.calls.pop(0))
-        self.assertTrue(index.has_version(u"a"))
-        self.assertTrue(index.has_version(u"b"))
+        self.assertTrue(index.has_version("a"))
+        self.assertTrue(index.has_version("b"))
         self.assertEqual(2, index.num_versions())
-        self.assertEqual((1, 2), index.get_position(u"a"))
-        self.assertEqual((2, 3), index.get_position(u"b"))
-        self.assertEqual(["opt"], index.get_options(u"a"))
-        self.assertEqual(["option"], index.get_options(u"b"))
-        self.assertEqual([u"c"], index.get_parents_with_ghosts(u"a"))
-        self.assertEqual([u"a"], index.get_parents_with_ghosts(u"b"))
+        self.assertEqual((1, 2), index.get_position("a"))
+        self.assertEqual((2, 3), index.get_position("b"))
+        self.assertEqual(["opt"], index.get_options("a"))
+        self.assertEqual(["option"], index.get_options("b"))
+        self.assertEqual(["c"], index.get_parents_with_ghosts("a"))
+        self.assertEqual(["a"], index.get_parents_with_ghosts("b"))
 
     def test_delay_create_and_add_versions(self):
         transport = MockTransport()
@@ -438,9 +565,9 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual([], transport.calls)
 
         index.add_versions([
-            (u"a", ["option"], 0, 1, [u"b"]),
-            (u"a", ["opt"], 1, 2, [u"c"]),
-            (u"b", ["option"], 2, 3, [u"a"])
+            ("a", ["option"], 0, 1, ["b"]),
+            ("a", ["opt"], 1, 2, ["c"]),
+            ("b", ["option"], 2, 3, ["a"])
             ])
         name, (filename, f), kwargs = transport.calls.pop(0)
         self.assertEqual("put_file_non_atomic", name)
@@ -462,8 +589,8 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertTrue(index.has_version(u"a"))
-        self.assertFalse(index.has_version(u"b"))
+        self.assertTrue(index.has_version("a"))
+        self.assertFalse(index.has_version("b"))
 
     def test_get_position(self):
         transport = MockTransport([
@@ -473,8 +600,8 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual((0, 1), index.get_position(u"a"))
-        self.assertEqual((1, 2), index.get_position(u"b"))
+        self.assertEqual((0, 1), index.get_position("a"))
+        self.assertEqual((1, 2), index.get_position("b"))
 
     def test_get_method(self):
         transport = MockTransport([
@@ -485,9 +612,9 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual("fulltext", index.get_method(u"a"))
-        self.assertEqual("line-delta", index.get_method(u"b"))
-        self.assertRaises(errors.KnitIndexUnknownMethod, index.get_method, u"c")
+        self.assertEqual("fulltext", index.get_method("a"))
+        self.assertEqual("line-delta", index.get_method("b"))
+        self.assertRaises(errors.KnitIndexUnknownMethod, index.get_method, "c")
 
     def test_get_options(self):
         transport = MockTransport([
@@ -497,8 +624,8 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual(["opt1"], index.get_options(u"a"))
-        self.assertEqual(["opt2", "opt3"], index.get_options(u"b"))
+        self.assertEqual(["opt1"], index.get_options("a"))
+        self.assertEqual(["opt2", "opt3"], index.get_options("b"))
 
     def test_get_parents(self):
         transport = MockTransport([
@@ -509,9 +636,9 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual([], index.get_parents(u"a"))
-        self.assertEqual([u"a", u"c"], index.get_parents(u"b"))
-        self.assertEqual([u"b", u"a"], index.get_parents(u"c"))
+        self.assertEqual([], index.get_parents("a"))
+        self.assertEqual(["a", "c"], index.get_parents("b"))
+        self.assertEqual(["b", "a"], index.get_parents("c"))
 
     def test_get_parents_with_ghosts(self):
         transport = MockTransport([
@@ -522,10 +649,10 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = _KnitIndex(transport, "filename", "r")
 
-        self.assertEqual([], index.get_parents_with_ghosts(u"a"))
-        self.assertEqual([u"a", u"c"], index.get_parents_with_ghosts(u"b"))
-        self.assertEqual([u"b", u"a", u"e"],
-            index.get_parents_with_ghosts(u"c"))
+        self.assertEqual([], index.get_parents_with_ghosts("a"))
+        self.assertEqual(["a", "c"], index.get_parents_with_ghosts("b"))
+        self.assertEqual(["b", "a", "e"],
+            index.get_parents_with_ghosts("c"))
 
     def test_check_versions_present(self):
         transport = MockTransport([
@@ -538,11 +665,11 @@ class LowLevelKnitIndexTests(TestCase):
         check = index.check_versions_present
 
         check([])
-        check([u"a"])
-        check([u"b"])
-        check([u"a", u"b"])
-        self.assertRaises(RevisionNotPresent, check, [u"c"])
-        self.assertRaises(RevisionNotPresent, check, [u"a", u"b", u"c"])
+        check(["a"])
+        check(["b"])
+        check(["a", "b"])
+        self.assertRaises(RevisionNotPresent, check, ["c"])
+        self.assertRaises(RevisionNotPresent, check, ["a", "b", "c"])
 
 
 class KnitTests(TestCaseWithTransport):

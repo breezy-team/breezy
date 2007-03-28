@@ -27,7 +27,11 @@ class WorkingTreeBenchmark(Benchmark):
 
     def test_list_files_kernel_like_tree(self):
         tree = self.make_kernel_like_added_tree()
-        self.time(list, tree.list_files())
+        tree.lock_read()
+        try:
+            self.time(list, tree.list_files())
+        finally:
+            tree.unlock()
 
     def test_list_files_unknown_kernel_like_tree(self):
         tree = self.make_kernel_like_tree(link_working=True)
@@ -41,7 +45,11 @@ class WorkingTreeBenchmark(Benchmark):
             if root == '.':
                 continue
             tree.add(root)
-        self.time(list, tree.list_files())
+        tree.lock_read()
+        try:
+            self.time(list, tree.list_files())
+        finally:
+            tree.unlock()
 
     def test_is_ignored_single_call(self):
         """How long does is_ignored take to initialise and check one file."""
@@ -84,4 +92,19 @@ class WorkingTreeBenchmark(Benchmark):
         self.time(t.is_ignored,'bar')
         ignores._runtime_ignores = set()
 
+    def test_walkdirs_kernel_like_tree(self):
+        """Walking a kernel sized tree is fast!(150ms)."""
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        tree = WorkingTree.open('.')
+        # on roberts machine: this originally took:  157ms/4177ms
+        # plain os.walk takes 213ms on this tree
+        self.time(list, tree.walkdirs())
 
+    def test_walkdirs_kernel_like_tree_unknown(self):
+        """Walking a kernel sized tree is fast!(150ms)."""
+        self.make_kernel_like_tree()
+        tree = WorkingTree.open('.')
+        # on roberts machine: this originally took:  157ms/4177ms
+        # plain os.walk takes 213ms on this tree
+        self.time(list, tree.walkdirs())

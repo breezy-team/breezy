@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
+from bzrlib.repofmt import weaverepo
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -96,11 +97,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         directories = ['.']
         while directories:
             dir = directories.pop()
-            for path in source.list_dir(dir):
+            for path in set(source.list_dir(dir) + target.list_dir(dir)):
                 path = dir + '/' + path
                 if path in ignore_list:
                     continue
-                stat = source.stat(path)
+                try:
+                    stat = source.stat(path)
+                except errors.NoSuchFile:
+                    self.fail('%s not in source' % path)
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
@@ -176,7 +180,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/merge-hashes'])
     
     def test_clone_bzrdir_empty_force_new_ignored(self):
         # the force_new_repo parameter should have no effect on an empty
@@ -184,7 +189,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/merge-hashes'])
     
     def test_clone_bzrdir_repository(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -198,7 +204,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/repository/inventory.knit',
+                                    [
+                                     './.bzr/merge-hashes',
+                                     './.bzr/repository/inventory.knit',
                                      ])
 
 
@@ -314,10 +322,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache',
+                                    [
+                                     './.bzr/basis-inventory-cache',
                                      './.bzr/checkout/stat-cache',
+                                     './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
-                                     ])
+                                     './.bzr/stat-cache',
+                                    ])
 
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
         # by default cloning into a shared repo uses the shared repo.
@@ -404,7 +415,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
+                                     './.bzr/checkout/merge-hashes',
+                                     './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
                                      ])
 
@@ -420,17 +434,22 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.skipIfNoWorkingTree(target)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
+                                     './.bzr/checkout/merge-hashes',
+                                     './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
                                      ])
 
         target.open_workingtree().revert([])
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
+                                     './.bzr/checkout/merge-hashes',
+                                     './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
                                      ])
-
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
@@ -450,6 +469,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
                                      './.bzr/checkout/stat-cache',
+                                     './.bzr/checkout/merge-hashes',
+                                     './.bzr/merge-hashes',
                                      './.bzr/repository/inventory.knit',
                                      ])
 
@@ -545,8 +566,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # testing inventory isn't reasonable for repositories
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/repository/inventory.knit',
-                                     './.bzr/inventory'
+                                    [
+                                     './.bzr/branch',
+                                     './.bzr/checkout',
+                                     './.bzr/inventory',
+                                     './.bzr/parent',
+                                     './.bzr/repository/inventory.knit',
                                      ])
         try:
             # If we happen to have a tree, we'll guarantee everything
@@ -675,11 +700,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache',
+                                    [
+                                     './.bzr/basis-inventory-cache',
+                                     './.bzr/branch/branch.conf',
+                                     './.bzr/branch/parent',
+                                     './.bzr/checkout',
+                                     './.bzr/checkout/inventory',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/inventory',
-                                     './.bzr/checkout/inventory',
+                                     './.bzr/parent',
                                      './.bzr/repository/inventory.knit',
+                                     './.bzr/stat-cache',
+                                     './foo',
                                      ])
 
     def test_sprout_bzrdir_branch_and_repo_shared(self):
@@ -817,11 +849,16 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache',
+                                    [
+                                     './.bzr/branch/branch.conf',
+                                     './.bzr/branch/parent',
+                                     './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
-                                     './.bzr/inventory',
                                      './.bzr/checkout/inventory',
+                                     './.bzr/inventory',
+                                     './.bzr/parent',
                                      './.bzr/repository/inventory.knit',
+                                     './.bzr/stat-cache',
                                      ])
 
     def test_sprout_bzrdir_tree_branch_reference(self):
@@ -1106,9 +1143,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(isinstance(dir.get_repository_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # repositoryes, or it supports anonymous  repository formats, but not both.
-        anonymous_format = repository.RepositoryFormat6()
-        identifiable_format = repository.RepositoryFormat7()
+        # repositories, or it supports anonymous  repository formats, but not both.
+        anonymous_format = weaverepo.RepositoryFormat6()
+        identifiable_format = weaverepo.RepositoryFormat7()
         try:
             found_transport = dir.get_repository_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
@@ -1291,6 +1328,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         text = dir._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_retire_bzrdir(self):
+        bd = self.make_bzrdir('.')
+        # must not overwrite existing directories
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',])
+        self.failUnlessExists('.bzr')
+        bd.retire_bzrdir()
+        self.failIfExists('.bzr')
+        self.failUnlessExists('.bzr.retired.1')
 
 class TestBreakLock(TestCaseWithBzrDir):
 
@@ -1386,8 +1431,11 @@ class TestBreakLock(TestCaseWithBzrDir):
         bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\ny\n")
         try:
             tree.bzrdir.break_lock()
-        except NotImplementedError:
+        except (NotImplementedError, errors.LockActive):
             # bzrdir does not support break_lock
+            # or one of the locked objects (currently only tree does this)
+            # raised a LockActive because we do still have a live locked
+            # object.
             tree.unlock()
             return
         self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())

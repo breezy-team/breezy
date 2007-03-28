@@ -66,10 +66,13 @@ class _TestLockableFiles_mixin(object):
                               StringIO(unicode_string)
                               )
             self.lockable.put_utf8('bar', unicode_string)
-            self.assertEqual(unicode_string, 
+            self.assertEqual(unicode_string,
                              self.lockable.get_utf8('bar').read())
-            self.assertEqual(byte_string, 
+            self.assertEqual(byte_string,
                              self.lockable.get('bar').read())
+            self.lockable.put_bytes('raw', 'raw\xffbytes')
+            self.assertEqual('raw\xffbytes',
+                             self.lockable.get('raw').read())
         finally:
             self.lockable.unlock()
 

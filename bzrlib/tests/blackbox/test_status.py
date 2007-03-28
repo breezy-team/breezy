@@ -40,15 +40,15 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
     
-    def assertStatus(self, output_lines, working_tree,
+    def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False):
         """Run status in working_tree and look for output.
         
-        :param output_lines: The lines to look for.
+        :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short)
-        self.assertEqual(output_lines, output_string.splitlines(True))
+        self.assertEqual(expected_lines, output_string.splitlines(True))
     
     def status_string(self, wt, revision=None, short=False):
         # use a real file rather than StringIO because it doesn't handle
@@ -143,19 +143,35 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(wt2)
-        self.assert_(message.startswith("pending merges:\n"))
-        self.assert_(message.endswith("Empty commit 2\n")) 
+        self.assertStartsWith(message, "pending merges:\n")
+        self.assertEndsWith(message, "Empty commit 2\n")
         wt2.commit("merged")
         # must be long to make sure we see elipsis at the end
-        wt.commit("Empty commit 3 " + 
-                   "blah blah blah blah " * 10)
+        wt.commit("Empty commit 3 " +
+                   "blah blah blah blah " * 100)
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(wt2)
-        self.assert_(message.startswith("pending merges:\n"))
+        self.assertStartsWith(message, "pending merges:\n")
         self.assert_("Empty commit 3" in message)
-        self.assert_(message.endswith("...\n")) 
+        self.assertEndsWith(message, "...\n")
 
-    def test_branch_status_specific_files(self): 
+    def test_tree_status_ignores(self):
+        """Tests branch status with ignores"""
+        wt = self.make_branch_and_tree('.')
+        self.run_bzr('ignore', '*~')
+        wt.commit('commit .bzrignore')
+        self.build_tree(['foo.c', 'foo.c~'])
+        self.assertStatus([
+                'unknown:\n',
+                '  foo.c\n',
+                ],
+                wt)
+        self.assertStatus([
+                '?   foo.c\n',
+                ],
+                wt, short=True)
+
+    def test_tree_status_specific_files(self):
         """Tests branch status with given specific files"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -168,14 +184,14 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
-                '  dir2\n',
+                '  dir2/\n',
                 '  directory/hello.c\n'
                 ],
                 wt)
 
         self.assertStatus([
                 '?   bye.c\n',
-                '?   dir2\n',
+                '?   dir2/\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -204,12 +220,12 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
-                           '  dir2\n'
+                           '  dir2/\n'
                            ])
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?   dir2\n'])
+        self.assertEquals(tof.readlines(), ['?   dir2/\n'])
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
@@ -251,26 +267,20 @@ class CheckoutStatus(BranchStatus):
 
 class TestStatus(TestCaseWithTransport):
 
-    def test_status(self):
+    def test_status_plain(self):
         self.run_bzr("init")
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
-        self.assert_("unknown:\n  hello.txt\n" in result, result)
-        result = self.run_bzr("status","--short")[0]
-        self.assertContainsRe(result, "[?]   hello.txt\n")
+        self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
         self.run_bzr("add", "hello.txt")
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
-        result = self.run_bzr("status","--short")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.run_bzr("commit", "-m", "added")
         result = self.run_bzr("status", "-r", "0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
-        result = self.run_bzr("status", "--short", "-r", "0..1")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status", "-r", "0")[0]
@@ -278,10 +288,49 @@ class TestStatus(TestCaseWithTransport):
                                       "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status", "-r", "0..")[0]
         self.assertEquals(result2, result)
+
+    def test_status_short(self):
+        self.run_bzr("init")
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status","--short")[0]
+        self.assertContainsRe(result, "[?]   hello.txt\n")
+
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status","--short")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "--short", "-r", "0..1")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.build_tree(['world.txt'])
         result = self.run_bzr("status", "--short", "-r", "0")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
         result2 = self.run_bzr("status", "--short", "-r", "0..")[0]
+        self.assertEquals(result2, result)
+
+    def test_status_versioned(self):
+        self.run_bzr("init")
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status", "--versioned")[0]
+        self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
+
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status", "--versioned")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "--versioned", "-r", "0..1")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status", "--versioned", "-r", "0")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
+        result2 = self.run_bzr("status", "--versioned", "-r", "0..")[0]
         self.assertEquals(result2, result)
 
     def assertStatusContains(self, pattern):

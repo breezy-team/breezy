@@ -196,11 +196,21 @@ class LockableFiles(object):
         self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
+    def put_bytes(self, path, a_string):
+        """Write a string of bytes.
+
+        :param path: The path to put the bytes, relative to the transport root.
+        :param string: A string object, whose exact bytes are to be copied.
+        """
+        self._transport.put_bytes(self._escape(path), a_string,
+                                  mode=self._file_mode)
+
+    @needs_write_lock
     def put_utf8(self, path, a_string):
         """Write a string, encoding as utf-8.
 
         :param path: The path to put the string, relative to the transport root.
-        :param string: A file-like or string object whose contents should be copied.
+        :param string: A string or unicode object whose contents should be copied.
         """
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25
@@ -210,7 +220,7 @@ class LockableFiles(object):
         # these are valuable files which should have exact contents.
         if not isinstance(a_string, basestring):
             raise errors.BzrBadParameterNotString(a_string)
-        self.put(path, StringIO(a_string.encode('utf-8')))
+        self.put_bytes(path, a_string.encode('utf-8'))
 
     def lock_write(self, token=None):
         """Lock this group of files for writing.

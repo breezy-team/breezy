@@ -20,9 +20,13 @@
 import os
 import signal
 import subprocess
+import sys
 import threading
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
@@ -126,11 +130,6 @@ class TestBzrServe(TestCaseWithTransport):
 
         self.assertServerFinishesCleanly(process)
 
-    def test_bzr_serve_no_args(self):
-        """'bzr serve' with no arguments or options should not traceback."""
-        out, err = self.run_bzr_error(
-            ['bzr serve requires one of --inet or --port'], 'serve')
-
     def test_bzr_connect_to_bzr_ssh(self):
         """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
 
@@ -192,11 +191,16 @@ class TestBzrServe(TestCaseWithTransport):
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
-        path_to_branch = os.path.abspath('a_branch')
+        path_to_branch = osutils.abspath('a_branch')
         
         orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        os.environ['BZR_REMOTE_PATH'] = self.get_bzr_path()
+        bzr_remote_path = self.get_bzr_path()
+        if sys.platform == 'win32':
+            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
+        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
         try:
+            if sys.platform == 'win32':
+                path_to_branch = os.path.splitdrive(path_to_branch)[1]
             branch = Branch.open(
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
             
@@ -214,6 +218,6 @@ class TestBzrServe(TestCaseWithTransport):
 
         self.assertEqual(
             ['%s serve --inet --directory=/ --allow-writes'
-             % self.get_bzr_path()],
+             % bzr_remote_path],
             self.command_executed)
         

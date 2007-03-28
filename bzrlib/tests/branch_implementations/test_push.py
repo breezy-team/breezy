@@ -36,8 +36,13 @@ class TestPush(TestCaseWithBranch):
         other.commit('my change', rev_id='M1', allow_pointless=True)
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
-        mine.branch.push(other.branch)
+        result = mine.branch.push(other.branch)
         self.assertEqual(['P1', 'P2'], other.branch.revision_history())
+        # result object contains some structured data
+        self.assertEqual(result.old_revid, 'M1')
+        self.assertEqual(result.new_revid, 'P2')
+        # and it can be treated as an integer for compatibility
+        self.assertEqual(int(result), 0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -90,6 +95,52 @@ class TestPush(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
 
+    def test_push_uses_read_lock(self):
+        """Push should only need a read lock on the source side."""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        self.build_tree(['source/a'])
+        source.add(['a'])
+        source.commit('a')
+
+        source.branch.lock_read()
+        try:
+            target.lock_write()
+            try:
+                source.branch.push(target, stop_revision=source.last_revision())
+            finally:
+                target.unlock()
+        finally:
+            source.branch.unlock()
+
+    def test_push_within_repository(self):
+        """Push from one branch to another inside the same repository."""
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except (errors.IncompatibleFormat, errors.UninitializableFormat):
+            # This Branch format cannot create shared repositories
+            return
+        # This is a little bit trickier because make_branch_and_tree will not
+        # re-use a shared repository.
+        a_bzrdir = self.make_bzrdir('repo/tree')
+        try:
+            a_branch = self.branch_format.initialize(a_bzrdir)
+        except (errors.UninitializableFormat):
+            # Cannot create these branches
+            return
+        tree = a_branch.bzrdir.create_workingtree()
+        self.build_tree(['repo/tree/a'])
+        tree.add(['a'])
+        tree.commit('a')
+
+        to_bzrdir = self.make_bzrdir('repo/branch')
+        to_branch = self.branch_format.initialize(to_bzrdir)
+        tree.branch.push(to_branch)
+
+        self.assertEqual(tree.branch.last_revision(),
+                         to_branch.last_revision())
+
 
 class TestPushHook(TestCaseWithBranch):
 
@@ -97,22 +148,24 @@ class TestPushHook(TestCaseWithBranch):
         self.hook_calls = []
         TestCaseWithBranch.setUp(self)
 
-    def capture_post_push_hook(self, source, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+    def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
         
         The call is logged, as is some state of the two branches.
         """
-        if local:
-            local_locked = local.is_locked()
-            local_base = local.base
+        if result.local_branch:
+            local_locked = result.local_branch.is_locked()
+            local_base = result.local_branch.base
         else:
             local_locked = None
             local_base = None
         self.hook_calls.append(
-            ('post_push', source, local_base, master.base, old_revno, old_revid,
-             new_revno, new_revid, source.is_locked(), local_locked,
-             master.is_locked()))
+            ('post_push', result.source_branch, local_base,
+             result.master_branch.base,
+             result.old_revno, result.old_revid,
+             result.new_revno, result.new_revid,
+             result.source_branch.is_locked(), local_locked,
+             result.master_branch.is_locked()))
 
     def test_post_push_empty_history(self):
         target = self.make_branch('target')

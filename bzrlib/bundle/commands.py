@@ -86,10 +86,13 @@ class cmd_bundle_revisions(Command):
 
     bzr bundle-revisions
         - Generate a bundle relative to a remembered location
+
     bzr bundle-revisions BASE
         - Bundle to apply the current tree into BASE
+
     bzr bundle-revisions --revision A
         - Bundle to apply revision A to remembered location 
+
     bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
     """
