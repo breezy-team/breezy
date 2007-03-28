@@ -1608,12 +1608,18 @@ class TestCaseWithMemoryTransport(TestCase):
         then the self.get_vfs_server is returned.
         """
         if self.__server is None:
-            if self.transport_server is None:
+            if self.transport_server is None or self.transport_server is self.vfs_transport_factory:
                 return self.get_vfs_only_server()
             else:
                 # bring up a decorated means of access to the vfs only server.
                 self.__server = self.transport_server()
-                self.__server.setUp(self.get_vfs_only_server())
+                try:
+                    self.__server.setUp(self.get_vfs_only_server())
+                except TypeError, e:
+                    # This should never happen; the try:Except here is to assist
+                    # developers having to update code rather than seeing an
+                    # uninformative TypeError.
+                    raise Exception, "Old server API in use: %s, %s" % (self.__server, e)
             self.addCleanup(self.__server.tearDown)
         return self.__server
 
@@ -1923,7 +1929,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            return b.create_checkout(relpath, lightweight=True)
+            if self.vfs_transport_factory is LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                return local_controldir.create_workingtree()
+            else:
+                return b.create_checkout(relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.

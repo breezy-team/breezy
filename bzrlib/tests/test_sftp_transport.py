@@ -57,7 +57,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        set_test_transport_to_sftp(self) 
+        set_test_transport_to_sftp(self)
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""

@@ -77,6 +77,7 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
         self.assertIsInstance(tree.branch.repository._format,
             self.repository_format.__class__)
 
+
 class TestRepository(TestCaseWithRepository):
 
     def test_clone_to_default_format(self):
@@ -100,7 +101,7 @@ class TestRepository(TestCaseWithRepository):
         second_revision = tree.commit('')
         inv = tree.branch.repository.revision_tree(second_revision).inventory
         rich_root = (inv.root.revision != second_revision)
-        self.assertEqual(rich_root, 
+        self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
 
     def test_clone_specific_format(self):

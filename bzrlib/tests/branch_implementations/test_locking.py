@@ -448,9 +448,3 @@ class TestBranchLocking(TestCaseWithBranch):
             branch.repository.unlock()
         finally:
             branch.unlock()
-
-    #def test_lock_read_locks_repo_too(self):
-    #    branch = self.make_branch('b')
-
-
-

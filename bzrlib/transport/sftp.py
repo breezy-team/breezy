@@ -56,6 +56,7 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
+from bzrlib.transport.local import LocalURLServer
 
 try:
     import paramiko
@@ -1068,7 +1069,10 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
     
-    def setUp(self):
+    def setUp(self, vfs_server=None):
+        # XXX: TODO: make sftpserver back onto vfs_server rather than local disk.
+        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
+            "SFTPServer currently assumes local transport, got %s" % vfs_server
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':

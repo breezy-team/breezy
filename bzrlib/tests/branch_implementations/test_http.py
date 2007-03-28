@@ -36,8 +36,8 @@ class InaccessibleParentTests(TestCaseWithBranch):
 
     def setUp(self):
         super(InaccessibleParentTests, self).setUp()
-        if self.vfs_transport_factory is LocalURLServer:
-            self.vfs_transport_factory = TestingChrootServer
+        if self.transport_server in (LocalURLServer, None):
+            self.transport_readonly_server = TestingChrootServer
 
     def get_branch_with_invalid_parent(self):
         """Get a branch whose get_parent will raise InaccessibleParent."""
