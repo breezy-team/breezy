@@ -17,116 +17,122 @@
 """Implementation of Transport that prevents access to locations above a set
 root.
 """
+from urlparse import urlparse
 
 from bzrlib import errors, urlutils
+from bzrlib.transport import (
+    get_transport,
+    register_transport,
+    Server,
+    Transport,
+    unregister_transport,
+    )
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport.memory import MemoryTransport
 
 
-class ChrootTransportDecorator(TransportDecorator):
-    """A decorator that can convert any transport to be chrooted.
+class ChrootServer(Server):
+    """Server for chroot transports."""
 
-    This is requested via the 'chrooted+' prefix to get_transport().
-    """
+    def __init__(self, backing_transport):
+        self.backing_transport = backing_transport
 
-    def __init__(self, url, _decorated=None, chroot=None):
-        super(ChrootTransportDecorator, self).__init__(url,
-                _decorated=_decorated)
-        if chroot is None:
-            self.chroot_url = self._decorated.base
-        else:
-            self.chroot_url = chroot
+    def _factory(self, url):
+        assert url.startswith(self.scheme)
+        return ChrootTransport(self, url)
 
-    @classmethod
-    def _get_url_prefix(self):
-        """Chroot transport decorators are invoked via 'chroot+'"""
-        return 'chroot+'
+    def get_url(self):
+        return self.scheme
 
-    def _ensure_relpath_is_child(self, relpath):
-        abspath = self.abspath(relpath)
-        chroot_base = self._get_url_prefix() + self.chroot_url
-        real_relpath = urlutils.relative_url(chroot_base, abspath)
-        if real_relpath == '..' or real_relpath.startswith('../'):
-            raise errors.PathNotChild(relpath, self.chroot_url)
+    def setUp(self):
+        self.scheme = 'chroot-%d:///' % id(self)
+        register_transport(self.scheme, self._factory)
 
-    # decorated methods
+    def tearDown(self):
+        unregister_transport(self.scheme, self._factory)
+
+
+class ChrootTransport(Transport):
+
+    def __init__(self, server, base):
+        self.server = server
+        if not base.endswith('/'):
+            base += '/'
+        Transport.__init__(self, base)
+        self.base_path = self.base[len(self.server.scheme)-1:]
+        self.scheme = self.server.scheme
+
+    def _call(self, methodname, relpath, *args):
+        method = getattr(self.server.backing_transport, methodname)
+        return method(self._safe_relpath(relpath), *args)
+
+    def _safe_relpath(self, relpath):
+        safe_relpath = self._combine_paths(self.base_path, relpath)
+        assert safe_relpath.startswith('/')
+        return safe_relpath[1:]
+
+    # Transport methods
+    def abspath(self, relpath):
+        return self.scheme + self._safe_relpath(relpath)
+
     def append_file(self, relpath, f, mode=None):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.append_file(self, relpath, f, mode=mode)
+        return self._call('append_file', relpath, f, mode)
 
-    def append_bytes(self, relpath, bytes, mode=None):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.append_bytes(self, relpath, bytes, mode=mode)
-
-    def clone(self, offset=None):
-        self._ensure_relpath_is_child(offset)
-        return TransportDecorator.clone(self, offset)
+    def clone(self, relpath):
+        return ChrootTransport(self.server, self.abspath(relpath))
 
     def delete(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.delete(self, relpath)
+        return self._call('delete', relpath)
 
     def delete_tree(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.delete_tree(self, relpath)
+        return self._call('delete_tree', relpath)
 
     def get(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.get(self, relpath)
-
-    def get_bytes(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.get_bytes(self, relpath)
+        return self._call('get', relpath)
 
     def has(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.has(self, relpath)
+        return self._call('has', relpath)
+
+    def iter_files_recursive(self):
+        backing_transport = self.server.backing_transport.clone(
+            self._safe_relpath('.'))
+        return backing_transport.iter_files_recursive()
+
+    def listable(self):
+        return self.server.backing_transport.listable()
 
     def list_dir(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.list_dir(self, relpath)
+        return self._call('list_dir', relpath)
 
     def lock_read(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.lock_read(self, relpath)
+        return self._call('lock_read', relpath)
 
     def lock_write(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.lock_write(self, relpath)
+        return self._call('lock_write', relpath)
 
     def mkdir(self, relpath, mode=None):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.mkdir(self, relpath, mode=mode)
-
-    def put_bytes(self, relpath, bytes, mode=None):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.put_bytes(self, relpath, bytes, mode=mode)
+        return self._call('mkdir', relpath, mode)
 
     def put_file(self, relpath, f, mode=None):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.put_file(self, relpath, f, mode=mode)
+        return self._call('put_file', relpath, f, mode)
 
     def rename(self, rel_from, rel_to):
-        self._ensure_relpath_is_child(rel_from)
-        self._ensure_relpath_is_child(rel_to)
-        return TransportDecorator.rename(self, rel_from, rel_to)
+        return self._call('rename', rel_from, self._safe_relpath(rel_to))
 
     def rmdir(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.rmdir(self, relpath)
+        return self._call('rmdir', relpath)
 
     def stat(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.stat(self, relpath)
+        return self._call('stat', relpath)
 
 
-class ChrootServer(DecoratorServer):
-    """Server for the ReadonlyTransportDecorator for testing with."""
+class TestingChrootServer(ChrootServer):
 
-    def get_decorator_class(self):
-        return ChrootTransportDecorator
+    def __init__(self):
+        ChrootServer.__init__(self, get_transport('.'))
 
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(ChrootTransportDecorator, ChrootServer),
+    return [(ChrootTransport, TestingChrootServer),
             ]
