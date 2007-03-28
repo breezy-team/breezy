@@ -358,3 +358,42 @@ class TestCommit(ExternalBase):
         # --no-strict overrides --strict
         self.run_bzr('commit', '--strict', '-m', 'add b', '--no-strict',
                      working_dir='tree')
+
+    def test_fixes_bug_output(self):
+        """commit --fixes=lp:23452 succeeds without output."""
+        self.runbzr("init")
+        self.build_tree(['hello.txt'])
+        self.runbzr('add hello.txt')
+        output = self.capture('commit -m hello --fixes=lp:23452 hello.txt')
+        self.assertEqual('', output)
+
+    def test_fixes_bug_sets_property(self):
+        """commit --fixes=lp:23452 sets the lp:23452 revprop to 'fixed'."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.runbzr('commit -m hello --fixes=lp:23452 tree/hello.txt')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual({'lp:23452': 'fixed'}, properties)
+
+    def test_fixes_multiple_bugs_sets_properties(self):
+        """--fixes can be used more than once to show that bugs are fixed."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.runbzr(
+            'commit -m hello --fixes=lp:123 --fixes=lp:235 tree/hello.txt')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual({'lp:123': 'fixed', 'lp:235': 'fixed'}, properties)

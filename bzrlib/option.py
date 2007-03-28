@@ -205,6 +205,22 @@ class Option(object):
         yield self.name, self.short_name(), argname, self.help
 
 
+class ListOption(Option):
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser."""
+        option_strings = ['--%s' % self.name]
+        if short_name is not None:
+            option_strings.append('-%s' % short_name)
+        parser.add_option(action='callback',
+                          callback=self._optparse_callback,
+                          type='string', metavar=self.argname.upper(),
+                          help=self.help, default=[],
+                          *option_strings)
+
+    def _optparse_callback(self, option, opt, value, parser):
+        getattr(parser.values, self.name).append(self.type(value))
+
+
 class RegistryOption(Option):
     """Option based on a registry
 

@@ -59,7 +59,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -2055,6 +2055,8 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     ListOption('fixes', type=str,
+                                help="XXX -- fix a bug"),
                      Option('local',
                             help="perform a local only commit in a bound "
                                  "branch. Such commits are not pushed to "
@@ -2065,7 +2067,7 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False):
+            unchanged=False, strict=False, local=False, fixes=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2111,11 +2113,15 @@ class cmd_commit(Command):
         else:
             reporter = NullCommitReporter()
 
+        properties = {}
+        for fixed_bug in fixes:
+            properties[fixed_bug] = 'fixed'
+
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter)
+                        reporter=reporter, revprops=properties)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit

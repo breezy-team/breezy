@@ -239,3 +239,19 @@ class OptionTests(TestCase):
 #     (['log'], {'verbose': True, 'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
 #     >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
 #     (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
+
+
+class ListOptions(TestCase):
+    def parse(self, options, args):
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        return parser.parse_args(args)
+
+    def test_list_option(self):
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(options, ['--hello=world', '--hello=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.hello)
+
+    def test_list_option_no_arguments(self):
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(options, [])
+        self.assertEqual([], opts.hello)
