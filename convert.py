@@ -50,7 +50,7 @@ def transport_makedirs(transport, location_url):
 class NotDumpFile(BzrError):
     _fmt = """%(dumpfile)s is not a dump file."""
     def __init__(self, dumpfile):
-        super(NotDumpFile, self).__init__()
+        BzrError.__init__(self)
         self.dumpfile = dumpfile
 
 
