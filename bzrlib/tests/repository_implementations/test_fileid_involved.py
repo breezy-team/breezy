@@ -28,6 +28,7 @@ from bzrlib.workingtree import WorkingTree
 class FileIdInvolvedBase(TestCaseWithRepository):
 
     def touch(self, tree, filename):
+        # use the trees transport to not depend on the tree's location or type.
         tree.bzrdir.root_transport.append_bytes(filename, "appended line\n")
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
@@ -67,7 +68,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["a","b","c"], transport=main_wt.bzrdir.root_transport)
+        self.build_tree(["main/a","main/b","main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -89,7 +90,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt1 = self.make_branch_and_tree('branch1')
         bt1.pull(main_branch)
         b1 = bt1.branch
-        self.build_tree(["d"], transport=bt1.bzrdir.root_transport)
+        self.build_tree(["branch1/d"])
         bt1.add(['d'], ['file-d'])
         bt1.commit("branch1, Commit one", rev_id="rev-E")
 
@@ -225,7 +226,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
     def test_utf8_file_ids_and_revision_ids(self):
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["a"], transport=main_wt.bzrdir.root_transport)
+        self.build_tree(["main/a"])
 
         file_id = u'a-f\xedle-id'.encode('utf8')
         main_wt.add(['a'], [file_id])
@@ -255,7 +256,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["a","b","c"], transport=main_wt.bzrdir.root_transport)
+        self.build_tree(["main/a","main/b","main/c"])
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',

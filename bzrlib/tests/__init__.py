@@ -1748,6 +1748,7 @@ class TestCaseWithMemoryTransport(TestCase):
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
         self.__server = None
+        self.reduceLockdirTimeout()
 
      
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
@@ -1979,8 +1980,6 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        # NB: one HttpServer is taught to decorate properly,
-        # this hack can be removed.
         if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
