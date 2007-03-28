@@ -33,7 +33,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
-        wt = WorkingTree.open("dc")
+        wt = self.open_checkout("dc")
         self.assertEqual(wt.branch.generate_revision_id(1), 
                 wt.commit(message="data"))
         self.client_update("dc")
@@ -49,7 +49,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
-        wt = WorkingTree.open("dc")
+        wt = self.open_checkout("dc")
         self.assertEqual(
             wt.branch.generate_revision_id(1), wt.commit(message="data"))
         self.assertEqual(
@@ -63,7 +63,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
-        wt = WorkingTree.open("dc")
+        wt = self.open_checkout("dc")
         self.assertEqual(
             wt.branch.generate_revision_id(1), wt.commit(message=u"\xe6\xf8\xe5"))
         self.assertEqual(
@@ -77,7 +77,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
-        wt = WorkingTree.open("dc")
+        wt = self.open_checkout("dc")
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         self.assertEqual(
@@ -88,7 +88,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
-        wt = WorkingTree.open("dc")
+        wt = self.open_checkout("dc")
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         self.assertEqual([wt.branch.generate_revision_id(0), "some-ghost-revision"],
@@ -107,7 +107,7 @@ class TestPush(TestCaseWithSubversionRepository):
         self.client_add("sc/foo")
         self.client_commit("sc", "foo")
 
-        self.olddir = BzrDir.open("sc")
+        self.olddir = self.open_checkout_bzrdir("sc")
         os.mkdir("dc")
         self.newdir = self.olddir.sprout("dc")
 
@@ -265,7 +265,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
         self.client_add("sc/foo")
         self.client_commit("sc", "foo")
 
-        self.olddir = BzrDir.open("sc/foo/trunk")
+        self.olddir = self.open_checkout_bzrdir("sc/foo/trunk")
         os.mkdir("dc")
         self.newdir = self.olddir.sprout("dc")
 

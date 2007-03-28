@@ -42,16 +42,16 @@ class TestWorkingTreeFormat(TestCase):
 class TestCheckout(TestCaseWithSubversionRepository):
     def test_not_for_writing(self):
         repos_url = self.make_client("d", "dc")
-        x = BzrDir.create_branch_convenience("dc/foo")
+        x = self.create_branch_convenience("dc/foo")
         self.assertFalse(hasattr(x.repository, "uuid"))
 
     def test_open_repository(self):
         repos_url = self.make_client("d", "dc")
-        x = BzrDir.open("dc")
+        x = self.open_checkout_bzrdir("dc")
         self.assertRaises(NoRepositoryPresent, x.open_repository)
 
     def test_find_repository(self):
         repos_url = self.make_client("d", "dc")
-        x = BzrDir.open("dc")
+        x = self.open_checkout_bzrdir("dc")
         self.assertTrue(hasattr(x.find_repository(), "uuid"))
 

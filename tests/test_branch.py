@@ -497,7 +497,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e")
+        newtree = self.create_checkout(oldbranch, "e")
         self.assertTrue(newtree.branch.repository.has_revision(
            oldbranch.generate_revision_id(1)))
 
@@ -515,7 +515,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e", lightweight=True)
+        newtree = self.create_checkout(oldbranch, "e", lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1), newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))
@@ -534,7 +534,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e", revision_id=
+        newtree = self.create_checkout(oldbranch, "e", revision_id=
            oldbranch.generate_revision_id(1), lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1),
            newtree.base_revid)
@@ -548,7 +548,7 @@ foohosts""")
         self.client_add("sc/foo")
         self.client_commit("sc", "foo")
 
-        olddir = BzrDir.open("sc")
+        olddir = self.open_checkout_bzrdir("sc")
 
         os.mkdir("dc")
         
@@ -569,7 +569,7 @@ foohosts""")
         self.client_copy("sc/trunk/mylib", "sc/branches/abranch")
         self.client_commit("sc", "Promote mylib")
 
-        olddir = BzrDir.open("sc/branches/abranch")
+        olddir = self.open_checkout_bzrdir("sc/branches/abranch")
 
         os.mkdir("dc")
         
@@ -590,7 +590,7 @@ foohosts""")
         self.client_copy("sc/branches/abranch", "sc/trunk/mylib")
         self.client_commit("sc", "Demote mylib")
 
-        olddir = BzrDir.open("sc/trunk")
+        olddir = self.open_checkout_bzrdir("sc/trunk")
 
         os.mkdir("dc")
         
@@ -612,7 +612,7 @@ foohosts""")
         self.client_set_prop("sc", "bzr:merge", "some-ghost\n")
         self.client_commit("sc", "foo")
 
-        olddir = BzrDir.open("sc")
+        olddir = self.open_checkout_bzrdir("sc")
 
         os.mkdir("dc")
         

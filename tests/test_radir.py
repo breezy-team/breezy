@@ -29,7 +29,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.build_tree({"dc/foo": None})
         self.client_add("dc/foo")
         self.client_commit("dc", "msg")
-        x = BzrDir.open("dc")
+        x = self.open_checkout_bzrdir("dc")
         self.assertRaises(NotImplementedError, x.clone, "dir")
 
     def test_open_workingtree(self):

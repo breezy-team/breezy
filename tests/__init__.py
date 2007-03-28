@@ -19,12 +19,14 @@ import os
 import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
+from bzrlib.workingtree import WorkingTree
 
 RENAMES = False
 
 import svn.repos, svn.wc
+from bzrlib.plugins.svn.errors import NoCheckoutSupport
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -76,7 +78,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         repos_url = self.make_repository(repos_path)
 
-        return self.open_local_bzrdir(repos_url, relpath)
+        try:
+            return self.open_local_bzrdir(repos_url, relpath)
+        except NoCheckoutSupport:
+            raise TestSkipped('No Checkout Support')
+
 
     def make_checkout(self, repos_url, relpath):
         rev = svn.core.svn_opt_revision_t()
@@ -84,6 +90,35 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         svn.client.checkout2(repos_url, relpath, 
                 rev, rev, True, False, self.client_ctx)
+
+    @staticmethod
+    def create_checkout(branch, path, revision_id=None, lightweight=False):
+        try:
+            return branch.create_checkout(path, revision_id=revision_id,
+                                          lightweight=lightweight)
+        except NoCheckoutSupport:
+            raise TestSkipped('No Checkout Support')
+
+    @staticmethod
+    def open_checkout(url):
+        try:
+            return WorkingTree.open(url)
+        except NoCheckoutSupport:
+           raise TestSkipped('No Checkout Support')
+
+    @staticmethod
+    def open_checkout_bzrdir(url):
+        try:
+            return BzrDir.open(url)
+        except NoCheckoutSupport:
+           raise TestSkipped('No Checkout Support')
+
+    @staticmethod
+    def create_branch_convenience(url):
+        try:
+            return BzrDir.create_branch_convenience(url)
+        except NoCheckoutSupport:
+           raise TestSkipped('No Checkout Support')
 
     def client_set_prop(self, path, name, value):
         if value is None:
