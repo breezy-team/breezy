@@ -71,7 +71,7 @@ class TestWSGI(tests.TestCase):
     def test_construct(self):
         app = wsgi.SmartWSGIApp(FakeTransport())
         self.assertIsInstance(
-            app.backing_transport, chroot.ChrootTransportDecorator)
+            app.backing_transport, chroot.ChrootTransport)
 
     def test_http_get_rejected(self):
         # GET requests are rejected.
@@ -84,10 +84,11 @@ class TestWSGI(tests.TestCase):
         
     def test_smart_wsgi_app_uses_given_relpath(self):
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
-        # WSGI environ to construct the transport for this request, by cloning
-        # its base transport with the given relpath.
+        # WSGI environ to clone from its backing transport to get a specific
+        # transport for this request.
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
+        wsgi_app.backing_transport = transport
         def make_request(transport, write_func):
             request = FakeRequest(transport, write_func)
             self.request = request
@@ -175,7 +176,10 @@ class TestWSGI(tests.TestCase):
             path_var='a path_var')
         self.assertIsInstance(app, wsgi.RelpathSetter)
         self.assertIsInstance(app.app, wsgi.SmartWSGIApp)
-        self.assertEndsWith(app.app.backing_transport.base, 'a%20root/')
+        self.assertStartsWith(app.app.backing_transport.base, 'chroot-')
+        backing_transport = app.app.backing_transport
+        chroot_backing_transport = backing_transport.server.backing_transport
+        self.assertEndsWith(chroot_backing_transport.base, 'a%20root/')
         self.assertEqual(app.prefix, 'a prefix')
         self.assertEqual(app.path_var, 'a path_var')
 
@@ -199,29 +203,6 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         self.assertEqual('error\x01incomplete request\n', response)
-
-    def test_chrooting(self):
-        # Show that requests that try to access things outside of the base
-        # really will get intercepted by the ChrootTransportDecorator.
-        transport = memory.MemoryTransport()
-        transport.mkdir('foo')
-        transport.put_bytes('foo/bar', 'this is foo/bar')
-        wsgi_app = wsgi.SmartWSGIApp(transport.clone('foo'))
-
-        smart_request = StringIO('mkdir\x01/bad file\x01\n0\ndone\n')
-        environ = self.build_environ({
-            'REQUEST_METHOD': 'POST',
-            'CONTENT_LENGTH': len(smart_request.getvalue()),
-            'wsgi.input': smart_request,
-            'bzrlib.relpath': '.',
-        })
-        iterable = wsgi_app(environ, self.start_response)
-        response = self.read_response(iterable)
-        self.assertEqual('200 OK', self.status)
-        self.assertEqual(
-            "error\x01Path '/bad file' is not a child of "
-            "path 'memory:///foo/'\n",
-            response)
 
 
 class FakeRequest(object):

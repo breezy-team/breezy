@@ -180,7 +180,9 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.num_tests = num_tests
         self.error_count = 0
         self.failure_count = 0
+        self.known_failure_count = 0
         self.skip_count = 0
+        self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
     
@@ -221,31 +223,45 @@ class ExtendedTestResult(unittest._TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def addError(self, test, err):
-        if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)    
-        unittest.TestResult.addError(self, test, err)
+    def _cleanupLogFile(self, test):
         # We can only do this if we have one of our TestCases, not if
         # we have a doctest.
         setKeepLogfile = getattr(test, 'setKeepLogfile', None)
         if setKeepLogfile is not None:
             setKeepLogfile()
+
+    def addError(self, test, err):
         self.extractBenchmarkTime(test)
+        self._cleanupLogFile(test)
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)
+        elif isinstance(err[1], UnavailableFeature):
+            return self.addNotSupported(test, err[1].args[0])
+        unittest.TestResult.addError(self, test, err)
+        self.error_count += 1
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
 
     def addFailure(self, test, err):
-        unittest.TestResult.addFailure(self, test, err)
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
+        self._cleanupLogFile(test)
         self.extractBenchmarkTime(test)
+        if isinstance(err[1], KnownFailure):
+            return self.addKnownFailure(test, err)
+        unittest.TestResult.addFailure(self, test, err)
+        self.failure_count += 1
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
+
+    def addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
@@ -258,7 +274,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
-        self.extractBenchmarkTime(test)
         self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -301,12 +316,22 @@ class ExtendedTestResult(unittest._TextTestResult):
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
 
-    def __init__(self, *args, **kw):
-        ExtendedTestResult.__init__(self, *args, **kw)
-        self.pb = self.ui.nested_progress_bar()
+    def __init__(self, stream, descriptions, verbosity,
+                 bench_history=None,
+                 num_tests=None,
+                 pb=None,
+                 ):
+        ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
+            bench_history, num_tests)
+        if pb is None:
+            self.pb = self.ui.nested_progress_bar()
+            self._supplied_pb = False
+        else:
+            self.pb = pb
+            self._supplied_pb = True
         self.pb.show_pct = False
         self.pb.show_spinner = False
-        self.pb.show_eta = False, 
+        self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
 
@@ -322,8 +347,12 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d errors' % self.error_count
         if self.failure_count:
             a += ', %d failed' % self.failure_count
+        if self.known_failure_count:
+            a += ', %d known failures' % self.known_failure_count
         if self.skip_count:
             a += ', %d skipped' % self.skip_count
+        if self.unsupported:
+            a += ', %d missing features' % len(self.unsupported)
         a += ']'
         return a
 
@@ -342,18 +371,20 @@ class TextTestResult(ExtendedTestResult):
             return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.pb.note('ERROR: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.pb.note('FAIL: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
+
+    def report_known_failure(self, test, err):
+        self.pb.note('XFAIL: %s\n%s\n',
+            self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -371,11 +402,15 @@ class TextTestResult(ExtendedTestResult):
                 # progress bar...
                 self.pb.note('SKIP: %s', skip_excinfo[1])
 
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+                  
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
 
     def finished(self):
-        self.pb.finished()
+        if not self._supplied_pb:
+            self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -414,14 +449,17 @@ class VerboseTestResult(ExtendedTestResult):
         return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.stream.writeln('ERROR %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.stream.writeln(' FAIL %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(err)))
+
+    def report_known_failure(self, test, err):
+        self.stream.writeln('XFAIL %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
@@ -430,6 +468,8 @@ class VerboseTestResult(ExtendedTestResult):
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
+        # flush the stream so that we get smooth output. This verbose mode is
+        # used to show the output in PQM.
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
@@ -437,6 +477,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.writeln(' SKIP %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(skip_excinfo)))
+
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+        self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
+                %(self._testTimeString(), feature))
+                  
 
 
 class TextTestRunner(object):
@@ -486,13 +532,25 @@ class TextTestRunner(object):
             if errored:
                 if failed: self.stream.write(", ")
                 self.stream.write("errors=%d" % errored)
+            if result.known_failure_count:
+                if failed or errored: self.stream.write(", ")
+                self.stream.write("known_failure_count=%d" %
+                    result.known_failure_count)
             self.stream.writeln(")")
         else:
-            self.stream.writeln("OK")
+            if result.known_failure_count:
+                self.stream.writeln("OK (known_failures=%d)" %
+                    result.known_failure_count)
+            else:
+                self.stream.writeln("OK")
         if result.skip_count > 0:
             skipped = result.skip_count
             self.stream.writeln('%d test%s skipped' %
                                 (skipped, skipped != 1 and "s" or ""))
+        if result.unsupported:
+            for feature, count in sorted(result.unsupported.items()):
+                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                    (feature, count))
         result.report_cleaning_up()
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will
@@ -543,6 +601,23 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class KnownFailure(AssertionError):
+    """Indicates that a test failed in a precisely expected manner.
+
+    Such failures dont block the whole test suite from passing because they are
+    indicators of partially completed code or of future work. We have an
+    explicit error for them so that we can ensure that they are always visible:
+    KnownFailures are always shown in the output of bzr selftest.
+    """
+
+
+class UnavailableFeature(Exception):
+    """A feature required for this test was not available.
+
+    The feature should be used to construct the exception.
+    """
 
 
 class CommandFailed(Exception):
@@ -970,6 +1045,23 @@ class TestCase(unittest.TestCase):
     def _restoreHooks(self):
         bzrlib.branch.Branch.hooks = self._preserved_hooks
 
+    def knownFailure(self, reason):
+        """This test has failed for some known reason."""
+        raise KnownFailure(reason)
+
+    def run(self, result=None):
+        if result is None: result = self.defaultTestResult()
+        for feature in getattr(self, '_test_needs_features', []):
+            if not feature.available():
+                result.startTest(self)
+                if getattr(result, 'addNotSupported', None):
+                    result.addNotSupported(self, feature)
+                else:
+                    result.addSuccess(self)
+                result.stopTest(self)
+                return
+        return unittest.TestCase.run(self, result)
+
     def tearDown(self):
         self._runCleanups()
         unittest.TestCase.tearDown(self)
@@ -1044,6 +1136,14 @@ class TestCase(unittest.TestCase):
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
+
+    def requireFeature(self, feature):
+        """This test requires a specific feature is available.
+
+        :raises UnavailableFeature: When feature is not available.
+        """
+        if not feature.available():
+            raise UnavailableFeature(feature)
 
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
@@ -2002,6 +2102,7 @@ def test_suite():
                    'bzrlib.tests.test_ssh_transport',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_strace',
                    'bzrlib.tests.test_subsume',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
@@ -2093,3 +2194,31 @@ def clean_selftest_output(root=None, quiet=False):
             if not quiet:
                 print 'delete directory:', i
             shutil.rmtree(i)
+
+
+class Feature(object):
+    """An operating system Feature."""
+
+    def __init__(self):
+        self._available = None
+
+    def available(self):
+        """Is the feature available?
+
+        :return: True if the feature is available.
+        """
+        if self._available is None:
+            self._available = self._probe()
+        return self._available
+
+    def _probe(self):
+        """Implement this method in concrete features.
+
+        :return: True if the feature is available.
+        """
+        raise NotImplementedError
+
+    def __str__(self):
+        if getattr(self, 'feature_name', None):
+            return self.feature_name()
+        return self.__class__.__name__

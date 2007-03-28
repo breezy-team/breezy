@@ -2,8 +2,23 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * bzrlib API compatability with 0.8 has been dropped, cleaning up some
+      code paths. (Robert Collins)
+
+    * Change the format of chroot urls so that they can be safely manipulated
+      by generic url utilities without causing the resulting urls to have
+      escaped the chroot. A side effect of this is that creating a chroot
+      requires an explicit action using a ChrootServer.
+      (Robert Collins, Andrew Bennetts)
+
     * Deprecate Branch.get_root_id() because branches don't have root ids,
       rather than fixing bug #96847.  (Aaron Bentley)
+
+  TESTING:
+
+    * Added ``bzrlib.strace.strace`` which will strace a single callable and
+      return a StraceResult object which contains just the syscalls involved
+      in running it. (Robert Collins)
 
 
 bzr 0.15 (not finalised)
