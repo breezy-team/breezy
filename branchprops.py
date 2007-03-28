@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
+
 from svn.core import SubversionException, Pool
+import svn.core
 
 class BranchPropertyList:
     def __init__(self, log, cachedb):
@@ -37,7 +40,7 @@ class BranchPropertyList:
         try:
             (_, _, props) = self.log.transport.get_dir(path.encode('utf8'), 
                 revnum, pool=self.pool)
-        except SubversionException, (msg, num):
+        except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
             raise
@@ -49,7 +52,8 @@ class BranchPropertyList:
         assert isinstance(origrevnum, int) and origrevnum >= 0
         proplist = {}
         revnum = self.log.find_latest_change(path, origrevnum)
-        assert revnum is not None, "can't find latest change for %r:%r" % (path, origrevnum)
+        assert revnum is not None, \
+                "can't find latest change for %r:%r" % (path, origrevnum)
 
         proplist = {}
         for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):

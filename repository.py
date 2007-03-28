@@ -17,10 +17,8 @@
 import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
-                           NoSuchRevision, NotBranchError, 
-                           UninitializableFormat)
-from bzrlib.graph import Graph
+from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
+                           NotBranchError, UninitializableFormat)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
@@ -34,13 +32,11 @@ from svn.core import SubversionException, Pool
 import svn.core
 
 import os
-from cStringIO import StringIO
 try:
     import sqlite3
 except ImportError:
     from pysqlite2 import dbapi2 as sqlite3
 
-import branch
 from branchprops import BranchPropertyList
 import errors
 import logwalker
@@ -48,6 +44,7 @@ from tree import SvnRevisionTree
 
 MAPPING_VERSION = 3
 REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
+SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
@@ -292,7 +289,7 @@ class SvnRepository(Repository):
         for revid in revids:
             yield self.revision_tree(revid)
 
-    def revision_tree(self, revision_id, inventory=None):
+    def revision_tree(self, revision_id):
         if revision_id is None:
             revision_id = NULL_REVISION
 
@@ -301,7 +298,7 @@ class SvnRepository(Repository):
             inventory.revision_id = revision_id
             return RevisionTree(self, inventory, revision_id)
 
-        return SvnRevisionTree(self, revision_id, inventory)
+        return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
         (path, revnum) = self.parse_revision_id(revid)
@@ -385,7 +382,7 @@ class SvnRepository(Repository):
         if date is not None:
             rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
         else:
-            rev.timestamp = 0 # FIXME: Obtain repository creation time
+            rev.timestamp = 0.0 # FIXME: Obtain repository creation time
         rev.timezone = None
         rev.properties = bzr_props
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
@@ -409,12 +406,7 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.fileids_altered_by_revision_ids)
 
     def fileid_involved_by_set(self, changes):
-        ids = []
-
-        for revid in changes:
-            pass #FIXME
-
-        return ids
+        raise NotImplementedError(self.fileid_involved_by_set)
 
     def generate_revision_id(self, revnum, path):
         """Generate a unambiguous revision id. 
@@ -468,7 +460,7 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-            revnum-=1
+            revnum -= 1
 
     def follow_branch(self, branch_path, revnum):
         assert branch_path is not None
@@ -481,7 +473,7 @@ class SvnRepository(Repository):
         while revnum >= 0:
             paths = self._log.get_revision_paths(revnum, branch_path)
             if paths == {}:
-                revnum-=1
+                revnum -= 1
                 continue
             yield (branch_path, revnum)
             # FIXME: what if one of the parents of branch_path was moved?
@@ -498,7 +490,7 @@ class SvnRepository(Repository):
                 revnum = paths[branch_path][2]
                 branch_path = paths[branch_path][1]
                 continue
-            revnum-=1
+            revnum -= 1
 
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
@@ -552,15 +544,16 @@ class SvnRepository(Repository):
 
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        self._previous = revision_id
+        _previous = revision_id
         self._ancestry = {}
         
-        for (branch, rev) in self.follow_branch(path, revnum - 1):
-            revid = self.generate_revision_id(rev, branch)
-            self._ancestry[self._previous] = [revid]
-            self._previous = revid
+        if revnum > 0:
+            for (branch, rev) in self.follow_branch(path, revnum - 1):
+                revid = self.generate_revision_id(rev, branch)
+                self._ancestry[_previous] = [revid]
+                _previous = revid
 
-        self._ancestry[self._previous] = []
+        self._ancestry[_previous] = []
 
         return self._ancestry
 

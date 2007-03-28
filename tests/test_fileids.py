@@ -15,15 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision
-from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
-from bzrlib.tests import TestSkipped, TestCase
+from bzrlib.tests import TestCase
 
 import sha
 
-import format
 from fileids import SimpleFileIdMap, generate_file_id, generate_svn_file_id
 from repository import generate_svn_revision_id
 from scheme import TrunkBranchingScheme
@@ -148,8 +145,8 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual(fileid, inv1.path2id("dir/file"))
         self.assertEqual(repository.generate_revision_id(1, "trunk"), revid)
 
-def sha1(str):
-    return sha.new(str).hexdigest()
+def sha1(text):
+    return sha.new(text).hexdigest()
 
 class TestFileIdGenerator(TestCase):
     def test_generate_file_id_root(self):
@@ -191,12 +188,12 @@ class TestFileMapping(TestCase):
         revids = mappings.keys()
         revids.sort()
         for r in revids:
-             def new_file_id(x):
-                 if renames.has_key(r) and renames[r].has_key(x):
-                     return renames[r][x]
-                 return generate_file_id(r, x)
-             revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
-             map.update(dict([(x,(revmap[x],r)) for x in revmap]))
+            def new_file_id(x):
+                if renames.has_key(r) and renames[r].has_key(x):
+                    return renames[r][x]
+                return generate_file_id(r, x)
+            revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
+            map.update(dict([(x, (revmap[x],r)) for x in revmap]))
         return map
 
     def test_simple(self):

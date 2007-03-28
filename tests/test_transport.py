@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from tests import TestCaseWithSubversionRepository
-from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError, NoSuchFile, FileExists
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
@@ -135,7 +134,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t.mkdir("bla")
         self.assertRaises(FileExists, t.mkdir, "bla")
 
-    def test_clone(self):
+    def test_clone2(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({"dc/dir": None, "dc/bl": "data"})
         self.client_add("dc/dir")

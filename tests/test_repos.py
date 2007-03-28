@@ -16,27 +16,22 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, BzrError, UninitializableFormat
+from bzrlib.errors import NoSuchRevision, UninitializableFormat
 from bzrlib.inventory import Inventory
-import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
-from bzrlib.trace import mutter
-from bzrlib.transport.local import LocalTransport
 
 import os
 
 import svn.fs
 
 from convert import load_dumpfile
-import errors
-from fileids import generate_file_id, generate_svn_file_id
+from fileids import generate_svn_file_id, generate_file_id
 import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-import repository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
                         MAPPING_VERSION, escape_svn_path, unescape_svn_path,
@@ -390,6 +385,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(author, rev.committer)
         self.assertIsInstance(rev.properties, dict)
 
+    def test_get_revision_zero(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        rev = repository.get_revision(
+            repository.generate_revision_id(0, ""))
+        self.assertEqual(repository.generate_revision_id(0, ""), rev.revision_id)
+        self.assertEqual("", rev.committer)
+        self.assertEqual({}, rev.properties)
+        self.assertEqual(None, rev.timezone)
+        self.assertEqual(0.0, rev.timestamp)
+
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
@@ -439,6 +445,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open(repos_url)
         self.assertEqual({repository.generate_revision_id(0, ""): []}, 
                 repository.get_revision_graph())
+
+    def test_get_revision_graph_zero(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open(repos_url)
+        self.assertEqual({repository.generate_revision_id(0, ""): []}, 
+                repository.get_revision_graph(repository.generate_revision_id(0, "")))
 
     def test_get_revision_graph_all(self):
         repos_url = self.make_client('d', 'dc')

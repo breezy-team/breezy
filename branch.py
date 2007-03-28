@@ -14,27 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch, PullResult
+from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
-from bzrlib.config import TreeConfig
-from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
-                           NoSuchFile, DivergedBranches)
-from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory)
-from bzrlib.revision import Revision, NULL_REVISION
-from bzrlib.symbol_versioning import deprecated_function, zero_nine
-from bzrlib.tree import Tree
-from bzrlib.trace import mutter, note
+from bzrlib.errors import NoSuchFile, DivergedBranches
+from bzrlib.inventory import (Inventory)
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-import os
-
 import svn.client, svn.core
-from svn.core import SubversionException
 
 from commit import push_as_merged
 from repository import SvnRepository
 from transport import bzr_to_svn_url, svn_config
-from tree import SvnRevisionTree
 
 
 class FakeControlFiles(object):
@@ -96,7 +87,7 @@ class SvnBranch(Branch):
             rev.kind = svn.core.svn_opt_revision_head
         else:
             assert revision_id in self.revision_history()
-            (bp, revnum) = self.repository.parse_revision_id(revision_id)
+            (_, revnum) = self.repository.parse_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
             mutter('hist: %r' % self.revision_history())
@@ -185,7 +176,8 @@ class SvnBranch(Branch):
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if overwrite:
-                    raise NotImplementedError('overwrite not supported for Subversion branches')
+                    raise NotImplementedError('overwrite not supported for '
+                                              'Subversion branches')
                 raise
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
@@ -234,7 +226,7 @@ class SvnBranch(Branch):
         pass
 
     def get_parent(self):
-        return self.bzrdir.root_transport.base
+        return self.base
 
     def set_parent(self, url):
         pass # FIXME: Use svn.client.switch()
@@ -272,7 +264,7 @@ class SvnBranch(Branch):
 
 
 class SvnBranchFormat(BranchFormat):
-    """ Branch format for Subversion Branches."""
+    """Branch format for Subversion Branches."""
     def __init__(self):
         BranchFormat.__init__(self)
 

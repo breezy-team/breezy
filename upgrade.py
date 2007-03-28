@@ -94,7 +94,7 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     try:
         for path, ie in oldinv.iter_entries():
             pb.update('upgrading revision', i, total)
-            i+=1
+            i += 1
             new_ie = ie.copy()
             if new_ie.revision == oldrevid:
                 new_ie.revision = None
@@ -193,9 +193,9 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
         try:
             for revid in graph:
                 pb.update('gather revision information', i, len(graph))
-                i+=1
+                i += 1
                 try:
-                    (uuid, bp, rev, version) = parse_legacy_revision_id(revid)
+                    (uuid, bp, rev, _) = parse_legacy_revision_id(revid)
                     newrevid = generate_svn_revision_id(uuid, rev, bp)
                     if svn_repository.has_revision(newrevid):
                         rename_map[revid] = newrevid
@@ -237,7 +237,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             for revid in needed_revs:
                 pb.update('fetching new revisions', i, len(needed_revs))
                 repository.fetch(svn_repository, revid)
-                i+=1
+                i += 1
         finally:
             pb.finished()
 
@@ -248,7 +248,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             while len(needs_upgrading) > 0:
                 revid = needs_upgrading.pop()
                 pb.update('upgrading revisions', i, total)
-                i+=1
+                i += 1
                 newrevid = create_upgraded_revid(revid)
                 rename_map[revid] = newrevid
                 if repository.has_revision(newrevid):

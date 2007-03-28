@@ -22,20 +22,17 @@ load_plugins()
 
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError, NotBranchError, NoSuchFile, NoRepositoryPresent
+from bzrlib.errors import (BzrError, NotBranchError, 
+                           NoSuchFile, NoRepositoryPresent)
 import bzrlib.osutils as osutils
-from bzrlib.progress import DummyProgress
-from bzrlib.repository import Repository
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 import bzrlib.urlutils as urlutils
 import bzrlib.ui as ui
 
-from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
-from transport import SvnRaTransport
 
-import svn.core
+import svn.core, svn.repos
 
 def transport_makedirs(transport, location_url):
     needed = [(transport, transport.relpath(location_url))]
@@ -53,19 +50,18 @@ def transport_makedirs(transport, location_url):
 class NotDumpFile(BzrError):
     _fmt = """%(dumpfile)s is not a dump file."""
     def __init__(self, dumpfile):
+        super(NotDumpFile, self).__init__()
         self.dumpfile = dumpfile
 
 
 def load_dumpfile(dumpfile, outputdir):
-    import svn
-    from svn.core import SubversionException
     from cStringIO import StringIO
     repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
     try:
         file = open(dumpfile)
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
+    except svn.core.SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
         raise NotDumpFile(dumpfile)
     return repos
 
@@ -122,7 +118,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                        
         try:
             i = 0
-            for (branch, revnum, exists) in existing_branches:
+            for (branch, revnum, _) in existing_branches:
                 if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
                     continue
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
@@ -151,7 +147,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                     target_branch.pull(source_branch)
                 if working_trees and not target_dir.has_workingtree():
                     target_dir.create_workingtree()
-                i+=1
+                i += 1
         finally:
             pb.finished()
     finally:

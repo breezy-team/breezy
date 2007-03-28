@@ -44,7 +44,7 @@ class BranchingScheme:
         :return: New BranchingScheme instance.
         """
         parts = relpath.strip("/").split("/")
-        for i in range(0,len(parts)):
+        for i in range(0, len(parts)):
             if parts[i] in ("trunk", "branches", "tags"):
                 return TrunkBranchingScheme(level=i)
 

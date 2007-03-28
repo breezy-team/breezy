@@ -16,11 +16,7 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, NotBranchError, NotLocalUrl
-from bzrlib.tests import TestCase
-from bzrlib.transport import get_transport
 
-from format import SvnRemoteAccess
-from repository import SvnRepository
 from tests import TestCaseWithSubversionRepository
 
 class TestRemoteAccess(TestCaseWithSubversionRepository):

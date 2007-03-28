@@ -18,7 +18,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.repository import Repository
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os

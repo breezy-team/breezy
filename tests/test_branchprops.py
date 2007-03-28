@@ -19,7 +19,6 @@ from bzrlib.errors import NoSuchRevision
 from tests import TestCaseWithSubversionRepository
 from branchprops import BranchPropertyList
 from logwalker import LogWalker
-from scheme import NoBranchingScheme
 from transport import SvnRaTransport
 
 try:

@@ -14,13 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision
-from bzrlib.inventory import Inventory
 
 import os
 import logwalker
-from scheme import NoBranchingScheme, TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
@@ -128,7 +125,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_add("dc/tags")
         self.client_commit("dc", "My Message")
-        self.client_copy("dc/branches/tmp", "dc/tags/tmp");
+        self.client_copy("dc/branches/tmp", "dc/tags/tmp")
         self.client_commit("dc", "My Message2")
 
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
@@ -141,7 +138,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_add("dc/tags")
         self.client_commit("dc", "My Message")
-        self.client_copy("dc/branches/tmp", "dc/tags/tmp");
+        self.client_copy("dc/branches/tmp", "dc/tags/tmp")
         self.client_commit("dc", "My Message2")
         self.client_update("dc")
         self.client_set_prop("dc/tags", "myprop", "mydata")
@@ -273,9 +270,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         for (branch, paths, rev) in walker.follow_path("", 1):
-           self.assertEqual(branch, "")
-           self.assertTrue(rev == 0 or paths.has_key("foo"))
-           self.assertTrue(rev in (0,1))
+            self.assertEqual(branch, "")
+            self.assertTrue(rev == 0 or paths.has_key("foo"))
+            self.assertTrue(rev in (0,1))
 
     def test_follow_history_nohist(self):
         repos_url = self.make_client("a", "dc")
@@ -293,9 +290,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         for (branch, paths, rev) in walker.follow_path("", 1):
-           self.assertEqual(branch, "")
-           self.assertTrue(rev == 0 or paths.has_key("foo"))
-           self.assertTrue(rev in (0,1))
+            self.assertEqual(branch, "")
+            self.assertTrue(rev == 0 or paths.has_key("foo"))
+            self.assertTrue(rev in (0,1))
 
         iter = walker.follow_path("", 2)
         self.assertRaises(NoSuchRevision, list, iter)
