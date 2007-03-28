@@ -86,9 +86,9 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_commit_without_root(self):
         """This should cause a deprecation warning, not an assertion failure"""
         tree = self.make_branch_and_tree(".")
-        if tree.branch.repository._format.rich_root_data:
+        if tree.branch.repository.supports_rich_root():
             raise tests.TestSkipped('Format requires root')
-        self.build_tree(['foo'])
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo', 'foo-id')
         tree.lock_write()
         try:

@@ -27,10 +27,8 @@ from bzrlib.workingtree import WorkingTree
 
 class FileIdInvolvedBase(TestCaseWithRepository):
 
-    def touch(self,filename):
-        f = file(filename,"a")
-        f.write("appended line\n")
-        f.close( )
+    def touch(self, tree, filename):
+        tree.bzrdir.root_transport.append_bytes(filename, "appended line\n")
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
@@ -69,7 +67,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["a","b","c"], transport=main_wt.bzrdir.root_transport)
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -88,23 +86,23 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end A -----------
 
-        d1 = main_branch.bzrdir.clone('branch1')
-        b1 = d1.open_branch()
-        self.build_tree(["branch1/d"])
-        bt1 = d1.open_workingtree()
+        bt1 = self.make_branch_and_tree('branch1')
+        bt1.pull(main_branch)
+        b1 = bt1.branch
+        self.build_tree(["d"], transport=bt1.bzrdir.root_transport)
         bt1.add(['d'], ['file-d'])
         bt1.commit("branch1, Commit one", rev_id="rev-E")
 
         #-------- end E -----------
 
-        self.touch("main/a")
+        self.touch(main_wt, "a")
         main_wt.commit("Commit two", rev_id="rev-B")
 
         #-------- end B -----------
 
-        d2 = main_branch.bzrdir.clone('branch2')
-        branch2_branch = d2.open_branch()
-        bt2 = d2.open_workingtree()
+        bt2 = self.make_branch_and_tree('branch2')
+        bt2.pull(main_branch)
+        branch2_branch = bt2.branch
         set_executability(bt2, 'b', True)
         bt2.commit("branch2, Commit one", rev_id="rev-J")
 
@@ -120,13 +118,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end F -----------
 
-        self.touch("branch2/c")
+        self.touch(bt2, "c")
         bt2.commit("branch2, commit two", rev_id="rev-K")
 
         #-------- end K -----------
 
         main_wt.merge_from_branch(b1)
-        self.touch("main/b")
+        self.touch(main_wt, "b")
         # D gets some funky characters to make sure the unescaping works
         main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
 
@@ -227,7 +225,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
     def test_utf8_file_ids_and_revision_ids(self):
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a"])
+        self.build_tree(["a"], transport=main_wt.bzrdir.root_transport)
 
         file_id = u'a-f\xedle-id'.encode('utf8')
         main_wt.add(['a'], [file_id])
@@ -257,7 +255,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["a","b","c"], transport=main_wt.bzrdir.root_transport)
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
@@ -274,9 +272,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             # This is not a known error condition
             raise
 
-        branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
+        branch2_wt = self.make_branch_and_tree('branch2')
+        branch2_wt.pull(main_branch)
+        branch2_bzrdir = branch2_wt.bzrdir
         branch2_branch = branch2_bzrdir.open_branch()
-        branch2_wt = branch2_bzrdir.open_workingtree()
         set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 

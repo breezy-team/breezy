@@ -100,7 +100,7 @@ class TestPush(TestCaseWithBranch):
         source = self.make_branch_and_tree('source')
         target = self.make_branch('target')
 
-        self.build_tree(['source/a'])
+        self.build_tree(['a'], transport=source.bzrdir.root_transport)
         source.add(['a'])
         source.commit('a')
 
@@ -129,8 +129,11 @@ class TestPush(TestCaseWithBranch):
         except (errors.UninitializableFormat):
             # Cannot create these branches
             return
-        tree = a_branch.bzrdir.create_workingtree()
-        self.build_tree(['repo/tree/a'])
+        try:
+            tree = a_branch.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            tree = a_branch.create_checkout('checkout', lightweight=True)
+        self.build_tree(['a'], transport=tree.bzrdir.root_transport)
         tree.add(['a'])
         tree.commit('a')
 
