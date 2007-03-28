@@ -1050,7 +1050,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
         made_repo.has_revision('foo')
-
         self.assertEqual(made_control, made_repo.bzrdir)
 
     def test_create_repository_shared(self):

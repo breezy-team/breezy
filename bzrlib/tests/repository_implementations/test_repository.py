@@ -119,7 +119,6 @@ class TestRepository(TestCaseWithRepository):
         readonly_t = get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
-        ## self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
 
         # find it via bzrdir opening:
@@ -155,7 +154,6 @@ class TestRepository(TestCaseWithRepository):
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
         made_repo.has_revision('foo')
-        
         self.assertEqual(made_control, made_repo.bzrdir)
         
     def test_create_repository_shared(self):
@@ -175,7 +173,6 @@ class TestRepository(TestCaseWithRepository):
             return
         # Check that we have a repository object.
         made_repo.has_revision('foo')
-
         self.assertEqual(made_control, made_repo.bzrdir)
         self.assertTrue(made_repo.is_shared())
 
@@ -463,13 +460,7 @@ class TestRepositoryLocking(TestCaseWithRepository):
 
     def setUp(self):
         TestCaseWithRepository.setUp(self)
-        # XXX: This lock timeout fiddling occurs in other tests (e.g.
-        # test_lockable_files) too.
-        orig_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.reduceLockdirTimeout()
 
     def test_leave_lock_in_place(self):
         repo = self.make_repository('r')

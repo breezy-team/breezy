@@ -1908,12 +1908,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """Create a branch on the transport and a tree locally.
 
         If the transport is not a LocalTransport, the Tree can't be created on
-        the transport.  In that case the working tree is created in the local
+        the transport.  In that case if the vfs_transport_factory is
+        LocalURLServer the working tree is created in the local
         directory backing the transport, and the returned tree's branch and
-        repository will also be accessed locally.
-
-        If the original default transport for this test case isn't backed by the
-        working directory, this will return a checkout.
+        repository will also be accessed locally. Otherwise a lightweight
+        checkout is created and returned.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
