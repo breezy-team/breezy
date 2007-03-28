@@ -228,7 +228,7 @@ if have_fcntl:
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
-                fcntl.lockf(new_f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError, e:
                 # TODO: Raise a more specific error based on the type of error
                 raise errors.LockContention(e)
