@@ -5,6 +5,12 @@ IN DEVELOPMENT
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
       code paths. (Robert Collins)
 
+    * Change the format of chroot urls so that they can be safely manipulated
+      by generic url utilities without causing the resulting urls to have
+      escaped the chroot. A side effect of this is that creating a chroot
+      requires an explicit action using a ChrootServer.
+      (Robert Collins, Andrew Bennetts)
+
     * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
       so that a seperate LockableFiles instance can share a lock if it has the
       right token.  (Andrew Bennetts, Robert Collins)
