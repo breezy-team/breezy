@@ -232,6 +232,12 @@ class LockableFiles(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.  For instance, this could happen when accessing the same branch
+        over bzr+ssh:// and then falling back to do some operations on the same
+        branch via sftp://.
         """
         # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,

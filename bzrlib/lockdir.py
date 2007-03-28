@@ -428,8 +428,14 @@ class LockDir(object):
         :returns: a token if this instance supports tokens, otherwise None.
         :raises TokenLockingNotSupported: when a token is given but this
             instance doesn't support using token locks.
-        :raises MismatchedToken: if the specified token doesn't match the token
+        :raises TokenMismatch: if the specified token doesn't match the token
             of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.  For instance, this could happen when accessing the same branch
+        over bzr+ssh:// and then falling back to do some operations on the same
+        branch via sftp://.
          
         XXX: docstring duplicated from LockableFiles.lock_write.
         """
