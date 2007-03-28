@@ -44,9 +44,9 @@ def set_test_transport_to_sftp(testcase):
     if getattr(testcase, '_get_remote_is_absolute', None) is None:
         testcase._get_remote_is_absolute = True
     if testcase._get_remote_is_absolute:
-        testcase.vfs_transport_factory = SFTPAbsoluteServer
+        testcase.transport_server = SFTPAbsoluteServer
     else:
-        testcase.vfs_transport_factory = SFTPHomeDirServer
+        testcase.transport_server = SFTPHomeDirServer
     testcase.transport_readonly_server = HttpServer
 
 

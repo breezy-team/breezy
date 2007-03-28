@@ -30,7 +30,6 @@ from bzrlib.branch import (BranchFormat,
                            )
 from bzrlib.tests import (
                           adapt_modules,
-                          default_transport,
                           TestLoader,
                           TestSuite,
                           )
@@ -64,7 +63,8 @@ def test_suite():
     # TODO: To usefully test the SmartServer, we need to specify the bzrdir
     # format, branch format, and also the transport.
     adapter = BranchTestProviderAdapter(
-        default_transport,
+        # None here will cause the default vfs transport server to be used.
+        None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,

@@ -519,7 +519,7 @@ class LocalURLServer(Server):
     this just exists to tell the test code how to get to it.
     """
 
-    def setUp(self, decorated_transport=None):
+    def setUp(self):
         """Setup the server to service requests.
         
         :param decorated_transport: ignored by this implementation.

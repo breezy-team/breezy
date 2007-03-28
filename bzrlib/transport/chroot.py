@@ -22,6 +22,7 @@ from urlparse import urlparse
 from bzrlib import errors, urlutils
 from bzrlib.transport import (
     get_transport,
+    local,
     register_transport,
     Server,
     Transport,
