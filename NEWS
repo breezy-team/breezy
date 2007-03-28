@@ -20,6 +20,8 @@ bzr 0.15 (not finalised)
     * Correctly handles mutiple permanent http redirections.
      (vila, #88780)
 
+    * Handle incompatible repositories as a user issue when fetching.
+
 
 bzr 0.15rc3  2007-03-24
 

@@ -326,9 +326,9 @@ class Repository(object):
         If revision_id is None all content is copied.
         """
         revision_id = osutils.safe_revision_id(revision_id)
+        inter = InterRepository.get(source, self)
         try:
-            return InterRepository.get(source, self).fetch(
-                revision_id=revision_id, pb=pb)
+            return inter.fetch(revision_id=revision_id, pb=pb)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
