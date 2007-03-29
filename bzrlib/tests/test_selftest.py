@@ -500,7 +500,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         from bzrlib.transport import get_transport
         from bzrlib.transport.memory import MemoryServer
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -542,7 +542,7 @@ class TestTestCaseTransports(TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
