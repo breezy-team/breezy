@@ -18,12 +18,13 @@
 
 import os
 
+from bzrlib import bzrdir, errors
 from bzrlib.branch import Branch
-from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
 from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.transport.local import LocalURLServer
 
 
 class TestPush(TestCaseWithBranch):
@@ -133,7 +134,13 @@ class TestPush(TestCaseWithBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            tree = a_branch.create_checkout('repo/tree', lightweight=True)
+            if self.vfs_transport_factory is LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
+                tree = local_controldir.create_workingtree()
+            else:
+                tree = a_branch.create_checkout('repo/tree', lightweight=True)
         self.build_tree(['repo/tree/a'])
         tree.add(['a'])
         tree.commit('a')
