@@ -11,6 +11,9 @@ IN DEVELOPMENT
       requires an explicit action using a ChrootServer.
       (Robert Collins, Andrew Bennetts)
 
+    * Deprecate Branch.get_root_id() because branches don't have root ids,
+      rather than fixing bug #96847.  (Aaron Bentley)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
