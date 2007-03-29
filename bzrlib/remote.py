@@ -94,22 +94,32 @@ class RemoteBzrDir(BzrDir):
         b = self.open_branch()
         return b._format
 
-    def open_branch(self, _unsupported=False):
-        assert _unsupported == False, 'unsupported flag support not implemented yet.'
+    def get_branch_reference(self):
+        """See BzrDir.get_branch_reference()."""
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open_branch', path)
         if response[0] == 'ok':
             if response[1] == '':
                 # branch at this location.
-                return RemoteBranch(self, self.find_repository())
+                return None
             else:
                 # a branch reference, use the existing BranchReference logic.
-                format = BranchReferenceFormat()
-                return format.open(self, _found=True, location=response[1])
+                return response[1]
         elif response == ('nobranch',):
             raise errors.NotBranchError(path=self.root_transport.base)
         else:
             assert False, 'unexpected response code %r' % (response,)
+
+    def open_branch(self, _unsupported=False):
+        assert _unsupported == False, 'unsupported flag support not implemented yet.'
+        reference_url = self.get_branch_reference()
+        if reference_url is None:
+            # branch at this location.
+            return RemoteBranch(self, self.find_repository())
+        else:
+            # a branch reference, use the existing BranchReference logic.
+            format = BranchReferenceFormat()
+            return format.open(self, _found=True, location=reference_url)
                 
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
@@ -128,7 +138,7 @@ class RemoteBzrDir(BzrDir):
             raise errors.NoRepositoryPresent(self)
 
     def open_workingtree(self):
-        return RemoteWorkingTree(self, self._real_bzrdir.open_workingtree())
+        raise errors.NotLocalUrl(self.root_transport)
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
@@ -933,18 +943,6 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.update_revisions(
             other, stop_revision=stop_revision)
-
-
-class RemoteWorkingTree(object):
-
-    def __init__(self, remote_bzrdir, real_workingtree):
-        self.real_workingtree = real_workingtree
-        self.bzrdir = remote_bzrdir
-
-    def __getattr__(self, name):
-        # XXX: temporary way to lazily delegate everything to the real
-        # workingtree
-        return getattr(self.real_workingtree, name)
 
 
 class RemoteBranchConfig(BranchConfig):
