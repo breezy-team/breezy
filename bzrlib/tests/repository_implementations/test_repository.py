@@ -416,6 +416,14 @@ class TestRepository(TestCaseWithRepository):
                           allow_pointless=False)
         tree.commit('pointless', allow_pointless=True)
 
+    def test_format_attributes(self):
+        """All repository formats should have some basic attributes."""
+        # create a repository to get a real format instance, not the 
+        # template from the test suite parameterisation.
+        repo = self.make_repository('.')
+        repo._format.rich_root_data
+        repo._format.support_tree_reference
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
