@@ -85,6 +85,14 @@ class RemoteBzrDir(BzrDir):
         real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
         return RemoteWorkingTree(self, real_workingtree)
 
+    def find_branch_format(self):
+        """Find the branch 'format' for this bzrdir.
+
+        This might be a synthetic object for e.g. RemoteBranch and SVN.
+        """
+        b = self.open_branch()
+        return b._format
+
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
         path = self._path_for_remote_call(self._client)
@@ -613,6 +621,10 @@ class RemoteBranchLockableFiles(object):
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+
+    def __eq__(self, other):
+        return (isinstance(other, RemoteBranchFormat) and 
+            self.__dict__ == other.__dict__)
 
     def get_format_description(self):
         return 'Remote BZR Branch'

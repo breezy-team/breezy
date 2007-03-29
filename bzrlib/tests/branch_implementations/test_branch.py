@@ -655,8 +655,7 @@ class TestFormat(TestCaseWithBranch):
             self.branch_format.get_format_string()
         except NotImplementedError:
             return
-        self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+        self.assertEqual(self.branch_format, opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):

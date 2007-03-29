@@ -1035,6 +1035,14 @@ class BzrDirMeta1(BzrDir):
     def destroy_workingtree_metadata(self):
         self.transport.delete_tree('checkout')
 
+    def find_branch_format(self):
+        """Find the branch 'format' for this bzrdir.
+
+        This might be a synthetic object for e.g. RemoteBranch and SVN.
+        """
+        from bzrlib.branch import BranchFormat
+        return BranchFormat.find_format(self)
+
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
         temp_control = lockable_files.LockableFiles(self.transport, '',
@@ -1122,8 +1130,7 @@ class BzrDirMeta1(BzrDir):
 
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self)
+        format = self.find_branch_format()
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
