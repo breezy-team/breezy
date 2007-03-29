@@ -1228,13 +1228,12 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current open request: %(current_request)r")
+            " current open request.")
 
     internal_error = True
 
     def __init__(self, medium):
         self.medium = medium
-        self.current_request = medium._current_request
 
 
 class SmartProtocolError(TransportError):

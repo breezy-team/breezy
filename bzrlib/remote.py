@@ -615,8 +615,11 @@ class RemoteBranchLockableFiles(LockableFiles):
     def __init__(self, bzrdir, _client):
         self.bzrdir = bzrdir
         self._client = _client
-        LockableFiles.__init__(self, bzrdir.root_transport, 'lock',
-                lockdir.LockDir)
+        # XXX: This assumes that the branch control directory is .bzr/branch,
+        # which isn't necessarily true.
+        LockableFiles.__init__(
+            self, bzrdir.root_transport.clone('.bzr/branch'),
+            'lock', lockdir.LockDir)
 
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
@@ -625,14 +628,15 @@ class RemoteBranchLockableFiles(LockableFiles):
              just retrieve a file, instead we ask the smart server to generate
              a configuration for us - which is retrieved as an INI file.
         """
-        if path != 'branch.conf':
-            raise errors.NoSuchFile(path)
-        assert path == 'branch.conf'
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call2('Branch.get_config_file', path)
-        assert response[0][0] == 'ok', \
-            'unexpected response code %s' % (response[0],)
-        return StringIO(response[1].read_body_bytes())
+        if path == 'branch.conf':
+            path = self.bzrdir._path_for_remote_call(self._client)
+            response = self._client.call2('Branch.get_config_file', path)
+            assert response[0][0] == 'ok', \
+                'unexpected response code %s' % (response[0],)
+            return StringIO(response[1].read_body_bytes())
+        else:
+            # VFS fallback.
+            return LockableFiles.get(self, path)
 
 
 class RemoteBranchFormat(branch.BranchFormat):

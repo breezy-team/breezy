@@ -48,7 +48,7 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo', 
+            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
                               StringIO(unicode_string))
             self.lockable.put('foo', StringIO(byte_string))
             self.assertEqual(byte_string,
