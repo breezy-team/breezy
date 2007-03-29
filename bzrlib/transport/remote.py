@@ -920,6 +920,12 @@ class RemoteTransport(transport.Transport):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited
         # strings?
+        if type(upload_contents) is unicode:
+            # Although not strictly correct, we raise UnicodeEncodeError to be
+            # compatible with other transports.
+            raise UnicodeEncodeError(
+                'undefined', upload_contents, 0, 1,
+                'put_bytes must be given bytes, not unicode.')
         resp = self._call_with_body_bytes('put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
