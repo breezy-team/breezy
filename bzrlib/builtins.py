@@ -243,6 +243,9 @@ class cmd_remove_tree(Command):
 
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
+
+    To get the working tree created again holding the last checked in files,
+    use "bzr checkout".
     """
 
     takes_args = ['location?']
@@ -338,7 +341,10 @@ class cmd_add(Command):
 
     --file-ids-from will try to use the file ids from the supplied path.
     It looks up ids trying to find a matching parent directory with the
-    same filename, and then by pure path.
+    same filename, and then by pure path. This option is rarely needed
+    but can be useful when adding the same logical file into two
+    branches that will be merged later (without showing the two different
+    adds as a conflict).
     """
     takes_args = ['file*']
     takes_options = ['no-recurse', 'dry-run', 'verbose',
@@ -1922,13 +1928,13 @@ class cmd_export(Command):
     given, try to find the format with the extension. If no extension
     is found exports to a directory (equivalent to --format=dir).
 
-    Root may be the top directory for tar, tgz and tbz2 formats. If none
+    Root may be the top directory for formats other than dir. If none
     is given, the top directory will be the root name of the file.
 
     If branch is omitted then the branch containing the current working
     directory will be used.
 
-    Note: export of tree with non-ascii filenames to zip is not supported.
+    Note: Export of tree with non-ASCII filenames to zip is not supported.
 
      Supported formats       Autodetected by extension
      -----------------       -------------------------
@@ -2035,9 +2041,7 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
-    A selected-file commit may fail in some cases where the committed
-    tree would be invalid, such as trying to commit a file in a
-    newly-added directory that is not itself committed.
+    Note: A selected-file commit after a merge is not yet supported.
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
 
@@ -2461,14 +2465,14 @@ class cmd_merge(Command):
 
     Examples:
 
-    To merge the latest revision from bzr.dev
-    bzr merge ../bzr.dev
+    To merge the latest revision from bzr.dev:
+        bzr merge ../bzr.dev
 
-    To merge changes up to and including revision 82 from bzr.dev
-    bzr merge -r 82 ../bzr.dev
+    To merge changes up to and including revision 82 from bzr.dev:
+        bzr merge -r 82 ../bzr.dev
 
     To merge the changes introduced by 82, without previous changes:
-    bzr merge -r 81..82 ../bzr.dev
+        bzr merge -r 81..82 ../bzr.dev
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
@@ -2629,6 +2633,7 @@ class cmd_remerge(Command):
     pending merge, and it lets you specify particular files.
 
     Examples:
+
     $ bzr remerge --show-base
         Re-do the merge of all conflicted files, and show the base text in
         conflict regions, in addition to the usual THIS and OTHER texts.
