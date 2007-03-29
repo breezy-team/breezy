@@ -14,6 +14,11 @@ IN DEVELOPMENT
     * Deprecate Branch.get_root_id() because branches don't have root ids,
       rather than fixing bug #96847.  (Aaron Bentley)
 
+  BUGFIXES:
+
+    * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
+      (Robert Widhopf-Fenk, #98591)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
