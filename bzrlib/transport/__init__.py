@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,6 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import mutter, warning
 from bzrlib import registry
 
-
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return transport_list_registry
@@ -90,6 +89,8 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
+    # Add chroot directly, because there is not handler registered for it.
+    modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
     return result
@@ -148,6 +149,19 @@ def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
+
+
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    l = transport_list_registry.get(scheme)
+    for i in l:
+        o = i.get_obj( )
+        if o == factory:
+            transport_list_registry.get(scheme).remove(i)
+            break
+    if len(l) == 0:
+        transport_list_registry.remove(scheme)
+
 
 
 def split_url(url):
@@ -1008,11 +1022,8 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
-    # TODO: give a better error if base looks like a url but there's no
-    # handler for the scheme?
     if base is None:
         base = '.'
-
     last_err = None
 
     def convert_path_to_url(base, error_str):
@@ -1094,7 +1105,11 @@ class Server(object):
         raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect."""
+        """Return a url for this protocol, that will fail to connect.
+        
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
         raise NotImplementedError
 
 

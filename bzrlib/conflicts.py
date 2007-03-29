@@ -26,10 +26,12 @@ lazy_import(globals(), """
 import errno
 
 from bzrlib import (
+    builtins,
     commands,
     errors,
     osutils,
     rio,
+    trace,
     )
 """)
 from bzrlib.option import Option
@@ -76,9 +78,9 @@ class cmd_resolve(commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Once you have fixed a problem, use "bzr resolve FILE.." to mark
-    individual files as fixed, or "bzr resolve --all" to mark all conflicts as
-    resolved.
+    Once you have fixed a problem, use "bzr resolve" to automatically mark
+    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    resolved, or "bzr resolve --all" to mark all conflicts as resolved.
 
     See also bzr conflicts.
     """
@@ -94,12 +96,20 @@ class cmd_resolve(commands.Command):
             tree = WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
+            tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
-                raise errors.BzrCommandError("command 'resolve' needs one or"
-                                             " more FILE, or --all")
-            tree = WorkingTree.open_containing(file_list[0])[0]
-            to_resolve = [tree.relpath(p) for p in file_list]
-            resolve(tree, to_resolve)
+                un_resolved, resolved = tree.auto_resolve()
+                if len(un_resolved) > 0:
+                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
+                    trace.note('Remaining conflicts:')
+                    for conflict in un_resolved:
+                        trace.note(conflict)
+                    return 1
+                else:
+                    trace.note('All conflicts resolved.')
+                    return 0
+            else:
+                resolve(tree, file_list)
 
 
 def resolve(tree, paths=None, ignore_misses=False):
@@ -273,12 +283,15 @@ class Conflict(object):
 
     def __init__(self, path, file_id=None):
         self.path = path
-        self.file_id = file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__ and Stanza is purely a Unicode api.
+        self.file_id = osutils.safe_file_id(file_id, warn=False)
 
     def as_stanza(self):
         s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
-            s.add('file_id', self.file_id)
+            # Stanza requires Unicode apis
+            s.add('file_id', self.file_id.decode('utf8'))
         return s
 
     def _cmp_list(self):
@@ -392,7 +405,10 @@ class HandledPathConflict(HandledConflict):
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
-        self.conflict_file_id = conflict_file_id
+        # warn turned off, because the factory blindly transfers the Stanza
+        # values to __init__.
+        self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
+                                                     warn=False)
         
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path, 
@@ -402,7 +418,7 @@ class HandledPathConflict(HandledConflict):
         s = HandledConflict.as_stanza(self)
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
-            s.add('conflict_file_id', self.conflict_file_id)
+            s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
             
         return s
 

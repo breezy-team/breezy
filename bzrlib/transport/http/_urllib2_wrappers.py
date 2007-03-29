@@ -702,20 +702,28 @@ class ProxyHandler(urllib2.ProxyHandler):
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()
-        type, r_type = urllib.splittype(proxy)
-        host, XXX = urllib.splithost(r_type)
-        if '@' in host:
+        scheme, r_scheme = urllib.splittype(proxy)
+        if self._debuglevel > 0:
+            print 'scheme: %s, r_scheme: %s' % (scheme, r_scheme)
+        host, XXX = urllib.splithost(r_scheme)
+        if host is None:
+            raise errors.InvalidURL(proxy,
+                                    'Invalid syntax in proxy env variable')
+        elif '@' in host:
             user_pass, host = host.split('@', 1)
             if ':' in user_pass:
                 user, password = user_pass.split(':', 1)
-                user_pass = '%s:%s' % (urllib.unquote(user),
-                               urllib.unquote(password))
-                user_pass.encode('base64').strip()
-                req.add_header('Proxy-authorization', 'Basic ' + user_pass)
+            else:
+                user = user_pass
+                password = ''
+            user_pass = '%s:%s' % (urllib.unquote(user),
+                                   urllib.unquote(password))
+            user_pass = user_pass.encode('base64').strip()
+            request.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:
-            print 'set_proxy: proxy set to %r://%r' % (type, host)
+            print 'set_proxy: proxy set to %s://%s' % (type, host)
         return request
 
 

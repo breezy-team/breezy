@@ -111,12 +111,18 @@ class TestAdd(ExternalBase):
         
         self.build_tree(['src/foo.c'])
         
+        # add with no arguments in a subdirectory gets only files below that
+        # subdirectory
         chdir('src')
         self.run_bzr('add')
-        
         self.assertEquals(self.capture('unknowns'), 'README\n')
-        eq(len(t.read_working_inventory()), 3)
+        # reopen to see the new changes
+        t = t.bzrdir.open_workingtree()
+        versioned = [path for path, entry in t.iter_entries_by_dir()]
+        self.assertEquals(versioned,
+            ['', 'src', 'src/foo.c'])
                 
+        # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')
         self.assertEquals(self.capture('unknowns'), '')
@@ -143,8 +149,7 @@ class TestAdd(ExternalBase):
                              'added b w/ file id from b\n'
                              'added b/c w/ file id from b/c\n',
                              out)
-
-        new_tree.read_working_inventory()
+        new_tree = new_tree.bzrdir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
         self.assertEqual(base_tree.path2id('b'), new_tree.path2id('b'))
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('b/c'))
@@ -165,7 +170,7 @@ class TestAdd(ExternalBase):
                              'added d w/ file id from b/d\n',
                              out)
 
-        new_tree.read_working_inventory()
+        new_tree = new_tree.bzrdir.open_workingtree()
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 
@@ -177,3 +182,14 @@ class TestAdd(ExternalBase):
         self.assertEquals('added spam\n', out)
         out = self.run_bzr_captured(['added'], retcode=0)[0]
         self.assertEquals('', out)
+
+    def test_add_control_dir(self):
+        """The control dir and its content should be refused."""
+        self.make_branch_and_tree('.')
+        err = self.run_bzr('add', '.bzr', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        err = self.run_bzr('add', '.bzr/README', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
+        self.build_tree(['.bzr/crescent'])
+        err = self.run_bzr('add', '.bzr/crescent', retcode=3)[1]
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')

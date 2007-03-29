@@ -50,7 +50,8 @@ class LoopbackGPGStrategy(object):
         """Real strategies take a configuration."""
 
     def sign(self, content):
-        return content
+        return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
+                "-----END PSEUDO-SIGNED CONTENT-----\n")
 
 
 def _set_gpg_tty():
@@ -76,6 +77,8 @@ class GPGStrategy(object):
         self._config = config
 
     def sign(self, content):
+        if isinstance(content, unicode):
+            raise errors.BzrBadParameterUnicode('content')
         ui.ui_factory.clear_term()
 
         preexec_fn = _set_gpg_tty

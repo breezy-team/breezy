@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
                            NoSuchFile,)
 from bzrlib.merge import Merge3Merger
+from bzrlib.repofmt import knitrepo
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
                           TestCase, TestSkipped)
@@ -313,7 +314,7 @@ class BundleTester1(TestCaseWithTransport):
 
     def test_mismatched_bundle(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
         self.assertRaises(errors.IncompatibleBundleFormat, serializer.write, 
@@ -322,7 +323,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_matched_bundle(self):
         """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         serializer = BundleSerializerV09('0.9')
         b = self.make_branch('.', format=format)
         serializer.write(b.repository, [], {}, StringIO())
@@ -330,7 +331,7 @@ class BundleTester1(TestCaseWithTransport):
     def test_mismatched_model(self):
         """Try copying a bundle from knit2 to knit1"""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         source = self.make_branch_and_tree('source', format=format)
         source.commit('one', rev_id='one-id')
         source.commit('two', rev_id='two-id')
@@ -340,7 +341,7 @@ class BundleTester1(TestCaseWithTransport):
         text.seek(0)
 
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         target = self.make_branch('target', format=format)
         self.assertRaises(errors.IncompatibleRevision, install_bundle, 
                           target.repository, read_bundle(text))
@@ -352,7 +353,7 @@ class V08BundleTester(TestCaseWithTransport):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         return format
 
     def make_branch_and_tree(self, path, format=None):
@@ -487,7 +488,7 @@ class V08BundleTester(TestCaseWithTransport):
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
-                             'Working tree has modifications')
+                             'Working tree has modifications: %s' % delta)
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
@@ -890,7 +891,7 @@ class V09BundleKnit2Tester(V08BundleTester):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         return format
 
 
@@ -900,7 +901,7 @@ class V09BundleKnit1Tester(V08BundleTester):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         return format
 
 

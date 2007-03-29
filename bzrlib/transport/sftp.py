@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
+from bzrlib.transport.local import LocalURLServer
 
 try:
     import paramiko
@@ -1068,9 +1069,12 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
     
-    def setUp(self):
-        self._original_vendor = ssh._ssh_vendor
-        ssh._ssh_vendor = self._vendor
+    def setUp(self, vfs_server=None):
+        # XXX: TODO: make sftpserver back onto vfs_server rather than local disk.
+        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
+            "SFTPServer currently assumes local transport, got %s" % vfs_server
+        self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
+        ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -1089,7 +1093,7 @@ class SFTPServer(Server):
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._listener.stop()
-        ssh._ssh_vendor = self._original_vendor
+        ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
@@ -1106,7 +1110,11 @@ class SFTPFullAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1153,10 +1161,11 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        if sys.platform == 'win32':
-            return self._get_sftp_url(urlutils.escape(self._homedir))
-        else:
-            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        homedir = self._homedir
+        if sys.platform != 'win32':
+            # Remove the initial '/' on all platforms but win32
+            homedir = homedir[1:]
+        return self._get_sftp_url(urlutils.escape(homedir))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

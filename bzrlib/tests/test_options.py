@@ -25,6 +25,7 @@ from bzrlib import (
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
+from bzrlib.repofmt import knitrepo
 
 def parse(options, args):
     parser = option.get_optparser(dict((o.name, o) for o in options))
@@ -137,6 +138,8 @@ class OptionTests(TestCase):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
         registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('hidden', 'RepositoryFormatKnit1',
+            'two help', hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', '', registry, str)]
         opts, args = self.parse(options, ['--format', 'one'])
@@ -156,18 +159,38 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--two', '--one',
                                           '--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
+        options = [option.RegistryOption('format', '', registry, str,
+                   enum_switch=False)]
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--format', 'two'])
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
                    bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
-                              repository.RepositoryFormatKnit1)
+                              knitrepo.RepositoryFormatKnit1)
+
+    def test_from_kwargs(self):
+        my_option = option.RegistryOption.from_kwargs('my-option',
+            help='test option', short='be short', be_long='go long')
+        self.assertEqual(['my-option'],
+            [x[0] for x in my_option.iter_switches()])
+        my_option = option.RegistryOption.from_kwargs('my-option',
+            help='test option', title="My option", short='be short',
+            be_long='go long', value_switches=True)
+        self.assertEqual(['my-option', 'be-long', 'short'],
+            [x[0] for x in my_option.iter_switches()])
 
     def test_help(self):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('two',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+            'two help',
+            )
+        registry.register_metadir('hidden', 'RepositoryFormat7', 'hidden help',
+            hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
@@ -176,6 +199,7 @@ class OptionTests(TestCase):
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
         self.assertContainsRe(value, 'Formats:\n *--format')
+        self.assertNotContainsRe(value, 'hidden help')
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')
@@ -189,7 +213,10 @@ class OptionTests(TestCase):
                          [('hello', None, 'GAR', 'fg')])
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.register_metadir('two',
+                'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+                'two help',
+                )
         registry.set_default('one')
         opt = option.RegistryOption('format', 'format help', registry,
                                     value_switches=False)

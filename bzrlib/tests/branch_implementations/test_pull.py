@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,10 +20,12 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib import errors
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.memorytree import MemoryTree
+from bzrlib.revision import NULL_REVISION
+from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
-class TestPull(TestCaseWithTransport):
+class TestPull(TestCaseWithBranch):
 
     def test_pull_convergence_simple(self):
         # when revisions are pulled, the left-most accessible parents must 
@@ -77,3 +79,97 @@ class TestPull(TestCaseWithTransport):
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
+
+    def test_pull_overwrite(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('message 1')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('message 2', rev_id='rev2a')
+        tree_b.commit('message 2', rev_id='rev2b')
+        self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+        tree_a.branch.pull(tree_a.branch, overwrite=True,
+                           stop_revision='rev2b')
+        self.assertEqual('rev2b', tree_a.branch.last_revision())
+        self.assertEqual(tree_b.branch.revision_history(),
+                         tree_a.branch.revision_history())
+
+
+class TestPullHook(TestCaseWithBranch):
+
+    def setUp(self):
+        self.hook_calls = []
+        TestCaseWithBranch.setUp(self)
+
+    def capture_post_pull_hook(self, result):
+        """Capture post pull hook calls to self.hook_calls.
+        
+        The call is logged, as is some state of the two branches.
+        """
+        if result.local_branch:
+            local_locked = result.local_branch.is_locked()
+            local_base = result.local_branch.base
+        else:
+            local_locked = None
+            local_base = None
+        self.hook_calls.append(
+            ('post_pull', result.source_branch, local_base,
+             result.master_branch.base, result.old_revno,
+             result.old_revid,
+             result.new_revno, result.new_revid,
+             result.source_branch.is_locked(), local_locked,
+             result.master_branch.is_locked()))
+
+    def test_post_pull_empty_history(self):
+        target = self.make_branch('target')
+        source = self.make_branch('source')
+        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        target.pull(source)
+        # with nothing there we should still get a notification, and
+        # have both branches locked at the notification time.
+        self.assertEqual([
+            ('post_pull', source, None, target.base, 0, NULL_REVISION,
+             0, NULL_REVISION, True, None, True)
+            ],
+            self.hook_calls)
+
+    def test_post_pull_bound_branch(self):
+        # pulling to a bound branch should pass in the master branch to the
+        # hook, allowing the correct number of emails to be sent, while still
+        # allowing hooks that want to modify the target to do so to both 
+        # instances.
+        target = self.make_branch('target')
+        local = self.make_branch('local')
+        try:
+            local.bind(target)
+        except errors.UpgradeRequired:
+            # cant bind this format, the test is irrelevant.
+            return
+        source = self.make_branch('source')
+        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        local.pull(source)
+        # with nothing there we should still get a notification, and
+        # have both branches locked at the notification time.
+        self.assertEqual([
+            ('post_pull', source, local.base, target.base, 0, NULL_REVISION,
+             0, NULL_REVISION, True, True, True)
+            ],
+            self.hook_calls)
+
+    def test_post_pull_nonempty_history(self):
+        target = self.make_branch_and_memory_tree('target')
+        target.lock_write()
+        target.add('')
+        rev1 = target.commit('rev 1')
+        target.unlock()
+        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        rev2 = source.commit('rev 2')
+        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        target.branch.pull(source.branch)
+        # with nothing there we should still get a notification, and
+        # have both branches locked at the notification time.
+        self.assertEqual([
+            ('post_pull', source.branch, None, target.branch.base, 1, rev1,
+             2, rev2, True, None, True)
+            ],
+            self.hook_calls)

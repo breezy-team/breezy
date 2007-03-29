@@ -197,6 +197,7 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 from cStringIO import StringIO
 import os
 import socket
+import sys
 import tempfile
 import threading
 import urllib
@@ -221,6 +222,10 @@ except errors.ParamikoNotPresent:
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
+
+
+# Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_PORT = 4155
 
 
 def _recv_tuple(from_file):
@@ -540,6 +545,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param backing_transport: Transport for the directory served.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
+        if sys.platform == 'win32':
+            # force binary mode for files
+            import msvcrt
+            for f in (in_file, out_file):
+                fileno = getattr(f, 'fileno', None)
+                if fileno:
+                    msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
         self._out = out_file
 
@@ -867,9 +879,11 @@ class SmartTCPServer(object):
 
     def stop_background_thread(self):
         self._should_terminate = True
+        # At one point we would wait to join the threads here, but it looks
+        # like they don't actually exit.  So now we just leave them running
+        # and expect to terminate the process. -- mbp 20070215
         # self._server_socket.close()
-        # we used to join the thread, but it's not really necessary; it will
-        # terminate in time
+        ## sys.stderr.write("waiting for server thread to finish...")
         ## self._server_thread.join()
 
 
@@ -889,17 +903,24 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         SmartTCPServer.__init__(self,
             transport.get_transport(urlutils.local_path_to_url('/')))
         
-    def setUp(self):
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        return transport.get_transport(backing_transport_server.get_url())
+
+    def setUp(self, backing_transport_server=None):
         """Set up server for testing"""
+        from bzrlib.transport.chroot import TestingChrootServer
+        if backing_transport_server is None:
+            from bzrlib.transport.local import LocalURLServer
+            backing_transport_server = LocalURLServer()
+        self.chroot_server = TestingChrootServer()
+        self.chroot_server.setUp(backing_transport_server)
+        self.backing_transport = transport.get_transport(
+            self.chroot_server.get_url())
         self.start_background_thread()
 
     def tearDown(self):
         self.stop_background_thread()
-
-    def get_url(self):
-        """Return the url of the server"""
-        host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
@@ -1729,10 +1750,14 @@ class SmartTCPTransport(SmartTransport):
     def __init__(self, url):
         _scheme, _username, _password, _host, _port, _path = \
             transport.split_url(url)
-        try:
-            _port = int(_port)
-        except (ValueError, TypeError), e:
-            raise errors.InvalidURL(path=url, extra="invalid port %s" % _port)
+        if _port is None:
+            _port = BZR_DEFAULT_PORT
+        else:
+            try:
+                _port = int(_port)
+            except (ValueError, TypeError), e:
+                raise errors.InvalidURL(
+                    path=url, extra="invalid port %s" % _port)
         medium = SmartTCPClientMedium(_host, _port)
         super(SmartTCPTransport, self).__init__(url, medium=medium)
 

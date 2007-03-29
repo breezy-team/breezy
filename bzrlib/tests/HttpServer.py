@@ -29,6 +29,7 @@ import urllib
 import urlparse
 
 from bzrlib.transport import Server
+from bzrlib.transport.local import LocalURLServer
 
 
 class WebserverNotAvailable(Exception):
@@ -304,8 +305,19 @@ class HttpServer(Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def setUp(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.setUp.
+        
+        :param backing_transport_server: The transport that requests over this
+            protocol should be forwarded to. Note that this is currently not
+            supported for HTTP.
+        """
+        # XXX: TODO: make the server back onto vfs_server rather than local
+        # disk.
+        assert backing_transport_server is None or \
+            isinstance(backing_transport_server, LocalURLServer), \
+            "HTTPServer currently assumes local transport, got %s" % \
+            backing_transport_server
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_starting = threading.Lock()
