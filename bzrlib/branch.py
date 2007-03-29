@@ -811,14 +811,6 @@ class BranchFormat(object):
         """Return the current default format."""
         return klass._default_format
 
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
-
-    def get_format_description(self):
-        """Return the short format description for this format."""
-        raise NotImplementedError(self.get_format_description)
-
     def get_reference(self, a_bzrdir):
         """Get the target reference of the branch in a_bzrdir.
 
@@ -830,6 +822,14 @@ class BranchFormat(object):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(self.get_format_string)
+
+    def get_format_description(self):
+        """Return the short format description for this format."""
+        raise NotImplementedError(self.get_format_description)
 
     def _initialize_helper(self, a_bzrdir, utf8_files, lock_type='metadir',
                            set_format=True):
@@ -1781,6 +1781,19 @@ class BzrBranchExperimental(BzrBranch5):
     def get_format_description(cls):
         """See BranchFormat.get_format_description()."""
         return "Experimental branch format"
+
+    @classmethod
+    def get_reference(cls, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
 
     @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
