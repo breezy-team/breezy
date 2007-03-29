@@ -58,7 +58,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
-                                      zero_eight, zero_nine,
+                                      zero_eight, zero_nine, zero_sixteen,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -313,8 +313,13 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
+    @deprecated_method(zero_sixteen)
     def get_root_id(self):
-        """Return the id of this branches root"""
+        """Return the id of this branches root
+
+        Deprecated: branches don't have root ids-- trees do.
+        Use basis_tree().get_root_id() instead.
+        """
         raise NotImplementedError(self.get_root_id)
 
     def print_file(self, file, revision_id):
@@ -1261,6 +1266,8 @@ class BzrBranch(Branch):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
+
+    @deprecated_method(zero_sixteen)
     @needs_read_lock
     def get_root_id(self):
         """See Branch.get_root_id."""
