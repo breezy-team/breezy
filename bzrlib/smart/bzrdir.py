@@ -44,7 +44,15 @@ class SmartServerRequestFindRepository(SmartServerRequest):
                 segments = ['..'] * len(relpath.split('/'))
             else:
                 segments = []
-            return SmartServerResponse(('ok', '/'.join(segments)))
+            if repository.supports_rich_root():
+                rich_root = 'True'
+            else:
+                rich_root = 'False'
+            if repository._format.support_tree_reference:
+                tree_ref = 'True'
+            else:
+                tree_ref = 'False'
+            return SmartServerResponse(('ok', '/'.join(segments), rich_root, tree_ref))
         except errors.NoRepositoryPresent:
             return SmartServerResponse(('norepository', ))
 

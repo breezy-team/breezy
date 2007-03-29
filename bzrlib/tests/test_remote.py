@@ -146,7 +146,7 @@ class FakeClient(SmartClient):
 class TestBzrDirOpenBranch(tests.TestCase):
 
     def test_branch_present(self):
-        client = FakeClient([(('ok', ''), ), (('ok', ''), )])
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'False', 'False'), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -169,6 +169,35 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('///quack/',))],
             client._calls)
+
+    def check_open_repository(self, rich_root, subtrees):
+        if rich_root:
+            rich_response = 'True'
+        else:
+            rich_response = 'False'
+        if subtrees:
+            subtree_response = 'True'
+        else:
+            subtree_response = 'False'
+        client = FakeClient([(('ok', '', rich_response, subtree_response), ),])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        result = bzrdir.open_repository()
+        self.assertEqual(
+            [('call', 'BzrDir.find_repository', ('///quack/',))],
+            client._calls)
+        self.assertIsInstance(result, RemoteRepository)
+        self.assertEqual(bzrdir, result.bzrdir)
+        self.assertEqual(rich_root, result._format.rich_root_data)
+        self.assertEqual(subtrees, result._format.support_tree_reference)
+
+    def test_open_repository_sets_format_attributes(self):
+        self.check_open_repository(True, True)
+        self.check_open_repository(False, True)
+        self.check_open_repository(True, False)
+        self.check_open_repository(False, False)
 
 
 class TestBranchLastRevisionInfo(tests.TestCase):
@@ -571,4 +600,3 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
-

@@ -54,6 +54,7 @@ class TestSmartServerResponse(tests.TestCase):
 
 
 class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
+    """Tests for BzrDir.find_repository."""
 
     def test_no_repository(self):
         """When there is no repository to be found, ('norepository', ) is returned."""
@@ -69,26 +70,52 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         # the repository is at.
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestFindRepository(backing)
-        self.make_repository('.')
-        self.assertEqual(SmartServerResponse(('ok', '')),
-            request.execute(backing.local_abspath('')))
+        result = self._make_repository_and_result()
+        self.assertEqual(result, request.execute(backing.local_abspath('')))
         self.make_bzrdir('subdir')
         self.assertEqual(SmartServerResponse(('norepository', )),
             request.execute(backing.local_abspath('subdir')))
+
+    def _make_repository_and_result(self, shared=False, format=None):
+        """Convenience function to setup a repository.
+
+        :result: The SmartServerResponse to expect when opening it.
+        """
+        repo = self.make_repository('.', shared=shared, format=format)
+        if repo.supports_rich_root():
+            rich_root = 'True'
+        else:
+            rich_root = 'False'
+        if repo._format.support_tree_reference:
+            subtrees = 'True'
+        else:
+            subtrees = 'False'
+        return SmartServerResponse(('ok', '', rich_root, subtrees))
 
     def test_shared_repository(self):
         """When there is a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestFindRepository(backing)
-        self.make_repository('.', shared=True)
-        self.assertEqual(SmartServerResponse(('ok', '')),
-            request.execute(backing.local_abspath('')))
+        result = self._make_repository_and_result(shared=True)
+        self.assertEqual(result, request.execute(backing.local_abspath('')))
         self.make_bzrdir('subdir')
-        self.assertEqual(SmartServerResponse(('ok', '..')),
+        result2 = SmartServerResponse(result.args[0:1] + ('..', ) + result.args[2:])
+        self.assertEqual(result2,
             request.execute(backing.local_abspath('subdir')))
         self.make_bzrdir('subdir/deeper')
-        self.assertEqual(SmartServerResponse(('ok', '../..')),
+        result3 = SmartServerResponse(result.args[0:1] + ('../..', ) + result.args[2:])
+        self.assertEqual(result3,
             request.execute(backing.local_abspath('subdir/deeper')))
+
+    def test_rich_root_and_subtree_encoding(self):
+        """Test for the format attributes for rich root and subtree support."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        result = self._make_repository_and_result(format='dirstate-with-subtree')
+        # check the test will be valid
+        self.assertEqual('True', result.args[2])
+        self.assertEqual('True', result.args[3])
+        self.assertEqual(result, request.execute(backing.local_abspath('')))
 
 
 class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithTransport):

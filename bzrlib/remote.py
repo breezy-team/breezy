@@ -74,8 +74,8 @@ class RemoteBzrDir(BzrDir):
                 _found=True)
 
     def create_repository(self, shared=False):
-        return RemoteRepository(
-            self, self._real_bzrdir.create_repository(shared=shared))
+        self._real_bzrdir.create_repository(shared=shared)
+        return self.open_repository()
 
     def create_branch(self):
         real_branch = self._real_bzrdir.create_branch()
@@ -109,8 +109,12 @@ class RemoteBzrDir(BzrDir):
             'unexpected response code %s' % (response,)
         if response[0] == 'norepository':
             raise errors.NoRepositoryPresent(self)
+        assert len(response) == 4, 'incorrect response length %s' % (response,)
         if response[1] == '':
-            return RemoteRepository(self)
+            format = RemoteRepositoryFormat()
+            format.rich_root_data = response[2] == 'True'
+            format.support_tree_reference = response[3] == 'True'
+            return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
 
@@ -150,10 +154,16 @@ class RemoteBzrDir(BzrDir):
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
-    """Format for repositories accessed over rpc.
+    """Format for repositories accessed over a SmartClient.
 
     Instances of this repository are represented by RemoteRepository
     instances.
+
+    The RemoteRepositoryFormat is parameterised during construction
+    to reflect the capabilities of the real, remote format. Specifically
+    the attributes rich_root_data and support_tree_reference are set
+    on a per instance basis, and are not set (and should not be) at
+    the class level.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat
@@ -172,7 +182,14 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def __eq__(self, other):
         return self.__class__ == other.__class__
 
-    rich_root_data = False
+    def check_conversion_target(self, target_format):
+        if self.rich_root_data and not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if (self.support_tree_reference and
+            not getattr(target_format, 'support_tree_reference', False)):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
 
 
 class RemoteRepository(object):
@@ -182,10 +199,11 @@ class RemoteRepository(object):
     the transport.
     """
 
-    def __init__(self, remote_bzrdir, real_repository=None, _client=None):
+    def __init__(self, remote_bzrdir, format, real_repository=None, _client=None):
         """Create a RemoteRepository instance.
         
         :param remote_bzrdir: The bzrdir hosting this repository.
+        :param format: The RemoteFormat object to use.
         :param real_repository: If not None, a local implementation of the
             repository logic for the repository, usually accessing the data
             via the VFS.
@@ -201,7 +219,7 @@ class RemoteRepository(object):
             self._client = client.SmartClient(self.bzrdir._medium)
         else:
             self._client = _client
-        self._format = RemoteRepositoryFormat()
+        self._format = format
         self._lock_mode = None
         self._lock_token = None
         self._lock_count = 0
