@@ -3223,18 +3223,22 @@ class cmd_serve(Command):
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
+        from bzrlib.transport.chroot import ChrootServer
+        from bzrlib.transport.remote import BZR_DEFAULT_PORT
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        t = get_transport(url)
+        chroot_server = ChrootServer(get_transport(url))
+        chroot_server.setUp()
+        t = get_transport(chroot_server.get_url())
         if inet:
-            smart_server = smart.SmartServerPipeStreamMedium(
+            smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
             if port is None:
-                port = smart.BZR_DEFAULT_PORT
+                port = BZR_DEFAULT_PORT
                 host = '127.0.0.1'
             else:
                 if ':' in port:
@@ -3242,7 +3246,7 @@ class cmd_serve(Command):
                 else:
                     host = '127.0.0.1'
                 port = int(port)
-            smart_server = smart.SmartTCPServer(t, host=host, port=port)
+            smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
             sys.stdout.flush()
         # for the duration of this server, no UI output is permitted.
