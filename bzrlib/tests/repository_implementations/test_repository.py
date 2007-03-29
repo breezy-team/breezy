@@ -285,9 +285,9 @@ class TestRepository(TestCaseWithRepository):
         try:
             made_repo.set_make_working_trees(False)
         except NotImplementedError:
-            if made_repo.make_working_trees():
-                # this repository always makes working trees.
-                return
+            # the repository does not support having its tree-making flag
+            # toggled.
+            return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
         made_repo.has_revision('foo')

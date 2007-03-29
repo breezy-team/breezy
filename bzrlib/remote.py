@@ -466,6 +466,7 @@ class RemoteRepository(object):
             a_bzrdir, revision_id=revision_id, basis=basis)
 
     def make_working_trees(self):
+        """RemoteRepositories never create working trees by default."""
         return False
 
     def fetch(self, source, revision_id=None, pb=None):
