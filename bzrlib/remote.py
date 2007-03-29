@@ -725,6 +725,8 @@ class RemoteBranch(branch.Branch):
             raise errors.TokenMismatch(tokens, '(remote tokens)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
+        elif response[0] == 'ReadOnlyError':
+            raise errors.ReadOnlyError(self)
         else:
             assert False, 'unexpected response code %r' % (response,)
             
