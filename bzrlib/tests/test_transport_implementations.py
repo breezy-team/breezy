@@ -1314,8 +1314,8 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         try:
-            medium = transport.get_smart_medium()
-            self.assertIsInstance(medium, smart.SmartClientMedium)
+            client_medium = transport.get_smart_medium()
+            self.assertIsInstance(client_medium, smart.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass

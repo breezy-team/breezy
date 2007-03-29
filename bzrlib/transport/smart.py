@@ -903,17 +903,24 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         SmartTCPServer.__init__(self,
             transport.get_transport(urlutils.local_path_to_url('/')))
         
-    def setUp(self):
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        return transport.get_transport(backing_transport_server.get_url())
+
+    def setUp(self, backing_transport_server=None):
         """Set up server for testing"""
+        from bzrlib.transport.chroot import TestingChrootServer
+        if backing_transport_server is None:
+            from bzrlib.transport.local import LocalURLServer
+            backing_transport_server = LocalURLServer()
+        self.chroot_server = TestingChrootServer()
+        self.chroot_server.setUp(backing_transport_server)
+        self.backing_transport = transport.get_transport(
+            self.chroot_server.get_url())
         self.start_background_thread()
 
     def tearDown(self):
         self.stop_background_thread()
-
-    def get_url(self):
-        """Return the url of the server"""
-        host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""

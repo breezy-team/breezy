@@ -129,7 +129,10 @@ class TestPush(TestCaseWithBranch):
         except (errors.UninitializableFormat):
             # Cannot create these branches
             return
-        tree = a_branch.bzrdir.create_workingtree()
+        try:
+            tree = a_branch.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            tree = a_branch.create_checkout('repo/tree', lightweight=True)
         self.build_tree(['repo/tree/a'])
         tree.add(['a'])
         tree.commit('a')
