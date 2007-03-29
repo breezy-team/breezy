@@ -49,30 +49,23 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
 
-    def XXXmake_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=None)
-        return repo.bzrdir.create_branch()
-
-    def XXXmake_repository(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath)
-        return self.repository_format.initialize(made_control)
-
-    def XXXmake_branch_and_tree(self, relpath):
-        branch = self.make_branch(relpath)
-        try:
-            branch.bzrdir.root_transport.local_abspath('.')
-        except errors.TransportNotPossible:
-            # we want callers of this function to see a RemoteRepository at
-            # tree.branch.repository
-            return branch.create_checkout(relpath, lightweight=True)
+    def make_repository(self, relpath, format=None):
+        if format is None:
+            # Create a repository of the type we are trying to test.
+            made_control = self.make_bzrdir(relpath)
+            return self.repository_format.initialize(made_control)
         else:
-            return branch.bzrdir.create_workingtree()
+            return super(TestCaseWithRepository, self).make_repository(
+                relpath, format)
 
 
 class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
     def test_repository_format(self):
-        # make sure the repository on tree.branch is of the desired format
+        # make sure the repository on tree.branch is of the desired format,
+        # because developers use this api to setup the tree, branch and 
+        # repository for their tests: having it now give the right repository
+        # type would invalidate the tests.
         tree = self.make_branch_and_tree('repo')
         self.assertIsInstance(tree.branch.repository._format,
             self.repository_format.__class__)
