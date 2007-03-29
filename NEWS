@@ -5,6 +5,15 @@ IN DEVELOPMENT
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
       code paths. (Robert Collins)
 
+    * Change the format of chroot urls so that they can be safely manipulated
+      by generic url utilities without causing the resulting urls to have
+      escaped the chroot. A side effect of this is that creating a chroot
+      requires an explicit action using a ChrootServer.
+      (Robert Collins, Andrew Bennetts)
+
+    * Deprecate Branch.get_root_id() because branches don't have root ids,
+      rather than fixing bug #96847.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
@@ -15,6 +24,30 @@ IN DEVELOPMENT
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
       return a StraceResult object which contains just the syscalls involved
       in running it. (Robert Collins)
+
+    * New test method ``reduceLockdirTimeout`` to drop the default (ui-centric)
+      default time down to one suitable for tests. (Andrew Bennetts)
+
+    * Add new vfs_transport_factory attribute on tests which provides the 
+      common vfs backing for both the readonly and readwrite transports.
+      This allows the RemoteObject tests to back onto local disk or memory,
+      and use the existing transport_server attribute all tests know about
+      to be the smart server transport. This in turn allows tests to 
+      differentiate between 'transport to access the branch', and 
+      'transport which is a VFS' - which matters in Remote* tests.
+      (Robert Collins, Andrew Bennetts)
+
+    * The ``make_branch_and_tree`` method for tests will now create a 
+      lightweight checkout for the tree if the vfs_transport_factory is not
+      a LocalURLServer. (Robert Collins, Andrew Bennetts)
+
+    * Branch implementation tests have been audited to ensure that all urls 
+      passed to Branch APIs use proper urls, except when local-disk paths
+      are intended. This is so that tests correctly access the test transport
+      which is often not equivalent to local disk in Remote* tests. As part
+      of this many tests were adjusted to remove dependencies on local disk
+      access.
+      (Robert Collins, Andrew Bennetts)
 
 
 bzr 0.15 (not finalised)

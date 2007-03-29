@@ -335,7 +335,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience_root(self):
         """Creating a branch at the root of a fs should work."""
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(), 
@@ -413,7 +413,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
@@ -454,6 +454,12 @@ class ChrootedTests(TestCaseWithTransport):
                          local_branch_path(branch))
         self.assertIs(tree.bzrdir, branch.bzrdir)
         self.assertEqual('foo', relpath)
+        # opening from non-local should not return the tree
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            self.get_readonly_url('topdir/foo'))
+        self.assertEqual(None, tree)
+        self.assertEqual('foo', relpath)
+        # without a tree:
         self.make_branch('topdir/foo')
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             'topdir/foo')
@@ -716,7 +722,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def setUp(self):
         super(NonLocalTests, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
     
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
@@ -758,10 +764,3 @@ class NonLocalTests(TestCaseWithTransport):
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
                               workingtree.WorkingTreeFormat3)
-
-
-class TestRemoteSFTP(test_sftp_transport.TestCaseWithSFTPServer):
-
-    def test_open_containing_tree_or_branch(self):
-        tree = self.make_branch_and_tree('tree')
-        bzrdir.BzrDir.open_containing_tree_or_branch(self.get_url('tree'))

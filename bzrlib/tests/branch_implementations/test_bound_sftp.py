@@ -30,6 +30,7 @@ from bzrlib.bzrdir import (BzrDir,
                            BzrDirMetaFormat1,
                            )
 import bzrlib.errors as errors
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer, paramiko_loaded
 
 
@@ -38,8 +39,11 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
         format = bzrdir.format_registry.make_bzrdir('knit')
-        wt_base = BzrDir.create_standalone_workingtree('base',
-            format=format)
+        try:
+            wt_base = BzrDir.create_standalone_workingtree(
+                self.get_url('base'), format=format)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
     
         b_base = wt_base.branch
 
@@ -62,7 +66,10 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])
-        wt_base = BzrDir.create_standalone_workingtree('base')
+        try:
+            wt_base = BzrDir.create_standalone_workingtree(self.get_url('base'))
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
 
         wt_base.add('a')
         wt_base.add('b')
