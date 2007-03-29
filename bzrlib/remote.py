@@ -20,12 +20,13 @@
 from cStringIO import StringIO
 from urlparse import urlparse
 
-from bzrlib import branch, errors, repository
+from bzrlib import branch, errors, lockdir, repository
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.urlutils import unescape
@@ -595,7 +596,7 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
 
-class RemoteBranchLockableFiles(object):
+class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
     
     This is not a public interface class.
@@ -604,6 +605,8 @@ class RemoteBranchLockableFiles(object):
     def __init__(self, bzrdir, _client):
         self.bzrdir = bzrdir
         self._client = _client
+        LockableFiles.__init__(self, bzrdir.root_transport, 'lock',
+                lockdir.LockDir)
 
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
@@ -612,6 +615,8 @@ class RemoteBranchLockableFiles(object):
              just retrieve a file, instead we ask the smart server to generate
              a configuration for us - which is retrieved as an INI file.
         """
+        if path != 'branch.conf':
+            raise errors.NoSuchFile(path)
         assert path == 'branch.conf'
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.get_config_file', path)
