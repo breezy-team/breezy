@@ -16,6 +16,10 @@
 
 """Tests for the smart wire/domain protococl."""
 
+from StringIO import StringIO
+import tempfile
+import tarfile
+
 from bzrlib import bzrdir, errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
@@ -731,9 +735,17 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryTarball(backing)
         repository = self.make_repository('.')
-        response = request.execute(backing.local_abspath(''), 'tbz2')
+        response = request.execute(backing.local_abspath(''), 'bz2')
         self.assertEqual(('ok',), response.args)
         # body should be a tbz2
+        body_file = StringIO(response.body)
+        body_tar = tarfile.open('body_tar.tbz2', fileobj=body_file,
+            mode='r:bz2')
+        # let's make sure there are some key repository components inside it.
+        # the tarfile returns directories with trailing slashes...
+        names = set([n.rstrip('/') for n in body_tar.getnames()])
+        self.assertTrue('repository/lock' in names)
+        self.assertTrue('repository/format' in names)
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):

@@ -16,10 +16,14 @@
 
 """Server-side repository related request implmentations."""
 
+import sys
+import tempfile
+import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
+from bzrlib.transport.local import LocalTransport
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -175,11 +179,40 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
-    """Get the raw repository files as one big tarball
+    """Get the raw repository files as one big tarball.
+
+    The tarball contains one directory 'repository' which contains all the
+    files found in that directory.
+
+    At the moment this is only supported when the repository is on a
+    LocalTransport.
     
-    This takes one parameter, format, which currently must be 
-    "tbz2".
+    This takes one parameter, compression, which currently must be 
+    "", "gz", or "bz2".
     """
 
-    def do_repository_request(self, repository, format):
-        return SmartServerResponse(('ok',))
+    def do_repository_request(self, repository, compression):
+        repo_transport = repository.control_files._transport
+        if not isinstance(repo_transport, LocalTransport):
+            raise NotImplementedError(
+                "Repository.tarball is not supported on non-local "
+                "transport %s"
+                % (repo_transport,))
+        repo_dir = repo_transport.local_abspath('.')
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            tarball = tarfile.open(temp.name, mode='w:' + compression)
+            try:
+                # The tarball module only accepts ascii names, and (i guess)
+                # packs them with their 8bit names.  We know all the files
+                # within the repository have ASCII names so the should be safe
+                # to pack in.
+                repo_dir = repo_dir.encode(sys.getfilesystemencoding())
+                tarball.add(repo_dir, 'repository') # recursive by default
+            finally:
+                tarball.close()
+            # all finished; write the tempfile out to the network
+            temp.seek(0)
+            return SmartServerResponse(('ok',), temp.read())
+        finally:
+            temp.close()
