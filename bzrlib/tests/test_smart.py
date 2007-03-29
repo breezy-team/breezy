@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -246,7 +246,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
         rev_id = u'\xc8'
         rev_id_utf8 = rev_id.encode('utf-8')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=rev_id)
+        r2 = tree.commit('2nd commit', rev_id=rev_id_utf8)
         tree.unlock()
         self.assertEqual(
             SmartServerResponse(('ok', '2', rev_id_utf8)),
@@ -314,7 +314,7 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         tree.add('')
         rev_id = u'\xc8'
         rev_id_utf8 = rev_id.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id)
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
         r2 = tree.commit('2nd commit')
         tree.unlock()
         branch_token, repo_token = tree.branch.lock_write()
@@ -336,7 +336,7 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         tree.add('')
         rev_id = u'\xc8'
         rev_id_utf8 = rev_id.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id)
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
         r2 = tree.commit('2nd commit')
         tree.unlock()
         tree.branch.set_revision_history([])
@@ -725,6 +725,17 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
             SmartServerResponse(('TokenMismatch',)), response)
 
 
+class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
+
+    def test_repository_tarball(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryTarball(backing)
+        repository = self.make_repository('.')
+        response = request.execute(backing.local_abspath(''), 'tbz2')
+        self.assertEqual(('ok',), response.args)
+        # body should be a tbz2
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
 
     def test_is_readonly_no(self):
@@ -792,6 +803,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.unlock'),
             smart.repository.SmartServerRepositoryUnlock)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.tarball'),
+            smart.repository.SmartServerRepositoryTarball)
         self.assertEqual(
             smart.request.request_handlers.get('Transport.is_readonly'),
             smart.request.SmartServerIsReadonly)

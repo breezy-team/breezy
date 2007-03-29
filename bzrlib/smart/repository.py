@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -173,3 +173,13 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         repository.unlock()
         return SmartServerResponse(('ok',))
 
+
+class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
+    """Get the raw repository files as one big tarball
+    
+    This takes one parameter, format, which currently must be 
+    "tbz2".
+    """
+
+    def do_repository_request(self, repository, format):
+        return SmartServerResponse(('ok',))
