@@ -11,6 +11,9 @@ IN DEVELOPMENT
       requires an explicit action using a ChrootServer.
       (Robert Collins, Andrew Bennetts)
 
+    * Deprecate Branch.get_root_id() because branches don't have root ids,
+      rather than fixing bug #96847.  (Aaron Bentley)
+
     * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
       so that a seperate LockableFiles instance can share a lock if it has the
       right token.  (Andrew Bennetts, Robert Collins)

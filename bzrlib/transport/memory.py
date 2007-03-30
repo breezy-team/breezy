@@ -128,7 +128,14 @@ class MemoryTransport(Transport):
         """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = (f.read(), mode)
+        bytes = f.read()
+        if type(bytes) is not str:
+            # Although not strictly correct, we raise UnicodeEncodeError to be
+            # compatible with other transports.
+            raise UnicodeEncodeError(
+                'undefined', bytes, 0, 1,
+                'put_file must be given a file of bytes, not unicode.')
+        self._files[_abspath] = (bytes, mode)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""

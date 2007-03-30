@@ -20,12 +20,13 @@
 from cStringIO import StringIO
 from urlparse import urlparse
 
-from bzrlib import branch, errors, repository
+from bzrlib import branch, errors, lockdir, repository
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.urlutils import unescape
@@ -85,22 +86,40 @@ class RemoteBzrDir(BzrDir):
         real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
         return RemoteWorkingTree(self, real_workingtree)
 
-    def open_branch(self, _unsupported=False):
-        assert _unsupported == False, 'unsupported flag support not implemented yet.'
+    def find_branch_format(self):
+        """Find the branch 'format' for this bzrdir.
+
+        This might be a synthetic object for e.g. RemoteBranch and SVN.
+        """
+        b = self.open_branch()
+        return b._format
+
+    def get_branch_reference(self):
+        """See BzrDir.get_branch_reference()."""
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open_branch', path)
         if response[0] == 'ok':
             if response[1] == '':
                 # branch at this location.
-                return RemoteBranch(self, self.find_repository())
+                return None
             else:
                 # a branch reference, use the existing BranchReference logic.
-                format = BranchReferenceFormat()
-                return format.open(self, _found=True, location=response[1])
+                return response[1]
         elif response == ('nobranch',):
             raise errors.NotBranchError(path=self.root_transport.base)
         else:
             assert False, 'unexpected response code %r' % (response,)
+
+    def open_branch(self, _unsupported=False):
+        assert _unsupported == False, 'unsupported flag support not implemented yet.'
+        reference_url = self.get_branch_reference()
+        if reference_url is None:
+            # branch at this location.
+            return RemoteBranch(self, self.find_repository())
+        else:
+            # a branch reference, use the existing BranchReference logic.
+            format = BranchReferenceFormat()
+            return format.open(self, _found=True, location=reference_url)
                 
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
@@ -119,7 +138,7 @@ class RemoteBzrDir(BzrDir):
             raise errors.NoRepositoryPresent(self)
 
     def open_workingtree(self):
-        return RemoteWorkingTree(self, self._real_bzrdir.open_workingtree())
+        raise errors.NotLocalUrl(self.root_transport)
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
@@ -587,7 +606,7 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
 
-class RemoteBranchLockableFiles(object):
+class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
     
     This is not a public interface class.
@@ -596,6 +615,11 @@ class RemoteBranchLockableFiles(object):
     def __init__(self, bzrdir, _client):
         self.bzrdir = bzrdir
         self._client = _client
+        # XXX: This assumes that the branch control directory is .bzr/branch,
+        # which isn't necessarily true.
+        LockableFiles.__init__(
+            self, bzrdir.root_transport.clone('.bzr/branch'),
+            'lock', lockdir.LockDir)
 
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
@@ -604,15 +628,22 @@ class RemoteBranchLockableFiles(object):
              just retrieve a file, instead we ask the smart server to generate
              a configuration for us - which is retrieved as an INI file.
         """
-        assert path == 'branch.conf'
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call2('Branch.get_config_file', path)
-        assert response[0][0] == 'ok', \
-            'unexpected response code %s' % (response[0],)
-        return StringIO(response[1].read_body_bytes())
+        if path == 'branch.conf':
+            path = self.bzrdir._path_for_remote_call(self._client)
+            response = self._client.call2('Branch.get_config_file', path)
+            assert response[0][0] == 'ok', \
+                'unexpected response code %s' % (response[0],)
+            return StringIO(response[1].read_body_bytes())
+        else:
+            # VFS fallback.
+            return LockableFiles.get(self, path)
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+
+    def __eq__(self, other):
+        return (isinstance(other, RemoteBranchFormat) and 
+            self.__dict__ == other.__dict__)
 
     def get_format_description(self):
         return 'Remote BZR Branch'
@@ -916,18 +947,6 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.update_revisions(
             other, stop_revision=stop_revision)
-
-
-class RemoteWorkingTree(object):
-
-    def __init__(self, remote_bzrdir, real_workingtree):
-        self.real_workingtree = real_workingtree
-        self.bzrdir = remote_bzrdir
-
-    def __getattr__(self, name):
-        # XXX: temporary way to lazily delegate everything to the real
-        # workingtree
-        return getattr(self.real_workingtree, name)
 
 
 class RemoteBranchConfig(BranchConfig):

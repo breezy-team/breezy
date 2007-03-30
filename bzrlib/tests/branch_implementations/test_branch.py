@@ -26,6 +26,7 @@ from bzrlib import (
     gpg,
     urlutils,
     transactions,
+    remote,
     repository,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
@@ -367,14 +368,9 @@ class TestBranch(TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        try:
+        if not isinstance(branch, remote.RemoteBranch):
             controlfilename = branch.control_files.controlfilename
-        except AttributeError:
-            # remote branches don't have control_files
-            pass
-        else:
-            self.failUnless(
-                t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -655,8 +651,7 @@ class TestFormat(TestCaseWithBranch):
             self.branch_format.get_format_string()
         except NotImplementedError:
             return
-        self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+        self.assertEqual(self.branch_format, opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):

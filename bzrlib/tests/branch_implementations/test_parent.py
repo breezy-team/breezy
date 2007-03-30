@@ -19,6 +19,7 @@ import cStringIO
 import os
 import sys
 
+from bzrlib import urlutils
 from bzrlib.branch import Branch
 import bzrlib.errors
 from bzrlib.osutils import abspath, realpath, getcwd
@@ -38,7 +39,7 @@ class TestParent(TestCaseWithTransport):
         
     def test_set_get_parent(self):
         """Set, re-get and reset the parent"""
-        b = self.make_branch('.')
+        b = self.make_branch('subdir')
         url = 'http://bazaar-vcs.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEqual(url, b.get_parent())
@@ -49,8 +50,9 @@ class TestParent(TestCaseWithTransport):
 
         b.set_parent('../other_branch')
 
-        self.assertEqual(local_path_to_url('../other_branch'), b.get_parent())
-        path = local_path_to_url('../yanb')
+        expected_parent = urlutils.join(self.get_url('subdir'), '../other_branch')
+        self.assertEqual(expected_parent, b.get_parent())
+        path = urlutils.join(self.get_url('subdir'), '../yanb')
         b.set_parent(path)
         self.assertEqual('../yanb', b._get_parent_location())
         self.assertEqual(path, b.get_parent())

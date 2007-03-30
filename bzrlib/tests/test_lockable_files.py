@@ -48,7 +48,7 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo', 
+            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
                               StringIO(unicode_string))
             self.lockable.put('foo', StringIO(byte_string))
             self.assertEqual(byte_string,
@@ -371,40 +371,3 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # getting a new lockable involves opening a new instance of the branch
         branch = bzrlib.branch.Branch.open(self.get_url('foo'))
         return branch.control_files
-
-    def test_lock_write_returns_None_refuses_token(self):
-        # this test is not relevant for RemoteBranchLockableFiles as remote
-        # locks are done directly from the remote branch object.
-        return None
-
-    def test_lock_write_raises_on_token_mismatch(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_lock_write_with_matching_token(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_unlock_after_lock_write_with_token(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_lock_write_with_token_fails_when_unlocked(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_lock_write_reenter_with_token(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_leave_in_place(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_dont_leave_in_place(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
-
-    def test_lock_write_returns_token_when_given_token(self):
-        # See test_lock_write_returns_None_refuses_token.
-        return None
