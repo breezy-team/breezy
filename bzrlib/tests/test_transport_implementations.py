@@ -1123,8 +1123,8 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except TransportNotPossible:
-            pass # This is not a local transport
+        except (errors.NotLocalUrl, TransportNotPossible), e:
+            s = str(e)
         else:
             self.assertEqual(getcwd(), p)
 

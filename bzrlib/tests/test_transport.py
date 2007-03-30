@@ -20,8 +20,10 @@ import sys
 import stat
 from cStringIO import StringIO
 
-import bzrlib
-from bzrlib import urlutils
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.errors import (ConnectionError,
                            DependencyNotPresent,
                            FileExists,
@@ -120,6 +122,12 @@ class TestTransport(TestCase):
                          t._combine_paths('/home/sarah', '../../../etc'))
         self.assertEqual('/etc',
                          t._combine_paths('/home/sarah', '/etc'))
+
+    def test_local_abspath_non_local_transport(self):
+        # the base implementation should throw
+        t = MemoryTransport()
+        e = self.assertRaises(errors.NotLocalUrl, t.local_abspath, 't')
+        self.assertEqual('memory:///t is not a local path.', str(e))
 
 
 class TestCoalesceOffsets(TestCase):
@@ -559,6 +567,11 @@ class TestLocalTransports(TestCase):
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
+
+    def test_local_abspath(self):
+        here = os.path.abspath('.')
+        t = get_transport(here)
+        self.assertEquals(t.local_abspath(''), here)
 
 
 class TestWin32LocalTransport(TestCase):
