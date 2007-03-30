@@ -1,3 +1,10 @@
+bzr 0.15 
+
+  BUGFIXES:
+
+    * Handle incompatible repositories as a user issue when fetching.
+      (Aaron Bentley)
+
 bzr 0.15rc3  2007-03-26
 
   CHANGES:
@@ -16,8 +23,7 @@ bzr 0.15rc3  2007-03-26
       default, instead a RedirectRequested exception is raised. For bzrlib
       users needing to follow http redirections anyway,
       bzrlib.transport.do_catching_redirections provide an easy transition
-      path.  
-      (vila)
+      path.  (vila)
 
   INTERNALS:
 

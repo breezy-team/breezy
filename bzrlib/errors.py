@@ -550,6 +550,15 @@ class IncompatibleFormat(BzrError):
         self.bzrdir = bzrdir_format
 
 
+class IncompatibleRepositories(BzrError):
+
+    _fmt = "Repository %(target)s is not compatible with repository"\
+        " %(source)s"
+
+    def __init__(self, source, target):
+        BzrError.__init__(self, target=target, source=source)
+
+
 class IncompatibleRevision(BzrError):
     
     _fmt = "Revision is not compatible with %(repo_format)s"

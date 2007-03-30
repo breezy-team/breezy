@@ -326,8 +326,11 @@ class Repository(object):
         If revision_id is None all content is copied.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return InterRepository.get(source, self).fetch(revision_id=revision_id,
-                                                       pb=pb)
+        inter = InterRepository.get(source, self)
+        try:
+            return inter.fetch(revision_id=revision_id, pb=pb)
+        except NotImplementedError:
+            raise errors.IncompatibleRepositories(source, self)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
