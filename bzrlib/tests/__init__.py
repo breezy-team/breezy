@@ -89,6 +89,11 @@ from bzrlib.tests.TestUtil import (
 from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
+# Mark this python module as being part of the implementation
+# of unittest: this gives us better tracebacks where the last
+# shown frame is the test code, not our assertXYZ.
+__unittest = 1
+
 default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
