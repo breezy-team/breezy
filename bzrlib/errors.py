@@ -2005,3 +2005,13 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class SmartServerError(BzrError):
+
+    _fmt = "Smart Server encountered error %(error_cde)s: %(error_msg)s."
+
+    def __init__(self, error_code, error_msg=''):
+        self.error_code = error_code
+        self.error_msg = error_msg
+

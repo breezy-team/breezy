@@ -614,20 +614,20 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 class TestRepositoryTarball(TestRemoteRepository):
 
     def test_repository_tarball(self):
-        # it's not easy to construct the full tarball ahead of time, so we
-        # won't use the canned responses 
+        # This is a canned tarball reponse we can validate against
         tarball_content = \
             'BZh91AY&SY\xc7\x94y\xbb\x00\x02\x85\x7f\x83\xc2\x90\x00 H\x03\xff\xc0\x11\x89\xd2\x00\x7f\xef\xdfp@H\x00\x10\x00\x080\x01\x8d\xa5f\x04T\xd4\xa3\xd4\xcd4\x8d\r0#\t\x88\xc26\x80\x01\x14\x82MOP\r\x0c\x87\x924\x00\x03C\xd4=@\xa9BMOB\x06\x9ai\xa1\xa0\x00\x00\x006\x03\xbe\xaa`\xcf33\xe6\x1e\xe4\x89JR\x9dN\xc3\xebK\x035\x00\xa0\\\xb7s\x0bh]\x8c\xb8M\xe3,\xa4\xa5,L\xd2\xfa/\xa5(\xa5\xe4\xc6&r@,\x81\xd2\xc8\x19\x83\xf0\x0c\x80\xe1\x80\xe2~\xf0\xa7+\r\x8f\xe3\x1e;>\x8bh\xa7\r}lM\x81\x9f@\x99\x846\\\xfdU\x95\xed\xec\xba\xdb\xa4/\x13\x83\x02X\x96\x13N\xa2e\x13^\xd7j\xadI\x8a\xa4\xbc\x96+}D\xa0\x06\xdb\xe2#[VT\x95\x19\xddeA\x99HB\xb1d\x86\xd0\'"*%2\x18\x19\x04\xb10\xa9\\D\xb6A\xad\x8b%D\xb1v\x13M\xa5\x7f!#41$y\xe0\xc2\x0e\xba\xb8\x1fF\xa8\x01\xae\xf1\xc7\xe2;\xe89\x9ba\x033\xb2\xcf\x13CK\xe0CY\xa1a\x19p\xa8gg(-\x83P6\xbd\n]#\xba\x02\x86r\x860\xe91\xef\x92\xbb\x11\xc4\x072:\x01\xc1\x8b\x88\xfd\xd6\x99D\x19K#C\x99\x03k\x9e#v\x8f\x03Tl\x07\xac\x9b\xb8@`,ZB3-2\x06\x85\xcfK\r\xea\xd9\x9d\xbc\x17\xfc]\xc9\x14\xe1BC\x1eQ\xe6\xec'
         transport_path = 'repo'
         expected_responses = [(('ok',), tarball_content),
             ]
-        expected_calls = [(('Repository.tarball', '/repo', 'bz2',),),
+        expected_calls = [('call2', 'Repository.tarball', ('///repo/', 'bz2',),),
             ]
         remote_repo, client = self.setup_fake_client_and_repository(
             expected_responses, transport_path)
         # Now actually ask for the tarball
-        remote_repo._get_tarball('bz2')
+        tarball_data = remote_repo._get_tarball('bz2')
         self.assertEqual(expected_calls, client._calls)
+        self.assertEqual(tarball_content, tarball_data)
         
 # TODO: Maybe add tests for Repository.tarball() - a bit hard to test in this
 # framework as it's not 

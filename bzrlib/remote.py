@@ -424,10 +424,20 @@ class RemoteRepository(object):
             if not self._leave_lock:
                 self._unlock(token)
 
-    def break_lock(self):
-        # should hand off to the network
-        self._ensure_real()
-        return self._real_repository.break_lock()
+    def _get_tarball(self, compression):
+        """See Repository.tarball()."""
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call2('Repository.tarball', path,
+            compression)
+        assert response[0] in ('ok', 'failure'), \
+            'unexpected response code %s' % (response,)
+        if response[0] == 'ok':
+            # Extract the tarball and return it
+	    body = protocol.read_body_bytes()
+            return body
+        else:
+            raise errors.SmartServerError(error_code=response)
+
 
     ### These methods are just thin shims to the VFS object for now.
 
