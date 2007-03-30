@@ -118,7 +118,7 @@ class BzrDir(object):
             # see open_downlevel to open legacy branches.
             raise errors.UnsupportedFormatError(format=format)
 
-    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
 
         If urls last component does not exist, it will be created.
@@ -129,7 +129,6 @@ class BzrDir(object):
                                even if one is available.
         """
         self._make_tail(url)
-        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         result = self._format.initialize(url)
         try:
             local_repo = self.find_repository()
@@ -140,24 +139,18 @@ class BzrDir(object):
             if force_new_repo:
                 result_repo = local_repo.clone(
                     result,
-                    revision_id=revision_id,
-                    basis=basis_repo)
+                    revision_id=revision_id)
                 result_repo.set_make_working_trees(local_repo.make_working_trees())
             else:
                 try:
                     result_repo = result.find_repository()
                     # fetch content this dir needs.
-                    if basis_repo:
-                        # XXX FIXME RBC 20060214 need tests for this when the basis
-                        # is incomplete
-                        result_repo.fetch(basis_repo, revision_id=revision_id)
                     result_repo.fetch(local_repo, revision_id=revision_id)
                 except errors.NoRepositoryPresent:
                     # needed to make one anyway.
                     result_repo = local_repo.clone(
                         result,
-                        revision_id=revision_id,
-                        basis=basis_repo)
+                        revision_id=revision_id)
                     result_repo.set_make_working_trees(local_repo.make_working_trees())
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
@@ -167,31 +160,10 @@ class BzrDir(object):
         except errors.NotBranchError:
             pass
         try:
-            self.open_workingtree().clone(result, basis=basis_tree)
+            self.open_workingtree().clone(result)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         return result
-
-    def _get_basis_components(self, basis):
-        """Retrieve the basis components that are available at basis."""
-        if basis is None:
-            return None, None, None
-        try:
-            basis_tree = basis.open_workingtree()
-            basis_branch = basis_tree.branch
-            basis_repo = basis_branch.repository
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            basis_tree = None
-            try:
-                basis_branch = basis.open_branch()
-                basis_repo = basis_branch.repository
-            except errors.NotBranchError:
-                basis_branch = None
-                try:
-                    basis_repo = basis.open_repository()
-                except errors.NoRepositoryPresent:
-                    basis_repo = None
-        return basis_repo, basis_branch, basis_tree
 
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
@@ -646,22 +618,15 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
-    def _cloning_metadir(self, basis=None):
-        def related_repository(bzrdir):
-            try:
-                branch = bzrdir.open_branch()
-                return branch.repository
-            except errors.NotBranchError:
-                source_branch = None
-                return bzrdir.open_repository()
+    def _cloning_metadir(self):
         result_format = self._format.__class__()
         try:
             try:
-                source_repository = related_repository(self)
-            except errors.NoRepositoryPresent:
-                if basis is None:
-                    raise
-                source_repository = related_repository(self)
+                branch = self.open_branch()
+                source_repository = branch.repository
+            except errors.NotBranchError:
+                source_branch = None
+                source_repository = self.open_repository()
             result_format.repository_format = source_repository._format
         except errors.NoRepositoryPresent:
             source_repository = None
@@ -673,7 +638,7 @@ class BzrDir(object):
             result_format.workingtree_format = tree._format.__class__()
         return result_format, source_repository
 
-    def cloning_metadir(self, basis=None):
+    def cloning_metadir(self):
         """Produce a metadir suitable for cloning or sprouting with.
 
         These operations may produce workingtrees (yes, even though they're
@@ -691,7 +656,7 @@ class BzrDir(object):
     def checkout_metadir(self):
         return self.cloning_metadir()
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False,
+    def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down'):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
@@ -707,9 +672,8 @@ class BzrDir(object):
             itself to download less data.
         """
         self._make_tail(url)
-        cloning_format = self.cloning_metadir(basis)
+        cloning_format = self.cloning_metadir()
         result = cloning_format.initialize(url)
-        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
@@ -718,9 +682,7 @@ class BzrDir(object):
             try:
                 source_repository = self.open_repository()
             except errors.NoRepositoryPresent:
-                # copy the entire basis one if there is one
-                # but there is no repository.
-                source_repository = basis_repo
+                source_repository = None
         if force_new_repo:
             result_repo = None
         else:
@@ -741,10 +703,6 @@ class BzrDir(object):
             result_repo = result.create_repository()
         if result_repo is not None:
             # fetch needed content into target.
-            if basis_repo:
-                # XXX FIXME RBC 20060214 need tests for this when the basis
-                # is incomplete
-                result_repo.fetch(basis_repo, revision_id=revision_id)
             if source_repository is not None:
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
@@ -810,17 +768,16 @@ class BzrDirPreSplitOut(BzrDir):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
         raise NotImplementedError(self.break_lock)
 
-    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.clone()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
-        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
-        self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+        self.open_repository().clone(result, revision_id=revision_id)
         from_branch = self.open_branch()
         from_branch.clone(result, revision_id=revision_id)
         try:
-            self.open_workingtree().clone(result, basis=basis_tree)
+            self.open_workingtree().clone(result)
         except errors.NotLocalUrl:
             # make a new one, this format always has to have one.
             try:
@@ -912,14 +869,13 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def sprout(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
-        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
-            self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+            self.open_repository().clone(result, revision_id=revision_id)
         except errors.NoRepositoryPresent:
             pass
         try:

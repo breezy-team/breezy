@@ -835,16 +835,12 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    --basis is to speed up branching from remote branches.  When specified, it
-    copies all the file-contents, inventory and revision data from the basis
-    branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis']
+    takes_options = ['revision']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None):
+    def run(self, from_location, to_location=None, revision=None):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -855,10 +851,6 @@ class cmd_branch(Command):
         br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
-            if basis is not None:
-                basis_dir = bzrdir.BzrDir.open_containing(basis)[0]
-            else:
-                basis_dir = None
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
@@ -883,16 +875,11 @@ class cmd_branch(Command):
                                              % to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base,
-                        revision_id, basis_dir)
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
-                raise errors.BzrCommandError(msg)
-            except errors.UnlistableBranch:
-                osutils.rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
@@ -921,7 +908,7 @@ class cmd_checkout(Command):
     See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
-    takes_options = ['revision', # , 'basis']
+    takes_options = ['revision',
                      Option('lightweight',
                             help="perform a lightweight checkout. Lightweight "
                                  "checkouts depend on access to the branch for "
@@ -932,7 +919,7 @@ class cmd_checkout(Command):
                      ]
     aliases = ['co']
 
-    def run(self, branch_location=None, to_location=None, revision=None, basis=None,
+    def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False):
         if revision is None:
             revision = [None]

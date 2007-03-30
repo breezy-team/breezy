@@ -19,6 +19,9 @@ IN DEVELOPMENT
     * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
       (Robert Widhopf-Fenk, #98591)
 
+    * Remove ``--basis`` from the checkout/branch commands - it didn't work
+      properly and is no longer beneficial. (Robert Collins)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and

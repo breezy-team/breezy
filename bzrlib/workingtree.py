@@ -524,7 +524,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None, basis=None):
+    def clone(self, to_bzrdir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
         
         Specifically modified files are kept as modified, but
@@ -536,10 +536,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             If not None, the cloned tree will have its last revision set to 
             revision, and and difference between the source trees last revision
             and this one merged in.
-
-        basis
-            If not None, a closer copy of a tree which may have some files in
-            common, and which file content should be preferentially copied from.
         """
         # assumes the target bzr dir format is compatible.
         result = self._format.initialize(to_bzrdir)
