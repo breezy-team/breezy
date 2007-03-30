@@ -193,12 +193,13 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, compression):
         repo_transport = repository.control_files._transport
-        if not isinstance(repo_transport, LocalTransport):
+        try:
+            repo_dir = repo_transport.local_abspath('.')
+        except errors.NotLocalUrl, e:
             raise NotImplementedError(
                 "Repository.tarball is not supported on non-local "
                 "transport %s"
                 % (repo_transport,))
-        repo_dir = repo_transport.local_abspath('.')
         temp = tempfile.NamedTemporaryFile()
         try:
             tarball = tarfile.open(temp.name, mode='w:' + compression)
@@ -208,7 +209,16 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
                 # within the repository have ASCII names so the should be safe
                 # to pack in.
                 repo_dir = repo_dir.encode(sys.getfilesystemencoding())
-                tarball.add(repo_dir, 'repository') # recursive by default
+                # Lock it to let us just pack things in without worrying about 
+                # ordering or consistency.
+                #
+                # TODO: Instead, maybe clone the repository to a temporary
+                # directory (or MemoryTransport) and then pack that up.
+                repository.lock_write()
+                try:
+                    tarball.add(repo_dir, 'repository') # recursive by default
+                finally:
+                    repository.unlock()
             finally:
                 tarball.close()
             # all finished; write the tempfile out to the network
