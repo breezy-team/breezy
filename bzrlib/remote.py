@@ -615,11 +615,17 @@ class RemoteBranchLockableFiles(LockableFiles):
     def __init__(self, bzrdir, _client):
         self.bzrdir = bzrdir
         self._client = _client
+        self._need_find_modes = True
         # XXX: This assumes that the branch control directory is .bzr/branch,
         # which isn't necessarily true.
         LockableFiles.__init__(
             self, bzrdir.root_transport.clone('.bzr/branch'),
             'lock', lockdir.LockDir)
+
+    def _find_modes(self):
+        # RemoteBranches don't let the client set the mode of control files.
+        self._dir_mode = None
+        self._file_mode = None
 
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
