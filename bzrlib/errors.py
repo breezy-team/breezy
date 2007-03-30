@@ -1228,7 +1228,7 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current open request.")
+            " currently open request.")
 
     internal_error = True
 
