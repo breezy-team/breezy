@@ -1207,6 +1207,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
+    supports_tree_reference = False
     _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def __init__(self):
