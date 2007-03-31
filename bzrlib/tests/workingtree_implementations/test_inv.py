@@ -78,7 +78,7 @@ class TestSnapshot(TestCaseWithWorkingTree):
         # this should be a separate test probably, but lets check it once..
         lines = self.branch.repository.weave_store.get_weave(
             'fileid', 
-            self.branch.get_transaction()).get_lines('2')
+            self.branch.repository.get_transaction()).get_lines('2')
         self.assertEqual(lines, ['contents of subdir/file\n'])
 
     def test_snapshot_unchanged(self):

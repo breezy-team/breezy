@@ -271,14 +271,6 @@ class Command(object):
         # bogus. So set the attribute, so we can find the correct encoding later.
         self.outf.encoding = output_encoding
 
-    @deprecated_method(zero_eight)
-    def run_argv(self, argv):
-        """Parse command line and run.
-        
-        See run_argv_aliases for the 0.8 and beyond api.
-        """
-        return self.run_argv_aliases(argv)
-
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         if argv is None:
@@ -596,12 +588,8 @@ def run_bzr(argv):
     # 'command not found' error later.
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
-        run = cmd_obj.run_argv
-        run_argv = [argv]
-    else:
-        run = cmd_obj.run_argv_aliases
-        run_argv = [argv, alias_argv]
+    run = cmd_obj.run_argv_aliases
+    run_argv = [argv, alias_argv]
 
     try:
         if opt_lsprof:

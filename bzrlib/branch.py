@@ -58,7 +58,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
-                                      zero_eight, zero_nine,
+                                      zero_eight, zero_nine, zero_sixteen,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -98,6 +98,7 @@ class Branch(object):
 
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._make_tags()
+        self._revision_history_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -296,8 +297,13 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
+    @deprecated_method(zero_sixteen)
     def get_root_id(self):
-        """Return the id of this branches root"""
+        """Return the id of this branches root
+
+        Deprecated: branches don't have root ids-- trees do.
+        Use basis_tree().get_root_id() instead.
+        """
         raise NotImplementedError(self.get_root_id)
 
     def print_file(self, file, revision_id):
@@ -310,9 +316,56 @@ class Branch(object):
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
+    def _cache_revision_history(self, rev_history):
+        """Set the cached revision history to rev_history.
+
+        The revision_history method will use this cache to avoid regenerating
+        the revision history.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_history_cache = rev_history
+
+    def _clear_cached_state(self):
+        """Clear any cached data on this branch, e.g. cached revision history.
+
+        This means the next call to revision_history will need to call
+        _gen_revision_history.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_history_cache = None
+
+    def _gen_revision_history(self):
+        """Return sequence of revision hashes on to this branch.
+        
+        Unlike revision_history, this method always regenerates or rereads the
+        revision history, i.e. it does not cache the result, so repeated calls
+        may be expensive.
+
+        Concrete subclasses should override this instead of revision_history so
+        that subclasses do not need to deal with caching logic.
+        
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        raise NotImplementedError(self._gen_revision_history)
+
+    @needs_read_lock
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch."""
-        raise NotImplementedError(self.revision_history)
+        """Return sequence of revision hashes on to this branch.
+        
+        This method will cache the revision history for as long as it is safe to
+        do so.
+        """
+        if self._revision_history_cache is not None:
+            history = self._revision_history_cache
+        else:
+            history = self._gen_revision_history()
+            self._cache_revision_history(history)
+        return list(history)
 
     def revno(self):
         """Return current revision number for this branch.
@@ -543,57 +596,12 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, *args, **kwargs):
+    def clone(self, to_bzrdir, revision_id=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
         
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        # for API compatibility, until 0.8 releases we provide the old api:
-        # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
-        # after 0.8 releases, the *args and **kwargs should be changed:
-        # def clone(self, to_bzrdir, revision_id=None):
-        if (kwargs.get('to_location', None) or
-            kwargs.get('revision', None) or
-            kwargs.get('basis_branch', None) or
-            (len(args) and isinstance(args[0], basestring))):
-            # backwards compatibility api:
-            warn("Branch.clone() has been deprecated for BzrDir.clone() from"
-                 " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
-            # get basis_branch
-            if len(args) > 2:
-                basis_branch = args[2]
-            else:
-                basis_branch = kwargs.get('basis_branch', None)
-            if basis_branch:
-                basis = basis_branch.bzrdir
-            else:
-                basis = None
-            # get revision
-            if len(args) > 1:
-                revision_id = args[1]
-            else:
-                revision_id = kwargs.get('revision', None)
-            # get location
-            if len(args):
-                url = args[0]
-            else:
-                # no default to raise if not provided.
-                url = kwargs.get('to_location')
-            return self.bzrdir.clone(url,
-                                     revision_id=revision_id,
-                                     basis=basis).open_branch()
-        # new cleaner api.
-        # generate args by hand 
-        if len(args) > 1:
-            revision_id = args[1]
-        else:
-            revision_id = kwargs.get('revision_id', None)
-        if len(args):
-            to_bzrdir = args[0]
-        else:
-            # no default to raise if not provided.
-            to_bzrdir = kwargs.get('to_bzrdir')
         result = self._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
@@ -1183,25 +1191,12 @@ class BzrBranch(Branch):
     it's writable, and can be accessed via the normal filesystem API.
     """
     
-    def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
-                 relax_version_check=DEPRECATED_PARAMETER, _format=None,
+    def __init__(self, _format=None,
                  _control_files=None, a_bzrdir=None, _repository=None):
-        """Create new branch object at a particular location.
-
-        transport -- A Transport object, defining how to access files.
-        
-        init -- If True, create new control files in a previously
-             unversioned directory.  If False, the branch must already
-             be versioned.
-
-        relax_version_check -- If true, the usual check for the branch
-            version is not applied.  This is intended only for
-            upgrade/recovery type use; it's not guaranteed that
-            all operations will work on old format branches.
-        """
+        """Create new branch object at a particular location."""
         Branch.__init__(self)
         if a_bzrdir is None:
-            self.bzrdir = bzrdir.BzrDir.open(transport.base)
+            raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
         # self._transport used to point to the directory containing the
@@ -1213,32 +1208,6 @@ class BzrBranch(Branch):
             raise ValueError('BzrBranch _control_files is None')
         self.control_files = _control_files
         self._transport = _control_files._transport
-        if deprecated_passed(init):
-            warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
-                 "deprecated as of bzr 0.8. Please use Branch.create().",
-                 DeprecationWarning,
-                 stacklevel=2)
-            if init:
-                # this is slower than before deprecation, oh well never mind.
-                # -> its deprecated.
-                self._initialize(transport.base)
-        self._check_format(_format)
-        if deprecated_passed(relax_version_check):
-            warn("BzrBranch.__init__(..., relax_version_check=XXX_: The "
-                 "relax_version_check parameter is deprecated as of bzr 0.8. "
-                 "Please use BzrDir.open_downlevel, or a BzrBranchFormat's "
-                 "open() method.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            if (not relax_version_check
-                and not self._format.is_supported()):
-                raise errors.UnsupportedFormatError(format=fmt)
-        if deprecated_passed(transport):
-            warn("BzrBranch.__init__(transport=XXX...): The transport "
-                 "parameter is deprecated as of bzr 0.8. "
-                 "Please use Branch.open, or bzrdir.open_branch().",
-                 DeprecationWarning,
-                 stacklevel=2)
         self.repository = _repository
 
     def __str__(self):
@@ -1252,49 +1221,12 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    def _finish_transaction(self):
-        """Exit the current transaction."""
-        return self.control_files._finish_transaction()
-
-    def get_transaction(self):
-        """Return the current active transaction.
-
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        # this is an explicit function so that we can do tricky stuff
-        # when the storage in rev_storage is elsewhere.
-        # we probably need to hook the two 'lock a location' and 
-        # 'have a transaction' together more delicately, so that
-        # we can have two locks (branch and storage) and one transaction
-        # ... and finishing the transaction unlocks both, but unlocking
-        # does not. - RBC 20051121
-        return self.control_files.get_transaction()
-
-    def _set_transaction(self, transaction):
-        """Set a new active transaction."""
-        return self.control_files._set_transaction(transaction)
-
     def abspath(self, name):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
-    def _check_format(self, format):
-        """Identify the branch format if needed.
 
-        The format is stored as a reference to the format object in
-        self._format for code that needs to check it later.
-
-        The format parameter is either None or the branch format class
-        used to open this branch.
-
-        FIXME: DELETE THIS METHOD when pre 0.8 support is removed.
-        """
-        if format is None:
-            format = BranchFormat.find_format(self.bzrdir)
-        self._format = format
-        mutter("got branch format %s", self._format)
-
+    @deprecated_method(zero_sixteen)
     @needs_read_lock
     def get_root_id(self):
         """See Branch.get_root_id."""
@@ -1326,6 +1258,9 @@ class BzrBranch(Branch):
             self.control_files.unlock()
         finally:
             self.repository.unlock()
+        if not self.control_files.is_locked():
+            # we just released the lock
+            self._clear_cached_state()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
@@ -1365,19 +1300,7 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
         self._write_revision_history(rev_history)
-        transaction = self.get_transaction()
-        history = transaction.map.find_revision_history()
-        if history is not None:
-            # update the revision history in the identity map.
-            history[:] = list(rev_history)
-            # this call is disabled because revision_history is 
-            # not really an object yet, and the transaction is for objects.
-            # transaction.register_dirty(history)
-        else:
-            transaction.map.add_revision_history(rev_history)
-            # this call is disabled because revision_history is 
-            # not really an object yet, and the transaction is for objects.
-            # transaction.register_clean(history)
+        self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
@@ -1394,21 +1317,6 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
-
-    @needs_read_lock
-    def revision_history(self):
-        """See Branch.revision_history."""
-        transaction = self.get_transaction()
-        history = transaction.map.find_revision_history()
-        if history is not None:
-            # mutter("cache hit for revision-history in %s", self)
-            return list(history)
-        history = self._gen_revision_history()
-        transaction.map.add_revision_history(history)
-        # this call is disabled because revision_history is 
-        # not really an object yet, and the transaction is for objects.
-        # transaction.register_clean(history, precious=True)
-        return list(history)
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
@@ -1928,10 +1836,7 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
-        transaction = self.get_transaction()
-        cached_history = transaction.map.find_revision_history()
-        if cached_history is not None:
-            transaction.map.remove_object(cached_history)
+        self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
         last_revision = self.last_revision()
