@@ -2170,6 +2170,9 @@ class DirState(object):
 
         This must be called with a lock held.
         """
+        # NOTE: This must always raise AssertionError not just assert,
+        # otherwise it may not behave properly under python -O
+        #
         # TODO: All entries must have some content that's not 'a' or 'r',
         # otherwise it could just be removed.
         #
@@ -2201,8 +2204,7 @@ class DirState(object):
                 pformat(dir_names))
         for dirblock in self._dirblocks:
             # within each dirblock, the entries are sorted by filename and
-            # then by id.  also accumulate all ids in the dirstate for later
-            # use.
+            # then by id.
             for entry in dirblock[1]:
                 if dirblock[0] != entry[0][0]:
                     raise AssertionError(
