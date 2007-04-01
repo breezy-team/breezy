@@ -23,8 +23,12 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle import serializer as _serializer
-from bzrlib.transport import get_transport as _get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 """)
+from bzrlib.trace import note
 
 
 def read_bundle_from_url(url):
@@ -48,8 +52,25 @@ def read_mergeable_from_url(url, _do_directive=True):
     # Some transports cannot detect that we are trying to read a
     # directory until we actually issue read() on the handle.
     try:
-        t = _get_transport(url)
-        f = t.get(filename)
+        transport = get_transport(url)
+
+        def get_bundle(transport):
+            return transport.get(filename)
+
+        def redirected_transport(transport, exception, redirection_notice):
+            note(redirection_notice)
+            url, filename = urlutils.split(exception.target,
+                                           exclude_trailing_slash=False)
+            if not filename:
+                raise errors.NotABundle('A directory cannot be a bundle')
+            return get_transport(url)
+
+        try:
+            f = do_catching_redirections(get_bundle, transport,
+                                         redirected_transport)
+        except errors.TooManyRedirections:
+            raise errors.NotABundle(str(url))
+
         if _do_directive:
             directive = MergeDirective.from_lines(f.readlines())
             return directive
