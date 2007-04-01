@@ -111,6 +111,10 @@ class TestMergeDirective(tests.TestCase):
         self.assertRaises(errors.NotAMergeDirective,
                           merge_directive.MergeDirective.from_lines, 'lala')
 
+    def test_deserialize_empty(self):
+        self.assertRaises(errors.NotAMergeDirective,
+                          merge_directive.MergeDirective.from_lines, [])
+
     def test_deserialize_leading_junk(self):
         md = merge_directive.MergeDirective.from_lines(INPUT1)
         self.assertEqual('example:', md.revision_id)

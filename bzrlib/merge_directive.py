@@ -95,7 +95,10 @@ class MergeDirective(object):
             if line.startswith('# ' + klass._format_string):
                 break
         else:
-            raise errors.NotAMergeDirective(lines[0])
+            if len(lines) > 0:
+                raise errors.NotAMergeDirective(lines[0])
+            else:
+                raise errors.NotAMergeDirective('')
         stanza = rio.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:

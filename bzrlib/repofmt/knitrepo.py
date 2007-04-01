@@ -42,7 +42,6 @@ from bzrlib.trace import mutter, note, warning
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
-
     _serializer = xml5.serializer_v5
 
     def _warn_if_deprecated(self):

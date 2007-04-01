@@ -1,5 +1,98 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+
+    * bzrlib API compatability with 0.8 has been dropped, cleaning up some
+      code paths. (Robert Collins)
+
+    * Change the format of chroot urls so that they can be safely manipulated
+      by generic url utilities without causing the resulting urls to have
+      escaped the chroot. A side effect of this is that creating a chroot
+      requires an explicit action using a ChrootServer.
+      (Robert Collins, Andrew Bennetts)
+
+    * Deprecate Branch.get_root_id() because branches don't have root ids,
+      rather than fixing bug #96847.  (Aaron Bentley)
+
+  BUGFIXES:
+
+    * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
+      (Robert Widhopf-Fenk, #98591)
+
+    * Remove ``--basis`` from the checkout/branch commands - it didn't work
+      properly and is no longer beneficial. Fixes #53675 and #43486.
+      (Robert Collins)
+
+  TESTING:
+
+    * Added ``bzrlib.strace.strace`` which will strace a single callable and
+      return a StraceResult object which contains just the syscalls involved
+      in running it. (Robert Collins)
+
+    * New test method ``reduceLockdirTimeout`` to drop the default (ui-centric)
+      default time down to one suitable for tests. (Andrew Bennetts)
+
+    * Add new vfs_transport_factory attribute on tests which provides the 
+      common vfs backing for both the readonly and readwrite transports.
+      This allows the RemoteObject tests to back onto local disk or memory,
+      and use the existing transport_server attribute all tests know about
+      to be the smart server transport. This in turn allows tests to 
+      differentiate between 'transport to access the branch', and 
+      'transport which is a VFS' - which matters in Remote* tests.
+      (Robert Collins, Andrew Bennetts)
+
+    * The ``make_branch_and_tree`` method for tests will now create a 
+      lightweight checkout for the tree if the vfs_transport_factory is not
+      a LocalURLServer. (Robert Collins, Andrew Bennetts)
+
+    * Branch implementation tests have been audited to ensure that all urls 
+      passed to Branch APIs use proper urls, except when local-disk paths
+      are intended. This is so that tests correctly access the test transport
+      which is often not equivalent to local disk in Remote* tests. As part
+      of this many tests were adjusted to remove dependencies on local disk
+      access.
+      (Robert Collins, Andrew Bennetts)
+
+
+bzr 0.15 (not finalised)
+
+  INTERNALS:
+
+    * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
+      lock to an OS write lock. Linux can do this without unlocking, Win32
+      needs to unlock in between. (John Arbash Meinel)
+
+    * Fix minor performance regression with bzr-0.15 on pre-dirstate
+      trees. (We were reading the working inventory too many times).
+      (John Arbash Meinel)
+
+    * Remove ``Branch.get_transaction()`` in favour of a simple cache of
+      ``revision_history``.  Branch subclasses should override
+      ``_gen_revision_history`` rather than ``revision_history`` to make use of
+      this cache, and call ``_clear_revision_history_cache`` and
+      ``_cache_revision_history`` at appropriate times. (Andrew Bennetts)
+
+  BUGFIXES:
+
+    * Take smtp_server from user config into account.
+      (vila, #92195)
+
+    * Restore Unicode filename handling for versioned and unversioned files.
+      (John Arbash Meinel, #92608)
+
+    * Don't fail during ``bzr commit`` if a file is marked removed, and
+      the containing directory is auto-removed.  (John Arbash Meinel, #93681)
+
+    * ``bzr status FILENAME`` failed on Windows because of an uncommon
+      errno. (``ERROR_DIRECTORY == 267 != ENOTDIR``).
+      (Wouter van Heyst, John Arbash Meinel, #90819)
+
+    * ``bzr checkout source`` should create a local branch in the same
+      format as source. (John Arbash Meinel, #93854)
+ 
+
+bzr 0.15rc2  2007-03-14
+
   NOTES WHEN UPGRADING:
         
     * Release 0.15rc2 of bzr changes the ``bzr init-repo`` command to
@@ -46,12 +139,7 @@ IN DEVELOPMENT
     * Switch the ``bzr init-repo`` default from --no-trees to --trees. 
       (Wouter van Heyst, #53483)
 
-    * Take smtp_server from user config into account.
-      (vila, #92195)
 
-    * Restore Unicode filename handling for versioned and unversioned files.
-      (John Arbash Meinel, #92608)
- 
 bzr 0.15rc1  2007-03-07
 
   SURPRISES:

@@ -118,19 +118,21 @@ if have_fcntl:
 
     class _fcntl_WriteLock(_fcntl_FileLock):
 
-        open_locks = {}
+        _open_locks = set()
 
         def __init__(self, filename):
-            # standard IO errors get exposed directly.
             super(_fcntl_WriteLock, self).__init__()
-            self._open(filename, 'rb+')
-            if self.filename in self.open_locks:
+            # Check we can grab a lock before we actually open the file.
+            self.filename = osutils.realpath(filename)
+            if self.filename in _fcntl_WriteLock._open_locks:
                 self._clear_f()
                 raise errors.LockContention(self.filename)
+
+            self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
             # at thisi point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
-            self.open_locks[self.filename] = self.filename
+            _fcntl_WriteLock._open_locks.add(self.filename)
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
@@ -141,19 +143,22 @@ if have_fcntl:
                     self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockError(e)
+                raise errors.LockContention(e)
 
         def unlock(self):
-            del self.open_locks[self.filename]
+            _fcntl_WriteLock._open_locks.remove(self.filename)
             self._unlock()
 
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
-        open_locks = {}
+        _open_locks = {}
 
         def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
+            self.filename = osutils.realpath(filename)
+            _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
+            _fcntl_ReadLock._open_locks[self.filename] += 1
             self._open(filename, 'rb')
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
@@ -162,10 +167,86 @@ if have_fcntl:
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockError(e)
+                raise errors.LockContention(e)
 
         def unlock(self):
+            count = _fcntl_ReadLock._open_locks[self.filename]
+            if count == 1:
+                del _fcntl_ReadLock._open_locks[self.filename]
+            else:
+                _fcntl_ReadLock._open_locks[self.filename] = count - 1
             self._unlock()
+
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            assert self.filename not in _fcntl_WriteLock._open_locks
+            try:
+                wlock = _fcntl_TemporaryWriteLock(self)
+            except errors.LockError:
+                # We didn't unlock, so we can just return 'self'
+                return False, self
+            return True, wlock
+
+
+    class _fcntl_TemporaryWriteLock(_base_Lock):
+        """A token used when grabbing a temporary_write_lock.
+
+        Call restore_read_lock() when you are done with the write lock.
+        """
+
+        def __init__(self, read_lock):
+            super(_fcntl_TemporaryWriteLock, self).__init__()
+            self._read_lock = read_lock
+            self.filename = read_lock.filename
+
+            count = _fcntl_ReadLock._open_locks[self.filename]
+            if count > 1:
+                # Something else also has a read-lock, so we cannot grab a
+                # write lock.
+                raise errors.LockContention(self.filename)
+
+            assert self.filename not in _fcntl_WriteLock._open_locks
+
+            # See if we can open the file for writing. Another process might
+            # have a read lock. We don't use self._open() because we don't want
+            # to create the file if it exists. That would have already been
+            # done by _fcntl_ReadLock
+            try:
+                new_f = open(self.filename, 'rb+')
+            except IOError, e:
+                if e.errno in (errno.EACCES, errno.EPERM):
+                    raise errors.ReadOnlyLockError(self.filename, str(e))
+                raise
+            try:
+                # LOCK_NB will cause IOError to be raised if we can't grab a
+                # lock right away.
+                fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError, e:
+                # TODO: Raise a more specific error based on the type of error
+                raise errors.LockContention(e)
+            _fcntl_WriteLock._open_locks.add(self.filename)
+
+            self.f = new_f
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock."""
+            # For fcntl, since we never released the read lock, just release the
+            # write lock, and return the original lock.
+            fcntl.lockf(self.f, fcntl.LOCK_UN)
+            self._clear_f()
+            _fcntl_WriteLock._open_locks.remove(self.filename)
+            # Avoid reference cycles
+            read_lock = self._read_lock
+            self._read_lock = None
+            return read_lock
 
 
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
@@ -195,7 +276,7 @@ if have_pywin32 and sys.platform == 'win32':
                 raise
             except Exception, e:
                 self._clear_f()
-                raise errors.LockError(e)
+                raise errors.LockContention(e)
 
         def unlock(self):
             overlapped = pywintypes.OVERLAPPED()
@@ -203,7 +284,7 @@ if have_pywin32 and sys.platform == 'win32':
                 win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
                 self._clear_f()
             except Exception, e:
-                raise errors.LockError(e)
+                raise errors.LockContention(e)
 
 
     class _w32c_ReadLock(_w32c_FileLock):
@@ -211,11 +292,37 @@ if have_pywin32 and sys.platform == 'win32':
             super(_w32c_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            # I can't find a way to upgrade a read lock to a write lock without
+            # unlocking first. So here, we do just that.
+            self.unlock()
+            try:
+                wlock = _w32c_WriteLock(self.filename)
+            except errors.LockError:
+                return False, _w32c_ReadLock(self.filename)
+            return True, wlock
+
 
     class _w32c_WriteLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock."""
+            # For win32 we had to completely let go of the original lock, so we
+            # just unlock and create a new read lock.
+            self.unlock()
+            return _w32c_ReadLock(self.filename)
 
 
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
@@ -286,8 +393,8 @@ if have_ctypes and sys.platform == 'win32':
                 last_err = _GetLastError()
                 if last_err in (ERROR_LOCK_VIOLATION,):
                     raise errors.LockContention(filename)
-                raise errors.LockError('Unknown locking error: %s'
-                                       % (last_err,))
+                raise errors.LockContention('Unknown locking error: %s'
+                                            % (last_err,))
 
         def unlock(self):
             overlapped = OVERLAPPED()
@@ -301,8 +408,8 @@ if have_ctypes and sys.platform == 'win32':
             if result == 0:
                 self._clear_f()
                 last_err = _GetLastError()
-                raise errors.LockError('Unknown unlocking error: %s'
-                                       % (last_err,))
+                raise errors.LockContention('Unknown unlocking error: %s'
+                                            % (last_err,))
 
 
     class _ctypes_ReadLock(_ctypes_FileLock):
@@ -310,11 +417,36 @@ if have_ctypes and sys.platform == 'win32':
             super(_ctypes_ReadLock, self).__init__()
             self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
 
+        def temporary_write_lock(self):
+            """Try to grab a write lock on the file.
+
+            On platforms that support it, this will upgrade to a write lock
+            without unlocking the file.
+            Otherwise, this will release the read lock, and try to acquire a
+            write lock.
+
+            :return: A token which can be used to switch back to a read lock.
+            """
+            # I can't find a way to upgrade a read lock to a write lock without
+            # unlocking first. So here, we do just that.
+            self.unlock()
+            try:
+                wlock = _ctypes_WriteLock(self.filename)
+            except errors.LockError:
+                return False, _ctypes_ReadLock(self.filename)
+            return True, wlock
 
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_WriteLock, self).__init__()
             self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+
+        def restore_read_lock(self):
+            """Restore the original ReadLock."""
+            # For win32 we had to completely let go of the original lock, so we
+            # just unlock and create a new read lock.
+            self.unlock()
+            return _ctypes_ReadLock(self.filename)
 
 
     _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))

@@ -531,8 +531,8 @@ class FileInWrongBranch(BzrError):
 
 
 class UnsupportedFormatError(BzrError):
-    
-    _fmt = "Unsupported branch format: %(format)s"
+
+    _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
 
 
 class UnknownFormatError(BzrError):
@@ -750,7 +750,7 @@ class LockContention(LockError):
     # bits?
 
     internal_error = False
-    
+
     def __init__(self, lock):
         self.lock = lock
 

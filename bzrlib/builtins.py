@@ -148,7 +148,7 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    To see ignored files use 'bzr ignored'.  For details in the
+    To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
     --short gives a status flags for each item, similar to the SVN's status
@@ -183,7 +183,8 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'short',
+    takes_options = ['show-ids', 'revision',
+                     Option('short', help='Give short SVN-style status lines'),
                      Option('versioned', help='Only show versioned files')]
     aliases = ['st', 'stat']
 
@@ -839,16 +840,12 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    --basis is to speed up branching from remote branches.  When specified, it
-    copies all the file-contents, inventory and revision data from the basis
-    branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis']
+    takes_options = ['revision']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None):
+    def run(self, from_location, to_location=None, revision=None):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -859,10 +856,6 @@ class cmd_branch(Command):
         br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
-            if basis is not None:
-                basis_dir = bzrdir.BzrDir.open_containing(basis)[0]
-            else:
-                basis_dir = None
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
@@ -887,16 +880,11 @@ class cmd_branch(Command):
                                              % to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base,
-                        revision_id, basis_dir)
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
-                raise errors.BzrCommandError(msg)
-            except errors.UnlistableBranch:
-                osutils.rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
@@ -922,14 +910,10 @@ class cmd_checkout(Command):
     out of date [so you cannot commit] but it may be useful (i.e. to examine old
     code.)
 
-    --basis is to speed up checking out from remote branches.  When specified, it
-    uses the inventory and file contents from the basis branch in preference to the
-    branch being checked out.
-
     See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
-    takes_options = ['revision', # , 'basis']
+    takes_options = ['revision',
                      Option('lightweight',
                             help="perform a lightweight checkout. Lightweight "
                                  "checkouts depend on access to the branch for "
@@ -940,7 +924,7 @@ class cmd_checkout(Command):
                      ]
     aliases = ['co']
 
-    def run(self, branch_location=None, to_location=None, revision=None, basis=None,
+    def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False):
         if revision is None:
             revision = [None]
@@ -1218,8 +1202,8 @@ class cmd_init(Command):
 
     If there is a repository in a parent directory of the location, then 
     the history of the branch will be stored in the repository.  Otherwise
-    init creates a standalone branch which carries its own history in 
-    .bzr.
+    init creates a standalone branch which carries its own history
+    in the .bzr directory.
 
     If there is already a branch at the location but it has no working tree,
     the tree can be populated with 'bzr checkout'.
@@ -1292,8 +1276,7 @@ class cmd_init_repository(Command):
     """Create a shared repository to hold branches.
 
     New branches created under the repository directory will store their revisions
-    in the repository, not in the branch directory, if the branch format supports
-    shared storage.
+    in the repository, not in the branch directory.
 
     example:
         bzr init-repo --no-trees repo
@@ -1312,7 +1295,7 @@ class cmd_init_repository(Command):
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
-                                  'not having a working tree'),
+                                  ' not having a working tree'),
                     ]
     aliases = ["init-repo"]
 
@@ -1923,7 +1906,7 @@ class cmd_lookup_revision(Command):
 
 
 class cmd_export(Command):
-    """Export past revision to destination directory.
+    """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
 
@@ -1934,7 +1917,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
-    If branch is omitted then the branch containing the CWD will be used.
+    If branch is omitted then the branch containing the current working
+    directory will be used.
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
@@ -1972,7 +1956,13 @@ class cmd_export(Command):
 
 
 class cmd_cat(Command):
-    """Write a file's text from a previous revision."""
+    """Write the contents of a file as of a given revision to standard output.
+
+    If no revision is nominated, the last revision is used.
+
+    Note: Take care to redirect standard output when using this command on a
+    binary file. 
+    """
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
@@ -2245,7 +2235,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        print branch.nick 
+        print branch.nick
 
 
 class cmd_selftest(Command):
@@ -2474,8 +2464,6 @@ class cmd_merge(Command):
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
-
-    The following merge types are available:
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
@@ -2651,8 +2639,7 @@ class cmd_remerge(Command):
     $ bzr remerge --merge-type weave --reprocess foobar
         Re-do the merge of "foobar", using the weave merge algorithm, with
         additional processing to reduce the size of conflict regions.
-    
-    The following merge types are available:"""
+    """
     takes_args = ['file*']
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
@@ -2744,7 +2731,6 @@ class cmd_revert(Command):
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
-    aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
         if file_list is not None:

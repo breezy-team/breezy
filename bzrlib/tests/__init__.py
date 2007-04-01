@@ -180,7 +180,9 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.num_tests = num_tests
         self.error_count = 0
         self.failure_count = 0
+        self.known_failure_count = 0
         self.skip_count = 0
+        self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
     
@@ -221,31 +223,45 @@ class ExtendedTestResult(unittest._TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def addError(self, test, err):
-        if isinstance(err[1], TestSkipped):
-            return self.addSkipped(test, err)    
-        unittest.TestResult.addError(self, test, err)
+    def _cleanupLogFile(self, test):
         # We can only do this if we have one of our TestCases, not if
         # we have a doctest.
         setKeepLogfile = getattr(test, 'setKeepLogfile', None)
         if setKeepLogfile is not None:
             setKeepLogfile()
+
+    def addError(self, test, err):
         self.extractBenchmarkTime(test)
+        self._cleanupLogFile(test)
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)
+        elif isinstance(err[1], UnavailableFeature):
+            return self.addNotSupported(test, err[1].args[0])
+        unittest.TestResult.addError(self, test, err)
+        self.error_count += 1
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
 
     def addFailure(self, test, err):
-        unittest.TestResult.addFailure(self, test, err)
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
+        self._cleanupLogFile(test)
         self.extractBenchmarkTime(test)
+        if isinstance(err[1], KnownFailure):
+            return self.addKnownFailure(test, err)
+        unittest.TestResult.addFailure(self, test, err)
+        self.failure_count += 1
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
+
+    def addKnownFailure(self, test, err):
+        self.known_failure_count += 1
+        self.report_known_failure(test, err)
+
+    def addNotSupported(self, test, feature):
+        self.unsupported.setdefault(str(feature), 0)
+        self.unsupported[str(feature)] += 1
+        self.report_unsupported(test, feature)
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
@@ -258,7 +274,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
-        self.extractBenchmarkTime(test)
         self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -301,12 +316,22 @@ class ExtendedTestResult(unittest._TextTestResult):
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
 
-    def __init__(self, *args, **kw):
-        ExtendedTestResult.__init__(self, *args, **kw)
-        self.pb = self.ui.nested_progress_bar()
+    def __init__(self, stream, descriptions, verbosity,
+                 bench_history=None,
+                 num_tests=None,
+                 pb=None,
+                 ):
+        ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
+            bench_history, num_tests)
+        if pb is None:
+            self.pb = self.ui.nested_progress_bar()
+            self._supplied_pb = False
+        else:
+            self.pb = pb
+            self._supplied_pb = True
         self.pb.show_pct = False
         self.pb.show_spinner = False
-        self.pb.show_eta = False, 
+        self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
 
@@ -322,8 +347,12 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d errors' % self.error_count
         if self.failure_count:
             a += ', %d failed' % self.failure_count
+        if self.known_failure_count:
+            a += ', %d known failures' % self.known_failure_count
         if self.skip_count:
             a += ', %d skipped' % self.skip_count
+        if self.unsupported:
+            a += ', %d missing features' % len(self.unsupported)
         a += ']'
         return a
 
@@ -342,18 +371,20 @@ class TextTestResult(ExtendedTestResult):
             return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.pb.note('ERROR: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.pb.note('FAIL: %s\n    %s\n', 
             self._test_description(test),
             err[1],
             )
+
+    def report_known_failure(self, test, err):
+        self.pb.note('XFAIL: %s\n%s\n',
+            self._test_description(test), err[1])
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -371,11 +402,15 @@ class TextTestResult(ExtendedTestResult):
                 # progress bar...
                 self.pb.note('SKIP: %s', skip_excinfo[1])
 
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+                  
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
 
     def finished(self):
-        self.pb.finished()
+        if not self._supplied_pb:
+            self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -414,14 +449,17 @@ class VerboseTestResult(ExtendedTestResult):
         return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
-        self.error_count += 1
         self.stream.writeln('ERROR %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
-        self.failure_count += 1
         self.stream.writeln(' FAIL %s\n%s'
+                % (self._testTimeString(),
+                   self._error_summary(err)))
+
+    def report_known_failure(self, test, err):
+        self.stream.writeln('XFAIL %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(err)))
 
@@ -430,6 +468,8 @@ class VerboseTestResult(ExtendedTestResult):
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
             stats.pprint(file=self.stream)
+        # flush the stream so that we get smooth output. This verbose mode is
+        # used to show the output in PQM.
         self.stream.flush()
 
     def report_skip(self, test, skip_excinfo):
@@ -437,6 +477,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.writeln(' SKIP %s\n%s'
                 % (self._testTimeString(),
                    self._error_summary(skip_excinfo)))
+
+    def report_unsupported(self, test, feature):
+        """test cannot be run because feature is missing."""
+        self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
+                %(self._testTimeString(), feature))
+                  
 
 
 class TextTestRunner(object):
@@ -486,13 +532,25 @@ class TextTestRunner(object):
             if errored:
                 if failed: self.stream.write(", ")
                 self.stream.write("errors=%d" % errored)
+            if result.known_failure_count:
+                if failed or errored: self.stream.write(", ")
+                self.stream.write("known_failure_count=%d" %
+                    result.known_failure_count)
             self.stream.writeln(")")
         else:
-            self.stream.writeln("OK")
+            if result.known_failure_count:
+                self.stream.writeln("OK (known_failures=%d)" %
+                    result.known_failure_count)
+            else:
+                self.stream.writeln("OK")
         if result.skip_count > 0:
             skipped = result.skip_count
             self.stream.writeln('%d test%s skipped' %
                                 (skipped, skipped != 1 and "s" or ""))
+        if result.unsupported:
+            for feature, count in sorted(result.unsupported.items()):
+                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                    (feature, count))
         result.report_cleaning_up()
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will
@@ -543,6 +601,23 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
+
+
+class KnownFailure(AssertionError):
+    """Indicates that a test failed in a precisely expected manner.
+
+    Such failures dont block the whole test suite from passing because they are
+    indicators of partially completed code or of future work. We have an
+    explicit error for them so that we can ensure that they are always visible:
+    KnownFailures are always shown in the output of bzr selftest.
+    """
+
+
+class UnavailableFeature(Exception):
+    """A feature required for this test was not available.
+
+    The feature should be used to construct the exception.
+    """
 
 
 class CommandFailed(Exception):
@@ -970,6 +1045,23 @@ class TestCase(unittest.TestCase):
     def _restoreHooks(self):
         bzrlib.branch.Branch.hooks = self._preserved_hooks
 
+    def knownFailure(self, reason):
+        """This test has failed for some known reason."""
+        raise KnownFailure(reason)
+
+    def run(self, result=None):
+        if result is None: result = self.defaultTestResult()
+        for feature in getattr(self, '_test_needs_features', []):
+            if not feature.available():
+                result.startTest(self)
+                if getattr(result, 'addNotSupported', None):
+                    result.addNotSupported(self, feature)
+                else:
+                    result.addSuccess(self)
+                result.stopTest(self)
+                return
+        return unittest.TestCase.run(self, result)
+
     def tearDown(self):
         self._runCleanups()
         unittest.TestCase.tearDown(self)
@@ -1044,6 +1136,14 @@ class TestCase(unittest.TestCase):
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
+
+    def requireFeature(self, feature):
+        """This test requires a specific feature is available.
+
+        :raises UnavailableFeature: When feature is not available.
+        """
+        if not feature.available():
+            raise UnavailableFeature(feature)
 
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
@@ -1383,6 +1483,17 @@ class TestCase(unittest.TestCase):
                     this_tree=wt_to)
         wt_to.add_parent_tree_id(branch_from.last_revision())
 
+    def reduceLockdirTimeout(self):
+        """Reduce the default lock timeout for the duration of the test, so that
+        if LockContention occurs during a test, it does so quickly.
+
+        Tests that expect to provoke LockContention errors should call this.
+        """
+        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
+        def resetTimeout():
+            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
+        self.addCleanup(resetTimeout)
+        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
 BzrTestBase = TestCase
 
@@ -1412,8 +1523,10 @@ class TestCaseWithMemoryTransport(TestCase):
         # execution. Variables that the parameteriser sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
-        self.transport_server = default_transport
+        self.vfs_transport_factory = default_transport
+        self.transport_server = None
         self.transport_readonly_server = None
+        self.__vfs_server = None
 
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
@@ -1447,12 +1560,11 @@ class TestCaseWithMemoryTransport(TestCase):
             if self.transport_readonly_server is None:
                 # readonly decorator requested
                 # bring up the server
-                self.get_url()
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.__server)
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             else:
                 self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp()
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
 
@@ -1471,8 +1583,8 @@ class TestCaseWithMemoryTransport(TestCase):
             base = base + relpath
         return base
 
-    def get_server(self):
-        """Get the read/write server instance.
+    def get_vfs_only_server(self):
+        """Get the vfs only read/write server instance.
 
         This is useful for some tests with specific servers that need
         diagnostics.
@@ -1480,13 +1592,38 @@ class TestCaseWithMemoryTransport(TestCase):
         For TestCaseWithMemoryTransport this is always a MemoryServer, and there
         is no means to override it.
         """
+        if self.__vfs_server is None:
+            self.__vfs_server = MemoryServer()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
+
+    def get_server(self):
+        """Get the read/write server instance.
+
+        This is useful for some tests with specific servers that need
+        diagnostics.
+
+        This is built from the self.transport_server factory. If that is None,
+        then the self.get_vfs_server is returned.
+        """
         if self.__server is None:
-            self.__server = MemoryServer()
-            self.__server.setUp()
+            if self.transport_server is None or self.transport_server is self.vfs_transport_factory:
+                return self.get_vfs_only_server()
+            else:
+                # bring up a decorated means of access to the vfs only server.
+                self.__server = self.transport_server()
+                try:
+                    self.__server.setUp(self.get_vfs_only_server())
+                except TypeError, e:
+                    # This should never happen; the try:Except here is to assist
+                    # developers having to update code rather than seeing an
+                    # uninformative TypeError.
+                    raise Exception, "Old server API in use: %s, %s" % (self.__server, e)
             self.addCleanup(self.__server.tearDown)
         return self.__server
 
-    def get_url(self, relpath=None):
+    def _adjust_url(self, base, relpath):
         """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
@@ -1494,7 +1631,6 @@ class TestCaseWithMemoryTransport(TestCase):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
-        base = self.get_server().get_url()
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
@@ -1507,6 +1643,27 @@ class TestCaseWithMemoryTransport(TestCase):
             else:
                 base += urlutils.escape(relpath)
         return base
+
+    def get_url(self, relpath=None):
+        """Get a URL (or maybe a path) for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        base = self.get_server().get_url()
+        return self._adjust_url(base, relpath)
+
+    def get_vfs_only_url(self, relpath=None):
+        """Get a URL (or maybe a path for the plain old vfs transport.
+
+        This will never be a smart protocol.
+        :param relpath: provides for clients to get a path relative to the base
+            url.  These should only be downwards relative, not upwards.
+        """
+        base = self.get_vfs_only_server().get_url()
+        return self._adjust_url(base, relpath)
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
@@ -1591,6 +1748,7 @@ class TestCaseWithMemoryTransport(TestCase):
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
         self.__server = None
+        self.reduceLockdirTimeout()
 
      
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
@@ -1735,36 +1893,27 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
-    def create_transport_server(self):
-        """Create a transport server from class defined at init.
-
-        This is mostly a hook for daughter classes.
-        """
-        return self.transport_server()
-
-    def get_server(self):
+    def get_vfs_only_server(self):
         """See TestCaseWithMemoryTransport.
 
         This is useful for some tests with specific servers that need
         diagnostics.
         """
-        if self.__server is None:
-            self.__server = self.create_transport_server()
-            self.__server.setUp()
-            self.addCleanup(self.__server.tearDown)
-        return self.__server
+        if self.__vfs_server is None:
+            self.__vfs_server = self.vfs_transport_factory()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
 
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
         If the transport is not a LocalTransport, the Tree can't be created on
-        the transport.  In that case the working tree is created in the local
-        directory, and the returned tree's branch and repository will also be
-        accessed locally.
-
-        This will fail if the original default transport for this test
-        case wasn't backed by the working directory, as the branch won't
-        be on disk for us to open it.  
+        the transport.  In that case if the vfs_transport_factory is
+        LocalURLServer the working tree is created in the local
+        directory backing the transport, and the returned tree's branch and
+        repository will also be accessed locally. Otherwise a lightweight
+        checkout is created and returned.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
@@ -1778,13 +1927,15 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
-            # transport can't support them, then reopen the branch on a local
-            # transport, and create the working tree there.  
-            #
-            # Possibly we should instead keep
-            # the non-disk-backed branch and create a local checkout?
-            bd = bzrdir.BzrDir.open(relpath)
-            return bd.create_workingtree()
+            # transport can't support them, then we keep the non-disk-backed
+            # branch and create a local checkout.
+            if self.vfs_transport_factory is LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                return local_controldir.create_workingtree()
+            else:
+                return b.create_checkout(relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
@@ -1812,7 +1963,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
-        self.__server = None
+        self.__vfs_server = None
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -1829,7 +1980,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
 
@@ -2002,6 +2153,7 @@ def test_suite():
                    'bzrlib.tests.test_ssh_transport',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_strace',
                    'bzrlib.tests.test_subsume',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
@@ -2093,3 +2245,31 @@ def clean_selftest_output(root=None, quiet=False):
             if not quiet:
                 print 'delete directory:', i
             shutil.rmtree(i)
+
+
+class Feature(object):
+    """An operating system Feature."""
+
+    def __init__(self):
+        self._available = None
+
+    def available(self):
+        """Is the feature available?
+
+        :return: True if the feature is available.
+        """
+        if self._available is None:
+            self._available = self._probe()
+        return self._available
+
+    def _probe(self):
+        """Implement this method in concrete features.
+
+        :return: True if the feature is available.
+        """
+        raise NotImplementedError
+
+    def __str__(self):
+        if getattr(self, 'feature_name', None):
+            return self.feature_name()
+        return self.__class__.__name__
