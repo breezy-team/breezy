@@ -2371,6 +2371,6 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     # well within the noise margin
 
     # base64.encode always adds a final newline, so strip it off
-    return _encode(_pack('>llllll'
+    return _encode(_pack('>LLLLLL'
         , st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino, st.st_mode))[:-1]
+        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
