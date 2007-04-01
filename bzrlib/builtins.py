@@ -568,7 +568,7 @@ class cmd_pull(Command):
             directory=None):
         from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
-        rev_id = None
+        revision_id = None
         mergeable = None
         if directory is None:
             directory = u'.'
@@ -602,7 +602,7 @@ class cmd_pull(Command):
             if revision is not None:
                 raise errors.BzrCommandError(
                     'Cannot use -r with merge directives or bundles')
-            rev_id = mergeable.install_revisions(branch_to.repository)
+            revision_id = mergeable.install_revisions(branch_to.repository)
             branch_from = branch_to
         else:
             branch_from = Branch.open(location)
@@ -612,17 +612,17 @@ class cmd_pull(Command):
 
         if revision is not None:
             if len(revision) == 1:
-                rev_id = revision[0].in_history(branch_from).rev_id
+                revision_id = revision[0].in_history(branch_from).rev_id
             else:
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            result = tree_to.pull(branch_from, overwrite, rev_id,
+            result = tree_to.pull(branch_from, overwrite, revision_id,
                 delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
-            result = branch_to.pull(branch_from, overwrite, rev_id)
+            result = branch_to.pull(branch_from, overwrite, revision_id)
 
         result.report(self.outf)
         if verbose:
@@ -2501,7 +2501,7 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
-        other_rev_id = None
+        other_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2527,10 +2527,10 @@ class cmd_merge(Command):
                 if revision is not None:
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
-                other_rev_id = mergeable.install_revisions(
+                other_revision_id = mergeable.install_revisions(
                     tree.branch.repository)
                 revision = [RevisionSpec.from_string(
-                    'revid:' + other_rev_id)]
+                    'revid:' + other_revision_id)]
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
@@ -2551,7 +2551,7 @@ class cmd_merge(Command):
             branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
-                if other_rev_id is not None:
+                if other_revision_id is not None:
                     other_branch = None
                     path = ""
                     other = None
@@ -2591,7 +2591,7 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = _merge_helper(
-                    other, base, other_rev_id=other_rev_id,
+                    other, base, other_rev_id=other_revision_id,
                     check_clean=(not force),
                     merge_type=merge_type,
                     reprocess=reprocess,
