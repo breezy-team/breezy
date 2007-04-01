@@ -292,23 +292,23 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         message = md.to_email('pqm@example.com', tree_a.branch)
         self.assertContainsRe(message.as_string(), EMAIL2)
 
-    def test_get_target_revision_branch(self):
+    def test_install_revisions_branch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
             patch_type=None, public_branch=tree_a.branch.base)
         self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
-        revision = md.get_target_revision(tree_b.branch.repository)
+        revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
         self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
 
-    def test_get_target_revision_bundle(self):
+    def test_install_revisions_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = merge_directive.MergeDirective.from_objects(
             tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
             patch_type='bundle', public_branch=tree_a.branch.base)
         self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
-        revision = md.get_target_revision(tree_b.branch.repository)
+        revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
         self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
 
@@ -319,5 +319,5 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
             tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
             patch_type=None, public_branch=tree_a.branch.base)
         md.source_branch = '/dev/null'
-        revision = md.get_target_revision(tree_b.branch.repository)
+        revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)

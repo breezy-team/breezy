@@ -433,8 +433,8 @@ class BundleInfo(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-    def get_target_revision(self, target_repo):
-        """Install the target revision and return its revision-id"""
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
         apply_bundle.install_bundle(target_repo, self)
         return self.target
 

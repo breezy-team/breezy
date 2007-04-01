@@ -602,8 +602,7 @@ class cmd_pull(Command):
             if revision is not None:
                 raise errors.BzrCommandError(
                     'Cannot use -r with merge directives or bundles')
-            rev_id = mergeable.get_target_revision(
-                branch_to.repository)
+            rev_id = mergeable.install_revisions(branch_to.repository)
             branch_from = branch_to
         else:
             branch_from = Branch.open(location)
@@ -2528,7 +2527,7 @@ class cmd_merge(Command):
                 if revision is not None:
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
-                other_rev_id = mergeable.get_target_revision(
+                other_rev_id = mergeable.install_revisions(
                     tree.branch.repository)
                 revision = [RevisionSpec.from_string(
                     'revid:' + other_rev_id)]

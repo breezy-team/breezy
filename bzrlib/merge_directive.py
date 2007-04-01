@@ -30,7 +30,6 @@ from bzrlib import (
     )
 from bzrlib.bundle import (
     serializer as bundle_serializer,
-    apply_bundle,
     )
 
 
@@ -251,12 +250,14 @@ class MergeDirective(object):
                                        ancestor_id, s)
         return s.getvalue()
 
-    def get_target_revision(self, target_repo):
-        """Install the target revision and return its revision-id"""
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
         if not target_repo.has_revision(self.revision_id):
             if self.patch_type == 'bundle':
-                reader = bundle_serializer.read_bundle(StringIO(self.patch))
-                apply_bundle.install_bundle(target_repo, reader)
+                info = bundle_serializer.read_bundle(StringIO(self.patch))
+                # We don't use the bundle's target revision, because
+                # MergeDirective.revision_id is authoritative.
+                info.install_revisions(target_repo)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
