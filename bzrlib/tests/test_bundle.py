@@ -764,7 +764,7 @@ class V08BundleTester(TestCaseWithTransport):
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
                                'a@cset-0-1', bundle_file, format=self.format)
-        self.assertNotContainsRe(bundle_file.getvalue(), 'two')
+        self.assertNotContainsRe(bundle_file.getvalue(), '\btwo\b')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
 

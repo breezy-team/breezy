@@ -21,6 +21,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Don't fail bundle selftest if email has 'two' embedded.  
+      (#98510, Ian Clatworthy)
+
+  BUGFIXES:
+
     * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
       (Robert Widhopf-Fenk, #98591)
 
