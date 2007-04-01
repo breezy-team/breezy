@@ -429,7 +429,7 @@ class TestRepository(TestCaseWithRepository):
         # template from the test suite parameterisation.
         repo = self.make_repository('.')
         repo._format.rich_root_data
-        repo._format.support_tree_reference
+        repo._format.supports_tree_reference
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
