@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * Merge directives can now be supplied as input to `merge` and `pull`,
+      like bundles can.  (Aaron Bentley)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
