@@ -136,7 +136,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
                           'pqm@example.com'), call[1:3])
         self.assertContainsRe(call[3], EMAIL1)
 
-    def test_manual_pull_raw(self):
+    def test_pull_raw(self):
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
@@ -147,7 +147,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         wt = workingtree.WorkingTree.open('.')
         self.assertEqual('bar-id', wt.last_revision())
 
-    def test_manual_pull_user_r(self):
+    def test_pull_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
@@ -159,7 +159,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
             ('Cannot use -r with merge directives or bundles',),
             'pull', '-r', '2', '../directive')
 
-    def test_manual_pull_bundle(self):
+    def test_pull_bundle(self):
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
@@ -170,7 +170,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         wt = workingtree.WorkingTree.open('.')
         self.assertEqual('bar-id', wt.last_revision())
 
-    def test_manual_merge_raw(self):
+    def test_merge_raw(self):
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
@@ -181,7 +181,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         wt = workingtree.WorkingTree.open('.')
         self.assertEqual('bar-id', wt.get_parent_ids()[1])
 
-    def test_manual_merge_user_r(self):
+    def test_merge_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
@@ -193,7 +193,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
             ('Cannot use -r with merge directives or bundles',),
             'merge', '-r', '2', '../directive')
 
-    def test_manual_merge_bundle(self):
+    def test_merge_bundle(self):
         self.prepare_merge_directive()
         self.tree1.commit('baz', rev_id='baz-id')
         md_text = self.run_bzr('merge-directive', self.tree2.basedir,
