@@ -192,3 +192,12 @@ class UpgradeRecommendedTests(TestCaseInTempDir):
         self.run_bzr('init', '--knit', 'a')
         out, err = self.run_bzr('status', 'a')
         self.assertContainsRe(err, 'bzr upgrade .*[/\\\\]a')
+
+    def test_no_upgrade_recommendation_from_bzrdir(self):
+        # we should only get a recommendation to upgrade when we're accessing
+        # the actual workingtree, not when we only open a bzrdir that contains
+        # an old workngtree
+        self.run_bzr('init', '--knit', 'a')
+        out, err = self.run_bzr('checkout', 'a', 'b')
+        if err.find('upgrade') > -1:
+            self.fail("message shouldn't suggest upgrade:\n%s" % err)

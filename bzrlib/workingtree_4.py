@@ -563,7 +563,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()
@@ -583,7 +583,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()

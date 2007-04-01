@@ -1,9 +1,13 @@
-bzr 0.15 
+bzr 0.15 2007-04-01
 
   BUGFIXES:
 
     * Handle incompatible repositories as a user issue when fetching.
       (Aaron Bentley)
+
+    * Don't give a recommendation to upgrade when branching or 
+      checking out a branch that contains an old-format working tree.
+      (Martin Pool)
 
 bzr 0.15rc3  2007-03-26
 
