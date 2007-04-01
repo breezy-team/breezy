@@ -132,8 +132,8 @@ class BzrDir(object):
         the user through the ui object that they may wish
         to upgrade the object.
         """
-        # TODO: perhaps move this into the format itself.
-        # mbp 20070323
+        # TODO: perhaps move this into a base Format class; it's not BzrDir
+        # specific. mbp 20070323
         if not allow_unsupported and not format.is_supported():
             # see open_downlevel to open legacy branches.
             raise errors.UnsupportedFormatError(format=format)
@@ -720,7 +720,10 @@ class BzrDir(object):
         except errors.NoRepositoryPresent:
             source_repository = None
         try:
-            tree = self.open_workingtree()
+            # TODO: Couldn't we just probe for the format in these cases,
+            # rather than opening the whole tree?  It would be a little
+            # faster. mbp 20070401
+            tree = self.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             result_format.workingtree_format = None
         else:
