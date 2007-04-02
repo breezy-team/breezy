@@ -368,11 +368,11 @@ class TestCommit(ExternalBase):
         self.assertEqual('', output)
 
     def test_fixes_bug_sets_property(self):
-        """commit --fixes=lp:23452 sets the lp:23452 revprop to 'fixed'."""
+        """commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.runbzr('commit -m hello --fixes=lp:23452 tree/hello.txt')
+        self.runbzr('commit -m hello --fixes=lp:234 tree/hello.txt')
 
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
@@ -380,7 +380,7 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'lp:23452': 'fixed'}, properties)
+        self.assertEqual({'lp:234': 'fixed'}, properties)
 
     def test_fixes_multiple_bugs_sets_properties(self):
         """--fixes can be used more than once to show that bugs are fixed."""
@@ -397,3 +397,21 @@ class TestCommit(ExternalBase):
         del properties['branch-nick']
 
         self.assertEqual({'lp:123': 'fixed', 'lp:235': 'fixed'}, properties)
+
+    def test_fixes_unknown_bug_prefix(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["Unrecognized bug %s. Commit refused." % 'xxx:123'],
+            'commit', '-m', 'add b', '--fixes=xxx:123',
+            working_dir='tree')
+
+    def test_fixes_invalid_bug_number(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["Invalid bug number for %s. Commit refused." % 'lp:orange'],
+            'commit', '-m', 'add b', '--fixes=lp:orange',
+            working_dir='tree')

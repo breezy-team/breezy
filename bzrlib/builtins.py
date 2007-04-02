@@ -2079,6 +2079,22 @@ class cmd_commit(Command):
 
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
+
+        properties = {}
+
+        # Configure the properties for bug fixing attributes.
+        for fixed_bug in fixes:
+            prefix = 'lp:'
+            if not fixed_bug.startswith(prefix):
+                raise errors.BzrCommandError(
+                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
+            try:
+                int(fixed_bug[len(prefix):])
+            except ValueError:
+                raise errors.BzrCommandError(
+                    "Invalid bug number for %s. Commit refused." % fixed_bug)
+            properties[fixed_bug] = 'fixed'
+
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
@@ -2107,15 +2123,11 @@ class cmd_commit(Command):
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
-        
+
         if verbose:
             reporter = ReportCommitToLog()
         else:
             reporter = NullCommitReporter()
-
-        properties = {}
-        for fixed_bug in fixes:
-            properties[fixed_bug] = 'fixed'
 
         try:
             tree.commit(message_callback=get_message,
