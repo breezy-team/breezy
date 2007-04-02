@@ -161,7 +161,9 @@ class MutableTree(tree.Tree):
         If the new_entry is a directory, its children should be an empty
         dict.  Children are handled by apply_inventory_delta itself.
 
-        :param changes: The list of tuples"""
+        :param changes: A list of tuples for the change to apply:
+            [(old_path, new_path, file_id, new_inventory_entry), ...]
+        """
         self.flush()
         inv = self.inventory
         children = {}
