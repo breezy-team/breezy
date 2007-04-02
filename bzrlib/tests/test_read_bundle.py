@@ -37,15 +37,9 @@ class TestReadBundleFromURL(TestTransportImplementation):
         return bzrlib.urlutils.join(self._server.get_url(), relpath)
 
     def create_test_bundle(self):
-        # Can't use self.get_transport() because that asserts that 
-        # it is not readonly, so just skip tests where the server is readonly
-        self._transport = self.get_transport()
-        #if isinstance(self._transport, MemoryTransport):
-        #    return None
         self.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
 
         format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-
 
         bzrdir = format.initialize('tree')
         repo = bzrdir.create_repository()
@@ -59,20 +53,20 @@ class TestReadBundleFromURL(TestTransportImplementation):
         rev_ids = write_bundle(wt.branch.repository,
                                wt.get_parent_ids()[0], None, out)
         out.seek(0)
-        if self._transport.is_readonly():
+        if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
             f.write(out.getvalue())
             f.close()
         else:
-            self._transport.put_file('test_bundle', out)
+            self.get_transport().put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))
         return wt
 
     def test_read_bundle_from_url(self):
+        self._captureVar('NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return
-
         info = bzrlib.bundle.read_bundle_from_url(
                     unicode(self.get_url('test_bundle')))
         bundle_tree = info.revision_tree(wt.branch.repository, info.target)
@@ -81,6 +75,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file
         # should fail with NotABundle
+        self._captureVar('NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return

@@ -1,6 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
-# -*- coding: utf-8 -*-
+#          and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,14 +20,18 @@
 
 import os
 
-import bzrlib
-import bzrlib.bzrdir as bzrdir
-import bzrlib.repository as repository
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests import TestUIFactory
+from bzrlib import (
+    bzrdir,
+    repository,
+    ui,
+    )
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    TestUIFactory,
+    )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
-import bzrlib.ui as ui
 from bzrlib.repofmt.knitrepo import (
     RepositoryFormatKnit1,
     )
@@ -179,3 +183,21 @@ repository converted
 finished
 """ % (url, url, url), out)
         self.assertEqual('', err)
+
+
+class UpgradeRecommendedTests(TestCaseInTempDir):
+
+    def test_recommend_upgrade_wt4(self):
+        # using a deprecated format gives a warning
+        self.run_bzr('init', '--knit', 'a')
+        out, err = self.run_bzr('status', 'a')
+        self.assertContainsRe(err, 'bzr upgrade .*[/\\\\]a')
+
+    def test_no_upgrade_recommendation_from_bzrdir(self):
+        # we should only get a recommendation to upgrade when we're accessing
+        # the actual workingtree, not when we only open a bzrdir that contains
+        # an old workngtree
+        self.run_bzr('init', '--knit', 'a')
+        out, err = self.run_bzr('checkout', 'a', 'b')
+        if err.find('upgrade') > -1:
+            self.fail("message shouldn't suggest upgrade:\n%s" % err)
