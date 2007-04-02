@@ -19,6 +19,9 @@ IN DEVELOPMENT
     * Deprecate Branch.get_root_id() because branches don't have root ids,
       rather than fixing bug #96847.  (Aaron Bentley)
 
+    * WorkingTree.apply_inventory_delta provides a better alternative to
+      WorkingTree._write_inventory.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
