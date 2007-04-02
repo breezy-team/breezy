@@ -244,8 +244,7 @@ class cmd_remove_tree(Command):
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
 
-    To get the working tree created again holding the last checked in files,
-    use "bzr checkout".
+    To re-create the working tree, use "bzr checkout".
     """
 
     takes_args = ['location?']
@@ -344,7 +343,8 @@ class cmd_add(Command):
     same filename, and then by pure path. This option is rarely needed
     but can be useful when adding the same logical file into two
     branches that will be merged later (without showing the two different
-    adds as a conflict).
+    adds as a conflict). It is also useful when merging another project
+    into a subdirectory of this one.
     """
     takes_args = ['file*']
     takes_options = ['no-recurse', 'dry-run', 'verbose',
@@ -1928,8 +1928,9 @@ class cmd_export(Command):
     given, try to find the format with the extension. If no extension
     is found exports to a directory (equivalent to --format=dir).
 
-    Root may be the top directory for formats other than dir. If none
-    is given, the top directory will be the root name of the file.
+    If root is supplied, it will be used as the root directory inside
+    container formats (tar, zip, etc). If it is not supplied it will default
+    to the exported filename. The root option has no effect for 'dir' format.
 
     If branch is omitted then the branch containing the current working
     directory will be used.
