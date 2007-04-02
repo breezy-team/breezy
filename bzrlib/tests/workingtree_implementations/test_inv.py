@@ -182,6 +182,24 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.assertEqual('baz/bar', wt.id2path('bar-id'))
         self.assertEqual('foo/qux', wt.id2path('qux-id'))
 
+    def test_child_rename_ordering(self):
+        """Test the rename-parent, move child edge case.
+
+        (A naive implementation may move the parent first, and then be
+         unable to find the child.)
+        """
+        wt = self.make_branch_and_tree('.')
+        root_id = wt.get_root_id()
+        self.build_tree(['dir/', 'dir/child', 'other/'])
+        wt.add(['dir', 'dir/child', 'other'],
+               ['dir-id', 'child-id', 'other-id'])
+        wt.apply_inventory_delta([('dir', 'dir2', 'dir-id',
+            inventory.InventoryDirectory('dir-id', 'dir2', root_id)),
+            ('dir/child', 'other/child', 'child-id',
+             inventory.InventoryFile('child-id', 'child', 'other-id'))])
+        self.assertEqual('dir2', wt.id2path('dir-id'))
+        self.assertEqual('other/child', wt.id2path('child-id'))
+
     def test_replace_root(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
