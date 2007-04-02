@@ -1331,6 +1331,8 @@ class Inventory(object):
             del self._byid[file_id]
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
+        else:
+            self.root = None
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
