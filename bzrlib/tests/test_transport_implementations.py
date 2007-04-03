@@ -42,15 +42,6 @@ from bzrlib.transport import memory, smart
 import bzrlib.transport
 
 
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    try:
-        f.write(txt.read())
-    finally:
-        f.close()
-
-
 class TransportTests(TestTransportImplementation):
 
     def check_transport_contents(self, content, transport, relpath):
@@ -1314,8 +1305,8 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         try:
-            medium = transport.get_smart_medium()
-            self.assertIsInstance(medium, smart.SmartClientMedium)
+            client_medium = transport.get_smart_medium()
+            self.assertIsInstance(client_medium, smart.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass

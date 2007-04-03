@@ -563,7 +563,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()
@@ -583,7 +583,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()
@@ -809,7 +809,7 @@ class WorkingTree4(WorkingTree3):
                                      size=cur_details[2],
                                      to_block=to_block,
                                      to_key=to_key,
-                                     to_path_utf8=to_rel_utf8)
+                                     to_path_utf8=to_path_utf8)
                             if minikind == 'd':
                                 # We need to move all the children of this
                                 # entry
@@ -1202,6 +1202,10 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_read_lock
+    def _validate(self):
+        self._dirstate._validate()
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
@@ -1224,6 +1228,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
     """
+
+    upgrade_recommended = False
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
@@ -1256,6 +1262,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         # write out new dirstate (must exist when we create the tree)
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
+        del state
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
@@ -1263,7 +1270,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
-        state._validate()
+        wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 wt._set_root_id(generate_ids.gen_root_id())

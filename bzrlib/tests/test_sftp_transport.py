@@ -57,7 +57,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        set_test_transport_to_sftp(self) 
+        set_test_transport_to_sftp(self)
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
@@ -302,7 +302,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
             server._vendor = self._test_vendor
             return server
         self._test_vendor = 'loopback'
-        self.transport_server = create_server
+        self.vfs_transport_server = create_server
         f = open('a_file', 'wb')
         try:
             f.write('foobar\n')

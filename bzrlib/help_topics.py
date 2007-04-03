@@ -199,12 +199,12 @@ history but does not change it, but if the master branch is on the same disk
 then there wont be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
-containing your branches, where you maintain only only one working tree by
+containing your branches, where you maintain only one working tree by
 switching the master branch that the checkout points to when you want to 
 work on a different branch.
 
 Obviously to commit on a checkout you need to be able to write to the master
-branch. This means that the master branch must be accessable over a writeable
+branch. This means that the master branch must be accessible over a writeable
 protocol , such as sftp://, and that you have write permissions at the other
 end. Checkouts also work on the local file system, so that all that matters is
 file permissions.

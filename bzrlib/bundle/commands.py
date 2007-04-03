@@ -96,7 +96,7 @@ class cmd_bundle_revisions(Command):
     bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
     """
-    takes_options = ['verbose', 'revision', 'remember',
+    takes_options = ['revision', 'remember',
                      Option("output", help="write bundle to specified file",
                             type=unicode)]
     takes_args = ['base?']
