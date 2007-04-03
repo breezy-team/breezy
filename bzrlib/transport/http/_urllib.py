@@ -59,12 +59,12 @@ class HttpTransport_urllib(HttpTransportBase):
         """Ask for a password if none is already provided in the request"""
         # TODO: jam 20060915 There should be a test that asserts we ask 
         #       for a password at the right time.
+        host = request.get_host()
+        password_manager = self._opener.password_manager
         if request.password is None:
             # We can't predict realm, let's try None, we'll get a
             # 401 if we are wrong anyway
             realm = None
-            host = request.get_host()
-            password_manager = self._opener.password_manager
             # Query the password manager first
             user, password = password_manager.find_user_password(None, host)
             if user == request.user and password is not None:
@@ -75,8 +75,8 @@ class HttpTransport_urllib(HttpTransportBase):
                 request.password = ui.ui_factory.get_password(prompt=http_pass,
                                                               user=request.user,
                                                               host=host)
-                password_manager.add_password(None, host,
-                                              request.user, request.password)
+        password_manager.add_password(None, host,
+                                      request.user, request.password)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
