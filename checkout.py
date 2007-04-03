@@ -30,6 +30,7 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
+from convert import SvnConverter
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         revision_id_to_svk_feature) 
@@ -711,3 +712,9 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
     def initialize_on_transport(self, transport):
         raise NotImplementedError(self.initialize_on_transport)
+
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return SvnConverter(format)

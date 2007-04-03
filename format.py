@@ -181,3 +181,4 @@ class SvnFormat(BzrDirFormat):
     def is_supported(self):
         """See BzrDir.is_supported()."""
         return True
+

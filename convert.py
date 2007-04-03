@@ -20,7 +20,7 @@ import tempfile
 from bzrlib.plugin import load_plugins
 load_plugins()
 
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, 
                            NoSuchFile, NoRepositoryPresent)
@@ -67,7 +67,6 @@ def load_dumpfile(dumpfile, outputdir):
 def convert_repository(url, output_url, scheme, create_shared_repo=True, 
                        working_trees=False, all=False):
     assert not all or create_shared_repo
-
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
@@ -143,3 +142,12 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
     finally:
         if tmp_repos:
             osutils.rmtree(tmp_repos)
+
+
+class SvnConverter(Converter):
+    """Converts from a Subversion dir to another dir."""
+    def __init__(self, target_format):
+        self.target_format = target_format
+
+    def convert(self, to_convert, pb):
+        pass
