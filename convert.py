@@ -127,12 +127,14 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                         target_dir.open_repository()
                     except NoRepositoryPresent:
                         target_dir.create_repository()
+                source_branch_url = urlutils.join(url, branch)
                 try:
                     target_branch = target_dir.open_branch()
                 except NotBranchError:
                     target_branch = target_dir.create_branch()
+                    target_branch.set_parent(source_branch_url)
                 if not revid in target_branch.revision_history():
-                    source_branch = Branch.open(urlutils.join(url, branch))
+                    source_branch = Branch.open(source_branch_url)
                     target_branch.pull(source_branch)
                 if working_trees and not target_dir.has_workingtree():
                     target_dir.create_workingtree()

@@ -70,6 +70,14 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/trunk/file': 'otherdata'})
         self.client_commit("dc", "change")
 
+    def test_sets_parent_urls(self):
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
+                           all=False, create_shared_repo=True)
+        self.assertEquals(self.repos_url+"/trunk", 
+                Branch.open("e/trunk").get_parent())
+        self.assertEquals(self.repos_url+"/branches/abranch", 
+                Branch.open("e/branches/abranch").get_parent())
+
     def test_fetch_alive(self):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
         self.client_add("dc/branches/somebranch")
