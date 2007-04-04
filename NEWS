@@ -30,14 +30,15 @@ IN DEVELOPMENT
     * Don't fail bundle selftest if email has 'two' embedded.  
       (#98510, Ian Clatworthy)
 
-  BUGFIXES:
-
     * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
       (Robert Widhopf-Fenk, #98591)
 
     * Remove ``--basis`` from the checkout/branch commands - it didn't work
       properly and is no longer beneficial. Fixes #53675 and #43486.
       (Robert Collins)
+
+    * Don't produce encoding error when adding duplicate files.
+      (Aaron Bentley)
 
   TESTING:
 

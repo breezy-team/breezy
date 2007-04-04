@@ -1154,7 +1154,7 @@ class Inventory(object):
             if entry.name in parent.children:
                 raise BzrError("%s is already versioned" %
                         osutils.pathjoin(self.id2path(parent.file_id),
-                        entry.name))
+                        entry.name).encode('utf-8'))
             parent.children[entry.name] = entry
         return self._add_child(entry)
 
