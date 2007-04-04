@@ -1562,8 +1562,12 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
             'Content-Length: 6\r\n'
             '\r\n'
             'hello\n')
-        request_handler = SmartRequestHandler(
-            socket, ('localhost', 80), httpd)
+        # Beware: the ('localhost', 80) below is the
+        # client_address parameter, but we don't have one because
+        # we have defined a socket which is not bound to an
+        # address. The test framework never uses this client
+        # address, so far...
+        request_handler = SmartRequestHandler(socket, ('localhost', 80), httpd)
         response = socket.writefile.getvalue()
         self.assertStartsWith(response, 'HTTP/1.0 200 ')
         # This includes the end of the HTTP headers, and all the body.
