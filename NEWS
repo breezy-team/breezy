@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * Tags are now included in logs, that use the default log 
+      formatter. (Erik Bågfors)
+      
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
