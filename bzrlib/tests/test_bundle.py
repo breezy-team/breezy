@@ -764,7 +764,7 @@ class V08BundleTester(TestCaseWithTransport):
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
                                'a@cset-0-1', bundle_file, format=self.format)
-        self.assertNotContainsRe(bundle_file.getvalue(), 'two')
+        self.assertNotContainsRe(bundle_file.getvalue(), '\btwo\b')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
 
@@ -883,6 +883,17 @@ class V08BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle(None, 'revid1')
         tree = bundle.revision_tree(self.b1.repository, 'revid1')
         self.assertEqual('revid1', tree.inventory.root.revision)
+
+    def test_install_revisions(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+        self.tree1.commit('message', rev_id='rev2a')
+        bundle = self.get_valid_bundle(None, 'rev2a')
+        branch2 = self.make_branch('b2')
+        self.assertFalse(branch2.repository.has_revision('rev2a'))
+        target_revision = bundle.install_revisions(branch2.repository)
+        self.assertTrue(branch2.repository.has_revision('rev2a'))
+        self.assertEqual('rev2a', target_revision)
 
 
 class V09BundleKnit2Tester(V08BundleTester):

@@ -193,6 +193,9 @@ class InventoryEntry(object):
             if self.file_id in inv:
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
+                if ie.kind != self.kind:
+                    # Can't be a candidate if the kind has changed.
+                    continue
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
@@ -490,6 +493,8 @@ class InventoryEntry(object):
             compatible = False
         # renamed
         elif previous_ie.name != self.name:
+            compatible = False
+        elif previous_ie.kind != self.kind:
             compatible = False
         return compatible
 
@@ -1326,6 +1331,8 @@ class Inventory(object):
             del self._byid[file_id]
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
+        else:
+            self.root = None
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

@@ -37,7 +37,7 @@ class TestBundle(TestCaseInTempDir):
 
     def test_uses_parent(self):
         """Parent location is used as a basis by default"""
-        self.make_trees()        
+        self.make_trees()
         os.chdir('grandparent')
         errmsg = self.run_bzr('bundle', retcode=3)[1]
         self.assertContainsRe(errmsg, 'No base branch known or specified')

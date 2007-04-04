@@ -48,11 +48,6 @@ from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 
-# TODO: Make a branch using basis branch, and check that it 
-# doesn't request any files that could have been avoided, by 
-# hooking into the Transport.
-
-
 class TestCaseWithBranch(TestCaseWithBzrDir):
 
     def setUp(self):
@@ -118,16 +113,13 @@ class TestBranch(TestCaseWithBranch):
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
-        get_transport(self.get_url()).mkdir('b1')
-        get_transport(self.get_url()).mkdir('b2')
         wt = self.make_branch_and_tree('b1')
         b1 = wt.branch
-        b2 = self.make_branch('b2')
-        file('b1/foo', 'w').write('hello')
+        self.build_tree_contents([('b1/foo', 'hello')])
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
-        mutter('start fetch')
+        b2 = self.make_branch('b2')
         self.assertEqual((1, []), b2.fetch(b1))
 
         rev = b2.repository.get_revision('revision-1')
@@ -152,13 +144,11 @@ class TestBranch(TestCaseWithBranch):
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
-        get_transport(self.get_url()).mkdir('a')
         tree_a = self.make_branch_and_tree('a')
-        file('a/b', 'wb').write('b')
+        self.build_tree_contents([('a/b', 'b')])
         tree_a.add('b')
         tree_a.commit("silly commit", rev_id='A')
 
-        get_transport(self.get_url()).mkdir('b')
         tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
 
@@ -168,20 +158,11 @@ class TestBranch(TestCaseWithBranch):
         tree_b.branch.repository.fetch(tree_a.branch.repository)
         return tree_a, tree_b
 
-    def test_clone_branch(self):
-        """Copy the stores from one branch to another"""
-        tree_a, tree_b = self.get_balanced_branch_pair()
-        tree_b.commit("silly commit")
-        os.mkdir('c')
-        # this fails to test that the history from a was not used.
-        dir_c = tree_a.bzrdir.clone('c', basis=tree_b.bzrdir)
-        self.assertEqual(tree_a.branch.revision_history(),
-                         dir_c.open_branch().revision_history())
-
     def test_clone_partial(self):
         """Copy only part of the history of a branch."""
         # TODO: RBC 20060208 test with a revision not on revision-history.
         #       what should that behaviour be ? Emailed the list.
+        # First, make a branch with two commits.
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
@@ -189,9 +170,16 @@ class TestBranch(TestCaseWithBranch):
         self.build_tree(['a/two'])
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
+        # Now make a copy of the repository.
         repo_b = self.make_repository('b')
-        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
-        br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
+        wt_a.branch.repository.copy_content_into(repo_b)
+        # wt_a might be a lightweight checkout, so get a hold of the actual
+        # branch (because you can't do a partial clone of a lightweight
+        # checkout).
+        branch = wt_a.branch.bzrdir.open_branch()
+        # Then make a branch where the new repository is, but specify a revision
+        # ID.  The new branch's history will stop at the specified revision.
+        br_b = branch.clone(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
     def test_sprout_partial(self):
@@ -205,8 +193,9 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['two'])
         wt_a.commit('commit two', rev_id='2')
         repo_b = self.make_repository('b')
-        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
-        br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
+        repo_a = wt_a.branch.repository
+        repo_a.copy_content_into(repo_b)
+        br_b = wt_a.branch.sprout(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
     def get_parented_branch(self):
@@ -239,19 +228,6 @@ class TestBranch(TestCaseWithBranch):
         branch_b.repository.copy_content_into(repo_d)
         branch_d = branch_b.clone(repo_d.bzrdir)
         self.assertEqual(random_parent, branch_d.get_parent())
-
-    def test_copy_content_incomplete(self):
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(
-            source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-
 
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
@@ -347,33 +323,45 @@ class TestBranch(TestCaseWithBranch):
     def test_branch_keeps_signatures(self):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
-        wt.branch.repository.sign_revision('A',
-            gpg.LoopbackGPGStrategy(None))
+        repo = wt.branch.repository
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
-        d2 = wt.bzrdir.clone('target')
-        self.assertEqual(wt.branch.repository.get_signature_text('A'),
+        d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
+        self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
     def test_nicks(self):
-        """Branch nicknames"""
+        """Test explicit and implicit branch nicknames.
+        
+        Nicknames are implicitly the name of the branch's directory, unless an
+        explicit nickname is set.  That is, an explicit nickname always
+        overrides the implicit one.
+        """
         t = get_transport(self.get_url())
-        t.mkdir('bzr.dev')
         branch = self.make_branch('bzr.dev')
+        # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
+        # Move the branch to a different directory, 'bzr.ab'.  Now that branch
+        # will report its nick as 'bzr.ab'.
         t.move('bzr.dev', 'bzr.ab')
         branch = Branch.open(self.get_url('bzr.ab'))
         self.assertEqual(branch.nick, 'bzr.ab')
+        # Set the branch nick explicitly.  This will ensure there's a branch
+        # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        self.failUnless(
-            t.has(
-                t.relpath(
-                    branch.control_files.controlfilename("branch.conf")
-                    )
-                )
-            )
+        try:
+            controlfilename = branch.control_files.controlfilename
+        except AttributeError:
+            # remote branches don't have control_files
+            pass
+        else:
+            self.failUnless(
+                t.has(t.relpath(controlfilename("branch.conf"))))
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = Branch.open(self.get_url('integration'))
@@ -381,13 +369,24 @@ class TestBranch(TestCaseWithBranch):
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 
+    def test_commit_nicks(self):
+        """Nicknames are committed to the revision"""
+        wt = self.make_branch_and_tree('bzr.dev')
+        branch = wt.branch
+        branch.nick = "My happy branch"
+        wt.commit('My commit respect da nick.')
+        committed = branch.repository.get_revision(branch.last_revision())
+        self.assertEqual(committed.properties["branch-nick"],
+                         "My happy branch")
+
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
-        repo.bzrdir.root_transport.mkdir('child')
-        child_dir = self.bzrdir_format.initialize('child')
+        child_transport = repo.bzrdir.root_transport.clone('child')
+        child_transport.mkdir('.')
+        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -457,8 +456,8 @@ class TestBranch(TestCaseWithBranch):
         """A lightweight checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
-        source_branch = bzrlib.branch.Branch.open(
-            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -469,13 +468,22 @@ class TestBranch(TestCaseWithBranch):
         """A regular checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
-        source_branch = bzrlib.branch.Branch.open(
-            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # open the branch via a readonly transport
+        source_branch = bzrlib.branch.Branch.open(self.get_readonly_url('a'))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
+
+    def test_set_revision_history(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('a commit', rev_id='rev1')
+        br = tree.branch
+        br.set_revision_history(["rev1"])
+        self.assertEquals(br.revision_history(), ["rev1"])
+        br.set_revision_history([])
+        self.assertEquals(br.revision_history(), [])
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -488,7 +496,7 @@ class ChrootedTests(TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
