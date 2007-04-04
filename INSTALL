@@ -24,3 +24,6 @@ To install system-wide, run (as root)
 
   python setup.py install
 
+For more information on installation, see
+http://bazaar-vcs.org/InstallationFaq
+or write to bazaar@lists.canonical.com.
