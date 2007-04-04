@@ -863,6 +863,9 @@ class SmartTCPServer(object):
                     except socket_error, e:
                         trace.warning("client disconnected: %s", e)
                         pass
+            except KeyboardInterrupt:
+                # dont log when CTRL-C'd.
+                raise
             except Exception, e:
                 trace.error("Unhandled smart server error.")
                 trace.log_exception_quietly()
