@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib import (
     osutils,
     )
-from bzrlib.errors import ParamikoNotPresent, BzrCommandError
+from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
                           TestCaseInTempDir,
@@ -491,13 +491,3 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
-
-class TestSelfTestNot(TestCase):
-
-    def test_selftest_not_noarg(self):
-        # check that 'bzr selftest --not' is trapped correctly
-        #self.assertRaises(BzrCommandError, self.run_bzr_captured,
-        #    ['selftest','--not']) 
-        pass
-
-
