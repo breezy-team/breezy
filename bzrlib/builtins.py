@@ -1626,9 +1626,14 @@ class cmd_log(Command):
 
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
-
+            
+            rev_tag_dict = {}
+            if b.supports_tags():
+                rev_tag_dict = b.tags.get_reverse_tag_dict()
+                
             lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone)
+                            show_timezone=timezone, 
+                            rev_tag_dict=rev_tag_dict)
 
             show_log(b,
                      lf,

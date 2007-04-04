@@ -330,10 +330,12 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
 class LogFormatter(object):
     """Abstract class to display log messages."""
 
-    def __init__(self, to_file, show_ids=False, show_timezone='original'):
+    def __init__(self, to_file, show_ids=False, show_timezone='original',
+                rev_tag_dict = {}):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+        self.rev_tag_dict = rev_tag_dict
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
@@ -370,6 +372,12 @@ class LongLogFormatter(LogFormatter):
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file,  indent+'committer:', rev.committer
+        if (self.rev_tag_dict.has_key(rev.revision_id)):
+            print >>to_file, indent+'tags:',
+            for tag in self.rev_tag_dict[rev.revision_id]:
+                print >>to_file, tag,
+            print >>to_file, ''
+        
         try:
             print >>to_file, indent+'branch nick: %s' % \
                 rev.properties['branch-nick']
