@@ -2316,13 +2316,18 @@ class cmd_selftest(Command):
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
+                     Option('list-only',
+                            help='list the tests instead of running them'),
+                     Option('exclude', type=str,
+                            help='exclude tests that match regular'
+                                 ' expressions in this comma separated list'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None):
+            first=False, numbered_dirs=None, list_only=False, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2345,6 +2350,12 @@ class cmd_selftest(Command):
             pattern = '|'.join(testspecs_list)
         else:
             pattern = ".*"
+        if exclude is None:
+            exclude_pattern = None
+        elif exclude.find(',') >= 0:
+            exclude_pattern = exclude.replace(',','|')
+        else:
+            exclude_pattern = exclude
         if benchmark:
             test_suite_factory = benchmarks.test_suite
             if verbose is None:
@@ -2367,6 +2378,8 @@ class cmd_selftest(Command):
                               bench_history=benchfile,
                               matching_tests_first=first,
                               numbered_dirs=numbered_dirs,
+                              list_only=list_only,
+                              exclude_pattern=exclude_pattern
                               )
         finally:
             if benchfile is not None:

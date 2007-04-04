@@ -493,12 +493,14 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 bench_history=None):
+                 bench_history=None,
+                 list_only=False):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
         self._bench_history = bench_history
+        self.list_only = list_only
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -515,7 +517,12 @@ class TextTestRunner(object):
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
-        test.run(result)
+        if self.list_only:
+            self.stream.writeln("Listing tests only ...\n")
+            for t in iter_suite_tests(test):
+                self.stream.writeln("%s" % (t.id()))
+        else: 
+            test.run(result)
         stopTime = time.time()
         timeTaken = stopTime - startTime
         result.printErrors()
@@ -597,6 +604,8 @@ def iter_suite_tests(suite):
         else:
             raise Exception('unknown object %r inside test suite %r'
                             % (item, suite))
+
+
 
 
 class TestSkipped(Exception):
@@ -2027,32 +2036,45 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern):
+def filter_suite_by_re(suite, pattern, exclude_pattern=None):
     result = TestUtil.TestSuite()
     filter_re = re.compile(pattern)
+    if exclude_pattern is not None:
+        exclude_re = re.compile(exclude_pattern)
     for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            result.addTest(test)
+        test_id = test.id()
+        if exclude_pattern is None or not exclude_re.search(test_id):
+            if filter_re.search(test_id):
+                result.addTest(test)
     return result
 
 
-def sort_suite_by_re(suite, pattern):
+def sort_suite_by_re(suite, pattern, exclude_pattern=None):
     first = []
     second = []
     filter_re = re.compile(pattern)
+    if exclude_pattern is not None:
+        exclude_re = re.compile(exclude_pattern)
     for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            first.append(test)
-        else:
-            second.append(test)
+        test_id = test.id()
+        if exclude_pattern is None or not exclude_re.search(test_id):
+            if filter_re.search(test_id):
+                first.append(test)
+            else:
+                second.append(test)
     return TestUtil.TestSuite(first + second)
 
+
+def list_tests(suite):
+    "Lists the tests in the suite."
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
-              numbered_dirs=None):
+              numbered_dirs=None,
+              list_only=False,
+              exclude_pattern=None):
     global NUMBERED_DIRS
     if numbered_dirs is not None:
         NUMBERED_DIRS = bool(numbered_dirs)
@@ -2066,13 +2088,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            bench_history=bench_history)
+                            bench_history=bench_history,
+                            list_only=list_only)
     runner.stop_on_failure=stop_on_failure
-    if pattern != '.*':
+    if pattern != '.*' or exclude_pattern is not None:
         if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern)
+            suite = sort_suite_by_re(suite, pattern, exclude_pattern)
         else:
-            suite = filter_suite_by_re(suite, pattern)
+            suite = filter_suite_by_re(suite, pattern, exclude_pattern)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -2084,7 +2107,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None,
              matching_tests_first=None,
-             numbered_dirs=None):
+             numbered_dirs=None,
+             list_only=False,
+             exclude_pattern=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2108,7 +2133,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
                      matching_tests_first=matching_tests_first,
-                     numbered_dirs=numbered_dirs)
+                     numbered_dirs=numbered_dirs,
+                     list_only=list_only,
+                     exclude_pattern=exclude_pattern)
     finally:
         default_transport = old_transport
 
