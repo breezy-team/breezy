@@ -33,17 +33,18 @@ def strace(function, *args, **kwargs):
     :return: a tuple: function-result, a StraceResult.
     """
     # capture strace output to a file
-    log_file = tempfile.TemporaryFile()
+    log_file = tempfile.NamedTemporaryFile()
     log_file_fd = log_file.fileno()
     pid = os.getpid()
     # start strace
     proc = subprocess.Popen(['strace',
-        '-f', '-r', '-tt', '-p', str(pid),
+        '-f', '-r', '-tt', '-p', str(pid), '-o', log_file.name
         ],
-        stderr=log_file_fd,
-        stdout=log_file_fd)
-    # TODO? confirm its started (test suite should be sufficient)
-    # (can loop on proc.pid, but that may not indicate started and attached.)
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    # Wait for strace to attach
+    attached_notice = proc.stdout.readline()
+    # Run the function to strace
     result = function(*args, **kwargs)
     # stop strace
     os.kill(proc.pid, signal.SIGQUIT)
