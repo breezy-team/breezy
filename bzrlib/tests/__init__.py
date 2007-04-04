@@ -612,8 +612,6 @@ def iter_suite_tests(suite):
                             % (item, suite))
 
 
-
-
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
 
