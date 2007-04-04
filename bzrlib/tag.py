@@ -111,6 +111,20 @@ class BasicTags(_Tags):
             return self._deserialize_tag_dict(tag_content)
         finally:
             self.branch.unlock()
+            
+            
+    def get_reverse_tag_dict(self):
+        """Returns a dict with revisions as keys
+           and a list of tags for that revision as value"""
+        d = self.get_tag_dict()
+        rev = {}
+        for key in d:
+            try:
+                rev[d[key]].append(key)
+            except KeyError:
+                rev[d[key]] = [key]
+        return rev
+
 
     def delete_tag(self, tag_name):
         """Delete a tag definition.
