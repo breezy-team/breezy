@@ -924,7 +924,12 @@ class TestCase(unittest.TestCase):
         """Invoke a test, expecting it to fail for the given reason.
 
         This is for assertions that ought to succeed, but currently fail.
-        (The failure is *expected* but not *wanted*.)
+        (The failure is *expected* but not *wanted*.)  Please be very precise
+        about the failure you're expecting.  If a new bug is introduced,
+        AssertionError should be raised, not KnownFailure.
+
+        Frequently, expectFailure should be followed by an opposite assertion.
+        See example below.
 
         Intended to be used with a callable that raises AssertionError as the
         'assertion' parameter.  args and kwargs are passed to the 'assertion'.
@@ -933,8 +938,15 @@ class TestCase(unittest.TestCase):
         test succeeds.
 
         example usage::
-          self.expectFailure('File creation is broken', self.failUnlessExists,
-                             'path/that/should/exist')
+
+          self.expectFailure('Math is broken', self.assertNotEqual, 54,
+                             dynamic_val)
+          self.assertEqual(42, dynamic_val)
+
+          This means that a dynamic_val of 54 will cause the test to raise
+          a KnownFailure.  Once math is fixed and the expectFailure is removed,
+          only a dynamic_val of 42 will allow the test to pass.  Anything other
+          than 54 or 42 will cause an AssertionError.
         """
         try:
             assertion(*args, **kwargs)
