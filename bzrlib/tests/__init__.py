@@ -34,6 +34,7 @@ import errno
 import logging
 import os
 from pprint import pformat
+import random
 import re
 import shlex
 import stat
@@ -518,18 +519,23 @@ class TextTestRunner(object):
         result.stop_early = self.stop_on_failure
         result.report_starting()
         if self.list_only:
-            self.stream.writeln("Listing tests only ...\n")
+            if self.verbosity >= 2:
+                self.stream.writeln("Listing tests only ...\n")
+            run = 0
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
+                run += 1
+            actionTaken = "Listed"
         else: 
             test.run(result)
+            run = result.testsRun
+            actionTaken = "Ran"
         stopTime = time.time()
         timeTaken = stopTime - startTime
         result.printErrors()
         self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+                            run, run != 1 and "s" or "", timeTaken))
         self.stream.writeln()
         if not result.wasSuccessful():
             self.stream.write("FAILED (")
@@ -2036,20 +2042,14 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern, exclude_pattern=None):
-    result = TestUtil.TestSuite()
-    filter_re = re.compile(pattern)
-    if exclude_pattern is not None:
-        exclude_re = re.compile(exclude_pattern)
-    for test in iter_suite_tests(suite):
-        test_id = test.id()
-        if exclude_pattern is None or not exclude_re.search(test_id):
-            if filter_re.search(test_id):
-                result.addTest(test)
-    return result
+def filter_suite_by_re(suite, pattern, exclude_pattern=None,
+    random_order=False):
+    return sort_suite_by_re(suite, pattern, False, exclude_pattern,
+        random_order)
 
 
-def sort_suite_by_re(suite, pattern, exclude_pattern=None):
+def sort_suite_by_re(suite, pattern, append_rest=True, exclude_pattern=None,
+    random_order=False):
     first = []
     second = []
     filter_re = re.compile(pattern)
@@ -2060,13 +2060,13 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None):
         if exclude_pattern is None or not exclude_re.search(test_id):
             if filter_re.search(test_id):
                 first.append(test)
-            else:
+            elif append_rest:
                 second.append(test)
+    if random_order:
+        random.shuffle(first)
+        random.shuffle(second)
     return TestUtil.TestSuite(first + second)
 
-
-def list_tests(suite):
-    "Lists the tests in the suite."
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
@@ -2074,6 +2074,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               matching_tests_first=None,
               numbered_dirs=None,
               list_only=False,
+              random_seed=None,
               exclude_pattern=None):
     global NUMBERED_DIRS
     if numbered_dirs is not None:
@@ -2091,11 +2092,30 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             bench_history=bench_history,
                             list_only=list_only)
     runner.stop_on_failure=stop_on_failure
-    if pattern != '.*' or exclude_pattern is not None:
-        if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern, exclude_pattern)
+    # Initialise the random number generator and display the seed used.
+    # We convert the seed to a long to make it reuseable across invocations.
+    random_order = False
+    if random_seed is not None:
+        random_order = True
+        if random_seed == "now":
+            random_seed = long(time.time())
         else:
-            suite = filter_suite_by_re(suite, pattern, exclude_pattern)
+            # Convert the seed to a long if we can
+            try:
+                random_seed = long(random_seed)
+            except:
+                pass
+        runner.stream.writeln("Randomizing test order using seed %s\n" %
+            (random_seed))
+        random.seed(random_seed)
+    # Customise the list of tests if requested
+    if pattern != '.*' or exclude_pattern is not None or random_order:
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
+        else:
+            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -2109,6 +2129,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              matching_tests_first=None,
              numbered_dirs=None,
              list_only=False,
+             random_seed=None,
              exclude_pattern=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2135,6 +2156,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      matching_tests_first=matching_tests_first,
                      numbered_dirs=numbered_dirs,
                      list_only=list_only,
+                     random_seed=random_seed,
                      exclude_pattern=exclude_pattern)
     finally:
         default_transport = old_transport
