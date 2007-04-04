@@ -365,3 +365,5 @@ class TestEncoding(TestCase):
             inv.add(InventoryFile('b-id', u'\u1234', 'tree-root'))
         except errors.BzrError, e:
             self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
+        else:
+            self.fail('BzrError not raised')
