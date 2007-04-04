@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * WorkingTree.apply_inventory_delta provides a better alternative to
       WorkingTree._write_inventory.  (Aaron Bentley)
 
+    * Convenience method TestCase.expectFailure ensures that known failures
+      do not silently pass.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  

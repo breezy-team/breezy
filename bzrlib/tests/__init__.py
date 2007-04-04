@@ -920,6 +920,29 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
+    def expectFailure(self, reason, assertion, *args, **kwargs):
+        """Invoke a test, expecting it to fail for the given reason.
+
+        This is for assertions that ought to succeed, but currently fail.
+        (The failure is *expected* but not *wanted*.)
+
+        Intended to be used with a callable that raises AssertionError as the
+        'assertion' parameter.  args and kwargs are passed to the 'assertion'.
+
+        Raises KnownFailure if the test fails.  Raises AssertionError if the
+        test succeeds.
+
+        example usage::
+          self.expectFailure('File creation is broken', self.failUnlessExists,
+                             'path/that/should/exist')
+        """
+        try:
+            assertion(*args, **kwargs)
+        except AssertionError:
+            raise KnownFailure(reason)
+        else:
+            self.fail('Unexpected success.  Should have failed: %s' % reason)
+
     def _capture_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
