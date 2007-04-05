@@ -755,7 +755,10 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         # prevent hooks affecting tests
-        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self._preserved_hooks = {
+            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
+            bzrlib.transport.smart.SmartTCPServer:bzrlib.transport.smart.SmartTCPServer.hooks,
+            }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
@@ -1098,7 +1101,8 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        bzrlib.branch.Branch.hooks = self._preserved_hooks
+        for klass, hooks in self._preserved_hooks.items():
+            setattr(klass, 'hooks', hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
