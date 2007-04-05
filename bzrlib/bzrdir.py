@@ -636,10 +636,14 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_repository)
 
-    def open_workingtree(self, _unsupported=False):
+    def open_workingtree(self, _unsupported=False,
+            recommend_upgrade=True):
         """Open the workingtree object at this BzrDir if one is present.
-        
-        TODO: static convenience version of this?
+
+        :param recommend_upgrade: Optional keyword parameter, when True (the
+            default), emit through the ui module a recommendation that the user
+            upgrade the working tree when the workingtree being opened is old
+            (but still fully supported).
         """
         raise NotImplementedError(self.open_workingtree)
 
