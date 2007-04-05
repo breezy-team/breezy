@@ -195,6 +195,7 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 #
 
 from cStringIO import StringIO
+import errno
 import os
 import socket
 import sys
@@ -835,6 +836,8 @@ class SmartTCPServer(object):
         :param host: Name of the interface to listen on.
         :param port: TCP port to listen on, or 0 to allocate a transient port.
         """
+        from socket import error as socket_error
+        self._socket_error = socket_error
         self._server_socket = socket.socket()
         self._server_socket.bind((host, port))
         self._sockname = self._server_socket.getsockname()
@@ -842,27 +845,34 @@ class SmartTCPServer(object):
         self._server_socket.listen(1)
         self._server_socket.settimeout(1)
         self.backing_transport = backing_transport
+        self._started = threading.Event()
+        self._stopped = threading.Event()
 
     def serve(self):
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
         # module's globals get set to None during interpreter shutdown.
         from socket import timeout as socket_timeout
-        from socket import error as socket_error
         self._should_terminate = False
         for hook in SmartTCPServer.hooks['server_started']:
             hook(self.backing_transport.base, self.get_url())
+        self._started.set()
         try:
             try:
                 while not self._should_terminate:
                     try:
-                        self.accept_and_serve()
+                        conn, client_addr = self._server_socket.accept()
                     except socket_timeout:
                         # just check if we're asked to stop
                         pass
-                    except socket_error, e:
-                        trace.warning("client disconnected: %s", e)
-                        pass
+                    except self._socket_error, e:
+                        # if the socket is closed by stop_background_thread
+                        # we might get a EBADF here, any other socket errors
+                        # should get logged.
+                        if e.args[0] != errno.EBADF:
+                            trace.warning("listening socket error: %s", e)
+                    else:
+                        self.serve_conn(conn)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
@@ -871,9 +881,11 @@ class SmartTCPServer(object):
                 trace.log_exception_quietly()
                 raise
         finally:
+            self._stopped.set()
             try:
+                # ensure the server socket is closed.
                 self._server_socket.close()
-            except socket_error:
+            except self._socket_error:
                 # ignore errors on close
                 pass
             for hook in SmartTCPServer.hooks['server_stopped']:
@@ -883,8 +895,7 @@ class SmartTCPServer(object):
         """Return the url of the server"""
         return "bzr://%s:%d/" % self._sockname
 
-    def accept_and_serve(self):
-        conn, client_addr = self._server_socket.accept()
+    def serve_conn(self, conn):
         # For WIN32, where the timeout value from the listening socket
         # propogates to the newly accepted socket.
         conn.setblocking(True)
@@ -895,20 +906,38 @@ class SmartTCPServer(object):
         connection_thread.start()
 
     def start_background_thread(self):
+        self._started.clear()
         self._server_thread = threading.Thread(None,
                 self.serve,
                 name='server-' + self.get_url())
         self._server_thread.setDaemon(True)
         self._server_thread.start()
+        self._started.wait()
 
     def stop_background_thread(self):
+        self._stopped.clear()
+        # tell the main loop to quit on the next iteration.
         self._should_terminate = True
-        # At one point we would wait to join the threads here, but it looks
-        # like they don't actually exit.  So now we just leave them running
-        # and expect to terminate the process. -- mbp 20070215
-        # self._server_socket.close()
-        ## sys.stderr.write("waiting for server thread to finish...")
-        ## self._server_thread.join()
+        # close the socket - gives error to connections from here on in,
+        # rather than a connection reset error to connections made during
+        # the period between setting _should_terminate = True and 
+        # the current request completing/aborting. It may also break out the
+        # main loop if it was currently in accept() (on some platforms).
+        try:
+            self._server_socket.close()
+        except self._socket_error:
+            # ignore errors on close
+            pass
+        if not self._stopped.isSet():
+            # server has not stopped (though it may be stopping)
+            # its likely in accept(), so give it a connection
+            temp_socket = socket.socket()
+            temp_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            if not temp_socket.connect_ex(self._sockname):
+                # and close it immediately: we dont choose to send any requests.
+                temp_socket.close()
+        self._stopped.wait()
+        self._server_thread.join()
 
 
 class SmartServerHooks(Hooks):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -822,30 +822,20 @@ class SmartTCPTests(tests.TestCase):
 
 class TestServerSocketUsage(SmartTCPTests):
 
-    def test_server_closes_listening_sock_on_shutdown(self):
+    def test_server_setup_teardown(self):
+        """It should be safe to teardown the server with no requests."""
+        self.setUpServer()
+        server = self.server
+        transport = smart.SmartTCPTransport(self.server.get_url())
+        self.tearDownServer()
+        self.assertRaises(errors.ConnectionError, transport.has, '.')
+
+    def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
         self.setUpServer()
-        # clean up the server and initial transport (which wont have connected):
-        # force a connection, which uses the listening socket to synchronise
-        # with the server thread, so that when we shut it down it has already
-        # executed the 'self._should_terminate = False' line in the server
-        # method.
         server = self.server
         self.transport.has('.')
         self.tearDownServer()
-        # make a new connection to break out the inner loop in the server.
-        transport = smart.SmartTCPTransport(server.get_url())
-        # force the connection
-        transport.has('.')
-        # and close it.
-        transport.disconnect()
-        # this del probably is not needed, but I wanted to be clear about what
-        # we are testing: having objects hanging around is not part of the test.
-        del transport
-        while server._server_thread.isAlive():
-            # this is fugly: we should have an event for the server we can
-            # wait for.
-            import time; time.sleep(0.001)
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
         transport = smart.SmartTCPTransport(server.get_url())
@@ -963,24 +953,15 @@ class TestServerHooks(SmartTCPTests):
             self.capture_server_call)
         self.setUpServer()
         result = [(self.backing_transport.base, self.transport.base)]
-        # check the stopping message isn't emitted up front, this also
-        # has the effect of synchronising with the server, so that
-        # when we shut it down it has already executed the 
-        # 'self._should_terminate = False' line in the server method.
+        # check the stopping message isn't emitted up front.
+        self.assertEqual([], self.hook_calls)
+        # nor after a single message
         self.transport.has('.')
         self.assertEqual([], self.hook_calls)
         # clean up the server
         server = self.server
         self.tearDownServer()
-        # make a new connection to break out the inner loop in the server.
-        transport = smart.SmartTCPTransport(result[0][1])
-        transport.has('.')
-        transport.disconnect()
-        del transport
-        while server._server_thread.isAlive():
-            # this is fugly: we should have an event for the server we can
-            # wait for.
-            import time; time.sleep(0.001)
+        # now it should have fired.
         self.assertEqual(result, self.hook_calls)
 
 # TODO: test that when the server suffers an exception that it calls the
