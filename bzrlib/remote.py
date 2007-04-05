@@ -132,12 +132,12 @@ class RemoteBzrDir(BzrDir):
         if response[1] == '':
             format = RemoteRepositoryFormat()
             format.rich_root_data = response[2] == 'True'
-            format.support_tree_reference = response[3] == 'True'
+            format.supports_tree_reference = response[3] == 'True'
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
 
-    def open_workingtree(self):
+    def open_workingtree(self, recommend_upgrade=True):
         raise errors.NotLocalUrl(self.root_transport)
 
     def _path_for_remote_call(self, client):
@@ -161,15 +161,10 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False):
         self._ensure_real()
         return self._real_bzrdir.clone(url, revision_id=revision_id,
-            basis=basis, force_new_repo=force_new_repo)
-
-    #def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
-    #    self._ensure_real()
-    #    return self._real_bzrdir.sprout(url, revision_id=revision_id,
-    #        basis=basis, force_new_repo=force_new_repo)
+            force_new_repo=force_new_repo)
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
@@ -180,7 +175,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     The RemoteRepositoryFormat is parameterised during construction
     to reflect the capabilities of the real, remote format. Specifically
-    the attributes rich_root_data and support_tree_reference are set
+    the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
     """
@@ -188,7 +183,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     _matchingbzrdir = RemoteBzrDirFormat
 
     def initialize(self, a_bzrdir, shared=False):
-        assert isinstance(a_bzrdir, RemoteBzrDir)
+        assert isinstance(a_bzrdir, RemoteBzrDir), \
+            '%r is not a RemoteBzrDir' % (a_bzrdir,)
         return a_bzrdir.create_repository(shared=shared)
     
     def open(self, a_bzrdir):
@@ -205,8 +201,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if (self.support_tree_reference and
-            not getattr(target_format, 'support_tree_reference', False)):
+        if (self.supports_tree_reference and
+            not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
 
@@ -479,10 +475,9 @@ class RemoteRepository(object):
         return self._real_repository.get_transaction()
 
     @needs_read_lock
-    def clone(self, a_bzrdir, revision_id=None, basis=None):
+    def clone(self, a_bzrdir, revision_id=None):
         self._ensure_real()
-        return self._real_repository.clone(
-            a_bzrdir, revision_id=revision_id, basis=basis)
+        return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
 
     def make_working_trees(self):
         """RemoteRepositories never create working trees by default."""
@@ -565,10 +560,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.check(revision_ids)
 
-    def copy_content_into(self, destination, revision_id=None, basis=None):
+    def copy_content_into(self, destination, revision_id=None):
         self._ensure_real()
         return self._real_repository.copy_content_into(
-            destination, revision_id=revision_id, basis=basis)
+            destination, revision_id=revision_id)
 
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)

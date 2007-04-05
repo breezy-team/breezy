@@ -86,7 +86,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
             rich_root = 'True'
         else:
             rich_root = 'False'
-        if repo._format.support_tree_reference:
+        if repo._format.supports_tree_reference:
             subtrees = 'True'
         else:
             subtrees = 'False'

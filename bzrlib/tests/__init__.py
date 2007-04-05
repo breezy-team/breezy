@@ -868,6 +868,26 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
+    def assertRaises(self, excClass, func, *args, **kwargs):
+        """Assert that a callable raises a particular exception.
+
+        :param excClass: As for the except statement, this may be either an
+        exception class, or a tuple of classes.
+
+        Returns the exception so that you can examine it.
+        """
+        try:
+            func(*args, **kwargs)
+        except excClass, e:
+            return e
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                # probably a tuple
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def assertIs(self, left, right, message=None):
         if not (left is right):
             if message is not None:
@@ -899,6 +919,41 @@ class TestCase(unittest.TestCase):
         if not isinstance(obj, kls):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
+
+    def expectFailure(self, reason, assertion, *args, **kwargs):
+        """Invoke a test, expecting it to fail for the given reason.
+
+        This is for assertions that ought to succeed, but currently fail.
+        (The failure is *expected* but not *wanted*.)  Please be very precise
+        about the failure you're expecting.  If a new bug is introduced,
+        AssertionError should be raised, not KnownFailure.
+
+        Frequently, expectFailure should be followed by an opposite assertion.
+        See example below.
+
+        Intended to be used with a callable that raises AssertionError as the
+        'assertion' parameter.  args and kwargs are passed to the 'assertion'.
+
+        Raises KnownFailure if the test fails.  Raises AssertionError if the
+        test succeeds.
+
+        example usage::
+
+          self.expectFailure('Math is broken', self.assertNotEqual, 54,
+                             dynamic_val)
+          self.assertEqual(42, dynamic_val)
+
+          This means that a dynamic_val of 54 will cause the test to raise
+          a KnownFailure.  Once math is fixed and the expectFailure is removed,
+          only a dynamic_val of 42 will allow the test to pass.  Anything other
+          than 54 or 42 will cause an AssertionError.
+        """
+        try:
+            assertion(*args, **kwargs)
+        except AssertionError:
+            raise KnownFailure(reason)
+        else:
+            self.fail('Unexpected success.  Should have failed: %s' % reason)
 
     def _capture_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.

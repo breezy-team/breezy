@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 import errno
 from SimpleHTTPServer import SimpleHTTPRequestHandler
+import re
 import socket
 import urlparse
 
@@ -121,7 +122,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         """Hand the request off to a smart server instance."""
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        transport = get_transport(self.server.test_case._home_dir)
+        transport = get_transport(self.server.test_case_server._home_dir)
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -178,9 +179,9 @@ class TestCaseWithWebserver(TestCaseWithTransport):
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
-    """A support class providinf readonly urls (on two servers) that are http://.
+    """A support class providing readonly urls on two servers that are http://.
 
-    We setup two webservers to allows various tests involving
+    We set up two webservers to allows various tests involving
     proxies or redirections from one server to the other.
     """
     def setUp(self):
@@ -225,5 +226,87 @@ class FakeProxyRequestHandler(TestingHTTPRequestHandler):
         # wants with the path
         return TestingHTTPRequestHandler.translate_path(self, path)
 
+
+class RedirectRequestHandler(TestingHTTPRequestHandler):
+    """Redirect all request to the specified server"""
+
+    def parse_request(self):
+        """Redirect a single HTTP request to another host"""
+        valid = TestingHTTPRequestHandler.parse_request(self)
+        if valid:
+            tcs = self.server.test_case_server
+            code, target = tcs.is_redirected(self.path)
+            if code is not None and target is not None:
+                # Redirect as instructed
+                self.send_response(code)
+                self.send_header('Location', target)
+                self.end_headers()
+                return False # The job is done
+            else:
+                # We leave the parent class serve the request
+                pass
+        return valid
+
+
+class HTTPServerRedirecting(HttpServer):
+    """An HttpServer redirecting to another server """
+
+    def __init__(self, request_handler=RedirectRequestHandler):
+        HttpServer.__init__(self, request_handler)
+        # redirections is a list of tuples (source, target, code)
+        # - source is a regexp for the paths requested
+        # - target is a replacement for re.sub describing where
+        #   the request will be redirected
+        # - code is the http error code associated to the
+        #   redirection (301 permanent, 302 temporarry, etc
+        self.redirections = []
+
+    def redirect_to(self, host, port):
+        """Redirect all requests to a specific host:port"""
+        self.redirections = [('(.*)',
+                              r'http://%s:%s\1' % (host, port) ,
+                              301)]
+
+    def is_redirected(self, path):
+        """Is the path redirected by this server.
+
+        :param path: the requested relative path
+
+        :returns: a tuple (code, target) if a matching
+             redirection is found, (None, None) otherwise.
+        """
+        code = None
+        target = None
+        for (rsource, rtarget, rcode) in self.redirections:
+            target, match = re.subn(rsource, rtarget, path)
+            if match:
+                code = rcode
+                break # The first match wins
+            else:
+                target = None
+        return code, target
+
+
+class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
+   """A support class providing redirections from one server to another.
+
+   We set up two webservers to allows various tests involving
+   redirections.
+   The 'old' server is redirected to the 'new' server.
+   """
+
+   def create_transport_secondary_server(self):
+       """Create the secondary server redirecting to the primary server"""
+       new = self.get_readonly_server()
+       redirecting = HTTPServerRedirecting()
+       redirecting.redirect_to(new.host, new.port)
+       return redirecting
+
+   def setUp(self):
+       super(TestCaseWithRedirectedWebserver, self).setUp()
+       # The redirections will point to the new server
+       self.new_server = self.get_readonly_server()
+       # The requests to the old server will be redirected
+       self.old_server = self.get_secondary_server()
 
 

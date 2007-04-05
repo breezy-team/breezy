@@ -48,7 +48,7 @@ class SmartServerRequestFindRepository(SmartServerRequest):
                 rich_root = 'True'
             else:
                 rich_root = 'False'
-            if repository._format.support_tree_reference:
+            if repository._format.supports_tree_reference:
                 tree_ref = 'True'
             else:
                 tree_ref = 'False'

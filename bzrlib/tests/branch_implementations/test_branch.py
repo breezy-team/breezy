@@ -49,11 +49,6 @@ from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 
-# TODO: Make a branch using basis branch, and check that it 
-# doesn't request any files that could have been avoided, by 
-# hooking into the Transport.
-
-
 class TestCaseWithBranch(TestCaseWithBzrDir):
 
     def setUp(self):
@@ -163,16 +158,6 @@ class TestBranch(TestCaseWithBranch):
         tree_a, tree_b = self.get_unbalanced_tree_pair()
         tree_b.branch.repository.fetch(tree_a.branch.repository)
         return tree_a, tree_b
-
-    def test_clone_branch(self):
-        """Copy the stores from one branch to another"""
-        tree_a, tree_b = self.get_balanced_branch_pair()
-        tree_b.commit("silly commit")
-        os.mkdir('c')
-        # this fails to test that the history from a was not used.
-        dir_c = tree_a.bzrdir.clone('c', basis=tree_b.bzrdir)
-        self.assertEqual(tree_a.branch.revision_history(),
-                         dir_c.open_branch().revision_history())
 
     def test_clone_partial(self):
         """Copy only part of the history of a branch."""

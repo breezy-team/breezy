@@ -339,14 +339,14 @@ class Repository(object):
         control = bzrdir.BzrDir.open(base)
         return control.open_repository()
 
-    def copy_content_into(self, destination, revision_id=None, basis=None):
+    def copy_content_into(self, destination, revision_id=None):
         """Make a complete copy of the content in self into destination.
         
         This is a destructive operation! Do not use it on existing 
         repositories.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return InterRepository.get(self, destination).copy_content(revision_id, basis)
+        return InterRepository.get(self, destination).copy_content(revision_id)
 
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
@@ -354,8 +354,11 @@ class Repository(object):
         If revision_id is None all content is copied.
         """
         revision_id = osutils.safe_revision_id(revision_id)
-        return InterRepository.get(source, self).fetch(revision_id=revision_id,
-                                                       pb=pb)
+        inter = InterRepository.get(source, self)
+        try:
+            return inter.fetch(revision_id=revision_id, pb=pb)
+        except NotImplementedError:
+            raise errors.IncompatibleRepositories(source, self)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
@@ -379,7 +382,7 @@ class Repository(object):
         self.control_files.unlock()
 
     @needs_read_lock
-    def clone(self, a_bzrdir, revision_id=None, basis=None):
+    def clone(self, a_bzrdir, revision_id=None):
         """Clone this repository into a_bzrdir using the current format.
 
         Currently no check is made that the format of this repository and
@@ -397,7 +400,7 @@ class Repository(object):
                 dest_repo = self._format.initialize(a_bzrdir, shared=self.is_shared())
             except errors.UninitializableFormat:
                 dest_repo = a_bzrdir.open_repository()
-        self.copy_content_into(dest_repo, revision_id, basis)
+        self.copy_content_into(dest_repo, revision_id)
         return dest_repo
 
     @needs_read_lock
@@ -1234,7 +1237,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
-    support_tree_reference = False
+    supports_tree_reference = False
     _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def __init__(self):
@@ -1310,7 +1313,7 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None):
         raise NotImplementedError(self.copy_content)
 
     def fetch(self, revision_id=None, pb=None):
@@ -1375,7 +1378,7 @@ class InterSameDataRepository(InterRepository):
         return True
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
         
         This is a destructive operation! Do not use it on existing 
@@ -1383,7 +1386,6 @@ class InterSameDataRepository(InterRepository):
 
         :param revision_id: Only copy the content needed to construct
                             revision_id and its parents.
-        :param basis: Copy the needed data preferentially from basis.
         """
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
@@ -1392,9 +1394,6 @@ class InterSameDataRepository(InterRepository):
         # TODO: jam 20070210 This is fairly internal, so we should probably
         #       just assert that revision_id is not unicode.
         revision_id = osutils.safe_revision_id(revision_id)
-        # grab the basis available data
-        if basis is not None:
-            self.target.fetch(basis, revision_id=revision_id)
         # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, _mod_revision.NULL_REVISION) and 
             self.target.has_revision(revision_id)):
@@ -1449,46 +1448,36 @@ class InterWeaveRepo(InterSameDataRepository):
             return False
     
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None):
         """See InterRepository.copy_content()."""
         # weave specific optimised path:
         # TODO: jam 20070210 Internal, should be an assert, not translate
         revision_id = osutils.safe_revision_id(revision_id)
-        if basis is not None:
-            # copy the basis in, then fetch remaining data.
-            basis.copy_content_into(self.target, revision_id)
-            # the basis copy_content_into could miss-set this.
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except NotImplementedError:
+            pass
+        # FIXME do not peek!
+        if self.source.control_files._transport.listable():
+            pb = ui.ui_factory.nested_progress_bar()
             try:
-                self.target.set_make_working_trees(self.source.make_working_trees())
-            except NotImplementedError:
-                pass
-            self.target.fetch(self.source, revision_id=revision_id)
+                self.target.weave_store.copy_all_ids(
+                    self.source.weave_store,
+                    pb=pb,
+                    from_transaction=self.source.get_transaction(),
+                    to_transaction=self.target.get_transaction())
+                pb.update('copying inventory', 0, 1)
+                self.target.control_weaves.copy_multi(
+                    self.source.control_weaves, ['inventory'],
+                    from_transaction=self.source.get_transaction(),
+                    to_transaction=self.target.get_transaction())
+                self.target._revision_store.text_store.copy_all_ids(
+                    self.source._revision_store.text_store,
+                    pb=pb)
+            finally:
+                pb.finished()
         else:
-            try:
-                self.target.set_make_working_trees(self.source.make_working_trees())
-            except NotImplementedError:
-                pass
-            # FIXME do not peek!
-            if self.source.control_files._transport.listable():
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
-                    self.target.weave_store.copy_all_ids(
-                        self.source.weave_store,
-                        pb=pb,
-                        from_transaction=self.source.get_transaction(),
-                        to_transaction=self.target.get_transaction())
-                    pb.update('copying inventory', 0, 1)
-                    self.target.control_weaves.copy_multi(
-                        self.source.control_weaves, ['inventory'],
-                        from_transaction=self.source.get_transaction(),
-                        to_transaction=self.target.get_transaction())
-                    self.target._revision_store.text_store.copy_all_ids(
-                        self.source._revision_store.text_store,
-                        pb=pb)
-                finally:
-                    pb.finished()
-            else:
-                self.target.fetch(self.source, revision_id=revision_id)
+            self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
@@ -1640,7 +1629,7 @@ class InterModel1and2(InterRepository):
         return f.count_copied, f.failed_revisions
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
         
         This is a destructive operation! Do not use it on existing 
@@ -1648,7 +1637,6 @@ class InterModel1and2(InterRepository):
 
         :param revision_id: Only copy the content needed to construct
                             revision_id and its parents.
-        :param basis: Copy the needed data preferentially from basis.
         """
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
@@ -1656,9 +1644,6 @@ class InterModel1and2(InterRepository):
             pass
         # TODO: jam 20070210 Internal, assert, don't translate
         revision_id = osutils.safe_revision_id(revision_id)
-        # grab the basis available data
-        if basis is not None:
-            self.target.fetch(basis, revision_id=revision_id)
         # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, _mod_revision.NULL_REVISION) and 
             self.target.has_revision(revision_id)):

@@ -44,15 +44,6 @@ from bzrlib.smart import medium
 import bzrlib.transport
 
 
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    try:
-        f.write(txt.read())
-    finally:
-        f.close()
-
-
 class TransportTests(TestTransportImplementation):
 
     def setUp(self):

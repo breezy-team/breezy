@@ -1446,6 +1446,19 @@ class TestKnownFailure(TestCase):
         # runners.
         self.assertIsInstance(KnownFailure(""), AssertionError)
 
+    def test_expect_failure(self):
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, False)
+        except KnownFailure, e:
+            self.assertEqual('Doomed to failure', e.args[0])
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, True)
+        except AssertionError, e:
+            self.assertEqual('Unexpected success.  Should have failed:'
+                             ' Doomed to failure', e.args[0])
+        else:
+            self.fail('Assertion not raised')
+
 
 class TestFeature(TestCase):
 

@@ -258,20 +258,6 @@ class TestRepository(TestCaseWithRepository):
     def test_clone_repository_basis_revision(self):
         raise TestSkipped('the use of a basis should not add noise data to the result.')
 
-    def test_clone_repository_incomplete_source_with_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_repository('source')
-        # this gives us an incomplete repository
-        tree.branch.repository.copy_content_into(source)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        self.assertFalse(source.has_revision('2'))
-        target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
-        self.assertTrue(target.open_repository().has_revision('2'))
-
     def test_clone_shared_no_tree(self):
         # cloning a shared repository keeps it shared
         # and preserves the make_working_tree setting.
@@ -451,7 +437,7 @@ class TestRepository(TestCaseWithRepository):
         # template from the test suite parameterisation.
         repo = self.make_repository('.')
         repo._format.rich_root_data
-        repo._format.support_tree_reference
+        repo._format.supports_tree_reference
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
