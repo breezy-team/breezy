@@ -836,8 +836,13 @@ class SmartTCPServer(object):
         :param host: Name of the interface to listen on.
         :param port: TCP port to listen on, or 0 to allocate a transient port.
         """
+        # let connections timeout so that we get a chance to terminate
+        # Keep a reference to the exceptions we want to catch because the socket
+        # module's globals get set to None during interpreter shutdown.
+        from socket import timeout as socket_timeout
         from socket import error as socket_error
         self._socket_error = socket_error
+        self._socket_timeout = socket_timeout
         self._server_socket = socket.socket()
         self._server_socket.bind((host, port))
         self._sockname = self._server_socket.getsockname()
@@ -849,10 +854,6 @@ class SmartTCPServer(object):
         self._stopped = threading.Event()
 
     def serve(self):
-        # let connections timeout so that we get a chance to terminate
-        # Keep a reference to the exceptions we want to catch because the socket
-        # module's globals get set to None during interpreter shutdown.
-        from socket import timeout as socket_timeout
         self._should_terminate = False
         for hook in SmartTCPServer.hooks['server_started']:
             hook(self.backing_transport.base, self.get_url())
@@ -862,7 +863,7 @@ class SmartTCPServer(object):
                 while not self._should_terminate:
                     try:
                         conn, client_addr = self._server_socket.accept()
-                    except socket_timeout:
+                    except self._socket_timeout:
                         # just check if we're asked to stop
                         pass
                     except self._socket_error, e:
