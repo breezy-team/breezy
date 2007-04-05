@@ -25,6 +25,18 @@ IN DEVELOPMENT
     * Convenience method TestCase.expectFailure ensures that known failures
       do not silently pass.  (Aaron Bentley)
 
+    * New SmartServer hooks facility. There are two initial hooks documented
+      in bzrlib.transport.smart.SmartServerHooks. The two initial hooks allow
+      plugins to execute code upon server startup and shutdown.
+      (Robert Collins).
+
+    * SmartServer in standalone mode will now close its listening socket
+      when it stops, rather than waiting for garbage collection. This primarily
+      fixes test suite hangs when a test tries to connect to a shutdown server.
+      It may also help improve behaviour when dealing with a server running
+      on a specific port (rather than dynamically assigned ports).
+      (Robert Collins)
+ 
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
@@ -2272,6 +2284,24 @@ bzr 0.1 2005-10-11
       bzr branch it cannot understand. This allows for precise
       handling of such circumstances.
 
+    * Remove RevisionReference class; Revision.parent_ids is now simply a
+      list of their ids and parent_sha1s is a list of their corresponding
+      sha1s (for old branches only at the moment.)
+
+    * New method-object style interface for Commit() and Fetch().
+
+    * Renamed Branch.last_patch() to Branch.last_revision(), since
+      we call them revisions not patches.
+
+    * Move copy_branch to bzrlib.clone.copy_branch.  The destination
+      directory is created if it doesn't exist.
+
+    * Inventories now identify the files which were present by 
+      giving the revision *of that file*.
+
+    * Inventory and Revision XML contains a version identifier.  
+      This must be consistent with the overall branch version
+      but allows for more flexibility in future upgrades.
 
   TESTING:
 

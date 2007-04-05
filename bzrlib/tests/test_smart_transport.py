@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -771,6 +771,7 @@ class TestSmartTCPServer(tests.TestCase):
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
         class FlakyTransport(object):
+            base = 'a_url'
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         server = smart.SmartTCPServer(backing_transport=FlakyTransport())
@@ -808,14 +809,38 @@ class SmartTCPTests(tests.TestCase):
         self.server = smart.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
         self.transport = smart.SmartTCPTransport(self.server.get_url())
+        self.addCleanup(self.tearDownServer)
 
-    def tearDown(self):
+    def tearDownServer(self):
         if getattr(self, 'transport', None):
             self.transport.disconnect()
+            del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
-        super(SmartTCPTests, self).tearDown()
-        
+            del self.server
+
+
+class TestServerSocketUsage(SmartTCPTests):
+
+    def test_server_setup_teardown(self):
+        """It should be safe to teardown the server with no requests."""
+        self.setUpServer()
+        server = self.server
+        transport = smart.SmartTCPTransport(self.server.get_url())
+        self.tearDownServer()
+        self.assertRaises(errors.ConnectionError, transport.has, '.')
+
+    def test_server_closes_listening_sock_on_shutdown_after_request(self):
+        """The server should close its listening socket when it's stopped."""
+        self.setUpServer()
+        server = self.server
+        self.transport.has('.')
+        self.tearDownServer()
+        # if the listening socket has closed, we should get a BADFD error
+        # when connecting, rather than a hang.
+        transport = smart.SmartTCPTransport(server.get_url())
+        self.assertRaises(errors.ConnectionError, transport.has, '.')
+
 
 class WritableEndToEndTests(SmartTCPTests):
     """Client to server tests that require a writable transport."""
@@ -901,7 +926,47 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
         self.setUpServer(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
-        
+
+
+class TestServerHooks(SmartTCPTests):
+
+    def capture_server_call(self, backing_url, public_url):
+        """Record a server_started|stopped hook firing."""
+        self.hook_calls.append((backing_url, public_url))
+
+    def test_server_started_hook(self):
+        """The server_started hook fires when the server is started."""
+        self.hook_calls = []
+        smart.SmartTCPServer.hooks.install_hook('server_started',
+            self.capture_server_call)
+        self.setUpServer()
+        # at this point, the server will be starting a thread up.
+        # there is no indicator at the moment, so bodge it by doing a request.
+        self.transport.has('.')
+        self.assertEqual([(self.backing_transport.base, self.transport.base)],
+            self.hook_calls)
+
+    def test_server_stopped_hook_simple(self):
+        """The server_stopped hook fires when the server is stopped."""
+        self.hook_calls = []
+        smart.SmartTCPServer.hooks.install_hook('server_stopped',
+            self.capture_server_call)
+        self.setUpServer()
+        result = [(self.backing_transport.base, self.transport.base)]
+        # check the stopping message isn't emitted up front.
+        self.assertEqual([], self.hook_calls)
+        # nor after a single message
+        self.transport.has('.')
+        self.assertEqual([], self.hook_calls)
+        # clean up the server
+        server = self.server
+        self.tearDownServer()
+        # now it should have fired.
+        self.assertEqual(result, self.hook_calls)
+
+# TODO: test that when the server suffers an exception that it calls the
+# server-stopped hook.
+
 
 class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     """Test that call directly into the handler logic, bypassing the network."""
