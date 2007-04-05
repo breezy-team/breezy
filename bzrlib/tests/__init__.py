@@ -755,7 +755,10 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         # prevent hooks affecting tests
-        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self._preserved_hooks = {
+            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
+            bzrlib.transport.smart.SmartTCPServer:bzrlib.transport.smart.SmartTCPServer.hooks,
+            }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
@@ -868,6 +871,26 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
+    def assertRaises(self, excClass, func, *args, **kwargs):
+        """Assert that a callable raises a particular exception.
+
+        :param excClass: As for the except statement, this may be either an
+        exception class, or a tuple of classes.
+
+        Returns the exception so that you can examine it.
+        """
+        try:
+            func(*args, **kwargs)
+        except excClass, e:
+            return e
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                # probably a tuple
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def assertIs(self, left, right, message=None):
         if not (left is right):
             if message is not None:
@@ -899,6 +922,41 @@ class TestCase(unittest.TestCase):
         if not isinstance(obj, kls):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
+
+    def expectFailure(self, reason, assertion, *args, **kwargs):
+        """Invoke a test, expecting it to fail for the given reason.
+
+        This is for assertions that ought to succeed, but currently fail.
+        (The failure is *expected* but not *wanted*.)  Please be very precise
+        about the failure you're expecting.  If a new bug is introduced,
+        AssertionError should be raised, not KnownFailure.
+
+        Frequently, expectFailure should be followed by an opposite assertion.
+        See example below.
+
+        Intended to be used with a callable that raises AssertionError as the
+        'assertion' parameter.  args and kwargs are passed to the 'assertion'.
+
+        Raises KnownFailure if the test fails.  Raises AssertionError if the
+        test succeeds.
+
+        example usage::
+
+          self.expectFailure('Math is broken', self.assertNotEqual, 54,
+                             dynamic_val)
+          self.assertEqual(42, dynamic_val)
+
+          This means that a dynamic_val of 54 will cause the test to raise
+          a KnownFailure.  Once math is fixed and the expectFailure is removed,
+          only a dynamic_val of 42 will allow the test to pass.  Anything other
+          than 54 or 42 will cause an AssertionError.
+        """
+        try:
+            assertion(*args, **kwargs)
+        except AssertionError:
+            raise KnownFailure(reason)
+        else:
+            self.fail('Unexpected success.  Should have failed: %s' % reason)
 
     def _capture_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -1043,7 +1101,8 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        bzrlib.branch.Branch.hooks = self._preserved_hooks
+        for klass, hooks in self._preserved_hooks.items():
+            setattr(klass, 'hooks', hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1483,6 +1542,17 @@ class TestCase(unittest.TestCase):
                     this_tree=wt_to)
         wt_to.add_parent_tree_id(branch_from.last_revision())
 
+    def reduceLockdirTimeout(self):
+        """Reduce the default lock timeout for the duration of the test, so that
+        if LockContention occurs during a test, it does so quickly.
+
+        Tests that expect to provoke LockContention errors should call this.
+        """
+        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
+        def resetTimeout():
+            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
+        self.addCleanup(resetTimeout)
+        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
 BzrTestBase = TestCase
 
@@ -1512,8 +1582,10 @@ class TestCaseWithMemoryTransport(TestCase):
         # execution. Variables that the parameteriser sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
-        self.transport_server = default_transport
+        self.vfs_transport_factory = default_transport
+        self.transport_server = None
         self.transport_readonly_server = None
+        self.__vfs_server = None
 
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
@@ -1547,12 +1619,11 @@ class TestCaseWithMemoryTransport(TestCase):
             if self.transport_readonly_server is None:
                 # readonly decorator requested
                 # bring up the server
-                self.get_url()
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.__server)
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             else:
                 self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp()
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
 
@@ -1571,8 +1642,8 @@ class TestCaseWithMemoryTransport(TestCase):
             base = base + relpath
         return base
 
-    def get_server(self):
-        """Get the read/write server instance.
+    def get_vfs_only_server(self):
+        """Get the vfs only read/write server instance.
 
         This is useful for some tests with specific servers that need
         diagnostics.
@@ -1580,13 +1651,38 @@ class TestCaseWithMemoryTransport(TestCase):
         For TestCaseWithMemoryTransport this is always a MemoryServer, and there
         is no means to override it.
         """
+        if self.__vfs_server is None:
+            self.__vfs_server = MemoryServer()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
+
+    def get_server(self):
+        """Get the read/write server instance.
+
+        This is useful for some tests with specific servers that need
+        diagnostics.
+
+        This is built from the self.transport_server factory. If that is None,
+        then the self.get_vfs_server is returned.
+        """
         if self.__server is None:
-            self.__server = MemoryServer()
-            self.__server.setUp()
+            if self.transport_server is None or self.transport_server is self.vfs_transport_factory:
+                return self.get_vfs_only_server()
+            else:
+                # bring up a decorated means of access to the vfs only server.
+                self.__server = self.transport_server()
+                try:
+                    self.__server.setUp(self.get_vfs_only_server())
+                except TypeError, e:
+                    # This should never happen; the try:Except here is to assist
+                    # developers having to update code rather than seeing an
+                    # uninformative TypeError.
+                    raise Exception, "Old server API in use: %s, %s" % (self.__server, e)
             self.addCleanup(self.__server.tearDown)
         return self.__server
 
-    def get_url(self, relpath=None):
+    def _adjust_url(self, base, relpath):
         """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
@@ -1594,7 +1690,6 @@ class TestCaseWithMemoryTransport(TestCase):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
-        base = self.get_server().get_url()
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
@@ -1607,6 +1702,27 @@ class TestCaseWithMemoryTransport(TestCase):
             else:
                 base += urlutils.escape(relpath)
         return base
+
+    def get_url(self, relpath=None):
+        """Get a URL (or maybe a path) for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        base = self.get_server().get_url()
+        return self._adjust_url(base, relpath)
+
+    def get_vfs_only_url(self, relpath=None):
+        """Get a URL (or maybe a path for the plain old vfs transport.
+
+        This will never be a smart protocol.
+        :param relpath: provides for clients to get a path relative to the base
+            url.  These should only be downwards relative, not upwards.
+        """
+        base = self.get_vfs_only_server().get_url()
+        return self._adjust_url(base, relpath)
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
@@ -1691,6 +1807,7 @@ class TestCaseWithMemoryTransport(TestCase):
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
         self.__server = None
+        self.reduceLockdirTimeout()
 
      
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
@@ -1835,36 +1952,27 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
-    def create_transport_server(self):
-        """Create a transport server from class defined at init.
-
-        This is mostly a hook for daughter classes.
-        """
-        return self.transport_server()
-
-    def get_server(self):
+    def get_vfs_only_server(self):
         """See TestCaseWithMemoryTransport.
 
         This is useful for some tests with specific servers that need
         diagnostics.
         """
-        if self.__server is None:
-            self.__server = self.create_transport_server()
-            self.__server.setUp()
-            self.addCleanup(self.__server.tearDown)
-        return self.__server
+        if self.__vfs_server is None:
+            self.__vfs_server = self.vfs_transport_factory()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
 
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
         If the transport is not a LocalTransport, the Tree can't be created on
-        the transport.  In that case the working tree is created in the local
-        directory, and the returned tree's branch and repository will also be
-        accessed locally.
-
-        This will fail if the original default transport for this test
-        case wasn't backed by the working directory, as the branch won't
-        be on disk for us to open it.  
+        the transport.  In that case if the vfs_transport_factory is
+        LocalURLServer the working tree is created in the local
+        directory backing the transport, and the returned tree's branch and
+        repository will also be accessed locally. Otherwise a lightweight
+        checkout is created and returned.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
@@ -1878,13 +1986,15 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
-            # transport can't support them, then reopen the branch on a local
-            # transport, and create the working tree there.  
-            #
-            # Possibly we should instead keep
-            # the non-disk-backed branch and create a local checkout?
-            bd = bzrdir.BzrDir.open(relpath)
-            return bd.create_workingtree()
+            # transport can't support them, then we keep the non-disk-backed
+            # branch and create a local checkout.
+            if self.vfs_transport_factory is LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                return local_controldir.create_workingtree()
+            else:
+                return b.create_checkout(relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
@@ -1912,7 +2022,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
-        self.__server = None
+        self.__vfs_server = None
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -1929,7 +2039,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
 

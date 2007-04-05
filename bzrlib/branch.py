@@ -54,11 +54,12 @@ from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            NotBranchError, UninitializableFormat,
                            UnlistableStore, UnlistableBranch,
                            )
+from bzrlib.hooks import Hooks
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
-                                      zero_eight, zero_nine,
+                                      zero_eight, zero_nine, zero_sixteen,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -297,8 +298,13 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
+    @deprecated_method(zero_sixteen)
     def get_root_id(self):
-        """Return the id of this branches root"""
+        """Return the id of this branches root
+
+        Deprecated: branches don't have root ids-- trees do.
+        Use basis_tree().get_root_id() instead.
+        """
         raise NotImplementedError(self.get_root_id)
 
     def print_file(self, file, revision_id):
@@ -887,7 +893,7 @@ class BranchFormat(object):
             control_files.unlock()
 
 
-class BranchHooks(dict):
+class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
     
     e.g. ['set_rh'] Is the list of items to be called when the
@@ -900,7 +906,7 @@ class BranchHooks(dict):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        dict.__init__(self)
+        Hooks.__init__(self)
         # Introduced in 0.15:
         # invoked whenever the revision history has been set
         # with set_revision_history. The api signature is
@@ -938,20 +944,6 @@ class BranchHooks(dict):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
-
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__ 
-            method of BranchHooks for details on each hook.
-        """
-        try:
-            self[hook_name].append(a_callable)
-        except KeyError:
-            raise errors.UnknownHook('branch', hook_name)
 
 
 # install the default hooks into the Branch class.
@@ -1220,6 +1212,8 @@ class BzrBranch(Branch):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
+
+    @deprecated_method(zero_sixteen)
     @needs_read_lock
     def get_root_id(self):
         """See Branch.get_root_id."""

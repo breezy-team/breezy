@@ -500,7 +500,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         from bzrlib.transport import get_transport
         from bzrlib.transport.memory import MemoryServer
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -542,7 +542,7 @@ class TestTestCaseTransports(TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
@@ -1162,6 +1162,8 @@ class TestTestCase(TestCase):
         """The bzrlib hooks should be sanitised by setUp."""
         self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
+        self.assertEqual(bzrlib.transport.smart.SmartServerHooks(),
+            bzrlib.transport.smart.SmartTCPServer.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -1428,6 +1430,19 @@ class TestKnownFailure(TestCase):
         # a KnownFailure is an assertion error for compatability with unaware
         # runners.
         self.assertIsInstance(KnownFailure(""), AssertionError)
+
+    def test_expect_failure(self):
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, False)
+        except KnownFailure, e:
+            self.assertEqual('Doomed to failure', e.args[0])
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, True)
+        except AssertionError, e:
+            self.assertEqual('Unexpected success.  Should have failed:'
+                             ' Doomed to failure', e.args[0])
+        else:
+            self.fail('Assertion not raised')
 
 
 class TestFeature(TestCase):
