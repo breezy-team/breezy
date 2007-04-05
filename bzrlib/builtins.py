@@ -569,6 +569,8 @@ class cmd_pull(Command):
             directory=None):
         from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
+        revision_id = None
+        mergeable = None
         if directory is None:
             directory = u'.'
         try:
@@ -581,7 +583,8 @@ class cmd_pull(Command):
         reader = None
         if location is not None:
             try:
-                reader = bundle.read_bundle_from_url(location)
+                mergeable = bundle.read_mergeable_from_url(
+                    location)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
 
@@ -596,8 +599,11 @@ class cmd_pull(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        if reader is not None:
-            install_bundle(branch_to.repository, reader)
+        if mergeable is not None:
+            if revision is not None:
+                raise errors.BzrCommandError(
+                    'Cannot use -r with merge directives or bundles')
+            revision_id = mergeable.install_revisions(branch_to.repository)
             branch_from = branch_to
         else:
             branch_from = Branch.open(location)
@@ -605,27 +611,26 @@ class cmd_pull(Command):
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        rev_id = None
-        if revision is None:
-            if reader is not None:
-                rev_id = reader.target
-        elif len(revision) == 1:
-            rev_id = revision[0].in_history(branch_from).rev_id
-        else:
-            raise errors.BzrCommandError('bzr pull --revision takes one value.')
+        if revision is not None:
+            if len(revision) == 1:
+                revision_id = revision[0].in_history(branch_from).rev_id
+            else:
+                raise errors.BzrCommandError(
+                    'bzr pull --revision takes one value.')
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            result = tree_to.pull(branch_from, overwrite, rev_id,
+            result = tree_to.pull(branch_from, overwrite, revision_id,
                 delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
-            result = branch_to.pull(branch_from, overwrite, rev_id)
+            result = branch_to.pull(branch_from, overwrite, revision_id)
 
         result.report(self.outf)
         if verbose:
             from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
+            show_changed_revisions(branch_to, old_rh, new_rh,
+                                   to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -2489,6 +2494,7 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
+        other_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2506,16 +2512,18 @@ class cmd_merge(Command):
 
         if branch is not None:
             try:
-                reader = bundle.read_bundle_from_url(branch)
+                mergeable = bundle.read_mergeable_from_url(
+                    branch)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
             else:
-                conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                         reprocess, show_base, change_reporter)
-                if conflicts == 0:
-                    return 0
-                else:
-                    return 1
+                if revision is not None:
+                    raise errors.BzrCommandError(
+                        'Cannot use -r with merge directives or bundles')
+                other_revision_id = mergeable.install_revisions(
+                    tree.branch.repository)
+                revision = [RevisionSpec.from_string(
+                    'revid:' + other_revision_id)]
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
@@ -2536,9 +2544,14 @@ class cmd_merge(Command):
             branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
-                other_branch, path = Branch.open_containing(branch)
-                revno = revision[0].in_history(other_branch).revno
-                other = [branch, revno]
+                if other_revision_id is not None:
+                    other_branch = None
+                    path = ""
+                    other = None
+                else:
+                    other_branch, path = Branch.open_containing(branch)
+                    revno = revision[0].in_history(other_branch).revno
+                    other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
@@ -2554,12 +2567,14 @@ class cmd_merge(Command):
                 base = [branch, revision[0].in_history(base_branch).revno]
                 other = [branch1, revision[1].in_history(other_branch).revno]
 
-        if tree.branch.get_parent() is None or remember:
+        if ((tree.branch.get_parent() is None or remember) and
+            other_branch is not None):
             tree.branch.set_parent(other_branch.base)
 
         # pull tags now... it's a bit inconsistent to do it ahead of copying
         # the history but that's done inside the merge code
-        _merge_tags_if_possible(other_branch, tree.branch)
+        if other_branch is not None:
+            _merge_tags_if_possible(other_branch, tree.branch)
 
         if path != "":
             interesting_files = [path]
@@ -2569,7 +2584,8 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = _merge_helper(
-                    other, base, check_clean=(not force),
+                    other, base, other_rev_id=other_revision_id,
+                    check_clean=(not force),
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
@@ -3495,7 +3511,8 @@ def _merge_helper(other_revision, base_revision,
                   file_list=None, show_base=False, reprocess=False,
                   pull=False,
                   pb=DummyProgress(),
-                  change_reporter=None):
+                  change_reporter=None,
+                  other_rev_id=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3551,7 +3568,10 @@ def _merge_helper(other_revision, base_revision,
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
-        merger.set_other(other_revision)
+        if other_rev_id is not None:
+            merger.set_other_revision(other_rev_id, this_tree.branch)
+        else:
+            merger.set_other(other_revision)
         merger.pp.next_phase()
         merger.set_base(base_revision)
         if merger.base_rev_id == merger.other_rev_id:

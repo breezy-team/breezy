@@ -17,6 +17,7 @@
 
 """Tests for the strace-invoking support."""
 
+import errno
 import subprocess
 
 from bzrlib.strace import StraceFeature, strace, StraceResult

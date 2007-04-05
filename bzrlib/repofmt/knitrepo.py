@@ -407,7 +407,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
 
     repository_class = KnitRepository3
     rich_root_data = True
-    support_tree_reference = True
+    supports_tree_reference = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
@@ -421,7 +421,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'support_tree_reference', False):
+        if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
             
