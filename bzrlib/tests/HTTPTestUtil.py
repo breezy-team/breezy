@@ -28,7 +28,7 @@ from bzrlib.tests.HttpServer import (
     )
 from bzrlib.transport import (
     get_transport,
-    smart,
+    remote,
     )
 
 
@@ -130,7 +130,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
         out_buffer = StringIO()
-        smart_protocol_request = smart.SmartServerRequestProtocolOne(
+        smart_protocol_request = remote.SmartServerRequestProtocolOne(
                 transport, out_buffer.write)
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919

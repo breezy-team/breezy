@@ -38,10 +38,11 @@ from bzrlib.transport import (
         get_transport,
         local,
         memory,
-        smart,
+        remote,
         )
 from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
+smart = remote
 
 class StringIOSSHVendor(object):
     """A SSH vendor that uses StringIO to buffer writes and answer reads."""
