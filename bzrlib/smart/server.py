@@ -132,11 +132,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         self.stop_background_thread()
         self.chroot_server.tearDown()
 
-    def get_url(self):
-        """Return the url of the server"""
-        host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d/" % (host, port)
-
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
         return 'bzr://127.0.0.1:1/'
