@@ -3224,7 +3224,8 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.transport import smart
+        from bzrlib.smart import server
+        from bzrlib.transport import remote
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
@@ -3233,10 +3234,10 @@ class cmd_serve(Command):
             url = 'readonly+' + url
         t = get_transport(url)
         if inet:
-            server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
+            smart_server = remote.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
         else:
             if port is None:
-                port = smart.BZR_DEFAULT_PORT
+                port = remote.BZR_DEFAULT_PORT
                 host = '127.0.0.1'
             else:
                 if ':' in port:
@@ -3244,10 +3245,10 @@ class cmd_serve(Command):
                 else:
                     host = '127.0.0.1'
                 port = int(port)
-            server = smart.SmartTCPServer(t, host=host, port=port)
-            print 'listening on port: ', server.port
+            smart_server = server.SmartTCPServer(t, host=host, port=port)
+            print 'listening on port: ', smart_server.port
             sys.stdout.flush()
-        server.serve()
+        smart_server.serve()
 
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
