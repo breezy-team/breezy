@@ -97,6 +97,42 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:merge", 1))
 
+    def test_mwh(self):
+        repo = self.make_client('d', 'sc')
+        def mv(*mvs):
+            for a, b in mvs:
+                self.client_copy(a, b)
+                self.client_delete(a)
+            self.client_commit('sc', '.')
+            self.client_update('sc')
+        self.build_tree({'sc/de/foo':'data', 'sc/de/bar':'DATA'})
+        self.client_add('sc/de')
+        self.client_commit('sc', 'blah')
+        self.client_update('sc')
+        os.mkdir('sc/de/trunk')
+        self.client_add('sc/de/trunk')
+        mv(('sc/de/foo', 'sc/de/trunk'), ('sc/de/bar', 'sc/de/trunk'))
+        mv(('sc/de', 'sc/pyd')) 
+        self.client_delete('sc/pyd/trunk/foo')
+        self.client_commit('sc', '.')
+        self.client_update('sc')
+
+        self.make_checkout(repo + '/pyd/trunk', 'pyd')
+        assert open('pyd/bar').read() == 'DATA'
+
+        olddir = BzrDir.open("pyd")
+        os.mkdir('bc')
+        newdir = olddir.sprout("bc")
+        newdir.open_branch().pull(olddir.open_branch())
+        wt = newdir.open_workingtree()
+        assert open('bc/bar').read() == 'DATA'
+        open('bc/bar', 'w').write('data')
+        wt.commit(message="Commit from Bzr")
+        olddir.open_branch().pull(newdir.open_branch())
+
+        self.client_update('pyd')
+        assert open('pyd/bar').read() == 'data'
+        
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -247,4 +283,3 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.assertTrue(wt.branch.last_revision() in 
              repos.get_ancestry(repos.generate_revision_id(3, "")))
-
