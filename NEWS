@@ -2,7 +2,7 @@ bzr-svn 0.3.3	UNRELEASED
 
   IMPROVEMENTS
 
-  * Don't do extra checkout before push if possible. (#91885, #91641)
+  * Don't do extra checkout before push if possible. (#91885)
 
   * Set parent URLs in svn-import. (#94406)
 
