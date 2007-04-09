@@ -868,12 +868,13 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertRaises(self, excClass, func, *args, **kwargs):
+    def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
 
         :param excClass: As for the except statement, this may be either an
             exception class, or a tuple of classes.
-        :param func: A callable, will be passed ``*args`` and ``**kwargs``.
+        :param callableObj: A callable, will be passed ``*args`` and
+            ``**kwargs``.
 
         Returns the exception so that you can examine it.
         """
@@ -1377,7 +1378,7 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param process_args: a list of arguments to pass to the bzr executable,
-            for example `['--version']`.
+            for example ``['--version']``.
         :param env_changes: A dictionary which lists changes to environment
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the

@@ -35,6 +35,7 @@ _unicode_revision_id_utf8 = _unicode_revision_id.encode('utf-8')
 
 
 class EncodingBenchmark(Benchmark):
+    """Benchmark the time to encode strings."""
 
     def setUp(self):
         super(EncodingBenchmark, self).setUp()
@@ -134,7 +135,9 @@ class EncodingBenchmark(Benchmark):
                      unicode("%07d" % x) for x in xrange(500000)]
         self.time(self.encode_cached_multi, revisions, 1)
 
+
 class DecodingBenchmarks(Benchmark):
+    """Benchmark the time to decode strings."""
 
     def setUp(self):
         super(DecodingBenchmarks, self).setUp()
