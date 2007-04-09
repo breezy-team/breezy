@@ -364,6 +364,11 @@ class LongLogFormatter(LogFormatter):
         print >>to_file,  indent+'-' * 60
         if revno is not None:
             print >>to_file,  indent+'revno:', revno
+        if (self.rev_tag_dict.has_key(rev.revision_id)):
+            print >>to_file, indent+'tags:',
+            for tag in self.rev_tag_dict[rev.revision_id]:
+                print >>to_file, tag,
+            print >>to_file, ''
         if merged:
             print >>to_file,  indent+'merged:', rev.revision_id
         elif self.show_ids:
@@ -372,11 +377,6 @@ class LongLogFormatter(LogFormatter):
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file,  indent+'committer:', rev.committer
-        if (self.rev_tag_dict.has_key(rev.revision_id)):
-            print >>to_file, indent+'tags:',
-            for tag in self.rev_tag_dict[rev.revision_id]:
-                print >>to_file, tag,
-            print >>to_file, ''
         
         try:
             print >>to_file, indent+'branch nick: %s' % \
