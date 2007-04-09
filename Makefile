@@ -49,6 +49,10 @@ api-docs:
 	mkdir -p api
 	pydoctor -c pydoctor_bzrlib.cfg --make-html
 
+epydoc-api-docs:
+	mkdir -p api/epydoc
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/epydoc --docformat 'restructuredtext en' bzr bzrlib
+
 
 # build emacs cross-reference
 tag_files=./bzr ./bzrlib/*py ./bzrlib/selftest/*.py
