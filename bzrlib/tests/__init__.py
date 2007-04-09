@@ -872,7 +872,8 @@ class TestCase(unittest.TestCase):
         """Assert that a callable raises a particular exception.
 
         :param excClass: As for the except statement, this may be either an
-        exception class, or a tuple of classes.
+            exception class, or a tuple of classes.
+        :param func: A callable, will be passed ``*args`` and ``**kwargs``.
 
         Returns the exception so that you can examine it.
         """
@@ -962,7 +963,7 @@ class TestCase(unittest.TestCase):
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         :return: A tuple (warnings, result). result is the result of calling
-            a_callable(*args, **kwargs).
+            a_callable(``*args``, ``**kwargs``).
         """
         local_warnings = []
         def capture_warnings(msg, cls=None, stacklevel=None):
@@ -982,15 +983,16 @@ class TestCase(unittest.TestCase):
         """Call a deprecated callable without warning the user.
 
         :param deprecation_format: The deprecation format that the callable
-            should have been deprecated with. This is the same type as the 
-            parameter to deprecated_method/deprecated_function. If the 
+            should have been deprecated with. This is the same type as the
+            parameter to deprecated_method/deprecated_function. If the
             callable is not deprecated with this format, an assertion error
             will be raised.
         :param a_callable: A callable to call. This may be a bound method or
-            a regular function. It will be called with *args and **kwargs.
+            a regular function. It will be called with ``*args`` and
+            ``**kwargs``.
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
-        :return: The result of a_callable(*args, **kwargs)
+        :return: The result of a_callable(``*args``, ``**kwargs``)
         """
         call_warnings, result = self._capture_warnings(a_callable,
             *args, **kwargs)
@@ -1281,9 +1283,9 @@ class TestCase(unittest.TestCase):
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
 
-        :param stdin: A string to be used as stdin for the command.
-        :param retcode: The status code the command should return
-        :param working_dir: The directory to run the command in
+        :keyword stdin: A string to be used as stdin for the command.
+        :keyword retcode: The status code the command should return
+        :keyword working_dir: The directory to run the command in
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1301,18 +1303,19 @@ class TestCase(unittest.TestCase):
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes
-        
-        :param error_regexes: Sequence of regular expressions which 
+
+        :param error_regexes: Sequence of regular expressions which
             must each be found in the error output. The relative ordering
             is not enforced.
         :param args: command-line arguments for bzr
         :param kwargs: Keyword arguments which are interpreted by run_bzr
             This function changes the default value of retcode to be 3,
             since in most cases this is run when you expect bzr to fail.
-        :return: (out, err) The actual output of running the command (in case you
-                 want to do more inspection)
+        :return: (out, err) The actual output of running the command (in case
+            you want to do more inspection)
 
-        Examples of use:
+        Examples of use::
+
             # Make sure that commit is failing because there is nothing to do
             self.run_bzr_error(['no changes to commit'],
                                'commit', '-m', 'my commit comment')
@@ -1337,14 +1340,14 @@ class TestCase(unittest.TestCase):
         handling, or early startup code, etc.  Subprocess code can't be 
         profiled or debugged so easily.
 
-        :param retcode: The status code that is expected.  Defaults to 0.  If
+        :keyword retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
-        :param env_changes: A dictionary which lists changes to environment
+        :keyword env_changes: A dictionary which lists changes to environment
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
-        :param universal_newlines: Convert CRLF => LF
-        :param allow_plugins: By default the subprocess is run with
+        :keyword universal_newlines: Convert CRLF => LF
+        :keyword allow_plugins: By default the subprocess is run with
             --no-plugins to ensure test reproducibility. Also, it is possible
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
@@ -1714,8 +1717,10 @@ class TestCaseWithMemoryTransport(TestCase):
         """Get a URL (or maybe a path for the plain old vfs transport.
 
         This will never be a smart protocol.
+
         :param relpath: provides for clients to get a path relative to the base
             url.  These should only be downwards relative, not upwards.
+        :return: A URL
         """
         base = self.get_vfs_only_server().get_url()
         return self._adjust_url(base, relpath)
@@ -1884,14 +1889,13 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         This assumes that all the elements in the tree being built are new.
 
         This doesn't add anything to a branch.
-        :param line_endings: Either 'binary' or 'native'
-                             in binary mode, exact contents are written
-                             in native mode, the line endings match the
-                             default platform endings.
 
-        :param transport: A transport to write to, for building trees on 
-                          VFS's. If the transport is readonly or None,
-                          "." is opened automatically.
+        :param line_endings: Either 'binary' or 'native'
+            in binary mode, exact contents are written in native mode, the
+            line endings match the default platform endings.
+        :param transport: A transport to write to, for building trees on VFS's.
+            If the transport is readonly or None, "." is opened automatically.
+        :return: None
         """
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
