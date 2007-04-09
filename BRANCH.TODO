@@ -3,6 +3,15 @@
 # 
 #
 
+To build just one file's documentation you can use something like:
+epydoc --html -o api --check --docformat "restructuredtext en" bzrlib/add.py
+
+or you can use:
+pydoctor --make-html --html-output=api/html --docformat "restructuredtext en" --add-module bzrlib/add.py
+
+It will also generate Warnings describing why it isn't considered valid.
+
+
 This is a list of current documentation failures.
 These functions should be documented, and apis should be cleaned up.
 
