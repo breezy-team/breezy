@@ -1766,15 +1766,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return result
 
     @needs_tree_write_lock
-    def remove(self, files, verbose=False, to_file=None, delete_files=False):
-        """Remove nominated files from the working inventory..
+    def remove(self, files, verbose=False, to_file=None, keep_files=True):
+        """Remove nominated files from the working inventor.
 
         TODO: Refuse to remove modified files unless --force is given?
 
         TODO: Do something useful with directories.
 
-        :delete_files: If true, the files will also be delete.
-                       At present recursion is not supported.
+        :keep_files: If true, the files will also be kept.
         """
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
@@ -1782,12 +1781,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             files = [files]
 
         inv = self.inventory
+        changed_files=[]
 
         # Sort needed when deleting files:
         # first delete directory content before the directory
-        if delete_files:
+        if not keep_files:
             files = files[:]
             files.sort(reverse=True)
+
+            changes = self.changes_from(self.basis_tree())
+
+            for f in changes.modified:
+                changed_files.append(f[0])
+            for f in changes.added:
+                changed_files.append(f[0])
 
         # do this before any modifications
         for f in files:
@@ -1805,13 +1812,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     textui.show_status(new_status, inv[fid].kind, f,
                                        to_file=to_file)
                 del inv[fid]
-                message="removed %s"%f
-            if delete_files:
-                if osutils.lexists(f):
-                    osutils.delete_any(f)
-                    message="deleted %s"%f
+
+                if not keep_files:
+                    if osutils.lexists(f):
+                        if changed_files:
+                            message="%s has changed and won't be deleted."%f
+                        else:
+                            #TODO check if folder is empty
+                            osutils.delete_any(f)
+                            message="deleted %s"%f
+                    else:
+                        message="%s does not exist."%f
                 else:
-                    message="%s does not exist."%f
+                    message="removed %s"%f
             # print only one message per file.
             if message is not None:
                 note(message)

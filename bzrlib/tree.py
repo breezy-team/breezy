@@ -530,7 +530,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if not tree.has_id(file_id):
+                if not tree.has_id(file_id) or not file_id in tree.inventory:
                     continue
                 entry = tree.inventory[file_id]
                 for child in getattr(entry, 'children', {}).itervalues():
