@@ -26,7 +26,7 @@ from bzrlib import (
     transport,
     urlutils,
 )
-from bzrlib.transport.remote import SmartServerSocketStreamMedium
+from bzrlib.smart.medium import SmartServerSocketStreamMedium
 
 
 class SmartTCPServer(object):

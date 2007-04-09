@@ -27,9 +27,9 @@ import urllib
 import sys
 
 from bzrlib import errors, ui
+from bzrlib.smart import medium
 from bzrlib.trace import mutter
 from bzrlib.transport import (
-    remote,
     Transport,
     )
 
@@ -113,7 +113,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport, remote.SmartClientMedium):
+class HttpTransportBase(Transport, medium.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -505,11 +505,11 @@ class HttpTransportBase(Transport, remote.SmartClientMedium):
         return body_filelike
 
 
-class SmartClientHTTPMediumRequest(remote.SmartClientMediumRequest):
+class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
-    def __init__(self, medium):
-        remote.SmartClientMediumRequest.__init__(self, medium)
+    def __init__(self, smart_medium):
+        medium.SmartClientMediumRequest.__init__(self, smart_medium)
         self._buffer = ''
 
     def _accept_bytes(self, bytes):

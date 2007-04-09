@@ -38,6 +38,7 @@ from bzrlib.osutils import getcwd
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
+from bzrlib.smart import medium
 from bzrlib.transport import memory, remote
 import bzrlib.transport
 
@@ -1306,7 +1307,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             client_medium = transport.get_smart_medium()
-            self.assertIsInstance(client_medium, remote.SmartClientMedium)
+            self.assertIsInstance(client_medium, medium.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
