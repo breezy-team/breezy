@@ -36,6 +36,11 @@ IN DEVELOPMENT
       It may also help improve behaviour when dealing with a server running
       on a specific port (rather than dynamically assigned ports).
       (Robert Collins)
+
+    * Teach ``common_ancestor`` to shortcut when the tip of one branch is
+      inside the ancestry of the other. Saves a lot of graph processing
+      (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
+      changes from 2m10s to 13s).  (John Arbash Meinel, #103757)
  
   BUGFIXES:
 
