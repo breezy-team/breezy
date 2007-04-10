@@ -1,0 +1,27 @@
+#!/usr/bin/env python2.4
+import sys
+
+from bzrlib.workingtree import WorkingTree 
+
+from multiparent import MultiParent
+single_parent = False
+if len(sys.argv) > 1 and len(sys.argv) < 4:
+    wt, path = WorkingTree.open_containing(sys.argv[-1])
+    if len(sys.argv) == 3:
+        assert sys.argv[1] == '--single'
+        single_parent = True
+else:
+    print >> sys.stderr, 'Usage: mpknit [--single] FILENAME'
+    sys.exit(3)
+    
+bt = wt.basis_tree()
+file_id = wt.path2id(path)
+file_weave = bt.get_weave(file_id)
+for revision in file_weave.get_ancestry([bt.inventory[file_id].revision]):
+    parents = file_weave.get_parents(revision)
+    if single_parent:
+        parents = parents[0:1]
+    texts = file_weave.get_texts([revision] + parents)
+    print revision
+    patch_iter = MultiParent.from_texts(texts[0], texts[1:]).to_patch()
+    sys.stdout.writelines(patch_iter)
