@@ -575,15 +575,7 @@ class TextTestRunner(object):
                 else:
                     test_root = test_root.encode(
                         sys.getfilesystemencoding())
-                try:
-                    osutils.rmtree(test_root)
-                except OSError, e:
-                    if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        print >>sys.stderr, ('Permission denied: '
-                                             'unable to remove testing dir '
-                                             '%s' % os.path.basename(test_root))
-                    else:
-                        raise
+                _rmtree_temp_dir(test_root)
         else:
             note("Failed tests working directories are in '%s'\n", test_root)
         TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2294,6 +2286,18 @@ def adapt_modules(mods_list, adapter, loader, suite):
         suite.addTests(adapter.adapt(test))
 
 
+def _rmtree_temp_dir(dirname):
+    try:
+        osutils.rmtree(dirname)
+    except OSError, e:
+        if sys.platform == 'win32' and e.errno == errno.EACCES:
+            print >>sys.stderr, ('Permission denied: '
+                                 'unable to remove testing dir '
+                                 '%s' % os.path.basename(test_root))
+        else:
+            raise
+
+
 def clean_selftest_output(root=None, quiet=False):
     """Remove all selftest output directories from root directory.
 
@@ -2311,7 +2315,7 @@ def clean_selftest_output(root=None, quiet=False):
         if os.path.isdir(i) and re_dir.match(i):
             if not quiet:
                 print 'delete directory:', i
-            shutil.rmtree(i)
+            _rmtree_temp_dir(i)
 
 
 class Feature(object):
