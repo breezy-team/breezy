@@ -25,6 +25,18 @@ IN DEVELOPMENT
     * Convenience method TestCase.expectFailure ensures that known failures
       do not silently pass.  (Aaron Bentley)
 
+    * New SmartServer hooks facility. There are two initial hooks documented
+      in bzrlib.transport.smart.SmartServerHooks. The two initial hooks allow
+      plugins to execute code upon server startup and shutdown.
+      (Robert Collins).
+
+    * SmartServer in standalone mode will now close its listening socket
+      when it stops, rather than waiting for garbage collection. This primarily
+      fixes test suite hangs when a test tries to connect to a shutdown server.
+      It may also help improve behaviour when dealing with a server running
+      on a specific port (rather than dynamically assigned ports).
+      (Robert Collins)
+ 
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
