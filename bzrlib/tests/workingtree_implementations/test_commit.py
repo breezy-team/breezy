@@ -101,7 +101,24 @@ class TestCommit(TestCaseWithWorkingTree):
                           tree.commit,
                           'foo',
                           local=True)
- 
+
+    def test_commit_merged_kind_change(self):
+        """Test merging a kind change.
+
+        Test making a kind change in a working tree, and then merging that
+        from another. When committed it should commit the new kind.
+        """
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(['a'])
+        wt.commit('commit one')
+        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        os.remove('a')
+        os.mkdir('a')
+        wt.commit('changed kind')
+        wt2.merge_from_branch(wt.branch)
+        wt2.commit('merged kind change')
+
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
@@ -197,6 +214,24 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
         self.assertFalse(wt.has_filename('d'))
+        wt.unlock()
+
+    def test_commit_deleted_subtree_with_removed(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c', 'd'])
+        wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        wt.commit('first')
+        wt.remove('b/c')
+        this_dir = self.get_transport()
+        this_dir.delete_tree('b')
+        wt.lock_write()
+        wt.commit('commit deleted rename')
+        self.assertTrue(wt.has_id('a-id'))
+        self.assertFalse(wt.has_or_had_id('b-id'))
+        self.assertFalse(wt.has_or_had_id('c-id'))
+        self.assertTrue(wt.has_filename('a'))
+        self.assertFalse(wt.has_filename('b'))
+        self.assertFalse(wt.has_filename('b/c'))
         wt.unlock()
 
     def test_commit_move_new(self):

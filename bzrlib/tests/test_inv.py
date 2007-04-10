@@ -354,3 +354,16 @@ class TestTreeReference(TestCase):
         inv = Inventory('tree-root-123')
         inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
                               revision='rev', reference_revision='rev2'))
+
+
+class TestEncoding(TestCase):
+
+    def test_error_encoding(self):
+        inv = Inventory('tree-root')
+        inv.add(InventoryFile('a-id', u'\u1234', 'tree-root'))
+        try:
+            inv.add(InventoryFile('b-id', u'\u1234', 'tree-root'))
+        except errors.BzrError, e:
+            self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
+        else:
+            self.fail('BzrError not raised')
