@@ -14,7 +14,7 @@ else:
     print >> sys.stderr, 'Usage: mpknit [--single] FILENAME'
     sys.exit(3)
     
-bt = wt.basis_tree()
+bt = wt.branch.repository.revision_tree(wt.last_revision())
 file_id = wt.path2id(path)
 file_weave = bt.get_weave(file_id)
 for revision in file_weave.get_ancestry([bt.inventory[file_id].revision]):
