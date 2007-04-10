@@ -36,6 +36,10 @@ IN DEVELOPMENT
       It may also help improve behaviour when dealing with a server running
       on a specific port (rather than dynamically assigned ports).
       (Robert Collins)
+
+    * Move most SmartServer code into a new package, bzrlib/smart.
+      bzrlib/transport/remote.py contains just the Transport classes that used
+      to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
  
   BUGFIXES:
 
