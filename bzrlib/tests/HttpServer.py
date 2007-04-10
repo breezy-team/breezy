@@ -29,6 +29,7 @@ import urllib
 import urlparse
 
 from bzrlib.transport import Server
+from bzrlib.transport.local import LocalURLServer
 
 
 class WebserverNotAvailable(Exception):
@@ -43,12 +44,13 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
+        tcs = self.server.test_case_server
+        tcs.log('webserver - %s - - [%s] %s "%s" "%s"',
+                self.address_string(),
+                self.log_date_time_string(),
+                format % args,
+                self.headers.get('referer', '-'),
+                self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -153,7 +155,6 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
             self.wfile.write("--%s\r\n" % boundary)
-            pass
 
     def do_GET(self):
         """Serve a GET request.
@@ -248,10 +249,16 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
+
+    def __init__(self, server_address, RequestHandlerClass,
+                 test_case_server):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
+                                           RequestHandlerClass)
+        # test_case_server can be used to communicate between the
+        # tests and the server (or the request handler and the
+        # server), allowing dynamic behaviors to be defined from
+        # the tests cases.
+        self.test_case_server = test_case_server
 
 
 class HttpServer(Server):
@@ -267,18 +274,23 @@ class HttpServer(Server):
     def __init__(self, request_handler=TestingHTTPRequestHandler):
         Server.__init__(self)
         self.request_handler = request_handler
+        self.host = 'localhost'
+        self.port = 0
+        self._httpd = None
 
     def _get_httpd(self):
-        return TestingHTTPServer(('localhost', 0),
-                                  self.request_handler,
-                                  self)
+        if self._httpd is None:
+            self._httpd = TestingHTTPServer((self.host, self.port),
+                                            self.request_handler,
+                                            self)
+            host, self.port = self._httpd.socket.getsockname()
+        return self._httpd
 
     def _http_start(self):
-        httpd = None
         httpd = self._get_httpd()
-        host, self.port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol,
-                                                      self.port)
+        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                               self.host,
+                                               self.port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 
@@ -304,8 +316,19 @@ class HttpServer(Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def setUp(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.setUp.
+        
+        :param backing_transport_server: The transport that requests over this
+            protocol should be forwarded to. Note that this is currently not
+            supported for HTTP.
+        """
+        # XXX: TODO: make the server back onto vfs_server rather than local
+        # disk.
+        assert backing_transport_server is None or \
+            isinstance(backing_transport_server, LocalURLServer), \
+            "HTTPServer currently assumes local transport, got %s" % \
+            backing_transport_server
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_starting = threading.Lock()

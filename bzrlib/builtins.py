@@ -148,7 +148,7 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    To see ignored files use 'bzr ignored'.  For details in the
+    To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
     --short gives a status flags for each item, similar to the SVN's status
@@ -183,7 +183,8 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'short',
+    takes_options = ['show-ids', 'revision',
+                     Option('short', help='Give short SVN-style status lines'),
                      Option('versioned', help='Only show versioned files')]
     aliases = ['st', 'stat']
 
@@ -568,6 +569,8 @@ class cmd_pull(Command):
             directory=None):
         from bzrlib.tag import _merge_tags_if_possible
         # FIXME: too much stuff is in the command class
+        revision_id = None
+        mergeable = None
         if directory is None:
             directory = u'.'
         try:
@@ -580,7 +583,8 @@ class cmd_pull(Command):
         reader = None
         if location is not None:
             try:
-                reader = bundle.read_bundle_from_url(location)
+                mergeable = bundle.read_mergeable_from_url(
+                    location)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
 
@@ -595,8 +599,11 @@ class cmd_pull(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        if reader is not None:
-            install_bundle(branch_to.repository, reader)
+        if mergeable is not None:
+            if revision is not None:
+                raise errors.BzrCommandError(
+                    'Cannot use -r with merge directives or bundles')
+            revision_id = mergeable.install_revisions(branch_to.repository)
             branch_from = branch_to
         else:
             branch_from = Branch.open(location)
@@ -604,27 +611,26 @@ class cmd_pull(Command):
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        rev_id = None
-        if revision is None:
-            if reader is not None:
-                rev_id = reader.target
-        elif len(revision) == 1:
-            rev_id = revision[0].in_history(branch_from).rev_id
-        else:
-            raise errors.BzrCommandError('bzr pull --revision takes one value.')
+        if revision is not None:
+            if len(revision) == 1:
+                revision_id = revision[0].in_history(branch_from).rev_id
+            else:
+                raise errors.BzrCommandError(
+                    'bzr pull --revision takes one value.')
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            result = tree_to.pull(branch_from, overwrite, rev_id,
+            result = tree_to.pull(branch_from, overwrite, revision_id,
                 delta._ChangeReporter(unversioned_filter=tree_to.is_ignored))
         else:
-            result = branch_to.pull(branch_from, overwrite, rev_id)
+            result = branch_to.pull(branch_from, overwrite, revision_id)
 
         result.report(self.outf)
         if verbose:
             from bzrlib.log import show_changed_revisions
             new_rh = branch_to.revision_history()
-            show_changed_revisions(branch_to, old_rh, new_rh, to_file=self.outf)
+            show_changed_revisions(branch_to, old_rh, new_rh,
+                                   to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -834,16 +840,12 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
-
-    --basis is to speed up branching from remote branches.  When specified, it
-    copies all the file-contents, inventory and revision data from the basis
-    branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis']
+    takes_options = ['revision']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None):
+    def run(self, from_location, to_location=None, revision=None):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -854,10 +856,6 @@ class cmd_branch(Command):
         br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
-            if basis is not None:
-                basis_dir = bzrdir.BzrDir.open_containing(basis)[0]
-            else:
-                basis_dir = None
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
@@ -882,16 +880,11 @@ class cmd_branch(Command):
                                              % to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base,
-                        revision_id, basis_dir)
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
-                raise errors.BzrCommandError(msg)
-            except errors.UnlistableBranch:
-                osutils.rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
@@ -917,14 +910,10 @@ class cmd_checkout(Command):
     out of date [so you cannot commit] but it may be useful (i.e. to examine old
     code.)
 
-    --basis is to speed up checking out from remote branches.  When specified, it
-    uses the inventory and file contents from the basis branch in preference to the
-    branch being checked out.
-
     See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
-    takes_options = ['revision', # , 'basis']
+    takes_options = ['revision',
                      Option('lightweight',
                             help="perform a lightweight checkout. Lightweight "
                                  "checkouts depend on access to the branch for "
@@ -935,7 +924,7 @@ class cmd_checkout(Command):
                      ]
     aliases = ['co']
 
-    def run(self, branch_location=None, to_location=None, revision=None, basis=None,
+    def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False):
         if revision is None:
             revision = [None]
@@ -1213,8 +1202,8 @@ class cmd_init(Command):
 
     If there is a repository in a parent directory of the location, then 
     the history of the branch will be stored in the repository.  Otherwise
-    init creates a standalone branch which carries its own history in 
-    .bzr.
+    init creates a standalone branch which carries its own history
+    in the .bzr directory.
 
     If there is already a branch at the location but it has no working tree,
     the tree can be populated with 'bzr checkout'.
@@ -1917,7 +1906,7 @@ class cmd_lookup_revision(Command):
 
 
 class cmd_export(Command):
-    """Export past revision to destination directory.
+    """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
 
@@ -1928,7 +1917,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
-    If branch is omitted then the branch containing the CWD will be used.
+    If branch is omitted then the branch containing the current working
+    directory will be used.
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
@@ -1966,7 +1956,13 @@ class cmd_export(Command):
 
 
 class cmd_cat(Command):
-    """Write a file's text from a previous revision."""
+    """Write the contents of a file as of a given revision to standard output.
+
+    If no revision is nominated, the last revision is used.
+
+    Note: Take care to redirect standard output when using this command on a
+    binary file. 
+    """
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
@@ -2257,7 +2253,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        print branch.nick 
+        print branch.nick
 
 
 class cmd_selftest(Command):
@@ -2486,8 +2482,6 @@ class cmd_merge(Command):
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
-
-    The following merge types are available:
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
@@ -2513,6 +2507,7 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
+        other_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2530,16 +2525,18 @@ class cmd_merge(Command):
 
         if branch is not None:
             try:
-                reader = bundle.read_bundle_from_url(branch)
+                mergeable = bundle.read_mergeable_from_url(
+                    branch)
             except errors.NotABundle:
                 pass # Continue on considering this url a Branch
             else:
-                conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                         reprocess, show_base, change_reporter)
-                if conflicts == 0:
-                    return 0
-                else:
-                    return 1
+                if revision is not None:
+                    raise errors.BzrCommandError(
+                        'Cannot use -r with merge directives or bundles')
+                other_revision_id = mergeable.install_revisions(
+                    tree.branch.repository)
+                revision = [RevisionSpec.from_string(
+                    'revid:' + other_revision_id)]
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
@@ -2560,9 +2557,14 @@ class cmd_merge(Command):
             branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
-                other_branch, path = Branch.open_containing(branch)
-                revno = revision[0].in_history(other_branch).revno
-                other = [branch, revno]
+                if other_revision_id is not None:
+                    other_branch = None
+                    path = ""
+                    other = None
+                else:
+                    other_branch, path = Branch.open_containing(branch)
+                    revno = revision[0].in_history(other_branch).revno
+                    other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
@@ -2578,12 +2580,14 @@ class cmd_merge(Command):
                 base = [branch, revision[0].in_history(base_branch).revno]
                 other = [branch1, revision[1].in_history(other_branch).revno]
 
-        if tree.branch.get_parent() is None or remember:
+        if ((tree.branch.get_parent() is None or remember) and
+            other_branch is not None):
             tree.branch.set_parent(other_branch.base)
 
         # pull tags now... it's a bit inconsistent to do it ahead of copying
         # the history but that's done inside the merge code
-        _merge_tags_if_possible(other_branch, tree.branch)
+        if other_branch is not None:
+            _merge_tags_if_possible(other_branch, tree.branch)
 
         if path != "":
             interesting_files = [path]
@@ -2593,7 +2597,8 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = _merge_helper(
-                    other, base, check_clean=(not force),
+                    other, base, other_rev_id=other_revision_id,
+                    check_clean=(not force),
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
@@ -2652,8 +2657,7 @@ class cmd_remerge(Command):
     $ bzr remerge --merge-type weave --reprocess foobar
         Re-do the merge of "foobar", using the weave merge algorithm, with
         additional processing to reduce the size of conflict regions.
-    
-    The following merge types are available:"""
+    """
     takes_args = ['file*']
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
@@ -3520,7 +3524,8 @@ def _merge_helper(other_revision, base_revision,
                   file_list=None, show_base=False, reprocess=False,
                   pull=False,
                   pb=DummyProgress(),
-                  change_reporter=None):
+                  change_reporter=None,
+                  other_rev_id=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3576,7 +3581,10 @@ def _merge_helper(other_revision, base_revision,
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
-        merger.set_other(other_revision)
+        if other_rev_id is not None:
+            merger.set_other_revision(other_rev_id, this_tree.branch)
+        else:
+            merger.set_other(other_revision)
         merger.pp.next_phase()
         merger.set_base(base_revision)
         if merger.base_rev_id == merger.other_rev_id:

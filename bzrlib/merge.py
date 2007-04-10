@@ -1013,11 +1013,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        warnings.warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
-             "bzrlib version 0.8.",
-             DeprecationWarning,
-             stacklevel=2)
-        this_tree = this_branch.bzrdir.open_workingtree()
+        raise BzrError("bzrlib.merge.merge_inner requires a this_tree "
+            "parameter as of bzrlib version 0.8.")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
