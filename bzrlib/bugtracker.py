@@ -18,13 +18,13 @@ from bzrlib import registry
 
 
 def get_url(tag, branch, bug_id):
-    return tracker_registry.get_by_tag(tag, branch).get_bug_url(bug_id)
+    return tracker_registry.get_tracker(tag, branch).get_bug_url(bug_id)
 
 
 class TrackerRegistry(registry.Registry):
     """Registry of bug tracker types."""
 
-    def get_by_tag(self, tag, branch):
+    def get_tracker(self, tag, branch):
         for tracker_name, tracker_type in self.iteritems():
             tracker = tracker_type.get(tag, branch)
             if tracker is not None:
