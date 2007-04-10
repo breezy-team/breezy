@@ -5,6 +5,17 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * selftest now supports --list-only to list tests instead of running
+      them. (Ian Clatworthy)
+
+    * selftest now supports --exclude PATTERNS where PATTERNS is a
+      comma-separated list of patterns to exclude tests with matching names.
+      -x is a shorthand for --exclude. (Ian Clatworthy, #102679)
+
+    * selftest now supports --randomize SEED to run tests in a random order.
+      SEED is typically the value 'now' meaning 'use the current time'.
+      (Ian Clatworthy, #102686)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -29,8 +40,6 @@ IN DEVELOPMENT
 
     * Don't fail bundle selftest if email has 'two' embedded.  
       (#98510, Ian Clatworthy)
-
-  BUGFIXES:
 
     * Remove ``--verbose`` from ``bzr bundle``. It didn't work anyway.
       (Robert Widhopf-Fenk, #98591)

@@ -2339,6 +2339,7 @@ class cmd_selftest(Command):
                             help='randomize the order of tests using the given'
                                  ' seed or "now" for the current time'),
                      Option('exclude', type=str, argname="PATTERN",
+                            short_name='x',
                             help='exclude tests that match regular'
                                  ' expressions in this comma separated list'),
                      ]

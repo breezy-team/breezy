@@ -494,23 +494,26 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
                            after)
 
 
-class TestSelftestListOnly(TestCaseInTempDir):
+class TestSelftestListOnly(TestCase):
 
     @staticmethod
-    def _parse_test_list(lines):
+    def _parse_test_list(lines, newlines_in_header=1):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
 
         in_header = True
         in_footer = False
         header = []
         body = []
-        footer = [] 
+        footer = []
+        header_newlines_found = 0 
         for line in lines:
             if in_header:
                 if line == '':
-                    in_header = False
-                else:
-                    header.append(line)
+                    header_newlines_found += 1
+                    if header_newlines_found >= newlines_in_header:
+                        in_header = False
+                        continue
+                header.append(line)
             elif not in_footer:
                 if line.startswith('-------'):
                     in_footer = True
@@ -527,7 +530,7 @@ class TestSelftestListOnly(TestCaseInTempDir):
         # check that bzr selftest --list-only works correctly
         out,err = self.run_bzr_captured(['selftest', 'selftest',
             '--list-only'])
-        self.assertEquals('tests passed\n', err)
+        self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
         self.assertContainsRe(footer[0], 'Listed \d+ tests in')
         # Check the count matches the number of tests listed
@@ -536,16 +539,42 @@ class TestSelftestListOnly(TestCaseInTempDir):
         reported_count = int(match_obj.group(0))
         self.assertEqual(reported_count, len(body))
 
-    def test_list_only_include(self):
-        # check that a filtered --list-only works correctly
-        # NOTE: It looks like we need to explicitly setup SEPARATE working
-        # directories here - otherwise it fails!!
+    def test_list_only_filtered(self):
+        # check that a filtered --list-only works, both include and exclude
         out_all,err_all = self.run_bzr_captured(['selftest', '--list-only'])
         tests_all = self._parse_test_list(out_all.splitlines())[1]
-        out_some,err_some = self.run_bzr_captured(['selftest', 'selftest',
-          '--list-only'])
-        tests_some = self._parse_test_list(out_some.splitlines())[1]
-        print "len(all): %d" % len(tests_all)
-        print "len(some): %d" % len(tests_some)
-        self.assertSubset(tests_some, tests_all)
+        out_incl,err_incl = self.run_bzr_captured(['selftest', '--list-only',
+          'selftest'])
+        tests_incl = self._parse_test_list(out_incl.splitlines())[1]
+        self.assertSubset(tests_incl, tests_all)
+        out_excl,err_excl = self.run_bzr_captured(['selftest', '--list-only',
+          '--exclude', 'selftest'])
+        tests_excl = self._parse_test_list(out_excl.splitlines())[1]
+        self.assertSubset(tests_excl, tests_all)
+        set_incl = set(tests_incl)
+        set_excl = set(tests_excl)
+        intersection = set_incl.intersection(set_excl)
+        self.assertEquals(0, len(intersection))
+        self.assertEquals(len(tests_all), len(tests_incl) + len(tests_excl))
+
+    def test_list_only_random(self):
+        # check that --randomize works correctly
+        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest'])
+        tests_all = self._parse_test_list(out_all.splitlines())[1]
+        out_rand,err_rand = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest', '--randomize', 'now'])
+        (header_rand,tests_rand,dummy) = self._parse_test_list(
+            out_rand.splitlines(), 2)
+        self.assertNotEqual(tests_all, tests_rand)
+        self.assertEqual(sorted(tests_all), sorted(tests_rand))
+        # Check that the seed can be reused to get the exact same order
+        seed_re = re.compile('Randomizing test order using seed (\w+)')
+        match_obj = seed_re.search(header_rand[-1])
+        seed = match_obj.group(1)
+        out_rand2,err_rand2 = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest', '--randomize', seed])
+        (header_rand2,tests_rand2,dummy) = self._parse_test_list(
+            out_rand2.splitlines(), 2)
+        self.assertEqual(tests_rand, tests_rand2)
 
