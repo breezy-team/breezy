@@ -1,5 +1,6 @@
 from difflib import SequenceMatcher
 
+
 class MultiParent(object):
 
     def __init__(self, hunks=None):
@@ -33,7 +34,6 @@ class MultiParent(object):
                 return None
         cur_block = [next_block(p) for p, i in enumerate(block_iter)]
         while cur_line < len(text):
-            #import pdb; pdb.set_trace()
             best_match = None
             for p, block in enumerate(cur_block):
                 if block is None:

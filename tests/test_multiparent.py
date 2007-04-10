@@ -2,8 +2,10 @@ from unittest import TestCase
 
 import multiparent
 
+
 LINES_1 = "a\nb\nc\nd\ne\n".splitlines(True)
 LINES_2 = "a\nc\nd\ne\n".splitlines(True)
+LINES_3 = "a\nb\nc\nd\n".splitlines(True)
 
 
 class Mock(object):
@@ -23,6 +25,12 @@ class TestMulti(TestCase):
         self.assertEqual([multiparent.ParentText(0, 0, 0, 1),
                           multiparent.NewText(['b\n']),
                           multiparent.ParentText(0, 1, 2, 3)],
+                         diff.hunks)
+
+    def test_compare_two_parents(self):
+        diff = multiparent.MultiParent.from_lines(LINES_1, [LINES_2, LINES_3])
+        self.assertEqual([multiparent.ParentText(1, 0, 0, 4),
+                          multiparent.ParentText(0, 3, 4, 1)],
                          diff.hunks)
 
     def test_eq(self):
