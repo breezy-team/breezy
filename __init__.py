@@ -74,6 +74,11 @@ class MultiParent(object):
         return cls.from_lines(text.splitlines(True),
                               [p.splitlines(True) for p in parents])
 
+    def to_patch(self):
+        for hunk in self.hunks:
+            for line in hunk.to_patch():
+                yield line
+
 
 class NewText(object):
 
@@ -87,6 +92,12 @@ class NewText(object):
 
     def __repr__(self):
         return 'NewText(%r)' % self.lines
+
+    def to_patch(self):
+        yield 'i %d\n' % len(self.lines)
+        for line in self.lines:
+            yield line
+        yield '\n'
 
 
 class ParentText(object):
@@ -105,3 +116,7 @@ class ParentText(object):
         if self.__class__ != other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
+
+    def to_patch(self):
+        yield 'c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'\
+            % self.__dict__

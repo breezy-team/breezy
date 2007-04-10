@@ -47,6 +47,11 @@ class TestMulti(TestCase):
                          [multiparent.NewText(LINES_1),
                           multiparent.ParentText(0, 1, 2, 3)]))
 
+    def test_to_patch(self):
+        self.assertEqual(['i 1\n', 'a\n', '\n', 'c 0 1 2 3\n'],
+            list(multiparent.MultiParent([multiparent.NewText(['a\n']),
+            multiparent.ParentText(0, 1, 2, 3)]).to_patch()))
+
 
 class TestNewText(TestCase):
 
@@ -56,6 +61,14 @@ class TestNewText(TestCase):
                          multiparent.NewText(['b']))
         self.assertFalse(multiparent.NewText(['a']) == Mock(lines=['a']))
 
+    def test_to_patch(self):
+        self.assertEqual(['i 0\n', '\n'],
+                         list(multiparent.NewText([]).to_patch()))
+        self.assertEqual(['i 1\n', 'a', '\n'],
+                         list(multiparent.NewText(['a']).to_patch()))
+        self.assertEqual(['i 1\n', 'a\n', '\n'],
+                         list(multiparent.NewText(['a\n']).to_patch()))
+
 
 class TestParentText(TestCase):
 
@@ -64,7 +77,10 @@ class TestParentText(TestCase):
                          multiparent.ParentText(1, 2, 3, 4))
         self.assertFalse(multiparent.ParentText(1, 2, 3, 4) ==
                          multiparent.ParentText(2, 2, 3, 4))
-
         self.assertFalse(multiparent.ParentText(1, 2, 3, 4) ==
                          Mock(parent=1, parent_pos=2, child_pos=3,
                               num_lines=4))
+
+    def test_to_patch(self):
+        self.assertEqual(['c 0 1 2 3\n'],
+                         list(multiparent.ParentText(0, 1, 2, 3).to_patch()))
