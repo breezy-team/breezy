@@ -31,6 +31,7 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.transport import (
     get_transport,
     )
+from bzrlib.smart import protocol
 
 
 class WallRequestHandler(TestingHTTPRequestHandler):

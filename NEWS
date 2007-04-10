@@ -25,6 +25,22 @@ IN DEVELOPMENT
     * Convenience method TestCase.expectFailure ensures that known failures
       do not silently pass.  (Aaron Bentley)
 
+    * New SmartServer hooks facility. There are two initial hooks documented
+      in bzrlib.transport.smart.SmartServerHooks. The two initial hooks allow
+      plugins to execute code upon server startup and shutdown.
+      (Robert Collins).
+
+    * SmartServer in standalone mode will now close its listening socket
+      when it stops, rather than waiting for garbage collection. This primarily
+      fixes test suite hangs when a test tries to connect to a shutdown server.
+      It may also help improve behaviour when dealing with a server running
+      on a specific port (rather than dynamically assigned ports).
+      (Robert Collins)
+
+    * Move most SmartServer code into a new package, bzrlib/smart.
+      bzrlib/transport/remote.py contains just the Transport classes that used
+      to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
+ 
     * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
       so that a seperate LockableFiles instance can share a lock if it has the
       right token.  (Andrew Bennetts, Robert Collins)

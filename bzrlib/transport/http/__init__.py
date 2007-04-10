@@ -27,6 +27,7 @@ import urllib
 import sys
 
 from bzrlib import errors, ui
+from bzrlib.smart import medium
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     Transport,
