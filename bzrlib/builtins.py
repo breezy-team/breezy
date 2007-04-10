@@ -3224,9 +3224,9 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.smart import server
-        from bzrlib.transport import remote
+        from bzrlib.smart import server, medium
         from bzrlib.transport import get_transport
+        from bzrlib.transport.remote import BZR_DEFAULT_PORT
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3234,10 +3234,11 @@ class cmd_serve(Command):
             url = 'readonly+' + url
         t = get_transport(url)
         if inet:
-            smart_server = remote.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, t)
         else:
             if port is None:
-                port = remote.BZR_DEFAULT_PORT
+                port = BZR_DEFAULT_PORT
                 host = '127.0.0.1'
             else:
                 if ':' in port:
