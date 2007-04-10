@@ -16,6 +16,13 @@
 
 """Smart-server protocol, client and server.
 
+This code is fairly complex, so it has been split up into a package of modules,
+rather than being a single large module.  Refer to the individual module
+docstrings for details.
+
+Overview
+========
+
 Requests are sent as a command and list of arguments, followed by optional
 bulk body data.  Responses are similarly a response and list of arguments,
 followed by bulk body data. ::
