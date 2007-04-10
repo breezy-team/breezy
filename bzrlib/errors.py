@@ -175,6 +175,17 @@ class BzrCheckError(BzrError):
         self.message = message
 
 
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
