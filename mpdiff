@@ -1,0 +1,8 @@
+#!/usr/bin/env python2.4
+import sys
+
+from multiparent import MultiParent
+
+text = open(sys.argv[1], 'rb').readlines()
+parents = [open(p, 'rb').readlines() for p in sys.argv[2:]]
+sys.stdout.writelines(MultiParent.from_lines(text, parents).to_patch())
