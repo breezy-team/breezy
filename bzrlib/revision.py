@@ -251,11 +251,18 @@ def common_ancestor(revision_a, revision_b, revision_source,
             pb.update('Picking ancestor', 1, 3)
             graph = revision_source.get_revision_graph_with_ghosts(
                 [revision_a, revision_b])
+            # Shortcut the case where one of the tips is already included in
+            # the other graphs ancestry.
+            ancestry_a = set(graph.get_ancestry(revision_a))
+            ancestry_b = set(graph.get_ancestry(revision_b))
+            if revision_b in ancestry_a:
+                return revision_b
+            if revision_a in ancestry_b:
+                return revision_a
             # convert to a NULL_REVISION based graph.
             ancestors = graph.get_ancestors()
             descendants = graph.get_descendants()
-            common = set(graph.get_ancestry(revision_a)).intersection(
-                     set(graph.get_ancestry(revision_b)))
+            common = ancestry_a.intersection(ancestry_b)
             descendants[NULL_REVISION] = {}
             ancestors[NULL_REVISION] = []
             for root in graph.roots:
