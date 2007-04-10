@@ -2142,6 +2142,7 @@ def test_suite():
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
