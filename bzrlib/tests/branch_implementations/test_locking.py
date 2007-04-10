@@ -16,11 +16,18 @@
 
 """Test locks across all branch implemenations"""
 
+from bzrlib import errors
+from bzrlib.branch import BzrBranchFormat4
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
 
 
 class TestBranchLocking(TestCaseWithBranch):
+
+    def setUp(self):
+        TestCaseWithBranch.setUp(self)
+        self.reduceLockdirTimeout()
 
     def get_instrumented_branch(self):
         """Get a Branch object which has been instrumented"""
@@ -220,3 +227,28 @@ class TestBranchLocking(TestCaseWithBranch):
                           ('rc', 'ul', True),
                          ], self.locks)
 
+    def test_lock_read_then_unlock(self):
+        # Calling lock_read then unlocking should work without errors.
+        branch = self.make_branch('b')
+        branch.lock_read()
+        branch.unlock()
+
+    def test_lock_write_locks_repo_too(self):
+        if isinstance(self.branch_format, BzrBranchFormat4):
+            # Branch format 4 is combined with the repository, so this test
+            # doesn't apply.
+            return
+        branch = self.make_branch('b')
+        branch = branch.bzrdir.open_branch()
+        branch.lock_write()
+        try:
+            # Now the branch.repository is locked, so we can't lock it with a new
+            # repository without a token.
+            new_repo = branch.bzrdir.open_repository()
+            self.assertRaises(errors.LockContention, new_repo.lock_write)
+            # We can call lock_write on the original repository object though,
+            # because it is already locked.
+            branch.repository.lock_write()
+            branch.repository.unlock()
+        finally:
+            branch.unlock()

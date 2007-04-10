@@ -96,6 +96,12 @@ from bzrlib.tree import Tree
 from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 
 
+# This is the Windows equivalent of ENOTDIR
+# It is defined in pywin32.winerror, but we don't want a strong dependency for
+# just an error code.
+ERROR_DIRECTORY = 267
+
+
 class WorkingTree4(WorkingTree3):
     """This is the Format 4 working tree.
 
@@ -557,7 +563,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()
@@ -577,7 +583,7 @@ class WorkingTree4(WorkingTree3):
                 # set our support for tree references from the repository in
                 # use.
                 self._repo_supports_tree_reference = getattr(
-                    self.branch.repository._format, "support_tree_reference",
+                    self.branch.repository._format, "supports_tree_reference",
                     False)
             except:
                 self._control_files.unlock()
@@ -803,7 +809,7 @@ class WorkingTree4(WorkingTree3):
                                      size=cur_details[2],
                                      to_block=to_block,
                                      to_key=to_key,
-                                     to_path_utf8=to_rel_utf8)
+                                     to_path_utf8=to_path_utf8)
                             if minikind == 'd':
                                 # We need to move all the children of this
                                 # entry
@@ -1163,8 +1169,10 @@ class WorkingTree4(WorkingTree3):
                 entry_index = 0
                 while entry_index < len(block[1]):
                     # Mark this file id as having been removed
-                    ids_to_unversion.discard(block[1][entry_index][0][2])
-                    if not state._make_absent(block[1][entry_index]):
+                    entry = block[1][entry_index]
+                    ids_to_unversion.discard(entry[0][2])
+                    if (entry[1][0][0] == 'a'
+                        or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
                 # dirblocks)
@@ -1194,6 +1202,10 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_read_lock
+    def _validate(self):
+        self._dirstate._validate()
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
@@ -1216,6 +1228,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
     """
+
+    upgrade_recommended = False
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
@@ -1248,6 +1262,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         # write out new dirstate (must exist when we create the tree)
         state = dirstate.DirState.initialize(local_path)
         state.unlock()
+        del state
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          _format=self,
@@ -1255,7 +1270,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
-        state._validate()
+        wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 wt._set_root_id(generate_ids.gen_root_id())
@@ -2063,10 +2078,17 @@ class InterDirStateTree(InterTree):
                 try:
                     current_dir_info = dir_iterator.next()
                 except OSError, e:
-                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                        # there may be directories in the inventory even though
-                        # this path is not a file on disk: so mark it as end of
-                        # iterator
+                    # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
+                    # python 2.5 has e.errno == EINVAL,
+                    #            and e.winerror == ERROR_DIRECTORY
+                    e_winerror = getattr(e, 'winerror', None)
+                    # there may be directories in the inventory even though
+                    # this path is not a file on disk: so mark it as end of
+                    # iterator
+                    if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+                        current_dir_info = None
+                    elif (sys.platform == 'win32'
+                          and ERROR_DIRECTORY in (e.errno, e_winerror)):
                         current_dir_info = None
                     else:
                         raise
@@ -2343,6 +2365,7 @@ class Converter3to4(object):
         # tree during upgrade.
         tree._control_files.lock_write()
         try:
+            tree.read_working_inventory()
             self.create_dirstate_data(tree)
             self.update_format(tree)
             self.remove_xml_files(tree)

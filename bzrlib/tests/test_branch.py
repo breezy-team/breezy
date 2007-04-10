@@ -175,13 +175,6 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
 
-    def test_checkout_format(self):
-        branch = self.make_repository('repository', shared=True)
-        branch = self.make_branch('repository/branch',
-            format='metaweave')
-        tree = branch.create_checkout('checkout')
-        self.assertIs(tree.branch.__class__, _mod_branch.BzrBranch5)
-
 
 class TestBranch6(TestCaseWithTransport):
 
@@ -320,7 +313,7 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks, BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
 
     def test_install_hook_raises_unknown_hook(self):
         """install_hook should raise UnknownHook if a hook is unknown."""

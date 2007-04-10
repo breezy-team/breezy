@@ -42,6 +42,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
+        'bzrlib.tests.branch_implementations.test_create_checkout',
         'bzrlib.tests.branch_implementations.test_commit',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
@@ -50,18 +51,22 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
-        'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_push',
+        'bzrlib.tests.branch_implementations.test_revision_history',
+        'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_uncommit',
         'bzrlib.tests.branch_implementations.test_update',
         ]
+    # Generate a list of branch formats and their associated bzrdir formats to
+    # use.
+    combinations = [(format, format._matchingbzrdir) for format in 
+         BranchFormat._formats.values() + _legacy_formats]
     adapter = BranchTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats])
+        combinations)
     loader = TestLoader()
     adapt_modules(test_branch_implementations, adapter, loader, result)
     return result
