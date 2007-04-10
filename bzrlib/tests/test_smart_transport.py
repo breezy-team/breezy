@@ -1075,8 +1075,6 @@ class TestSmartProtocol(tests.TestCase):
             self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
         self.smart_server_request = request.SmartServerRequestHandler(None)
-#        self.smart_server_request = request.SmartServerRequestHandler(
-#            None, request.request_handlers)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client, smart_server_request):
@@ -1098,21 +1096,21 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
-       out_stream = StringIO()
-       smart_protocol = protocol.SmartServerRequestProtocolOne(None, out_stream.write)
-       smart_protocol.has_dispatched = True
-       smart_protocol.request = request.SmartServerRequestHandler(None)
-       def handle_end_of_bytes():
-           self.end_received = True
-           self.assertEqual('abcdefg', smart_protocol.request._body_bytes)
-           smart_protocol.request.response = request.SmartServerResponse(('ok', ))
-       smart_protocol.request._end_of_body_handler = handle_end_of_bytes
-       # Call accept_bytes to make sure that internal state like _body_decoder
-       # is initialised.  This test should probably be given a clearer
-       # interface to work with that will not cause this inconsistency.
-       #   -- Andrew Bennetts, 2006-09-28
-       smart_protocol.accept_bytes('')
-       return smart_protocol
+        out_stream = StringIO()
+        smart_protocol = protocol.SmartServerRequestProtocolOne(None, out_stream.write)
+        smart_protocol.has_dispatched = True
+        smart_protocol.request = request.SmartServerRequestHandler(None)
+        def handle_end_of_bytes():
+            self.end_received = True
+            self.assertEqual('abcdefg', smart_protocol.request._body_bytes)
+            smart_protocol.request.response = request.SmartServerResponse(('ok', ))
+        smart_protocol.request._end_of_body_handler = handle_end_of_bytes
+        # Call accept_bytes to make sure that internal state like _body_decoder
+        # is initialised.  This test should probably be given a clearer
+        # interface to work with that will not cause this inconsistency.
+        #   -- Andrew Bennetts, 2006-09-28
+        smart_protocol.accept_bytes('')
+        return smart_protocol
 
     def test_construct_version_one_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolOne(None, None)
