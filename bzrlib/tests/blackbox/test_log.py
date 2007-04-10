@@ -317,7 +317,7 @@ class TestLogFile(TestCaseWithTransport):
         self.run_bzr('commit', '-m', 'branch 1', 'child')
         os.chdir('parent')
         self.run_bzr('merge', '../child')
-        self.run_bzr('commit', '-m', 'merge branch')
+        self.run_bzr('commit', '-m', 'merge child branch')
         
         log = self.run_bzr('log', 'file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
@@ -330,7 +330,7 @@ class TestLogFile(TestCaseWithTransport):
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
+        self.assertContainsRe(log, 'revno: 4\n')
         log = self.run_bzr('log', 'file3')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')

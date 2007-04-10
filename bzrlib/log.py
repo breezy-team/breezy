@@ -61,7 +61,10 @@ from bzrlib import(
 import bzrlib.errors as errors
 from bzrlib.symbol_versioning import deprecated_method, zero_eleven
 from bzrlib.trace import mutter
-from bzrlib.tsort import merge_sort
+from bzrlib.tsort import(
+    merge_sort,
+    topo_sort,
+    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -228,9 +231,33 @@ def _show_log(branch,
         sfw = branch.repository.weave_store.get_weave(specific_fileid,
                     branch.repository.get_transaction())
         sfw_revids = set(sfw.versions())
-        # filter from the view the revisions that did not change this file
+        # build the ancestry of each revision in the graph
+        # - only listing the ancestors that change the specific file.
+        rev_graph = branch.repository.get_revision_graph(mainline_revs[-1])
+        sorted_rev_list = topo_sort(rev_graph)
+        ancestry = {}
+        for rev in sorted_rev_list:
+            rev_ancestry = set()
+            if rev in sfw_revids:
+                rev_ancestry.add(rev)
+            for parent in rev_graph[rev]:
+                rev_ancestry = rev_ancestry.union(ancestry[parent])
+            ancestry[rev] = rev_ancestry
+
+        def is_merging_rev():
+            parents = rev_graph[r]
+            if len(parents) > 1:
+                leftparent = parents[0]
+                for rightparent in parents[1:]:
+                    if not ancestry[leftparent].issuperset(
+                            ancestry[rightparent]):
+                        return True
+            return False        
+
+        # filter from the view the revisions that did not change or merge 
+        # the specific file
         view_revisions = [(r, n, d) for r, n, d in view_revs_iter if
-                          r in sfw_revids]
+                          r in sfw_revids or is_merging_rev()]
     else:
         view_revisions = list(view_revs_iter)
 
@@ -255,7 +282,7 @@ def _show_log(branch,
                 # 2. the revision is a mainline revision
                 yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
-            num = int(num * 1.5)
+            num = min(int(num * 1.5), 200)
             
     # now we just print all the revisions
     for ((rev_id, revno, merge_depth), (rev, delta)) in \
