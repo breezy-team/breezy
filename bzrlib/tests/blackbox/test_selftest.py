@@ -17,6 +17,7 @@
 """UI tests for the test framework."""
 
 import os
+import re
 import signal
 import sys
 
@@ -491,3 +492,60 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
+
+
+class TestSelftestListOnly(TestCaseInTempDir):
+
+    @staticmethod
+    def _parse_test_list(lines):
+        "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
+
+        in_header = True
+        in_footer = False
+        header = []
+        body = []
+        footer = [] 
+        for line in lines:
+            if in_header:
+                if line == '':
+                    in_header = False
+                else:
+                    header.append(line)
+            elif not in_footer:
+                if line.startswith('-------'):
+                    in_footer = True
+                else:
+                    body.append(line)
+            else:
+                footer.append(line)
+        # If the last body line is blank, drop it off the list
+        if len(body) > 0 and body[-1] == '':
+            body.pop()                
+        return (header,body,footer)
+
+    def test_list_only(self):
+        # check that bzr selftest --list-only works correctly
+        out,err = self.run_bzr_captured(['selftest', 'selftest',
+            '--list-only'])
+        self.assertEquals('tests passed\n', err)
+        (header,body,footer) = self._parse_test_list(out.splitlines())
+        self.assertContainsRe(footer[0], 'Listed \d+ tests in')
+        # Check the count matches the number of tests listed
+        summary_re = re.compile('(\d+)')
+        match_obj = summary_re.search(footer[0])
+        reported_count = int(match_obj.group(0))
+        self.assertEqual(reported_count, len(body))
+
+    def test_list_only_include(self):
+        # check that a filtered --list-only works correctly
+        # NOTE: It looks like we need to explicitly setup SEPARATE working
+        # directories here - otherwise it fails!!
+        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only'])
+        tests_all = self._parse_test_list(out_all.splitlines())[1]
+        out_some,err_some = self.run_bzr_captured(['selftest', 'selftest',
+          '--list-only'])
+        tests_some = self._parse_test_list(out_some.splitlines())[1]
+        print "len(all): %d" % len(tests_all)
+        print "len(some): %d" % len(tests_some)
+        self.assertSubset(tests_some, tests_all)
+

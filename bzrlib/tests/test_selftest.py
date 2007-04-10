@@ -1482,3 +1482,10 @@ class TestUnavailableFeature(TestCase):
         feature = Feature()
         exception = UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+class TestSelftestFiltering(TestCase):
+
+    def test_filter_suite_by_re(self):
+        pass
+        
