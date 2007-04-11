@@ -56,6 +56,10 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Fix ``InterDirstateTre._iter_changes`` to handle when we come across
+      an empty versioned directory, which now has files in it.
+      (John Arbash Meinel, #104257)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
