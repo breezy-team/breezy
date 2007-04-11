@@ -1162,8 +1162,8 @@ class TestTestCase(TestCase):
         """The bzrlib hooks should be sanitised by setUp."""
         self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
-        self.assertEqual(bzrlib.transport.smart.SmartServerHooks(),
-            bzrlib.transport.smart.SmartTCPServer.hooks)
+        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+            bzrlib.smart.server.SmartTCPServer.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.

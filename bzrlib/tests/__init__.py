@@ -757,7 +757,7 @@ class TestCase(unittest.TestCase):
         # prevent hooks affecting tests
         self._preserved_hooks = {
             bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
-            bzrlib.transport.smart.SmartTCPServer:bzrlib.transport.smart.SmartTCPServer.hooks,
+            bzrlib.smart.server.SmartTCPServer:bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
