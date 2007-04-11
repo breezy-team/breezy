@@ -56,6 +56,11 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Teach ``common_ancestor`` to shortcut when the tip of one branch is
+      inside the ancestry of the other. Saves a lot of graph processing
+      (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
+      changes from 2m10s to 13s).  (John Arbash Meinel, #103757)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
