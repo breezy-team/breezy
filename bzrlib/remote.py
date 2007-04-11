@@ -576,6 +576,12 @@ class RemoteRepository(object):
         return self._real_repository.check(revision_ids)
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
+        import tarfile
+        from StringIO import StringIO
+        tempfile = StringIO(self._get_tarball('bz2'))
+        tar = tarfile.open('repository', fileobj=tempfile,
+            mode='r:bz2')
+        import pdb;pdb.set_trace()
         self._ensure_real()
         return self._real_repository.copy_content_into(
             destination, revision_id=revision_id, basis=basis)

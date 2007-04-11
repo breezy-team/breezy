@@ -189,40 +189,51 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     
     This takes one parameter, compression, which currently must be 
     "", "gz", or "bz2".
+
+    This is used to implement the Repository.copy_content_into operation.
     """
 
     def do_repository_request(self, repository, compression):
+        from bzrlib import osutils
         repo_transport = repository.control_files._transport
+        tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
-            repo_dir = repo_transport.local_abspath('.')
-        except errors.NotLocalUrl, e:
-            raise NotImplementedError(
-                "Repository.tarball is not supported on non-local "
-                "transport %s"
-                % (repo_transport,))
+            repo_dir = tmp_repo.control_files._transport.local_abspath('.')
+            return self._tarfile_response(repo_dir, compression)
+        finally:
+            osutils.rmtree(tmp_dirname)
+
+    def _copy_to_tempdir(self, from_repo):
+        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
+        tmp_bzrdir = from_repo.bzrdir._format.initialize(tmp_dirname)
+        tmp_repo = from_repo._format.initialize(tmp_bzrdir)
+        from_repo.copy_content_into(tmp_repo)
+        return tmp_dirname, tmp_repo
+
+    def _tarfile_response(self, repo_dir, compression):
         temp = tempfile.NamedTemporaryFile()
         try:
-            tarball = tarfile.open(temp.name, mode='w:' + compression)
-            try:
-                # The tarball module only accepts ascii names, and (i guess)
-                # packs them with their 8bit names.  We know all the files
-                # within the repository have ASCII names so the should be safe
-                # to pack in.
-                repo_dir = repo_dir.encode(sys.getfilesystemencoding())
-                # Lock it to let us just pack things in without worrying about 
-                # ordering or consistency.
-                #
-                # TODO: Instead, maybe clone the repository to a temporary
-                # directory (or MemoryTransport) and then pack that up.
-                repository.lock_write()
-                try:
-                    tarball.add(repo_dir, 'repository') # recursive by default
-                finally:
-                    repository.unlock()
-            finally:
-                tarball.close()
+            self._tarball_of_dir(repo_dir, compression, temp.name)
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SmartServerResponse(('ok',), temp.read())
+            # FIXME: Don't read the whole thing into memory here; rather stream it
+            # out from the file onto the network. mbp 20070411
         finally:
             temp.close()
+
+    def _tarball_of_dir(self, repo_dir, compression, tarfile_name):
+        tarball = tarfile.open(tarfile_name, mode='w:' + compression)
+        try:
+            # The tarball module only accepts ascii names, and (i guess)
+            # packs them with their 8bit names.  We know all the files
+            # within the repository have ASCII names so the should be safe
+            # to pack in.
+            repo_dir = repo_dir.encode(sys.getfilesystemencoding())
+            # python's tarball module includes the whole path by default so
+            # override it
+            assert repo_dir.endswith('/repository'), \
+                "unexpected repository path %r" % repo_dir
+            tarball.add(repo_dir, 'repository') # recursive by default
+        finally:
+            tarball.close()

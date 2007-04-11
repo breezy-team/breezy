@@ -735,6 +735,9 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryTarball(backing)
         repository = self.make_repository('.')
+        # make some extraneous junk in the repository directory which should
+        # not be copied
+        self.build_tree(['.bzr/repository/extra-junk'])
         response = request.execute(backing.local_abspath(''), 'bz2')
         self.assertEqual(('ok',), response.args)
         # body should be a tbz2
@@ -746,6 +749,8 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
         names = set([n.rstrip('/') for n in body_tar.getnames()])
         self.assertTrue('repository/lock' in names)
         self.assertTrue('repository/format' in names)
+        self.assertTrue('repository/extra-junk' not in names,
+            "extraneous file present in tar file")
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
