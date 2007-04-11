@@ -182,10 +182,11 @@ class MultiVersionedFile(object):
         for ignored in xrange(self.snapshot_interval):
             if len(parent_ids) == 0:
                 return False
-            version_id = parent_ids[0]
-            if version_id in self._snapshots:
-                return False
-            parent_ids = self._parents[version_id]
+            version_ids = parent_ids
+            parent_ids = []
+            for version_id in version_ids:
+                if version_id not in self._snapshots:
+                    parent_ids.extend(self._parents[version_id])
         else:
             return True
 
@@ -221,7 +222,8 @@ class MultiVersionedFile(object):
             pass
         diff = self._diffs[version_id]
         lines = []
-        reconstructor = _Reconstructor(self._diffs, self._lines, self._parents)
+        reconstructor = _Reconstructor(self._diffs, self._lines,
+                                       self._parents)
         reconstructor.reconstruct_version(lines, version_id)
         self._lines[version_id] = lines
         return lines
@@ -240,7 +242,8 @@ class _Reconstructor(object):
         """Append the lines referred to by a ParentText to lines"""
         parent_id = self.parents[version_id][parent_text.parent]
         end = parent_text.parent_pos + parent_text.num_lines
-        return self._reconstruct(lines, parent_id, parent_text.parent_pos, end)
+        return self._reconstruct(lines, parent_id, parent_text.parent_pos,
+                                 end)
 
     def _reconstruct(self, lines, req_version_id, req_start, req_end):
         """Append lines for the requested version_id range"""

@@ -22,11 +22,11 @@ bt = wt.branch.repository.revision_tree(wt.last_revision())
 file_id = wt.path2id(path)
 file_weave = wt.branch.repository.get_inventory_weave()
 #file_weave = bt.get_weave(file_id)
-file_weave.enable_cache()
+#file_weave.enable_cache()
 revisions = set(file_weave.versions())
 ft_set = set(r for r in revisions if file_weave._index.get_method(r)
              == 'fulltext')
-vf = MultiVersionedFile(None)
+vf = MultiVersionedFile(25)
 #files = {}
 #for version_id in revisions:
 #    lines = [a + ' ' + l for a, l in file_weave.annotate_iter(version_id)]
@@ -40,8 +40,9 @@ while len(revisions) > 0:
         if [p for p in parents if p not in vf._diffs] != []:
             continue
         lines = file_weave.get_lines(revision)
-        vf.add_version(lines, revision, parents,
-                       force_snapshot=(revision in ft_set))
+#        vf.add_version(lines, revision, parents,
+#                       force_snapshot=(revision in ft_set))
+        vf.add_version(lines, revision, parents)
         added.add(revision)
         vf.clear_cache()
     revisions = [r for r in revisions if r not in added]
