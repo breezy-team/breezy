@@ -79,6 +79,22 @@ class MultiParent(object):
             for line in hunk.to_patch():
                 yield line
 
+    def range_iterator(self):
+        start = 0
+        for hunk in self.hunks:
+            if isinstance(hunk, NewText):
+                kind = 'new'
+                end = start + len(hunk.lines)
+                data = hunk.lines
+            else:
+                kind = 'parent'
+                start = hunk.child_pos
+                end = start + hunk.num_lines
+                data = (hunk.parent, hunk.parent_pos, hunk.parent_pos +
+                        hunk.num_lines)
+            yield start, end, kind, data
+            start = end
+
 
 class NewText(object):
 
@@ -141,4 +157,58 @@ class MultiVersionedFile(object):
 
     def clear_cache(self):
         self._lines.clear()
-        pass
+
+    def get_line_list(self, version_ids):
+        return [self.cache_version(v) for v in version_ids]
+
+    def cache_version(self, version_id):
+        try:
+            return self._lines[version_id]
+        except KeyError:
+            pass
+        diff = self._diffs[version_id]
+        lines = []
+        reconstructor = _Reconstructor(self._diffs, self._lines, self._parents)
+        for hunk in diff.hunks:
+            if isinstance(hunk, NewText):
+                lines.extend(hunk.lines)
+            else:
+                reconstructor.reconstruct(lines, hunk, version_id)
+        self._lines[version_id] = lines
+        return lines
+
+
+class _Reconstructor(object):
+
+    def __init__(self, diffs, lines, parents):
+
+        self.diffs = diffs
+        self.lines = lines
+        self.parents = parents
+        self.cursor = {}
+
+    def reconstruct(self, lines, parent_text, version_id):
+        parent_id = self.parents[version_id][parent_text.parent]
+        end = parent_text.parent_pos + parent_text.num_lines
+        return self._reconstruct(lines, parent_id, parent_text.parent_pos, end)
+
+    def _reconstruct(self, lines, req_version_id, req_start, req_end):
+        pending_reqs = [(req_version_id, req_start, req_end)]
+        while len(pending_reqs) > 0:
+            req_version_id, req_start, req_end = pending_reqs.pop()
+            try:
+                start, end, kind, data, iterator = self.cursor[req_version_id]
+            except KeyError:
+                iterator = self.diffs[req_version_id].range_iterator()
+                start, end, kind, data = iterator.next()
+            while end < req_start:
+                start, end, kind, data = iterator.next()
+            self.cursor[req_version_id] = start, end, kind, data, iterator
+            if kind == 'new':
+                lines.extend(data[req_start - start: (req_end - start)])
+            else:
+                parent, parent_start, parent_end = data
+                version_id = self.parents[req_version_id][parent]
+                sub_start = parent_start + req_start - start
+                sub_end = parent_end + req_end - end
+                pending_reqs.append((version_id, sub_start, sub_end))
