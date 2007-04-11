@@ -392,7 +392,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, "=== modified file 'other/file'\n")
         # XXX: This is technically incorrect, because it used to be at another
         # location. What to do?
-        self.assertContainsRe(diff, '--- old/other/file\t')
+        self.assertContainsRe(diff, '--- old/dir/file\t')
         self.assertContainsRe(diff, '\\+\\+\\+ new/other/file\t')
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')

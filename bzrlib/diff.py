@@ -471,11 +471,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
-        # The path may not be correct in the case that the containing directory
-        # was renamed. So don't pass it to _patch_header_date, which passes it
-        # to tree.get_file_mtime()
-        old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id, None))
+        # The file may be in a different location in the old tree (because
+        # the containing dir was renamed, but the file itself was not)
+        old_path = old_tree.id2path(file_id)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id, old_path))
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
         if text_modified:
