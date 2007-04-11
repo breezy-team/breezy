@@ -1789,7 +1789,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             files = [self.relpath(osutils.dereference_path(filename))
                 for filename in files]
             files.sort(reverse=True)
-
             changes = self.changes_from(self.basis_tree(),
                 specific_files=files)
 
@@ -1819,6 +1818,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     if osutils.lexists(f):
                         if changed_files:
                             message="%s has changed and won't be deleted."%f
+                        elif osutils.isdir(f) and len(os.listdir(f)) > 0:
+                            message="%s is not empty directory "\
+                                "and won't be deleted."%f
                         else:
                             #TODO check if folder is empty
                             osutils.delete_any(f)

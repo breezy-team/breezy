@@ -103,6 +103,17 @@ class TestRemove(TestCaseWithTransport):
         tree.remove(files, keep_files=False)
         tree.remove([''], keep_files=False)
         tree.remove(['b'], keep_files=False)
+        
+    def test_remove_nonempty_directory(self):
+        tree = self.getTree()
+        tree.add(files)        
+        tree.commit("make sure b is versioned")
+        self.assertInWorkingTree(files)
+        self.failUnlessExists(files)
+        b = ['b']
+        tree.remove(b, keep_files=False)
+        self.assertNotInWorkingTree(b)
+        self.failUnlessExists(b)
 
     def test_remove_keep(self):
         """check that files are unversioned but not delete."""
