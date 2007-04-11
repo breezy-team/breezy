@@ -133,6 +133,21 @@ class TestLog(ExternalBase):
         # since dicts are unordered, need to check both possibilities
         self.assertTrue(('tags: tag1, tag1.1' in log) or 
                         ('tags: tag1.1, tag1' in log))
+                        
+    def test_merged_log_with_tags(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self._prepare(format='dirstate-tags')
+        os.chdir('..')
+        self.run_bzr('branch', 'branch1', 'branch2')
+        os.chdir('branch1')
+        self.run_bzr('commit', '-m', 'foobar', '--unchanged')
+        self.runbzr('tag tag1')
+        os.chdir('../branch2')
+        self.run_bzr('merge', '../branch1')
+        self.run_bzr('commit', '-m', 'merge branch 1')
+        log = self.runbzr("log -r-1")[0]
+        self.assertTrue('    tags: tag1' in log)
 
 
 class TestLogMerges(ExternalBase):
