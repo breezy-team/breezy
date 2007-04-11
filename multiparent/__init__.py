@@ -19,6 +19,7 @@ class MultiParent(object):
 
     @staticmethod
     def from_lines(text, parents=()):
+        """Produce a MultiParent from a list of lines and parents"""
         def compare(parent):
             return SequenceMatcher(None, parent, text).get_matching_blocks()
         parent_comparisons = [compare(p) for p in parents]
@@ -71,15 +72,24 @@ class MultiParent(object):
 
     @classmethod
     def from_texts(cls, text, parents=()):
+        """Produce a MultiParent from a text and list of parent text"""
         return cls.from_lines(text.splitlines(True),
                               [p.splitlines(True) for p in parents])
 
     def to_patch(self):
+        """Yield text lines for a patch"""
         for hunk in self.hunks:
             for line in hunk.to_patch():
                 yield line
 
     def range_iterator(self):
+        """Iterate through the hunks, with range indicated
+
+        kind is "new" or "parent".
+        for "new", data is a list of lines.
+        for "parent", data is (parent, parent_start, parent_end)
+        :return: a generator of (start, end, kind, data)
+        """
         start = 0
         for hunk in self.hunks:
             if isinstance(hunk, NewText):
@@ -97,6 +107,7 @@ class MultiParent(object):
 
 
 class NewText(object):
+    """The contents of text that is introduced by this text"""
 
     def __init__(self, lines):
         self.lines = lines
@@ -117,6 +128,7 @@ class NewText(object):
 
 
 class ParentText(object):
+    """A reference to text present in a parent text"""
 
     def __init__(self, parent, parent_pos, child_pos, num_lines):
         self.parent = parent
@@ -139,6 +151,7 @@ class ParentText(object):
 
 
 class MultiVersionedFile(object):
+    """VersionedFile skeleton for MultiParent"""
 
     def __init__(self):
         self._diffs = {}
@@ -179,36 +192,48 @@ class MultiVersionedFile(object):
 
 
 class _Reconstructor(object):
+    """Build a text from the diffs, ancestry graph and cached lines"""
 
     def __init__(self, diffs, lines, parents):
-
         self.diffs = diffs
         self.lines = lines
         self.parents = parents
         self.cursor = {}
 
     def reconstruct(self, lines, parent_text, version_id):
+        """Append the lines referred to by a ParentText to lines"""
         parent_id = self.parents[version_id][parent_text.parent]
         end = parent_text.parent_pos + parent_text.num_lines
         return self._reconstruct(lines, parent_id, parent_text.parent_pos, end)
 
     def _reconstruct(self, lines, req_version_id, req_start, req_end):
+        """Append lines for the requested version_id range"""
+        # stack of pending range requests
         pending_reqs = [(req_version_id, req_start, req_end)]
         while len(pending_reqs) > 0:
             req_version_id, req_start, req_end = pending_reqs.pop()
+            # lazily allocate cursors for versions
             try:
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:
                 iterator = self.diffs[req_version_id].range_iterator()
                 start, end, kind, data = iterator.next()
-            while end < req_start:
+            # find the first hunk relevant to the request
+            while end <= req_start:
                 start, end, kind, data = iterator.next()
             self.cursor[req_version_id] = start, end, kind, data, iterator
+            # if the hunk can't satisfy the whole request, split it in two,
+            # and leave the second half for later.
+            if req_end > end:
+                pending_reqs.append((req_version_id, end, req_end))
+                req_end = end
             if kind == 'new':
                 lines.extend(data[req_start - start: (req_end - start)])
             else:
+                # If the hunk is a ParentText, rewrite it as a range request
+                # for the parent, and make it the next pending request.
                 parent, parent_start, parent_end = data
-                version_id = self.parents[req_version_id][parent]
-                sub_start = parent_start + req_start - start
-                sub_end = parent_end + req_end - end
-                pending_reqs.append((version_id, sub_start, sub_end))
+                new_version_id = self.parents[req_version_id][parent]
+                new_start = parent_start + req_start - start
+                new_end = parent_end + req_end - end
+                pending_reqs.append((new_version_id, new_start, new_end))

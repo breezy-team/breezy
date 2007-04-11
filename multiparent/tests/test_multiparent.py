@@ -136,3 +136,5 @@ class TestVersionedFile(TestCase):
         self.assertEqual(['a\n', 'b\n'], self.reconstruct(vf, 'rev-a',  0, 2))
         self.assertEqual(['c\n', 'd\n'], self.reconstruct(vf, 'rev-a',  2, 4))
         self.assertEqual(['e\n', 'f\n'], self.reconstruct(vf, 'rev-c',  2, 4))
+        self.assertEqual(['a\n', 'b\n', 'e\n', 'f\n'],
+                          self.reconstruct(vf, 'rev-c',  0, 4))
