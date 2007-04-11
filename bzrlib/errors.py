@@ -2035,3 +2035,12 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Bug identifier %(bug_id)s is malformed: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason

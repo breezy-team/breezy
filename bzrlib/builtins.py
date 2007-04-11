@@ -2062,6 +2062,30 @@ class cmd_commit(Command):
                      ]
     aliases = ['ci', 'checkin']
 
+    def _get_bug_fix_properties(self, fixes, branch):
+        from bzrlib.bugtracker import get_bug_url
+
+        properties = {}
+        # Configure the properties for bug fixing attributes.
+        for fixed_bug in fixes:
+            tokens = fixed_bug.split(':')
+            if len(tokens) != 2:
+                raise errors.BzrCommandError(
+                    "Invalid bug %s. Must be in the form of 'tag:id'. "
+                    "Commit refused." % fixed_bug)
+            tag, bug_id = tokens
+            try:
+                bug_url = get_bug_url(tag, branch, bug_id)
+            except KeyError:
+                raise errors.BzrCommandError(
+                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
+            except errors.MalformedBugIdentifier:
+                raise errors.BzrCommandError(
+                    "Invalid bug identifier for %s. Commit refused."
+                    % fixed_bug)
+            properties[bug_url] = 'fixed'
+        return properties
+
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
@@ -2078,25 +2102,14 @@ class cmd_commit(Command):
 
         properties = {}
 
-        # Configure the properties for bug fixing attributes.
-        for fixed_bug in fixes:
-            prefix = 'lp:'
-            if not fixed_bug.startswith(prefix):
-                raise errors.BzrCommandError(
-                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
-            try:
-                int(fixed_bug[len(prefix):])
-            except ValueError:
-                raise errors.BzrCommandError(
-                    "Invalid bug number for %s. Commit refused." % fixed_bug)
-            properties[fixed_bug] = 'fixed'
-
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
+
+        properties.update(self._get_bug_fix_properties(fixes, tree.branch))
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()

@@ -380,7 +380,8 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'lp:234': 'fixed'}, properties)
+        self.assertEqual({'https://launchpad.net/bugs/234': 'fixed'},
+                         properties)
 
     def test_fixes_multiple_bugs_sets_properties(self):
         """--fixes can be used more than once to show that bugs are fixed."""
@@ -396,7 +397,31 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'lp:123': 'fixed', 'lp:235': 'fixed'}, properties)
+        self.assertEqual({'https://launchpad.net/bugs/123': 'fixed',
+                          'https://launchpad.net/bugs/235': 'fixed'},
+                         properties)
+
+    def test_fixes_bug_with_alternate_trackers(self):
+        """--fixes can be used on a properly configured branch to mark bug
+        fixes on multiple trackers.
+        """
+        tree = self.make_branch_and_tree('tree')
+        tree.branch.get_config().set_user_option(
+            'trac_twisted_url', 'http://twistedmatrix.com/trac')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.runbzr(
+            'commit -m hello --fixes=lp:123 --fixes=twisted:235 tree/')
+
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual({'http://twistedmatrix.com/trac/ticket/235': 'fixed',
+                          'https://launchpad.net/bugs/123': 'fixed'},
+                         properties)
 
     def test_fixes_unknown_bug_prefix(self):
         tree = self.make_branch_and_tree('tree')
@@ -412,6 +437,17 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug number for %s. Commit refused." % 'lp:orange'],
+            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
             'commit', '-m', 'add b', '--fixes=lp:orange',
+            working_dir='tree')
+
+    def test_fixes_invalid_argument(self):
+        """Raise an appropriate error when the fixes argument isn't tag:id."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["Invalid bug %s. Must be in the form of 'tag:id'. Commit refused."
+             % 'orange'],
+            'commit', '-m', 'add b', '--fixes=orange',
             working_dir='tree')
