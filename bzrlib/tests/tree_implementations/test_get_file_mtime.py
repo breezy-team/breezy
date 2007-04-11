@@ -29,7 +29,7 @@ class TestGetFileMTime(TestCaseWithTree):
         tree.add(['one'], ['one-id'])
         return self._convert_tree(tree)
 
-    def test_get_symlink_target(self):
+    def test_get_file_mtime(self):
         now = time.time()
         tree = self.get_basic_tree()
         tree.lock_read()
