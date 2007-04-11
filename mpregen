@@ -1,8 +1,10 @@
 #!/usr/bin/env python2.4
 from itertools import izip
+from StringIO import StringIO
 import sys
 import time
 
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.workingtree import WorkingTree
 
 from multiparent import MultiVersionedFile
@@ -22,7 +24,11 @@ file_weave = bt.get_weave(file_id)
 file_weave.enable_cache()
 vf = MultiVersionedFile()
 ancestry = set(file_weave.get_ancestry([bt.inventory[file_id].revision]))
-files = dict(izip(ancestry, file_weave.get_line_list(ancestry)))
+files = {}
+for version_id in ancestry:
+    lines = [a + ' ' + l for a, l in file_weave.annotate_iter(version_id)]
+    files[version_id] = lines
+#files = dict(izip(ancestry, file_weave.get_line_list(ancestry)))
 while len(ancestry) > 0:
     added = set()
     for revision in ancestry:
@@ -43,7 +49,7 @@ if False:
                 file_weave.get_lines(revision_id))
             open(revision_id + '.new', 'wb').writelines(
                 vf.get_line_list(revision_id)[0])
-if True:
+if False:
     revisions = file_weave.get_ancestry(
             [bt.inventory[file_id].revision])[-1:]
     from bzrlib.lsprof import profile
@@ -59,3 +65,21 @@ if True:
     for x in range(1000):
         file_weave.get_line_list(revisions)
     print time.clock() - start
+if True:
+    revisions = file_weave.get_ancestry(
+            [bt.inventory[file_id].revision])
+    print >> sys.stderr, file_weave
+
+    ft_count = sum(1 for r in revisions if file_weave._index.get_method(r)
+                   == 'fulltext')
+    print >> sys.stderr, "%d fulltexts" % ft_count
+    s_count = sum(1 for r in revisions if vf._snapshots[r])
+    print >> sys.stderr, "%d snapshots" % s_count
+
+    for revision, diff in vf._diffs.iteritems():
+        sio = StringIO()
+        data_file = GzipFile(None, mode='wb', fileobj=sio)
+        print >> data_file, 'version %s' % revision
+        data_file.writelines(diff.to_patch())
+        data_file.close()
+        sys.stdout.write(sio.getvalue())
