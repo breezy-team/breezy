@@ -161,14 +161,35 @@ class ParentText(object):
 class MultiVersionedFile(object):
     """VersionedFile skeleton for MultiParent"""
 
-    def __init__(self):
+    def __init__(self, snapshot_interval=25):
         self._diffs = {}
         self._lines = {}
         self._parents = {}
+        self._snapshots = {}
+        self.snapshot_interval = snapshot_interval
+
+    def do_snapshot(self, version_id, parent_ids):
+        if len(parent_ids) == 0:
+            return False
+        counter = 0
+        while counter < self.snapshot_interval:
+            if len(parent_ids) == 0:
+                return False
+            version_id = parent_ids[0]
+            if self._snapshots[version_id]:
+                return False
+            counter += 1
+            parent_ids = self._parents[version_id]
+        return True
 
     def add_version(self, lines, version_id, parent_ids):
-        parent_lines = [self._lines[p] for p in parent_ids]
-        diff = MultiParent.from_lines(lines, parent_lines)
+        if self.do_snapshot(version_id, parent_ids):
+            self._snapshots[version_id] = True
+            diff = MultiParent([NewText(lines)])
+        else:
+            self._snapshots[version_id] = False
+            parent_lines = [self._lines[p] for p in parent_ids]
+            diff = MultiParent.from_lines(lines, parent_lines)
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
 
