@@ -61,6 +61,11 @@ IN DEVELOPMENT
       (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
       changes from 2m10s to 13s).  (John Arbash Meinel, #103757)
 
+    * Fix ``show_diff_trees`` to handle the case when a file is modified,
+      and the containing directory is renamed. (The file path is different
+      in this versus base, but it isn't marked as a rename).
+      (John Arbash Meinel, #103870)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
