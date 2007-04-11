@@ -107,7 +107,8 @@ class UITests(TestCase):
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
             # Since there was no update() call, there should be no clear() call
-            self.failIf(re.search(r'^\r {10,}\r$', stderr.getvalue()) is not None,
+            self.failIf(re.search(r'^\r {10,}\r$',
+                                  stderr.getvalue()) is not None,
                         'We cleared the stderr without anything to put there')
         finally:
             pb.finished()
@@ -169,8 +170,7 @@ class UITests(TestCase):
 
     def test_text_factory_setting_progress_bar(self):
         # we should be able to choose the progress bar type used.
-        factory = bzrlib.ui.text.TextUIFactory(
-            bar_type=DotsProgressBar)
+        factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
         bar = factory.nested_progress_bar()
         bar.finished()
         self.assertIsInstance(bar, DotsProgressBar)
@@ -180,7 +180,9 @@ class UITests(TestCase):
         self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
-        factory.stdin = StringIO("y\nyes with garbage\nyes\nn\nnot an answer\nno\nfoo\n")
+        factory.stdin = StringIO("y\nyes with garbage\n"
+                                 "yes\nn\nnot an answer\n"
+                                 "no\nfoo\n")
         factory.stdout = StringIO()
         # there is no output from the base factory
         self.assertEqual(True, factory.get_boolean(""))
@@ -188,6 +190,8 @@ class UITests(TestCase):
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual(None, factory.stdin.getline())
 
     def test_silent_ui_getbool(self):
         factory = bzrlib.ui.SilentUIFactory()
@@ -197,13 +201,13 @@ class UITests(TestCase):
         factory = bzrlib.ui.SilentUIFactory()
         stdout = StringIO()
         factory.stdin = StringIO("y\n")
-        self.assertEqual(
-            True,
-            self.apply_redirected(
-                None, stdout, stdout, factory.get_boolean, "foo")
-            )
+        self.assertEqual(True,
+                         self.apply_redirected(None, stdout, stdout,
+                                               factory.get_boolean, "foo"))
         self.assertEqual("", stdout.getvalue())
-        
+        # stdin should be empty
+        self.assertEqual(None, factory.stdin.getline())
+
     def test_text_ui_getbool(self):
         factory = bzrlib.ui.text.TextUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
@@ -213,17 +217,20 @@ class UITests(TestCase):
         factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
         factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
-        pb = self.apply_redirected(
-            factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
+        pb = self.apply_redirected(factory.stdin, factory.stdout,
+                                   factory.stdout, factory.nested_progress_bar)
         pb.start_time = None
-        self.apply_redirected(
-            factory.stdin, factory.stdout, factory.stdout, pb.update, "foo", 0, 1)
-        self.assertEqual(
-            True,
-            self.apply_redirected(
-                None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
-            )
+        self.apply_redirected(factory.stdin, factory.stdout,
+                              factory.stdout, pb.update, "foo", 0, 1)
+        self.assertEqual(True,
+                         self.apply_redirected(None, factory.stdout,
+                                               factory.stdout,
+                                               factory.get_boolean,
+                                               "what do you want"))
         output = factory.stdout.getvalue()
         self.assertEqual("foo: .\n"
                          "what do you want? [y/n]: what do you want? [y/n]: ",
                          factory.stdout.getvalue())
+        # stdin should be empty
+        self.assertEqual(None, factory.stdin.getline())
+
