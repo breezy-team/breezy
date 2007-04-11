@@ -17,8 +17,7 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.errors import MalformedBugIdentifier
-from bzrlib import registry
+from bzrlib import errors, registry
 """)
 
 
@@ -77,7 +76,7 @@ class LaunchpadTracker(object):
         try:
             int(bug_id)
         except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Must be an integer")
+            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
         return 'https://launchpad.net/bugs/%s' % (bug_id,)
 
 tracker_registry.register('launchpad', LaunchpadTracker)
@@ -108,7 +107,7 @@ class TracTracker(object):
         try:
             int(bug_id)
         except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Must be an integer")
+            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
         return '%s/ticket/%s' % (self._url, bug_id)
 
 tracker_registry.register('trac', TracTracker)
