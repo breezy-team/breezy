@@ -377,6 +377,26 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
 
+    def test_modified_file_in_renamed_dir(self):
+        """Test when a file is modified in a renamed directory."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/'])
+        self.build_tree_contents([('tree/dir/file', 'contents\n')])
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree.commit('one', rev_id='rev-1')
+
+        tree.rename_one('dir', 'other')
+        self.build_tree_contents([('tree/other/file', 'new contents\n')])
+        diff = self.get_diff(tree.basis_tree(), tree)
+        self.assertContainsRe(diff, "=== renamed directory 'dir' => 'other'\n")
+        self.assertContainsRe(diff, "=== modified file 'other/file'\n")
+        # XXX: This is technically incorrect, because it used to be at another
+        # location. What to do?
+        self.assertContainsRe(diff, '--- old/other/file\t')
+        self.assertContainsRe(diff, '\\+\\+\\+ new/other/file\t')
+        self.assertContainsRe(diff, '-contents\n'
+                                    '\\+new contents\n')
+
     def test_renamed_directory(self):
         """Test when only a directory is only renamed."""
         tree = self.make_branch_and_tree('tree')
