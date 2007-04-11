@@ -218,6 +218,7 @@ class cmd_cat_revision(Command):
     @display_command
     def run(self, revision_id=None, revision=None):
 
+        revision_id = osutils.safe_revision_id(revision_id, warn=False)
         if revision_id is not None and revision is not None:
             raise errors.BzrCommandError('You can only supply one of'
                                          ' revision_id or --revision')
