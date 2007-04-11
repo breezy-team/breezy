@@ -44,12 +44,16 @@ class UITests(TestCase):
                          self.apply_redirected(None, stdout, stdout,
                                                ui.get_password))
         self.assertEqual('', stdout.getvalue())
+        # stdin should be empty
+        self.assertEqual(None, ui.stdin.getline())
         self.assertEqual(None,
                          self.apply_redirected(None, stdout, stdout,
                                                ui.get_password,
                                                u'Hello\u1234 %(user)s',
                                                user=u'some\u1234'))
         self.assertEqual('', stdout.getvalue())
+        # stdin should be empty
+        self.assertEqual(None, ui.stdin.getline())
 
     def test_text_factory_ascii_password(self):
         ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper())
@@ -61,6 +65,8 @@ class UITests(TestCase):
                                                    ui.get_password))
             # ': ' is appended to prompt
             self.assertEqual(': ', ui.stdout.getvalue())
+            # stdin should be empty
+            self.assertEqual(None, ui.stdin.getline())
         finally:
             pb.finished()
 
@@ -84,6 +90,8 @@ class UITests(TestCase):
             self.assertEqual(u'baz\u1234', password.decode('utf8'))
             self.assertEqual(u'Hello \u1234 some\u1234: ',
                              ui.stdout.getvalue().decode('utf8'))
+            # stdin should be empty
+            self.assertEqual(None, ui.stdin.getline())
         finally:
             pb.finished()
 
