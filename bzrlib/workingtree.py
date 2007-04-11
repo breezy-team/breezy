@@ -1786,10 +1786,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # Sort needed when deleting files:
         # first delete directory content before the directory
         if not keep_files:
-            files = files[:]
+            files = [self.relpath(osutils.dereference_path(filename))
+                for filename in files]
             files.sort(reverse=True)
 
-            changes = self.changes_from(self.basis_tree())
+            changes = self.changes_from(self.basis_tree(),
+                specific_files=files)
 
             for f in changes.modified:
                 changed_files.append(f[0])
