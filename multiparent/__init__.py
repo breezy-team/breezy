@@ -1,5 +1,5 @@
 from difflib import SequenceMatcher
-
+from bzrlib import patiencediff
 
 class MultiParent(object):
 
@@ -21,7 +21,9 @@ class MultiParent(object):
     def from_lines(text, parents=()):
         """Produce a MultiParent from a list of lines and parents"""
         def compare(parent):
-            return SequenceMatcher(None, parent, text).get_matching_blocks()
+            matcher = patiencediff.PatienceSequenceMatcher(None, parent,
+                                                           text)
+            return matcher.get_matching_blocks()
         parent_comparisons = [compare(p) for p in parents]
         cur_line = 0
         new_text = NewText([])
@@ -161,38 +163,43 @@ class ParentText(object):
 class MultiVersionedFile(object):
     """VersionedFile skeleton for MultiParent"""
 
-    def __init__(self, snapshot_interval=25):
+    def __init__(self, snapshot_interval=25, max_snapshots=None):
         self._diffs = {}
         self._lines = {}
         self._parents = {}
-        self._snapshots = {}
+        self._snapshots = set()
         self.snapshot_interval = snapshot_interval
-        self.num_snapshots = 0
+        self.max_snapshots = max_snapshots
 
     def do_snapshot(self, version_id, parent_ids):
-        if self.num_snapshots == 44:
+        if self.snapshot_interval is None:
+            return False
+        if self.max_snapshots is not None and\
+            len(self._snapshots) == self.max_snapshots:
             return False
         if len(parent_ids) == 0:
-            return False
-        counter = 0
-        while counter < self.snapshot_interval:
+            return True
+        for ignored in xrange(self.snapshot_interval):
             if len(parent_ids) == 0:
                 return False
             version_id = parent_ids[0]
-            if self._snapshots[version_id]:
+            if version_id in self._snapshots:
                 return False
-            counter += 1
             parent_ids = self._parents[version_id]
-        self.num_snapshots += 1
-        return True
+        else:
+            return True
 
-    def add_version(self, lines, version_id, parent_ids):
-        if self.do_snapshot(version_id, parent_ids):
-            self._snapshots[version_id] = True
+    def add_version(self, lines, version_id, parent_ids,
+                    force_snapshot=None):
+        if force_snapshot is None:
+            do_snapshot = self.do_snapshot(version_id, parent_ids)
+        else:
+            do_snapshot = force_snapshot
+        if do_snapshot:
+            self._snapshots.add(version_id)
             diff = MultiParent([NewText(lines)])
         else:
-            self._snapshots[version_id] = False
-            parent_lines = [self._lines[p] for p in parent_ids]
+            parent_lines = self.get_line_list(parent_ids)
             diff = MultiParent.from_lines(lines, parent_lines)
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines

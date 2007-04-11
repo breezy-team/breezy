@@ -20,25 +20,36 @@ else:
 
 bt = wt.branch.repository.revision_tree(wt.last_revision())
 file_id = wt.path2id(path)
-file_weave = bt.get_weave(file_id)
+file_weave = wt.branch.repository.get_inventory_weave()
+#file_weave = bt.get_weave(file_id)
 file_weave.enable_cache()
-vf = MultiVersionedFile()
-ancestry = set(file_weave.get_ancestry([bt.inventory[file_id].revision]))
-files = {}
-for version_id in ancestry:
-    lines = [a + ' ' + l for a, l in file_weave.annotate_iter(version_id)]
-    files[version_id] = lines
+revisions = set(file_weave.versions())
+ft_set = set(r for r in revisions if file_weave._index.get_method(r)
+             == 'fulltext')
+vf = MultiVersionedFile(None)
+#files = {}
+#for version_id in revisions:
+#    lines = [a + ' ' + l for a, l in file_weave.annotate_iter(version_id)]
+#    files[version_id] = lines
 #files = dict(izip(ancestry, file_weave.get_line_list(ancestry)))
-while len(ancestry) > 0:
+total = len(revisions)
+while len(revisions) > 0:
     added = set()
-    for revision in ancestry:
+    for revision in revisions:
         parents = file_weave.get_parents(revision)
         if [p for p in parents if p not in vf._diffs] != []:
             continue
-        lines = files[revision]
-        vf.add_version(lines, revision, parents)
+        lines = file_weave.get_lines(revision)
+        vf.add_version(lines, revision, parents,
+                       force_snapshot=(revision in ft_set))
         added.add(revision)
-    ancestry = [r for r in ancestry if r not in added]
+        vf.clear_cache()
+    revisions = [r for r in revisions if r not in added]
+    print >> sys.stderr, "%.1f %%" % ((((total - len(revisions)) * 100.0)
+                                       / total))
+print >> sys.stderr, file_weave
+print >> sys.stderr, "%d fulltexts" % len(ft_set)
+print >> sys.stderr, "%d snapshots" % len(vf._snapshots)
 vf.clear_cache()
 if False:
     for revision_id in file_weave.get_ancestry(
@@ -49,7 +60,7 @@ if False:
                 file_weave.get_lines(revision_id))
             open(revision_id + '.new', 'wb').writelines(
                 vf.get_line_list(revision_id)[0])
-if False:
+if True:
     revisions = file_weave.get_ancestry(
             [bt.inventory[file_id].revision])[-1:]
     from bzrlib.lsprof import profile
@@ -57,6 +68,7 @@ if False:
     stats.sort()
     stats.pprint()
     start = time.clock()
+    print revisions
     for x in range(1000):
         vf.clear_cache()
         vf.get_line_list(revisions)
@@ -65,16 +77,8 @@ if False:
     for x in range(1000):
         file_weave.get_line_list(revisions)
     print time.clock() - start
-if True:
-    revisions = file_weave.get_ancestry(
-            [bt.inventory[file_id].revision])
-    print >> sys.stderr, file_weave
-
-    ft_count = sum(1 for r in revisions if file_weave._index.get_method(r)
-                   == 'fulltext')
-    print >> sys.stderr, "%d fulltexts" % ft_count
-    s_count = sum(1 for r in revisions if vf._snapshots[r])
-    print >> sys.stderr, "%d snapshots" % s_count
+if False:
+    revisions = file_weave.versions()
 
     for revision, diff in vf._diffs.iteritems():
         sio = StringIO()
