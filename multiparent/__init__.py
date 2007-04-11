@@ -84,6 +84,31 @@ class MultiParent(object):
             for line in hunk.to_patch():
                 yield line
 
+    @staticmethod
+    def from_patch(lines):
+        line_iter = iter(lines)
+        hunks = []
+        cur_line = None
+        while(True):
+            try:
+                cur_line = line_iter.next()
+            except StopIteration:
+                break
+            if cur_line[0] == 'i':
+                num_lines = int(cur_line.split(' ')[1])
+                hunk_lines = [line_iter.next() for x in xrange(num_lines)]
+                hunk_lines[-1] = hunk_lines[-1][:-1]
+                hunks.append(NewText(hunk_lines))
+            elif cur_line[0] == '\n':
+                hunks[-1].lines[-1] += '\n'
+            else:
+                assert cur_line[0] == 'c', cur_line[0]
+                parent, parent_pos, child_pos, num_lines =\
+                    [int(v) for v in cur_line.split(' ')[1:]]
+                hunks.append(ParentText(parent, parent_pos, child_pos,
+                                        num_lines))
+        return MultiParent(hunks)
+
     def range_iterator(self):
         """Iterate through the hunks, with range indicated
 

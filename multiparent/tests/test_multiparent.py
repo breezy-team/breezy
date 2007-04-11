@@ -60,6 +60,18 @@ class TestMulti(TestCase):
             list(multiparent.MultiParent([multiparent.NewText(['a\n']),
             multiparent.ParentText(0, 1, 2, 3)]).to_patch()))
 
+    def test_from_patch(self):
+        self.assertEqual(multiparent.MultiParent(
+            [multiparent.NewText(['a\n']),
+             multiparent.ParentText(0, 1, 2, 3)]),
+             multiparent.MultiParent.from_patch(
+             ['i 1\n', 'a\n', '\n', 'c 0 1 2 3\n']))
+        self.assertEqual(multiparent.MultiParent(
+            [multiparent.NewText(['a']),
+             multiparent.ParentText(0, 1, 2, 3)]),
+             multiparent.MultiParent.from_patch(
+             ['i 1\n', 'a\n', 'c 0 1 2 3\n']))
+
     def test_num_lines(self):
         mp = multiparent.MultiParent([multiparent.NewText(['a\n'])])
         self.assertEqual(1, mp.num_lines())
