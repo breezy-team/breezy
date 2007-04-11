@@ -1220,18 +1220,24 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         # Create an empty directory 'a', followed by a directory with content
         # 'b'.
-        self.build_tree(['tree1/a/', 'tree1/b/', 'tree1/b/file'])
-        self.build_tree(['tree2/a/', 'tree2/a/file', 'tree2/b/', 'tree2/b/file'])
+        self.build_tree(['tree1/a/', 'tree1/b/'])
+        self.build_tree_contents([('tree1/b/file', 'contents\n')])
+        self.build_tree(['tree2/a/', 'tree2/b/'])
+        self.build_tree_contents([('tree2/b/file', 'contents\n')])
+
         tree1.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
         tree2.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
+
+        # Now create some unknowns in tree2
+        # We should find both a/file and a/dir as unknown, but we shouldn't
+        # recurse into a/dir to find that a/dir/subfile is also unknown.
+        self.build_tree(['tree2/a/file', 'tree2/a/dir/', 'tree2/a/dir/subfile'])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
         expected = sorted([
             self.unversioned(tree2, u'a/file'),
-            # This isn't strictly important, but it is easier to let it happen,
-            # than to work around it.
-            self.content_changed(tree2, 'b-file-id'),
+            self.unversioned(tree2, u'a/dir'),
             ])
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
