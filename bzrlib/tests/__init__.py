@@ -36,6 +36,7 @@ import os
 from pprint import pformat
 import re
 import shlex
+import shutil
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -1832,6 +1833,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected" % filename)
+
+    def run(self, result=None):
+        try:
+            return TestCaseWithMemoryTransport.run(self, result=result)
+        finally:
+            # If the test passed, we can delete its temporary files.
+            if result is not None and result.wasSuccessful():
+                # If the test raised TestSkipped during setUp, test_dir might
+                # not be set.
+                if getattr(self, 'test_dir', None) is not None:
+                    assert self.test_dir.endswith('/work'), self.test_dir
+                    shutil.rmtree(self.test_dir[:-len('/work')])
 
     def makeAndChdirToTestDir(self):
         """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
