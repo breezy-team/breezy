@@ -1343,6 +1343,8 @@ class InterSameDataRepository(InterRepository):
     def is_compatible(source, target):
         if source.supports_rich_root() != target.supports_rich_root():
             return False
+        if source._serializer != target._serializer:
+            return False
         return True
 
     @needs_write_lock
