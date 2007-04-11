@@ -84,3 +84,16 @@ class TestParentText(TestCase):
     def test_to_patch(self):
         self.assertEqual(['c 0 1 2 3\n'],
                          list(multiparent.ParentText(0, 1, 2, 3).to_patch()))
+
+
+class TestVersionedFile(TestCase):
+
+    def add_version(self, vf, text, version_id, parent_ids):
+        vf.add_version([(t+'\n') for t in text], version_id, parent_ids)
+
+    def test_add_version(self):
+        vf = multiparent.MultiVersionedFile()
+        self.add_version(vf, 'abcd', 'rev-a', [])
+        self.assertEqual(vf._lines['rev-a'], ['a\n', 'b\n', 'c\n', 'd\n'])
+        vf.clear_cache()
+        self.assertEqual(vf._lines, {})

@@ -120,3 +120,25 @@ class ParentText(object):
     def to_patch(self):
         yield 'c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'\
             % self.__dict__
+
+
+class MultiVersionedFile(object):
+
+    def __init__(self):
+        self._diffs = {}
+        self._lines = {}
+        self._parents = {}
+
+    def add_version(self, lines, version_id, parent_ids):
+        parent_lines = [self._lines[p] for p in parent_ids]
+        diff = MultiParent.from_lines(lines, parent_lines)
+        self.add_diff(diff, version_id, parent_ids)
+        self._lines[version_id] = lines
+
+    def add_diff(self, diff, version_id, parent_ids):
+        self._diffs[version_id] = diff
+        self._parents[version_id] = parent_ids
+
+    def clear_cache(self):
+        self._lines.clear()
+        pass
