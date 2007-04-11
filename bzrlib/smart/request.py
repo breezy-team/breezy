@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,15 +19,24 @@
 
 import tempfile
 
-from bzrlib import bzrdir, errors, registry, revision
+from bzrlib import (
+    bzrdir,
+    errors,
+    registry,
+    revision,
+    )
 from bzrlib.bundle.serializer import write_bundle
 
 
 class SmartServerRequest(object):
-    """Base class for request handlers.
-    """
+    """Base class for request handlers."""
 
     def __init__(self, backing_transport):
+        """Constructor.
+
+        :param backing_transport: the base transport to be used when performing
+            this request.
+        """
         self._backing_transport = backing_transport
 
     def _check_enabled(self):
@@ -198,6 +207,7 @@ class HelloRequest(SmartServerRequest):
 
 
 class GetBundleRequest(SmartServerRequest):
+    """Get a bundle of from the null revision to the specified revision."""
 
     def do(self, path, revision_id):
         # open transport relative to our base
@@ -209,25 +219,6 @@ class GetBundleRequest(SmartServerRequest):
         write_bundle(repo, revision_id, base_revision, tmpf)
         tmpf.seek(0)
         return SmartServerResponse((), tmpf.read())
-
-
-# This exists solely to help RemoteObjectHacking.  It should be removed
-# eventually.  It should not be considered part of the real smart server
-# protocol!
-class ProbeDontUseRequest(SmartServerRequest):
-
-    def do(self, path):
-        from bzrlib.bzrdir import BzrDirFormat
-        t = self._backing_transport.clone(path)
-        default_format = BzrDirFormat.get_default_format()
-        real_bzrdir = default_format.open(t, _found=True)
-        try:
-            real_bzrdir._format.probe_transport(t)
-        except (errors.NotBranchError, errors.UnknownFormatError):
-            answer = 'no'
-        else:
-            answer = 'yes'
-        return SmartServerResponse((answer,))
 
 
 class SmartServerIsReadonly(SmartServerRequest):

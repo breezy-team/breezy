@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,11 +42,11 @@ def _deserialise_optional_mode(mode):
 def vfs_enabled():
     """Is the VFS enabled ?
 
-    the VFS is disabled when the NO_SMART_VFS environment variable is set.
+    the VFS is disabled when the BZR_NO_SMART_VFS environment variable is set.
 
     :return: True if it is enabled.
     """
-    return not 'NO_SMART_VFS' in os.environ
+    return not 'BZR_NO_SMART_VFS' in os.environ
 
 
 class VfsRequest(request.SmartServerRequest):

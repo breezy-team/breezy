@@ -45,6 +45,10 @@ import bzrlib.transport
 
 class TransportTests(TestTransportImplementation):
 
+    def setUp(self):
+        super(TransportTests, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
+
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqualDiff(content, transport.get(relpath).read())
