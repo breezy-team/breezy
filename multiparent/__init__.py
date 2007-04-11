@@ -1,4 +1,6 @@
 from difflib import SequenceMatcher
+import sys
+
 from bzrlib import patiencediff
 
 class MultiParent(object):
@@ -86,6 +88,7 @@ class MultiParent(object):
 
     @staticmethod
     def from_patch(lines):
+        """Produce a MultiParent from a sequence of lines"""
         line_iter = iter(lines)
         hunks = []
         cur_line = None
@@ -233,6 +236,28 @@ class MultiVersionedFile(object):
     def add_diff(self, diff, version_id, parent_ids):
         self._diffs[version_id] = diff
         self._parents[version_id] = parent_ids
+
+    def import_versionedfile(self, vf, ft_set=None, no_cache=True,):
+        revisions = set(vf.versions())
+        total = len(revisions)
+        while len(revisions) > 0:
+            added = set()
+            for revision in revisions:
+                parents = vf.get_parents(revision)
+                if [p for p in parents if p not in self._diffs] != []:
+                    continue
+                lines = [a + ' ' + l for a, l in vf.annotate_iter(revision)]
+                if ft_set is None:
+                    force_snapshot = None
+                else:
+                    force_snapshot = (revision in ft_set)
+                self.add_version(lines, revision, parents, force_snapshot)
+                added.add(revision)
+                if no_cache:
+                    self.clear_cache()
+            revisions = [r for r in revisions if r not in added]
+            print >> sys.stderr, "%.1f %%" % ((((total - len(revisions))
+                                               * 100.0) / total))
 
     def clear_cache(self):
         self._lines.clear()
