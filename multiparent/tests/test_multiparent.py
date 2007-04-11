@@ -60,6 +60,16 @@ class TestMulti(TestCase):
             list(multiparent.MultiParent([multiparent.NewText(['a\n']),
             multiparent.ParentText(0, 1, 2, 3)]).to_patch()))
 
+    def test_num_lines(self):
+        mp = multiparent.MultiParent([multiparent.NewText(['a\n'])])
+        self.assertEqual(1, mp.num_lines())
+        mp.hunks.append(multiparent.NewText(['b\n', 'c\n']))
+        self.assertEqual(3, mp.num_lines())
+        mp.hunks.append(multiparent.ParentText(0, 0, 3, 2))
+        self.assertEqual(5, mp.num_lines())
+        mp.hunks.append(multiparent.NewText(['f\n', 'g\n']))
+        self.assertEqual(7, mp.num_lines())
+
 
 class TestNewText(TestCase):
 
@@ -131,6 +141,14 @@ class TestVersionedFile(TestCase):
         reconstructor._reconstruct(lines, revision_id, start, end)
         return lines
 
+    @staticmethod
+    def reconstruct_version(vf, revision_id):
+        reconstructor = multiparent._Reconstructor(vf._diffs, vf._lines,
+                                                   vf._parents)
+        lines = []
+        reconstructor.reconstruct_version(lines, revision_id)
+        return lines
+
     def test_reconstructor(self):
         vf = self.make_vf()
         self.assertEqual(['a\n', 'b\n'], self.reconstruct(vf, 'rev-a',  0, 2))
@@ -138,3 +156,5 @@ class TestVersionedFile(TestCase):
         self.assertEqual(['e\n', 'f\n'], self.reconstruct(vf, 'rev-c',  2, 4))
         self.assertEqual(['a\n', 'b\n', 'e\n', 'f\n'],
                           self.reconstruct(vf, 'rev-c',  0, 4))
+        self.assertEqual(['a\n', 'b\n', 'e\n', 'f\n'],
+                          self.reconstruct_version(vf, 'rev-c'))

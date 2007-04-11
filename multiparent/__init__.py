@@ -105,6 +105,14 @@ class MultiParent(object):
             yield start, end, kind, data
             start = end
 
+    def num_lines(self):
+        extra_n = 0
+        for hunk in reversed(self.hunks):
+            if isinstance(hunk, ParentText):
+               return hunk.child_pos + hunk.num_lines + extra_n
+            extra_n += len(hunk.lines)
+        return extra_n
+
 
 class NewText(object):
     """The contents of text that is introduced by this text"""
@@ -182,11 +190,7 @@ class MultiVersionedFile(object):
         diff = self._diffs[version_id]
         lines = []
         reconstructor = _Reconstructor(self._diffs, self._lines, self._parents)
-        for hunk in diff.hunks:
-            if isinstance(hunk, NewText):
-                lines.extend(hunk.lines)
-            else:
-                reconstructor.reconstruct(lines, hunk, version_id)
+        reconstructor.reconstruct_version(lines, version_id)
         self._lines[version_id] = lines
         return lines
 
@@ -237,3 +241,7 @@ class _Reconstructor(object):
                 new_start = parent_start + req_start - start
                 new_end = parent_end + req_end - end
                 pending_reqs.append((new_version_id, new_start, new_end))
+
+    def reconstruct_version(self, lines, version_id):
+        length = self.diffs[version_id].num_lines()
+        return self._reconstruct(lines, version_id, 0, length)
