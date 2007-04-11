@@ -654,20 +654,20 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
     ##     dest_repo = self.make_repository('repo2')
     ##     src_repo.copy_content_into(dest_repo)
 
-    ## def test_detect_copy_using_tarball(self):
-    ##     self.transport_server = server.SmartTCPServer_for_testing
-    ##     src_repo = self.make_repository('repo1')
-    ##     src_repo = repository.Repository.open(self.get_url('repo1'))
-    ##     # At the moment the tarball-based copy_content_into can't write back
-    ##     # into a smart server.  It would be good if it could upload the
-    ##     # tarball; once that works we'd have to create repositories of
-    ##     # different formats. -- mbp 20070410
-    ##     dest_url = self.get_vfs_only_url('repo2')
-    ##     dest_bzrdir = BzrDir.create(dest_url)
-    ##     dest_repo = dest_bzrdir.create_repository()
-    ##     self.assertFalse(isinstance(dest_repo, RemoteRepository))
-    ##     self.assertTrue(isinstance(src_repo, RemoteRepository))
-    ##     src_repo.copy_content_into(dest_repo)
+    def test_copy_content_remote_to_local(self):
+        self.transport_server = server.SmartTCPServer_for_testing
+        src_repo = self.make_repository('repo1')
+        src_repo = repository.Repository.open(self.get_url('repo1'))
+        # At the moment the tarball-based copy_content_into can't write back
+        # into a smart server.  It would be good if it could upload the
+        # tarball; once that works we'd have to create repositories of
+        # different formats. -- mbp 20070410
+        dest_url = self.get_vfs_only_url('repo2')
+        dest_bzrdir = BzrDir.create(dest_url)
+        dest_repo = dest_bzrdir.create_repository()
+        self.assertFalse(isinstance(dest_repo, RemoteRepository))
+        self.assertTrue(isinstance(src_repo, RemoteRepository))
+        src_repo.copy_content_into(dest_repo)
 
     ## def test_copy_content_into_uses_tarball(self):
     ##     # copy_content_into on a RemoteRepository should try to use the

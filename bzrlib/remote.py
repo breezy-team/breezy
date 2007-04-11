@@ -576,15 +576,25 @@ class RemoteRepository(object):
         return self._real_repository.check(revision_ids)
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
+        # get a tarball of the remote repository, and copy from that into the
+        # destination
+        from bzrlib import osutils
         import tarfile
+        import tempfile
         from StringIO import StringIO
-        tempfile = StringIO(self._get_tarball('bz2'))
-        tar = tarfile.open('repository', fileobj=tempfile,
+        tar_file = StringIO(self._get_tarball('bz2'))
+        tar = tarfile.open('repository', fileobj=tar_file,
             mode='r:bz2')
-        import pdb;pdb.set_trace()
-        self._ensure_real()
-        return self._real_repository.copy_content_into(
-            destination, revision_id=revision_id, basis=basis)
+        tmpdir = tempfile.mkdtemp()
+        try:
+            tar.extractall(tmpdir)
+            tmp_repo = repository.Repository.open(tmpdir)
+            tmp_repo.copy_content_into(destination, revision_id, basis)
+        finally:
+            pass
+            ##            osutils.rmtree(tmpdir)
+        # TODO: if the server doesn't support this operation, maybe do it the
+        # slow way using the _real_repository?
 
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)

@@ -198,8 +198,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         repo_transport = repository.control_files._transport
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
-            repo_dir = tmp_repo.control_files._transport.local_abspath('.')
-            return self._tarfile_response(repo_dir, compression)
+            controldir_name = tmp_dirname + '/.bzr'
+            return self._tarfile_response(controldir_name, compression)
         finally:
             osutils.rmtree(tmp_dirname)
 
@@ -210,10 +210,10 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         from_repo.copy_content_into(tmp_repo)
         return tmp_dirname, tmp_repo
 
-    def _tarfile_response(self, repo_dir, compression):
+    def _tarfile_response(self, tmp_dirname, compression):
         temp = tempfile.NamedTemporaryFile()
         try:
-            self._tarball_of_dir(repo_dir, compression, temp.name)
+            self._tarball_of_dir(tmp_dirname, compression, temp.name)
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SmartServerResponse(('ok',), temp.read())
@@ -222,18 +222,17 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         finally:
             temp.close()
 
-    def _tarball_of_dir(self, repo_dir, compression, tarfile_name):
+    def _tarball_of_dir(self, dirname, compression, tarfile_name):
         tarball = tarfile.open(tarfile_name, mode='w:' + compression)
         try:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files
             # within the repository have ASCII names so the should be safe
             # to pack in.
-            repo_dir = repo_dir.encode(sys.getfilesystemencoding())
+            dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            assert repo_dir.endswith('/repository'), \
-                "unexpected repository path %r" % repo_dir
-            tarball.add(repo_dir, 'repository') # recursive by default
+            assert dirname.endswith('.bzr')
+            tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
