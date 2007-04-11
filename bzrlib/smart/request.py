@@ -19,15 +19,24 @@
 
 import tempfile
 
-from bzrlib import bzrdir, errors, registry, revision
+from bzrlib import (
+    bzrdir,
+    errors,
+    registry,
+    revision,
+    )
 from bzrlib.bundle.serializer import write_bundle
 
 
 class SmartServerRequest(object):
-    """Base class for request handlers.
-    """
+    """Base class for request handlers."""
 
     def __init__(self, backing_transport):
+        """Constructor.
+
+        :param backing_transport: the base transport to be used when performing
+            this request.
+        """
         self._backing_transport = backing_transport
 
     def _check_enabled(self):
@@ -198,6 +207,7 @@ class HelloRequest(SmartServerRequest):
 
 
 class GetBundleRequest(SmartServerRequest):
+    """Get a bundle of from the null revision to the specified revision."""
 
     def do(self, path, revision_id):
         # open transport relative to our base
