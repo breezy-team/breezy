@@ -365,10 +365,8 @@ class LongLogFormatter(LogFormatter):
         if revno is not None:
             print >>to_file,  indent+'revno:', revno
         if (self.rev_tag_dict.has_key(rev.revision_id)):
-            print >>to_file, indent+'tags:',
-            for tag in self.rev_tag_dict[rev.revision_id]:
-                print >>to_file, tag,
-            print >>to_file, ''
+            print >>to_file, indent+'tags: %s' % (
+                ', '.join(self.rev_tag_dict[rev.revision_id]))
         if merged:
             print >>to_file,  indent+'merged:', rev.revision_id
         elif self.show_ids:

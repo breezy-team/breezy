@@ -131,8 +131,8 @@ class TestLog(ExternalBase):
         log = self.runbzr("log -r1")[0]
         # I guess that we can't know the order of tags in the output
         # since dicts are unordered, need to check both possibilities
-        self.assertTrue(('tags: tag1 tag1.1' in log) or 
-                        ('tags: tag1.1 tag1' in log))
+        self.assertTrue(('tags: tag1, tag1.1' in log) or 
+                        ('tags: tag1.1, tag1' in log))
 
 
 class TestLogMerges(ExternalBase):
