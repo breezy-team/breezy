@@ -166,7 +166,6 @@ class LockDir(object):
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
-        self.nonce = rand_chars(20)
 
         self._report_function = note
 
@@ -210,6 +209,7 @@ class LockDir(object):
                 # After creating the lock directory, try again
                 self.transport.mkdir(tmpname)
 
+            self.nonce = rand_chars(20)
             info_bytes = self._prepare_info()
             # We use put_file_non_atomic because we just created a new unique
             # directory so we don't have to worry about files existing there.
@@ -419,6 +419,12 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+    
+    def leave_in_place(self):
+        self._locked_via_token = True
+
+    def dont_leave_in_place(self):
+        self._locked_via_token = False
 
     def lock_write(self, token=None):
         """Wait for and acquire the lock.
@@ -428,21 +434,17 @@ class LockDir(object):
         :returns: a token if this instance supports tokens, otherwise None.
         :raises TokenLockingNotSupported: when a token is given but this
             instance doesn't support using token locks.
-        :raises TokenMismatch: if the specified token doesn't match the token
+        :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
-
-        A token should be passed in if you know that you have locked the object
-        some other way, and need to synchronise this object's state with that
-        fact.  For instance, this could happen when accessing the same branch
-        over bzr+ssh:// and then falling back to do some operations on the same
-        branch via sftp://.
          
         XXX: docstring duplicated from LockableFiles.lock_write.
         """
         if token is not None:
             self.validate_token(token)
+            self.nonce = token
             self._lock_held = True
             self._locked_via_token = True
+            return token
         else:
             self.wait_lock()
             return self.peek().get('nonce')

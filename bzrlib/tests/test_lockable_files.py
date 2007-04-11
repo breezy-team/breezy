@@ -36,13 +36,7 @@ from bzrlib.transport import get_transport
 class _TestLockableFiles_mixin(object):
 
     def setUp(self):
-        # Reduce the default timeout, so that if tests fail, they will do so
-        # reasonably quickly.
-        orig_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        lockdir._DEFAULT_TIMEOUT_SECONDS = 3
+        self.reduceLockdirTimeout()
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -147,6 +141,22 @@ class _TestLockableFiles_mixin(object):
         finally:
             self.lockable.unlock()
 
+    def test_lock_write_returns_token_when_given_token(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            new_lockable = self.get_lockable()
+            token_from_new_lockable = new_lockable.lock_write(token=token)
+            try:
+                self.assertEqual(token, token_from_new_lockable)
+            finally:
+                new_lockable.unlock()
+        finally:
+            self.lockable.unlock()
+
     def test_lock_write_raises_on_token_mismatch(self):
         token = self.lockable.lock_write()
         try:
@@ -231,8 +241,11 @@ class _TestLockableFiles_mixin(object):
                 # tokens.
                 return
             # Relock with a token.
-            self.lockable.lock_write(token=token)
-            self.lockable.unlock()
+            token_from_reentry = self.lockable.lock_write(token=token)
+            try:
+                self.assertEqual(token, token_from_reentry)
+            finally:
+                self.lockable.unlock()
         finally:
             self.lockable.unlock()
         # The lock should be unlocked on disk.  Verify that with a new lock
@@ -241,6 +254,45 @@ class _TestLockableFiles_mixin(object):
         # Calling lock_write now should work, rather than raise LockContention.
         new_lockable.lock_write()
         new_lockable.unlock()
+
+    def test_leave_in_place(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            self.lockable.leave_in_place()
+        finally:
+            self.lockable.unlock()
+        # At this point, the lock is still in place on disk
+        self.assertRaises(errors.LockContention, self.lockable.lock_write)
+        # But should be relockable with a token.
+        self.lockable.lock_write(token=token)
+        self.lockable.unlock()
+
+    def test_dont_leave_in_place(self):
+        token = self.lockable.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            self.lockable.leave_in_place()
+        finally:
+            self.lockable.unlock()
+        # At this point, the lock is still in place on disk.
+        # Acquire the existing lock with the token, and ask that it is removed
+        # when this object unlocks, and unlock to trigger that removal.
+        new_lockable = self.get_lockable()
+        new_lockable.lock_write(token=token)
+        new_lockable.dont_leave_in_place()
+        new_lockable.unlock()
+        # At this point, the lock is no longer on disk, so we can lock it.
+        third_lockable = self.get_lockable()
+        third_lockable.lock_write()
+        third_lockable.unlock()
+
 
 
 
