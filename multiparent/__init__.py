@@ -167,8 +167,11 @@ class MultiVersionedFile(object):
         self._parents = {}
         self._snapshots = {}
         self.snapshot_interval = snapshot_interval
+        self.num_snapshots = 0
 
     def do_snapshot(self, version_id, parent_ids):
+        if self.num_snapshots == 44:
+            return False
         if len(parent_ids) == 0:
             return False
         counter = 0
@@ -180,6 +183,7 @@ class MultiVersionedFile(object):
                 return False
             counter += 1
             parent_ids = self._parents[version_id]
+        self.num_snapshots += 1
         return True
 
     def add_version(self, lines, version_id, parent_ids):
