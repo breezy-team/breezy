@@ -2167,16 +2167,32 @@ class DirState(object):
 
         This can be useful in debugging; it shouldn't be necessary in 
         normal code.
+
+        This must be called with a lock held.
         """
+        # NOTE: This must always raise AssertionError not just assert,
+        # otherwise it may not behave properly under python -O
+        #
+        # TODO: All entries must have some content that's not 'a' or 'r',
+        # otherwise it could just be removed.
+        #
+        # TODO: All relocations must point directly to a real entry.
+        #
+        # TODO: No repeated keys.
+        #
+        # -- mbp 20070325
         from pprint import pformat
+        self._read_dirblocks_if_needed()
         if len(self._dirblocks) > 0:
-            assert self._dirblocks[0][0] == '', \
+            if not self._dirblocks[0][0] == '':
+                raise AssertionError(
                     "dirblocks don't start with root block:\n" + \
-                    pformat(dirblocks)
+                    pformat(dirblocks))
         if len(self._dirblocks) > 1:
-            assert self._dirblocks[1][0] == '', \
+            if not self._dirblocks[1][0] == '':
+                raise AssertionError(
                     "dirblocks missing root directory:\n" + \
-                    pformat(dirblocks)
+                    pformat(dirblocks))
         # the dirblocks are sorted by their path components, name, and dir id
         dir_names = [d[0].split('/')
                 for d in self._dirblocks[1:]]
@@ -2189,9 +2205,72 @@ class DirState(object):
         for dirblock in self._dirblocks:
             # within each dirblock, the entries are sorted by filename and
             # then by id.
-            assert dirblock[1] == sorted(dirblock[1]), \
-                "dirblock for %r is not sorted:\n%s" % \
-                (dirblock[0], pformat(dirblock))
+            for entry in dirblock[1]:
+                if dirblock[0] != entry[0][0]:
+                    raise AssertionError(
+                        "entry key for %r"
+                        "doesn't match directory name in\n%r" %
+                        (entry, pformat(dirblock)))
+            if dirblock[1] != sorted(dirblock[1]):
+                raise AssertionError(
+                    "dirblock for %r is not sorted:\n%s" % \
+                    (dirblock[0], pformat(dirblock)))
+
+        # For each file id, for each tree: either
+        # the file id is not present at all; all rows with that id in the
+        # key have it marked as 'absent'
+        # OR the file id is present under exactly one name; any other entries 
+        # that mention that id point to the correct name.
+        #
+        # We check this with a dict per tree pointing either to the present
+        # name, or None if absent.
+        tree_count = self._num_present_parents() + 1
+        id_path_maps = [dict() for i in range(tree_count)]
+        # Make sure that all renamed entries point to the correct location.
+        for entry in self._iter_entries():
+            file_id = entry[0][2]
+            this_path = osutils.pathjoin(entry[0][0], entry[0][1])
+            if len(entry[1]) != tree_count:
+                raise AssertionError(
+                "wrong number of entry details for row\n%s" \
+                ",\nexpected %d" % \
+                (pformat(entry), tree_count))
+            for tree_index, tree_state in enumerate(entry[1]):
+                this_tree_map = id_path_maps[tree_index]
+                minikind = tree_state[0]
+                # have we seen this id before in this column?
+                if file_id in this_tree_map:
+                    previous_path = this_tree_map[file_id]
+                    # any later mention of this file must be consistent with
+                    # what was said before
+                    if minikind == 'a':
+                        if previous_path is not None:
+                            raise AssertionError(
+                            "file %s is absent in row %r but also present " \
+                            "at %r"% \
+                            (file_id, entry, previous_path))
+                    elif minikind == 'r':
+                        target_location = tree_state[1]
+                        if previous_path != target_location:
+                            raise AssertionError(
+                            "file %s relocation in row %r but also at %r" \
+                            % (file_id, entry, previous_path))
+                    else:
+                        # a file, directory, etc - may have been previously
+                        # pointed to by a relocation, which must point here
+                        if previous_path != this_path:
+                            raise AssertionError(
+                            "entry %r inconsistent with previous path %r" % \
+                            (entry, previous_path))
+                else:
+                    if minikind == 'a':
+                        # absent; should not occur anywhere else
+                        this_tree_map[file_id] = None
+                    elif minikind == 'r':
+                        # relocation, must occur at expected location 
+                        this_tree_map[file_id] = tree_state[1]
+                    else:
+                        this_tree_map[file_id] = this_path
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
@@ -2292,6 +2371,6 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     # well within the noise margin
 
     # base64.encode always adds a final newline, so strip it off
-    return _encode(_pack('>llllll'
+    return _encode(_pack('>LLLLLL'
         , st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino, st.st_mode))[:-1]
+        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]

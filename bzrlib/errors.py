@@ -175,6 +175,17 @@ class BzrCheckError(BzrError):
         self.message = message
 
 
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -531,8 +542,8 @@ class FileInWrongBranch(BzrError):
 
 
 class UnsupportedFormatError(BzrError):
-    
-    _fmt = "Unsupported branch format: %(format)s"
+
+    _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
 
 
 class UnknownFormatError(BzrError):
@@ -548,6 +559,15 @@ class IncompatibleFormat(BzrError):
         BzrError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class IncompatibleRepositories(BzrError):
+
+    _fmt = "Repository %(target)s is not compatible with repository"\
+        " %(source)s"
+
+    def __init__(self, source, target):
+        BzrError.__init__(self, target=target, source=source)
 
 
 class IncompatibleRevision(BzrError):
@@ -1305,6 +1325,59 @@ class InvalidHttpContentType(InvalidHttpResponse):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
 
+
+class RedirectRequested(TransportError):
+
+    _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
+
+    def __init__(self, source, target, is_permament=False, qual_proto=None):
+        self.source = source
+        self.target = target
+        if is_permament:
+            self.permanently = ' permanently'
+        else:
+            self.permanently = ''
+        self.is_permament = is_permament
+        self._qualified_proto = qual_proto
+        TransportError.__init__(self)
+
+    def _requalify_url(self, url):
+        """Restore the qualified proto in front of the url"""
+        # When this exception is raised, source and target are in
+        # user readable format. But some transports may use a
+        # different proto (http+urllib:// will present http:// to
+        # the user. If a qualified proto is specified, the code
+        # trapping the exception can get the qualified urls to
+        # properly handle the redirection themself (creating a
+        # new transport object from the target url for example).
+        # But checking that the scheme of the original and
+        # redirected urls are the same can be tricky. (see the
+        # FIXME in BzrDir.open_from_transport for the unique use
+        # case so far).
+        if self._qualified_proto is None:
+            return url
+
+        # The TODO related to NotBranchError mention that doing
+        # that kind of manipulation on the urls may not be the
+        # exception object job. On the other hand, this object is
+        # the interface between the code and the user so
+        # presenting the urls in different ways is indeed its
+        # job...
+        import urlparse
+        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
+        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
+                                   query, fragment))
+
+    def get_source_url(self):
+        return self._requalify_url(self.source)
+
+    def get_target_url(self):
+        return self._requalify_url(self.target)
+
+
+class TooManyRedirections(TransportError):
+
+    _fmt = "Too many redirections"
 
 class ConflictsInTree(BzrError):
 
