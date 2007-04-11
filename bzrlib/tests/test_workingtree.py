@@ -87,7 +87,7 @@ class TestRemove(TestCaseWithTransport):
         self.failIfExists(files)
 
     def test_remove_changed_files(self):
-        """check that unchanged files are removed but not deleted."""
+        """check that changed files are removed but not deleted."""
         tree = self.getTree()
         tree.add(files)
         self.assertInWorkingTree(files)
@@ -97,16 +97,27 @@ class TestRemove(TestCaseWithTransport):
         self.assertNotInWorkingTree(files)
         self.failUnlessExists(files)
 
+    def test_force_remove_changed_files(self):
+        """check that changed files are removed and deleted when forced."""
+        tree = self.getTree()
+        tree.add(files)
+        self.assertInWorkingTree(files)
+
+        tree.remove(files, keep_files=False, force=True)
+
+        self.assertNotInWorkingTree(files)
+        self.failIfExists(files)
+
     def test_remove_nonexisting_files(self):
         """delete files which does not exist."""
         tree = self.getTree()
         tree.remove(files, keep_files=False)
         tree.remove([''], keep_files=False)
         tree.remove(['b'], keep_files=False)
-        
+
     def test_remove_nonempty_directory(self):
         tree = self.getTree()
-        tree.add(files)        
+        tree.add(files)
         tree.commit("make sure b is versioned")
         self.assertInWorkingTree(files)
         self.failUnlessExists(files)
@@ -114,6 +125,17 @@ class TestRemove(TestCaseWithTransport):
         tree.remove(b, keep_files=False)
         self.assertNotInWorkingTree(b)
         self.failUnlessExists(b)
+
+    def test_force_remove_nonempty_directory(self):
+        tree = self.getTree()
+        tree.add(files)
+        tree.commit("make sure b is versioned")
+        self.assertInWorkingTree(files)
+        self.failUnlessExists(files)
+        tree.remove(['b'], keep_files=False, force=True)
+        b_c = ['b','b/c']
+        self.assertNotInWorkingTree(b_c)
+        self.failIfExists(b_c)
 
     def test_remove_keep(self):
         """check that files are unversioned but not delete."""

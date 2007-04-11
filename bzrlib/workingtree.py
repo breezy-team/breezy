@@ -1766,17 +1766,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return result
 
     @needs_tree_write_lock
-    def remove(self, files, verbose=False, to_file=None, keep_files=True):
+    def remove(self, files, verbose=False, to_file=None, keep_files=True, 
+        force=False):
         """Remove nominated files from the working inventor.
 
-        TODO: Refuse to remove modified files unless --force is given?
-
-        TODO: Do something useful with directories.
-
         :keep_files: If true, the files will also be kept.
+        :force: Delete files and directories, even if they are changed and
+            even if the directories are not empty.
         """
         ## TODO: Normalize names
-        ## TODO: Remove nested loops; better scalability
         if isinstance(files, basestring):
             files = [files]
 
@@ -1805,7 +1803,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 message="%s is not versioned."%f
             else:
                 if verbose:
-                    # having remove it, it must be either ignored or unknown
+                    # having removed it, it must be either ignored or unknown
                     if self.is_ignored(f):
                         new_status = 'I'
                     else:
@@ -1816,15 +1814,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
                 if not keep_files:
                     if osutils.lexists(f):
-                        if changed_files:
-                            message="%s has changed and won't be deleted."%f
-                        elif osutils.isdir(f) and len(os.listdir(f)) > 0:
-                            message="%s is not empty directory "\
-                                "and won't be deleted."%f
-                        else:
-                            #TODO check if folder is empty
-                            osutils.delete_any(f)
+                        if force:
+                            if osutils.isdir(f):
+                                osutils.rmtree(f)
+                            else:
+                                os.unlink(f)
                             message="deleted %s"%f
+                        else:
+                            if f in changed_files:
+                                message="%s has changed and won't be deleted."%f
+                            elif osutils.isdir(f) and len(os.listdir(f)) > 0:
+                                message="%s is not empty directory "\
+                                    "and won't be deleted."%f
+                            else:
+                                osutils.delete_any(f)
+                                message="deleted %s"%f
                     else:
                         message="%s does not exist."%f
                 else:
