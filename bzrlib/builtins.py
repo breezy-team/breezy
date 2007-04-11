@@ -2289,8 +2289,6 @@ class cmd_selftest(Command):
     of running tests to create such subdirectories. This is default behavior
     on Windows because of path length limitation.
     """
-    # TODO: --list should give a list of all available tests
-
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
     def get_transport_type(typestring):
