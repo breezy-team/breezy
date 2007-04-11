@@ -223,7 +223,13 @@ def _show_log(branch,
             DeprecationWarning, stacklevel=3)
     view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=include_merges))
-
+    
+    use_tags = getattr(lf, 'supports_tags', False)
+    if use_tags:
+        rev_tag_dict = {}
+        if branch.supports_tags():
+            rev_tag_dict = branch.tags.get_reverse_tag_dict()
+    
     def iter_revisions():
         # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
@@ -266,12 +272,18 @@ def _show_log(branch,
                 # although we calculated it, throw it away without display
                 delta = None
 
-            lf.show(revno, rev, delta)
+            if use_tags:
+                lf.show(revno, rev, delta, rev_tag_dict.get(rev_id, []))
+            else:
+                lf.show(revno, rev, delta)
         else:
             if show_merge_revno is None:
                 lf.show_merge(rev, merge_depth)
             else:
-                lf.show_merge_revno(rev, merge_depth, revno)
+                if use_tags:
+                    lf.show_merge_revno(rev, merge_depth, revno, rev_tag_dict.get(rev_id, []))
+                else:
+                    lf.show_merge_revno(rev, merge_depth, revno)
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
@@ -330,12 +342,10 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
 class LogFormatter(object):
     """Abstract class to display log messages."""
 
-    def __init__(self, to_file, show_ids=False, show_timezone='original',
-                rev_tag_dict = {}):
+    def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
-        self.rev_tag_dict = rev_tag_dict
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
@@ -345,28 +355,32 @@ class LogFormatter(object):
     
     
 class LongLogFormatter(LogFormatter):
-    def show(self, revno, rev, delta):
-        return self._show_helper(revno=revno, rev=rev, delta=delta)
+    def show(self, revno, rev, delta, tags=[]):
+        return self._show_helper(revno=revno, rev=rev, delta=delta, tags=tags)
+        
+    def supports_tags(self):
+        """must exist if this log formatter support tags
+           show and show_merge_revno must then accept the 'tags'-argument """
+        pass
 
     @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
         return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
 
-    def show_merge_revno(self, rev, merge_depth, revno):
+    def show_merge_revno(self, rev, merge_depth, revno, tags=[]):
         """Show a merged revision rev, with merge_depth and a revno."""
         return self._show_helper(rev=rev, revno=revno,
-            indent='    '*merge_depth, merged=True, delta=None)
+            indent='    '*merge_depth, merged=True, delta=None, tags=tags)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None, tags=[]):
         """Show a revision, either merged or not."""
         from bzrlib.osutils import format_date
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
         if revno is not None:
             print >>to_file,  indent+'revno:', revno
-        if (self.rev_tag_dict.has_key(rev.revision_id)):
-            print >>to_file, indent+'tags: %s' % (
-                ', '.join(self.rev_tag_dict[rev.revision_id]))
+        if tags:
+            print >>to_file, indent+'tags: %s' % (', '.join(tags))
         if merged:
             print >>to_file,  indent+'merged:', rev.revision_id
         elif self.show_ids:
