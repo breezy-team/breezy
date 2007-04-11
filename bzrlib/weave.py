@@ -641,20 +641,6 @@ class Weave(VersionedFile):
         """
         return len(other_parents.difference(my_parents)) == 0
 
-    def annotate(self, version_id):
-        if isinstance(version_id, int):
-            warnings.warn('Weave.annotate(int) is deprecated. Please use version names'
-                 ' in all circumstances as of 0.8',
-                 DeprecationWarning,
-                 stacklevel=2
-                 )
-            result = []
-            for origin, lineno, text in self._extract([version_id]):
-                result.append((origin, text))
-            return result
-        else:
-            return super(Weave, self).annotate(version_id)
-    
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified version.
 

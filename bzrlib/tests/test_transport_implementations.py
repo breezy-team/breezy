@@ -38,20 +38,16 @@ from bzrlib.osutils import getcwd
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, smart, chroot
+from bzrlib.smart import medium
+from bzrlib.transport import memory, remote
 import bzrlib.transport
 
 
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    try:
-        f.write(txt.read())
-    finally:
-        f.close()
-
-
 class TransportTests(TestTransportImplementation):
+
+    def setUp(self):
+        super(TransportTests, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
@@ -76,8 +72,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_has_root_works(self):
         current_transport = self.get_transport()
-        if isinstance(current_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')
         self.assertTrue(root.has(''))
@@ -759,6 +753,24 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir/bdir')
         self.assertRaises(PathError, t.rmdir, 'adir')
 
+    def test_rmdir_empty_but_similar_prefix(self):
+        """rmdir does not get confused by sibling paths.
+        
+        A naive implementation of MemoryTransport would refuse to rmdir
+        ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
+        uses "path.startswith(dir)" on all file paths to determine if directory
+        is empty.
+        """
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.mkdir('foo')
+        t.put_bytes('foo-bar', '')
+        t.mkdir('foo-baz')
+        t.rmdir('foo')
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'foo')
+        self.failUnless(t.has('foo-bar'))
+
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
         if t.is_readonly():
@@ -990,8 +1002,6 @@ class TransportTests(TestTransportImplementation):
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
         t1 = self.get_transport()
-        if isinstance(t1, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
 
         self.build_tree(['a', 'b/', 'b/c'], transport=t1)
 
@@ -1024,8 +1034,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_clone_to_root(self):
         orig_transport = self.get_transport()
-        if isinstance(orig_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # Repeatedly go up to a parent directory until we're at the root
         # directory of this transport
         root_transport = orig_transport
@@ -1054,8 +1062,6 @@ class TransportTests(TestTransportImplementation):
     def test_clone_from_root(self):
         """At the root, cloning to a simple dir should just do string append."""
         orig_transport = self.get_transport()
-        if isinstance(orig_transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('/')")
         root_transport = orig_transport.clone('/')
         self.assertEqual(root_transport.base + '.bzr/',
             root_transport.clone('.bzr').base)
@@ -1076,8 +1082,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_relpath_at_root(self):
         t = self.get_transport()
-        if isinstance(t, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # clone all the way to the top
         new_transport = t.clone('..')
         while new_transport.base != t.base:
@@ -1093,8 +1097,6 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
-        if isinstance(transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
@@ -1119,8 +1121,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_abspath_at_root(self):
         t = self.get_transport()
-        if isinstance(t, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         # clone all the way to the top
         new_transport = t.clone('..')
         while new_transport.base != t.base:
@@ -1225,8 +1225,6 @@ class TransportTests(TestTransportImplementation):
         # check that our server (whatever it is) is accessable reliably
         # via get_transport and multiple connections share content.
         transport = self.get_transport()
-        if isinstance(transport, chroot.ChrootTransportDecorator):
-            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         if transport.is_readonly():
             return
         transport.put_bytes('foo', 'bar')
@@ -1312,8 +1310,8 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         try:
-            medium = transport.get_smart_medium()
-            self.assertIsInstance(medium, smart.SmartClientMedium)
+            client_medium = transport.get_smart_medium()
+            self.assertIsInstance(client_medium, medium.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass

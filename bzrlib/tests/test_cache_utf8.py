@@ -109,3 +109,9 @@ class TestEncodeCache(TestCase):
 
         utf8_x = cache_utf8.encode(uni_x)
         self.assertIs(utf8_x, x)
+
+    def test_decode_with_None(self):
+        self.assertEqual(None, cache_utf8._utf8_decode_with_None(None))
+        self.assertEqual(u'foo', cache_utf8._utf8_decode_with_None('foo'))
+        self.assertEqual(u'f\xb5',
+                         cache_utf8._utf8_decode_with_None('f\xc2\xb5'))

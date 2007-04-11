@@ -117,9 +117,7 @@ def format_command (params, cmd):
                 if short_name:
                     assert len(short_name) == 1
                     l += ', -' + short_name
-                l += (30 - len(l)) * ' ' + help
-                # TODO: Split help over multiple lines with
-                # correct indenting and wrapping.
+                l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
                                         subsequent_indent=30*' ')
                 option_str = option_str + wrapped + '\n'       
@@ -178,7 +176,7 @@ man_foot = """\
 .I "BZRPATH"
 Path where
 .B "%(bzrcmd)s"
-is to look for external command.
+is to look for shell plugin external commands.
 .TP
 .I "BZR_EMAIL"
 E-Mail address of the user. Overrides default user config.
@@ -200,7 +198,7 @@ Home directory for bzr
 .SH "FILES"
 .TP
 .I "~/.bazaar/bazaar.conf"
-Contains the users default configuration. The section
+Contains the user's default configuration. The section
 .B [DEFAULT]
 is used to define general configuration that will be applied everywhere.
 The section

@@ -27,6 +27,7 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
+    osutils,
     tests,
     transform,
     )
@@ -36,14 +37,21 @@ from bzrlib.tests import (
                           default_transport,
                           TestCaseWithTransport,
                           TestLoader,
+                          TestSkipped,
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.revisiontree import RevisionTree
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeTestProviderAdapter,
-                                _legacy_formats,
-                                )
+from bzrlib.workingtree import (
+    WorkingTreeFormat,
+    WorkingTreeFormat3,
+    WorkingTreeTestProviderAdapter,
+    _legacy_formats,
+    )
+from bzrlib.workingtree_4 import (
+    DirStateRevisionTree,
+    WorkingTreeFormat4,
+    )
 
 
 def return_parameter(something):
@@ -53,8 +61,13 @@ def return_parameter(something):
 
 def revision_tree_from_workingtree(tree):
     """Create a revision tree from a working tree."""
-    revid = tree.commit('save tree', allow_pointless=True)
+    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
+
+
+def _dirstate_tree_from_workingtree(tree):
+    revid = tree.commit('save tree', allow_pointless=True)
+    return tree.basis_tree()
 
 
 class TestTreeImplementationSupport(TestCaseWithTransport):
@@ -93,7 +106,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
     def _make_abc_tree(self, tree):
         """setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
-        self.build_tree(files, line_endings='binary', 
+        self.build_tree(files, line_endings='binary',
                         transport=tree.bzrdir.root_transport)
         tree.set_root_id('root-id')
         tree.add(files, ['a-id', 'b-id', 'c-id'])
@@ -165,6 +178,49 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         tt.apply()
         return self._convert_tree(tree, converter)
 
+    def get_tree_with_subdirs_and_all_content_types(self):
+        """Return a test tree with subdirs and all content types.
+
+        The returned tree has the following inventory:
+            [('', inventory.ROOT_ID),
+             ('0file', '2file'),
+             ('1top-dir', '1top-dir'),
+             (u'2utf\u1234file', u'0utf\u1234file'),
+             ('symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
+             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
+        where each component has the type of its name - i.e. '1file..' is afile.
+
+        note that the order of the paths and fileids is deliberately 
+        mismatched to ensure that the result order is path based.
+        """
+        tree = self.make_branch_and_tree('.')
+        paths = ['0file',
+            '1top-dir/',
+            u'2utf\u1234file',
+            '1top-dir/0file-in-1topdir',
+            '1top-dir/1dir-in-1topdir/'
+            ]
+        ids = [
+            '2file',
+            '1top-dir',
+            u'0utf\u1234file'.encode('utf8'),
+            '1file-in-1topdir',
+            '0dir-in-1topdir'
+            ]
+        try:
+            self.build_tree(paths)
+        except UnicodeError:
+            raise TestSkipped(
+                'This platform does not support unicode file paths.')
+        tree.add(paths, ids)
+        tt = transform.TreeTransform(tree)
+        root_transaction_id = tt.trans_id_tree_path('')
+        tt.new_symlink('symlink',
+            root_transaction_id, 'link-target', 'symlink')
+        tt.apply()
+        return self.workingtree_to_test_tree(tree)
+
     def get_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
         self._create_tree_with_utf8(tree)
@@ -179,16 +235,22 @@ class TestCaseWithTree(TestCaseWithBzrDir):
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = [u'TREE_ROOT',
-                    u'f\xf6-id',
-                    u'b\xe5r-id',
-                    u'b\xe1z-id',
+        file_ids = ['TREE_ROOT',
+                    'f\xc3\xb6-id',
+                    'b\xc3\xa5r-id',
+                    'b\xc3\xa1z-id',
                    ]
         try:
             self.build_tree(paths[1:])
         except UnicodeError:
             raise tests.TestSkipped('filesystem does not support unicode.')
-        tree.add(paths, file_ids)
+        if tree.path2id('') is None:
+            # Some trees do not have a root yet.
+            tree.add(paths, file_ids)
+        else:
+            # Some trees will already have a root
+            tree.set_root_id(file_ids[0])
+            tree.add(paths[1:], file_ids[1:])
         try:
             tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
         except errors.NonAsciiRevisionId:
@@ -199,7 +261,8 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        tree2.add([u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        self.callDeprecated([osutils._file_id_warning],
+                            tree2.add, [u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
@@ -219,7 +282,9 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         for adapted_test in result:
             # for working tree adapted tests, preserve the tree
             adapted_test.workingtree_to_test_tree = return_parameter
-        default_format = WorkingTreeFormat.get_default_format()
+        # this is the default in that it's used to test the generic InterTree
+        # code.
+        default_format = WorkingTreeFormat3()
         revision_tree_test = self._clone_test(
             test,
             default_format._matchingbzrdir, 
@@ -227,14 +292,29 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             RevisionTree.__name__)
         revision_tree_test.workingtree_to_test_tree = revision_tree_from_workingtree
         result.addTest(revision_tree_test)
+        # also explicity test WorkingTree4 against everything
+        dirstate_format = WorkingTreeFormat4()
+        dirstate_revision_tree_test = self._clone_test(
+            test,
+            dirstate_format._matchingbzrdir,
+            dirstate_format,
+            DirStateRevisionTree.__name__)
+        dirstate_revision_tree_test.workingtree_to_test_tree = _dirstate_tree_from_workingtree
+        result.addTest(dirstate_revision_tree_test)
         return result
 
 
 def test_suite():
     result = TestSuite()
     test_tree_implementations = [
+        'bzrlib.tests.tree_implementations.test_get_file_mtime',
+        'bzrlib.tests.tree_implementations.test_get_symlink_target',
+        'bzrlib.tests.tree_implementations.test_inv',
+        'bzrlib.tests.tree_implementations.test_list_files',
+        'bzrlib.tests.tree_implementations.test_revision_tree',
         'bzrlib.tests.tree_implementations.test_test_trees',
         'bzrlib.tests.tree_implementations.test_tree',
+        'bzrlib.tests.tree_implementations.test_walkdirs',
         ]
     adapter = TreeTestProviderAdapter(
         default_transport,

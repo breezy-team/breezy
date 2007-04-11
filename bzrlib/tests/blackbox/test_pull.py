@@ -260,7 +260,8 @@ class TestPull(ExternalBase):
         tree_b.commit('commit d')
         out = self.runbzr('pull ../branch_a', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: These branches have diverged.  Use the merge command to reconcile them.\n'))
+                ('','bzr: ERROR: These branches have diverged.'
+                    ' Use the merge command to reconcile them.\n'))
         self.assertEquals(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
@@ -297,10 +298,11 @@ class TestPull(ExternalBase):
         bundle_file.close()
 
         os.chdir('../branch_b')
-        output = self.run_bzr('pull', '../bundle')
-        self.assertEqual('', output[0])
-        self.assertEqual(' M  a\nAll changes applied successfully.\n'
-                         '1 revision(s) pulled.\n', output[1])
+        out, err = self.run_bzr('pull', '../bundle')
+        self.assertEqual(out,
+                         'Now on revision 2.\n')
+        self.assertEqual(err,
+                ' M  a\nAll changes applied successfully.\n')
 
         self.assertEqualDiff(tree_a.branch.revision_history(),
                              tree_b.branch.revision_history())
@@ -313,6 +315,6 @@ class TestPull(ExternalBase):
                              testament_b.as_text())
 
         # it is legal to attempt to pull an already-merged bundle
-        output = self.run_bzr('pull', '../bundle')
-        self.assertEqual('', output[0])
-        self.assertEqual('0 revision(s) pulled.\n', output[1])
+        out, err = self.run_bzr('pull', '../bundle')
+        self.assertEqual(err, '')
+        self.assertEqual(out, 'No revisions to pull.\n')

@@ -18,7 +18,11 @@ import os
 import re
 import sys
 
-from bzrlib import bzrdir, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
@@ -128,7 +132,7 @@ class TestFetch(TestCaseWithTransport):
         knit1_format = bzrdir.BzrDirMetaFormat1()
         knit1_format.repository_format = knitrepo.RepositoryFormatKnit1()
         knit2_format = bzrdir.BzrDirMetaFormat1()
-        knit2_format.repository_format = knitrepo.RepositoryFormatKnit2()
+        knit2_format.repository_format = knitrepo.RepositoryFormatKnit3()
         # we start with a knit1 repository because that causes the
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.
@@ -154,6 +158,14 @@ class TestFetch(TestCaseWithTransport):
         # Make sure that the next revision in the root knit was retrieved,
         # even though the text, name, parent_id, etc., were unchanged.
         self.assertTrue('rev2' in root_knit)
+
+    def test_fetch_incompatible(self):
+        knit_tree = self.make_branch_and_tree('knit', format='knit')
+        knit3_tree = self.make_branch_and_tree('knit3',
+            format='dirstate-with-subtree')
+        knit3_tree.commit('blah')
+        self.assertRaises(errors.IncompatibleRepositories,
+                          knit_tree.branch.fetch, knit3_tree.branch)
 
 
 class TestMergeFetch(TestCaseWithTransport):

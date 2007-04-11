@@ -23,6 +23,14 @@
 # whether we expect a particular file will be modified after it's committed.
 # It's probably safer to just always revalidate.  mbp 20060321
 
+# TODO: Some refactoring could be done to avoid the strange idiom
+# used to capture data and headers while setting up the request
+# (and having to pass 'header' to _curl_perform to handle
+# redirections) . This could be achieved by creating a
+# specialized Curl object and returning code, headers and data
+# from _curl_perform.  Not done because we may deprecate pycurl in the
+# future -- vila 20070212
+
 import os
 from cStringIO import StringIO
 import sys
@@ -81,6 +89,12 @@ class PyCurlTransport(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         super(PyCurlTransport, self).__init__(base)
+        if base.startswith('https'):
+            # Check availability of https into pycurl supported
+            # protocols
+            supported = pycurl.version_info()[8]
+            if 'https' not in supported:
+                raise DependencyNotPresent('pycurl', 'no https support')
         self.cabundle = ca_bundle.get_ca_path()
         if from_transport is not None:
             self._curl = from_transport._curl
@@ -105,16 +119,19 @@ class PyCurlTransport(HttpTransportBase):
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
+        # But we need headers to handle redirections
+        header = StringIO()
+        curl.setopt(pycurl.HEADERFUNCTION, header.write)
         # In some erroneous cases, pycurl will emit text on
         # stdout if we don't catch it (see InvalidStatus tests
         # for one such occurrence).
         blackhole = StringIO()
         curl.setopt(pycurl.WRITEFUNCTION, blackhole.write)
-        self._curl_perform(curl)
+        self._curl_perform(curl, header)
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404: # not found
             return False
-        elif code in (200, 302): # "ok", "found"
+        elif code == 200: # "ok"
             return True
         else:
             self._raise_curl_http_error(curl)
@@ -159,7 +176,7 @@ class PyCurlTransport(HttpTransportBase):
         """Make a request for the entire file"""
         curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
-        self._curl_perform(curl)
+        self._curl_perform(curl, header)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
         data.seek(0)
@@ -182,8 +199,9 @@ class PyCurlTransport(HttpTransportBase):
             # Forget ranges, the server can't handle them
             return self._get_full(relpath)
 
-        self._curl_perform(curl, ['Range: bytes=%s'
-                                  % self.range_header(ranges, tail_amount)])
+        self._curl_perform(curl, header,
+                           ['Range: bytes=%s'
+                            % self.range_header(ranges, tail_amount)])
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -204,7 +222,7 @@ class PyCurlTransport(HttpTransportBase):
         abspath, data, header = self._setup_request(curl, '.bzr/smart')
         # We override the Expect: header so that pycurl will send the POST
         # body immediately.
-        self._curl_perform(curl,['Expect: '])
+        self._curl_perform(curl, header, ['Expect: '])
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
         headers = _extract_headers(header.getvalue(), abspath)
@@ -232,11 +250,10 @@ class PyCurlTransport(HttpTransportBase):
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
         curl.setopt(pycurl.USERAGENT, ua_str)
-        curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
 
-    def _curl_perform(self, curl, more_headers=[]):
+    def _curl_perform(self, curl, header, more_headers=[]):
         """Perform curl operation and translate exceptions."""
         try:
             # There's no way in http/1.0 to say "must
@@ -269,6 +286,15 @@ class PyCurlTransport(HttpTransportBase):
             # jam 20060713 The code didn't use to re-raise the exception here,
             # but that seemed bogus
             raise
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        if code in (301, 302, 303, 307):
+            url = curl.getinfo(pycurl.EFFECTIVE_URL)
+            headers = _extract_headers(header.getvalue(), url)
+            redirected_to = headers['Location']
+            raise errors.RedirectRequested(url,
+                                           redirected_to,
+                                           is_permament=(code == 301),
+                                           qual_proto=self._qualified_proto)
 
 
 def get_test_permutations():

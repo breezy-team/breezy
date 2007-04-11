@@ -336,7 +336,6 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
-
 class InterString(repository.InterRepository):
     """An inter-repository optimised code path for strings.
 
@@ -454,7 +453,7 @@ class TestMisc(TestCase):
         self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 
 
 
-class TestRepositoryFormatKnit2(TestCaseWithTransport):
+class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
@@ -466,7 +465,7 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
             revision_tree.inventory.root.file_id)
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = knitrepo.RepositoryFormatKnit2()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree('dull')
@@ -474,3 +473,4 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         tree.commit("Another dull commit", rev_id='dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
         self.assertEqual('dull', revision_tree.inventory.root.revision)
+

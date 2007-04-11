@@ -89,9 +89,15 @@ class TestReadonly(TestCaseWithWorkingTree):
         # test so that they pass. For now, we just assert that we have the
         # right type of objects available.
         the_hashcache = getattr(tree, '_hashcache', None)
-        self.assertNotEqual(None, the_hashcache)
-        self.assertIsInstance(the_hashcache, hashcache.HashCache)
-        the_hashcache._cutoff_time = self._custom_cutoff_time
+        if the_hashcache is not None:
+            self.assertIsInstance(the_hashcache, hashcache.HashCache)
+            the_hashcache._cutoff_time = self._custom_cutoff_time
+            hack_dirstate = False
+        else:
+            # DirState trees don't have a HashCache, but they do have the same
+            # function as part of the DirState. However, until the tree is
+            # locked, we don't have a DirState to modify
+            hack_dirstate = True
 
         # Make it a little dirty
         self.build_tree_contents([('tree/a', 'new contents of a\n')])
@@ -101,6 +107,8 @@ class TestReadonly(TestCaseWithWorkingTree):
 
         tree.lock_read()
         try:
+            if hack_dirstate:
+                tree._dirstate._sha_cutoff_time = self._custom_cutoff_time
             # Make sure we check all the files
             for file_id in tree:
                 size = tree.get_file_size(file_id)

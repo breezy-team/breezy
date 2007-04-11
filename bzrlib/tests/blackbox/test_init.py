@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,8 +76,8 @@ class TestInit(ExternalBase):
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: .*'
-            '\[Errno 2\] No such file or directory')
+            r'^bzr: ERROR: No such file: .*'
+            '\[Err(no|or) 2\]')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -97,7 +97,8 @@ class TestInit(ExternalBase):
 
     def test_init_existing_without_workingtree(self):
         # make a repository
-        self.run_bzr('init-repo', '.')
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
         # make a branch; by default without a working tree
         self.run_bzr('init', 'subdir')
         # fail
@@ -148,11 +149,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr_error(['Already a branch'], 'init', self.get_url())
 
     def test_init_append_revisions_only(self):
-        self.run_bzr('init', '--experimental-branch6', 'normal_branch6')
+        self.run_bzr('init', '--dirstate-tags', 'normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(False, branch._get_append_revisions_only())
         self.run_bzr('init', '--append-revisions-only',
-                     '--experimental-branch6', 'branch6')
+                     '--dirstate-tags', 'branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch._get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'], 'init',

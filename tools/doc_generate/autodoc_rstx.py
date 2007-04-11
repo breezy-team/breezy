@@ -112,19 +112,19 @@ def format_command (params, cmd, name):
     if options:
         option_str = "\n    Options:\n"
         for option_name, option in sorted(options.items()):
-            l = '        --' + option_name
-            if option.type is not None:
-                l += ' ' + option.argname.upper()
-            short_name = option.short_name()
-            if short_name:
-                assert len(short_name) == 1
-                l += ', -' + short_name
-            l += (30 - len(l)) * ' ' + option.help
-            # TODO: Split help over multiple lines with
-            # correct indenting and wrapping.
-            wrapped = textwrap.fill(l, initial_indent='',
-                                    subsequent_indent=30*' ')
-            option_str = option_str + wrapped + '\n'
+            for name, short_name, argname, help in option.iter_switches():
+                l = '    --' + name
+                if argname is not None:
+                    l += ' ' + argname
+                if short_name:
+                    assert len(short_name) == 1
+                    l += ', -' + short_name
+                l += (30 - len(l)) * ' ' + (help or '')
+                # TODO: Split help over multiple lines with
+                # correct indenting and wrapping.
+                wrapped = textwrap.fill(l, initial_indent='',
+                                        subsequent_indent=30*' ')
+                option_str = option_str + wrapped + '\n'       
 
     aliases_str = ""
     if cmd.aliases:
@@ -188,7 +188,7 @@ rstx_foot = """
 Environment
 ===========
 **BZRPATH**
-                Path where **%(bzrcmd)s** is to look for external command.
+                Path where **%(bzrcmd)s** is to look for shell plugin external commands.
 
 **BZR_EMAIL**
                 E-Mail address of the user. Overrides default user config.
@@ -216,7 +216,7 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the users default configuration. The section ``[DEFAULT]`` is
+Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.
 The section ``[ALIASES]`` can be used to create command aliases for
 commonly used options.
