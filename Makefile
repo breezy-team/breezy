@@ -84,7 +84,10 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
-doc/%.htm: doc/%.txt
+doc/HACKING.htm: HACKING
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css HACKING doc/HACKING.htm
+
+doc/%.htm: doc/%.txt 
 	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
 
 $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
@@ -100,7 +103,7 @@ doc/bzr_man.txt: bzrlib/builtins.py \
 		 tools/doc_generate/autodoc_rstx.py
 	python generate_docs.py -o doc/bzr_man.txt rstx
 
-docs: $(htm_files)
+docs: $(htm_files) doc/HACKING.htm
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc

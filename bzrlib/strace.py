@@ -17,6 +17,7 @@
 
 """Support for running strace against the current process."""
 
+import errno
 import os
 import signal
 import subprocess

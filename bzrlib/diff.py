@@ -471,8 +471,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
-        old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id, path))
+        # The file may be in a different location in the old tree (because
+        # the containing dir was renamed, but the file itself was not)
+        old_path = old_tree.id2path(file_id)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id, old_path))
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
         if text_modified:
@@ -485,7 +488,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    return timestamp.format_patch_date(tree.get_file_mtime(file_id, path))
+    mtime = tree.get_file_mtime(file_id, path)
+    assert mtime is not None, \
+        "got an mtime of None for file-id %s, path %s in tree %s" % (
+                file_id, path, tree)
+    return timestamp.format_patch_date(mtime)
 
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):

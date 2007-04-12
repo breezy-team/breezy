@@ -784,9 +784,19 @@ class V08BundleTester(TestCaseWithTransport):
             u'William Dod\xe9\n').encode('utf-8'))
         f.close()
 
-        self.tree1.add([u'with Dod\xe9'])
-        self.tree1.commit(u'i18n commit from William Dod\xe9', 
+        self.tree1.add([u'with Dod\xe9'], ['withdod-id'])
+        self.tree1.commit(u'i18n commit from William Dod\xe9',
                           rev_id='i18n-1', committer=u'William Dod\xe9')
+
+        if sys.platform == 'darwin':
+            # On Mac the '\xe9' gets changed to 'e\u0301'
+            self.assertEqual([u'.bzr', u'with Dode\u0301'],
+                             sorted(os.listdir(u'b1')))
+            delta = self.tree1.changes_from(self.tree1.basis_tree())
+            self.assertEqual([(u'with Dod\xe9', 'withdod-id', 'file')],
+                             delta.removed)
+            self.knownFailure("Mac OSX doesn't preserve unicode"
+                              " combining characters.")
 
         # Add
         bundle = self.get_valid_bundle(None, 'i18n-1')
