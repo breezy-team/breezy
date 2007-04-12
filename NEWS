@@ -1,5 +1,18 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * ``bzr remove`` and ``bzr rm`` will now remove the working file, if
+      it could be recovered again.
+      This has been done for consistency with cvs, svn and the unix rm command.
+      The old ``remove`` behaviour has been retained in the new option
+      ``bzr remove --keep``, which will just stop versioning the file,
+      but not delete it.
+      ``bzr remove --force`` have been added which will always delete the 
+      files.
+      ``bzr remove`` is also more verbose.
+      (Marius Kruger, #82602)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -160,13 +173,6 @@ bzr 0.15rc1  2007-03-07
       Collins, John A Meinel, Martin Pool, and others).
 
   IMPROVEMENTS:
-
-    * ``bzr remove`` and ``bzr rm`` will now remove the working file.
-      This has been done for consistency with svn and the unix rm command.
-      The old ``remove`` behaviour has been retained in the new command
-      ``bzr unversion``, which will just stop versioning the file,
-      but not delete it.
-      (Marius Kruger, #82602)
 
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
