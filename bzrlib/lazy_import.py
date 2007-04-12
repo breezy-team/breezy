@@ -48,7 +48,12 @@ class ScopeReplacer(object):
     needed.
     """
 
-    __slots__ = ('_scope', '_factory', '_name')
+    __slots__ = ('_scope', '_factory', '_name', '_real_obj')
+
+    # Setting this to True will allow you to do x = y, and still access members
+    # from both variables. This should not normally be enabled, but is useful
+    # when building documentation.
+    _should_proxy = False
 
     def __init__(self, scope, factory, name):
         """Create a temporary object in the specified scope.
@@ -62,6 +67,7 @@ class ScopeReplacer(object):
         self._scope = scope
         self._factory = factory
         self._name = name
+        self._real_obj = None
         scope[name] = self
 
     def _replace(self):
@@ -81,6 +87,8 @@ class ScopeReplacer(object):
                           " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
+        if ScopeReplacer._should_proxy:
+            self._real_obj = obj
         scope[name] = obj
         return obj
 
@@ -92,10 +100,12 @@ class ScopeReplacer(object):
         # del self._name
 
     def __getattribute__(self, attr):
-        _replace = object.__getattribute__(self, '_replace')
-        obj = _replace()
-        _cleanup = object.__getattribute__(self, '_cleanup')
-        _cleanup()
+        obj = object.__getattribute__(self, '_real_obj')
+        if obj is None:
+            _replace = object.__getattribute__(self, '_replace')
+            obj = _replace()
+            _cleanup = object.__getattribute__(self, '_cleanup')
+            _cleanup()
         return getattr(obj, attr)
 
     def __call__(self, *args, **kwargs):
