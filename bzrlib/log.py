@@ -273,7 +273,7 @@ def _show_log(branch,
                 delta = None
 
             if use_tags:
-                lf.show(revno, rev, delta, rev_tag_dict.get(rev_id, []))
+                lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
             else:
                 lf.show(revno, rev, delta)
         else:
@@ -281,7 +281,8 @@ def _show_log(branch,
                 lf.show_merge(rev, merge_depth)
             else:
                 if use_tags:
-                    lf.show_merge_revno(rev, merge_depth, revno, rev_tag_dict.get(rev_id, []))
+                    lf.show_merge_revno(rev, merge_depth, revno,
+                                        rev_tag_dict.get(rev_id))
                 else:
                     lf.show_merge_revno(rev, merge_depth, revno)
 
@@ -355,24 +356,26 @@ class LogFormatter(object):
     
     
 class LongLogFormatter(LogFormatter):
-    def show(self, revno, rev, delta, tags=[]):
+    supports_tags = True    # must exist and be True
+                            # if this log formatter support tags.
+                            # .show() and .show_merge_revno() must then accept
+                            # the 'tags'-argument with list of tags
+
+    def show(self, revno, rev, delta, tags=None):
         return self._show_helper(revno=revno, rev=rev, delta=delta, tags=tags)
-        
-    def supports_tags(self):
-        """must exist if this log formatter support tags
-           show and show_merge_revno must then accept the 'tags'-argument """
-        pass
 
     @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
-        return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
+        return self._show_helper(rev=rev, indent='    '*merge_depth,
+                                 merged=True, delta=None)
 
-    def show_merge_revno(self, rev, merge_depth, revno, tags=[]):
+    def show_merge_revno(self, rev, merge_depth, revno, tags=None):
         """Show a merged revision rev, with merge_depth and a revno."""
         return self._show_helper(rev=rev, revno=revno,
             indent='    '*merge_depth, merged=True, delta=None, tags=tags)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None, tags=[]):
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False,
+                     delta=None, tags=None):
         """Show a revision, either merged or not."""
         from bzrlib.osutils import format_date
         to_file = self.to_file
