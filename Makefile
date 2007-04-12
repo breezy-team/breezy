@@ -54,6 +54,9 @@ api-docs:
 	mkdir -p api/epydoc
 	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/epydoc --docformat 'restructuredtext en' $(docfiles)
 
+check-api-docs:
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
+
 
 # build emacs cross-reference
 tag_files=./bzr ./bzrlib/*py ./bzrlib/selftest/*.py
