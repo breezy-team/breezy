@@ -40,8 +40,6 @@ in an on-demand fashion. Typically use looks like:
     to inherit from them).
 """
 
-_scope_replacer_should_proxy = False
-
 
 class ScopeReplacer(object):
     """A lazy object that will replace itself in the appropriate scope.
@@ -51,6 +49,11 @@ class ScopeReplacer(object):
     """
 
     __slots__ = ('_scope', '_factory', '_name', '_real_obj')
+
+    # Setting this to True will allow you to do x = y, and still access members
+    # from both variables. This should not normally be enabled, but is useful
+    # when building documentation.
+    _should_proxy = False
 
     def __init__(self, scope, factory, name):
         """Create a temporary object in the specified scope.
@@ -84,7 +87,7 @@ class ScopeReplacer(object):
                           " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
-        if _scope_replacer_should_proxy:
+        if ScopeReplacer._should_proxy:
             self._real_obj = obj
         scope[name] = obj
         return obj

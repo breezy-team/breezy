@@ -39,5 +39,5 @@ class ObjectUID(_ObjectUID):
 epydoc.uid.ObjectUID = ObjectUID
 
 
-bzrlib.lazy_import._scope_replacer_should_proxy = True
+_ScopeReplacer._should_proxy = True
 
