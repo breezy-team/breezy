@@ -87,7 +87,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         tree.add(['d', 'd/a'], ['d-id', 'a-id'])
         tree.commit('1', rev_id='rev-1')
 
-        tree.rename_one('e', 'e')
+        tree.rename_one('d', 'e')
 
         st = os.lstat('tree/e/a')
         tree.lock_read()
