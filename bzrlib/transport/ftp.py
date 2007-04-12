@@ -31,6 +31,7 @@ import ftplib
 import os
 import urllib
 import urlparse
+import select
 import stat
 import threading
 import time
@@ -566,7 +567,8 @@ class FtpServer(Server):
         self._port = self._ftp_server.getsockname()[1]
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 100s, or 1000 requests
-        self._async_thread = threading.Thread(target=asyncore.loop,
+        self._async_thread = threading.Thread(
+                target=FtpServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':1000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
@@ -577,6 +579,16 @@ class FtpServer(Server):
         self._ftp_server.del_channel()
         asyncore.close_all()
         self._async_thread.join()
+
+    @staticmethod
+    def _asyncore_loop_ignore_EBADF(*args, **kwargs):
+        """Wrap asyncore.loop with a try/except for EBADF"""
+        try:
+            asyncore.loop(*args, **kwargs)
+        except select.error, e:
+            import pdb; pdb.set_trace()
+            if e.args[0] != errno.EBADF:
+                raise
 
 
 _ftp_channel = None
