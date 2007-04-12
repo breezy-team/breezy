@@ -282,7 +282,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         # urllib2 using capitalize() for headers
                         # instead of title(sp?).
                         'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
-                        # FIXME: pycurl also set the following, understand why
                         'Accept': '*/*',
                         }
 
@@ -723,6 +722,20 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
     Send the authentification preventively to avoid the the
     roundtrip associated with the 401 error.
     """
+
+    def get_auth(self, user, password):
+        raw = '%s:%s' % (user, password)
+        auth = 'Basic ' + raw.encode('base64').strip()
+        return auth
+
+    def set_auth(self, request):
+        """Add the authentification header if needed.
+
+        All required informations should be part of the request.
+        """
+        if request.password is not None:
+            request.add_header(self.auth_header,
+                               self.get_auth(request.user, request.password))
 
 #    def http_request(self, request):
 #        """Insert an authentification header if information is available"""

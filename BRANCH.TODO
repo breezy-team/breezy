@@ -3,3 +3,6 @@
 # 
 #
 
+* in test_http.py, add tests for :
+- wrong password supplied
+- no double prompting

@@ -725,13 +725,8 @@ class TestHttpProxyWhiteBox(TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        from bzrlib.transport.http._urllib2_wrappers import (
-            ProxyHandler,
-            Request,
-            )
-
-        handler = ProxyHandler()
-        request = Request('GET','http://baz/buzzle')
+        handler = _urllib2_wrappers.ProxyHandler()
+        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
@@ -1145,3 +1140,37 @@ class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
 
         self.assertRaises(errors.TooManyRedirections, do_catching_redirections,
                           self.get_a, self.old_transport, redirected)
+
+
+class TestHTTPBasicAuth(TestCaseWithWebserver):
+
+    """Test basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
+    _handler = _urllib2_wrappers.HTTPBasicAuthHandler()
+    _auth_header = 'Authorization'
+    _auth_type = 'basic'
+
+    def create_transport_readonly_server(self):
+        return HttpServer()
+
+    def process_request(self, request):
+        request.auth = self._auth_type
+        self._handler.set_auth(request)
+
+    def test_empty_pass(self):
+        request = _urllib2_wrappers.Request('GET', 'http://bar.com')
+        request.user = 'joe'
+        request.password = ''
+        self.process_request(request)
+        self.assertEqual('Basic ' + 'joe:'.encode('base64').strip(),
+                         request.headers[self._auth_header])
+
+    def test_user_pass(self):
+        request = _urllib2_wrappers.Request('GET', 'http://bar.com')
+        request.user = 'joe'
+        request.password = 'foo'
+        self.process_request(request)
+        self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
+                         request.headers[self._auth_header])
+
