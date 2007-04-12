@@ -60,27 +60,58 @@ class TrackerRegistry(registry.Registry):
 tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
+class SimpleBugtracker(object):
+    """A bug tracker that where bug numbers are appended to a base URL.
+    
+    If you have one of these trackers then subclass this and add attributes
+    named 'tag' and 'base_url'. The former is the tag that the user will use
+    on the command line. The latter is the url that the bug ids will be
+    appended to.
 
-class LaunchpadTracker(object):
-    """The Launchpad bug tracker."""
+    If the bug_id must have a special form then override check_bug_id and
+    raise an exception if the bug_id is not valid.
+    """
 
     @classmethod
     def get(klass, tag, branch):
-        """Return a Launchpad tracker if tag is 'lp'. Return None otherwise."""
-        if tag != 'lp':
+        """Returns the tracker if the tag matches. Returns None otherwise."""
+        if tag != klass.tag:
             return None
         return klass()
 
     def get_bug_url(self, bug_id):
-        """Return a Launchpad URL for bug_id."""
+        """Return the URL for bug_id."""
+        self.check_bug_id(bug_id)
+        return self.base_url + bug_id
+
+    def check_bug_id(self, bug_id):
+        """Check that the bug_id is valid."""
+        pass
+
+
+class SimpleIntegerBugtracker(SimpleBugtracker):
+    """A SimpleBugtracker where the bug ids must be integers"""
+
+    def check_bug_id(self, bug_id):
         try:
             int(bug_id)
         except ValueError:
             raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
-        return 'https://launchpad.net/bugs/%s' % (bug_id,)
+
+
+class LaunchpadTracker(SimpleIntegerBugtracker):
+    """The Launchpad bug tracker."""
+    tag = 'lp'
+    base_url = 'https://launchpad.net/bugs/'
 
 tracker_registry.register('launchpad', LaunchpadTracker)
 
+class DebianTracker(SimpleIntegerBugtracker):
+    """The Debian bug tracker."""
+    tag = 'deb'
+    base_url = 'http://bugs.debian.org/'
+
+tracker_registry.register('debian', DebianTracker)
 
 class TracTracker(object):
     """A Trac instance."""
