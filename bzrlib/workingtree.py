@@ -1601,7 +1601,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)
             if not supports_executable():
-                executable = entry.executable
+                if entry is not None:
+                    executable = entry.executable
+                else:
+                    executable = False
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
