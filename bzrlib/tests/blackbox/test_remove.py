@@ -17,32 +17,127 @@
 
 import os
 
-from bzrlib.tests.blackbox.test_unversion import TestUnversion
+from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
+from bzrlib import osutils
+
+_id='-id'
+a='a'
+b='b/'
+c='b/c'
+files=(a,b,c)
 
 
-class TestRemove(TestUnversion):
+class TestRemove(ExternalBase):
 
-    def __init__(self, methodName='runTest'):
-        super(TestRemove, self).__init__(methodName)
-        self.cmd = 'remove'
-        self.shape = None
+    def _make_add_and_assert_tree(self,files):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        for f in files:
+            id=f+_id
+            tree.add(f, id)
+            self.assertEqual(tree.path2id(f), id)
+            self.failUnlessExists(f)
+            self.assertInWorkingTree(f)
+        return tree
 
-    def assertCommandPerformedOnFiles(self,files):
+    def assertFilesDeleted(self,files):
+        for f in files:
+            id=f+_id
+            self.failUnlessExists(f)
+            self.assertNotInWorkingTree(f)
+
+    def assertFilesUnversioned(self,files):
         for f in files:
             self.failIfExists(f)
             self.assertNotInWorkingTree(f)
 
-    def test_command_on_unversioned_files(self):
+    def test_remove_no_files_specified(self):
+        tree = self._make_add_and_assert_tree([])
+
+        (out,err) = self.runbzr('remove', retcode=3)
+        self.assertEquals(err.strip(),
+            "bzr: ERROR: Specify one or more files to remove, or use --new.")
+
+        (out,err) = self.runbzr('remove --new', retcode=3)
+        self.assertEquals(err.strip(),"bzr: ERROR: No matching files.")
+        (out,err) = self.runbzr('remove --new .', retcode=3)
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "bzr: ERROR: No matching files.")
+
+    def test_remove_invalid_files(self):
+        self.build_tree([a])
+        tree = self.make_branch_and_tree('.')
+
+        (out,err) = self.runbzr('remove .')
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "")
+
+    def test_remove_unversioned_files(self):
+        self.build_tree([a])
+        tree = self.make_branch_and_tree('.')
+        
+        (out,err) = self.runbzr('remove a')
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "a is not versioned.")
+
+    def test_remove_keep_unversioned_files(self):
+        self.build_tree([a])
+        tree = self.make_branch_and_tree('.')
+        
+        (out,err) = self.runbzr('remove --keep a')
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "a is not versioned.")
+
+    def test_remove_force_unversioned_files(self):
         self.build_tree(['a'])
         tree = self.make_branch_and_tree('.')
 
-        (out,err) = self.runbzr(self.cmd + ' a')
+        (out,err) = self.runbzr('remove --force a')
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "deleted a")
 
-    def test_command_on_non_existing_files(self):
+    def test_remove_non_existing_files(self):
         tree = self._make_add_and_assert_tree([])
-        (out,err) = self.runbzr(self.cmd + ' b')
+        (out,err) = self.runbzr('remove b')
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "b does not exist.")
+
+    def test_remove_keep_non_existing_files(self):
+        tree = self._make_add_and_assert_tree([])
+        (out,err) = self.runbzr('remove --keep b')
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "b is not versioned.")
+
+    def test_remove_one_file(self):
+        tree = self._make_add_and_assert_tree([a])
+        self.runbzr('remove a')
+        self.assertFilesDeleted([a])
+
+    def test_command_on_deleted(self):
+        tree = self._make_add_and_assert_tree([a])
+        self.runbzr(['commit', '-m', 'added a'])
+        os.unlink(a)
+        self.assertInWorkingTree(a)
+        self.runbzr('remove a')
+        self.assertNotInWorkingTree(a)
+
+    def test_command_with_new(self):
+        tree = self._make_add_and_assert_tree(files)
+
+        self.runbzr('remove --new')
+        self.assertFilesDeleted(files)
+
+    def test_command_with_new_in_dir1(self):
+        tree = self._make_add_and_assert_tree(files)
+        self.runbzr('remove --new %s %s'%(b,c))
+        tree = WorkingTree.open('.')
+        self.assertInWorkingTree(a)
+        self.assertEqual(tree.path2id(a), a+_id)
+        self.assertFilesDeleted([b,c])
+
+    def test_command_with_new_in_dir2(self):
+        tree = self._make_add_and_assert_tree(files)
+        self.runbzr('remove --new .')
+        tree = WorkingTree.open('.')
+        self.assertFilesDeleted([a])

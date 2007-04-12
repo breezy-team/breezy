@@ -1810,30 +1810,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = '?'
                     textui.show_status(new_status, inv[fid].kind, f,
                                        to_file=to_file)
+                # unversion file
                 del inv[fid]
+                message="removed %s"%f
 
-                if not keep_files:
-                    if osutils.lexists(f):
-                        if force:
-                            if osutils.isdir(f):
-                                osutils.rmtree(f)
-                            else:
-                                os.unlink(f)
-                            message="deleted %s"%f
+            if not keep_files:
+                if osutils.lexists(f):
+                    if force:
+                        # recursively delete f
+                        if osutils.isdir(f):
+                            osutils.rmtree(f)
                         else:
-                            if f in changed_files:
-                                message="%s has changed and won't be deleted."%f
-                            elif osutils.isdir(f) and len(os.listdir(f)) > 0:
-                                message="%s is not empty directory "\
-                                    "and won't be deleted."%f
-                            else:
-                                osutils.delete_any(f)
-                                message="deleted %s"%f
-                    else:
-                        message="%s does not exist."%f
-                else:
-                    message="removed %s"%f
-            # print only one message per file.
+                            os.unlink(f)
+                        message="deleted %s"%f
+                    elif fid: 
+                        # only consider deleting versioned files
+                        if f in changed_files:
+                            message="%s has changed and won't be deleted."%f
+                        elif osutils.isdir(f) and len(os.listdir(f)) > 0:
+                            message="%s is not empty directory "\
+                                "and won't be deleted."%f
+                        else:
+                            osutils.delete_any(f)
+                            message="deleted %s"%f
+                elif message is not None:
+                    # only care if we haven't done anything yet.
+                    message="%s does not exist."%f
+                
+            # print only one message (if any) per file.
             if message is not None:
                 note(message)
         self._write_inventory(inv)

@@ -1064,30 +1064,33 @@ class cmd_info(Command):
                          verbose=verbose)
 
 
-class cmd_unversion(Command):
-    """Make a file unversioned.
+class cmd_remove(Command):
+    """Remove files or directories..
 
-    This makes bzr stop tracking changes to a versioned file.  It does
-    not delete the working copy.
+    This makes bzr stop tracking changes to the specified files and
+    delete them if they can easily be recovered using revert.
 
     You can specify one or more files, and/or --new.  If you specify --new,
-    only 'added' files will be unversioned.  If you specify both, then new
+    only 'added' files will be removed.  If you specify both, then new
     files in the specified directories will be removed.  If the directories are
-    also new, they will also be unversioned.
+    also new, they will also be removed.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', Option('new',
-        help='unversion newly-added files')]
-    aliases = ['uv']
+    takes_options = ['verbose', 
+        Option('new', help='remove newly-added files'),
+        Option('keep', help="never delete files"),
+        Option('force', help="always delete files, even if they can not be "
+            "recovered and even if they are non-empty directories")]
+    aliases = ['rm']
     encoding_type = 'replace'
 
     def __init__(self):
         Command.__init__(self)
         self.no_files_message=('Specify one or more files to'
-            ' unversion, or use --new.')
-        self.delete_files=False
+            ' remove, or use --new.')
 
-    def run(self, file_list, verbose=False, new=False):
+    def run(self, file_list, verbose=False, new=False, keep=False, 
+            force=False):
         tree, file_list = tree_files(file_list)
 
         if file_list is not None:
@@ -1102,30 +1105,7 @@ class cmd_unversion(Command):
             if len(file_list) == 0:
                 raise errors.BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
-            delete_files=self.delete_files)
-
-
-class cmd_remove(cmd_unversion):
-    """Remove a file.
-
-    This makes bzr stop tracking changes to a versioned file and delete the
-    working copy. (Recursion not supported at present.)
-
-    You can specify one or more files, and/or --new.  If you specify --new,
-    only 'added' files will be removed.  If you specify both, then new files
-    in the specified directories will be removed.  If the directories are
-    also new and empty, they will also be removed.
-    """
-    takes_args = ['file*']
-    takes_options = ['verbose', Option('new', help='remove newly-added files')]
-    aliases = ['rm']
-    encoding_type = 'replace'
-
-    def __init__(self):
-        Command.__init__(self)
-        self.delete_files=True
-        self.no_files_message=('Specify one or more files to'
-            ' remove, or use --new.')
+            keep_files=keep, force=force)
 
 
 class cmd_file_id(Command):
