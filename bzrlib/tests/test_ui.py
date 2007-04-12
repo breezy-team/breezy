@@ -44,16 +44,12 @@ class UITests(TestCase):
                          self.apply_redirected(None, stdout, stdout,
                                                ui.get_password))
         self.assertEqual('', stdout.getvalue())
-        # stdin should be empty
-        self.assertEqual(None, ui.stdin.getline())
         self.assertEqual(None,
                          self.apply_redirected(None, stdout, stdout,
                                                ui.get_password,
                                                u'Hello\u1234 %(user)s',
                                                user=u'some\u1234'))
         self.assertEqual('', stdout.getvalue())
-        # stdin should be empty
-        self.assertEqual(None, ui.stdin.getline())
 
     def test_text_factory_ascii_password(self):
         ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper())
@@ -66,7 +62,7 @@ class UITests(TestCase):
             # ': ' is appended to prompt
             self.assertEqual(': ', ui.stdout.getvalue())
             # stdin should be empty
-            self.assertEqual(None, ui.stdin.getline())
+            self.assertEqual('', ui.stdin.readline())
         finally:
             pb.finished()
 
@@ -91,7 +87,7 @@ class UITests(TestCase):
             self.assertEqual(u'Hello \u1234 some\u1234: ',
                              ui.stdout.getvalue().decode('utf8'))
             # stdin should be empty
-            self.assertEqual(None, ui.stdin.getline())
+            self.assertEqual('', ui.stdin.readline())
         finally:
             pb.finished()
 
@@ -191,7 +187,7 @@ class UITests(TestCase):
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
-        self.assertEqual(None, factory.stdin.getline())
+        self.assertEqual('', factory.stdin.readline())
 
     def test_silent_ui_getbool(self):
         factory = bzrlib.ui.SilentUIFactory()
@@ -206,7 +202,7 @@ class UITests(TestCase):
                                                factory.get_boolean, "foo"))
         self.assertEqual("", stdout.getvalue())
         # stdin should be empty
-        self.assertEqual(None, factory.stdin.getline())
+        self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getbool(self):
         factory = bzrlib.ui.text.TextUIFactory()
@@ -232,5 +228,5 @@ class UITests(TestCase):
                          "what do you want? [y/n]: what do you want? [y/n]: ",
                          factory.stdout.getvalue())
         # stdin should be empty
-        self.assertEqual(None, factory.stdin.getline())
+        self.assertEqual('', factory.stdin.readline())
 
