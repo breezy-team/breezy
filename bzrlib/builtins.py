@@ -2049,10 +2049,10 @@ class cmd_commit(Command):
       mkdir foo/bar
       bzr add foo/bar
       bzr commit foo -m "committing foo"
-      bzr mv foo/bar foo/bar
+      bzr mv foo/bar foo/baz
       mkdir foo/bar
       bzr add foo/bar
-      bzr commit foo/bar -m "bar but not baz"
+      bzr commit foo/bar -m "committing bar but not baz"
 
     In the example above, the last commit will fail by design. This gives
     the user the opportunity to decide whether they want to commit the
