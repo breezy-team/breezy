@@ -2023,7 +2023,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use bzr upgrade --dirstate-tags.")
 
     def __init__(self, branch):
         self.branch = branch
