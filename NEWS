@@ -41,9 +41,14 @@ IN DEVELOPMENT
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
  
-    * ``LockableFiles.lock_write()`` now accepts a ``token`` keyword argument,
-      so that a seperate LockableFiles instance can share a lock if it has the
-      right token.  (Andrew Bennetts, Robert Collins)
+    * The ``lock_write`` method of ``LockableFiles`` and ``Repository`` now
+      accept a ``token`` keyword argument, so that a seperate instances of those
+      objects can share a lock if it has the right token.  (Andrew Bennetts,
+      Robert Collins)
+
+    * ``Branch.lock_write()`` now accepts a ``tokens`` keyword argument, which
+      is like the other ``lock_write`` methods, except that it also allows for
+      sharing a repository lock.  (Andrew Bennetts, Robert Collins)
 
   BUGFIXES:
 
