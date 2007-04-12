@@ -18,18 +18,6 @@ from bzrlib import tests
 import bzrlib.transport
 
 
-class TestCaseAFTP(tests.TestCaseWithTransport):
-    """Test aftp transport."""
-
-    def test_aftp_degrade(self):
-        t = bzrlib.transport.get_transport('aftp://host/path')
-        self.failUnless(t.is_active)
-        parent = t.clone('..')
-        self.failUnless(parent.is_active)
-
-        self.assertEqual('aftp://host/path', t.abspath(''))
-
-
 class _MedusaFeature(tests.Feature):
     """Some tests want an FTP Server, check if one is available.
 
@@ -60,6 +48,18 @@ class TestCaseWithFTPServer(tests.TestCaseWithTransport):
         self.transport_server = FtpServer
         super(TestCaseWithFTPServer, self).setUp()
 
+
+
+class TestCaseAFTP(tests.TestCaseWithTransport):
+    """Test aftp transport."""
+
+    def test_aftp_degrade(self):
+        t = bzrlib.transport.get_transport('aftp://host/path')
+        self.failUnless(t.is_active)
+        parent = t.clone('..')
+        self.failUnless(parent.is_active)
+
+        self.assertEqual('aftp://host/path', t.abspath(''))
 
 
 class TestFTPServer(TestCaseWithFTPServer):
