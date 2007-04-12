@@ -234,6 +234,9 @@ class MultiVersionedFile(object):
             else:
                 parent_lines = self.get_line_list(parent_ids)
             diff = MultiParent.from_lines(lines, parent_lines)
+            if (''.join(diff.to_patch())) > ''.join(lines):
+                print >> sys.stderr, "forcing snapshot"
+                diff = MultiParent([NewText(lines)])
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
 
@@ -307,6 +310,10 @@ class MultiVersionedFile(object):
                 else:
                     max_distance = max(p_distances)
                     if max_distance + 1 > self.snapshot_interval:
+                        snapshots.add(version_id)
+                        distances[version_id] = 0
+                    elif len(descendants) > 1 and max_distance > \
+                        self.snapshot_interval -4 and False:
                         snapshots.add(version_id)
                         distances[version_id] = 0
                     else:
