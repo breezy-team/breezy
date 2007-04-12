@@ -389,7 +389,9 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
-        branch_token, repo_token = branch.lock_write()
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        branch.repository.unlock()
         branch.leave_lock_in_place()
         branch.repository.leave_lock_in_place()
         branch.unlock()
@@ -402,7 +404,9 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
-        branch_token, repo_token = branch.lock_write()
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        branch.repository.unlock()
         branch.leave_lock_in_place()
         branch.repository.leave_lock_in_place()
         branch.unlock()
@@ -442,7 +446,9 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
         request = smart.branch.SmartServerBranchRequestUnlock(backing)
         branch = self.make_branch('.')
         # Lock the branch
-        branch_token, repo_token = branch.lock_write()
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        branch.repository.unlock()
         # Unlock the branch (and repo) object, leaving the physical locks
         # in place.
         branch.leave_lock_in_place()

@@ -52,11 +52,15 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
         processed.  The physical lock state won't be changed.
         """
         # XXX: write a test for LockContention
-        branch.lock_write(tokens=(branch_token, repo_token))
+        branch.repository.lock_write(token=repo_token)
         try:
-            return self.do_with_locked_branch(branch, *args)
+            branch.lock_write(token=branch_token)
+            try:
+                return self.do_with_locked_branch(branch, *args)
+            finally:
+                branch.unlock()
         finally:
-            branch.unlock()
+            branch.repository.unlock()
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
@@ -118,11 +122,12 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             branch_token = None
         if repo_token == '':
             repo_token = None
-        tokens = (branch_token, repo_token)
-        if tokens == ('', ''):
-            tokens = None
         try:
-            branch_token, repo_token = branch.lock_write(tokens=tokens)
+            repo_token = branch.repository.lock_write(token=repo_token)
+            try:
+                branch_token = branch.lock_write(token=branch_token)
+            finally:
+                branch.repository.unlock()
         except errors.LockContention:
             return SmartServerResponse(('LockContention',))
         except errors.TokenMismatch:
@@ -138,9 +143,12 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
 class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
 
     def do_with_branch(self, branch, branch_token, repo_token):
-        tokens = branch_token, repo_token
         try:
-            tokens = branch.lock_write(tokens=tokens)
+            branch.repository.lock_write(token=repo_token)
+            try:
+                branch.lock_write(token=branch_token)
+            finally:
+                branch.repository.unlock()
         except errors.TokenMismatch:
             return SmartServerResponse(('TokenMismatch',))
         branch.repository.dont_leave_lock_in_place()

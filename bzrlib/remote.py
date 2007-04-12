@@ -740,11 +740,13 @@ class RemoteBranch(branch.Branch):
         else:
             self._lock_count += 1
 
-    def _remote_lock_write(self, tokens):
-        if tokens is None:
+    def _remote_lock_write(self, token):
+        if token is None:
             branch_token = repo_token = ''
         else:
-            branch_token, repo_token = tokens
+            branch_token = token
+            repo_token = self.repository.lock_write()
+            self.repository.unlock()
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.lock_write', path, branch_token,
                                      repo_token)
@@ -754,7 +756,7 @@ class RemoteBranch(branch.Branch):
         elif response[0] == 'LockContention':
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'TokenMismatch':
-            raise errors.TokenMismatch(tokens, '(remote tokens)')
+            raise errors.TokenMismatch(token, '(remote token)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         elif response[0] == 'ReadOnlyError':
@@ -762,9 +764,9 @@ class RemoteBranch(branch.Branch):
         else:
             assert False, 'unexpected response code %r' % (response,)
             
-    def lock_write(self, tokens=None):
+    def lock_write(self, token=None):
         if not self._lock_mode:
-            remote_tokens = self._remote_lock_write(tokens)
+            remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
             assert self._lock_token, 'Remote server did not return a token!'
             # TODO: We really, really, really don't want to call _ensure_real
@@ -776,25 +778,29 @@ class RemoteBranch(branch.Branch):
             #   -- Andrew Bennetts, 2007-02-22.
             self._ensure_real()
             if self._real_branch is not None:
-                self._real_branch.lock_write(tokens=remote_tokens)
-            if tokens is not None:
+                self._real_branch.repository.lock_write(
+                    token=self._repo_lock_token)
+                try:
+                    self._real_branch.lock_write(token=self._lock_token)
+                finally:
+                    self._real_branch.repository.unlock()
+            if token is not None:
                 self._leave_lock = True
             else:
-                # XXX: this case seems to be unreachable; tokens cannot be None.
+                # XXX: this case seems to be unreachable; token cannot be None.
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyTransaction
         else:
-            if tokens is not None:
-                # Tokens were given to lock_write, and we're relocking, so check
-                # that the given tokens actually match the ones we already have.
-                held_tokens = (self._lock_token, self._repo_lock_token)
-                if tokens != held_tokens:
-                    raise errors.TokenMismatch(str(tokens), str(held_tokens))
+            if token is not None:
+                # A token was given to lock_write, and we're relocking, so check
+                # that the given token actually matches the one we already have.
+                if token != self._lock_token:
+                    raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
-        return self._lock_token, self._repo_lock_token
+        return self._lock_token
 
     def _unlock(self, branch_token, repo_token):
         path = self.bzrdir._path_for_remote_call(self._client)

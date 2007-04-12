@@ -1264,26 +1264,14 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self, tokens=None):
-        if tokens is not None:
-            branch_token, repo_token = tokens
-        else:
-            branch_token = repo_token = None
-        repo_token = self.repository.lock_write(token=repo_token)
+    def lock_write(self, token=None):
+        repo_token = self.repository.lock_write()
         try:
-            branch_token = self.control_files.lock_write(token=branch_token)
+            token = self.control_files.lock_write(token=token)
         except:
             self.repository.unlock()
             raise
-        else:
-            tokens = (branch_token, repo_token)
-            assert tokens == (None, None) or None not in tokens, (
-                'Both branch and repository locks must return tokens, or else '
-                'neither must return tokens.  Got %r.' % (tokens,))
-            if tokens == (None, None):
-                return None
-            else:
-                return tokens
+        return token
 
     def lock_read(self):
         self.repository.lock_read()
