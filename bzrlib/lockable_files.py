@@ -228,7 +228,6 @@ class LockableFiles(object):
 
     def dont_leave_in_place(self):
         """Set this LockableFiles to clear the physical lock on unlock."""
-        # XXX: think about renaming this!
         self._lock.dont_leave_in_place()
 
     def lock_write(self, token=None):
@@ -258,8 +257,6 @@ class LockableFiles(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.WriteTransaction())
-            # XXX: add test for the case that requires self._token_from_lock:
-            # token = x.lock_write(); assert(x.lock_write() == token)
             self._token_from_lock = token_from_lock
             return token_from_lock
 
