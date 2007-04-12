@@ -283,7 +283,9 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
         b = self.make_branch('.')
-        branch_token, repo_token = b.lock_write()
+        branch_token = b.lock_write()
+        repo_token = b.repository.lock_write()
+        b.repository.unlock()
         try:
             self.assertEqual(SmartServerResponse(('ok',)),
                 request.execute(
@@ -295,7 +297,9 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
         b = self.make_branch('.')
-        branch_token, repo_token = b.lock_write()
+        branch_token = b.lock_write()
+        repo_token = b.repository.lock_write()
+        b.repository.unlock()
         try:
             revision_id = 'non-existent revision'
             self.assertEqual(
@@ -317,7 +321,9 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         r1 = tree.commit('1st commit', rev_id=rev_id)
         r2 = tree.commit('2nd commit')
         tree.unlock()
-        branch_token, repo_token = tree.branch.lock_write()
+        branch_token = tree.branch.lock_write()
+        repo_token = tree.branch.repository.lock_write()
+        tree.branch.repository.unlock()
         try:
             self.assertEqual(
                 SmartServerResponse(('ok',)),
@@ -340,7 +346,9 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         r2 = tree.commit('2nd commit')
         tree.unlock()
         tree.branch.set_revision_history([])
-        branch_token, repo_token = tree.branch.lock_write()
+        branch_token = tree.branch.lock_write()
+        repo_token = tree.branch.repository.lock_write()
+        tree.branch.repository.unlock()
         try:
             self.assertEqual(
                 SmartServerResponse(('ok',)),
