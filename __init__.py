@@ -55,11 +55,12 @@ class cmd_mp_regen(commands.Command):
         if sync_snapshots:
             to_sync = snapshots
         else:
-            to_sync = None
+            to_sync = vf.select_snapshots(file_weave)
+        print >> sys.stderr, "%d fulltexts" % len(snapshots)
+        print >> sys.stderr, "%d snapshots" % len(to_sync)
+
         vf.import_versionedfile(file_weave, to_sync, single_parent=single,
                                 verify=verify)
-        print >> sys.stderr, "%d fulltexts" % len(snapshots)
-        print >> sys.stderr, "%d snapshots" % len(vf._snapshots)
         vf.clear_cache()
         if False:
             for revision_id in file_weave.get_ancestry(

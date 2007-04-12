@@ -283,6 +283,38 @@ class MultiVersionedFile(object):
         finally:
             pb.finished()
 
+    def select_snapshots(self, vf):
+        distances = {}
+        descendants = {}
+        snapshots = set()
+        for version_id in vf.versions():
+            for parent_id in vf.get_parents(version_id):
+                descendants.setdefault(parent_id, []).append(version_id)
+        cur = [v for v in vf.versions() if len(vf.get_parents(v)) == 0]
+        while len(cur) > 0:
+            next = []
+            for version_id in cur:
+                if version_id in distances:
+                    continue
+                parents = vf.get_parents(version_id)
+                p_distances = [distances.get(p) for p in parents]
+                if None in p_distances:
+                    continue
+                next.extend(descendants.get(version_id, []))
+                if len(p_distances) == 0:
+                    snapshots.add(version_id)
+                    distances[version_id] = 0
+                else:
+                    max_distance = max(p_distances)
+                    if max_distance + 1 > self.snapshot_interval:
+                        snapshots.add(version_id)
+                        distances[version_id] = 0
+                    else:
+                        distances[version_id] = max_distance + 1
+            cur = next
+        return snapshots
+
+
     def clear_cache(self):
         self._lines.clear()
 
