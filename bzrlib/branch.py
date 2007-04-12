@@ -690,7 +690,7 @@ class Branch(object):
             format.repository_format = weaverepo.RepositoryFormat7()
         else:
             format = self.repository.bzrdir.checkout_metadir()
-            format.branch_format = self._format
+            format.set_branch_format(self._format)
         return format
 
     def create_checkout(self, to_location, revision_id=None,

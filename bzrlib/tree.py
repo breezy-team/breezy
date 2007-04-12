@@ -266,6 +266,7 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
+    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
         return self._inventory.path2id(path)

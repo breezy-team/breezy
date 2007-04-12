@@ -190,7 +190,7 @@ working tree. This means that any history operations must query the master
 branch, which could be slow if a network connection is involved. Also, as you
 don't have a local branch, then you cannot commit locally.
 
-Lightwieght checkouts work best when you have fast reliable access to the
+Lightweight checkouts work best when you have fast reliable access to the
 master branch. This means that if the master branch is on the same disk or LAN
 a lightweight checkout will be faster than a heavyweight one for any commands
 that modify the revision history (as only one copy branch needs to be updated).

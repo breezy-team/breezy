@@ -148,7 +148,7 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    To see ignored files use 'bzr ignored'.  For details in the
+    To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
     
     --short gives a status flags for each item, similar to the SVN's status
@@ -183,7 +183,8 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'short',
+    takes_options = ['show-ids', 'revision',
+                     Option('short', help='Give short SVN-style status lines'),
                      Option('versioned', help='Only show versioned files')]
     aliases = ['st', 'stat']
 
@@ -242,6 +243,8 @@ class cmd_remove_tree(Command):
 
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
+
+    To re-create the working tree, use "bzr checkout".
     """
 
     takes_args = ['location?']
@@ -337,7 +340,11 @@ class cmd_add(Command):
 
     --file-ids-from will try to use the file ids from the supplied path.
     It looks up ids trying to find a matching parent directory with the
-    same filename, and then by pure path.
+    same filename, and then by pure path. This option is rarely needed
+    but can be useful when adding the same logical file into two
+    branches that will be merged later (without showing the two different
+    adds as a conflict). It is also useful when merging another project
+    into a subdirectory of this one.
     """
     takes_args = ['file*']
     takes_options = ['no-recurse', 'dry-run', 'verbose',
@@ -917,10 +924,6 @@ class cmd_checkout(Command):
     out of date [so you cannot commit] but it may be useful (i.e. to examine old
     code.)
 
-    --basis is to speed up checking out from remote branches.  When specified, it
-    uses the inventory and file contents from the basis branch in preference to the
-    branch being checked out.
-
     See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
@@ -1213,8 +1216,8 @@ class cmd_init(Command):
 
     If there is a repository in a parent directory of the location, then 
     the history of the branch will be stored in the repository.  Otherwise
-    init creates a standalone branch which carries its own history in 
-    .bzr.
+    init creates a standalone branch which carries its own history
+    in the .bzr directory.
 
     If there is already a branch at the location but it has no working tree,
     the tree can be populated with 'bzr checkout'.
@@ -1917,7 +1920,7 @@ class cmd_lookup_revision(Command):
 
 
 class cmd_export(Command):
-    """Export past revision to destination directory.
+    """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
 
@@ -1925,12 +1928,14 @@ class cmd_export(Command):
     given, try to find the format with the extension. If no extension
     is found exports to a directory (equivalent to --format=dir).
 
-    Root may be the top directory for tar, tgz and tbz2 formats. If none
-    is given, the top directory will be the root name of the file.
+    If root is supplied, it will be used as the root directory inside
+    container formats (tar, zip, etc). If it is not supplied it will default
+    to the exported filename. The root option has no effect for 'dir' format.
 
-    If branch is omitted then the branch containing the CWD will be used.
+    If branch is omitted then the branch containing the current working
+    directory will be used.
 
-    Note: export of tree with non-ascii filenames to zip is not supported.
+    Note: Export of tree with non-ASCII filenames to zip is not supported.
 
      Supported formats       Autodetected by extension
      -----------------       -------------------------
@@ -1966,7 +1971,13 @@ class cmd_export(Command):
 
 
 class cmd_cat(Command):
-    """Write a file's text from a previous revision."""
+    """Write the contents of a file as of a given revision to standard output.
+
+    If no revision is nominated, the last revision is used.
+
+    Note: Take care to redirect standard output when using this command on a
+    binary file. 
+    """
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
@@ -2032,8 +2043,23 @@ class cmd_commit(Command):
     within it is committed.
 
     A selected-file commit may fail in some cases where the committed
-    tree would be invalid, such as trying to commit a file in a
-    newly-added directory that is not itself committed.
+    tree would be invalid. Consider::
+
+      bzr init foo
+      mkdir foo/bar
+      bzr add foo/bar
+      bzr commit foo -m "committing foo"
+      bzr mv foo/bar foo/baz
+      mkdir foo/bar
+      bzr add foo/bar
+      bzr commit foo/bar -m "committing bar but not baz"
+
+    In the example above, the last commit will fail by design. This gives
+    the user the opportunity to decide whether they want to commit the
+    rename at the same time, separately first, or not at all. (As a general
+    rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
+
+    Note: A selected-file commit after a merge is not yet supported.
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
 
@@ -2457,19 +2483,17 @@ class cmd_merge(Command):
 
     Examples:
 
-    To merge the latest revision from bzr.dev
-    bzr merge ../bzr.dev
+    To merge the latest revision from bzr.dev:
+        bzr merge ../bzr.dev
 
-    To merge changes up to and including revision 82 from bzr.dev
-    bzr merge -r 82 ../bzr.dev
+    To merge changes up to and including revision 82 from bzr.dev:
+        bzr merge -r 82 ../bzr.dev
 
     To merge the changes introduced by 82, without previous changes:
-    bzr merge -r 81..82 ../bzr.dev
+        bzr merge -r 81..82 ../bzr.dev
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
-
-    The following merge types are available:
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
@@ -2627,6 +2651,7 @@ class cmd_remerge(Command):
     pending merge, and it lets you specify particular files.
 
     Examples:
+
     $ bzr remerge --show-base
         Re-do the merge of all conflicted files, and show the base text in
         conflict regions, in addition to the usual THIS and OTHER texts.
@@ -2634,8 +2659,7 @@ class cmd_remerge(Command):
     $ bzr remerge --merge-type weave --reprocess foobar
         Re-do the merge of "foobar", using the weave merge algorithm, with
         additional processing to reduce the size of conflict regions.
-    
-    The following merge types are available:"""
+    """
     takes_args = ['file*']
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
