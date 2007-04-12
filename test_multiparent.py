@@ -170,3 +170,18 @@ class TestVersionedFile(TestCase):
                           self.reconstruct(vf, 'rev-c',  0, 4))
         self.assertEqual(['a\n', 'b\n', 'e\n', 'f\n'],
                           self.reconstruct_version(vf, 'rev-c'))
+
+    def test_reordered(self):
+        """Check for a corner case that requires re-starting the cursor"""
+        vf = multiparent.MultiVersionedFile()
+        # rev-b must have at least two hunks, so split a and b with c.
+        self.add_version(vf, 'c', 'rev-a', [])
+        self.add_version(vf, 'acb', 'rev-b', ['rev-a'])
+        # rev-c and rev-d must each have a line from a different rev-b hunk
+        self.add_version(vf, 'b', 'rev-c', ['rev-b'])
+        self.add_version(vf, 'a', 'rev-d', ['rev-b'])
+        # The lines from rev-c and rev-d must appear in the opposite order
+        self.add_version(vf, 'ba', 'rev-e', ['rev-c', 'rev-d'])
+        vf.clear_cache()
+        lines = vf.get_line_list(['rev-e'])[0]
+        self.assertEqual(['b\n', 'a\n'], lines)

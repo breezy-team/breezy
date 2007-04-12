@@ -242,7 +242,7 @@ class MultiVersionedFile(object):
         self._parents[version_id] = parent_ids
 
     def import_versionedfile(self, vf, snapshots, no_cache=True,
-                             single_parent=False):
+                             single_parent=False, verify=False):
         """Import all revisions of a versionedfile
 
         :param vf: The versionedfile to import
@@ -252,6 +252,7 @@ class MultiVersionedFile(object):
         :param single_parent: If true, omit all but one parent text, (but
             retain parent metadata).
         """
+        assert no_cache or not verify
         revisions = set(vf.versions())
         total = len(revisions)
         pb = ui.ui_factory.nested_progress_bar()
@@ -273,6 +274,9 @@ class MultiVersionedFile(object):
                     added.add(revision)
                     if no_cache:
                         self.clear_cache()
+                        if verify:
+                            assert lines == self.get_line_list([revision])[0]
+                            self.clear_cache()
                     pb.update('Importing revisions',
                               (total - len(revisions)) + len(added), total)
                 revisions = [r for r in revisions if r not in added]
@@ -327,6 +331,10 @@ class _Reconstructor(object):
             except KeyError:
                 iterator = self.diffs[req_version_id].range_iterator()
                 start, end, kind, data = iterator.next()
+            if start > req_start:
+                iterator = self.diffs[req_version_id].range_iterator()
+                start, end, kind, data = iterator.next()
+
             # find the first hunk relevant to the request
             while end <= req_start:
                 start, end, kind, data = iterator.next()
