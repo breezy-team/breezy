@@ -16,7 +16,7 @@
 
 """Implementaion of urllib2 tailored to bzr needs
 
-This file re-implements the urllib2 class hierarchy with custom classes.
+This file complements the urllib2 class hierarchy with custom classes.
 
 For instance, we create a new HTTPConnection and HTTPSConnection that inherit
 from the original urllib2.HTTP(s)Connection objects, but also have a new base
@@ -28,7 +28,7 @@ the custom HTTPConnection classes.
 We have a custom Response class, which lets us maintain a keep-alive
 connection even for requests that urllib2 doesn't expect to contain body data.
 
-And a custom Request class that lets us track redirections, and send
+And a custom Request class that lets us track redirections, and (soon) send
 authentication data without requiring an extra round trip to get rejected by
 the server. We also create a Request hierarchy, to make it clear what type
 of request is being made.
@@ -149,6 +149,7 @@ class Request(urllib2.Request):
         # urllib2.Request will be confused if we don't extract
         # authentification info before building the request
         url, self.user, self.password = self.extract_auth(url)
+        self.auth = None # Until the first 401
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
@@ -204,14 +205,10 @@ class ConnectionHandler(urllib2.BaseHandler):
     internally used. But we need it in order to achieve
     connection sharing. So, we add it to the request just before
     it is processed, and then we override the do_open method for
-    http[s] requests.
+    http[s] requests in AbstractHTTPHandler.
     """
 
     handler_order = 1000 # after all pre-processings
-
-    def get_key(self, connection):
-        """Returns the key for the connection in the cache"""
-        return '%s:%d' % (connection.host, connection.port)
 
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
@@ -737,11 +734,13 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
             request.add_header(self.auth_header,
                                self.get_auth(request.user, request.password))
 
-#    def http_request(self, request):
-#        """Insert an authentification header if information is available"""
-#        if request.auth == 'basic' and request.password is not None:
-#            
-#        return request
+    def http_request(self, request):
+        """Insert an authentification header if information is available"""
+        if request.auth == 'basic' and request.password is not None:
+            self.set_auth(request)
+        return request
+
+    https_request = http_request # FIXME: Need test
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
@@ -750,7 +749,6 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     We don't really process the errors, quite the contrary
     instead, we leave our Transport handle them.
     """
-    handler_order = 1000  # after all other processing
 
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
@@ -805,7 +803,7 @@ class Opener(object):
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
             ProxyHandler,
-            urllib2.HTTPBasicAuthHandler(self.password_manager),
+            HTTPBasicAuthHandler(self.password_manager),
             #urllib2.HTTPDigestAuthHandler(self.password_manager),
             #urllib2.ProxyBasicAuthHandler,
             #urllib2.ProxyDigestAuthHandler,
@@ -821,3 +819,13 @@ class Opener(object):
             import pprint
             pprint.pprint(self._opener.__dict__)
 
+    def preprocess_request(self, request):
+        """Pre-process the request for test purposes"""
+        protocol = request.get_type()
+
+        # pre-process request
+        meth_name = protocol+"_request"
+        for processor in self._opener.process_request.get(protocol, []):
+            meth = getattr(processor, meth_name)
+            request = meth(request)
+        return request

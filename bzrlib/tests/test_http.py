@@ -1147,30 +1147,34 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
     """Test basic authentication scheme"""
 
     _transport = HttpTransport_urllib
-    _handler = _urllib2_wrappers.HTTPBasicAuthHandler()
     _auth_header = 'Authorization'
     _auth_type = 'basic'
 
     def create_transport_readonly_server(self):
         return HttpServer()
 
-    def process_request(self, request):
+    def setUp(self):
+        super(TestHTTPBasicAuth, self).setUp()
+        self.transport = self._transport('http://bar.com')
+        self.opener = self.transport._opener
+
+    def process_request(self, request, user, password=None):
         request.auth = self._auth_type
-        self._handler.set_auth(request)
+        request.user = user
+        request.password = password
+        return self.opener.preprocess_request(request)
 
     def test_empty_pass(self):
         request = _urllib2_wrappers.Request('GET', 'http://bar.com')
         request.user = 'joe'
         request.password = ''
-        self.process_request(request)
+        request = self.process_request(request, 'joe', '')
         self.assertEqual('Basic ' + 'joe:'.encode('base64').strip(),
                          request.headers[self._auth_header])
 
     def test_user_pass(self):
         request = _urllib2_wrappers.Request('GET', 'http://bar.com')
-        request.user = 'joe'
-        request.password = 'foo'
-        self.process_request(request)
+        request = self.process_request(request, 'joe', 'foo')
         self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
                          request.headers[self._auth_header])
 
