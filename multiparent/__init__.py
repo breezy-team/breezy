@@ -2,6 +2,7 @@ from difflib import SequenceMatcher
 import sys
 
 from bzrlib import patiencediff
+from bzrlib import ui
 
 class MultiParent(object):
 
@@ -219,7 +220,7 @@ class MultiVersionedFile(object):
             return True
 
     def add_version(self, lines, version_id, parent_ids,
-                    force_snapshot=None):
+                    force_snapshot=None, single_parent=False):
         if force_snapshot is None:
             do_snapshot = self.do_snapshot(version_id, parent_ids)
         else:
@@ -228,7 +229,10 @@ class MultiVersionedFile(object):
             self._snapshots.add(version_id)
             diff = MultiParent([NewText(lines)])
         else:
-            parent_lines = self.get_line_list(parent_ids)
+            if single_parent:
+                parent_lines = self.get_line_list(parent_ids[:1])
+            else:
+                parent_lines = self.get_line_list(parent_ids)
             diff = MultiParent.from_lines(lines, parent_lines)
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
@@ -237,27 +241,43 @@ class MultiVersionedFile(object):
         self._diffs[version_id] = diff
         self._parents[version_id] = parent_ids
 
-    def import_versionedfile(self, vf, ft_set=None, no_cache=True,):
+    def import_versionedfile(self, vf, snapshots, no_cache=True,
+                             single_parent=False):
+        """Import all revisions of a versionedfile
+
+        :param vf: The versionedfile to import
+        :param snapshots: If provided, the revisions to make snapshots of.
+            Otherwise, this will be auto-determined
+        :param no_cache: If true, clear the cache after every add.
+        :param single_parent: If true, omit all but one parent text, (but
+            retain parent metadata).
+        """
         revisions = set(vf.versions())
         total = len(revisions)
-        while len(revisions) > 0:
-            added = set()
-            for revision in revisions:
-                parents = vf.get_parents(revision)
-                if [p for p in parents if p not in self._diffs] != []:
-                    continue
-                lines = [a + ' ' + l for a, l in vf.annotate_iter(revision)]
-                if ft_set is None:
-                    force_snapshot = None
-                else:
-                    force_snapshot = (revision in ft_set)
-                self.add_version(lines, revision, parents, force_snapshot)
-                added.add(revision)
-                if no_cache:
-                    self.clear_cache()
-            revisions = [r for r in revisions if r not in added]
-            print >> sys.stderr, "%.1f %%" % ((((total - len(revisions))
-                                               * 100.0) / total))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            while len(revisions) > 0:
+                added = set()
+                for revision in revisions:
+                    parents = vf.get_parents(revision)
+                    if [p for p in parents if p not in self._diffs] != []:
+                        continue
+                    lines = [a + ' ' + l for a, l in
+                             vf.annotate_iter(revision)]
+                    if ft_set is None:
+                        force_snapshot = None
+                    else:
+                        force_snapshot = (revision in ft_set)
+                    self.add_version(lines, revision, parents, force_snapshot,
+                                     single_parent)
+                    added.add(revision)
+                    if no_cache:
+                        self.clear_cache()
+                    pb.update('Importing revisions',
+                              (total - len(revisions)) + len(added), total)
+                revisions = [r for r in revisions if r not in added]
+        finally:
+            pb.finished()
 
     def clear_cache(self):
         self._lines.clear()
