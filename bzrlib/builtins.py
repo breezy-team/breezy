@@ -2042,6 +2042,23 @@ class cmd_commit(Command):
     committed.  If a directory is specified then the directory and everything 
     within it is committed.
 
+    A selected-file commit may fail in some cases where the committed
+    tree would be invalid. Consider::
+
+      bzr init foo
+      mkdir foo/bar
+      bzr add foo/bar
+      bzr commit foo -m "committing foo"
+      bzr mv foo/bar foo/bar
+      mkdir foo/bar
+      bzr add foo/bar
+      bzr commit foo/bar -m "bar but not baz"
+
+    In the example above, the last commit will fail by design. This gives
+    the user the opportunity to decide whether they want to commit the
+    rename at the same time, separately first, or not at all. (As a general
+    rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
+
     Note: A selected-file commit after a merge is not yet supported.
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
