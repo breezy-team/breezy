@@ -1,8 +1,14 @@
 from difflib import SequenceMatcher
+from StringIO import StringIO
 import sys
 
-from bzrlib import patiencediff
-from bzrlib import ui
+from bzrlib import (
+    patiencediff,
+    trace,
+    ui,
+    )
+
+from bzrlib.tuned_gzip import GzipFile
 
 class MultiParent(object):
 
@@ -87,6 +93,12 @@ class MultiParent(object):
             for line in hunk.to_patch():
                 yield line
 
+    def patch_len(self):
+        return len(''.join(self.to_patch()))
+
+    def zipped_patch_len(self):
+        return len(gzip_string(self.to_patch()))
+
     @staticmethod
     def from_patch(lines):
         """Produce a MultiParent from a sequence of lines"""
@@ -143,6 +155,11 @@ class MultiParent(object):
                return hunk.child_pos + hunk.num_lines + extra_n
             extra_n += len(hunk.lines)
         return extra_n
+
+    def is_snapshot(self):
+        if len(self.hunks) != 1:
+            return False
+        return (isinstance(self.hunks[0], NewText))
 
 
 class NewText(object):
@@ -234,9 +251,12 @@ class MultiVersionedFile(object):
             else:
                 parent_lines = self.get_line_list(parent_ids)
             diff = MultiParent.from_lines(lines, parent_lines)
-            if (''.join(diff.to_patch())) > ''.join(lines):
-                print >> sys.stderr, "forcing snapshot"
-                diff = MultiParent([NewText(lines)])
+            snapdiff = MultiParent([NewText(lines)])
+            if diff.is_snapshot():
+                self._snapshots.add(version_id)
+            elif diff.patch_len() >= snapdiff.patch_len():
+                trace.note("Forcing snapshot")
+                self._snapshots.add(version_id)
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
 
@@ -277,6 +297,7 @@ class MultiVersionedFile(object):
                     added.add(revision)
                     if no_cache:
                         self.clear_cache()
+                        vf.clear_cache()
                         if verify:
                             assert lines == self.get_line_list([revision])[0]
                             self.clear_cache()
@@ -338,7 +359,7 @@ class MultiVersionedFile(object):
         reconstructor = _Reconstructor(self._diffs, self._lines,
                                        self._parents)
         reconstructor.reconstruct_version(lines, version_id)
-        self._lines[version_id] = lines
+        #self._lines[version_id] = lines
         return lines
 
 
@@ -397,3 +418,10 @@ class _Reconstructor(object):
     def reconstruct_version(self, lines, version_id):
         length = self.diffs[version_id].num_lines()
         return self._reconstruct(lines, version_id, 0, length)
+
+def gzip_string(lines):
+    sio = StringIO()
+    data_file = GzipFile(None, mode='wb', fileobj=sio)
+    data_file.writelines(lines)
+    data_file.close()
+    return sio.getvalue()

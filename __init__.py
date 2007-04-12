@@ -1,17 +1,18 @@
 from bzrlib.lazy_import import lazy_import
 from itertools import izip
-from StringIO import StringIO
 import sys
 import time
 
 lazy_import(globals(), """
 from bzrlib import commands
-from bzrlib.tuned_gzip import GzipFile
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests import TestUtil
 from bzrlib import urlutils
 
-from bzrlib.plugins.multiparent.multiparent import MultiVersionedFile
+from bzrlib.plugins.multiparent.multiparent import (
+    MultiVersionedFile,
+    gzip_string,
+    )
 """)
 
 class cmd_mp_regen(commands.Command):
@@ -57,10 +58,11 @@ class cmd_mp_regen(commands.Command):
         else:
             to_sync = vf.select_snapshots(file_weave)
         print >> sys.stderr, "%d fulltexts" % len(snapshots)
-        print >> sys.stderr, "%d snapshots" % len(to_sync)
+        print >> sys.stderr, "%d planned snapshots" % len(to_sync)
 
         vf.import_versionedfile(file_weave, to_sync, single_parent=single,
                                 verify=verify)
+        print >> sys.stderr, "%d actual snapshots" % len(to_sync)
         vf.clear_cache()
         if False:
             for revision_id in file_weave.get_ancestry(
@@ -92,12 +94,8 @@ class cmd_mp_regen(commands.Command):
             revisions = file_weave.versions()
 
             for revision, diff in vf._diffs.iteritems():
-                sio = StringIO()
-                data_file = GzipFile(None, mode='wb', fileobj=sio)
-                print >> data_file, 'version %s' % revision
-                data_file.writelines(diff.to_patch())
-                data_file.close()
-                sys.stdout.write(sio.getvalue())
+                sys.stdout.write(gzip_string(['version %s' % revision] +
+                                 list(diff.to_patch())))
 
 commands.register_command(cmd_mp_regen)
 def test_suite():
