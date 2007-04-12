@@ -1084,11 +1084,6 @@ class cmd_remove(Command):
     aliases = ['rm']
     encoding_type = 'replace'
 
-    def __init__(self):
-        Command.__init__(self)
-        self.no_files_message=('Specify one or more files to'
-            ' remove, or use --new.')
-
     def run(self, file_list, verbose=False, new=False, keep=False, 
             force=False):
         tree, file_list = tree_files(file_list)
@@ -1096,7 +1091,8 @@ class cmd_remove(Command):
         if file_list is not None:
             file_list = [f for f in file_list if f != '']
         elif not new:
-            raise errors.BzrCommandError(self.no_files_message)
+            raise errors.BzrCommandError('Specify one or more files to'
+            ' remove, or use --new.')
 
         if new:
             added = tree.changes_from(tree.basis_tree(),
