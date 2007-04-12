@@ -879,7 +879,7 @@ class TestCase(unittest.TestCase):
         Returns the exception so that you can examine it.
         """
         try:
-            func(*args, **kwargs)
+            callableObj(*args, **kwargs)
         except excClass, e:
             return e
         else:
