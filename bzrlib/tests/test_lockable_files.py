@@ -17,11 +17,9 @@
 from StringIO import StringIO
 
 import bzrlib
-from bzrlib.branch import Branch
 import bzrlib.errors as errors
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib import lockdir
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.test_transactions import DummyWeave
@@ -34,9 +32,6 @@ from bzrlib.transport import get_transport
 
 # these tests are applied in each parameterized suite for LockableFiles
 class _TestLockableFiles_mixin(object):
-
-    def setUp(self):
-        self.reduceLockdirTimeout()
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -306,7 +301,6 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        _TestLockableFiles_mixin.setUp(self)
         transport = get_transport('.')
         transport.mkdir('.bzr')
         self.sub_transport = transport.clone('.bzr')
@@ -329,7 +323,6 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        _TestLockableFiles_mixin.setUp(self)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch 
