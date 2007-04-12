@@ -256,6 +256,23 @@ class _TestLockableFiles_mixin(object):
         new_lockable.lock_write()
         new_lockable.unlock()
 
+    def test_second_lock_write_returns_same_token(self):
+        first_token = self.lockable.lock_write()
+        try:
+            if first_token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            # Relock the already locked lockable.  It should return the same
+            # token.
+            second_token = self.lockable.lock_write()
+            try:
+                self.assertEqual(first_token, second_token)
+            finally:
+                self.lockable.unlock()
+        finally:
+            self.lockable.unlock()
+
     def test_leave_in_place(self):
         token = self.lockable.lock_write()
         try:
