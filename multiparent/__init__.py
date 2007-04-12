@@ -264,10 +264,10 @@ class MultiVersionedFile(object):
                         continue
                     lines = [a + ' ' + l for a, l in
                              vf.annotate_iter(revision)]
-                    if ft_set is None:
+                    if snapshots is None:
                         force_snapshot = None
                     else:
-                        force_snapshot = (revision in ft_set)
+                        force_snapshot = (revision in snapshots)
                     self.add_version(lines, revision, parents, force_snapshot,
                                      single_parent)
                     added.add(revision)
