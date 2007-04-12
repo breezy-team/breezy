@@ -523,9 +523,9 @@ class OldTests(ExternalBase):
             runbzr(['commit', '-m', '4: retarget of two links'])
 
             # unversion
-            runbzr('unversion d2/link1')
+            runbzr('remove --keep d2/link1')
             self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
-            runbzr(['commit', '-m', '5: unversion d2/link1'])
+            runbzr(['commit', '-m', '5: remove --keep d2/link1'])
             self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
 
             # remove
