@@ -17,7 +17,7 @@
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
 
-.PHONY: all clean pyflakes api-docs
+.PHONY: all clean pyflakes api-docs pydoctor-api-docs
 
 
 all:
@@ -45,13 +45,14 @@ clean:
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp
 
-api-docs:
-	mkdir -p api
+pydoctor-api-docs:
+	mkdir -p api/pydoctor
 	pydoctor -c pydoctor_bzrlib.cfg --make-html
 
-epydoc-api-docs:
+docfiles = bzr bzrlib
+api-docs:
 	mkdir -p api/epydoc
-	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/epydoc --docformat 'restructuredtext en' bzr bzrlib
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/epydoc --docformat 'restructuredtext en' $(docfiles)
 
 
 # build emacs cross-reference

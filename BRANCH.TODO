@@ -4,16 +4,8 @@
 #
 
 To build just one file's documentation you can use something like:
-epydoc --html -o api --check --docformat "restructuredtext en" bzrlib/add.py
+make epydoc-api-docs docfiles=bzrlib/add.py
 
-or you can use:
-pydoctor --make-html --html-output=api/html --docformat "restructuredtext en" --add-module bzrlib/add.py
-
-It will also generate Warnings describing why it isn't considered valid.
-
-
-This is a list of current documentation failures.
-These functions should be documented, and apis should be cleaned up.
 
 XXX unknown field <Field u'attr' u'_root_entrie' "<p>The root row of the direct>
 XXX unknown field <Field u'range' None '<p>The range in the file</p>\>
