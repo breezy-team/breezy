@@ -242,7 +242,9 @@ class OptionTests(TestCase):
 #     (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
 
 
-class ListOptions(TestCase):
+class TestListOptions(TestCase):
+    """Tests for ListOption, used to specify lists on the command-line."""
+
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
         return parser.parse_args(args)
@@ -256,3 +258,10 @@ class ListOptions(TestCase):
         options = [option.ListOption('hello', type=str)]
         opts, args = self.parse(options, [])
         self.assertEqual([], opts.hello)
+
+    def test_list_option_can_be_reset(self):
+        """Passing an option of '-' to a list option should reset the list."""
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(
+            options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
+        self.assertEqual(['c'], opts.hello)

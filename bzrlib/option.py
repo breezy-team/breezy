@@ -218,7 +218,11 @@ class ListOption(Option):
                           *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
-        getattr(parser.values, self.name).append(self.type(value))
+        values = getattr(parser.values, self.name)
+        if value == '-':
+            del values[:]
+        else:
+            values.append(self.type(value))
 
 
 class RegistryOption(Option):
