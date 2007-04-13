@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import urllib
+import urlparse
 
 from bzrlib import (
     ui,
@@ -45,40 +47,78 @@ class HttpTransport_urllib(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
-        super(HttpTransport_urllib, self).__init__(base, from_transport)
         if from_transport is not None:
+            super(HttpTransport_urllib, self).__init__(base, from_transport)
             self._connection = from_transport._connection
+            self._auth = from_transport._auth
             self._user = from_transport._user
             self._password = from_transport._password
             self._opener = from_transport._opener
         else:
+            # urllib2 will be confused if it find
+            # authentification infos in the urls. So we handle
+            # them separatly. Note that we don't need to do that
+            # when cloning (as above) since the cloned base is
+            # already clean.
+            clean_base, user, password = self._extract_auth(base)
+            super(HttpTransport_urllib, self).__init__(clean_base,
+                                                       from_transport)
             self._connection = None
-            self._user = None
-            self._password = None
+            self._auth = None # We have to wait the 401 to know
+            self._user = user
+            self._password = password
             self._opener = self._opener_class()
+            if password is not None: # '' is a valid password
+                # Make the (user, password) available to urllib2
+                pm = self._opener.password_manager
+                pm.add_password(None, self.base, self._user, self._password)
 
-    def ask_password(self, request):
-        """Ask for a password if none is already provided in the request"""
+    def _ask_password(self):
+        """Ask for a password if none is already available"""
         # TODO: jam 20060915 There should be a test that asserts we ask 
         #       for a password at the right time.
-        host = request.get_host()
-        password_manager = self._opener.password_manager
-        if request.password is None:
+        if self._password is None:
             # We can't predict realm, let's try None, we'll get a
             # 401 if we are wrong anyway
             realm = None
             # Query the password manager first
-            user, password = password_manager.find_user_password(None, host)
-            if user == request.user and password is not None:
-                request.password = password
+            authuri = self.base
+            pm = self._opener.password_manager
+            user, password = pm.find_user_password(None, authuri)
+            if user == self._user and password is not None:
+                self._password = password
             else:
                 # Ask the user if we MUST
                 http_pass = 'HTTP %(user)s@%(host)s password'
-                request.password = ui.ui_factory.get_password(prompt=http_pass,
-                                                              user=request.user,
-                                                              host=host)
-        password_manager.add_password(None, host,
-                                      request.user, request.password)
+                self._password = ui.ui_factory.get_password(prompt=http_pass,
+                                                            user=self._user,
+                                                            host=self._host)
+                pm.add_password(None, authuri, self._user, self._password)
+
+    def _extract_auth(self, url):
+        """Extracts authentification information from url.
+
+        Get user and password from url of the form: http://user:pass@host/path
+        :returns: (clean_url, user, password)
+        """
+        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+
+        if '@' in netloc:
+            auth, netloc = netloc.split('@', 1)
+            if ':' in auth:
+                user, password = auth.split(':', 1)
+            else:
+                user, password = auth, None
+            user = urllib.unquote(user)
+            if password is not None:
+                password = urllib.unquote(password)
+        else:
+            user = None
+            password = None
+
+        url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+        return url, user, password
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -88,13 +128,12 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
-            if self._user is not None:
-                request.user = self._user
-                request.password = self._password
-        elif request.user is not None:
+        elif self._user is not None:
             # We will issue our first request, time to ask for a
             # password if needed
-            self.ask_password(request)
+            self._ask_password()
+        # Ensure authentification info is provided
+        request.set_auth(self._auth, self._user, self._password)
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
@@ -106,6 +145,8 @@ class HttpTransport_urllib(HttpTransportBase):
             # Acquire connection when the first request is able
             # to connect to the server
             self._connection = request.connection
+            # And get auth parameters too
+            self._auth = request.auth
             self._user = request.user
             self._password = request.password
 

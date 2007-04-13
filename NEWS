@@ -40,6 +40,9 @@ IN DEVELOPMENT
     * Move most SmartServer code into a new package, bzrlib/smart.
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
+
+    * urllib http implementation avoid roundtrips associated with 401 errors
+      once the the authentication succeeds. (Vincent Ladeuil).
  
   BUGFIXES:
 

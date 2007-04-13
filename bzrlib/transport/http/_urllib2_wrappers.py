@@ -146,10 +146,6 @@ class Request(urllib2.Request):
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None,):
-        # urllib2.Request will be confused if we don't extract
-        # authentification info before building the request
-        url, self.user, self.password = self.extract_auth(url)
-        self.auth = None # Until the first 401
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
@@ -159,30 +155,12 @@ class Request(urllib2.Request):
         self.redirected_to = None
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
+        self.set_auth(None, None, None) # Until the first 401
 
-    def extract_auth(self, url):
-        """Extracts authentification information from url.
-
-        Get user and password from url of the form: http://user:pass@host/path
-        """
-        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-        if '@' in netloc:
-            auth, netloc = netloc.split('@', 1)
-            if ':' in auth:
-                user, password = auth.split(':', 1)
-            else:
-                user, password = auth, None
-            user = urllib.unquote(user)
-            if password is not None:
-                password = urllib.unquote(password)
-        else:
-            user = None
-            password = None
-
-        url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-
-        return url, user, password
+    def set_auth(self, auth_scheme, user, password=None):
+        self.auth = auth_scheme
+        self.user = user
+        self.password = password
 
     def get_method(self):
         return self.method
@@ -196,52 +174,6 @@ class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
 
     def __init__(self):
         urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
-
-    def add_password(self, realm, uri, user, passwd):
-        # uri could be a single URI or a sequence
-        if isinstance(uri, basestring):
-            uri = [uri]
-        if not realm in self.passwd:
-            self.passwd[realm] = {}
-        for default_port in True, False:
-            reduced_uri = tuple(
-                [self.reduce_uri(u, default_port) for u in uri])
-            self.passwd[realm][reduced_uri] = (user, passwd)
-
-    def find_user_password(self, realm, authuri):
-        domains = self.passwd.get(realm, {})
-        for default_port in True, False:
-            reduced_authuri = self.reduce_uri(authuri, default_port)
-            for uris, authinfo in domains.iteritems():
-                for uri in uris:
-                    if self.is_suburi(uri, reduced_authuri):
-                        return authinfo
-        if realm is not None:
-            return self.find_user_password(None, authuri)
-        return None, None
-
-    def reduce_uri(self, uri, default_port=True):
-        """Accept authority or URI and extract only the authority and path."""
-        # note HTTP URLs do not have a userinfo component
-        parts = urlparse.urlsplit(uri)
-        if parts[1]:
-            # URI
-            scheme = parts[0]
-            authority = parts[1]
-            path = parts[2] or '/'
-        else:
-            # host or host:port
-            scheme = None
-            authority = uri
-            path = '/'
-        host, port = urllib.splitport(authority)
-        if default_port and port is None and scheme is not None:
-            dport = {"http": 80,
-                     "https": 443,
-                     }.get(scheme)
-            if dport is not None:
-                authority = "%s:%d" % (host, dport)
-        return authority, path
 
 
 class ConnectionHandler(urllib2.BaseHandler):
@@ -787,6 +719,16 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
         return request
 
     https_request = http_request # FIXME: Need test
+
+    def http_error_401(self, req, fp, code, msg, headers):
+        """Trap the 401 to gather the auth type."""
+        response = urllib2.HTTPBasicAuthHandler.http_error_401(self, req, fp,
+                                                               code, msg,
+                                                               headers)
+        if response is not None:
+            req.auth = 'basic'
+
+        return response
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
