@@ -309,3 +309,38 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.old_server = self.get_secondary_server()
 
 
+class BasicAuthRequestHandler(TestingHTTPRequestHandler):
+    """Requires a basic authentification to process requests."""
+
+    def do_GET(self):
+        tcs = self.server.test_case_server
+        if tcs.auth == 'basic':
+            auth_header = self.headers.get('Authorization')
+            authorized = False
+            if auth_header:
+                coded_auth = auth_header[len('Basic '):]
+                user, password = coded_auth.decode('base64').split(':')
+                authorized = tcs.authorized(user, password)
+            if not authorized:
+                self.send_response(401)
+                self.send_header('www-authenticate',
+                                 'Basic realm="Thou should not pass"')
+                self.end_headers()
+                return
+
+        TestingHTTPRequestHandler.do_GET(self)
+
+class AuthHTTPServer(HttpServer):
+    """AuthHTTPServer extends HttpServer with a dictionary of passwords"""
+
+    def __init__(self, request_handler, auth):
+        HttpServer.__init__(self, request_handler)
+        # No authentification is done by default
+        self.auth = auth
+        self.password_of = {}
+
+    def add_user(self, user, password):
+        self.password_of[user] = password
+
+    def authorized(self, user, password):
+        return self.password_of[user] == password

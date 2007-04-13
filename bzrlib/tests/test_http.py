@@ -41,8 +41,10 @@ from bzrlib.tests.HttpServer import (
     HttpServer_urllib,
     )
 from bzrlib.tests.HTTPTestUtil import (
+    AuthHTTPServer,
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
+    BasicAuthRequestHandler,
     FakeProxyRequestHandler,
     ForbiddenRequestHandler,
     HTTPServerRedirecting,
@@ -1143,38 +1145,45 @@ class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
 
 
 class TestHTTPBasicAuth(TestCaseWithWebserver):
-
     """Test basic authentication scheme"""
 
     _transport = HttpTransport_urllib
     _auth_header = 'Authorization'
     _auth_type = 'basic'
+    _request_handler_class = BasicAuthRequestHandler
 
     def create_transport_readonly_server(self):
-        return HttpServer()
+        return AuthHTTPServer(self._request_handler_class, self._auth_type)
 
     def setUp(self):
         super(TestHTTPBasicAuth, self).setUp()
-        self.transport = self._transport('http://bar.com')
-        self.opener = self.transport._opener
+        self.build_tree_contents([('a', 'contents of a\n'),
+                                  ('b', 'contents of b\n'),])
+        self.server = self.get_readonly_server()
 
-    def process_request(self, request, user, password=None):
-        request.auth = self._auth_type
-        request.user = user
-        request.password = password
-        return self.opener.preprocess_request(request)
+    def get_user_url(self, user, password=None):
+        """Build an url embedding user and password"""
+        user_pass = None
+        if user is not None:
+            userpass = user
+            if password is not None:
+                userpass += ':' + password
+        url = '%s://' % self.server._url_protocol
+        if user is not None:
+            url += user
+            if password is not None:
+                url += ':' + password
+            url += '@'
+        url += '%s:%s/' % (self.server.host, self.server.port)
+        return url
 
     def test_empty_pass(self):
-        request = _urllib2_wrappers.Request('GET', 'http://bar.com')
-        request.user = 'joe'
-        request.password = ''
-        request = self.process_request(request, 'joe', '')
-        self.assertEqual('Basic ' + 'joe:'.encode('base64').strip(),
-                         request.headers[self._auth_header])
+        self.server.add_user('joe', '')
+        t = self._transport(self.get_user_url('joe', ''))
+        self.assertEqual(t.get('a').read(), 'contents of a\n')
 
     def test_user_pass(self):
-        request = _urllib2_wrappers.Request('GET', 'http://bar.com')
-        request = self.process_request(request, 'joe', 'foo')
-        self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
-                         request.headers[self._auth_header])
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe', 'foo'))
+        self.assertEqual(t.get('a').read(), 'contents of a\n')
 

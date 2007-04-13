@@ -197,6 +197,52 @@ class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
     def __init__(self):
         urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
 
+    def add_password(self, realm, uri, user, passwd):
+        # uri could be a single URI or a sequence
+        if isinstance(uri, basestring):
+            uri = [uri]
+        if not realm in self.passwd:
+            self.passwd[realm] = {}
+        for default_port in True, False:
+            reduced_uri = tuple(
+                [self.reduce_uri(u, default_port) for u in uri])
+            self.passwd[realm][reduced_uri] = (user, passwd)
+
+    def find_user_password(self, realm, authuri):
+        domains = self.passwd.get(realm, {})
+        for default_port in True, False:
+            reduced_authuri = self.reduce_uri(authuri, default_port)
+            for uris, authinfo in domains.iteritems():
+                for uri in uris:
+                    if self.is_suburi(uri, reduced_authuri):
+                        return authinfo
+        if realm is not None:
+            return self.find_user_password(None, authuri)
+        return None, None
+
+    def reduce_uri(self, uri, default_port=True):
+        """Accept authority or URI and extract only the authority and path."""
+        # note HTTP URLs do not have a userinfo component
+        parts = urlparse.urlsplit(uri)
+        if parts[1]:
+            # URI
+            scheme = parts[0]
+            authority = parts[1]
+            path = parts[2] or '/'
+        else:
+            # host or host:port
+            scheme = None
+            authority = uri
+            path = '/'
+        host, port = urllib.splitport(authority)
+        if default_port and port is None and scheme is not None:
+            dport = {"http": 80,
+                     "https": 443,
+                     }.get(scheme)
+            if dport is not None:
+                authority = "%s:%d" % (host, dport)
+        return authority, path
+
 
 class ConnectionHandler(urllib2.BaseHandler):
     """Provides connection-sharing by pre-processing requests.
@@ -818,14 +864,3 @@ class Opener(object):
             # handler is used, when and for what.
             import pprint
             pprint.pprint(self._opener.__dict__)
-
-    def preprocess_request(self, request):
-        """Pre-process the request for test purposes"""
-        protocol = request.get_type()
-
-        # pre-process request
-        meth_name = protocol+"_request"
-        for processor in self._opener.process_request.get(protocol, []):
-            meth = getattr(processor, meth_name)
-            request = meth(request)
-        return request
