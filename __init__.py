@@ -1,17 +1,22 @@
 from bzrlib.lazy_import import lazy_import
-from itertools import izip
-import sys
-import time
 
 lazy_import(globals(), """
-from bzrlib import commands
+import (
+        errno,
+        os,
+        sys,
+        time,
+        )
+
+from bzrlib import (
+    commands,
+    urlutils
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests import TestUtil
-from bzrlib import urlutils
 
 from bzrlib.plugins.multiparent.multiparent import (
     MultiVersionedFile,
-    gzip_string,
     )
 """)
 
@@ -24,8 +29,8 @@ class cmd_mp_regen(commands.Command):
                      commands.Option('snapshot-interval', type=int,
                                      help='take snapshots every x revisions'),
                      commands.Option('lsprof-timed', help='Use lsprof'),
-                     commands.Option('dump',
-                                     help='dump pseudo-knit to stdout'),
+                     commands.Option('outfile', type=unicode,
+                                     help='Write pseudo-knit to this file'),
                      commands.Option('extract', help='test extract time'),
                      commands.Option('single', help='use a single parent'),
                      commands.Option('verify', help='verify added texts'),
@@ -34,7 +39,11 @@ class cmd_mp_regen(commands.Command):
 
     def run(self, file=None, sync_snapshots=False, snapshot_interval=26,
             lsprof_timed=False, dump=False, extract=False, single=False,
-            verify=False):
+            verify=False, outfile=None):
+        if outfile is None:
+            filename = 'pknit'
+        else:
+            filename = outfile
         if file is None:
             wt, path = WorkingTree.open_containing('.')
             file_weave = wt.branch.repository.get_inventory_weave()
@@ -50,7 +59,12 @@ class cmd_mp_regen(commands.Command):
             print >> sys.stderr, 'Snapshots follow input'
         else:
             print >> sys.stderr, 'Snapshot interval: %d' % snapshot_interval
-        vf = MultiVersionedFile(snapshot_interval)
+        try:
+            os.unlink(filename)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        vf = MultiVersionedFile(filename, snapshot_interval)
         snapshots = set(r for r in file_weave.versions() if
                         file_weave._index.get_method(r) == 'fulltext')
         if sync_snapshots:
@@ -60,44 +74,55 @@ class cmd_mp_regen(commands.Command):
         print >> sys.stderr, "%d fulltexts" % len(snapshots)
         print >> sys.stderr, "%d planned snapshots" % len(to_sync)
 
-        vf.import_versionedfile(file_weave, to_sync, single_parent=single,
-                                verify=verify)
-        print >> sys.stderr, "%d actual snapshots" % len(to_sync)
-        vf.clear_cache()
-        if False:
-            for revision_id in file_weave.get_ancestry(
-                [bt.inventory[file_id].revision]):
-                if vf.get_line_list([revision_id])[0] != \
-                    file_weave.get_lines(revision_id):
-                    open(revision_id + '.old', 'wb').writelines(
-                        file_weave.get_lines(revision_id))
-                    open(revision_id + '.new', 'wb').writelines(
-                        vf.get_line_list(revision_id)[0])
-        if extract:
-            revisions = file_weave.versions()[-1:]
-            if lsprof_timed:
-                from bzrlib.lsprof import profile
-                ret, stats = profile(vf.get_line_list, revisions)
-                stats.sort()
-                stats.pprint()
-            start = time.clock()
-            print >> sys.stderr, revisions[0]
-            for x in range(1000):
-                vf.clear_cache()
-                vf.get_line_list(revisions)
-            print >> sys.stderr, time.clock() - start
-            start = time.clock()
-            for x in range(1000):
-                file_weave.get_line_list(revisions)
-            print >> sys.stderr, time.clock() - start
-        if dump:
-            revisions = file_weave.versions()
-
-            for revision in vf._diffs:
-                sys.stdout.write(gzip_string(['version %s\n' % revision] +
-                                 list(vf.get_diff(revision).to_patch())))
+        try:
+            vf.import_versionedfile(file_weave, to_sync, single_parent=single,
+                                    verify=verify)
+        except:
+            try:
+                os.unlink(filename)
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+            raise
+        try:
+            print >> sys.stderr, "%d actual snapshots" % len(to_sync)
+            vf.clear_cache()
+            if False:
+                for revision_id in file_weave.get_ancestry(
+                    [bt.inventory[file_id].revision]):
+                    if vf.get_line_list([revision_id])[0] != \
+                        file_weave.get_lines(revision_id):
+                        open(revision_id + '.old', 'wb').writelines(
+                            file_weave.get_lines(revision_id))
+                        open(revision_id + '.new', 'wb').writelines(
+                            vf.get_line_list(revision_id)[0])
+            if extract:
+                revisions = file_weave.versions()[-1:]
+                if lsprof_timed:
+                    from bzrlib.lsprof import profile
+                    ret, stats = profile(vf.get_line_list, revisions)
+                    stats.sort()
+                    stats.pprint()
+                start = time.clock()
+                print >> sys.stderr, revisions[0]
+                for x in range(1000):
+                    vf.clear_cache()
+                    vf.get_line_list(revisions)
+                print >> sys.stderr, time.clock() - start
+                start = time.clock()
+                for x in range(1000):
+                    file_weave.get_line_list(revisions)
+                print >> sys.stderr, time.clock() - start
+        finally:
+            if outfile is None:
+                try:
+                    os.unlink()
+                except OSError, e:
+                    if e.errno != ENOENT:
+                        raise
 
 commands.register_command(cmd_mp_regen)
+
 def test_suite():
     from bzrlib.plugins.multiparent import test_multiparent
     return TestUtil.TestLoader().loadTestsFromModule(test_multiparent)

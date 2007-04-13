@@ -1,4 +1,5 @@
 from difflib import SequenceMatcher
+from itertools import chain
 from StringIO import StringIO
 import sys
 
@@ -227,17 +228,18 @@ class ParentText(object):
             % self.__dict__
 
 
-class MultiVersionedFile(object):
+class BaseVersionedFile(object):
     """VersionedFile skeleton for MultiParent"""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
-        self._diffs = {}
-        self._diff_offset = {}
         self._lines = {}
         self._parents = {}
         self._snapshots = set()
         self.snapshot_interval = snapshot_interval
         self.max_snapshots = max_snapshots
+
+    def versions(self):
+        return iter(self._parents)
 
     def do_snapshot(self, version_id, parent_ids):
         if self.snapshot_interval is None:
@@ -282,15 +284,6 @@ class MultiVersionedFile(object):
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
 
-    def add_diff(self, diff, version_id, parent_ids):
-        self._diffs[version_id] = ''
-        outfile = open('pknit', 'ab')
-        start = outfile.tell()
-        outfile.writelines(diff.to_patch())
-        end = outfile.tell()
-        self._diff_offset[version_id] = (start, end)
-        self._parents[version_id] = parent_ids
-
     def import_versionedfile(self, vf, snapshots, no_cache=True,
                              single_parent=False, verify=False):
         """Import all revisions of a versionedfile
@@ -311,7 +304,7 @@ class MultiVersionedFile(object):
                 added = set()
                 for revision in revisions:
                     parents = vf.get_parents(revision)
-                    if [p for p in parents if p not in self._diffs] != []:
+                    if [p for p in parents if p not in self._parents] != []:
                         continue
                     lines = [a + ' ' + l for a, l in
                              vf.annotate_iter(revision)]
@@ -374,12 +367,58 @@ class MultiVersionedFile(object):
         #self._lines[version_id] = lines
         return lines
 
+class MultiMemoryVersionedFile(BaseVersionedFile):
+
+    def __init__(self, snapshot_interval=25, max_snapshots=None):
+        BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
+        self._diffs = {}
+
+    def add_diff(self, diff, version_id, parent_ids):
+        self._diffs[version_id] = diff
+        self._parents[version_id] = parent_ids
+
     def get_diff(self, version_id):
-        infile = open('pknit', 'rb')
-        start, end = self._diff_offset[version_id]
-        infile.seek(start)
-        text = infile.read(end - start)
-        return MultiParent.from_patch(text.splitlines(True))
+        return self._diffs[version_id]
+
+
+class MultiVersionedFile(BaseVersionedFile):
+
+    def __init__(self, filename, snapshot_interval=25, max_snapshots=None):
+        BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
+        self._filename = filename
+        self._diff_offset = {}
+
+    def get_diff(self, version_id):
+        start, count = self._diff_offset[version_id]
+        infile = open(self._filename, 'rb')
+        try:
+            infile.seek(start)
+            sio = StringIO(infile.read(count))
+        finally:
+            infile.close()
+        zip_file = GzipFile(None, mode='rb', fileobj=sio)
+        try:
+            file_version_id = zip_file.readline()
+            return MultiParent.from_patch(zip_file.readlines())
+        finally:
+            zip_file.close()
+
+    def add_diff(self, diff, version_id, parent_ids):
+        outfile = open(self._filename, 'ab')
+        try:
+            start = outfile.tell()
+            try:
+                zipfile = GzipFile(None, mode='ab', fileobj=outfile)
+                zipfile.writelines(chain(['version %s\n' % version_id],
+                                       diff.to_patch()))
+            finally:
+                zipfile.close()
+            end = outfile.tell()
+        finally:
+            outfile.close()
+        self._diff_offset[version_id] = (start, end-start)
+        self._parents[version_id] = parent_ids
+
 
 class _Reconstructor(object):
     """Build a text from the diffs, ancestry graph and cached lines"""

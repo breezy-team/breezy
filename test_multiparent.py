@@ -127,7 +127,7 @@ class TestVersionedFile(TestCase):
         vf.add_version([(t+'\n') for t in text], version_id, parent_ids)
 
     def make_vf(self):
-        vf = multiparent.MultiVersionedFile()
+        vf = multiparent.MultiMemoryVersionedFile()
         self.add_version(vf, 'abcd', 'rev-a', [])
         self.add_version(vf, 'acde', 'rev-b', [])
         self.add_version(vf, 'abef', 'rev-c', ['rev-a', 'rev-b'])
@@ -147,7 +147,7 @@ class TestVersionedFile(TestCase):
 
     @staticmethod
     def reconstruct(vf, revision_id, start, end):
-        reconstructor = multiparent._Reconstructor(vf._diffs, vf._lines,
+        reconstructor = multiparent._Reconstructor(vf, vf._lines,
                                                    vf._parents)
         lines = []
         reconstructor._reconstruct(lines, revision_id, start, end)
@@ -155,7 +155,7 @@ class TestVersionedFile(TestCase):
 
     @staticmethod
     def reconstruct_version(vf, revision_id):
-        reconstructor = multiparent._Reconstructor(vf._diffs, vf._lines,
+        reconstructor = multiparent._Reconstructor(vf, vf._lines,
                                                    vf._parents)
         lines = []
         reconstructor.reconstruct_version(lines, revision_id)
@@ -173,7 +173,7 @@ class TestVersionedFile(TestCase):
 
     def test_reordered(self):
         """Check for a corner case that requires re-starting the cursor"""
-        vf = multiparent.MultiVersionedFile()
+        vf = multiparent.MultiMemoryVersionedFile()
         # rev-b must have at least two hunks, so split a and b with c.
         self.add_version(vf, 'c', 'rev-a', [])
         self.add_version(vf, 'acb', 'rev-b', ['rev-a'])
