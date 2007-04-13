@@ -383,7 +383,7 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'https://launchpad.net/bugs/234': 'fixed'},
+        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
                          properties)
 
     def test_fixes_multiple_bugs_sets_properties(self):
@@ -401,9 +401,10 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'https://launchpad.net/bugs/123': 'fixed',
-                          'https://launchpad.net/bugs/235': 'fixed'},
-                         properties)
+        self.assertEqual(
+            {'bugs': 'https://launchpad.net/bugs/123 fixed,'
+                     'https://launchpad.net/bugs/235 fixed'},
+            properties)
 
     def test_fixes_bug_with_alternate_trackers(self):
         """--fixes can be used on a properly configured branch to mark bug
@@ -424,9 +425,10 @@ class TestCommit(ExternalBase):
         properties = dict(last_rev.properties)
         del properties['branch-nick']
 
-        self.assertEqual({'http://twistedmatrix.com/trac/ticket/235': 'fixed',
-                          'https://launchpad.net/bugs/123': 'fixed'},
-                         properties)
+        self.assertEqual(
+            {'bugs': 'https://launchpad.net/bugs/123 fixed,'
+                     'http://twistedmatrix.com/trac/ticket/235 fixed'},
+            properties)
 
     def test_fixes_unknown_bug_prefix(self):
         tree = self.make_branch_and_tree('tree')

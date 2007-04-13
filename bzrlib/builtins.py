@@ -2088,7 +2088,7 @@ class cmd_commit(Command):
     def _get_bug_fix_properties(self, fixes, branch):
         from bzrlib.bugtracker import get_bug_url
 
-        properties = {}
+        properties = []
         # Configure the properties for bug fixing attributes.
         for fixed_bug in fixes:
             tokens = fixed_bug.split(':')
@@ -2106,8 +2106,8 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError(
                     "Invalid bug identifier for %s. Commit refused."
                     % fixed_bug)
-            properties[bug_url] = 'fixed'
-        return properties
+            properties.append('%s fixed' % bug_url)
+        return ','.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None):
@@ -2132,7 +2132,7 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
-        properties.update(self._get_bug_fix_properties(fixes, tree.branch))
+        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
