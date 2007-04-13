@@ -18,7 +18,7 @@
 from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import errors
+from bzrlib import errors, urlutils
 """)
 
 
@@ -84,7 +84,7 @@ class SimpleBugTracker(object):
     def get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
         self.check_bug_id(bug_id)
-        return self.base_url + bug_id
+        return urlutils.join(self.base_url, bug_id)
 
     def check_bug_id(self, bug_id):
         """Check that the bug_id is valid."""
@@ -143,6 +143,6 @@ class TracTracker(object):
             int(bug_id)
         except ValueError:
             raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
-        return '%s/ticket/%s' % (self._url, bug_id)
+        return urlutils.join(self._url, 'ticket', bug_id)
 
 tracker_registry.register('trac', TracTracker)
