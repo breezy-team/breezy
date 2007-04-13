@@ -16,31 +16,19 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import os
 import re
-import sys
 
 import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
-    lockdir,
     repository,
     )
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
-from bzrlib.errors import (FileExists,
-                           NoSuchRevision,
-                           NoSuchFile,
-                           UninitializableFormat,
-                           NotBranchError,
-                           )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repofmt import knitrepo
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -434,6 +422,54 @@ class TestRepository(TestCaseWithRepository):
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
+    def test_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Lock the repository, then use leave_lock_in_place so that when we
+        # unlock the repository the lock is still held on disk.
+        token = repo.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError, repo.leave_lock_in_place)
+                return
+            repo.leave_lock_in_place()
+        finally:
+            repo.unlock()
+        # We should be unable to relock the repo.
+        self.assertRaises(errors.LockContention, repo.lock_write)
+
+    def test_dont_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Create a lock on disk.
+        token = repo.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError,
+                                  repo.dont_leave_lock_in_place)
+                return
+            try:
+                repo.leave_lock_in_place()
+            except NotImplementedError:
+                # This repository doesn't support this API.
+                return
+        finally:
+            repo.unlock()
+        # Reacquire the lock (with a different repository object) by using the
+        # token.
+        new_repo = repo.bzrdir.open_repository()
+        new_repo.lock_write(token=token)
+        # Call dont_leave_lock_in_place, so that the lock will be released by
+        # this instance, even though the lock wasn't originally acquired by it.
+        new_repo.dont_leave_lock_in_place()
+        new_repo.unlock()
+        # Now the repository is unlocked.  Test this by locking it (without a
+        # token).
+        repo.lock_write()
+        repo.unlock()
+
     def test_lock_read_then_unlock(self):
         # Calling lock_read then unlocking should work without errors.
         repo = self.make_repository('r')
@@ -507,7 +543,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual({'rev1':[],
                           'rev2':['rev1']},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
         # and ghosts are not mentioned

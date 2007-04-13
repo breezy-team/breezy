@@ -35,6 +35,7 @@ from bzrlib.smart import (
         protocol,
         request,
         server,
+        vfs,
 )
 from bzrlib.tests.HTTPTestUtil import (
         HTTPServerWithSmarts,
@@ -533,7 +534,7 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
 
     def test_probe_transport(self):
         t = self.get_transport()
-        self.assertIsInstance(t, remote.SmartTransport)
+        self.assertIsInstance(t, remote.RemoteTransport)
 
     def test_get_medium_from_transport(self):
         """Remote transport has a medium always, which it can return."""
@@ -573,6 +574,10 @@ class SampleRequest(object):
 
 
 class TestSmartServerStreamMedium(tests.TestCase):
+
+    def setUp(self):
+        super(TestSmartServerStreamMedium, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def portable_socket_pair(self):
         """Return a pair of TCP sockets connected to each other.
@@ -780,6 +785,7 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
+        self._captureVar('BZR_NO_SMART_VFS', None)
         class FlakyTransport(object):
             base = 'a_url'
             def get_bytes(self, path):
@@ -787,7 +793,7 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread()
         try:
-            transport = remote.SmartTCPTransport(smart_server.get_url())
+            transport = remote.RemoteTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -818,7 +824,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.transport = remote.SmartTCPTransport(self.server.get_url())
+        self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
 
     def tearDownServer(self):
@@ -836,7 +842,7 @@ class TestServerSocketUsage(SmartTCPTests):
         """It should be safe to teardown the server with no requests."""
         self.setUpServer()
         server = self.server
-        transport = remote.SmartTCPTransport(self.server.get_url())
+        transport = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
@@ -848,7 +854,7 @@ class TestServerSocketUsage(SmartTCPTests):
         self.tearDownServer()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.SmartTCPTransport(server.get_url())
+        transport = remote.RemoteTCPTransport(server.get_url())
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
 
@@ -865,12 +871,14 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_smart_transport_has(self):
         """Checking for file existence over smart."""
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents of foo\n")
         self.assertTrue(self.transport.has("foo"))
         self.assertFalse(self.transport.has("non-foo"))
 
     def test_smart_transport_get(self):
         """Read back a file over smart."""
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents\nof\nfoo\n")
         fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
@@ -880,6 +888,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # The path in a raised NoSuchFile exception should be the precise path
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
+        self._captureVar('BZR_NO_SMART_VFS', None)
         try:
             self.transport.get('not%20a%20file')
         except errors.NoSuchFile, e:
@@ -906,6 +915,7 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_open_dir(self):
         """Test changing directory"""
+        self._captureVar('BZR_NO_SMART_VFS', None)
         transport = self.transport
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
@@ -933,6 +943,7 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
 
     def test_mkdir_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.setUpServer(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
@@ -977,19 +988,16 @@ class TestServerHooks(SmartTCPTests):
 # server-stopped hook.
 
 
-class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
-    """Test that call directly into the handler logic, bypassing the network."""
-
-    def test_construct_request_handler(self):
-        """Constructing a request handler should be easy and set defaults."""
-        handler = request.SmartServerRequestHandler(None)
-        self.assertFalse(handler.finished_reading)
-
+class SmartServerCommandTests(tests.TestCaseWithTransport):
+    """Tests that call directly into the command objects, bypassing the network
+    and the request dispatching.
+    """
+        
     def test_hello(self):
-        handler = request.SmartServerRequestHandler(None)
-        handler.dispatch_command('hello', ())
-        self.assertEqual(('ok', '1'), handler.response.args)
-        self.assertEqual(None, handler.response.body)
+        cmd = request.HelloRequest(None)
+        response = cmd.execute()
+        self.assertEqual(('ok', '1'), response.args)
+        self.assertEqual(None, response.body)
         
     def test_get_bundle(self):
         from bzrlib.bundle import serializer
@@ -998,14 +1006,49 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         wt.add('hello')
         rev_id = wt.commit('add hello')
         
-        handler = request.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('get_bundle', ('.', rev_id))
-        bundle = serializer.read_bundle(StringIO(handler.response.body))
-        self.assertEqual((), handler.response.args)
+        cmd = request.GetBundleRequest(self.get_transport())
+        response = cmd.execute('.', rev_id)
+        bundle = serializer.read_bundle(StringIO(response.body))
+        self.assertEqual((), response.args)
+
+
+class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
+    """Test that call directly into the handler logic, bypassing the network."""
+
+    def setUp(self):
+        super(SmartServerRequestHandlerTests, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
+
+    def build_handler(self, transport):
+        """Returns a handler for the commands in protocol version one."""
+        return request.SmartServerRequestHandler(transport, request.request_handlers)
+
+    def test_construct_request_handler(self):
+        """Constructing a request handler should be easy and set defaults."""
+        handler = request.SmartServerRequestHandler(None, None)
+        self.assertFalse(handler.finished_reading)
+
+    def test_hello(self):
+        handler = self.build_handler(None)
+        handler.dispatch_command('hello', ())
+        self.assertEqual(('ok', '1'), handler.response.args)
+        self.assertEqual(None, handler.response.body)
+        
+    def test_disable_vfs_handler_classes_via_environment(self):
+        # VFS handler classes will raise an error from "execute" if BZR_NO_SMART_VFS
+        # is set.
+        handler = vfs.HasRequest(None)
+        # set environment variable after construction to make sure it's
+        # examined.
+        # Note that we can safely clobber BZR_NO_SMART_VFS here, because setUp has
+        # called _captureVar, so it will be restored to the right state
+        # afterwards.
+        os.environ['BZR_NO_SMART_VFS'] = ''
+        self.assertRaises(errors.DisabledMethod, handler.execute)
 
     def test_readonly_exception_becomes_transport_not_possible(self):
         """The response for a read-only error is ('ReadOnlyError')."""
-        handler = request.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         # send a mkdir for foo, with no explicit mode - should fail.
         handler.dispatch_command('mkdir', ('foo', ''))
         # and the failure should be an explicit ReadOnlyError
@@ -1017,14 +1060,14 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def test_hello_has_finished_body_on_dispatch(self):
         """The 'hello' command should set finished_reading."""
-        handler = request.SmartServerRequestHandler(None)
+        handler = self.build_handler(None)
         handler.dispatch_command('hello', ())
         self.assertTrue(handler.finished_reading)
         self.assertNotEqual(None, handler.response)
 
     def test_put_bytes_non_atomic(self):
         """'put_...' should set finished_reading after reading the bytes."""
-        handler = request.SmartServerRequestHandler(self.get_transport())
+        handler = self.build_handler(self.get_transport())
         handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('1234')
@@ -1038,7 +1081,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_readv_accept_body(self):
         """'readv' should set finished_reading after reading offsets."""
         self.build_tree(['a-file'])
-        handler = request.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         handler.dispatch_command('readv', ('a-file', ))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('2,')
@@ -1053,7 +1096,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_readv_short_read_response_contents(self):
         """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(['a-file'])
-        handler = request.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         handler.dispatch_command('readv', ('a-file', ))
         # read beyond the end of the file.
         handler.accept_body('100,1')
@@ -1068,7 +1111,7 @@ class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
         t = get_transport('bzr+ssh://example.com/path')
-        self.assertIsInstance(t, remote.SmartSSHTransport)
+        self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
 
@@ -1079,7 +1122,7 @@ class TestRemoteTransport(tests.TestCase):
         input = StringIO("ok\n3\nbardone\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        transport = remote.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
 
         # We want to make sure the client is used when the first remote
@@ -1099,7 +1142,7 @@ class TestRemoteTransport(tests.TestCase):
     def test__translate_error_readonly(self):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
         client_medium = medium.SmartClientMedium()
-        transport = remote.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         self.assertRaises(errors.TransportNotPossible,
             transport._translate_error, ("ReadOnlyError", ))
@@ -1138,10 +1181,11 @@ class TestSmartProtocol(tests.TestCase):
         self.client_protocol = protocol.SmartClientRequestProtocolOne(
             self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
-        self.smart_server_request = request.SmartServerRequestHandler(None)
+        self.smart_server_request = request.SmartServerRequestHandler(
+            None, request.request_handlers)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
-        client, smart_server_request):
+        client):
         """Check that smart (de)serialises offsets as expected.
         
         We check both serialisation and deserialisation at the same time
@@ -1150,25 +1194,27 @@ class TestSmartProtocol(tests.TestCase):
         
         :param expected_offsets: a readv offset list.
         :param expected_seralised: an expected serial form of the offsets.
-        :param smart_server_request: a SmartServerRequestHandler instance.
         """
-        # XXX: 'smart_server_request' should be a SmartServerRequestProtocol in
-        # future.
-        offsets = smart_server_request._deserialise_offsets(expected_serialised)
+        # XXX: '_deserialise_offsets' should be a method of the
+        # SmartServerRequestProtocol in future.
+        readv_cmd = vfs.ReadvRequest(None)
+        offsets = readv_cmd._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
         serialised = client._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
         out_stream = StringIO()
-        smart_protocol = protocol.SmartServerRequestProtocolOne(None, out_stream.write)
+        smart_protocol = protocol.SmartServerRequestProtocolOne(None,
+                out_stream.write)
         smart_protocol.has_dispatched = True
-        smart_protocol.request = request.SmartServerRequestHandler(None)
-        def handle_end_of_bytes():
-            self.end_received = True
-            self.assertEqual('abcdefg', smart_protocol.request._body_bytes)
-            smart_protocol.request.response = request.SmartServerResponse(('ok', ))
-        smart_protocol.request._end_of_body_handler = handle_end_of_bytes
+        smart_protocol.request = self.smart_server_request
+        class FakeCommand(object):
+            def do_body(cmd, body_bytes):
+                self.end_received = True
+                self.assertEqual('abcdefg', body_bytes)
+                return request.SmartServerResponse(('ok', ))
+        smart_protocol.request._command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
         # interface to work with that will not cause this inconsistency.
@@ -1197,14 +1243,12 @@ class TestSmartProtocol(tests.TestCase):
         one with the order of reads not increasing (an out of order read), and
         one that should coalesce.
         """
-        self.assertOffsetSerialisation([], '',
-            self.client_protocol, self.smart_server_request)
-        self.assertOffsetSerialisation([(1,2)], '1,2',
-            self.client_protocol, self.smart_server_request)
+        self.assertOffsetSerialisation([], '', self.client_protocol)
+        self.assertOffsetSerialisation([(1,2)], '1,2', self.client_protocol)
         self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
-            self.client_protocol, self.smart_server_request)
+            self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
-            '1,2\n3,4\n100,200', self.client_protocol, self.smart_server_request)
+            '1,2\n3,4\n100,200', self.client_protocol)
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
@@ -1230,7 +1274,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertTrue(self.end_received)
 
     def test_accept_request_and_body_all_at_once(self):
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         mem_transport = memory.MemoryTransport()
         mem_transport.put_bytes('foo', 'abcdefghij')
         out_stream = StringIO()
@@ -1488,7 +1532,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     def setUp(self):
         super(HTTPTunnellingSmokeTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def _test_bulk_data(self, url_protocol):
         # We should be able to send and receive bulk data in a single message.
@@ -1500,7 +1544,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         http_transport = self.get_readonly_transport()
         medium = http_transport.get_smart_medium()
         #remote_transport = RemoteTransport('fake_url', medium)
-        remote_transport = remote.SmartTransport('/', medium=medium)
+        remote_transport = remote.RemoteTransport('/', medium=medium)
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 
