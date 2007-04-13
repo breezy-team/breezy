@@ -48,9 +48,12 @@ IN DEVELOPMENT
       via remote procedure calls.  (Andrew Bennetts)
  
     * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
-     ``Branch`` now accept a ``token`` keyword argument, so that separate
-     instances of those objects can share a lock if it has the right token.
-     (Andrew Bennetts, Robert Collins)
+      ``Branch`` now accept a ``token`` keyword argument, so that separate
+      instances of those objects can share a lock if it has the right token.
+      (Andrew Bennetts, Robert Collins)
+
+    * New method 'get_branch_reference' on 'BzrDir' allows the detection of
+      branch references - which the smart server component needs.
 
     * The Repository API ``make_working_trees`` is now permitted to return
       False when ``set_make_working_trees`` is not implemented - previously
