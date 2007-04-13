@@ -20,7 +20,7 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from bzrlib.smart.
 """
 
-__all__ = ['RemoteTransport', 'SmartTCPTransport', 'SmartSSHTransport']
+__all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from cStringIO import StringIO
 import urllib
@@ -63,7 +63,7 @@ class RemoteTransport(transport.Transport):
 
     The connection can be made over a tcp socket, an ssh pipe or a series of
     http requests.  There are concrete subclasses for each type:
-    SmartTCPTransport, etc.
+    RemoteTCPTransport, etc.
     """
 
     # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
@@ -417,7 +417,7 @@ class RemoteTransport(transport.Transport):
             self._translate_error(resp)
 
 
-class SmartTCPTransport(RemoteTransport):
+class RemoteTCPTransport(RemoteTransport):
     """Connection to smart server over plain tcp.
     
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -436,10 +436,10 @@ class SmartTCPTransport(RemoteTransport):
                 raise errors.InvalidURL(
                     path=url, extra="invalid port %s" % _port)
         client_medium = medium.SmartTCPClientMedium(_host, _port)
-        super(SmartTCPTransport, self).__init__(url, medium=client_medium)
+        super(RemoteTCPTransport, self).__init__(url, medium=client_medium)
 
 
-class SmartSSHTransport(RemoteTransport):
+class RemoteSSHTransport(RemoteTransport):
     """Connection to smart server over SSH.
 
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -457,13 +457,13 @@ class SmartSSHTransport(RemoteTransport):
                 _port)
         client_medium = medium.SmartSSHClientMedium(_host, _port,
                                                     _username, _password)
-        super(SmartSSHTransport, self).__init__(url, medium=client_medium)
+        super(RemoteSSHTransport, self).__init__(url, medium=client_medium)
 
 
-class SmartHTTPTransport(RemoteTransport):
+class RemoteHTTPTransport(RemoteTransport):
     """Just a way to connect between a bzr+http:// url and http://.
     
-    This connection operates slightly differently than the SmartSSHTransport.
+    This connection operates slightly differently than the RemoteSSHTransport.
     It uses a plain http:// transport underneath, which defines what remote
     .bzr/smart URL we are connected to. From there, all paths that are sent are
     sent as relative paths, this way, the remote side can properly
@@ -480,7 +480,7 @@ class SmartHTTPTransport(RemoteTransport):
         else:
             self._http_transport = http_transport
         http_medium = self._http_transport.get_smart_medium()
-        super(SmartHTTPTransport, self).__init__(url, medium=http_medium)
+        super(RemoteHTTPTransport, self).__init__(url, medium=http_medium)
 
     def _remote_path(self, relpath):
         """After connecting HTTP Transport only deals in relative URLs."""
@@ -498,10 +498,10 @@ class SmartHTTPTransport(RemoteTransport):
         return self._unparse_url(self._combine_paths(self._path, relpath))
 
     def clone(self, relative_url):
-        """Make a new SmartHTTPTransport related to me.
+        """Make a new RemoteHTTPTransport related to me.
 
         This is re-implemented rather than using the default
-        SmartTransport.clone() because we must be careful about the underlying
+        RemoteTransport.clone() because we must be careful about the underlying
         http transport.
         """
         if relative_url:
@@ -511,7 +511,7 @@ class SmartHTTPTransport(RemoteTransport):
         # By cloning the underlying http_transport, we are able to share the
         # connection.
         new_transport = self._http_transport.clone(relative_url)
-        return SmartHTTPTransport(abs_url, http_transport=new_transport)
+        return RemoteHTTPTransport(abs_url, http_transport=new_transport)
 
 
 def get_test_permutations():
@@ -519,4 +519,4 @@ def get_test_permutations():
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
     from bzrlib.smart import server
-    return [(SmartTCPTransport, server.SmartTCPServer_for_testing)]
+    return [(RemoteTCPTransport, server.SmartTCPServer_for_testing)]

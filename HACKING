@@ -589,6 +589,17 @@ that cannot be printed in the current encoding stays an escaped URL, but
 valid characters are generated where possible.
 
 
+Portability Tips
+================
+
+The ``bzrlib.osutils`` module has many useful helper functions, including
+some more portable variants of functions in the standard library.
+
+In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
+to fail on Windows if some files are readonly or still open elsewhere.
+Use ``bzrlib.osutils.rmtree`` instead.
+
+
 Merge/review process
 ====================
 

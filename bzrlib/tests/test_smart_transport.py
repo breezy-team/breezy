@@ -788,7 +788,7 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread()
         try:
-            transport = remote.SmartTCPTransport(smart_server.get_url())
+            transport = remote.RemoteTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -819,7 +819,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.transport = remote.SmartTCPTransport(self.server.get_url())
+        self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
 
     def tearDownServer(self):
@@ -837,7 +837,7 @@ class TestServerSocketUsage(SmartTCPTests):
         """It should be safe to teardown the server with no requests."""
         self.setUpServer()
         server = self.server
-        transport = remote.SmartTCPTransport(self.server.get_url())
+        transport = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
@@ -849,7 +849,7 @@ class TestServerSocketUsage(SmartTCPTests):
         self.tearDownServer()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.SmartTCPTransport(server.get_url())
+        transport = remote.RemoteTCPTransport(server.get_url())
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
 
@@ -1106,7 +1106,7 @@ class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
         t = get_transport('bzr+ssh://example.com/path')
-        self.assertIsInstance(t, remote.SmartSSHTransport)
+        self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
 
