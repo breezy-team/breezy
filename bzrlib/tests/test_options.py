@@ -38,16 +38,16 @@ class OptionTests(TestCase):
         """Option parser"""
         eq = self.assertEquals
         eq(parse_args(cmd_commit(), ['--help']),
-           ([], {'help': True}))
+           ([], {'fixes': [], 'help': True}))
         eq(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'message': 'biter'}))
+           ([], {'fixes': [], 'message': 'biter'}))
         ## eq(parse_args(cmd_log(),  '-r 500'.split()),
         ##   ([], {'revision': RevisionSpec_int(500)}))
 
     def test_no_more_opts(self):
         """Terminated options"""
         self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {}))
+                          (['-file-with-dashes'], {'fixes': []}))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -112,7 +112,8 @@ class OptionTests(TestCase):
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
-        self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
+        self.assertEqual(
+            (['-'], {'fixes': []}), parse_args(cmd_commit(), ['-']))
 
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
