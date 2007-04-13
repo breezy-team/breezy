@@ -2255,9 +2255,7 @@ class cmd_selftest(Command):
     particular area, but want to make sure nothing else was broken.
 
     If --exclude is given, tests that match that regular expression are
-    excluded, regardless of whether they match --first or not. For quoting
-    convenience, commas in this parameters are translated to |, effectively
-    making the parameter a comma separated list of patterns to exclude.
+    excluded, regardless of whether they match --first or not.
 
     To help catch accidential dependencies between tests, the --randomize
     option is useful. In most cases, the argument used is the word 'now'.

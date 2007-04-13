@@ -8,9 +8,9 @@ IN DEVELOPMENT
     * selftest now supports --list-only to list tests instead of running
       them. (Ian Clatworthy)
 
-    * selftest now supports --exclude PATTERNS where PATTERNS is a
-      comma-separated list of patterns to exclude tests with matching names.
-      -x is a shorthand for --exclude. (Ian Clatworthy, #102679)
+    * selftest now supports --exclude PATTERN (or -x PATTERN) to exclude
+      tests with names that match that regular expression.
+      (Ian Clatworthy, #102679)
 
     * selftest now supports --randomize SEED to run tests in a random order.
       SEED is typically the value 'now' meaning 'use the current time'.
