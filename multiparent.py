@@ -10,6 +10,27 @@ from bzrlib import (
 
 from bzrlib.tuned_gzip import GzipFile
 
+def topo_iter(vf):
+    seen = set()
+    descendants = {}
+    for version_id in vf.versions():
+        for parent_id in vf.get_parents(version_id):
+            descendants.setdefault(parent_id, []).append(version_id)
+    cur = [v for v in vf.versions() if len(vf.get_parents(v)) == 0]
+    while len(cur) > 0:
+        next = []
+        for version_id in cur:
+            if version_id in seen:
+                continue
+            parents = vf.get_parents(version_id)
+            if not seen.issuperset(parents):
+                continue
+            next.extend(descendants.get(version_id, []))
+            yield version_id
+            seen.add(version_id)
+        cur = next
+
+
 class MultiParent(object):
 
     def __init__(self, hunks=None):
@@ -311,35 +332,22 @@ class MultiVersionedFile(object):
         distances = {}
         descendants = {}
         snapshots = set()
-        for version_id in vf.versions():
-            for parent_id in vf.get_parents(version_id):
-                descendants.setdefault(parent_id, []).append(version_id)
-        cur = [v for v in vf.versions() if len(vf.get_parents(v)) == 0]
-        while len(cur) > 0:
-            next = []
-            for version_id in cur:
-                if version_id in distances:
-                    continue
-                parents = vf.get_parents(version_id)
-                p_distances = [distances.get(p) for p in parents]
-                if None in p_distances:
-                    continue
-                next.extend(descendants.get(version_id, []))
-                if len(p_distances) == 0:
+        for version_id in topo_iter(vf):
+            p_distances = [distances[p] for p in vf.get_parents(version_id)]
+            if len(p_distances) == 0:
+                snapshots.add(version_id)
+                distances[version_id] = 0
+            else:
+                max_distance = max(p_distances)
+                if max_distance + 1 > self.snapshot_interval:
+                    snapshots.add(version_id)
+                    distances[version_id] = 0
+                elif len(descendants) > 1 and max_distance > \
+                    self.snapshot_interval -4 and False:
                     snapshots.add(version_id)
                     distances[version_id] = 0
                 else:
-                    max_distance = max(p_distances)
-                    if max_distance + 1 > self.snapshot_interval:
-                        snapshots.add(version_id)
-                        distances[version_id] = 0
-                    elif len(descendants) > 1 and max_distance > \
-                        self.snapshot_interval -4 and False:
-                        snapshots.add(version_id)
-                        distances[version_id] = 0
-                    else:
-                        distances[version_id] = max_distance + 1
-            cur = next
+                    distances[version_id] = max_distance + 1
         return snapshots
 
 
