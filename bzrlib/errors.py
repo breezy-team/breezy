@@ -2050,7 +2050,7 @@ class TagAlreadyExists(BzrError):
 
 class MalformedBugIdentifier(BzrError):
 
-    _fmt = "Bug identifier %(bug_id)s is malformed: %(reason)s"
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
 
     def __init__(self, bug_id, reason):
         self.bug_id = bug_id

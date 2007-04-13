@@ -452,7 +452,7 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug %s. Must be in the form of 'tag:id'. Commit refused."
-             % 'orange'],
+            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+             r"Commit refused\."],
             'commit', '-m', 'add b', '--fixes=orange',
             working_dir='tree')

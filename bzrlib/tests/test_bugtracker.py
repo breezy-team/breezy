@@ -56,8 +56,8 @@ class TestLaunchpadTracker(TestCaseWithMemoryTransport):
 
     def test_get_with_unsupported_tag(self):
         """If the given tag is unrecognized, return None."""
-        self.assertEqual(
-            None, bugtracker.LaunchpadTracker.get('twisted', self.branch))
+        self.assertIs(None,
+                      bugtracker.LaunchpadTracker.get('twisted', self.branch))
 
     def test_get_with_supported_tag(self):
         """If given 'lp' as the bug tag, return a LaunchpadTracker instance."""
