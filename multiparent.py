@@ -329,25 +329,23 @@ class MultiVersionedFile(object):
             pb.finished()
 
     def select_snapshots(self, vf):
-        distances = {}
+        build_ancestors = {}
         descendants = {}
         snapshots = set()
         for version_id in topo_iter(vf):
-            p_distances = [distances[p] for p in vf.get_parents(version_id)]
-            if len(p_distances) == 0:
+            potential_build_ancestors = set(vf.get_parents(version_id))
+            parents = vf.get_parents(version_id)
+            if len(parents) == 0:
                 snapshots.add(version_id)
-                distances[version_id] = 0
+                build_ancestors[version_id] = set()
             else:
-                max_distance = max(p_distances)
-                if max_distance + 1 > self.snapshot_interval:
+                for parent in vf.get_parents(version_id):
+                    potential_build_ancestors.update(build_ancestors[parent])
+                if len(potential_build_ancestors) > self.snapshot_interval:
                     snapshots.add(version_id)
-                    distances[version_id] = 0
-                elif len(descendants) > 1 and max_distance > \
-                    self.snapshot_interval -4 and False:
-                    snapshots.add(version_id)
-                    distances[version_id] = 0
+                    build_ancestors[version_id] = set()
                 else:
-                    distances[version_id] = max_distance + 1
+                    build_ancestors[version_id] = potential_build_ancestors
         return snapshots
 
 
