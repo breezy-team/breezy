@@ -16,32 +16,20 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import os
 import re
-import sys
 
 import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
-    lockdir,
     remote,
     repository,
     )
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
-from bzrlib.errors import (FileExists,
-                           NoSuchRevision,
-                           NoSuchFile,
-                           UninitializableFormat,
-                           NotBranchError,
-                           )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repofmt import knitrepo
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -442,10 +430,6 @@ class TestRepository(TestCaseWithRepository):
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
-    def setUp(self):
-        TestCaseWithRepository.setUp(self)
-        self.reduceLockdirTimeout()
-
     def test_leave_lock_in_place(self):
         repo = self.make_repository('r')
         # Lock the repository, then use leave_lock_in_place so that when we
@@ -567,7 +551,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual({'rev1':[],
                           'rev2':['rev1']},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
         # and ghosts are not mentioned
