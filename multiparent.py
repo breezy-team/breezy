@@ -9,8 +9,8 @@ from bzrlib import (
     trace,
     ui,
     )
-
 from bzrlib.tuned_gzip import GzipFile
+
 
 def topo_iter(vf):
     seen = set()
@@ -365,8 +365,9 @@ class BaseVersionedFile(object):
         reconstructor = _Reconstructor(self, self._lines,
                                        self._parents)
         reconstructor.reconstruct_version(lines, version_id)
-        #self._lines[version_id] = lines
+        self._lines[version_id] = lines
         return lines
+
 
 class MultiMemoryVersionedFile(BaseVersionedFile):
 

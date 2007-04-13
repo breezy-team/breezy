@@ -36,12 +36,13 @@ class cmd_mp_regen(commands.Command):
                      commands.Option('extract', help='test extract time'),
                      commands.Option('single', help='use a single parent'),
                      commands.Option('verify', help='verify added texts'),
+                     commands.Option('cache', help='Aggresively cache'),
                     ]
     hidden = True
 
     def run(self, file=None, sync_snapshots=False, snapshot_interval=26,
             lsprof_timed=False, dump=False, extract=False, single=False,
-            verify=False, outfile=None, memory=False):
+            verify=False, outfile=None, memory=False, cache=False):
         if file is None:
             wt, path = WorkingTree.open_containing('.')
             file_weave = wt.branch.repository.get_inventory_weave()
@@ -77,13 +78,14 @@ class cmd_mp_regen(commands.Command):
 
         try:
             vf.import_versionedfile(file_weave, to_sync, single_parent=single,
-                                    verify=verify)
+                                    verify=verify, no_cache=not cache)
         except:
             vf.destroy()
             raise
         try:
             print >> sys.stderr, "%d actual snapshots" % len(to_sync)
-            vf.clear_cache()
+            if not cache:
+                vf.clear_cache()
             if False:
                 for revision_id in file_weave.get_ancestry(
                     [bt.inventory[file_id].revision]):
