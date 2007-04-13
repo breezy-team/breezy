@@ -24,6 +24,7 @@ import os
 import select
 import socket
 import threading
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -33,7 +34,9 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCase,
+    TestUIFactory,
     TestSkipped,
+    StringIOWrapper,
     )
 from bzrlib.tests.HttpServer import (
     HttpServer,
@@ -68,6 +71,7 @@ from bzrlib.transport.http import (
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 
+import bzrlib.ui
 
 class FakeManager(object):
 
@@ -1161,13 +1165,14 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
                                   ('b', 'contents of b\n'),])
         self.server = self.get_readonly_server()
 
-    def get_user_url(self, user, password=None):
+        self.old_factory = bzrlib.ui.ui_factory
+        self.addCleanup(self.restoreUIFactory)
+
+    def restoreUIFactory(self):
+        bzrlib.ui.ui_factory = self.old_factory
+
+    def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
-        user_pass = None
-        if user is not None:
-            userpass = user
-            if password is not None:
-                userpass += ':' + password
         url = '%s://' % self.server._url_protocol
         if user is not None:
             url += user
@@ -1180,10 +1185,26 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
     def test_empty_pass(self):
         self.server.add_user('joe', '')
         t = self._transport(self.get_user_url('joe', ''))
-        self.assertEqual(t.get('a').read(), 'contents of a\n')
+        self.assertEqual('contents of a\n', t.get('a').read())
 
     def test_user_pass(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('joe', 'foo'))
-        self.assertEqual(t.get('a').read(), 'contents of a\n')
+        self.assertEqual('contents of a\n', t.get('a').read())
 
+    def test_wrong_pass(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe', 'bar'))
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+
+    def test_prompt_for_password(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe'))
+        bzrlib.ui.ui_factory = TestUIFactory(stdin='foo\n',
+                                             stdout=StringIOWrapper())
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # stdin should be empty
+        self.assertEqual('', bzrlib.ui.ui_factory.stdin.readline())
+        # And we shouldn't prompt again for a different request
+        # against the same transport.
+        self.assertEqual('contents of b\n',t.get('b').read())

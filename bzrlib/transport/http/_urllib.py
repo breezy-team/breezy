@@ -68,15 +68,13 @@ class HttpTransport_urllib(HttpTransportBase):
             self._user = user
             self._password = password
             self._opener = self._opener_class()
-            if password is not None: # '' is a valid password
+            if user and password is not None: # '' is a valid password
                 # Make the (user, password) available to urllib2
                 pm = self._opener.password_manager
                 pm.add_password(None, self.base, self._user, self._password)
 
     def _ask_password(self):
         """Ask for a password if none is already available"""
-        # TODO: jam 20060915 There should be a test that asserts we ask 
-        #       for a password at the right time.
         if self._password is None:
             # We can't predict realm, let's try None, we'll get a
             # 401 if we are wrong anyway
@@ -128,7 +126,7 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
-        elif self._user is not None:
+        elif self._user:
             # We will issue our first request, time to ask for a
             # password if needed
             self._ask_password()

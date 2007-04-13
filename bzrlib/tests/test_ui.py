@@ -24,14 +24,21 @@ import sys
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.progress import DotsProgressBar, TTYProgressBar, ProgressBarStack
+from bzrlib.progress import (
+    DotsProgressBar,
+    ProgressBarStack,
+    TTYProgressBar,
+    )
 from bzrlib.tests import (
+    TestCase,
     TestUIFactory,
     StringIOWrapper,
-    TestCase,
     )
 from bzrlib.tests.test_progress import _TTYStringIO
-from bzrlib.ui import SilentUIFactory
+from bzrlib.ui import (
+    CLIUIFactory,
+    SilentUIFactory,
+    )
 from bzrlib.ui.text import TextUIFactory
 
 
@@ -166,13 +173,13 @@ class UITests(TestCase):
 
     def test_text_factory_setting_progress_bar(self):
         # we should be able to choose the progress bar type used.
-        factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
+        factory = TextUIFactory(bar_type=DotsProgressBar)
         bar = factory.nested_progress_bar()
         bar.finished()
         self.assertIsInstance(bar, DotsProgressBar)
 
     def test_cli_stdin_is_default_stdin(self):
-        factory = bzrlib.ui.CLIUIFactory()
+        factory = CLIUIFactory()
         self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
@@ -190,11 +197,11 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_silent_ui_getbool(self):
-        factory = bzrlib.ui.SilentUIFactory()
+        factory = SilentUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_silent_factory_prompts_silently(self):
-        factory = bzrlib.ui.SilentUIFactory()
+        factory = SilentUIFactory()
         stdout = StringIO()
         factory.stdin = StringIO("y\n")
         self.assertEqual(True,
@@ -205,12 +212,12 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getbool(self):
-        factory = bzrlib.ui.text.TextUIFactory()
+        factory = TextUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
+        factory = TextUIFactory(bar_type=DotsProgressBar)
         factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(factory.stdin, factory.stdout,

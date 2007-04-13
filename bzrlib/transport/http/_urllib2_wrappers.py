@@ -28,10 +28,11 @@ the custom HTTPConnection classes.
 We have a custom Response class, which lets us maintain a keep-alive
 connection even for requests that urllib2 doesn't expect to contain body data.
 
-And a custom Request class that lets us track redirections, and (soon) send
-authentication data without requiring an extra round trip to get rejected by
-the server. We also create a Request hierarchy, to make it clear what type
-of request is being made.
+And a custom Request class that lets us track redirections, and
+handle authentification schemes.
+
+We also create a Request hierarchy, to make it clear what type of
+request is being made.
 """
 
 DEBUG = 0
@@ -769,7 +770,6 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
             # of a better magic value.
             raise errors.InvalidRange(req.get_full_url(),0)
         else:
-            # TODO: A test is needed to exercise that code path
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
                                              % (code, msg))
