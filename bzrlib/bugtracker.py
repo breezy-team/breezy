@@ -61,9 +61,10 @@ class TrackerRegistry(registry.Registry):
 tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
+
 class SimpleBugtracker(object):
     """A bug tracker that where bug numbers are appended to a base URL.
-    
+
     If you have one of these trackers then subclass this and add attributes
     named 'tag' and 'base_url'. The former is the tag that the user will use
     on the command line. The latter is the url that the bug ids will be
@@ -107,12 +108,14 @@ class LaunchpadTracker(SimpleIntegerBugtracker):
 
 tracker_registry.register('launchpad', LaunchpadTracker)
 
+
 class DebianTracker(SimpleIntegerBugtracker):
     """The Debian bug tracker."""
     tag = 'deb'
     base_url = 'http://bugs.debian.org/'
 
 tracker_registry.register('debian', DebianTracker)
+
 
 class TracTracker(object):
     """A Trac instance."""
