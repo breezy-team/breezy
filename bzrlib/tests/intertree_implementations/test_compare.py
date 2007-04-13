@@ -1218,13 +1218,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.get_root_id()
         tree2.set_root_id(root_id)
 
-        # Create an empty directory 'a', followed by a directory with content
-        # 'b'.
-        self.build_tree(['tree1/a/', 'tree1/b/'])
-        self.build_tree_contents([('tree1/b/file', 'contents\n')])
-        self.build_tree(['tree2/a/', 'tree2/b/'])
-        self.build_tree_contents([('tree2/b/file', 'contents\n')])
-
+        # Start with 2 identical trees
+        self.build_tree(['tree1/a/', 'tree1/b/',
+                         'tree2/a/', 'tree2/b/'])
+        self.build_tree_contents([('tree1/b/file', 'contents\n'),
+                                  ('tree2/b/file', 'contents\n')])
         tree1.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
         tree2.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
 
