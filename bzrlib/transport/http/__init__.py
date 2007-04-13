@@ -32,7 +32,6 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     Transport,
     )
-from bzrlib.smart import medium
 
 
 # TODO: This is not used anymore by HttpTransport_urllib
