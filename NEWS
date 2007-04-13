@@ -42,9 +42,12 @@ IN DEVELOPMENT
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
  
     * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
-     ``Branch`` now accept a ``token`` keyword argument, so that separate
-     instances of those objects can share a lock if it has the right token.
-     (Andrew Bennetts, Robert Collins)
+      ``Branch`` now accept a ``token`` keyword argument, so that separate
+      instances of those objects can share a lock if it has the right token.
+      (Andrew Bennetts, Robert Collins)
+
+    * New method 'get_branch_reference' on 'BzrDir' allows the detection of
+      branch references - which the smart server component needs.
 
   BUGFIXES:
 

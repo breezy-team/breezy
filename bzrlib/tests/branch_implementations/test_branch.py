@@ -598,6 +598,17 @@ class TestBranchPushLocations(TestCaseWithBranch):
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
 
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
@@ -630,7 +641,7 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):
