@@ -2042,12 +2042,33 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 def filter_suite_by_re(suite, pattern, exclude_pattern=None,
     random_order=False):
-    return sort_suite_by_re(suite, pattern, False, exclude_pattern,
-        random_order)
+    """Create a test suite by filtering another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :returns: the newly created suite
+    """ 
+    return sort_suite_by_re(suite, pattern, exclude_pattern,
+        random_order, False)
 
 
-def sort_suite_by_re(suite, pattern, append_rest=True, exclude_pattern=None,
-    random_order=False):
+def sort_suite_by_re(suite, pattern, exclude_pattern=None,
+    random_order=False, append_rest=True):
+    """Create a test suite by sorting another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match in order to go
+                            first in the new suite
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :param append_rest:     if False, pattern is a strict filter and not
+                            just an ordering directive
+    :returns: the newly created suite
+    """ 
     first = []
     second = []
     filter_re = re.compile(pattern)

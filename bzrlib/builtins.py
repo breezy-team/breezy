@@ -2370,12 +2370,6 @@ class cmd_selftest(Command):
             pattern = '|'.join(testspecs_list)
         else:
             pattern = ".*"
-        if exclude is None:
-            exclude_pattern = None
-        elif exclude.find(',') >= 0:
-            exclude_pattern = exclude.replace(',','|')
-        else:
-            exclude_pattern = exclude
         if benchmark:
             test_suite_factory = benchmarks.test_suite
             if verbose is None:
@@ -2400,7 +2394,7 @@ class cmd_selftest(Command):
                               numbered_dirs=numbered_dirs,
                               list_only=list_only,
                               random_seed=randomize,
-                              exclude_pattern=exclude_pattern
+                              exclude_pattern=exclude
                               )
         finally:
             if benchfile is not None:

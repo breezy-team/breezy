@@ -532,12 +532,8 @@ class TestSelftestListOnly(TestCase):
             '--list-only'])
         self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
-        self.assertContainsRe(footer[0], 'Listed \d+ tests in')
-        # Check the count matches the number of tests listed
-        summary_re = re.compile('(\d+)')
-        match_obj = summary_re.search(footer[0])
-        reported_count = int(match_obj.group(0))
-        self.assertEqual(reported_count, len(body))
+        num_tests = len(body)
+        self.assertContainsRe(footer[0], 'Listed %s tests in' % num_tests)
 
     def test_list_only_filtered(self):
         # check that a filtered --list-only works, both include and exclude
