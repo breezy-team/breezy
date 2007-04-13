@@ -62,8 +62,8 @@ tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
 
-class SimpleBugTracker(object):
-    """A bug tracker that where bug numbers are appended to a base URL.
+class UniqueBugTracker(object):
+    """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then subclass this and add attributes
     named 'tag' and 'base_url'. The former is the tag that the user will use
@@ -91,7 +91,7 @@ class SimpleBugTracker(object):
         pass
 
 
-class SimpleIntegerBugTracker(SimpleBugTracker):
+class UniqueIntegerBugTracker(UniqueBugTracker):
     """A SimpleBugtracker where the bug ids must be integers"""
 
     def check_bug_id(self, bug_id):
@@ -101,7 +101,7 @@ class SimpleIntegerBugTracker(SimpleBugTracker):
             raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
 
 
-class LaunchpadTracker(SimpleIntegerBugTracker):
+class LaunchpadTracker(UniqueIntegerBugTracker):
     """The Launchpad bug tracker."""
     tag = 'lp'
     base_url = 'https://launchpad.net/bugs/'
@@ -109,7 +109,7 @@ class LaunchpadTracker(SimpleIntegerBugTracker):
 tracker_registry.register('launchpad', LaunchpadTracker)
 
 
-class DebianTracker(SimpleIntegerBugTracker):
+class DebianTracker(UniqueIntegerBugTracker):
     """The Debian bug tracker."""
     tag = 'deb'
     base_url = 'http://bugs.debian.org/'
