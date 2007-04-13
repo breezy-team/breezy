@@ -31,6 +31,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.smart import (
+        client,
         medium,
         protocol,
         request,
@@ -1449,6 +1450,42 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(3, input.tell())
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
+
+class TestSmartClientUnicode(tests.TestCase):
+    """SmartClient tests for unicode arguments.
+
+    Unicode arguments to call_with_body_bytes are not correct (remote method
+    names, arguments, and bodies must all be expressed as byte strings), but
+    SmartClient should gracefully reject them, rather than getting into a broken
+    state that prevents future correct calls from working.  That is, it should
+    be possible to issue more requests on the medium afterwards, rather than
+    allowing one bad call to call_with_body_bytes to cause later calls to
+    mysteriously fail with TooManyConcurrentRequests.
+    """
+
+    def assertCallDoesNotBreakMedium(self, method, args, body):
+        """Call a medium with the given method, args and body, then assert that
+        the medium is left in a sane state, i.e. is capable of allowing further
+        requests.
+        """
+        input = StringIO("\n")
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        smart_client = client.SmartClient(client_medium)
+        self.assertRaises(TypeError,
+            smart_client.call_with_body_bytes, method, args, body)
+        self.assertEqual("", output.getvalue())
+        self.assertEqual(None, client_medium._current_request)
+
+    def test_call_with_body_bytes_unicode_method(self):
+        self.assertCallDoesNotBreakMedium(u'method', ('args',), 'body')
+
+    def test_call_with_body_bytes_unicode_args(self):
+        self.assertCallDoesNotBreakMedium('method', (u'args',), 'body')
+
+    def test_call_with_body_bytes_unicode_body(self):
+        self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
