@@ -47,6 +47,7 @@ from bzrlib.transport import (
     split_url,
     Transport,
     )
+from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
 
 _have_medusa = False
@@ -550,10 +551,12 @@ class FtpServer(Server):
         """This is used by medusa.ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self):
-
+    def setUp(self, vfs_server=None):
         if not _have_medusa:
             raise RuntimeError('Must have medusa to run the FtpServer')
+
+        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
+            "FtpServer currently assumes local transport, got %s" % vfs_server
 
         self._root = os.getcwdu()
         self._ftp_server = _ftp_server(
