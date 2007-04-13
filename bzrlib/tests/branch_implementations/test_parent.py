@@ -23,8 +23,8 @@ from bzrlib import urlutils
 from bzrlib.branch import Branch
 import bzrlib.errors
 from bzrlib.osutils import abspath, realpath, getcwd
-from bzrlib.urlutils import local_path_from_url, local_path_to_url, escape
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib import urlutils
 
 
 """Tests for Branch parent URL"""
@@ -50,7 +50,8 @@ class TestParent(TestCaseWithTransport):
 
         b.set_parent('../other_branch')
 
-        expected_parent = urlutils.join(self.get_url('subdir'), '../other_branch')
+        expected_parent = urlutils.join(self.get_url('subdir'),
+                                        '../other_branch')
         self.assertEqual(expected_parent, b.get_parent())
         path = urlutils.join(self.get_url('subdir'), '../yanb')
         b.set_parent(path)
@@ -59,7 +60,7 @@ class TestParent(TestCaseWithTransport):
 
 
         self.assertRaises(bzrlib.errors.InvalidURL, b.set_parent, u'\xb5')
-        b.set_parent(escape(u'\xb5'))
+        b.set_parent(urlutils.escape(u'\xb5'))
         self.assertEqual('%C2%B5', b._get_parent_location())
 
         self.assertEqual(b.base + '%C2%B5', b.get_parent())
