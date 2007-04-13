@@ -1,5 +1,7 @@
 from unittest import TestCase
 
+from bzrlib import tests
+
 import multiparent
 
 
@@ -185,3 +187,27 @@ class TestVersionedFile(TestCase):
         vf.clear_cache()
         lines = vf.get_line_list(['rev-e'])[0]
         self.assertEqual(['b\n', 'a\n'], lines)
+
+
+class TestMultiVersionedFile(tests.TestCaseInTempDir):
+
+    def test_save_load(self):
+        vf = multiparent.MultiVersionedFile('foop')
+        vf.add_version('a\nb\nc\nd'.splitlines(True), 'a', [])
+        vf.add_version('a\ne\nd\n'.splitlines(True), 'b', ['a'])
+        vf.save()
+        newvf = multiparent.MultiVersionedFile('foop')
+        newvf.load()
+        self.assertEqual('a\nb\nc\nd', ''.join(newvf.get_line_list(['a'])[0]))
+        self.assertEqual('a\ne\nd\n', ''.join(newvf.get_line_list(['b'])[0]))
+
+    def test_filenames(self):
+        vf = multiparent.MultiVersionedFile('foop')
+        vf.add_version('a\nb\nc\nd'.splitlines(True), 'a', [])
+        self.failUnlessExists('foop.mpknit')
+        self.failIfExists('foop.mpidx')
+        vf.save()
+        self.failUnlessExists('foop.mpidx')
+        vf.destroy()
+        self.failIfExists('foop.mpknit')
+        self.failIfExists('foop.mpidx')

@@ -29,7 +29,6 @@ class cmd_mp_regen(commands.Command):
                                      help='Snapshots follow source'),
                      commands.Option('snapshot-interval', type=int,
                                      help='take snapshots every x revisions'),
-                     commands.Option('lsprof-timed', help='Use lsprof'),
                      commands.Option('outfile', type=unicode,
                                      help='Write pseudo-knit to this file'),
                      commands.Option('memory', help='Use memory, not disk'),
@@ -37,21 +36,18 @@ class cmd_mp_regen(commands.Command):
                      commands.Option('single', help='use a single parent'),
                      commands.Option('verify', help='verify added texts'),
                      commands.Option('cache', help='Aggresively cache'),
+                     commands.Option('size', help='Aggressive size'),
                     ]
     hidden = True
 
     def run(self, file=None, sync_snapshots=False, snapshot_interval=26,
             lsprof_timed=False, dump=False, extract=False, single=False,
-            verify=False, outfile=None, memory=False, cache=False):
-        if file is None:
-            wt, path = WorkingTree.open_containing('.')
-            file_weave = wt.branch.repository.get_inventory_weave()
-        else:
-            wt, path = WorkingTree.open_containing(file)
-            file_id = wt.path2id(path)
-            bt = wt.branch.repository.revision_tree(wt.last_revision())
-            file_weave = bt.get_weave(file_id)
+            verify=False, outfile=None, memory=False, cache=False,
+            size=False):
+        file_weave = get_file_weave(file)
         url = file_weave.transport.abspath(file_weave.filename)
+        if size:
+            assert memory
         print >> sys.stderr, 'Importing: %s' % \
             urlutils.local_path_from_url(url)
         if sync_snapshots:
@@ -71,6 +67,8 @@ class cmd_mp_regen(commands.Command):
                         file_weave._index.get_method(r) == 'fulltext')
         if sync_snapshots:
             to_sync = snapshots
+        elif size:
+            to_sync = set()
         else:
             to_sync = vf.select_snapshots(file_weave)
         print >> sys.stderr, "%d fulltexts" % len(snapshots)
@@ -79,49 +77,84 @@ class cmd_mp_regen(commands.Command):
         try:
             vf.import_versionedfile(file_weave, to_sync, single_parent=single,
                                     verify=verify, no_cache=not cache)
+            if size:
+                snapshots = vf.select_by_size(len(snapshots))
+                for version_id in snapshots:
+                    vf.make_snapshot(version_id)
         except:
             vf.destroy()
             raise
         try:
-            print >> sys.stderr, "%d actual snapshots" % len(to_sync)
+            print >> sys.stderr, "%d actual snapshots" % len(vf._snapshots)
             if not cache:
                 vf.clear_cache()
-            if False:
-                for revision_id in file_weave.get_ancestry(
-                    [bt.inventory[file_id].revision]):
-                    if vf.get_line_list([revision_id])[0] != \
-                        file_weave.get_lines(revision_id):
-                        open(revision_id + '.old', 'wb').writelines(
-                            file_weave.get_lines(revision_id))
-                        open(revision_id + '.new', 'wb').writelines(
-                            vf.get_line_list(revision_id)[0])
-            if extract:
-                revisions = file_weave.versions()[-1:]
-                if lsprof_timed:
-                    from bzrlib.lsprof import profile
-                    ret, stats = profile(vf.get_line_list, revisions)
-                    stats.sort()
-                    stats.pprint()
-                start = time.clock()
-                print >> sys.stderr, revisions[0]
-                for x in range(1000):
-                    vf.clear_cache()
-                    vf.get_line_list(revisions)
-                print >> sys.stderr, time.clock() - start
-                start = time.clock()
-                for x in range(1000):
-                    file_weave.get_line_list(revisions)
-                print >> sys.stderr, time.clock() - start
-            if memory and outfile is not None:
-                outvf = MultiVersionedFile(outfile)
+            if memory:
+                if outfile is not None:
+                    vf_file = MultiVersionedFile(outfile)
                 for version_id in vf.versions():
-                    outvf.add_diff(vf.get_diff(version_id), version_id,
-                                   vf._parents[version_id])
+                    vf_file.add_diff(vf.get_diff(version_id), version_id,
+                                     vf._parents[version_id])
+            else:
+                vf_file = vf
         finally:
             if outfile is None:
                 vf.destroy()
+            else:
+                vf_file.save()
+
+class cmd_mp_extract(commands.Command):
+
+    takes_options = [
+        commands.Option('lsprof-timed', help='Use lsprof'),
+        commands.Option('parallel', help='extract multiple versions at once'),
+        commands.Option('count', help='Number of cycles to do', type=int),
+        ]
+
+    takes_args = ['filename', 'vfile?']
+
+    def run(self, filename, vfile=None, lsprof_timed=False, count=1000,
+            parallel=False):
+        vf = MultiVersionedFile(filename)
+        vf.load()
+        revisions = list(vf.versions())
+        revisions = revisions[-count:]
+        print 'Testing extract time of %d revisions' % len(revisions)
+        if parallel:
+            revisions_list = [revisions]
+        else:
+            revisions_list = [[r] for r in revisions]
+        start = time.clock()
+        for revisions in revisions_list:
+            vf = MultiVersionedFile(filename)
+            vf.load()
+            vf.get_line_list(revisions)
+        print >> sys.stderr, time.clock() - start
+        if lsprof_timed:
+            from bzrlib.lsprof import profile
+            vf.clear_cache()
+            ret, stats = profile(vf.get_line_list, revisions_list[-1][-1])
+            stats.sort()
+            stats.pprint()
+        start = time.clock()
+        for revisions in revisions_list:
+            file_weave = get_file_weave(vfile)
+            file_weave.get_line_list(revisions)
+        print >> sys.stderr, time.clock() - start
+
+
+def get_file_weave(filename=None, wt=None):
+    if filename is None:
+        wt, path = WorkingTree.open_containing('.')
+        return wt.branch.repository.get_inventory_weave()
+    else:
+        wt, path = WorkingTree.open_containing(filename)
+        file_id = wt.path2id(path)
+        bt = wt.branch.repository.revision_tree(wt.last_revision())
+        return bt.get_weave(file_id)
+
 
 commands.register_command(cmd_mp_regen)
+commands.register_command(cmd_mp_extract)
 
 def test_suite():
     from bzrlib.plugins.multiparent import test_multiparent

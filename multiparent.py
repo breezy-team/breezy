@@ -1,14 +1,18 @@
+from bzrlib.lazy_import import lazy_import
+
+lazy_import(globals(), """
 import errno
-from itertools import chain
+import itertools
 import os
 from StringIO import StringIO
-import sys
 
 from bzrlib import (
     patiencediff,
     trace,
     ui,
     )
+from bzrlib.util import bencode
+""")
 from bzrlib.tuned_gzip import GzipFile
 
 
@@ -276,14 +280,14 @@ class BaseVersionedFile(object):
             else:
                 parent_lines = self.get_line_list(parent_ids)
             diff = MultiParent.from_lines(lines, parent_lines)
-            snapdiff = MultiParent([NewText(lines)])
             if diff.is_snapshot():
-                self._snapshots.add(version_id)
-            elif diff.patch_len() >= snapdiff.patch_len():
-                trace.note("Forcing snapshot")
                 self._snapshots.add(version_id)
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
+
+    def make_snapshot(self, version_id):
+        snapdiff = MultiParent([NewText(self.cache_version(version_id))])
+        self._snapshots.add(version_id)
 
     def import_versionedfile(self, vf, snapshots, no_cache=True,
                              single_parent=False, verify=False):
@@ -348,6 +352,19 @@ class BaseVersionedFile(object):
                     build_ancestors[version_id] = potential_build_ancestors
         return snapshots
 
+    def select_by_size(self, num):
+        versions = []
+        new_snapshots = set()
+        num -= len(self._snapshots)
+        for version_id in self.versions():
+            if version_id in self._snapshots:
+                continue
+            diff_len = self.get_diff(version_id).patch_len()
+            snapshot_len = MultiParent([NewText(
+                self.cache_version(version_id))]).patch_len()
+            versions.append((diff_len - snapshot_len, version_id))
+        versions.sort()
+        return [v for n, v in versions[:num]]
 
     def clear_cache(self):
         self._lines.clear()
@@ -395,7 +412,7 @@ class MultiVersionedFile(BaseVersionedFile):
 
     def get_diff(self, version_id):
         start, count = self._diff_offset[version_id]
-        infile = open(self._filename, 'rb')
+        infile = open(self._filename + '.mpknit', 'rb')
         try:
             infile.seek(start)
             sio = StringIO(infile.read(count))
@@ -409,13 +426,13 @@ class MultiVersionedFile(BaseVersionedFile):
             zip_file.close()
 
     def add_diff(self, diff, version_id, parent_ids):
-        outfile = open(self._filename, 'ab')
+        outfile = open(self._filename + '.mpknit', 'ab')
         try:
             start = outfile.tell()
             try:
                 zipfile = GzipFile(None, mode='ab', fileobj=outfile)
-                zipfile.writelines(chain(['version %s\n' % version_id],
-                                       diff.to_patch()))
+                zipfile.writelines(itertools.chain(
+                    ['version %s\n' % version_id], diff.to_patch()))
             finally:
                 zipfile.close()
             end = outfile.tell()
@@ -426,10 +443,24 @@ class MultiVersionedFile(BaseVersionedFile):
 
     def destroy(self):
         try:
-            os.unlink(self._filename)
+            os.unlink(self._filename + '.mpknit')
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
+        try:
+            os.unlink(self._filename + '.mpidx')
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+
+    def save(self):
+        open(self._filename + '.mpidx', 'wb').write(bencode.bencode(
+            (self._parents, list(self._snapshots), self._diff_offset)))
+
+    def load(self):
+        self._parents, snapshots, self._diff_offset = bencode.bdecode(
+            open(self._filename + '.mpidx', 'rb').read())
+        self._snapshots = set(snapshots)
 
 
 class _Reconstructor(object):
