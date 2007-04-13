@@ -232,6 +232,7 @@ class MultiVersionedFile(object):
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
         self._diffs = {}
+        self._diff_offset = {}
         self._lines = {}
         self._parents = {}
         self._snapshots = set()
@@ -282,7 +283,12 @@ class MultiVersionedFile(object):
         self._lines[version_id] = lines
 
     def add_diff(self, diff, version_id, parent_ids):
-        self._diffs[version_id] = diff
+        self._diffs[version_id] = ''
+        outfile = open('pknit', 'ab')
+        start = outfile.tell()
+        outfile.writelines(diff.to_patch())
+        end = outfile.tell()
+        self._diff_offset[version_id] = (start, end)
         self._parents[version_id] = parent_ids
 
     def import_versionedfile(self, vf, snapshots, no_cache=True,
@@ -360,14 +366,20 @@ class MultiVersionedFile(object):
             return self._lines[version_id]
         except KeyError:
             pass
-        diff = self._diffs[version_id]
+        diff = self.get_diff(version_id)
         lines = []
-        reconstructor = _Reconstructor(self._diffs, self._lines,
+        reconstructor = _Reconstructor(self, self._lines,
                                        self._parents)
         reconstructor.reconstruct_version(lines, version_id)
         #self._lines[version_id] = lines
         return lines
 
+    def get_diff(self, version_id):
+        infile = open('pknit', 'rb')
+        start, end = self._diff_offset[version_id]
+        infile.seek(start)
+        text = infile.read(end - start)
+        return MultiParent.from_patch(text.splitlines(True))
 
 class _Reconstructor(object):
     """Build a text from the diffs, ancestry graph and cached lines"""
@@ -395,10 +407,10 @@ class _Reconstructor(object):
             try:
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:
-                iterator = self.diffs[req_version_id].range_iterator()
+                iterator = self.diffs.get_diff(req_version_id).range_iterator()
                 start, end, kind, data = iterator.next()
             if start > req_start:
-                iterator = self.diffs[req_version_id].range_iterator()
+                iterator = self.diffs.get_diff(req_version_id).range_iterator()
                 start, end, kind, data = iterator.next()
 
             # find the first hunk relevant to the request
@@ -422,7 +434,7 @@ class _Reconstructor(object):
                 pending_reqs.append((new_version_id, new_start, new_end))
 
     def reconstruct_version(self, lines, version_id):
-        length = self.diffs[version_id].num_lines()
+        length = self.diffs.get_diff(version_id).num_lines()
         return self._reconstruct(lines, version_id, 0, length)
 
 def gzip_string(lines):

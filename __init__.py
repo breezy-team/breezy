@@ -93,9 +93,9 @@ class cmd_mp_regen(commands.Command):
         if dump:
             revisions = file_weave.versions()
 
-            for revision, diff in vf._diffs.iteritems():
+            for revision in vf._diffs:
                 sys.stdout.write(gzip_string(['version %s\n' % revision] +
-                                 list(diff.to_patch())))
+                                 list(vf.get_diff(revision).to_patch())))
 
 commands.register_command(cmd_mp_regen)
 def test_suite():
