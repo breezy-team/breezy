@@ -15,9 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import errors, registry
+from bzrlib import errors
 """)
 
 

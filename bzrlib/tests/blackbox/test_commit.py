@@ -361,18 +361,21 @@ class TestCommit(ExternalBase):
 
     def test_fixes_bug_output(self):
         """commit --fixes=lp:23452 succeeds without output."""
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr('add hello.txt')
-        output = self.capture('commit -m hello --fixes=lp:23452 hello.txt')
+        self.run_bzr('add', 'hello.txt')
+        output, err = self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:23452', 'hello.txt')
         self.assertEqual('', output)
+        self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
 
     def test_fixes_bug_sets_property(self):
         """commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.runbzr('commit -m hello --fixes=lp:234 tree/hello.txt')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:234', 'tree/hello.txt')
 
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
@@ -388,8 +391,9 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.runbzr(
-            'commit -m hello --fixes=lp:123 --fixes=lp:235 tree/hello.txt')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:123', '--fixes=lp:235',
+            'tree/hello.txt')
 
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
@@ -410,8 +414,9 @@ class TestCommit(ExternalBase):
             'trac_twisted_url', 'http://twistedmatrix.com/trac')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.runbzr(
-            'commit -m hello --fixes=lp:123 --fixes=twisted:235 tree/')
+        self.run_bzr(
+            'commit', '-m', 'hello', '--fixes=lp:123',
+            '--fixes=twisted:235', 'tree/')
 
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.

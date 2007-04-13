@@ -5,6 +5,9 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * New option '--fixes' to commit, which stores bug fixing annotations as
+      revision properties. (Jonathan Lange, James Henstridge, Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
