@@ -47,17 +47,17 @@ IN DEVELOPMENT
       it's not really a "smart" transport, just one that does file operations
       via remote procedure calls.  (Andrew Bennetts)
  
+    * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
+     ``Branch`` now accept a ``token`` keyword argument, so that separate
+     instances of those objects can share a lock if it has the right token.
+     (Andrew Bennetts, Robert Collins)
+
     * The Repository API ``make_working_trees`` is now permitted to return
       False when ``set_make_working_trees`` is not implemented - previously
       an unimplemented ``set_make_working_trees`` implied the result True
       from ``make_working_trees``. This has been changed to accomodate the
       smart server, where it does not make sense (at this point) to ever
       make working trees by default. (Robert Collins)
-
-    * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
-     ``Branch`` now accept a ``token`` keyword argument, so that separate
-     instances of those objects can share a lock if it has the right token.
-     (Andrew Bennetts, Robert Collins)
 
   BUGFIXES:
 
