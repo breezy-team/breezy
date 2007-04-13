@@ -582,11 +582,14 @@ class FtpServer(Server):
 
     @staticmethod
     def _asyncore_loop_ignore_EBADF(*args, **kwargs):
-        """Wrap asyncore.loop with a try/except for EBADF"""
+        """Ignore EBADF during server shutdown.
+
+        We close the socket to get the server to shutdown, but this causes
+        select.select() to raise EBADF.
+        """
         try:
             asyncore.loop(*args, **kwargs)
         except select.error, e:
-            import pdb; pdb.set_trace()
             if e.args[0] != errno.EBADF:
                 raise
 
