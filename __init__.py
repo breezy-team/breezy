@@ -110,6 +110,11 @@ class cmd_mp_regen(commands.Command):
                 for x in range(1000):
                     file_weave.get_line_list(revisions)
                 print >> sys.stderr, time.clock() - start
+            if memory and outfile is not None:
+                outvf = MultiVersionedFile(outfile)
+                for version_id in vf.versions():
+                    outvf.add_diff(vf.get_diff(version_id), version_id,
+                                   vf._parents[version_id])
         finally:
             if outfile is None:
                 vf.destroy()
