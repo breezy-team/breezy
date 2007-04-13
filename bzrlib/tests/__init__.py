@@ -2041,7 +2041,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 
 def filter_suite_by_re(suite, pattern, exclude_pattern=None,
-    random_order=False):
+                       random_order=False):
     """Create a test suite by filtering another one.
     
     :param suite:           the source suite
@@ -2056,7 +2056,7 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=None,
 
 
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
-    random_order=False, append_rest=True):
+                     random_order=False, append_rest=True):
     """Create a test suite by sorting another one.
     
     :param suite:           the source suite

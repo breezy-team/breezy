@@ -2336,8 +2336,8 @@ class cmd_selftest(Command):
                                  ' seed or "now" for the current time'),
                      Option('exclude', type=str, argname="PATTERN",
                             short_name='x',
-                            help='exclude tests that match regular'
-                                 ' expressions in this comma separated list'),
+                            help='exclude tests that match this regular'
+                                 ' expression'),
                      ]
     encoding_type = 'replace'
 
