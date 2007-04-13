@@ -94,7 +94,7 @@ class cmd_mp_regen(commands.Command):
             revisions = file_weave.versions()
 
             for revision, diff in vf._diffs.iteritems():
-                sys.stdout.write(gzip_string(['version %s' % revision] +
+                sys.stdout.write(gzip_string(['version %s\n' % revision] +
                                  list(diff.to_patch())))
 
 commands.register_command(cmd_mp_regen)
