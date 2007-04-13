@@ -306,10 +306,6 @@ class _TestLockableFiles_mixin(object):
         third_lockable.unlock()
 
 
-
-
-
-
 # This method of adapting tests to parameters is different to 
 # the TestProviderAdapters used elsewhere, but seems simpler for this 
 # case.  

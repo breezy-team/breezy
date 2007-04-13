@@ -242,6 +242,10 @@ class Repository(object):
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
 
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
         return self.control_files.lock_write(token=token)
