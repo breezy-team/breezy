@@ -2264,7 +2264,7 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but not
+    This creates temporary test directories in the working directory, but no
     existing data is affected.  These directories are deleted if the tests
     pass, or left behind to help in debugging if they fail and --keep-output
     is specified.
@@ -2276,6 +2276,21 @@ class cmd_selftest(Command):
     Alternatively if --first is given, matching tests are run first and then
     all other tests are run.  This is useful if you have been working in a
     particular area, but want to make sure nothing else was broken.
+
+    If --exclude is given, tests that match that regular expression are
+    excluded, regardless of whether they match --first or not.
+
+    To help catch accidential dependencies between tests, the --randomize
+    option is useful. In most cases, the argument used is the word 'now'.
+    Note that the seed used for the random number generator is displayed
+    when this option is used. The seed can be explicitly passed as the
+    argument to this option if required. This enables reproduction of the
+    actual ordering used if and when an order sensitive problem is encountered.
+
+    If --list-only is given, the tests that would be run are listed. This is
+    useful when combined with --first, --exclude and/or --randomize to
+    understand their impact. The test harness reports "Listed nn tests in ..."
+    instead of "Ran nn tests in ..." when list mode is enabled.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
@@ -2295,8 +2310,6 @@ class cmd_selftest(Command):
     of running tests to create such subdirectories. This is default behavior
     on Windows because of path length limitation.
     """
-    # TODO: --list should give a list of all available tests
-
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
     def get_transport_type(typestring):
@@ -2339,13 +2352,23 @@ class cmd_selftest(Command):
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
+                     Option('list-only',
+                            help='list the tests instead of running them'),
+                     Option('randomize', type=str, argname="SEED",
+                            help='randomize the order of tests using the given'
+                                 ' seed or "now" for the current time'),
+                     Option('exclude', type=str, argname="PATTERN",
+                            short_name='x',
+                            help='exclude tests that match this regular'
+                                 ' expression'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None):
+            first=False, numbered_dirs=None, list_only=False,
+            randomize=None, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2390,6 +2413,9 @@ class cmd_selftest(Command):
                               bench_history=benchfile,
                               matching_tests_first=first,
                               numbered_dirs=numbered_dirs,
+                              list_only=list_only,
+                              random_seed=randomize,
+                              exclude_pattern=exclude
                               )
         finally:
             if benchfile is not None:

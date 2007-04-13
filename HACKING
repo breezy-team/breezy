@@ -431,10 +431,17 @@ to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
 
-To skip a particular test (or set of tests), you need to use a negative
-match, like so::
+To skip a particular test (or set of tests), use the --exclude option
+(shorthand -x) like so::
 
-  ./bzr selftest '^(?!.*blackbox)'  
+  ./bzr selftest -v -x blackbox  
+
+To list tests without running them, use the --list-only option like so::
+
+  ./bzr selftest --list-only
+
+This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.
 
 
 Errors and exceptions
