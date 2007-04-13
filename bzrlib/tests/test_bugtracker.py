@@ -46,6 +46,42 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
 
 
+class TestUniqueBugTracker(TestCaseWithMemoryTransport):
+
+    def test_check_bug_id_passes(self):
+        """check_bug_id should always pass for the base UniqueBugTracker."""
+        tracker = bugtracker.UniqueBugTracker()
+        self.assertEqual(None, tracker.check_bug_id('12'))
+        self.assertEqual(None, tracker.check_bug_id('orange'))
+
+    def test_joins_id_to_base_url(self):
+        """The URL of a bug is the base URL joined to the identifier."""
+        tracker = bugtracker.UniqueBugTracker()
+        tracker.base_url = 'http://bugs.com'
+        self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
+
+    def test_returns_tracker_if_tag_matches(self):
+        """The get() classmethod should return an instance of the tracker if
+        the given tag matches the tracker's tag.
+        """
+        class SomeTracker(bugtracker.UniqueBugTracker):
+            tag = 'xxx'
+            base_url = 'http://bugs.com'
+
+        branch = self.make_branch('some_branch')
+        tracker = SomeTracker.get('xxx', branch)
+        self.assertEqual('xxx', tracker.tag)
+        self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
+
+
+class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
+
+    def test_check_bug_id_only_accepts_integers(self):
+        """An UniqueIntegerBugTracker only accepts integers as bug IDs."""
+        tracker = bugtracker.UniqueIntegerBugTracker()
+        self.assertEqual(None, tracker.check_bug_id('1234'))
+        self.assertRaises(MalformedBugIdentifier, tracker.check_bug_id, 'red')
+
 
 class TestLaunchpadTracker(TestCaseWithMemoryTransport):
     """Tests for LaunchpadTracker."""
