@@ -1071,8 +1071,8 @@ class cmd_remove(Command):
     delete them if they can easily be recovered using revert.
 
     You can specify one or more files, and/or --new.  If you specify --new,
-    only 'added' files will be removed.  If you specify both, then new
-    files in the specified directories will be removed.  If the directories are
+    only 'added' files will be removed.  If you specify both, then new files 
+    in the specified directories will be removed.  If the directories are
     also new, they will also be removed.
     """
     takes_args = ['file*']
