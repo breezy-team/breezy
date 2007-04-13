@@ -739,8 +739,10 @@ class TestTestResult(TestCase):
         result.report_known_failure(test, err)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
-    
+        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        self.assertEqual(lines[1], '    foo')
+        self.assertEqual(2, len(lines))
+
     def test_text_report_known_failure(self):
         # text test output formatting
         pb = MockProgress()
@@ -933,13 +935,12 @@ class TestRunner(TestCase):
         stream = StringIO()
         runner = TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
-        self.assertEqual(
+        self.assertContainsRe(stream.getvalue(),
             '\n'
-            '----------------------------------------------------------------------\n'
-            'Ran 1 test in 0.000s\n'
+            '-*\n'
+            'Ran 1 test in .*\n'
             '\n'
-            'OK (known_failures=1)\n',
-            stream.getvalue())
+            'OK \\(known_failures=1\\)\n')
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
