@@ -79,6 +79,38 @@ class TestLaunchpadTracker(TestCaseWithMemoryTransport):
         self.assertRaises(MalformedBugIdentifier, tracker.get_bug_url, 'bad')
 
 
+class TestDebianTracker(TestCaseWithMemoryTransport):
+    """Tests for DebianTracker."""
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.branch = self.make_branch('some_branch')
+
+    def test_get_with_unsupported_tag(self):
+        """If the given tag is unrecognized, return None."""
+        self.assertEqual(
+            None, bugtracker.DebianTracker.get('twisted', self.branch))
+
+    def test_get_with_supported_tag(self):
+        """If given 'deb' as the bug tag, return a DebianTracker instance."""
+        tracker = bugtracker.DebianTracker.get('deb', self.branch)
+        self.assertEqual(bugtracker.DebianTracker().get_bug_url('1234'),
+                         tracker.get_bug_url('1234'))
+
+    def test_get_bug_url(self):
+        """A DebianTracker should map to a Debian bug URL."""
+        tracker = bugtracker.DebianTracker()
+        self.assertEqual('http://bugs.debian.org/1234',
+                         tracker.get_bug_url('1234'))
+
+    def test_get_bug_url_for_bad_bag(self):
+        """When given a bug identifier that is invalid for Debian,
+        get_bug_url should raise an error.
+        """
+        tracker = bugtracker.DebianTracker()
+        self.assertRaises(MalformedBugIdentifier, tracker.get_bug_url, 'bad')
+
+
 class TestTracTracker(TestCaseWithMemoryTransport):
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
