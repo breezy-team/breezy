@@ -199,7 +199,7 @@ class TestSmartServerRequestRevisionHistory(tests.TestCaseWithTransport):
         tree.lock_write()
         tree.add('')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
         tree.unlock()
         self.assertEqual(
             SmartServerResponse(('ok', ), ('\x00'.join([r1, r2]))),
@@ -243,10 +243,9 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id = u'\xc8'
-        rev_id_utf8 = rev_id.encode('utf-8')
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=rev_id)
+        r2 = tree.commit('2nd commit', rev_id=rev_id_utf8)
         tree.unlock()
         self.assertEqual(
             SmartServerResponse(('ok', '2', rev_id_utf8)),
@@ -316,9 +315,8 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id = u'\xc8'
-        rev_id_utf8 = rev_id.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id)
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
         r2 = tree.commit('2nd commit')
         tree.unlock()
         branch_token = tree.branch.lock_write()
@@ -340,9 +338,8 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id = u'\xc8'
-        rev_id_utf8 = rev_id.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id)
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
         r2 = tree.commit('2nd commit')
         tree.unlock()
         tree.branch.set_revision_history([])
@@ -522,7 +519,7 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
         tree.lock_write()
         tree.add('')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
         tree.unlock()
 
         # the lines of revision_id->revision_parent_list has no guaranteed
@@ -540,13 +537,13 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        r1 = tree.commit('1st commit', rev_id=u'\xc9')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        rev_id_utf8 = u'\xc9'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
         tree.unlock()
 
-        self.assertEqual(SmartServerResponse(('ok', ),
-            u'\xc9'.encode('utf8')),
-            request.execute(backing.local_abspath(''), u'\xc9'.encode('utf8')))
+        self.assertEqual(SmartServerResponse(('ok', ), rev_id_utf8),
+            request.execute(backing.local_abspath(''), rev_id_utf8))
     
     def test_no_such_revision(self):
         backing = self.get_transport()
@@ -580,12 +577,12 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        r1 = tree.commit('a commit', rev_id=u'\xc8abc')
+        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
+        r1 = tree.commit('a commit', rev_id=rev_id_utf8)
         tree.unlock()
-        self.assertTrue(tree.branch.repository.has_revision(u'\xc8abc'))
+        self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
         self.assertEqual(SmartServerResponse(('ok', )),
-            request.execute(backing.local_abspath(''),
-                u'\xc8abc'.encode('utf8')))
+            request.execute(backing.local_abspath(''), rev_id_utf8))
 
 
 class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
@@ -604,14 +601,15 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
     def test_revid_with_committers(self):
         """For a revid we get more infos."""
         backing = self.get_transport()
-        rev_id = u'\xc8abc'
+        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
         request = smart.repository.SmartServerRepositoryGatherStats(backing)
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
         # Let's build a predictable result
         tree.commit('a commit', timestamp=123456.2, timezone=3600)
-        tree.commit('a commit', timestamp=654321.4, timezone=0, rev_id=rev_id)
+        tree.commit('a commit', timestamp=654321.4, timezone=0,
+                    rev_id=rev_id_utf8)
         tree.unlock()
 
         stats = tree.branch.repository.gather_stats()
@@ -622,12 +620,12 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
                          'size: %d\n' % size)
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute(backing.local_abspath(''),
-                                         rev_id.encode('utf8'), 'no'))
+                                         rev_id_utf8, 'no'))
 
     def test_not_empty_repository_with_committers(self):
         """For a revid and requesting committers we get the whole thing."""
         backing = self.get_transport()
-        rev_id = u'\xc8abc'
+        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
         request = smart.repository.SmartServerRepositoryGatherStats(backing)
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
@@ -636,7 +634,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
         tree.commit('a commit', timestamp=123456.2, timezone=3600,
                     committer='foo')
         tree.commit('a commit', timestamp=654321.4, timezone=0,
-                    committer='bar', rev_id=rev_id)
+                    committer='bar', rev_id=rev_id_utf8)
         tree.unlock()
         stats = tree.branch.repository.gather_stats()
 
@@ -648,7 +646,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithTransport):
                          'size: %d\n' % size)
         self.assertEqual(SmartServerResponse(('ok', ), expected_body),
                          request.execute(backing.local_abspath(''),
-                                         rev_id.encode('utf8'), 'yes'))
+                                         rev_id_utf8, 'yes'))
 
 
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithTransport):
