@@ -2293,7 +2293,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             print >>sys.stderr, ('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(test_root))
+                                 '%s' % os.path.basename(dirname))
         else:
             raise
 
