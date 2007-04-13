@@ -40,6 +40,12 @@ IN DEVELOPMENT
     * Move most SmartServer code into a new package, bzrlib/smart.
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
+
+    * Renamed SmartTransport (and subclasses like SmartTCPTransport) to
+      RemoteTransport (and subclasses to RemoteTCPTransport, etc).  This is more
+      consistent with its new home in bzrlib/transport/remote.py, and because
+      it's not really a "smart" transport, just one that does file operations
+      via remote procedure calls.  (Andrew Bennetts)
  
   BUGFIXES:
 

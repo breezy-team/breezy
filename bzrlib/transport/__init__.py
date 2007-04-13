@@ -1252,10 +1252,10 @@ register_lazy_transport('vfat+',
                         'FakeVFATTransportDecorator')
 register_lazy_transport('bzr://',
                         'bzrlib.transport.remote',
-                        'SmartTCPTransport')
+                        'RemoteTCPTransport')
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.remote',
-                        'SmartHTTPTransport')
+                        'RemoteHTTPTransport')
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
-                        'SmartSSHTransport')
+                        'RemoteSSHTransport')
