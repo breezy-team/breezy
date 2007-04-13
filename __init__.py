@@ -17,6 +17,7 @@ from bzrlib.tests import TestUtil
 
 from bzrlib.plugins.multiparent.multiparent import (
     MultiVersionedFile,
+    MultiMemoryVersionedFile,
     )
 """)
 
@@ -31,6 +32,7 @@ class cmd_mp_regen(commands.Command):
                      commands.Option('lsprof-timed', help='Use lsprof'),
                      commands.Option('outfile', type=unicode,
                                      help='Write pseudo-knit to this file'),
+                     commands.Option('memory', help='Use memory, not disk'),
                      commands.Option('extract', help='test extract time'),
                      commands.Option('single', help='use a single parent'),
                      commands.Option('verify', help='verify added texts'),
@@ -39,11 +41,7 @@ class cmd_mp_regen(commands.Command):
 
     def run(self, file=None, sync_snapshots=False, snapshot_interval=26,
             lsprof_timed=False, dump=False, extract=False, single=False,
-            verify=False, outfile=None):
-        if outfile is None:
-            filename = 'pknit'
-        else:
-            filename = outfile
+            verify=False, outfile=None, memory=False):
         if file is None:
             wt, path = WorkingTree.open_containing('.')
             file_weave = wt.branch.repository.get_inventory_weave()
@@ -59,12 +57,15 @@ class cmd_mp_regen(commands.Command):
             print >> sys.stderr, 'Snapshots follow input'
         else:
             print >> sys.stderr, 'Snapshot interval: %d' % snapshot_interval
-        try:
-            os.unlink(filename)
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        vf = MultiVersionedFile(filename, snapshot_interval)
+        if not memory:
+            if outfile is None:
+                filename = 'pknit'
+            else:
+                filename = outfile
+            vf = MultiVersionedFile(filename, snapshot_interval)
+        else:
+            vf = MultiMemoryVersionedFile(snapshot_interval)
+        vf.destroy()
         snapshots = set(r for r in file_weave.versions() if
                         file_weave._index.get_method(r) == 'fulltext')
         if sync_snapshots:
@@ -78,11 +79,7 @@ class cmd_mp_regen(commands.Command):
             vf.import_versionedfile(file_weave, to_sync, single_parent=single,
                                     verify=verify)
         except:
-            try:
-                os.unlink(filename)
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+            vf.destroy()
             raise
         try:
             print >> sys.stderr, "%d actual snapshots" % len(to_sync)
@@ -115,11 +112,7 @@ class cmd_mp_regen(commands.Command):
                 print >> sys.stderr, time.clock() - start
         finally:
             if outfile is None:
-                try:
-                    os.unlink()
-                except OSError, e:
-                    if e.errno != ENOENT:
-                        raise
+                vf.destroy()
 
 commands.register_command(cmd_mp_regen)
 

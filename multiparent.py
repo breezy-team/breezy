@@ -1,5 +1,6 @@
-from difflib import SequenceMatcher
+import errno
 from itertools import chain
+import os
 from StringIO import StringIO
 import sys
 
@@ -380,6 +381,9 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
     def get_diff(self, version_id):
         return self._diffs[version_id]
 
+    def destroy(self):
+        self._diffs = {}
+
 
 class MultiVersionedFile(BaseVersionedFile):
 
@@ -418,6 +422,13 @@ class MultiVersionedFile(BaseVersionedFile):
             outfile.close()
         self._diff_offset[version_id] = (start, end-start)
         self._parents[version_id] = parent_ids
+
+    def destroy(self):
+        try:
+            os.unlink(self._filename)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
 
 
 class _Reconstructor(object):
