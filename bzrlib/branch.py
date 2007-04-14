@@ -195,6 +195,22 @@ class Branch(object):
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
 
+    def leave_lock_in_place(self):
+        """Tell this branch object not to release the physical lock when this
+        object is unlocked.
+        
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.leave_in_place()
+
+    def dont_leave_lock_in_place(self):
+        """Tell this branch object to release the physical lock when this
+        object is unlocked, even if it didn't originally acquire it.
+
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.dont_leave_in_place()
+
     def abspath(self, name):
         """Return absolute filename for something in the branch
         
@@ -1223,13 +1239,14 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self):
-        self.repository.lock_write()
+    def lock_write(self, token=None):
+        repo_token = self.repository.lock_write()
         try:
-            self.control_files.lock_write()
+            token = self.control_files.lock_write(token=token)
         except:
             self.repository.unlock()
             raise
+        return token
 
     def lock_read(self):
         self.repository.lock_read()

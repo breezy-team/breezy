@@ -534,7 +534,7 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
 
     def test_probe_transport(self):
         t = self.get_transport()
-        self.assertIsInstance(t, remote.SmartTransport)
+        self.assertIsInstance(t, remote.RemoteTransport)
 
     def test_get_medium_from_transport(self):
         """Remote transport has a medium always, which it can return."""
@@ -793,7 +793,7 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread()
         try:
-            transport = remote.SmartTCPTransport(smart_server.get_url())
+            transport = remote.RemoteTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -824,7 +824,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.transport = remote.SmartTCPTransport(self.server.get_url())
+        self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
 
     def tearDownServer(self):
@@ -842,7 +842,7 @@ class TestServerSocketUsage(SmartTCPTests):
         """It should be safe to teardown the server with no requests."""
         self.setUpServer()
         server = self.server
-        transport = remote.SmartTCPTransport(self.server.get_url())
+        transport = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
@@ -854,7 +854,7 @@ class TestServerSocketUsage(SmartTCPTests):
         self.tearDownServer()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.SmartTCPTransport(server.get_url())
+        transport = remote.RemoteTCPTransport(server.get_url())
         self.assertRaises(errors.ConnectionError, transport.has, '.')
 
 
@@ -1111,7 +1111,7 @@ class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
         t = get_transport('bzr+ssh://example.com/path')
-        self.assertIsInstance(t, remote.SmartSSHTransport)
+        self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
 
@@ -1122,7 +1122,7 @@ class TestRemoteTransport(tests.TestCase):
         input = StringIO("ok\n3\nbardone\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        transport = remote.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
 
         # We want to make sure the client is used when the first remote
@@ -1142,7 +1142,7 @@ class TestRemoteTransport(tests.TestCase):
     def test__translate_error_readonly(self):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
         client_medium = medium.SmartClientMedium()
-        transport = remote.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         self.assertRaises(errors.TransportNotPossible,
             transport._translate_error, ("ReadOnlyError", ))
@@ -1544,7 +1544,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         http_transport = self.get_readonly_transport()
         medium = http_transport.get_smart_medium()
         #remote_transport = RemoteTransport('fake_url', medium)
-        remote_transport = remote.SmartTransport('/', medium=medium)
+        remote_transport = remote.RemoteTransport('/', medium=medium)
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 

@@ -31,6 +31,7 @@ import ftplib
 import os
 import urllib
 import urlparse
+import select
 import stat
 import threading
 import time
@@ -47,6 +48,7 @@ from bzrlib.transport import (
     split_url,
     Transport,
     )
+from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
 
 _have_medusa = False
@@ -550,10 +552,12 @@ class FtpServer(Server):
         """This is used by medusa.ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self):
-
+    def setUp(self, vfs_server=None):
         if not _have_medusa:
             raise RuntimeError('Must have medusa to run the FtpServer')
+
+        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
+            "FtpServer currently assumes local transport, got %s" % vfs_server
 
         self._root = os.getcwdu()
         self._ftp_server = _ftp_server(
@@ -566,7 +570,8 @@ class FtpServer(Server):
         self._port = self._ftp_server.getsockname()[1]
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 100s, or 1000 requests
-        self._async_thread = threading.Thread(target=asyncore.loop,
+        self._async_thread = threading.Thread(
+                target=FtpServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':1000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
@@ -577,6 +582,19 @@ class FtpServer(Server):
         self._ftp_server.del_channel()
         asyncore.close_all()
         self._async_thread.join()
+
+    @staticmethod
+    def _asyncore_loop_ignore_EBADF(*args, **kwargs):
+        """Ignore EBADF during server shutdown.
+
+        We close the socket to get the server to shutdown, but this causes
+        select.select() to raise EBADF.
+        """
+        try:
+            asyncore.loop(*args, **kwargs)
+        except select.error, e:
+            if e.args[0] != errno.EBADF:
+                raise
 
 
 _ftp_channel = None

@@ -227,6 +227,195 @@ class TestBranchLocking(TestCaseWithBranch):
                           ('rc', 'ul', True),
                          ], self.locks)
 
+    def test_lock_write_returns_None_refuses_token(self):
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is not None:
+                # This test does not apply, because this lockable supports
+                # tokens.
+                return
+            self.assertRaises(errors.TokenLockingNotSupported,
+                              branch.lock_write, token='token')
+        finally:
+            branch.unlock()
+
+    def test_reentering_lock_write_raises_on_token_mismatch(self):
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            different_branch_token = token + 'xxx'
+            # Re-using the same lockable instance with a different branch token
+            # will raise TokenMismatch.
+            self.assertRaises(errors.TokenMismatch,
+                              branch.lock_write,
+                              token=different_branch_token)
+        finally:
+            branch.unlock()
+
+    def test_lock_write_with_nonmatching_token(self):
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this branch refuses
+                # tokens.
+                return
+            different_branch_token = token + 'xxx'
+
+            new_branch = branch.bzrdir.open_branch()
+            # We only want to test the relocking abilities of branch, so use the
+            # existing repository object which is already locked.
+            new_branch.repository = branch.repository
+            self.assertRaises(errors.TokenMismatch,
+                              new_branch.lock_write,
+                              token=different_branch_token)
+        finally:
+            branch.unlock()
+
+
+    def test_lock_write_with_matching_token(self):
+        """Test that a branch can be locked with a token, if it is already
+        locked by that token."""
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this branch refuses tokens.
+                return
+            # The same instance will accept a second lock_write if the specified
+            # token matches.
+            branch.lock_write(token=token)
+            branch.unlock()
+            # Calling lock_write on a new instance for the same lockable will
+            # also succeed.
+            new_branch = branch.bzrdir.open_branch()
+            # We only want to test the relocking abilities of branch, so use the
+            # existing repository object which is already locked.
+            new_branch.repository = branch.repository
+            new_branch.lock_write(token=token)
+            new_branch.unlock()
+        finally:
+            branch.unlock()
+
+    def test_unlock_after_lock_write_with_token(self):
+        # If lock_write did not physically acquire the lock (because it was
+        # passed some tokens), then unlock should not physically release it.
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            new_branch = branch.bzrdir.open_branch()
+            # We only want to test the relocking abilities of branch, so use the
+            # existing repository object which is already locked.
+            new_branch.repository = branch.repository
+            new_branch.lock_write(token=token)
+            new_branch.unlock()
+            self.assertTrue(branch.get_physical_lock_status()) #XXX
+        finally:
+            branch.unlock()
+
+    def test_lock_write_with_token_fails_when_unlocked(self):
+        # First, lock and then unlock to get superficially valid tokens.  This
+        # mimics a likely programming error, where a caller accidentally tries
+        # to lock with a token that is no longer valid (because the original
+        # lock was released).
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        branch.unlock()
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+
+        self.assertRaises(errors.TokenMismatch,
+                          branch.lock_write, token=token)
+
+    def test_lock_write_reenter_with_token(self):
+        branch = self.make_branch('b')
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this lockable refuses
+                # tokens.
+                return
+            # Relock with a token.
+            branch.lock_write(token=token)
+            branch.unlock()
+        finally:
+            branch.unlock()
+        # The lock should be unlocked on disk.  Verify that with a new lock
+        # instance.
+        new_branch = branch.bzrdir.open_branch()
+        # Calling lock_write now should work, rather than raise LockContention.
+        new_branch.lock_write()
+        new_branch.unlock()
+
+    def test_leave_lock_in_place(self):
+        branch = self.make_branch('b')
+        # Lock the branch, then use leave_lock_in_place so that when we
+        # unlock the branch the lock is still held on disk.
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError,
+                                  branch.leave_lock_in_place)
+                return
+            branch.leave_lock_in_place()
+        finally:
+            branch.unlock()
+        # We should be unable to relock the repo.
+        self.assertRaises(errors.LockContention, branch.lock_write)
+
+    def test_dont_leave_lock_in_place(self):
+        branch = self.make_branch('b')
+        # Create a lock on disk.
+        token = branch.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this branch refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError,
+                                  branch.dont_leave_lock_in_place)
+                return
+            try:
+                branch.leave_lock_in_place()
+            except NotImplementedError:
+                # This branch doesn't support this API.
+                return
+            branch.repository.leave_lock_in_place()
+            repo_token = branch.repository.lock_write()
+            branch.repository.unlock()
+        finally:
+            branch.unlock()
+        # Reacquire the lock (with a different branch object) by using the
+        # tokens.
+        new_branch = branch.bzrdir.open_branch()
+        # We have to explicitly lock the repository first.
+        new_branch.repository.lock_write(token=repo_token)
+        new_branch.lock_write(token=token)
+        # Now we don't need our own repository lock anymore (the branch is
+        # holding it for us).
+        new_branch.repository.unlock()
+        # Call dont_leave_lock_in_place, so that the lock will be released by
+        # this instance, even though the lock wasn't originally acquired by it.
+        new_branch.dont_leave_lock_in_place()
+        new_branch.repository.dont_leave_lock_in_place()
+        new_branch.unlock()
+        # Now the branch (and repository) is unlocked.  Test this by locking it
+        # without tokens.
+        branch.lock_write()
+        branch.unlock()
+
     def test_lock_read_then_unlock(self):
         # Calling lock_read then unlocking should work without errors.
         branch = self.make_branch('b')
