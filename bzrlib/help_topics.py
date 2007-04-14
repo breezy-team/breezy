@@ -229,6 +229,40 @@ Related commands:
               commits are only made locally
 """
 
+_repositories = \
+"""Repositories
+
+Repositories in Bazaar are a way of sharing storage between different branches.
+If a branch is created within a shared repository then it will place the
+revisions within it. Then when any other branches are created within the same
+repository they will use the same revisions where they are common to both
+branches. This has little effect for distinct projects, but where the branches
+share some history there will be a large space saving. The space savings can
+also become large time savings as well, for instance when branching within
+a shared repositories.
+
+To create a shared repository use the init-repository command (or the alias
+init-repo). This command takes as an argument the location of the repository
+to create. This means that 'bzr init-repository repo' will create a directory
+named 'repo', which contains a shared repository. Any new branches that are
+created in this directory will then be 'in' the repository, and use it for
+storage.
+
+It is a good idea to create a repository whenever you might create more
+than one branch of a project. This is true for both working areas where you
+are doing the development, and any server areas that you use for hosting
+projects. In the latter case, if you do not want to do work directly there
+you may wish to not have the branches have working trees. If the working trees
+are not present then there will be less disk space used, and a lot of
+operations will be sped up. To create a repository in which the branches will
+not have working trees pass the '--no-trees' option to 'init-repository'.
+
+Related commands:
+
+  init-repository   Create a shared repository. Use --no-trees to create one
+                    in which new branches wont get a working tree.
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
@@ -242,4 +276,6 @@ topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
+topic_registry.register('repositories', _repositories,
+                        'Basic information on shared repositories.')
 

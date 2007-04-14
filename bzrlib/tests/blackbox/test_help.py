@@ -57,6 +57,13 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
 
+    def test_help_repositories(self):
+        """Smoke test for 'bzr help repositories'"""
+        out, err = self.runbzr('help repositories')
+        self.assertContainsRe(out, 'repository')
+        self.assertContainsRe(out, '--no-trees')
+        self.assertContainsRe(out, 'init-repository')
+
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]

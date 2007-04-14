@@ -1279,11 +1279,17 @@ class cmd_init_repository(Command):
     in the repository, not in the branch directory.
 
     example:
-        bzr init-repo --no-trees repo
+        bzr init-repo repo
         bzr init repo/trunk
         bzr checkout --lightweight repo/trunk trunk-checkout
         cd trunk-checkout
         (add files here)
+    or:
+        bzr init-repo --no-trees repo
+    as the first step to get a repository where the branches inside will not
+    have working trees.
+
+    See 'bzr help repositories' for more information.
     """
 
     takes_args = ["location"]
