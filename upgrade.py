@@ -18,7 +18,7 @@
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 from repository import (MAPPING_VERSION, parse_svn_revision_id, 
                         unescape_svn_path, generate_svn_revision_id)
@@ -90,11 +90,11 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
     oldinv = repository.get_revision_inventory(oldrevid)
     total = len(oldinv)
-    pb = ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         for path, ie in oldinv.iter_entries():
             pb.update('upgrading revision', i, total)
-            i+=1
+            i += 1
             new_ie = ie.copy()
             if new_ie.revision == oldrevid:
                 new_ie.revision = None
@@ -188,14 +188,14 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             for x in graph:
                 if revid in graph[x]:
                     yield x
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         try:
             for revid in graph:
                 pb.update('gather revision information', i, len(graph))
-                i+=1
+                i += 1
                 try:
-                    (uuid, bp, rev, version) = parse_legacy_revision_id(revid)
+                    (uuid, bp, rev, _) = parse_legacy_revision_id(revid)
                     newrevid = generate_svn_revision_id(uuid, rev, bp)
                     if svn_repository.has_revision(newrevid):
                         rename_map[revid] = newrevid
@@ -231,24 +231,24 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
             pb.finished()
 
         # Make sure all the required current version revisions are present
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         try:
             for revid in needed_revs:
                 pb.update('fetching new revisions', i, len(needed_revs))
                 repository.fetch(svn_repository, revid)
-                i+=1
+                i += 1
         finally:
             pb.finished()
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         i = 0
         total = len(needs_upgrading)
         try:
             while len(needs_upgrading) > 0:
                 revid = needs_upgrading.pop()
                 pb.update('upgrading revisions', i, total)
-                i+=1
+                i += 1
                 newrevid = create_upgraded_revid(revid)
                 rename_map[revid] = newrevid
                 if repository.has_revision(newrevid):

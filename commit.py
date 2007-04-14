@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,11 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
-from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
-                           DivergedBranches)
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.errors import InvalidRevisionId, DivergedBranches
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
@@ -35,7 +34,7 @@ class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
     def __init__(self, repository, branch, parents, config, revprops, 
-                 revision_id):
+                 revision_id, old_inv=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
@@ -91,11 +90,15 @@ class SvnCommitBuilder(RootCommitBuilder):
         assert (self.branch.last_revision() is None or 
                 self.branch.last_revision() in parents)
 
-        if self.branch.last_revision() is None:
-            self.old_inv = Inventory(ROOT_ID)
+        if old_inv is None:
+            if self.branch.last_revision() is None:
+                self.old_inv = Inventory(root_id=None)
+            else:
+                self.old_inv = self.repository.get_inventory(
+                                   self.branch.last_revision())
         else:
-            self.old_inv = self.repository.get_inventory(
-                               self.branch.last_revision())
+            self.old_inv = old_inv
+            assert self.old_inv.revision_id == self.branch.last_revision()
 
         self.modified_files = {}
         self.modified_dirs = []
@@ -152,10 +155,10 @@ class SvnCommitBuilder(RootCommitBuilder):
                     child_ie.parent_id != self.new_inventory[child_ie.file_id].parent_id or
                     # ... name changed
                     self.new_inventory[child_ie.file_id].name != child_name):
-                       mutter('removing %r' % child_ie.file_id)
-                       svn.delta.editor_invoke_delete_entry(self.editor, 
-                               os.path.join(self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)), 
-                               self.base_revnum, baton, self.pool)
+                    mutter('removing %r' % child_ie.file_id)
+                    svn.delta.editor_invoke_delete_entry(self.editor, 
+                            os.path.join(self.branch.branch_path, self.old_inv.id2path(child_ie.file_id)), 
+                            self.base_revnum, baton, self.pool)
 
         # Loop over file members of file_id in self.new_inventory
         for child_name in self.new_inventory[file_id].children:
@@ -290,15 +293,16 @@ class SvnCommitBuilder(RootCommitBuilder):
 
     def commit(self, message):
         def done(revision, date, author):
+            assert revision > 0
             self.revnum = revision
-            assert self.revnum > 0
             self.date = date
             self.author = author
             mutter('committed %r, author: %r, date: %r' % (revision, author, date))
         
         mutter('obtaining commit editor')
+        self.revnum = None
         self.editor, editor_baton = self.repository.transport.get_commit_editor(
-            message, done, None, False)
+            message.encode("utf-8"), done, None, False)
 
         if self.branch.last_revision() is None:
             self.base_revnum = 0
@@ -321,6 +325,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
 
+        assert self.revnum is not None
         revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)
 
@@ -380,17 +385,28 @@ def push_as_merged(target, source, revision_id):
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
-    mutter('committing %r on top of %r' % (revision_id, 
-                                  target.last_revision()))
+    # revision on top of which to commit
+    prev_revid = target.last_revision()
+
+    mutter('committing %r on top of %r' % (revision_id, prev_revid))
 
     old_tree = source.repository.revision_tree(revision_id)
-    new_tree = target.repository.revision_tree(target.last_revision())
+    if source.repository.has_revision(prev_revid):
+        new_tree = source.repository.revision_tree(prev_revid)
+    else:
+        new_tree = target.repository.revision_tree(prev_revid)
 
-    builder = target.get_commit_builder([revision_id, target.last_revision()])
+    builder = SvnCommitBuilder(target.repository, target, 
+                               [revision_id, prev_revid],
+                               target.get_config(),
+                               rev.properties, 
+                               None,
+                               new_tree.inventory)
+                         
     delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
 
-    for (name, ie) in inv.entries():
+    for (_, ie) in inv.entries():
         if not delta.touches_file_id(ie.file_id):
             continue
 

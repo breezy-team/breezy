@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,28 +22,22 @@ import sys
 import unittest
 import bzrlib
 
-try:
-    from bzrlib.trace import warning
-except ImportError:
-    # get the message out any way we can
-    from warnings import warn as warning
+from bzrlib.trace import warning
 
 __version__ = '0.4.0'
-required_bzr_version = (0,15)
+COMPATIBLE_BZR_VERSIONS = [(0, 15), (0, 16)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
 
-    If version is < desired version, assume incompatible.
-    If version == desired version, assume completely compatible
-    If version == desired version + 1, assume compatible, with deprecations
+    If version is < all compatible version, assume incompatible.
+    If version is compatible version + 1, assume compatible, with deprecations
     Otherwise, assume incompatible.
     """
-    desired_plus = (desired[0], desired[1]+1)
     bzrlib_version = bzrlib.version_info[:2]
-    if bzrlib_version == desired:
+    if bzrlib_version in desired:
         return
-    if bzrlib_version < desired:
+    if bzrlib_version < desired[0]:
         warning('Installed bzr version %s is too old to be used with bzr-svn'
                 ' %s.' % (bzrlib.__version__, __version__))
         # Not using BzrNewError, because it may not exist.
@@ -52,17 +46,17 @@ def check_bzrlib_version(desired):
         warning('bzr-svn is not up to date with installed bzr version %s.'
                 ' \nThere should be a newer version of bzr-svn available.' 
                 % (bzrlib.__version__))
-        if bzrlib_version != desired_plus:
+        if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise Exception, 'Version mismatch'
 
 def check_subversion_version():
     """Check that Subversion is compatible.
 
     """
-    try:
-        from svn.delta import svn_delta_invoke_txdelta_window_handler
-    except:
-        warning('Installed Subversion version does not have updated Python bindings. See the bzr-svn README for details.')
+    import svn.delta
+    if not hasattr(svn.delta, 'svn_delta_invoke_txdelta_window_handler'):
+        warning('Installed Subversion version does not have updated Python '
+                'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
 def check_pysqlite_version():
@@ -75,7 +69,8 @@ def check_pysqlite_version():
         except ImportError:
             from pysqlite2 import dbapi2 as sqlite3
     except:
-        warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 module')
+        warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
+                'module')
         raise bzrlib.errors.BzrError("missing sqlite library")
 
     if (sqlite3.sqlite_version_info[0] < 3 or 
@@ -84,7 +79,7 @@ def check_pysqlite_version():
         warning('Needs at least sqlite 3.3.x')
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
-check_bzrlib_version(required_bzr_version)
+check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
 check_subversion_version()
 check_pysqlite_version()
 
@@ -107,13 +102,9 @@ from fetch import InterSvnRepository
 BzrDirFormat.register_control_format(format.SvnFormat)
 
 import svn.core
-subr_version = svn.core.svn_subr_version()
+_subr_version = svn.core.svn_subr_version()
 
-if subr_version.major == 1 and subr_version.minor < 4:
-    from bzrlib.trace import warning
-    warning('Subversion version too old for working tree support.')
-else:
-    BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
+BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
@@ -141,7 +132,9 @@ class cmd_svn_import(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = [Option('trees', help='Create working trees'),
                      Option('shared', help='Create shared repository'),
-                     Option('all', help='Convert all revisions, even those not in current branch history (implies --shared)'),
+                     Option('all', 
+                         help='Convert all revisions, even those not in '
+                              'current branch history (implies --shared)'),
                      Option('scheme', type=get_scheme,
                          help='Branching scheme (none, trunk, or trunk-INT)')]
 
@@ -198,7 +191,7 @@ register_command(cmd_svn_upgrade)
 
 
 def test_suite():
-    from unittest import TestSuite, TestLoader
+    from unittest import TestSuite
     import tests
     suite = TestSuite()
     suite.addTest(tests.test_suite())

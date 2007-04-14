@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,3 +49,8 @@ def convert_svn_error(unbound):
     convert.__doc__ = unbound.__doc__
     convert.__name__ = unbound.__name__
     return convert
+
+
+class NoCheckoutSupport(BzrError):
+
+    _fmt = 'Subversion version too old for working tree support.'

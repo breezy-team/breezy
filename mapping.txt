@@ -3,6 +3,7 @@ This document specifies mapping between Subversion and Bazaar semantics.
 Revision: 3
 Jelmer Vernooij <jelmer@samba.org>, June 2006.
 Updated October 2006.
+Updated December 2006.
 Updated January 2007.
 Updated February 2007.
 
@@ -90,6 +91,9 @@ File ids use the following syntax:
 <REVNO>@<UUID>:<BRANCHPATH>:<PATH>
 
 Since / is forbidden in file ids, all characters are urlencoded.
+
+The same rules apply to the roots of branches. This means there is no 
+predefined file id for tree roots.
 
 Alternatively, these file ids can be mapped to more specific file ids. Such 
 a map should be stored in the `bzr:file-ids' property that is set on the 
@@ -189,3 +193,6 @@ Revision 3 changed the file id format, changed the urlencoding to be
 uppercased, changed the separator between uuids and branch paths in the 
 revision id from "-" to ":", added the branching scheme to the revision id 
 and added the bzr:revision-id-vX property.
+
+Revision 3 uses real file ids for the tree root rather than the hardcoded 
+"TREE_ROOT" and adds the file id map.

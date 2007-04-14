@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ from bzrlib.errors import NoSuchRevision
 from tests import TestCaseWithSubversionRepository
 from branchprops import BranchPropertyList
 from logwalker import LogWalker
-from scheme import NoBranchingScheme
 from transport import SvnRaTransport
 
 try:

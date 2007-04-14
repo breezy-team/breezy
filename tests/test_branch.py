@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,20 +15,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
-from bzrlib.inventory import ROOT_ID
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
 import os
 from unittest import TestCase
 
-import svn.core, svn.client
-
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
-import format
+from fileids import generate_svn_file_id
 from repository import MAPPING_VERSION, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
@@ -37,7 +34,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         branch = Branch.open(repos_url)
         branch.revision_history()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
     def test_set_parent(self):
         repos_url = self.make_client('a', 'dc')
@@ -48,7 +45,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
-        self.assertEqual(None, branch.last_revision())
+        self.assertEqual(branch.generate_revision_id(0),
+                         branch.last_revision())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -78,7 +76,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_root_id_empty(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual(ROOT_ID, branch.get_root_id())
+        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 0, "", ""), branch.get_root_id())
 
     def test_get_root_id_trunk(self):
         repos_url = self.make_client('a', 'dc')
@@ -86,7 +84,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "msg")
         branch = Branch.open("svn+"+repos_url+"/trunk")
-        self.assertEqual(ROOT_ID, branch.get_root_id())
+        self.assertEqual(generate_svn_file_id(branch.repository.uuid, 1, "trunk", ""), branch.get_root_id())
 
     def test_break_lock(self):
         repos_url = self.make_client('a', 'dc')
@@ -127,7 +125,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
 
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual([], branch.revision_history())
+        self.assertEqual([branch.generate_revision_id(0)], branch.revision_history())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -136,7 +134,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual([repos.generate_revision_id(1, "")], 
+        self.assertEqual([repos.generate_revision_id(0, ""), 
+                    repos.generate_revision_id(1, "")], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -146,6 +145,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
+            repos.generate_revision_id(0, ""),
             repos.generate_revision_id(1, ""),
             repos.generate_revision_id(2, "")],
             branch.revision_history())
@@ -474,13 +474,13 @@ foohosts""")
                           weave.versions())
 
     def test_check(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         branch = Branch.open('d')
         result = branch.check()
         self.assertEqual(branch, result.branch) 
  
     def test_generate_revision_id(self):
-        repos_url = self.make_client('d', 'dc')
+        self.make_client('d', 'dc')
         branch = Branch.open('d')
         self.assertEqual("svn-v%d-undefined:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
 
@@ -494,7 +494,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e")
+        newtree = self.create_checkout(oldbranch, "e")
         self.assertTrue(newtree.branch.repository.has_revision(
            oldbranch.generate_revision_id(1)))
 
@@ -512,7 +512,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e", lightweight=True)
+        newtree = self.create_checkout(oldbranch, "e", lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1), newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))
@@ -531,7 +531,7 @@ foohosts""")
         url = "svn+"+repos_url+"/trunk"
         oldbranch = Branch.open(url)
 
-        newtree = oldbranch.create_checkout("e", revision_id=
+        newtree = self.create_checkout(oldbranch, "e", revision_id=
            oldbranch.generate_revision_id(1), lightweight=True)
         self.assertEqual(oldbranch.generate_revision_id(1),
            newtree.base_revid)
@@ -539,13 +539,13 @@ foohosts""")
         self.assertFalse(os.path.exists("e/.bzr"))
 
     def test_fetch_branch(self):
-        repos_url = self.make_client('d', 'sc')
+        self.make_client('d', 'sc')
 
         self.build_tree({'sc/foo/bla': "data"})
         self.client_add("sc/foo")
         self.client_commit("sc", "foo")
 
-        olddir = BzrDir.open("sc")
+        olddir = self.open_checkout_bzrdir("sc")
 
         os.mkdir("dc")
         
@@ -555,17 +555,61 @@ foohosts""")
                 olddir.open_branch().last_revision(),
                 newdir.open_branch().last_revision())
 
+    def test_fetch_dir_upgrade(self):
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/trunk/mylib/bla': "data", "sc/branches": None})
+        self.client_add("sc/trunk")
+        self.client_add("sc/branches")
+        self.client_commit("sc", "foo")
+
+        self.client_copy("sc/trunk/mylib", "sc/branches/abranch")
+        self.client_commit("sc", "Promote mylib")
+
+        olddir = self.open_checkout_bzrdir("sc/branches/abranch")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+
+        self.assertEqual(
+                olddir.open_branch().last_revision(),
+                newdir.open_branch().last_revision())
+
+    def test_fetch_branch_downgrade(self):
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/trunk': None, "sc/branches/abranch/bla": 'foo'})
+        self.client_add("sc/trunk")
+        self.client_add("sc/branches")
+        self.client_commit("sc", "foo")
+
+        self.client_copy("sc/branches/abranch", "sc/trunk/mylib")
+        self.client_commit("sc", "Demote mylib")
+
+        olddir = self.open_checkout_bzrdir("sc/trunk")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+
+        self.assertEqual(
+                olddir.open_branch().last_revision(),
+                newdir.open_branch().last_revision())
+
+
+
     def test_ghost_workingtree(self):
         # Looks like bazaar has trouble creating a working tree of a 
         # revision that has ghost parents
-        repos_url = self.make_client('d', 'sc')
+        self.make_client('d', 'sc')
 
         self.build_tree({'sc/foo/bla': "data"})
         self.client_add("sc/foo")
         self.client_set_prop("sc", "bzr:merge", "some-ghost\n")
         self.client_commit("sc", "foo")
 
-        olddir = BzrDir.open("sc")
+        olddir = self.open_checkout_bzrdir("sc")
 
         os.mkdir("dc")
         

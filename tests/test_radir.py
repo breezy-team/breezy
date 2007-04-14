@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,7 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, NotBranchError, NotLocalUrl
-from bzrlib.tests import TestCase
-from bzrlib.transport import get_transport
 
-from format import SvnRemoteAccess
-from repository import SvnRepository
 from tests import TestCaseWithSubversionRepository
 
 class TestRemoteAccess(TestCaseWithSubversionRepository):
@@ -29,7 +25,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.build_tree({"dc/foo": None})
         self.client_add("dc/foo")
         self.client_commit("dc", "msg")
-        x = BzrDir.open("dc")
+        x = self.open_checkout_bzrdir("dc")
         self.assertRaises(NotImplementedError, x.clone, "dir")
 
     def test_open_workingtree(self):

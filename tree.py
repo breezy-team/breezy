@@ -14,16 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from binascii import hexlify
-from bzrlib.bzrdir import BzrDirFormat
-from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              ROOT_ID)
-from bzrlib.lockable_files import TransportLock, LockableFiles
-from bzrlib.lockdir import LockDir
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.progress import DummyProgress
-from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
@@ -33,7 +25,7 @@ from cStringIO import StringIO
 import urllib
 
 import svn.core, svn.wc, svn.delta
-from svn.core import SubversionException, Pool
+from svn.core import Pool
 
 def apply_txdelta_handler(src_stream, target_stream, pool):
     assert hasattr(src_stream, 'read')
@@ -51,7 +43,7 @@ def apply_txdelta_handler(src_stream, target_stream, pool):
     return wrapper
 
 class SvnRevisionTree(RevisionTree):
-     def __init__(self, repository, revision_id, inventory=None):
+    def __init__(self, repository, revision_id):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
@@ -69,7 +61,7 @@ class SvnRevisionTree(RevisionTree):
         reporter.finish_report(pool)
         pool.destroy()
 
-     def get_file_lines(self, file_id):
+    def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])
 
 
@@ -86,9 +78,14 @@ class TreeBuildEditor(svn.delta.Editor):
         self.revnum = revnum
 
     def open_root(self, revnum, baton):
-        return ROOT_ID
+        file_id, revision_id = self.tree.id_map[""]
+        ie = self.tree._inventory.add_path("", 'directory', file_id)
+        ie.revision = revision_id
+        self.tree._inventory.revision_id = revision_id
+        return file_id
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+        path = path.decode("utf-8")
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
@@ -96,18 +93,19 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
-                        SVN_PROP_BZR_REVPROP_PREFIX, SVN_PROP_BZR_FILEIDS)
+                        SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVPROP_PREFIX, 
+                        SVN_PROP_BZR_FILEIDS)
 
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
         elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
-            if id != ROOT_ID:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
                 return
         elif name == SVN_PROP_BZR_FILEIDS:
-            if id != self.tree.id_map[""][0]:
+            if id != self.tree._inventory.root.file_id:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_FILEIDS)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
@@ -120,10 +118,13 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
             pass
-        else:
+        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
+              name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
+        from repository import SVN_PROP_BZR_PREFIX
+
         if name == svn.core.SVN_PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == svn.core.SVN_PROP_SPECIAL:
@@ -138,10 +139,12 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        else:
+        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
+              name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        path = path.decode("utf-8")
         self.is_symlink = False
         self.is_executable = False
         return path
@@ -197,11 +200,10 @@ class SvnBasisTree(RevisionTree):
     """Optimized version of SvnRevisionTree."""
     def __init__(self, workingtree):
         self.workingtree = workingtree
-        self._revision_id = workingtree.branch.repository.generate_revision_id(
-                workingtree.base_revnum, workingtree.branch.branch_path)
+        self._revision_id = workingtree.branch.generate_revision_id(workingtree.base_revnum)
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, workingtree.branch.branch_path)
-        self._inventory = Inventory()
+        self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 
         def add_file_to_inv(relpath, id, revid, wc):
@@ -240,6 +242,8 @@ class SvnBasisTree(RevisionTree):
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
             ie.revision = revid
+            if relpath == "":
+                self._inventory.revision_id = revid
 
             for name in entries:
                 if name == "":

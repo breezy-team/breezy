@@ -1,5 +1,5 @@
 bzr-svn 0.4	UNRELEASED
-
+  
   BUG FIXES
 
    * Non-ascii characters in file ids are now supported (fixes imports 
@@ -18,17 +18,30 @@ bzr-svn 0.4	UNRELEASED
 
   IMPROVEMENTS
 
-   * A proper warning will now be printed if no sqlite implementation is 
-     available.
-
-   * Working tree copies will be disabled if the version of python-subversion 
-     is too old.
-
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
+
+bzr-svn 0.3.3	UNRELEASED
+
+  IMPROVEMENTS
+
+  * Don't do extra checkout before push if possible. (#91885)
+
+bzr-svn 0.3.2	2007-03-13
+
+  BUG FIXES
+
+  * Fix compatibility with Bazaar 0.15.
+
+  * Check for parent paths moving as well in LogWalker.find_latest_change(). 
+    Fixes #84087.
+
+  * Handle unicode characters in commit messages. Fixes #85551.
+
+  * Handle unicode characters in filenames (#54736)
 
 bzr-svn 0.3.1	2007-01-31
 

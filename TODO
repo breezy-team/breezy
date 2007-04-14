@@ -12,7 +12,10 @@
 - make ListBranchingScheme() support wildcards
  - rewrite TrunkBranchingScheme() and ListBranchingScheme() as subclasses of 
    ListBranchingScheme()
-- support multiple branching schemes per repository
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
 - free memory!
 - implement BzrDirFormat.get_converter()
+- report changes to delta editor in Branch.pull()
+- add tests for objects returned by WorkingTree.pull(), Branch.pull()
+- blackbox tests
+- test Branch.get_parent()

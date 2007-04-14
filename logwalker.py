@@ -14,10 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
-from bzrlib.progress import DummyProgress
-from bzrlib.trace import mutter
-from bzrlib.ui import ui_factory
+from bzrlib.errors import NoSuchRevision
+import bzrlib.ui as ui
 
 import os
 
@@ -31,8 +29,6 @@ try:
     import sqlite3
 except ImportError:
     from pysqlite2 import dbapi2 as sqlite3
-
-shelves = {}
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -100,11 +96,10 @@ class LogWalker(object):
         """
         to_revnum = max(self.last_revnum, to_revnum)
 
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
 
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
-            paths = {}
             if orig_paths is None:
                 orig_paths = {}
             for p in orig_paths:
@@ -158,7 +153,7 @@ class LogWalker(object):
 
         path = path.strip("/")
 
-        while revnum > 0:
+        while revnum >= 0:
             revpaths = self.get_revision_paths(revnum, path)
 
             if revpaths != {}:
@@ -175,7 +170,7 @@ class LogWalker(object):
                     revnum = revpaths[path][2]
                     path = revpaths[path][1]
                     continue
-            revnum-=1
+            revnum -= 1
 
     def get_revision_paths(self, revnum, path=None):
         """Obtain dictionary with all the changes in a particular revision.
@@ -207,11 +202,15 @@ class LogWalker(object):
         :param revnum: Revision number.
         :returns: Tuple with author, log message and date of the revision.
         """
-        assert revnum >= 1
+        assert revnum >= 0
+        if revnum == 0:
+            return (None, None, None)
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
-        return (author, _escape_commit_message(base64.b64decode(message)), date)
+        if message is not None:
+            message = _escape_commit_message(base64.b64decode(message))
+        return (author, message, date)
 
     def find_latest_change(self, path, revnum, recurse=False):
         """Find latest revision that touched path.
@@ -228,7 +227,7 @@ class LogWalker(object):
             extra = " or path like '%s/%%'" % path.strip("/")
         else:
             extra = ""
-        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+        query = "select rev from changed_path where (path='%s' or ('%s' like (path || '/%%') and (action = 'R' or action = 'A'))%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), path.strip("/"), extra, revnum)
 
         row = self.db.execute(query).fetchone()
         if row is None and path == "":

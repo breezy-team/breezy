@@ -14,21 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import RevisionNotPresent, NotBranchError
-from bzrlib.inventory import ROOT_ID
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.errors import NotBranchError
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
-from bzrlib.ui import ui_factory
-import bzrlib.urlutils as urlutils
-from warnings import warn
+import bzrlib.ui as ui
 
-import os
 import sha
 
-import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
-                        parse_svn_revision_id, MAPPING_VERSION)
+                        parse_svn_revision_id)
 
 def generate_svn_file_id(uuid, revnum, branch, path):
     """Create a file id identifying a Subversion file.
@@ -38,8 +32,6 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param branch: Branch path of the branch in which the file was introduced.
     :param path: Original path of the file within the branch
     """
-    if path == "":
-        return ROOT_ID
     ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(path))
     if len(ret) > 150:
         ret = "%d@%s:%s;%s" % (revnum, uuid, 
@@ -82,8 +74,6 @@ def get_local_changes(paths, scheme, uuid, get_children=None):
         new_paths[new_p] = data
     return new_paths
 
-dbs = {}
-
 
 class FileIdMap(object):
     """ File id store. 
@@ -109,8 +99,8 @@ class FileIdMap(object):
 
     def load(self, revid):
         map = {}
-        for filename,create_revid,id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
-            map[filename] = (id,create_revid)
+        for filename, create_revid, id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
+            map[filename] = (id.encode("utf-8"), create_revid.encode("utf-8"))
 
         return map
 
@@ -147,7 +137,12 @@ class FileIdMap(object):
         # First, find the last cached map
         todo = []
         next_parent_revs = []
-        map = {"": (ROOT_ID, None)} # No history -> empty map
+        if revnum == 0:
+            assert branch == ""
+            return {"": (generate_svn_file_id(uuid, revnum, branch, ""), 
+                    self.repos.generate_revision_id(revnum, branch))}
+
+        # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             map = self.load(revid)
@@ -156,16 +151,20 @@ class FileIdMap(object):
                 next_parent_revs = [revid]
                 break
             todo.append((revid, paths))
-    
+   
         # target revision was present
         if len(todo) == 0:
             return map
-    
-        if len(map.keys()) == 0:
-            map = {"": (ROOT_ID, None)} # No history -> empty map
+
+        if len(next_parent_revs) == 0:
+            if self.repos.scheme.is_branch(""):
+                map = {"": (generate_svn_file_id(uuid, 0, "", ""), NULL_REVISION)}
+            else:
+                map = {}
+
         todo.reverse()
         
-        pb = ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1
