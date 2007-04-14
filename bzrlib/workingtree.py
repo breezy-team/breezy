@@ -1801,7 +1801,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             fid = inv.path2id(f)
             message=None
             if not fid:
-                message="%s is not versioned."%f
+                message="%s is not versioned." % (f,)
             else:
                 if verbose:
                     # having removed it, it must be either ignored or unknown
@@ -1813,7 +1813,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                        to_file=to_file)
                 # unversion file
                 del inv[fid]
-                message="removed %s"%f
+                message="removed %s" % (f,)
 
             if not keep_files:
                 if osutils.lexists(f):
@@ -1823,20 +1823,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             osutils.rmtree(f)
                         else:
                             os.unlink(f)
-                        message="deleted %s"%f
+                        message="deleted %s" % (f,)
                     elif fid: 
                         # only consider deleting versioned files
                         if f in changed_files:
-                            message="%s has changed and won't be deleted."%f
+                            message="%s has changed and won't be deleted."\
+                                % (f,)
                         elif osutils.isdir(f) and len(os.listdir(f)) > 0:
                             message="%s is not empty directory "\
-                                "and won't be deleted."%f
+                                "and won't be deleted." % (f,)
                         else:
                             osutils.delete_any(f)
-                            message="deleted %s"%f
+                            message="deleted %s" % (f,)
                 elif message is not None:
                     # only care if we haven't done anything yet.
-                    message="%s does not exist."%f
+                    message="%s does not exist." % (f,)
                 
             # print only one message (if any) per file.
             if message is not None:

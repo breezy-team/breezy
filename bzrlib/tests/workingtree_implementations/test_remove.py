@@ -21,10 +21,10 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""
 
-    files=['a','b/','b/c']
+    files=['a', 'b/', 'b/c']
     b = ['b']
-    b_c = ['b','b/c']
-    
+    b_c = ['b', 'b/c']
+
     def getTree(self):
         self.makeAndChdirToTestDir()
         tree = self.make_branch_and_tree('.')

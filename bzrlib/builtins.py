@@ -1065,7 +1065,7 @@ class cmd_info(Command):
 
 
 class cmd_remove(Command):
-    """Remove files or directories..
+    """Remove files or directories.
 
     This makes bzr stop tracking changes to the specified files and
     delete them if they can easily be recovered using revert.
