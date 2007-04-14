@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os
+import os, re
 
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -34,7 +34,7 @@ class TestRemove(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         for f in files:
-            id=f+_id
+            id=str(f).replace('/', '_') + _id
             tree.add(f, id)
             self.assertEqual(tree.path2id(f), id)
             self.failUnlessExists(f)
@@ -110,19 +110,47 @@ class TestRemove(ExternalBase):
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "b is not versioned.")
 
+    def test_rm_one_file(self):
+        tree = self._make_add_and_assert_tree([a])
+        self.run_bzr_captured(['commit', '-m', 'added a'])
+        (out, err) = self.run_bzr_captured(['rm', 'a'])
+        self.assertEquals(out.strip(), "")
+        self.assertEquals(err.strip(), "deleted a")
+        self.assertFilesDeleted([a])
+
     def test_remove_one_file(self):
         tree = self._make_add_and_assert_tree([a])
+        self.run_bzr_captured(['commit', '-m', 'added a'])
         (out, err) = self.run_bzr_captured(['remove', 'a'])
         self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "a has changed and won't be deleted.")
-        self.assertFilesUnversioned([a])
-        
+        self.assertEquals(err.strip(), "deleted a")
+        self.assertFilesDeleted([a])
+
     def test_remove_keep_one_file(self):
         tree = self._make_add_and_assert_tree([a])
         (out, err) = self.run_bzr_captured(['remove', '--keep', 'a'])
         self.assertEquals(out.strip(), "")
         self.assertEquals(err.strip(), "removed a")
         self.assertFilesUnversioned([a])
+
+    def test_remove_files(self):
+        tree = self._make_add_and_assert_tree(files)
+        self.run_bzr_captured(['commit', '-m', 'added files'])
+        (out, err) = self.run_bzr_captured(['remove', a, b, c])
+        self.assertEquals(out.strip(), "")
+        self.assertTrue(re.search("deleted a", err))
+        self.assertTrue(re.search("deleted b", err))
+        self.assertTrue(re.search("deleted b/c", err))
+        self.assertFilesDeleted(files)
+
+    def test_remove_keep_files(self):
+        tree = self._make_add_and_assert_tree(files)
+        (out, err) = self.run_bzr_captured(['remove', '--keep', a, b, c])
+        self.assertEquals(out.strip(), "")
+        self.assertTrue(re.search("removed a", err))
+        self.assertTrue(re.search("removed b", err))
+        self.assertTrue(re.search("removed b/c", err))
+        self.assertFilesUnversioned(files)
 
     def test_command_on_deleted(self):
         tree = self._make_add_and_assert_tree([a])
