@@ -290,6 +290,7 @@ class BaseVersionedFile(object):
 
     def make_snapshot(self, version_id):
         snapdiff = MultiParent([NewText(self.cache_version(version_id))])
+        self.add_diff(snapdiff, version_id, self._parents[version_id])
         self._snapshots.add(version_id)
 
     def import_versionedfile(self, vf, snapshots, no_cache=True,
@@ -358,7 +359,8 @@ class BaseVersionedFile(object):
     def select_by_size(self, num):
         """Select snapshots for minimum output size"""
         num -= len(self._snapshots)
-        return get_size_ranking()[:num]
+        new_snapshots = self.get_size_ranking()[-num:]
+        return [v for n, v in new_snapshots]
 
     def get_size_ranking(self):
         versions = []
@@ -369,9 +371,15 @@ class BaseVersionedFile(object):
             diff_len = self.get_diff(version_id).patch_len()
             snapshot_len = MultiParent([NewText(
                 self.cache_version(version_id))]).patch_len()
-            versions.append((diff_len - snapshot_len, version_id))
+            versions.append((snapshot_len - diff_len, version_id))
         versions.sort()
-        return [v for n, v in versions[:num]]
+        return versions
+        return [v for n, v in versions]
+
+    def import_diffs(self, vf):
+        for version_id in vf.versions():
+            self.add_diff(vf.get_diff(version_id), version_id,
+                          vf._parents[version_id])
 
     def get_build_ranking(self):
         could_avoid = {}

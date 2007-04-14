@@ -78,16 +78,15 @@ class cmd_mp_regen(commands.Command):
             vf.import_versionedfile(file_weave, to_sync, single_parent=single,
                                     verify=verify, no_cache=not cache)
             if size:
-                snapshots = vf.select_by_size(len(snapshots))
+                snapshots = vf.select_by_size(len(old_snapshots))
                 for version_id in snapshots:
                     vf.make_snapshot(version_id)
             if build:
                 ranking = vf.get_build_ranking()
-                snapshots = ranking[:len(snapshots) -\
+                snapshots = ranking[:len(old_snapshots) -\
                     len(vf._snapshots)]
                 for version_id in snapshots:
-                    old_len = len(vf._snapshots)
-                    #vf.make_snapshot(version_id)
+                    vf.make_snapshot(version_id)
         except:
             vf.destroy()
             raise
@@ -98,9 +97,7 @@ class cmd_mp_regen(commands.Command):
             if memory:
                 if outfile is not None:
                     vf_file = MultiVersionedFile(outfile)
-                for version_id in vf.versions():
-                    vf_file.add_diff(vf.get_diff(version_id), version_id,
-                                     vf._parents[version_id])
+                vf_file.import_diffs(vf)
             else:
                 vf_file = vf
         finally:
@@ -110,6 +107,7 @@ class cmd_mp_regen(commands.Command):
                 vf_file.save()
 
 class cmd_mp_extract(commands.Command):
+    """Test extraction time multiparent knits"""
 
     takes_options = [
         commands.Option('lsprof-timed', help='Use lsprof'),
@@ -123,6 +121,8 @@ class cmd_mp_extract(commands.Command):
             parallel=False):
         vf = MultiVersionedFile(filename)
         vf.load()
+        snapshots = [r for r in vf.versions() if vf.get_diff(r).is_snapshot()]
+        print '%d snapshots' % len(snapshots)
         revisions = list(vf.versions())
         revisions = revisions[-count:]
         print 'Testing extract time of %d revisions' % len(revisions)
