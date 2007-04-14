@@ -1766,30 +1766,31 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return result
 
     @needs_tree_write_lock
-    def remove(self, files, verbose=False, to_file=None, keep_files=True, 
+    def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
         """Remove nominated files from the working inventor.
 
+        :files: File paths relative to the basedir.
         :keep_files: If true, the files will also be kept.
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        ## TODO: Normalize names
         if isinstance(files, basestring):
             files = [files]
 
         inv = self.inventory
         changed_files=[]
 
-        # Sort needed when deleting files:
-        # first delete directory content before the directory
+        # Get file names into canonical form.
+        files = [self.relpath(self.abspath(filename))
+            for filename in files]
+
+        # Sort needed to first handle directory content before the directory
+        files.sort(reverse=True)
+
         if not keep_files and not force:
-            files = [self.relpath(osutils.dereference_path(filename))
-                for filename in files]
-            files.sort(reverse=True)
             changes = self.changes_from(self.basis_tree(),
                 specific_files=files)
-
             for f in changes.modified:
                 changed_files.append(f[0])
             for f in changes.added:
