@@ -243,6 +243,8 @@ class cmd_remove_tree(Command):
 
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
+
+    See 'bzr help working-trees' for more information on working trees.
     """
 
     takes_args = ['location?']
@@ -802,8 +804,9 @@ class cmd_push(Command):
                 try:
                     tree_to = dir_to.open_workingtree()
                 except errors.NotLocalUrl:
-                    warning('This transport does not update the working '
-                            'tree of: %s' % (br_to.base,))
+                    warning('This transport does not update the working ' 
+                            'tree of: %s. See \'bzr help ' % br_to.base + \
+                            'working-trees\' for more information.')
                     push_result = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
                     push_result = br_from.push(br_to, overwrite)

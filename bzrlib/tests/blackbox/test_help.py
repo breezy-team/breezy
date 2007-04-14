@@ -64,6 +64,15 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, '--no-trees')
         self.assertContainsRe(out, 'init-repository')
 
+    def test_help_working_trees(self):
+        """Smoke test for 'bzr help working-trees'"""
+        out, err = self.runbzr('help working-trees')
+        self.assertContainsRe(out, 'repository')
+        self.assertContainsRe(out, 'remote')
+        self.assertContainsRe(out, 'checkout')
+        self.assertContainsRe(out, 'update')
+        self.assertContainsRe(out, 'remove-tree')
+
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]
