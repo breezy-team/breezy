@@ -285,6 +285,9 @@ class BaseVersionedFile(object):
         self.add_diff(diff, version_id, parent_ids)
         self._lines[version_id] = lines
 
+    def get_parents(self, version_id):
+        return self._parents[version_id]
+
     def make_snapshot(self, version_id):
         snapdiff = MultiParent([NewText(self.cache_version(version_id))])
         self._snapshots.add(version_id)
@@ -353,9 +356,13 @@ class BaseVersionedFile(object):
         return snapshots
 
     def select_by_size(self, num):
+        """Select snapshots for minimum output size"""
+        num -= len(self._snapshots)
+        return get_size_ranking()[:num]
+
+    def get_size_ranking(self):
         versions = []
         new_snapshots = set()
-        num -= len(self._snapshots)
         for version_id in self.versions():
             if version_id in self._snapshots:
                 continue
@@ -365,6 +372,35 @@ class BaseVersionedFile(object):
             versions.append((diff_len - snapshot_len, version_id))
         versions.sort()
         return [v for n, v in versions[:num]]
+
+    def get_build_ranking(self):
+        could_avoid = {}
+        referenced_by = {}
+        for version_id in topo_iter(self):
+            could_avoid[version_id] = set()
+            if version_id not in self._snapshots:
+                for parent_id in self._parents[version_id]:
+                    could_avoid[version_id].update(could_avoid[parent_id])
+                could_avoid[version_id].update(self._parents)
+                could_avoid[version_id].discard(version_id)
+            for avoid_id in could_avoid[version_id]:
+                referenced_by.setdefault(avoid_id, set()).add(version_id)
+        available_versions = list(self.versions())
+        ranking = []
+        while len(available_versions) > 0:
+            available_versions.sort(key=lambda x:
+                len(could_avoid[x]) *
+                len(referenced_by.get(x, [])))
+            selected = available_versions.pop()
+            ranking.append(selected)
+            for version_id in referenced_by[selected]:
+                could_avoid[version_id].difference_update(
+                    could_avoid[selected])
+            for version_id in could_avoid[selected]:
+                referenced_by[version_id].difference_update(
+                    referenced_by[selected]
+                )
+        return ranking
 
     def clear_cache(self):
         self._lines.clear()

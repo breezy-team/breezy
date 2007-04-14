@@ -37,17 +37,16 @@ class cmd_mp_regen(commands.Command):
                      commands.Option('verify', help='verify added texts'),
                      commands.Option('cache', help='Aggresively cache'),
                      commands.Option('size', help='Aggressive size'),
+                     commands.Option('build', help='Aggressive build'),
                     ]
     hidden = True
 
     def run(self, file=None, sync_snapshots=False, snapshot_interval=26,
             lsprof_timed=False, dump=False, extract=False, single=False,
             verify=False, outfile=None, memory=False, cache=False,
-            size=False):
+            size=False, build=False):
         file_weave = get_file_weave(file)
         url = file_weave.transport.abspath(file_weave.filename)
-        if size:
-            assert memory
         print >> sys.stderr, 'Importing: %s' % \
             urlutils.local_path_from_url(url)
         if sync_snapshots:
@@ -63,15 +62,16 @@ class cmd_mp_regen(commands.Command):
         else:
             vf = MultiMemoryVersionedFile(snapshot_interval)
         vf.destroy()
-        snapshots = set(r for r in file_weave.versions() if
+        old_snapshots = set(r for r in file_weave.versions() if
                         file_weave._index.get_method(r) == 'fulltext')
         if sync_snapshots:
-            to_sync = snapshots
-        elif size:
+            to_sync = old_snapshots
+        elif size or build:
+            assert memory
             to_sync = set()
         else:
             to_sync = vf.select_snapshots(file_weave)
-        print >> sys.stderr, "%d fulltexts" % len(snapshots)
+        print >> sys.stderr, "%d fulltext(s)" % len(old_snapshots)
         print >> sys.stderr, "%d planned snapshots" % len(to_sync)
 
         try:
@@ -81,6 +81,13 @@ class cmd_mp_regen(commands.Command):
                 snapshots = vf.select_by_size(len(snapshots))
                 for version_id in snapshots:
                     vf.make_snapshot(version_id)
+            if build:
+                ranking = vf.get_build_ranking()
+                snapshots = ranking[:len(snapshots) -\
+                    len(vf._snapshots)]
+                for version_id in snapshots:
+                    old_len = len(vf._snapshots)
+                    #vf.make_snapshot(version_id)
         except:
             vf.destroy()
             raise
