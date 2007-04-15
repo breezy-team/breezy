@@ -55,27 +55,27 @@ class SvnRemoteAccess(BzrDir):
                 self.branch_path != ""):
             raise NotBranchError(path=self.root_transport.base)
 
-    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.clone().
 
         Not supported on Subversion connections.
         """
         raise NotImplementedError(SvnRemoteAccess.clone)
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False,
+    def sprout(self, url, revision_id=None, force_new_repo=False,
             recurse='down'):
         """See BzrDir.sprout()."""
         # FIXME: Use recurse
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.find_repository()
         if force_new_repo:
-            result_repo = repo.clone(result, revision_id, basis)
+            result_repo = repo.clone(result, revision_id)
         else:
             try:
                 result_repo = result.find_repository()
                 result_repo.fetch(repo, revision_id=revision_id)
             except NoRepositoryPresent:
-                result_repo = repo.clone(result, revision_id, basis)
+                result_repo = repo.clone(result, revision_id)
 
         branch = self.open_branch()
         result_branch = branch.sprout(result, revision_id)
@@ -183,3 +183,4 @@ class SvnFormat(BzrDirFormat):
     def is_supported(self):
         """See BzrDir.is_supported()."""
         return True
+

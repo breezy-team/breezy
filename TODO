@@ -1,3 +1,4 @@
+- rename 'main' to 0.4
 - simplify find_branches by using Transport.list_dir() ?
 - replace 'undefined' by scheme name in revision ids
 - fix commits in heavyweight checkouts somehow
@@ -19,3 +20,4 @@
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - blackbox tests
 - test Branch.get_parent()
+- split fetch tests out of test_repos

@@ -18,7 +18,8 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent
 from bzrlib.tests import TestCase
 
-from checkout import SvnWorkingTreeFormat
+from convert import SvnConverter
+from checkout import SvnWorkingTreeFormat, SvnWorkingTreeDirFormat
 from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTreeFormat(TestCase):
@@ -35,6 +36,14 @@ class TestWorkingTreeFormat(TestCase):
 
     def test_open(self):
         self.assertRaises(NotImplementedError, self.format.open, None)
+
+class TestCheckoutFormat(TestCase):
+    def setUp(self):
+        super(TestCheckoutFormat, self).setUp()
+        self.format = SvnWorkingTreeDirFormat()
+
+    def test_get_converter(self):
+        self.assertIsInstance(self.format.get_converter(), SvnConverter)
 
 
 class TestCheckout(TestCaseWithSubversionRepository):
