@@ -636,19 +636,19 @@ class SvnCheckout(BzrDir):
         if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 
-    def clone(self, path, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
 
     def open_workingtree(self, _unsupported=False):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False, 
+    def sprout(self, url, revision_id=None, force_new_repo=False, 
                recurse='down'):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.find_repository()
-        repo.clone(result, revision_id, basis)
+        repo.clone(result, revision_id)
         branch = self.open_branch()
         branch.sprout(result, revision_id)
         result.create_workingtree()

@@ -1,3 +1,4 @@
+- rename 'main' to 0.4
 - simplify find_branches by using Transport.list_dir() ?
 - make scheme name part of revision id / support multiple branching schemes per repository
 - fix commits in heavyweight checkouts somehow
