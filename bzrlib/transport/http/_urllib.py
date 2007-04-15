@@ -50,21 +50,22 @@ class HttpTransport_urllib(HttpTransportBase):
         if from_transport is not None:
             super(HttpTransport_urllib, self).__init__(base, from_transport)
             self._connection = from_transport._connection
-            self._auth = from_transport._auth
+            self._auth_scheme = from_transport._auth_scheme
             self._user = from_transport._user
             self._password = from_transport._password
             self._opener = from_transport._opener
         else:
-            # urllib2 will be confused if it find
-            # authentification infos in the urls. So we handle
-            # them separatly. Note that we don't need to do that
-            # when cloning (as above) since the cloned base is
-            # already clean.
+            # urllib2 will be confused if it find authentication
+            # info in the urls. So we handle them separatly.
+            # Note: we don't need to when cloning because it was
+            # already done.
             clean_base, user, password = self._extract_auth(base)
             super(HttpTransport_urllib, self).__init__(clean_base,
                                                        from_transport)
             self._connection = None
-            self._auth = None # We have to wait the 401 to know
+            # auth_scheme will be set once we authenticate
+            # successfully after a 401 error.
+            self._auth_scheme = None
             self._user = user
             self._password = password
             self._opener = self._opener_class()
@@ -94,7 +95,7 @@ class HttpTransport_urllib(HttpTransportBase):
                 pm.add_password(None, authuri, self._user, self._password)
 
     def _extract_auth(self, url):
-        """Extracts authentification information from url.
+        """Extracts authentication information from url.
 
         Get user and password from url of the form: http://user:pass@host/path
         :returns: (clean_url, user, password)
@@ -130,8 +131,8 @@ class HttpTransport_urllib(HttpTransportBase):
             # We will issue our first request, time to ask for a
             # password if needed
             self._ask_password()
-        # Ensure authentification info is provided
-        request.set_auth(self._auth, self._user, self._password)
+        # Ensure authentication info is provided
+        request.set_auth(self._auth_scheme, self._user, self._password)
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
@@ -144,7 +145,7 @@ class HttpTransport_urllib(HttpTransportBase):
             # to connect to the server
             self._connection = request.connection
             # And get auth parameters too
-            self._auth = request.auth
+            self._auth_scheme = request.auth_scheme
             self._user = request.user
             self._password = request.password
 

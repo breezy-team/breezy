@@ -29,7 +29,7 @@ We have a custom Response class, which lets us maintain a keep-alive
 connection even for requests that urllib2 doesn't expect to contain body data.
 
 And a custom Request class that lets us track redirections, and
-handle authentification schemes.
+handle authentication schemes.
 
 We also create a Request hierarchy, to make it clear what type of
 request is being made.
@@ -159,7 +159,7 @@ class Request(urllib2.Request):
         self.set_auth(None, None, None) # Until the first 401
 
     def set_auth(self, auth_scheme, user, password=None):
-        self.auth = auth_scheme
+        self.auth_scheme = auth_scheme
         self.user = user
         self.password = password
 
@@ -167,7 +167,7 @@ class Request(urllib2.Request):
         return self.method
 
 
-# The urlib2.xxxAuthHandler handle the authentification of the
+# The urlib2.xxxAuthHandler handle the authentication of the
 # requests, to do that, they need an urllib2 PasswordManager *at
 # build time*. We also need one to reuse the passwords already
 # typed by the user.
@@ -693,10 +693,10 @@ class ProxyHandler(urllib2.ProxyHandler):
 
 
 class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
-    """Custom basic authentification handler.
+    """Custom basic authentication handler.
 
-    Send the authentification preventively to avoid the the
-    roundtrip associated with the 401 error.
+    Send the authentication preventively to avoid the roundtrip
+    associated with the 401 error.
     """
 
     def get_auth(self, user, password):
@@ -705,7 +705,7 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
         return auth
 
     def set_auth(self, request):
-        """Add the authentification header if needed.
+        """Add the authentication header if needed.
 
         All required informations should be part of the request.
         """
@@ -714,8 +714,8 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
                                self.get_auth(request.user, request.password))
 
     def http_request(self, request):
-        """Insert an authentification header if information is available"""
-        if request.auth == 'basic' and request.password is not None:
+        """Insert an authentication header if information is available"""
+        if request.auth_scheme == 'basic' and request.password is not None:
             self.set_auth(request)
         return request
 
@@ -727,7 +727,14 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
                                                                code, msg,
                                                                headers)
         if response is not None:
-            req.auth = 'basic'
+            # We capture the auth_scheme to be able to send the
+            # authentication header with the next requests
+            # without waiting for a 401 error.
+            # The urllib2.HTTPBasicAuthHandler will return a
+            # response *only* if the basic authentication
+            # succeeds. If another scheme is used or the
+            # authentication fails, the response will be None.
+            req.auth_scheme = 'basic'
 
         return response
 

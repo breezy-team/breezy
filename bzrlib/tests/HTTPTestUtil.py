@@ -310,14 +310,18 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
 
 
 class BasicAuthRequestHandler(TestingHTTPRequestHandler):
-    """Requires a basic authentification to process requests."""
+    """Requires a basic authentication to process requests.
+
+    This is intended to be used with a server that always and
+    only use basic authentication.
+    """
 
     def do_GET(self):
         tcs = self.server.test_case_server
-        if tcs.auth == 'basic':
+        if tcs.auth_scheme == 'basic':
             auth_header = self.headers.get('Authorization')
             authorized = False
-            if auth_header:
+            if auth_header and auth_header.lower().startswith('basic '):
                 coded_auth = auth_header[len('Basic '):]
                 user, password = coded_auth.decode('base64').split(':')
                 authorized = tcs.authorized(user, password)
@@ -330,17 +334,36 @@ class BasicAuthRequestHandler(TestingHTTPRequestHandler):
 
         TestingHTTPRequestHandler.do_GET(self)
 
-class AuthHTTPServer(HttpServer):
-    """AuthHTTPServer extends HttpServer with a dictionary of passwords"""
 
-    def __init__(self, request_handler, auth):
+class AuthHTTPServer(HttpServer):
+    """AuthHTTPServer extends HttpServer with a dictionary of passwords.
+
+    This is used as a base class for various schemes.
+
+    Note that no users are defined by default, so add_user should
+    be called before issuing the first request.
+    """
+
+    def __init__(self, request_handler, auth_scheme):
         HttpServer.__init__(self, request_handler)
-        # No authentification is done by default
-        self.auth = auth
+        self.auth_scheme = auth_scheme
         self.password_of = {}
 
     def add_user(self, user, password):
+        """Declare a user with an associated password.
+
+        password can be empty, use an empty string ('') in that
+        case, not None.
+        """
         self.password_of[user] = password
 
     def authorized(self, user, password):
-        return self.password_of[user] == password
+        expected_password = self.password_of.get(user, None)
+        return expected_password is not None and password == expected_password
+
+
+class BasicAuthHTTPServer(AuthHTTPServer):
+    """An HTTP server requiring basic authentication"""
+
+    def __init__(self):
+        AuthHTTPServer.__init__(self, BasicAuthRequestHandler, 'basic')

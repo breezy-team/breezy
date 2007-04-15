@@ -20,16 +20,17 @@
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
+from cStringIO import StringIO
 import os
 import select
 import socket
 import threading
-from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    ui,
     urlutils,
     )
 from bzrlib.tests import (
@@ -44,10 +45,9 @@ from bzrlib.tests.HttpServer import (
     HttpServer_urllib,
     )
 from bzrlib.tests.HTTPTestUtil import (
-    AuthHTTPServer,
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
-    BasicAuthRequestHandler,
+    BasicAuthHTTPServer,
     FakeProxyRequestHandler,
     ForbiddenRequestHandler,
     HTTPServerRedirecting,
@@ -71,7 +71,6 @@ from bzrlib.transport.http import (
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 
-import bzrlib.ui
 
 class FakeManager(object):
 
@@ -1153,11 +1152,9 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
 
     _transport = HttpTransport_urllib
     _auth_header = 'Authorization'
-    _auth_type = 'basic'
-    _request_handler_class = BasicAuthRequestHandler
 
     def create_transport_readonly_server(self):
-        return AuthHTTPServer(self._request_handler_class, self._auth_type)
+        return BasicAuthHTTPServer()
 
     def setUp(self):
         super(TestHTTPBasicAuth, self).setUp()
@@ -1165,11 +1162,11 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
                                   ('b', 'contents of b\n'),])
         self.server = self.get_readonly_server()
 
-        self.old_factory = bzrlib.ui.ui_factory
+        self.old_factory = ui.ui_factory
         self.addCleanup(self.restoreUIFactory)
 
     def restoreUIFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
+        ui.ui_factory = self.old_factory
 
     def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
@@ -1192,6 +1189,11 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
         t = self._transport(self.get_user_url('joe', 'foo'))
         self.assertEqual('contents of a\n', t.get('a').read())
 
+    def test_unknown_user(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('bill', 'foo'))
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+
     def test_wrong_pass(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('joe', 'bar'))
@@ -1200,11 +1202,13 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('joe'))
-        bzrlib.ui.ui_factory = TestUIFactory(stdin='foo\n',
-                                             stdout=StringIOWrapper())
+        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
-        self.assertEqual('', bzrlib.ui.ui_factory.stdin.readline())
+        self.assertEqual('', ui.ui_factory.stdin.readline())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())
+        t2 = t.clone()
+        # And neither against a clone
+        self.assertEqual('contents of b\n',t2.get('b').read())
