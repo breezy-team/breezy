@@ -29,6 +29,7 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
+from convert import SvnConverter
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         revision_id_to_svk_feature) 
@@ -349,8 +350,7 @@ class SvnWorkingTree(WorkingTree):
             self.base_tree = RevisionTree(self, Inventory(), revid)
             return
 
-        (bp, rev) = self.branch.repository.parse_revision_id(revid)
-        assert bp == self.branch.branch_path
+        rev = self.branch.parse_revision_id(revid)
         self.base_revnum = rev
         self.base_revid = revid
         self.base_tree = SvnBasisTree(self)
@@ -362,7 +362,7 @@ class SvnWorkingTree(WorkingTree):
         def update_settings(wc, path):
             id = newrevtree.inventory.path2id(path)
             mutter("Updating settings for %r" % id)
-            (_, revnum) = self.branch.repository.parse_revision_id(
+            revnum = self.branch.parse_revision_id(
                     newrevtree.inventory[id].revision)
 
             svn.wc.process_committed2(self.abspath(path).rstrip("/"), wc, 
@@ -487,7 +487,7 @@ class SvnWorkingTree(WorkingTree):
             stop_revision = self.branch.last_revision()
         rev = svn.core.svn_opt_revision_t()
         rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = self.branch.repository.parse_revision_id(stop_revision)[1]
+        rev.value.number = self.branch.parse_revision_id(stop_revision)
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
         self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
         result.new_revid = self.branch.generate_revision_id(fetched)
@@ -631,19 +631,19 @@ class SvnCheckout(BzrDir):
         if not self.scheme.is_branch(self.branch_path) and not self.scheme.is_tag(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 
-    def clone(self, path, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
 
     def open_workingtree(self, _unsupported=False):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False, 
+    def sprout(self, url, revision_id=None, force_new_repo=False, 
                recurse='down'):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.find_repository()
-        repo.clone(result, revision_id, basis)
+        repo.clone(result, revision_id)
         branch = self.open_branch()
         branch.sprout(result, revision_id)
         result.create_workingtree()
@@ -710,3 +710,9 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
 
     def initialize_on_transport(self, transport):
         raise NotImplementedError(self.initialize_on_transport)
+
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return SvnConverter(format)

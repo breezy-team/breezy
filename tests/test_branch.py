@@ -16,7 +16,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, NoSuchRevision
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
@@ -35,6 +35,18 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
+
+    def test_parse_revision_id_unknown(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertRaises(NoSuchRevision, 
+                lambda: branch.parse_revision_id("bla"))
+
+    def test_parse_revision_id(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertEquals(0, 
+                branch.parse_revision_id(branch.last_revision()))
 
     def test_set_parent(self):
         repos_url = self.make_client('a', 'dc')

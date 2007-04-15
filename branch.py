@@ -78,6 +78,11 @@ class SvnBranch(Branch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
+    def parse_revision_id(self, revid):
+        (bp, revnum) = self.repository.parse_revision_id(revid)
+        assert bp == self.branch_path
+        return revnum
+
     def _create_lightweight_checkout(self, to_location, revision_id=None):
         peg_rev = svn.core.svn_opt_revision_t()
         peg_rev.kind = svn.core.svn_opt_revision_head
@@ -86,8 +91,7 @@ class SvnBranch(Branch):
         if revision_id is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
-            assert revision_id in self.revision_history()
-            (_, revnum) = self.repository.parse_revision_id(revision_id)
+            revnum = self.parse_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
             mutter('hist: %r' % self.revision_history())

@@ -307,8 +307,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.branch.last_revision() is None:
             self.base_revnum = 0
         else:
-            self.base_revnum = self.repository.parse_revision_id(
-                          self.branch.last_revision())[1]
+            self.base_revnum = self.branch.parse_revision_id(
+                          self.branch.last_revision())
 
         root = svn.delta.editor_invoke_open_root(self.editor, editor_baton, 
                                                  self.base_revnum)
