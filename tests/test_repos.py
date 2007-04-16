@@ -32,10 +32,10 @@ import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-from repository import (parse_svn_revision_id, generate_svn_revision_id, 
-                        svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        MAPPING_VERSION, escape_svn_path, unescape_svn_path,
+from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
                         SvnRepositoryFormat)
+from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
+                    parse_svn_revision_id, generate_svn_revision_id)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):

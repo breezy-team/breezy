@@ -25,8 +25,8 @@ from bzrlib.trace import mutter
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
-                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature, 
-                        escape_svn_path)
+                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature)
+from revids import escape_svn_path
 
 import os
 

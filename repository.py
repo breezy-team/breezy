@@ -40,10 +40,10 @@ except ImportError:
 from branchprops import BranchPropertyList
 import errors
 import logwalker
+from revids import (generate_svn_revision_id, parse_svn_revision_id, 
+                    MAPPING_VERSION)
 from tree import SvnRevisionTree
 
-MAPPING_VERSION = 3
-REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
@@ -52,56 +52,6 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
-
-import urllib
-
-def escape_svn_path(x):
-    if isinstance(x, unicode):
-        x = x.encode("utf-8")
-    return urllib.quote(x, "")
-unescape_svn_path = urllib.unquote
-
-
-def parse_svn_revision_id(revid):
-    """Parse an existing Subversion-based revision id.
-
-    :param revid: The revision id.
-    :raises: InvalidRevisionId
-    :return: Tuple with uuid, branch path and revision number.
-    """
-
-    assert revid
-    assert isinstance(revid, basestring)
-
-    if not revid.startswith(REVISION_ID_PREFIX):
-        raise InvalidRevisionId(revid, "")
-
-    try:
-        (version, uuid, branch_path, srevnum)= revid.split(":")
-    except ValueError:
-        raise InvalidRevisionId(revid, "")
-
-    revid = revid[len(REVISION_ID_PREFIX):]
-
-    return (uuid, unescape_svn_path(branch_path), int(srevnum))
-
-
-def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
-    """Generate a unambiguous revision id. 
-    
-    :param uuid: UUID of the repository.
-    :param revnum: Subversion revision number.
-    :param path: Branch path.
-    :param scheme: Name of the branching scheme in use
-
-    :return: New revision id.
-    """
-    assert isinstance(revnum, int)
-    assert isinstance(path, basestring)
-    assert revnum >= 0
-    assert revnum > 0 or path == ""
-    return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
-                   escape_svn_path(path.strip("/")), revnum)
 
 
 def svk_feature_to_revision_id(feature):

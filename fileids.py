@@ -21,8 +21,8 @@ import bzrlib.ui as ui
 
 import sha
 
-from repository import (escape_svn_path, generate_svn_revision_id, 
-                        parse_svn_revision_id)
+from revids import (generate_svn_revision_id, parse_svn_revision_id, 
+                    escape_svn_path)
 
 def generate_svn_file_id(uuid, revnum, branch, path):
     """Create a file id identifying a Subversion file.

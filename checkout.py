@@ -30,9 +30,10 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from convert import SvnConverter
-from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
+from repository import (SvnRepository, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         revision_id_to_svk_feature) 
+from revids import escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, bzr_to_svn_url, 
                        _create_auth_baton) 
