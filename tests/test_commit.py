@@ -14,12 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import PullResult
+from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches
 from bzrlib.workingtree import WorkingTree
 
 from copy import copy
+from repository import MAPPING_VERSION
 import os
 from tests import TestCaseWithSubversionRepository
 
@@ -93,12 +94,13 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
                 self.client_get_prop(repos_url, "bzr:merge", 1))
 
     def test_commit_revision_id(self):
-        wt = self.checkout.create_workingtree()
+        repos_url = self.make_client('d', 'dc')
+        wt = self.open_checkout("dc")
         self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
         wt.add('bla')
         wt.commit(message="data")
 
-        branch = Branch.open(self.repos_url)
+        branch = Branch.open(repos_url)
         builder = branch.get_commit_builder([branch.last_revision()], revision_id="my-revision-id")
         tree = branch.repository.revision_tree(branch.last_revision())
         new_tree = copy(tree)
@@ -109,7 +111,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("my-revision-id", 
-                self.client_get_prop(self.repos_url, "bzr:revision-id-%d" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
 
     def test_mwh(self):
         repo = self.make_client('d', 'sc')

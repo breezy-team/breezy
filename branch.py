@@ -80,7 +80,8 @@ class SvnBranch(Branch):
 
     def parse_revision_id(self, revid):
         (bp, revnum) = self.repository.parse_revision_id(revid)
-        assert bp == self.branch_path
+        assert bp.strip("/") == self.branch_path.strip("/"), \
+                "Got %r, expected %r" % (bp, self.branch_path)
         return revnum
 
     def _create_lightweight_checkout(self, to_location, revision_id=None):

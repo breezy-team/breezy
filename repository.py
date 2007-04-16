@@ -51,7 +51,7 @@ SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
-SVN_PROP_BZR_REVISION_ID = 'svn:revision-id-v%d' % MAPPING_VERSION
+SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
 
 import urllib
 

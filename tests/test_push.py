@@ -43,7 +43,8 @@ class TestPush(TestCaseWithSubversionRepository):
     def test_empty(self):
         svnbranch = self.svndir.open_branch()
         bzrbranch = self.bzrdir.open_branch()
-        self.assertEqual(0, svnbranch.pull(bzrbranch))
+        result = svnbranch.pull(bzrbranch)
+        self.assertEqual(0, result.new_revno - result.old_revno)
         self.assertEqual(svnbranch.revision_history(),
                          bzrbranch.revision_history())
 
@@ -54,7 +55,8 @@ class TestPush(TestCaseWithSubversionRepository):
 
         svnbranch = self.svndir.open_branch()
         bzrbranch = self.bzrdir.open_branch()
-        self.assertEqual(0, svnbranch.pull(bzrbranch))
+        result = svnbranch.pull(bzrbranch)
+        self.assertEqual(0, result.new_revno - result.old_revno)
 
     def test_diverged(self):
         self.build_tree({'sc/foo/bar': "data"})
