@@ -49,6 +49,7 @@ from bzrlib.tests import (
                           TestSuite,
                           TextTestRunner,
                           UnavailableFeature,
+                          clean_selftest_output,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -1162,6 +1163,8 @@ class TestTestCase(TestCase):
         """The bzrlib hooks should be sanitised by setUp."""
         self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
+        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+            bzrlib.smart.server.SmartTCPServer.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -1394,17 +1397,9 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
 
     def test_clean_output(self):
         # test functionality of clean_selftest_output()
-        from bzrlib.tests import clean_selftest_output
-
-        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
-        files = ('bzr', 'setup.py', 'test9999.tmp')
-        for i in dirs:
-            os.mkdir(i)
-        for i in files:
-            f = file(i, 'wb')
-            f.write('content of ')
-            f.write(i)
-            f.close()
+        self.build_tree(['test0000.tmp/', 'test0001.tmp/',
+                         'bzrlib/', 'tests/',
+                         'bzr', 'setup.py', 'test9999.tmp'])
 
         root = os.getcwdu()
         before = os.listdir(root)
@@ -1420,6 +1415,17 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
                            'test9999.tmp','tests'],
                            after)
 
+    def test_clean_readonly(self):
+        # test for delete read-only files
+        self.build_tree(['test0000.tmp/', 'test0000.tmp/foo'])
+        osutils.make_readonly('test0000.tmp/foo')
+        root = os.getcwdu()
+        before = os.listdir(root);  before.sort()
+        self.assertEquals(['test0000.tmp'], before)
+        clean_selftest_output(root, quiet=True)
+        after = os.listdir(root);   after.sort()
+        self.assertEquals([], after)
+
 
 class TestKnownFailure(TestCase):
 
@@ -1428,6 +1434,19 @@ class TestKnownFailure(TestCase):
         # a KnownFailure is an assertion error for compatability with unaware
         # runners.
         self.assertIsInstance(KnownFailure(""), AssertionError)
+
+    def test_expect_failure(self):
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, False)
+        except KnownFailure, e:
+            self.assertEqual('Doomed to failure', e.args[0])
+        try:
+            self.expectFailure("Doomed to failure", self.assertTrue, True)
+        except AssertionError, e:
+            self.assertEqual('Unexpected success.  Should have failed:'
+                             ' Doomed to failure', e.args[0])
+        else:
+            self.fail('Assertion not raised')
 
 
 class TestFeature(TestCase):

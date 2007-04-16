@@ -29,7 +29,6 @@ from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
@@ -528,7 +527,6 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
-
 
 class BundleInfo08(BundleInfo):
 
