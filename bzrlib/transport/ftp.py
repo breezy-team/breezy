@@ -368,7 +368,8 @@ class FtpTransport(Transport):
             mutter("FTP rmd: %s", abspath)
             f.rmd(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
+            self._translate_perm_error(e, abspath,
+                                       unknown_exc=errors.PathError)
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
@@ -438,6 +439,20 @@ class FtpTransport(Transport):
     #       to give it its own address as the 'to' location.
     #       So implement a fancier 'copy()'
 
+    def rename(self, rel_from, rel_to):
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
+        mutter("FTP rename: %s => %s", abs_from, abs_to)
+        f = self._get_FTP()
+        return self._rename(abs_from, abs_to, f)
+
+    def _rename(self, abs_from, abs_to, f):
+        try:
+            f.rename(abs_from, abs_to)
+        except ftplib.error_perm, e:
+            self._translate_perm_error(e, abs_from,
+                ': unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         abs_from = self._abspath(rel_from)
@@ -451,29 +466,20 @@ class FtpTransport(Transport):
                 extra='unable to rename to %r' % (rel_to,), 
                 unknown_exc=errors.PathError)
 
-    rename = move
-
     def _rename_and_overwrite(self, abs_from, abs_to, f):
         """Do a fancy rename on the remote server.
 
         Using the implementation provided by osutils.
         """
-        def rename(abs_from, abs_to):
-            try:
-                f.rename(abs_from, abs_to)
-            except ftplib.error_perm, e:
-                self._translate_perm_error(e, abs_from,
-                    ': unable to rename to %r' % (abs_to))
-
         def delete_or_rmdir(abspath):
             try:
                 self._delete(abspath, f)
             except errors.NoSuchFile, e:
                 self._rmdir(abspath, f)
-            except Exception, e:
-                pass
-        osutils.fancy_rename(abs_from, abs_to, rename_func=rename,
-                             unlink_func=delete_or_rmdir)
+
+        osutils.fancy_rename(abs_from, abs_to,
+            rename_func=lambda p1, p2:self._rename(p1, p2, f),
+            unlink_func=delete_or_rmdir)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
