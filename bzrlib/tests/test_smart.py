@@ -759,7 +759,6 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
         # let's make sure there are some key repository components inside it.
         # the tarfile returns directories with trailing slashes...
         names = set([n.rstrip('/') for n in body_tar.getnames()])
-        import pdb;pdb.set_trace()
         self.assertTrue('.bzr/repository/lock' in names)
         self.assertTrue('.bzr/repository/format' in names)
         self.assertTrue('.bzr/repository/extra-junk' not in names,

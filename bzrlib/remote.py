@@ -429,7 +429,7 @@ class RemoteRepository(object):
             'unexpected response code %s' % (response,)
         if response[0] == 'ok':
             # Extract the tarball and return it
-	    body = protocol.read_body_bytes()
+            body = protocol.read_body_bytes()
             return body
         else:
             raise errors.SmartServerError(error_code=response)

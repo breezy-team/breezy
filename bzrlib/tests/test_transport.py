@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import sys
 import stat
 from cStringIO import StringIO
 
+import bzrlib
 from bzrlib import (
     errors,
     urlutils,
@@ -469,7 +470,7 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         transport = self.get_nfs_transport('.')
         self.build_tree(['from/', 'from/foo', 'to/', 'to/bar'],
                         transport=transport)
-        self.assertRaises(bzrlib.errors.ResourceBusy,
+        self.assertRaises(errors.ResourceBusy,
                           transport.rename, 'from', 'to')
 
 
