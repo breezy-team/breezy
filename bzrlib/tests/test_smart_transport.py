@@ -1483,6 +1483,7 @@ class TestSmartClientUnicode(tests.TestCase):
 
     def test_call_with_body_bytes_unicode_args(self):
         self.assertCallDoesNotBreakMedium('method', (u'args',), 'body')
+        self.assertCallDoesNotBreakMedium('method', ('arg1', u'arg2'), 'body')
 
     def test_call_with_body_bytes_unicode_body(self):
         self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
