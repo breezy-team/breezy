@@ -1078,14 +1078,18 @@ class cmd_remove(Command):
     takes_args = ['file*']
     takes_options = ['verbose', 
         Option('new', help='remove newly-added files'),
-        Option('keep', help="never delete files"),
-        Option('force', help="always delete files, even if they can not be "
-            "recovered and even if they are non-empty directories")]
+        RegistryOption.from_kwargs('file-deletion-strategy',
+            'The file deletion mode to be used',
+            title='Deletion Strategy', value_switches=True, enum_switch=False,
+            safe='Only delete files if they can be safely recovered (default).',
+            keep="Don't delete any files.",
+            force='Delete all the specified files, even if they can not be '
+                'recovered and even if they are non-empty directories.')]
     aliases = ['rm']
     encoding_type = 'replace'
 
-    def run(self, file_list, verbose=False, new=False, keep=False, 
-            force=False):
+    def run(self, file_list, verbose=False, new=False, 
+        file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
 
         if file_list is not None:
@@ -1101,7 +1105,8 @@ class cmd_remove(Command):
             if len(file_list) == 0:
                 raise errors.BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
-            keep_files=keep, force=force)
+            keep_files=file_deletion_strategy=='keep', 
+            force=file_deletion_strategy=='force')
 
 
 class cmd_file_id(Command):

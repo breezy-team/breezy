@@ -1241,8 +1241,8 @@ class TestCase(unittest.TestCase):
         stdin = kwargs.pop('stdin', None)
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
-
-        out, err = self.run_bzr_captured(args, retcode=retcode, 
+        
+        out, err = self.run_bzr_captured(args, retcode=retcode,
             encoding=encoding, stdin=stdin, working_dir=working_dir)
 
         for regex in error_regexes:

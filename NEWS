@@ -1,10 +1,10 @@
 IN DEVELOPMENT
 
-  IMPROVEMENTS:
+  NOTES WHEN UPGRADING:
 
     * ``bzr remove`` and ``bzr rm`` will now remove the working file, if
       it could be recovered again.
-      This has been done for consistency with cvs, svn and the unix rm command.
+      This has been done for consistency with svn and the unix rm command.
       The old ``remove`` behaviour has been retained in the new option
       ``bzr remove --keep``, which will just stop versioning the file,
       but not delete it.
