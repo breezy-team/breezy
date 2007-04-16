@@ -587,11 +587,11 @@ class RemoteRepository(object):
         tmpdir = tempfile.mkdtemp()
         try:
             tar.extractall(tmpdir)
-            tmp_repo = repository.Repository.open(tmpdir)
+            tmp_bzrdir = BzrDir.open(tmpdir)
+            tmp_repo = tmp_bzrdir.open_repository()
             tmp_repo.copy_content_into(destination, revision_id)
         finally:
-            pass
-            ##            osutils.rmtree(tmpdir)
+            osutils.rmtree(tmpdir)
         # TODO: if the server doesn't support this operation, maybe do it the
         # slow way using the _real_repository?
 

@@ -626,9 +626,7 @@ class TestRepositoryTarball(TestRemoteRepository):
 
     # This is a canned tarball reponse we can validate against
     tarball_content = \
-        'BZh91AY&SY\xc7\x94y\xbb\x00\x02\x85\x7f\x83\xc2\x90\x00 H' \
-        '\x03\xff\xc0\x11\x89\xd2\x00\x7f\xef\xdfp@H\x00\x10\x00\x08' \
-        '0\x01\x8d\xa5f\x04T\xd4\xa3\xd4\xcd4\x8d\r0#\t\x88\xc26\x80\x01\x14\x82MOP\r\x0c\x87\x924\x00\x03C\xd4=@\xa9BMOB\x06\x9ai\xa1\xa0\x00\x00\x006\x03\xbe\xaa`\xcf33\xe6\x1e\xe4\x89JR\x9dN\xc3\xebK\x035\x00\xa0\\\xb7s\x0bh]\x8c\xb8M\xe3,\xa4\xa5,L\xd2\xfa/\xa5(\xa5\xe4\xc6&r@,\x81\xd2\xc8\x19\x83\xf0\x0c\x80\xe1\x80\xe2~\xf0\xa7+\r\x8f\xe3\x1e;>\x8bh\xa7\r}lM\x81\x9f@\x99\x846\\\xfdU\x95\xed\xec\xba\xdb\xa4/\x13\x83\x02X\x96\x13N\xa2e\x13^\xd7j\xadI\x8a\xa4\xbc\x96+}D\xa0\x06\xdb\xe2#[VT\x95\x19\xddeA\x99HB\xb1d\x86\xd0\'"*%2\x18\x19\x04\xb10\xa9\\D\xb6A\xad\x8b%D\xb1v\x13M\xa5\x7f!#41$y\xe0\xc2\x0e\xba\xb8\x1fF\xa8\x01\xae\xf1\xc7\xe2;\xe89\x9ba\x033\xb2\xcf\x13CK\xe0CY\xa1a\x19p\xa8gg(-\x83P6\xbd\n]#\xba\x02\x86r\x860\xe91\xef\x92\xbb\x11\xc4\x072:\x01\xc1\x8b\x88\xfd\xd6\x99D\x19K#C\x99\x03k\x9e#v\x8f\x03Tl\x07\xac\x9b\xb8@`,ZB3-2\x06\x85\xcfK\r\xea\xd9\x9d\xbc\x17\xfc]\xc9\x14\xe1BC\x1eQ\xe6\xec'
+        "BZh91AY&SY\xd1\xa4\x8f|\x00\x01a\x7f\x93\xc6\x90\x00 H\x07\xff\xc0\xf7\xef\x1c!\x7f\xef\xdfp\x00\x08@\x18\x00\x10\x04\x08@\x0272j\xb2\x02I\x14\xf4\xd2\x9eM@\xde\xa8z\x994\x00\x00\x00\r=A\xe4j\t\x12LI\x1a\x03OPh\xd0\x00\x00h\x00\x00\x070\t\x80\x99\x18\x01\x18\x98\x98L&\x08i\x89\xa6\x01RB\x9a\x9ad\x87\xa8\xd3\x19CC@\x06C@z\x8d\x00\x1aw\x80z\xf9\xe5\xc1\n\x06\xccL\xcdW6\x98\xc6\x9f\xf5RLW\xcc\rBA}\x01$\xc6Y-\xc3\xc1\xae[\x89\x8a\xbeRC(\xa3Xv\x19\xe9\x95-V\xaa\xa5`7A\xd9\n\x02\xc1\xafF\xc9l\x06`3\x009\x06!\x92\x92\xed\xfc\xe2\x85\x9eyS\xf0M\x0f\x98\xef>d\xd4\xa8\xd9e\xaax,\xc6\x07\x97\xc1]\x9d\xc8\xbd^\xee4\x95D\xec6'Z>\xaa\xc0\x199\x0c\x90\xc8\xad\x0eN@q\xc8\x8eD\xbd*\xac\x06\xdeg7\xb7\xe1u\xfa+\xa3o\xcfn\x7f M \xa0\xa0y\x90V\xae^\\_\x16\xcc\x1a\x83,s\xd2nRH9b\xc8\x95q\xa6I\xba\xb7:(\xb8\xba\xc8\xa3\xa4\x80%\x0e\x94\x89N\xa4\xea\x17\xca\xb4\xc9\x8c\xaf\x19\x81\xb9%E\xe0\xdd\xc0i\x85\x82\xd7dV\xc0\x08\xb2T\x95\t\xde\x00\xb4\x00\x92-\xbc\xa1,z\xf2}\xbdx<\xa7\xa0\xadP\xdbk\xe5<8\xbe\x8aB\xdc\xdd3\x91\xcb\x8c\x07<\xfe\x9e\xa7\xd2X\x1aYO,\x92\x03\xbb\xc6\xeaONL\xae\xc2\x17\x92rG\xa3\x14\xb2\xb9O\x86N\xa3A\x9dk\xdb\xe2h\x88i\x0fT'\xec\x9a\xaa\x94\xa0\t\xa8$)\x94\xf2\xa9\xdaz\x81X\x07\xf0\x04f\x8e\xc1Z\xf3\xdf-S\xf9FY6+&\\{\x1b\xd8\x9a\xb5\xf1?\x95h?d\xe0\xff\x03\xa8M\xe0\xefJ\x95$\xbb\xab\xa6p\xc8\xe9T\xb9\xa2\xa0\xc3=V\xedV313\x13 \xe2\xbc\xd0V*g\xd8\x1b\xf5}SJ\xd2*\xb7\x1a]!\x86y\xc7*o\xde\x83)\xd6C\xb4\x07\xfc]\xc9\x14\xe1BCF\x92=\xf0"
 
     def test_repository_tarball(self):
         # Test that Repository.tarball generates the right operations
@@ -644,6 +642,25 @@ class TestRepositoryTarball(TestRemoteRepository):
         tarball_data = remote_repo._get_tarball('bz2')
         self.assertEqual(expected_calls, client._calls)
         self.assertEqual(self.tarball_content, tarball_data)
+
+    def test_copy_content_into_uses_tarball(self):
+        # copy_content_into on a RemoteRepository should try to use the
+        # tarball command rather than accessing all the files
+        transport_path = 'srcrepo'
+        expected_responses = [(('ok',), self.tarball_content),
+            ]
+        expected_calls = [('call2', 'Repository.tarball', ('///srcrepo/', 'bz2',),),
+            ]
+        remote_repo, client = self.setup_fake_client_and_repository(
+            expected_responses, transport_path)
+        # make a regular local repository to receive the results
+        dest_transport = MemoryTransport()
+        dest_transport.mkdir('destrepo')
+        bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
+        dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
+        dest_repo = dest_bzrdir.create_repository()
+        # try to copy...
+        remote_repo.copy_content_into(dest_repo)
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
@@ -663,22 +680,3 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         self.assertFalse(isinstance(dest_repo, RemoteRepository))
         self.assertTrue(isinstance(src_repo, RemoteRepository))
         src_repo.copy_content_into(dest_repo)
-
-    ## def test_copy_content_into_uses_tarball(self):
-    ##     # copy_content_into on a RemoteRepository should try to use the
-    ##     # tarball command rather than accessing all the files
-    ##     transport_path = 'srcrepo'
-    ##     expected_responses = [(('ok',), self.tarball_content),
-    ##         ]
-    ##     expected_calls = [('call2', 'Repository.tarball', ('///srcrepo/', 'bz2',),),
-    ##         ]
-    ##     remote_repo, client = self.setup_fake_client_and_repository(
-    ##         expected_responses, transport_path)
-    ##     # make a regular local repository to receive the results
-    ##     dest_transport = MemoryTransport()
-    ##     dest_repo = bzrdir.BzrDir.create_repository(
-    ##         dest_transport.abspath('destrepo'))
-    ##     # try to copy...
-    ##     remote_repo.copy_content_into(dest_repo)
-
-    # TODO: Test for error when there's no repository there
