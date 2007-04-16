@@ -72,7 +72,6 @@ class TestRemove(ExternalBase):
     def test_remove_invalid_files(self):
         self.build_tree([a])
         tree = self.make_branch_and_tree('.')
-
         self.run_bzr('remove .')
 
     def test_remove_unversioned_files(self):
@@ -83,18 +82,12 @@ class TestRemove(ExternalBase):
     def test_remove_keep_unversioned_files(self):
         self.build_tree([a])
         tree = self.make_branch_and_tree('.')
-        
-        (out, err) = self.run_bzr_captured(['remove', '--keep', 'a'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "a is not versioned.")
+        self.run_bzr('remove --keep a', error_regexes=["a is not versioned."])
 
     def test_remove_force_unversioned_files(self):
         self.build_tree([a])
         tree = self.make_branch_and_tree('.')
-
-        (out, err) = self.run_bzr_captured(['remove', '--force', 'a'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "deleted a")
+        self.run_bzr('remove --force a', error_regexes=["deleted a"])
         self.assertFilesDeleted([a])
 
     def test_remove_non_existing_files(self):
@@ -103,76 +96,65 @@ class TestRemove(ExternalBase):
 
     def test_remove_keep_non_existing_files(self):
         tree = self._make_add_and_assert_tree([])
-        (out, err) = self.run_bzr_captured(['remove', '--keep', 'b'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "b is not versioned.")
+        self.run_bzr('remove --keep b', error_regexes=["b is not versioned."])
 
     def test_rm_one_file(self):
         tree = self._make_add_and_assert_tree([a])
-        self.run_bzr_captured(['commit', '-m', 'added a'])
-        (out, err) = self.run_bzr_captured(['rm', 'a'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "deleted a")
+        self.run_bzr("commit -m 'added a'")
+        self.run_bzr('rm a', error_regexes=["deleted a"])
         self.assertFilesDeleted([a])
 
     def test_remove_one_file(self):
         tree = self._make_add_and_assert_tree([a])
-        self.run_bzr_captured(['commit', '-m', 'added a'])
-        (out, err) = self.run_bzr_captured(['remove', 'a'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "deleted a")
+        self.run_bzr("commit -m 'added a'")
+        self.run_bzr('remove a', error_regexes=["deleted a"])
         self.assertFilesDeleted([a])
 
     def test_remove_keep_one_file(self):
         tree = self._make_add_and_assert_tree([a])
-        (out, err) = self.run_bzr_captured(['remove', '--keep', 'a'])
-        self.assertEquals(out.strip(), "")
-        self.assertEquals(err.strip(), "removed a")
+        self.run_bzr('remove --keep a', error_regexes=["removed a"])
         self.assertFilesUnversioned([a])
 
     def test_remove_files(self):
         tree = self._make_add_and_assert_tree(files)
-        self.run_bzr_captured(['commit', '-m', 'added files'])
-        (out, err) = self.run_bzr_captured(['remove', a, b, c])
-        self.assertEquals(out.strip(), "")
-        self.assertTrue(re.search("deleted a", err))
-        self.assertTrue(re.search("deleted b", err))
-        self.assertTrue(re.search("deleted b/c", err))
+        self.run_bzr("commit -m 'added files'")
+        self.run_bzr('remove a b b/c', 
+                     error_regexes=["deleted a", "deleted b", "deleted b/c"])
         self.assertFilesDeleted(files)
 
     def test_remove_keep_files(self):
         tree = self._make_add_and_assert_tree(files)
-        (out, err) = self.run_bzr_captured(['remove', '--keep', a, b, c])
-        self.assertEquals(out.strip(), "")
-        self.assertTrue(re.search("removed a", err))
-        self.assertTrue(re.search("removed b", err))
-        self.assertTrue(re.search("removed b/c", err))
+        self.run_bzr("commit -m 'added files'")
+        self.run_bzr('remove --keep a b b/c', 
+                     error_regexes=["removed a", "removed b", "removed b/c"])
         self.assertFilesUnversioned(files)
 
-    def test_command_on_deleted(self):
+    def test_remove_on_deleted(self):
         tree = self._make_add_and_assert_tree([a])
-        self.run_bzr_captured(['commit', '-m', 'added a'])
+        self.run_bzr("commit -m 'added a'")        
         os.unlink(a)
         self.assertInWorkingTree(a)
-        self.run_bzr_captured(['remove', 'a'])
+        self.run_bzr('remove a')
         self.assertNotInWorkingTree(a)
 
-    def test_command_with_new(self):
+    def test_remove_with_new(self):
         tree = self._make_add_and_assert_tree(files)
-
-        self.run_bzr('remove', '--new', '--keep')
+        self.run_bzr('remove --new --keep',
+                     error_regexes=["removed a", "removed b", "removed b/c"])
         self.assertFilesUnversioned(files)
 
-    def test_command_with_new_in_dir1(self):
+    def test_remove_with_new_in_dir1(self):
         tree = self._make_add_and_assert_tree(files)
-        self.run_bzr('remove', '--new', '--keep', b, c)
+        self.run_bzr('remove --new --keep b b/c',
+                     error_regexes=["removed b", "removed b/c"])
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
         self.assertEqual(tree.path2id(a), a+_id)
         self.assertFilesUnversioned([b,c])
 
-    def test_command_with_new_in_dir2(self):
+    def test_remove_with_new_in_dir2(self):
         tree = self._make_add_and_assert_tree(files)
-        self.run_bzr_captured(['remove', '--new', '--keep', '.'])
+        self.run_bzr('remove --new --keep .',
+                     error_regexes=["removed a", "removed b", "removed b/c"])
         tree = WorkingTree.open('.')
         self.assertFilesUnversioned([a])

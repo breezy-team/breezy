@@ -1180,7 +1180,7 @@ class TestCase(unittest.TestCase):
         # magically convert commands like 'remove abc' to ['remove', 'abc']
         if (isinstance(argv, tuple) and len(argv) == 1 and 
             isinstance(argv[0], basestring)):
-            argv = argv[0].split()
+            argv = shlex.split(argv[0])
 
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
@@ -1240,8 +1240,15 @@ class TestCase(unittest.TestCase):
         encoding = kwargs.pop('encoding', None)
         stdin = kwargs.pop('stdin', None)
         working_dir = kwargs.pop('working_dir', None)
-        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding,
-                                     stdin=stdin, working_dir=working_dir)
+        error_regexes = kwargs.pop('error_regexes', [])
+
+        out, err = self.run_bzr_captured(args, retcode=retcode, 
+            encoding=encoding, stdin=stdin, working_dir=working_dir)
+
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
+
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:
@@ -1274,9 +1281,7 @@ class TestCase(unittest.TestCase):
                                'commit', '--strict', '-m', 'my commit comment')
         """
         kwargs.setdefault('retcode', 3)
-        out, err = self.run_bzr(*args, **kwargs)
-        for regex in error_regexes:
-            self.assertContainsRe(err, regex)
+        out, err = self.run_bzr(error_regexes=error_regexes, *args, **kwargs)
         return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
