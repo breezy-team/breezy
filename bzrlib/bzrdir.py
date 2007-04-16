@@ -783,6 +783,9 @@ class BzrDir(object):
         if result_repo is not None:
             # fetch needed content into target.
             if source_repository is not None:
+                # would rather do 
+                # source_repository.copy_content_into(result_repo, revision_id=revision_id)
+                # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)

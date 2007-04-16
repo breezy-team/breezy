@@ -29,6 +29,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.trace import note
 from bzrlib.urlutils import unescape
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -581,6 +582,8 @@ class RemoteRepository(object):
         import tarfile
         import tempfile
         from StringIO import StringIO
+        # TODO: Maybe a progress bar while streaming the tarball?
+        note("Copying repository content as tarball...")
         tar_file = StringIO(self._get_tarball('bz2'))
         tar = tarfile.open('repository', fileobj=tar_file,
             mode='r:bz2')
@@ -937,9 +940,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        self._ensure_real()
         result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
-        self._real_branch.copy_content_into(result, revision_id=revision_id)
+        self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
