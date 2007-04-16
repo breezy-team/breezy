@@ -760,7 +760,9 @@ class TestCase(unittest.TestCase):
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
-        # FIXME: 
+        # FIXME: Rather than constructing new objects like this, how about
+        # having save() and clear() methods on the base Hook class? mbp
+        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
