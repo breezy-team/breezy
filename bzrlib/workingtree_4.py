@@ -99,6 +99,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 # This is the Windows equivalent of ENOTDIR
 # It is defined in pywin32.winerror, but we don't want a strong dependency for
 # just an error code.
+ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
 
 
@@ -2082,13 +2083,15 @@ class InterDirStateTree(InterTree):
                     # python 2.5 has e.errno == EINVAL,
                     #            and e.winerror == ERROR_DIRECTORY
                     e_winerror = getattr(e, 'winerror', None)
+                    win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
                     # there may be directories in the inventory even though
                     # this path is not a file on disk: so mark it as end of
                     # iterator
                     if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                         current_dir_info = None
                     elif (sys.platform == 'win32'
-                          and ERROR_DIRECTORY in (e.errno, e_winerror)):
+                          and (e.errno in win_errors
+                               or e_winerror in win_errors)):
                         current_dir_info = None
                     else:
                         raise
