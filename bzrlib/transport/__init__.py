@@ -618,8 +618,9 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -640,8 +641,9 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
