@@ -30,8 +30,9 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
+from bzrlib.smart import medium
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport, smart
+from bzrlib.transport import get_transport, remote
 
 
 class TestBzrServe(TestCaseWithTransport):
@@ -68,9 +69,10 @@ class TestBzrServe(TestCaseWithTransport):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
-        medium = smart.SmartSimplePipesClientMedium(
+        client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin)
-        transport = smart.SmartTransport('bzr://localhost/', medium=medium)
+        transport = remote.SmartTransport(
+            'bzr://localhost/', medium=client_medium)
         return process, transport
 
     def start_server_port(self, extra_options=()):

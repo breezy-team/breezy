@@ -36,7 +36,16 @@ IN DEVELOPMENT
       It may also help improve behaviour when dealing with a server running
       on a specific port (rather than dynamically assigned ports).
       (Robert Collins)
+
+    * Move most SmartServer code into a new package, bzrlib/smart.
+      bzrlib/transport/remote.py contains just the Transport classes that used
+      to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
  
+    * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
+     ``Branch`` now accept a ``token`` keyword argument, so that separate
+     instances of those objects can share a lock if it has the right token.
+     (Andrew Bennetts, Robert Collins)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
@@ -51,6 +60,16 @@ IN DEVELOPMENT
 
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
+
+    * Teach ``common_ancestor`` to shortcut when the tip of one branch is
+      inside the ancestry of the other. Saves a lot of graph processing
+      (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
+      changes from 2m10s to 13s).  (John Arbash Meinel, #103757)
+
+    * Fix ``show_diff_trees`` to handle the case when a file is modified,
+      and the containing directory is renamed. (The file path is different
+      in this versus base, but it isn't marked as a rename).
+      (John Arbash Meinel, #103870)
 
   TESTING:
 

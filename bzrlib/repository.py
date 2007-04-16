@@ -231,14 +231,46 @@ class Repository(object):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self):
-        self.control_files.lock_write()
+    def lock_write(self, token=None):
+        """Lock this repository for writing.
+        
+        :param token: if this is already locked, then lock_write will fail
+            unless the token matches the existing lock.
+        :returns: a token if this instance supports tokens, otherwise None.
+        :raises TokenLockingNotSupported: when a token is given but this
+            instance doesn't support using token locks.
+        :raises MismatchedToken: if the specified token doesn't match the token
+            of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+
+        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
+        """
+        return self.control_files.lock_write(token=token)
 
     def lock_read(self):
         self.control_files.lock_read()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
+
+    def leave_lock_in_place(self):
+        """Tell this repository not to release the physical lock when this
+        object is unlocked.
+        
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.leave_in_place()
+
+    def dont_leave_lock_in_place(self):
+        """Tell this repository to release the physical lock when this
+        object is unlocked, even if it didn't originally acquire it.
+
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.dont_leave_in_place()
 
     @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
@@ -1341,16 +1373,11 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if not isinstance(source, Repository):
-            return False
-        if not isinstance(target, Repository):
-            return False
-        if source._format.rich_root_data != target._format.rich_root_data:
+        if source.supports_rich_root() != target.supports_rich_root():
             return False
         if source._serializer != target._serializer:
             return False
-        else:
-            return True 
+        return True
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -1586,11 +1613,7 @@ class InterModel1and2(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if not isinstance(source, Repository):
-            return False
-        if not isinstance(target, Repository):
-            return False
-        if not source._format.rich_root_data and target._format.rich_root_data:
+        if not source.supports_rich_root() and target.supports_rich_root():
             return True
         else:
             return False
