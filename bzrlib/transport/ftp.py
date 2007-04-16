@@ -360,16 +360,12 @@ class FtpTransport(Transport):
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
         abspath = self._abspath(rel_path)
-        f = self._get_FTP()
-        self._rmdir(abspath, f)
-
-    def _rmdir(self, abspath, f):
         try:
             mutter("FTP rmd: %s", abspath)
+            f = self._get_FTP()
             f.rmd(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath,
-                                       unknown_exc=errors.PathError)
+            self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
@@ -471,15 +467,9 @@ class FtpTransport(Transport):
 
         Using the implementation provided by osutils.
         """
-        def delete_or_rmdir(abspath):
-            try:
-                self._delete(abspath, f)
-            except errors.NoSuchFile, e:
-                self._rmdir(abspath, f)
-
         osutils.fancy_rename(abs_from, abs_to,
-            rename_func=lambda p1, p2:self._rename(p1, p2, f),
-            unlink_func=delete_or_rmdir)
+            rename_func=lambda p1, p2: self._rename(p1, p2, f),
+            unlink_func=lambda p: self._delete(p, f))
 
     def delete(self, relpath):
         """Delete the item at relpath"""

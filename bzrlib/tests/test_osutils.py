@@ -71,16 +71,6 @@ class TestOSUtils(TestCaseInTempDir):
 
         self.check_file_contents('a', 'something in a\n')
 
-    def test_fancy_rename_fails_safe(self):
-        """Ensure that unlink failures restore original state"""
-        def raise_path(path):
-            raise Exception("path")
-        self.build_tree(['a', 'b'])
-        self.failUnlessExists('a')
-        self.assertRaises(Exception, osutils.fancy_rename, 'a', 'b',
-            os.rename, unlink_func=raise_path)
-        self.failUnlessExists('a')
-
     def test_rename(self):
         # Rename should be semi-atomic on all platforms
         open('a', 'wb').write('something in a\n')
