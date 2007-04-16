@@ -27,7 +27,6 @@ from bzrlib import (
         bzrdir,
         errors,
         osutils,
-        smart,
         tests,
         urlutils,
         )
@@ -1016,11 +1015,12 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
-        return smart.SmartServerRequestHandler(transport, request.request_handlers)
+        return request.SmartServerRequestHandler(transport,
+                                                 request.request_handlers)
 
     def test_construct_request_handler(self):
         """Constructing a request handler should be easy and set defaults."""
-        handler = smart.SmartServerRequestHandler(None, None)
+        handler = request.SmartServerRequestHandler(None, None)
         self.assertFalse(handler.finished_reading)
 
     def test_hello(self):
