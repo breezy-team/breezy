@@ -16,7 +16,7 @@
 
 """Implementaion of urllib2 tailored to bzr needs
 
-This file re-implements the urllib2 class hierarchy with custom classes.
+This file complements the urllib2 class hierarchy with custom classes.
 
 For instance, we create a new HTTPConnection and HTTPSConnection that inherit
 from the original urllib2.HTTP(s)Connection objects, but also have a new base
@@ -28,10 +28,11 @@ the custom HTTPConnection classes.
 We have a custom Response class, which lets us maintain a keep-alive
 connection even for requests that urllib2 doesn't expect to contain body data.
 
-And a custom Request class that lets us track redirections, and send
-authentication data without requiring an extra round trip to get rejected by
-the server. We also create a Request hierarchy, to make it clear what type
-of request is being made.
+And a custom Request class that lets us track redirections, and
+handle authentication schemes.
+
+We also create a Request hierarchy, to make it clear what type of
+request is being made.
 """
 
 DEBUG = 0
@@ -146,9 +147,6 @@ class Request(urllib2.Request):
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None,):
-        # urllib2.Request will be confused if we don't extract
-        # authentification info before building the request
-        url, self.user, self.password = self.extract_auth(url)
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
@@ -158,36 +156,18 @@ class Request(urllib2.Request):
         self.redirected_to = None
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
+        self.set_auth(None, None, None) # Until the first 401
 
-    def extract_auth(self, url):
-        """Extracts authentification information from url.
-
-        Get user and password from url of the form: http://user:pass@host/path
-        """
-        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-        if '@' in netloc:
-            auth, netloc = netloc.split('@', 1)
-            if ':' in auth:
-                user, password = auth.split(':', 1)
-            else:
-                user, password = auth, None
-            user = urllib.unquote(user)
-            if password is not None:
-                password = urllib.unquote(password)
-        else:
-            user = None
-            password = None
-
-        url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-
-        return url, user, password
+    def set_auth(self, auth_scheme, user, password=None):
+        self.auth_scheme = auth_scheme
+        self.user = user
+        self.password = password
 
     def get_method(self):
         return self.method
 
 
-# The urlib2.xxxAuthHandler handle the authentification of the
+# The urlib2.xxxAuthHandler handle the authentication of the
 # requests, to do that, they need an urllib2 PasswordManager *at
 # build time*. We also need one to reuse the passwords already
 # typed by the user.
@@ -204,14 +184,10 @@ class ConnectionHandler(urllib2.BaseHandler):
     internally used. But we need it in order to achieve
     connection sharing. So, we add it to the request just before
     it is processed, and then we override the do_open method for
-    http[s] requests.
+    http[s] requests in AbstractHTTPHandler.
     """
 
     handler_order = 1000 # after all pre-processings
-
-    def get_key(self, connection):
-        """Returns the key for the connection in the cache"""
-        return '%s:%d' % (connection.host, connection.port)
 
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
@@ -282,7 +258,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         # urllib2 using capitalize() for headers
                         # instead of title(sp?).
                         'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
-                        # FIXME: pycurl also set the following, understand why
                         'Accept': '*/*',
                         }
 
@@ -718,17 +693,50 @@ class ProxyHandler(urllib2.ProxyHandler):
 
 
 class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
-    """Custom basic authentification handler.
+    """Custom basic authentication handler.
 
-    Send the authentification preventively to avoid the the
-    roundtrip associated with the 401 error.
+    Send the authentication preventively to avoid the roundtrip
+    associated with the 401 error.
     """
 
-#    def http_request(self, request):
-#        """Insert an authentification header if information is available"""
-#        if request.auth == 'basic' and request.password is not None:
-#            
-#        return request
+    def get_auth(self, user, password):
+        raw = '%s:%s' % (user, password)
+        auth = 'Basic ' + raw.encode('base64').strip()
+        return auth
+
+    def set_auth(self, request):
+        """Add the authentication header if needed.
+
+        All required informations should be part of the request.
+        """
+        if request.password is not None:
+            request.add_header(self.auth_header,
+                               self.get_auth(request.user, request.password))
+
+    def http_request(self, request):
+        """Insert an authentication header if information is available"""
+        if request.auth_scheme == 'basic' and request.password is not None:
+            self.set_auth(request)
+        return request
+
+    https_request = http_request # FIXME: Need test
+
+    def http_error_401(self, req, fp, code, msg, headers):
+        """Trap the 401 to gather the auth type."""
+        response = urllib2.HTTPBasicAuthHandler.http_error_401(self, req, fp,
+                                                               code, msg,
+                                                               headers)
+        if response is not None:
+            # We capture the auth_scheme to be able to send the
+            # authentication header with the next requests
+            # without waiting for a 401 error.
+            # The urllib2.HTTPBasicAuthHandler will return a
+            # response *only* if the basic authentication
+            # succeeds. If another scheme is used or the
+            # authentication fails, the response will be None.
+            req.auth_scheme = 'basic'
+
+        return response
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
@@ -737,7 +745,6 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     We don't really process the errors, quite the contrary
     instead, we leave our Transport handle them.
     """
-    handler_order = 1000  # after all other processing
 
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
@@ -770,7 +777,6 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
             # of a better magic value.
             raise errors.InvalidRange(req.get_full_url(),0)
         else:
-            # TODO: A test is needed to exercise that code path
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
                                              % (code, msg))
@@ -792,7 +798,7 @@ class Opener(object):
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
             ProxyHandler,
-            urllib2.HTTPBasicAuthHandler(self.password_manager),
+            HTTPBasicAuthHandler(self.password_manager),
             #urllib2.HTTPDigestAuthHandler(self.password_manager),
             #urllib2.ProxyBasicAuthHandler,
             #urllib2.ProxyDigestAuthHandler,
@@ -807,4 +813,3 @@ class Opener(object):
             # handler is used, when and for what.
             import pprint
             pprint.pprint(self._opener.__dict__)
-

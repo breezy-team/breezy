@@ -20,6 +20,7 @@
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
+from cStringIO import StringIO
 import os
 import select
 import socket
@@ -29,11 +30,14 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    ui,
     urlutils,
     )
 from bzrlib.tests import (
     TestCase,
+    TestUIFactory,
     TestSkipped,
+    StringIOWrapper,
     )
 from bzrlib.tests.HttpServer import (
     HttpServer,
@@ -43,6 +47,7 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.tests.HTTPTestUtil import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
+    BasicAuthHTTPServer,
     FakeProxyRequestHandler,
     ForbiddenRequestHandler,
     HTTPServerRedirecting,
@@ -725,13 +730,8 @@ class TestHttpProxyWhiteBox(TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        from bzrlib.transport.http._urllib2_wrappers import (
-            ProxyHandler,
-            Request,
-            )
-
-        handler = ProxyHandler()
-        request = Request('GET','http://baz/buzzle')
+        handler = _urllib2_wrappers.ProxyHandler()
+        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
@@ -1145,3 +1145,70 @@ class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
 
         self.assertRaises(errors.TooManyRedirections, do_catching_redirections,
                           self.get_a, self.old_transport, redirected)
+
+
+class TestHTTPBasicAuth(TestCaseWithWebserver):
+    """Test basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
+    _auth_header = 'Authorization'
+
+    def create_transport_readonly_server(self):
+        return BasicAuthHTTPServer()
+
+    def setUp(self):
+        super(TestHTTPBasicAuth, self).setUp()
+        self.build_tree_contents([('a', 'contents of a\n'),
+                                  ('b', 'contents of b\n'),])
+        self.server = self.get_readonly_server()
+
+        self.old_factory = ui.ui_factory
+        self.addCleanup(self.restoreUIFactory)
+
+    def restoreUIFactory(self):
+        ui.ui_factory = self.old_factory
+
+    def get_user_url(self, user=None, password=None):
+        """Build an url embedding user and password"""
+        url = '%s://' % self.server._url_protocol
+        if user is not None:
+            url += user
+            if password is not None:
+                url += ':' + password
+            url += '@'
+        url += '%s:%s/' % (self.server.host, self.server.port)
+        return url
+
+    def test_empty_pass(self):
+        self.server.add_user('joe', '')
+        t = self._transport(self.get_user_url('joe', ''))
+        self.assertEqual('contents of a\n', t.get('a').read())
+
+    def test_user_pass(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe', 'foo'))
+        self.assertEqual('contents of a\n', t.get('a').read())
+
+    def test_unknown_user(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('bill', 'foo'))
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+
+    def test_wrong_pass(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe', 'bar'))
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+
+    def test_prompt_for_password(self):
+        self.server.add_user('joe', 'foo')
+        t = self._transport(self.get_user_url('joe'))
+        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        # And we shouldn't prompt again for a different request
+        # against the same transport.
+        self.assertEqual('contents of b\n',t.get('b').read())
+        t2 = t.clone()
+        # And neither against a clone
+        self.assertEqual('contents of b\n',t2.get('b').read())
