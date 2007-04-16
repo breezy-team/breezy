@@ -137,8 +137,8 @@ class FakeClient(SmartClient):
         self._calls.append(('call', method, args))
         return self.responses.pop(0)[0]
 
-    def call2(self, method, *args):
-        self._calls.append(('call2', method, args))
+    def call_expecting_body(self, method, *args):
+        self._calls.append(('call_expecting_body', method, args))
         result = self.responses.pop(0)
         return result[0], FakeProtocol(result[1])
 
@@ -342,7 +342,7 @@ class TestBranchControlGetBranchConf(tests.TestCase):
         branch = RemoteBranch(bzrdir, None, _client=client)
         result = branch.control_files.get('branch.conf')
         self.assertEqual(
-            [('call2', 'Branch.get_config_file', ('///quack/',))],
+            [('call_expecting_body', 'Branch.get_config_file', ('///quack/',))],
             client._calls)
         self.assertEqual('config file body', result.read())
 
@@ -387,7 +387,8 @@ class TestRepositoryGatherStats(TestRemoteRepository):
             responses, transport_path)
         result = repo.gather_stats(None)
         self.assertEqual(
-            [('call2', 'Repository.gather_stats', ('///quack/','','no'))],
+            [('call_expecting_body', 'Repository.gather_stats',
+             ('///quack/','','no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18}, result)
 
@@ -404,7 +405,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
             responses, transport_path)
         result = repo.gather_stats(revid)
         self.assertEqual(
-            [('call2', 'Repository.gather_stats',
+            [('call_expecting_body', 'Repository.gather_stats',
               ('///quick/', revid, 'no'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18,
@@ -426,7 +427,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
             responses, transport_path)
         result = repo.gather_stats(revid, True)
         self.assertEqual(
-            [('call2', 'Repository.gather_stats',
+            [('call_expecting_body', 'Repository.gather_stats',
               ('///buick/', revid, 'yes'))],
             client._calls)
         self.assertEqual({'revisions': 2, 'size': 18,
@@ -462,7 +463,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             responses, transport_path)
         result = repo.get_revision_graph()
         self.assertEqual(
-            [('call2', 'Repository.get_revision_graph', ('///sinhala/', ''))],
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('///sinhala/', ''))],
             client._calls)
         self.assertEqual({r1: [], r2: [r1]}, result)
 
@@ -481,7 +483,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             responses, transport_path)
         result = repo.get_revision_graph(r2)
         self.assertEqual(
-            [('call2', 'Repository.get_revision_graph', ('///sinhala/', r2))],
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('///sinhala/', r2))],
             client._calls)
         self.assertEqual({r11: [], r12: [], r2: [r11, r12], }, result)
 
@@ -495,7 +498,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         self.assertRaises(errors.NoSuchRevision,
             repo.get_revision_graph, revid)
         self.assertEqual(
-            [('call2', 'Repository.get_revision_graph', ('///sinhala/', revid))],
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('///sinhala/', revid))],
             client._calls)
 
         

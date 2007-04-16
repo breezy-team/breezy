@@ -259,7 +259,7 @@ class RemoteRepository(object):
 
         path = self.bzrdir._path_for_remote_call(self._client)
         assert type(revision_id) is str
-        response = self._client.call2(
+        response = self._client.call_expecting_body(
             'Repository.get_revision_graph', path, revision_id)
         assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
         if response[0][0] == 'ok':
@@ -301,8 +301,8 @@ class RemoteRepository(object):
             fmt_committers = 'no'
         else:
             fmt_committers = 'yes'
-        response = self._client.call2('Repository.gather_stats', path,
-                                      fmt_revid, fmt_committers)
+        response = self._client.call_expecting_body(
+            'Repository.gather_stats', path, fmt_revid, fmt_committers)
         assert response[0][0] == 'ok', \
             'unexpected response code %s' % (response[0],)
 
@@ -631,7 +631,8 @@ class RemoteBranchLockableFiles(LockableFiles):
         """
         if path == 'branch.conf':
             path = self.bzrdir._path_for_remote_call(self._client)
-            response = self._client.call2('Branch.get_config_file', path)
+            response = self._client.call_expecting_body(
+                'Branch.get_config_file', path)
             assert response[0][0] == 'ok', \
                 'unexpected response code %s' % (response[0],)
             return StringIO(response[1].read_body_bytes())
@@ -862,8 +863,10 @@ class RemoteBranch(branch.Branch):
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call2('Branch.revision_history', path)
-        assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
+        response = self._client.call_expecting_body(
+            'Branch.revision_history', path)
+        assert response[0][0] == 'ok', ('unexpected response code %s'
+                                        % (response[0],))
         result = response[1].read_body_bytes().split('\x00')
         if result == ['']:
             return []
