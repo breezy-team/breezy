@@ -158,11 +158,11 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return client.SmartClient(self._medium).call(method, *args)
+        return client._SmartClient(self._medium).call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        smart_client = client.SmartClient(self._medium)
+        smart_client = client._SmartClient(self._medium)
         return smart_client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):

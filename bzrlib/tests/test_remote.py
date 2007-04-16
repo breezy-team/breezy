@@ -39,7 +39,7 @@ from bzrlib.remote import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
-from bzrlib.smart.client import SmartClient
+from bzrlib.smart.client import _SmartClient
 from bzrlib.transport import remote as remote_transport
 from bzrlib.transport.memory import MemoryTransport
 
@@ -120,8 +120,8 @@ class FakeProtocol(object):
         return self._body_buffer.read(count)
 
 
-class FakeClient(SmartClient):
-    """Lookalike for SmartClient allowing testing."""
+class FakeClient(_SmartClient):
+    """Lookalike for _SmartClient allowing testing."""
     
     def __init__(self, responses):
         # We don't call the super init because there is no medium.

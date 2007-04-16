@@ -1447,14 +1447,14 @@ class TestSmartProtocol(tests.TestCase):
 
 
 class TestSmartClientUnicode(tests.TestCase):
-    """SmartClient tests for unicode arguments.
+    """_SmartClient tests for unicode arguments.
 
     Unicode arguments to call_with_body_bytes are not correct (remote method
     names, arguments, and bodies must all be expressed as byte strings), but
-    SmartClient should gracefully reject them, rather than getting into a broken
-    state that prevents future correct calls from working.  That is, it should
-    be possible to issue more requests on the medium afterwards, rather than
-    allowing one bad call to call_with_body_bytes to cause later calls to
+    _SmartClient should gracefully reject them, rather than getting into a
+    broken state that prevents future correct calls from working.  That is, it
+    should be possible to issue more requests on the medium afterwards, rather
+    than allowing one bad call to call_with_body_bytes to cause later calls to
     mysteriously fail with TooManyConcurrentRequests.
     """
 
@@ -1466,7 +1466,7 @@ class TestSmartClientUnicode(tests.TestCase):
         input = StringIO("\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        smart_client = client.SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium)
         self.assertRaises(TypeError,
             smart_client.call_with_body_bytes, method, args, body)
         self.assertEqual("", output.getvalue())

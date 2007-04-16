@@ -51,7 +51,7 @@ class RemoteBzrDir(BzrDir):
 
         if _client is None:
             self._medium = transport.get_smart_client()
-            self._client = client.SmartClient(self._medium)
+            self._client = client._SmartClient(self._medium)
         else:
             self._client = _client
             self._medium = None
@@ -168,7 +168,7 @@ class RemoteBzrDir(BzrDir):
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
-    """Format for repositories accessed over a SmartClient.
+    """Format for repositories accessed over a _SmartClient.
 
     Instances of this repository are represented by RemoteRepository
     instances.
@@ -231,7 +231,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client.SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._medium)
         else:
             self._client = _client
         self._format = format
@@ -682,7 +682,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client.SmartClient(self.bzrdir._medium)
+            self._client = client._SmartClient(self.bzrdir._medium)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch

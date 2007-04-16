@@ -56,7 +56,7 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
-from bzrlib.smart.client import SmartClient
+from bzrlib.smart.client import _SmartClient
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -2222,9 +2222,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = SmartClient(medium)
+        client = _SmartClient(medium)
         path = client.remote_path_from_transport(transport)
-        response = SmartClient(medium).call('BzrDirFormat.initialize', path)
+        response = _SmartClient(medium).call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
