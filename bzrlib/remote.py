@@ -287,8 +287,8 @@ class RemoteRepository(object):
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.has_revision', path, revision_id)
-        assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
-        return response[0] == 'ok'
+        assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
+        return response[0] == 'yes'
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

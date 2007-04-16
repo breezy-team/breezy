@@ -80,7 +80,7 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             present.
         """
         if repository.has_revision(revision_id):
-            return SmartServerResponse(('ok', ))
+            return SmartServerResponse(('yes', ))
         else:
             return SmartServerResponse(('no', ))
 

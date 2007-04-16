@@ -571,7 +571,7 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath(''), 'revid'))
 
     def test_present_revision(self):
-        """For a present revision, ('ok', ) is returned."""
+        """For a present revision, ('yes', ) is returned."""
         backing = self.get_transport()
         request = smart.repository.SmartServerRequestHasRevision(backing)
         tree = self.make_branch_and_memory_tree('.')
@@ -581,7 +581,7 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
         r1 = tree.commit('a commit', rev_id=rev_id_utf8)
         tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
-        self.assertEqual(SmartServerResponse(('ok', )),
+        self.assertEqual(SmartServerResponse(('yes', )),
             request.execute(backing.local_abspath(''), rev_id_utf8))
 
 
