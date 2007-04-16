@@ -2335,7 +2335,8 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      Option('first',
-                            help='run all tests, but run specified tests first'
+                            help='run all tests, but run specified tests first',
+                            short_name='f',
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
