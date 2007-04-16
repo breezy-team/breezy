@@ -224,7 +224,14 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # If the file used to exist, rename it back into place
             # otherwise just delete it from the tmp location
             if success:
-                unlink_func(tmp_name)
+                try:
+                    unlink_func(tmp_name)
+                except:
+                    # If the unlink fails, then restore the old state, as if
+                    # an atomic rename failed
+                    rename_func(new, old)
+                    rename_func(tmp_name, new)
+                    raise
             else:
                 rename_func(tmp_name, new)
 
