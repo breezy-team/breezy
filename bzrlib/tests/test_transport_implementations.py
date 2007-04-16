@@ -376,6 +376,7 @@ class TransportTests(TestTransportImplementation):
         # (we don't want to encode unicode here at all, callers should be
         # strictly passing bytes to put_bytes), but we allow it for backwards
         # compatibility.  At some point we should use a specific exception.
+        # See https://bugs.launchpad.net/bzr/+bug/106898.
         t = self.get_transport()
         if t.is_readonly():
             return

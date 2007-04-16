@@ -259,7 +259,7 @@ class RemoteRepository(object):
 
         path = self.bzrdir._path_for_remote_call(self._client)
         assert type(revision_id) is str
-        response = self._client.call2(
+        response = self._client.call_expecting_body(
             'Repository.get_revision_graph', path, revision_id)
         assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
         if response[0][0] == 'ok':
@@ -301,8 +301,8 @@ class RemoteRepository(object):
             fmt_committers = 'no'
         else:
             fmt_committers = 'yes'
-        response = self._client.call2('Repository.gather_stats', path,
-                                      fmt_revid, fmt_committers)
+        response = self._client.call_expecting_body(
+            'Repository.gather_stats', path, fmt_revid, fmt_committers)
         assert response[0][0] == 'ok', \
             'unexpected response code %s' % (response[0],)
 
@@ -420,11 +420,16 @@ class RemoteRepository(object):
             if not self._leave_lock:
                 self._unlock(token)
 
+    def break_lock(self):
+        # should hand off to the network
+        self._ensure_real()
+        return self._real_repository.break_lock()
+
     def _get_tarball(self, compression):
         """See Repository.tarball()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, protocol = self._client.call2('Repository.tarball', path,
-            compression)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.tarball', path, compression)
         assert response[0] in ('ok', 'failure'), \
             'unexpected response code %s' % (response,)
         if response[0] == 'ok':
@@ -433,7 +438,6 @@ class RemoteRepository(object):
             return body
         else:
             raise errors.SmartServerError(error_code=response)
-
 
     ### These methods are just thin shims to the VFS object for now.
 
@@ -657,7 +661,8 @@ class RemoteBranchLockableFiles(LockableFiles):
         """
         if path == 'branch.conf':
             path = self.bzrdir._path_for_remote_call(self._client)
-            response = self._client.call2('Branch.get_config_file', path)
+            response = self._client.call_expecting_body(
+                'Branch.get_config_file', path)
             assert response[0][0] == 'ok', \
                 'unexpected response code %s' % (response[0],)
             return StringIO(response[1].read_body_bytes())
@@ -888,8 +893,10 @@ class RemoteBranch(branch.Branch):
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call2('Branch.revision_history', path)
-        assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
+        response = self._client.call_expecting_body(
+            'Branch.revision_history', path)
+        assert response[0][0] == 'ok', ('unexpected response code %s'
+                                        % (response[0],))
         result = response[1].read_body_bytes().split('\x00')
         if result == ['']:
             return []

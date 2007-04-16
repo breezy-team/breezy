@@ -753,13 +753,14 @@ class TestCase(unittest.TestCase):
         self._benchtime = None
         # prevent hooks affecting tests
         self._preserved_hooks = {
-            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
-            bzrlib.smart.server.SmartTCPServer:bzrlib.smart.server.SmartTCPServer.hooks,
+            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
-        # this list of hooks must be kept in sync with the defaults
-        # in branch.py
+        # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        # FIXME: 
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""

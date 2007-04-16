@@ -27,12 +27,18 @@ class SmartClient(object):
 
     def call(self, method, *args):
         """Call a method on the remote server."""
-        result, protocol = self.call2(method, *args)
+        result, protocol = self.call_expecting_body(method, *args)
         protocol.cancel_read_body()
         return result
 
-    def call2(self, method, *args):
-        """Call a method and return the result and the protocol object."""
+    def call_expecting_body(self, method, *args):
+        """Call a method and return the result and the protocol object.
+        
+        The body can be read like so::
+
+            result, smart_protocol = smart_client.call_expecting_body(...)
+            body = smart_protocol.read_body_bytes()
+        """
         request = self._medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call(method, *args)
@@ -53,5 +59,10 @@ class SmartClient(object):
         return smart_protocol.read_response_tuple()
 
     def remote_path_from_transport(self, transport):
-        """Convert transport into a path suitable for using in a request."""
+        """Convert transport into a path suitable for using in a request.
+        
+        Note that the resulting remote path doesn't encode the host name or
+        anything but path, so it is only safe to use it in requests sent over
+        the medium from the matching transport.
+        """
         return unescape(urlparse(transport.base)[2]).encode('utf8')
