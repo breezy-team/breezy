@@ -644,16 +644,6 @@ class TestRepositoryTarball(TestRemoteRepository):
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
     """RemoteRepository.copy_content_into optimizations"""
 
-    ## def test_detect_incompatible_transports(self):
-    ##     self.transport_server = server.SmartTCPServer_for_testing
-    ##     src_repo = self.make_repository('repo1')
-    ##     # At the moment the tarball-based copy_content_into can't write back
-    ##     # into a smart server.  It would be good if it could upload the
-    ##     # tarball; once that works we'd have to create repositories of
-    ##     # different formats. -- mbp 20070410
-    ##     dest_repo = self.make_repository('repo2')
-    ##     src_repo.copy_content_into(dest_repo)
-
     def test_copy_content_remote_to_local(self):
         self.transport_server = server.SmartTCPServer_for_testing
         src_repo = self.make_repository('repo1')
