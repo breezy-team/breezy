@@ -1177,6 +1177,11 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
+        # magically convert commands like 'remove abc' to ['remove', 'abc']
+        if (isinstance(argv, tuple) and len(argv) == 1 and 
+            isinstance(argv[0], basestring)):
+            argv = argv[0].split()
+
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
