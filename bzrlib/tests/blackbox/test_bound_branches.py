@@ -128,7 +128,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.assertContainsRe(error, 'old locations')
 
     def init_meta_branch(self, path):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = bzrdir.format_registry.make_bzrdir('default')
         return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):

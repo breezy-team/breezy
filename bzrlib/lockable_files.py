@@ -228,7 +228,6 @@ class LockableFiles(object):
 
     def dont_leave_in_place(self):
         """Set this LockableFiles to clear the physical lock on unlock."""
-        # XXX: think about renaming this!
         self._lock.dont_leave_in_place()
 
     def lock_write(self, token=None):
@@ -241,6 +240,10 @@ class LockableFiles(object):
             instance doesn't support using token locks.
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
         """
         # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
@@ -258,8 +261,6 @@ class LockableFiles(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.WriteTransaction())
-            # XXX: add test for the case that requires self._token_from_lock:
-            # token = x.lock_write(); assert(x.lock_write() == token)
             self._token_from_lock = token_from_lock
             return token_from_lock
 

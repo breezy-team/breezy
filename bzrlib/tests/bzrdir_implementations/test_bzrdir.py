@@ -137,7 +137,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestSkipped("cannot make working tree with transport %r"
                               % a_bzrdir.transport)
 
-    def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None, basis=None,
+    def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
                      force_new_repo=False):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
         
@@ -146,7 +146,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         try:
             target = from_bzrdir.sprout(to_url, revision_id=revision_id,
-                                        basis=basis,
                                         force_new_repo=force_new_repo)
         except errors.NotLocalUrl:
             raise TestSkipped('Cannot sprout to remote bzrdirs.')

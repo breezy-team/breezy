@@ -515,4 +515,3 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         """
         return self._medium._read_bytes(count)
 
-

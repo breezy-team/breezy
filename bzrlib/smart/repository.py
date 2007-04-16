@@ -179,13 +179,10 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
-    """Get the raw repository files as one big tarball.
+    """Get the raw repository files as a tarball.
 
-    The tarball contains one directory 'repository' which contains all the
-    files found in that directory.
-
-    At the moment this is only supported when the repository is on a
-    LocalTransport.
+    The returned tarball contains a .bzr control directory which in turn
+    contains a repository.
     
     This takes one parameter, compression, which currently must be 
     "", "gz", or "bz2".

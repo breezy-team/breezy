@@ -181,6 +181,8 @@ def log_exception(msg=None):
 
     The exception string representation is used as the error
     summary, unless msg is given.
+
+    Please see log_exception_quietly() for the replacement API.
     """
     if msg:
         error(msg)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -572,7 +572,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def setUp(self):
         super(TestSmartServerStreamMedium, self).setUp()
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def portable_socket_pair(self):
         """Return a pair of TCP sockets connected to each other.
@@ -780,14 +780,15 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         class FlakyTransport(object):
+            base = 'a_url'
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread()
         try:
-            transport = remote.SmartTCPTransport(smart_server.get_url())
+            transport = remote.RemoteTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -818,15 +819,39 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.transport = remote.SmartTCPTransport(self.server.get_url())
+        self.transport = remote.RemoteTCPTransport(self.server.get_url())
+        self.addCleanup(self.tearDownServer)
 
-    def tearDown(self):
+    def tearDownServer(self):
         if getattr(self, 'transport', None):
             self.transport.disconnect()
+            del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
-        super(SmartTCPTests, self).tearDown()
-        
+            del self.server
+
+
+class TestServerSocketUsage(SmartTCPTests):
+
+    def test_server_setup_teardown(self):
+        """It should be safe to teardown the server with no requests."""
+        self.setUpServer()
+        server = self.server
+        transport = remote.RemoteTCPTransport(self.server.get_url())
+        self.tearDownServer()
+        self.assertRaises(errors.ConnectionError, transport.has, '.')
+
+    def test_server_closes_listening_sock_on_shutdown_after_request(self):
+        """The server should close its listening socket when it's stopped."""
+        self.setUpServer()
+        server = self.server
+        self.transport.has('.')
+        self.tearDownServer()
+        # if the listening socket has closed, we should get a BADFD error
+        # when connecting, rather than a hang.
+        transport = remote.RemoteTCPTransport(server.get_url())
+        self.assertRaises(errors.ConnectionError, transport.has, '.')
+
 
 class WritableEndToEndTests(SmartTCPTests):
     """Client to server tests that require a writable transport."""
@@ -841,14 +866,14 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_smart_transport_has(self):
         """Checking for file existence over smart."""
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents of foo\n")
         self.assertTrue(self.transport.has("foo"))
         self.assertFalse(self.transport.has("non-foo"))
 
     def test_smart_transport_get(self):
         """Read back a file over smart."""
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents\nof\nfoo\n")
         fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
@@ -858,7 +883,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # The path in a raised NoSuchFile exception should be the precise path
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         try:
             self.transport.get('not%20a%20file')
         except errors.NoSuchFile, e:
@@ -885,7 +910,7 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_open_dir(self):
         """Test changing directory"""
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         transport = self.transport
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
@@ -913,11 +938,50 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
 
     def test_mkdir_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         self.setUpServer(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
-        
+
+
+class TestServerHooks(SmartTCPTests):
+
+    def capture_server_call(self, backing_url, public_url):
+        """Record a server_started|stopped hook firing."""
+        self.hook_calls.append((backing_url, public_url))
+
+    def test_server_started_hook(self):
+        """The server_started hook fires when the server is started."""
+        self.hook_calls = []
+        server.SmartTCPServer.hooks.install_hook('server_started',
+            self.capture_server_call)
+        self.setUpServer()
+        # at this point, the server will be starting a thread up.
+        # there is no indicator at the moment, so bodge it by doing a request.
+        self.transport.has('.')
+        self.assertEqual([(self.backing_transport.base, self.transport.base)],
+            self.hook_calls)
+
+    def test_server_stopped_hook_simple(self):
+        """The server_stopped hook fires when the server is stopped."""
+        self.hook_calls = []
+        server.SmartTCPServer.hooks.install_hook('server_stopped',
+            self.capture_server_call)
+        self.setUpServer()
+        result = [(self.backing_transport.base, self.transport.base)]
+        # check the stopping message isn't emitted up front.
+        self.assertEqual([], self.hook_calls)
+        # nor after a single message
+        self.transport.has('.')
+        self.assertEqual([], self.hook_calls)
+        # clean up the server
+        self.tearDownServer()
+        # now it should have fired.
+        self.assertEqual(result, self.hook_calls)
+
+# TODO: test that when the server suffers an exception that it calls the
+# server-stopped hook.
+
 
 class SmartServerCommandTests(tests.TestCaseWithTransport):
     """Tests that call directly into the command objects, bypassing the network
@@ -948,7 +1012,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(SmartServerRequestHandlerTests, self).setUp()
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
@@ -966,15 +1030,15 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, handler.response.body)
         
     def test_disable_vfs_handler_classes_via_environment(self):
-        # VFS handler classes will raise an error from "execute" if NO_SMART_VFS
-        # is set.
+        # VFS handler classes will raise an error from "execute" if
+        # BZR_NO_SMART_VFS is set.
         handler = vfs.HasRequest(None)
         # set environment variable after construction to make sure it's
         # examined.
-        # Note that we can safely clobber NO_SMART_VFS here, because setUp has
-        # called _captureVar, so it will be restored to the right state
+        # Note that we can safely clobber BZR_NO_SMART_VFS here, because setUp
+        # has called _captureVar, so it will be restored to the right state
         # afterwards.
-        os.environ['NO_SMART_VFS'] = ''
+        os.environ['BZR_NO_SMART_VFS'] = ''
         self.assertRaises(errors.DisabledMethod, handler.execute)
 
     def test_readonly_exception_becomes_transport_not_possible(self):
@@ -1042,7 +1106,7 @@ class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
         t = get_transport('bzr+ssh://example.com/path')
-        self.assertIsInstance(t, remote.SmartSSHTransport)
+        self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
 
@@ -1112,7 +1176,7 @@ class TestSmartProtocol(tests.TestCase):
         self.client_protocol = protocol.SmartClientRequestProtocolOne(
             self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
-        self.smart_server_request = smart.SmartServerRequestHandler(
+        self.smart_server_request = request.SmartServerRequestHandler(
             None, request.request_handlers)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
@@ -1205,7 +1269,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertTrue(self.end_received)
 
     def test_accept_request_and_body_all_at_once(self):
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
         mem_transport = memory.MemoryTransport()
         mem_transport.put_bytes('foo', 'abcdefghij')
         out_stream = StringIO()
@@ -1499,7 +1563,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     def setUp(self):
         super(HTTPTunnellingSmokeTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
-        self._captureVar('NO_SMART_VFS', None)
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def _test_bulk_data(self, url_protocol):
         # We should be able to send and receive bulk data in a single message.
@@ -1578,8 +1642,12 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
             'Content-Length: 6\r\n'
             '\r\n'
             'hello\n')
-        request_handler = SmartRequestHandler(
-            socket, ('localhost', 80), httpd)
+        # Beware: the ('localhost', 80) below is the
+        # client_address parameter, but we don't have one because
+        # we have defined a socket which is not bound to an
+        # address. The test framework never uses this client
+        # address, so far...
+        request_handler = SmartRequestHandler(socket, ('localhost', 80), httpd)
         response = socket.writefile.getvalue()
         self.assertStartsWith(response, 'HTTP/1.0 200 ')
         # This includes the end of the HTTP headers, and all the body.

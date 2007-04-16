@@ -54,6 +54,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            NotBranchError, UninitializableFormat,
                            UnlistableStore, UnlistableBranch,
                            )
+from bzrlib.hooks import Hooks
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
@@ -924,7 +925,7 @@ class BranchFormat(object):
             control_files.unlock()
 
 
-class BranchHooks(dict):
+class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
     
     e.g. ['set_rh'] Is the list of items to be called when the
@@ -937,7 +938,7 @@ class BranchHooks(dict):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        dict.__init__(self)
+        Hooks.__init__(self)
         # Introduced in 0.15:
         # invoked whenever the revision history has been set
         # with set_revision_history. The api signature is
@@ -975,20 +976,6 @@ class BranchHooks(dict):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
-
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__ 
-            method of BranchHooks for details on each hook.
-        """
-        try:
-            self[hook_name].append(a_callable)
-        except KeyError:
-            raise errors.UnknownHook('branch', hook_name)
 
 
 # install the default hooks into the Branch class.
@@ -1277,26 +1264,14 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self, tokens=None):
-        if tokens is not None:
-            branch_token, repo_token = tokens
-        else:
-            branch_token = repo_token = None
-        repo_token = self.repository.lock_write(token=repo_token)
+    def lock_write(self, token=None):
+        repo_token = self.repository.lock_write()
         try:
-            branch_token = self.control_files.lock_write(token=branch_token)
+            token = self.control_files.lock_write(token=token)
         except:
             self.repository.unlock()
             raise
-        else:
-            tokens = (branch_token, repo_token)
-            assert tokens == (None, None) or None not in tokens, (
-                'Both branch and repository locks must return tokens, or else '
-                'neither must return tokens.  Got %r.' % (tokens,))
-            if tokens == (None, None):
-                return None
-            else:
-                return tokens
+        return token
 
     def lock_read(self):
         self.repository.lock_read()

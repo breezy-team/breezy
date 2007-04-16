@@ -132,12 +132,12 @@ class RemoteBzrDir(BzrDir):
         if response[1] == '':
             format = RemoteRepositoryFormat()
             format.rich_root_data = response[2] == 'True'
-            format.support_tree_reference = response[3] == 'True'
+            format.supports_tree_reference = response[3] == 'True'
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
 
-    def open_workingtree(self):
+    def open_workingtree(self, recommend_upgrade=True):
         raise errors.NotLocalUrl(self.root_transport)
 
     def _path_for_remote_call(self, client):
@@ -161,15 +161,10 @@ class RemoteBzrDir(BzrDir):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def clone(self, url, revision_id=None, force_new_repo=False):
         self._ensure_real()
         return self._real_bzrdir.clone(url, revision_id=revision_id,
-            basis=basis, force_new_repo=force_new_repo)
-
-    #def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
-    #    self._ensure_real()
-    #    return self._real_bzrdir.sprout(url, revision_id=revision_id,
-    #        basis=basis, force_new_repo=force_new_repo)
+            force_new_repo=force_new_repo)
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
@@ -180,7 +175,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     The RemoteRepositoryFormat is parameterised during construction
     to reflect the capabilities of the real, remote format. Specifically
-    the attributes rich_root_data and support_tree_reference are set
+    the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
     """
@@ -188,7 +183,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     _matchingbzrdir = RemoteBzrDirFormat
 
     def initialize(self, a_bzrdir, shared=False):
-        assert isinstance(a_bzrdir, RemoteBzrDir)
+        assert isinstance(a_bzrdir, RemoteBzrDir), \
+            '%r is not a RemoteBzrDir' % (a_bzrdir,)
         return a_bzrdir.create_repository(shared=shared)
     
     def open(self, a_bzrdir):
@@ -205,8 +201,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if (self.support_tree_reference and
-            not getattr(target_format, 'support_tree_reference', False)):
+        if (self.supports_tree_reference and
+            not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
 
@@ -489,10 +485,9 @@ class RemoteRepository(object):
         return self._real_repository.get_transaction()
 
     @needs_read_lock
-    def clone(self, a_bzrdir, revision_id=None, basis=None):
+    def clone(self, a_bzrdir, revision_id=None):
         self._ensure_real()
-        return self._real_repository.clone(
-            a_bzrdir, revision_id=revision_id, basis=basis)
+        return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
 
     def make_working_trees(self):
         """RemoteRepositories never create working trees by default."""
@@ -575,7 +570,7 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.check(revision_ids)
 
-    def copy_content_into(self, destination, revision_id=None, basis=None):
+    def copy_content_into(self, destination, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
         # destination
         from bzrlib import osutils
@@ -589,7 +584,7 @@ class RemoteRepository(object):
         try:
             tar.extractall(tmpdir)
             tmp_repo = repository.Repository.open(tmpdir)
-            tmp_repo.copy_content_into(destination, revision_id, basis)
+            tmp_repo.copy_content_into(destination, revision_id)
         finally:
             pass
             ##            osutils.rmtree(tmpdir)
@@ -641,11 +636,17 @@ class RemoteBranchLockableFiles(LockableFiles):
     def __init__(self, bzrdir, _client):
         self.bzrdir = bzrdir
         self._client = _client
+        self._need_find_modes = True
         # XXX: This assumes that the branch control directory is .bzr/branch,
         # which isn't necessarily true.
         LockableFiles.__init__(
             self, bzrdir.root_transport.clone('.bzr/branch'),
             'lock', lockdir.LockDir)
+
+    def _find_modes(self):
+        # RemoteBranches don't let the client set the mode of control files.
+        self._dir_mode = None
+        self._file_mode = None
 
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
@@ -765,11 +766,13 @@ class RemoteBranch(branch.Branch):
         else:
             self._lock_count += 1
 
-    def _remote_lock_write(self, tokens):
-        if tokens is None:
+    def _remote_lock_write(self, token):
+        if token is None:
             branch_token = repo_token = ''
         else:
-            branch_token, repo_token = tokens
+            branch_token = token
+            repo_token = self.repository.lock_write()
+            self.repository.unlock()
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.lock_write', path, branch_token,
                                      repo_token)
@@ -779,7 +782,7 @@ class RemoteBranch(branch.Branch):
         elif response[0] == 'LockContention':
             raise errors.LockContention('(remote lock)')
         elif response[0] == 'TokenMismatch':
-            raise errors.TokenMismatch(tokens, '(remote tokens)')
+            raise errors.TokenMismatch(token, '(remote token)')
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         elif response[0] == 'ReadOnlyError':
@@ -787,9 +790,9 @@ class RemoteBranch(branch.Branch):
         else:
             assert False, 'unexpected response code %r' % (response,)
             
-    def lock_write(self, tokens=None):
+    def lock_write(self, token=None):
         if not self._lock_mode:
-            remote_tokens = self._remote_lock_write(tokens)
+            remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
             assert self._lock_token, 'Remote server did not return a token!'
             # TODO: We really, really, really don't want to call _ensure_real
@@ -801,25 +804,29 @@ class RemoteBranch(branch.Branch):
             #   -- Andrew Bennetts, 2007-02-22.
             self._ensure_real()
             if self._real_branch is not None:
-                self._real_branch.lock_write(tokens=remote_tokens)
-            if tokens is not None:
+                self._real_branch.repository.lock_write(
+                    token=self._repo_lock_token)
+                try:
+                    self._real_branch.lock_write(token=self._lock_token)
+                finally:
+                    self._real_branch.repository.unlock()
+            if token is not None:
                 self._leave_lock = True
             else:
-                # XXX: this case seems to be unreachable; tokens cannot be None.
+                # XXX: this case seems to be unreachable; token cannot be None.
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyTransaction
         else:
-            if tokens is not None:
-                # Tokens were given to lock_write, and we're relocking, so check
-                # that the given tokens actually match the ones we already have.
-                held_tokens = (self._lock_token, self._repo_lock_token)
-                if tokens != held_tokens:
-                    raise errors.TokenMismatch(str(tokens), str(held_tokens))
+            if token is not None:
+                # A token was given to lock_write, and we're relocking, so check
+                # that the given token actually matches the one we already have.
+                if token != self._lock_token:
+                    raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
-        return self._lock_token, self._repo_lock_token
+        return self._lock_token
 
     def _unlock(self, branch_token, repo_token):
         path = self.bzrdir._path_for_remote_call(self._client)

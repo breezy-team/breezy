@@ -194,7 +194,7 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.assertIsInstance(result, RemoteRepository)
         self.assertEqual(bzrdir, result.bzrdir)
         self.assertEqual(rich_root, result._format.rich_root_data)
-        self.assertEqual(subtrees, result._format.support_tree_reference)
+        self.assertEqual(subtrees, result._format.supports_tree_reference)
 
     def test_open_repository_sets_format_attributes(self):
         self.check_open_repository(True, True)

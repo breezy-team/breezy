@@ -18,7 +18,11 @@ import os
 import re
 import sys
 
-from bzrlib import bzrdir, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    repository,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
@@ -154,6 +158,14 @@ class TestFetch(TestCaseWithTransport):
         # Make sure that the next revision in the root knit was retrieved,
         # even though the text, name, parent_id, etc., were unchanged.
         self.assertTrue('rev2' in root_knit)
+
+    def test_fetch_incompatible(self):
+        knit_tree = self.make_branch_and_tree('knit', format='knit')
+        knit3_tree = self.make_branch_and_tree('knit3',
+            format='dirstate-with-subtree')
+        knit3_tree.commit('blah')
+        self.assertRaises(errors.IncompatibleRepositories,
+                          knit_tree.branch.fetch, knit3_tree.branch)
 
 
 class TestMergeFetch(TestCaseWithTransport):

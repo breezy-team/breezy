@@ -30,9 +30,9 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
+from bzrlib.smart import medium
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.transport import get_transport, remote
-from bzrlib.smart import medium
 
 
 class TestBzrServe(TestCaseWithTransport):
