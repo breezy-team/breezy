@@ -182,7 +182,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         """Return a test tree with subdirs and all content types.
         See get_tree_with_subdirs_and_all_supported_content_types for details.
         """
-        self.get_tree_with_subdirs_and_all_supported_content_types(True)
+        return self.get_tree_with_subdirs_and_all_supported_content_types(True)
 
     def get_tree_with_subdirs_and_all_supported_content_types(self, symlinks):
         """Return a test tree with subdirs and all supported content types.
