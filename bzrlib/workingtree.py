@@ -363,6 +363,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
     
+    def canonicalpath(self, filename):
+        """Normanize filename"""
+        return self.relpath(self.abspath(filename))
+    
     def basis_tree(self):
         """Return RevisionTree for the current last revision.
         
@@ -1779,22 +1783,45 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             files = [files]
 
         inv = self.inventory
-        changed_files=[]
 
-        # Get file names into canonical form.
-        files = [self.relpath(self.abspath(filename))
-            for filename in files]
+        new_files=set()
+        unknown_files_in_directory=set()
+
+        def recurse_directory_to_add_files(directory):
+            # recurse directory and add all files 
+            # so we can check if they have changed.
+            for contained_dir_info in self.walkdirs(directory):
+                for file_info in contained_dir_info[1]:
+                    if file_info[2] == 'file':
+                        canonicalpath = self.canonicalpath(file_info[0])
+                        if file_info[4]: #is it versioned?
+                            new_files.add(canonicalpath)
+                        else:
+                            unknown_files_in_directory.add(
+                                (canonicalpath, None, file_info[2]))
+
+        for filename in files:
+            # Get file name into canonical form.
+            filename = self.canonicalpath(filename)
+            if len(filename) > 0:
+                new_files.add(filename)
+                if osutils.isdir(filename):
+                    recurse_directory_to_add_files(filename)
+        files = [f for f in new_files]
 
         # Sort needed to first handle directory content before the directory
         files.sort(reverse=True)
-
         if not keep_files and not force:
-            changes = self.changes_from(self.basis_tree(),
+            tree_delta = self.changes_from(self.basis_tree(),
                 specific_files=files)
-            for f in changes.modified:
-                changed_files.append(f[0])
-            for f in changes.added:
-                changed_files.append(f[0])
+            for unknown_file in unknown_files_in_directory:
+                tree_delta.unversioned.extend((unknown_file,))
+            if bool(tree_delta.modified
+                    or tree_delta.added
+                    or tree_delta.renamed
+                    or tree_delta.kind_changed
+                    or tree_delta.unversioned):
+                raise errors.BzrRemoveChangedFilesError(tree_delta)
 
         # do this before any modifications
         for f in files:
@@ -1817,28 +1844,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
             if not keep_files:
                 if osutils.lexists(f):
-                    if force:
-                        # recursively delete f
-                        if osutils.isdir(f):
-                            osutils.rmtree(f)
-                        else:
-                            os.unlink(f)
+                    if osutils.isdir(f) and len(os.listdir(f)) > 0:
+                        message="%s is not empty directory "\
+                            "and won't be deleted." % (f,)
+                    else:
+                        osutils.delete_any(f)
                         message="deleted %s" % (f,)
-                    elif fid: 
-                        # only consider deleting versioned files
-                        if f in changed_files:
-                            message="%s has changed and won't be deleted."\
-                                % (f,)
-                        elif osutils.isdir(f) and len(os.listdir(f)) > 0:
-                            message="%s is not empty directory "\
-                                "and won't be deleted." % (f,)
-                        else:
-                            osutils.delete_any(f)
-                            message="deleted %s" % (f,)
                 elif message is not None:
                     # only care if we haven't done anything yet.
                     message="%s does not exist." % (f,)
-                
+
             # print only one message (if any) per file.
             if message is not None:
                 note(message)
@@ -2144,11 +2159,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
+        returns a generator which yields items in the form:
+                ((curren_directory_path, fileid), 
+                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                   file1_kind), ... ])
+
         This API returns a generator, which is only valid during the current
         tree transaction - within a single lock_read or lock_write duration.
 
-        If the tree is not locked, it may cause an error to be raised, depending
-        on the tree implementation.
+        If the tree is not locked, it may cause an error to be raised,
+        depending on the tree implementation.
         """
         disk_top = self.abspath(prefix)
         if disk_top.endswith('/'):
@@ -2245,6 +2265,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     disk_finished = True
 
     def _walkdirs(self, prefix=""):
+        """Walk the directories of this tree.
+
+           :prefix: is used as the directrory to start with.
+           returns a generator which yields items in the form:
+                ((curren_directory_path, fileid), 
+                 [(file1_path, file1_name, file1_kind, None, file1_id,
+                   file1_kind), ... ])
+        """
         _directory = 'directory'
         # get the root in the inventory
         inv = self.inventory
