@@ -57,7 +57,6 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
-from bzrlib.transport.local import LocalURLServer
 
 try:
     import paramiko

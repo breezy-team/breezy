@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -239,12 +239,6 @@ class LengthPrefixedBodyDecoder(object):
         result = self._in_buffer
         self._in_buffer = ''
         return result
-
-
-# XXX: TODO: Create a SmartServerRequestHandler which will take the responsibility
-# for delivering the data for a request. This could be done with as the
-# StreamServer, though that would create conflation between request and response
-# which may be undesirable.
 
 
 class SmartClientRequestProtocolOne(SmartProtocolBase):
