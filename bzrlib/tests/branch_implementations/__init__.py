@@ -80,7 +80,7 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
             tree.add('')
             tree.commit('first', rev_id='rev-1')
             tree.commit('second', rev_id='rev-1.1.1')
-            # Uncommit that last commitk and switch to the other line
+            # Uncommit that last commit and switch to the other line
             tree.branch.set_last_revision_info(1, 'rev-1')
             tree.set_parent_ids(['rev-1'])
             tree.commit('alt-second', rev_id='rev-2')
