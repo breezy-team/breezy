@@ -53,6 +53,7 @@ from bzrlib.tests.HTTPTestUtil import (
     HTTPServerRedirecting,
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
+    ProxyBasicAuthHTTPServer,
     SingleRangeRequestHandler,
     TestCaseWithRedirectedWebserver,
     TestCaseWithTwoWebservers,
@@ -717,13 +718,9 @@ class TestHttpProxyWhiteBox(TestCase):
     def tearDown(self):
         self._restore_env()
 
-    def _set_and_capture_env_var(self, name, new_value):
-        """Set an environment variable, and reset it when finished."""
-        self._old_env[name] = osutils.set_or_unset_env(name, new_value)
-
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._set_and_capture_env_var(name, value)
+            self._old_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
         for name, value in self._old_env.iteritems():
@@ -786,8 +783,7 @@ class TestProxyHttpServer(object):
                                   ('foo-proxied', 'proxied contents of foo\n')])
         # Let's setup some attributes for tests
         self.server = self.get_readonly_server()
-        # FIXME: We should not rely on 'localhost' being the hostname
-        self.proxy_address = 'localhost:%d' % self.server.port
+        self.proxy_address = '%s:%d' % (self.server.host, self.server.port)
         self.no_proxy_host = self.proxy_address
         # The secondary server is the proxy
         self.proxy = self.get_secondary_server()
@@ -800,13 +796,9 @@ class TestProxyHttpServer(object):
         """
         return HttpServer(FakeProxyRequestHandler)
 
-    def _set_and_capture_env_var(self, name, new_value):
-        """Set an environment variable, and reset it when finished."""
-        self._old_env[name] = osutils.set_or_unset_env(name, new_value)
-
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._set_and_capture_env_var(name, value)
+            self._old_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
         for name, value in self._old_env.iteritems():
@@ -1147,21 +1139,24 @@ class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
                           self.get_a, self.old_transport, redirected)
 
 
-class TestHTTPBasicAuth(TestCaseWithWebserver):
-    """Test basic authentication scheme"""
+class TestHTTPAuth(object):
+    """Test some authentication scheme specified by daughter class.
 
-    _transport = HttpTransport_urllib
-    _auth_header = 'Authorization'
-
-    def create_transport_readonly_server(self):
-        return BasicAuthHTTPServer()
+    This MUST be used by daughter classes that also inherit from
+    either TestCaseWithWebserver or TestCaseWithTwoWebservers.
+    """
 
     def setUp(self):
-        super(TestHTTPBasicAuth, self).setUp()
+        """Set up the test environment
+
+        Daughter classes should set up their own environment
+        (including self.server) and explicitely call this
+        method. This is needed because we want to reuse the same
+        tests for proxy and no-proxy accesses which have
+        different ways of setting self.server.
+        """
         self.build_tree_contents([('a', 'contents of a\n'),
                                   ('b', 'contents of b\n'),])
-        self.server = self.get_readonly_server()
-
         self.old_factory = ui.ui_factory
         self.addCleanup(self.restoreUIFactory)
 
@@ -1212,3 +1207,53 @@ class TestHTTPBasicAuth(TestCaseWithWebserver):
         t2 = t.clone()
         # And neither against a clone
         self.assertEqual('contents of b\n',t2.get('b').read())
+
+
+class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
+    """Test basic http authentication scheme"""
+
+    _transport = HttpTransport_urllib
+    _auth_header = 'Authorization'
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self.server = self.get_readonly_server()
+        TestHTTPAuth.setUp(self)
+
+    def create_transport_readonly_server(self):
+        return BasicAuthHTTPServer()
+
+
+class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
+    """Test basic http authentication scheme"""
+
+    _transport = HttpTransport_urllib
+    _auth_header = 'Proxy-authorization'
+    _test_class = TestCaseWithWebserver
+
+    def setUp(self):
+        TestCaseWithTwoWebservers.setUp(self)
+        self.server = self.get_readonly_server()
+        self.proxy_url = self.server.get_url()
+        self._old_env = {}
+        self.addCleanup(self._restore_env)
+        self._install_env({'all_proxy': self.proxy_url})
+        TestHTTPAuth.setUp(self)
+        # Override the contents to avoid false positives
+        self.build_tree_contents([('a', 'not proxied contents of a\n'),
+                                  ('b', 'not proxied contents of b\n'),
+                                  ('a-proxied', 'contents of a\n'),
+                                  ('b-proxied', 'contents of b\n'),
+                                  ])
+
+    def create_transport_readonly_server(self):
+        return ProxyBasicAuthHTTPServer()
+
+    def _install_env(self, env):
+        for name, value in env.iteritems():
+            self._old_env[name] = osutils.set_or_unset_env(name, value)
+
+    def _restore_env(self):
+        for name, value in self._old_env.iteritems():
+            osutils.set_or_unset_env(name, value)
+

@@ -309,25 +309,30 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.old_server = self.get_secondary_server()
 
 
-class BasicAuthRequestHandler(TestingHTTPRequestHandler):
+class AbstractBasicAuthRequestHandler(TestingHTTPRequestHandler):
     """Requires a basic authentication to process requests.
 
     This is intended to be used with a server that always and
     only use basic authentication.
     """
 
+    # The following attribute should be set dy daughter classes
+    _auth_header_sent = None
+    _auth_header_recv = None
+    _auth_error_code = None
+
     def do_GET(self):
         tcs = self.server.test_case_server
         if tcs.auth_scheme == 'basic':
-            auth_header = self.headers.get('Authorization')
+            auth_header = self.headers.get(self._auth_header_recv)
             authorized = False
             if auth_header and auth_header.lower().startswith('basic '):
                 coded_auth = auth_header[len('Basic '):]
                 user, password = coded_auth.decode('base64').split(':')
                 authorized = tcs.authorized(user, password)
             if not authorized:
-                self.send_response(401)
-                self.send_header('www-authenticate',
+                self.send_response(self._auth_error_code)
+                self.send_header(self._auth_header_sent,
                                  'Basic realm="Thou should not pass"')
                 self.end_headers()
                 return
@@ -362,8 +367,43 @@ class AuthHTTPServer(HttpServer):
         return expected_password is not None and password == expected_password
 
 
+class BasicAuthRequestHandler(AbstractBasicAuthRequestHandler,
+                              FakeProxyRequestHandler):
+    """Requires a basic authentication to process requests.
+
+    Note: Each of the inherited request handler overrides
+    different parts of processing in a compatible way, so it is
+    okay to inherit from both.
+    """
+
+    _auth_header_sent = 'WWW-Authenticate'
+    _auth_header_recv = 'Authorization'
+    _auth_error_code = 401
+
+
 class BasicAuthHTTPServer(AuthHTTPServer):
     """An HTTP server requiring basic authentication"""
 
     def __init__(self):
         AuthHTTPServer.__init__(self, BasicAuthRequestHandler, 'basic')
+
+
+class ProxyBasicAuthRequestHandler(AbstractBasicAuthRequestHandler,
+                                   FakeProxyRequestHandler):
+    """Requires a basic authentication to proxy requests.
+
+    Note: Each of the inherited request handler overrides
+    different parts of processing in a compatible way, so it is
+    okay to inherit from both.
+    """
+
+    _auth_header_sent = 'Proxy-Authenticate'
+    _auth_header_recv = 'Proxy-Authorization'
+    _auth_error_code = 407
+
+
+class ProxyBasicAuthHTTPServer(AuthHTTPServer):
+    """An HTTP server requiring basic authentication"""
+
+    def __init__(self):
+        AuthHTTPServer.__init__(self, ProxyBasicAuthRequestHandler, 'basic')
