@@ -765,6 +765,8 @@ class TestCase(unittest.TestCase):
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = \
+            bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
