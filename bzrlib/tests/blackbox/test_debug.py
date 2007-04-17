@@ -17,8 +17,12 @@
 """Blackbox tests for -D debug options"""
 
 import os
+import signal
+import subprocess
+import sys
+import time
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 class TestDebugOption(TestCase):
 
@@ -30,3 +34,23 @@ class TestDebugOption(TestCase):
         # here but it may be missing if the source is not in sync with the
         # pyc file.
         self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
+
+class TestBreakin(TestCase):
+
+    def test_breakin(self):
+        # Break in to a debugger while bzr is running
+        # we need to test against a command that will wait for 
+        # a while -- bzr serve should do
+        #
+        # this may not work on windows but i don't think this use of signals
+        # will work there
+        if sys.platform == 'win32':
+            raise TestSkipped('breakin signal not tested on win32')
+        proc = self.start_bzr_subprocess(['serve'])
+        time.sleep(.5)
+        os.kill(proc.pid, signal.SIGQUIT)
+        time.sleep(.5)
+        proc.stdin.write('q\n')
+        err = proc.stderr.read()
+        self.assertContainsRe(err, r'entering debugger')
+        proc.wait()

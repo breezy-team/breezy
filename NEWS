@@ -5,6 +5,10 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * Sending the SIGQUIT signal to bzr, which can be done on Unix by
+      pressing Control-Backspace, drops bzr into a debugger.  Type `c`
+      to continue.  (Martin Pool)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
