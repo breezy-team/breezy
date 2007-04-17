@@ -101,6 +101,7 @@ class Branch(object):
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._make_tags()
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -345,6 +346,14 @@ class Branch(object):
         """
         self._revision_history_cache = rev_history
 
+    def _cache_revision_id_to_revno(self, revision_id_to_revno):
+        """Set the cached revision_id => revno map to revision_id_to_revno.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_id_to_revno_cache = revision_id_to_revno
+
     def _clear_cached_state(self):
         """Clear any cached data on this branch, e.g. cached revision history.
 
@@ -355,6 +364,7 @@ class Branch(object):
         should consider it to be private.
         """
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -453,24 +463,16 @@ class Branch(object):
         """
         raise NotImplementedError(self.update_revisions)
 
+    @needs_read_lock
     def revision_id_to_dotted_revno(self, revision_id):
         """Given a revision id, return its dotted revno."""
         if revision_id in (None, _mod_revision.NULL_REVISION):
             return (0,)
         revision_id = osutils.safe_revision_id(revision_id)
 
-        last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
-        if revision_id not in revision_graph:
+        revision_id_to_revno = self._get_revno_map()
+        if revision_id not in revision_id_to_revno:
             raise errors.NoSuchRevision(self, revision_id)
-        merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
-            last_revision,
-            None,
-            generate_revno=True)
-        revision_id_to_revno = dict((rev_id, revno)
-                                    for seq_num, rev_id, depth, revno, end_of_merge
-                                     in merge_sorted_revisions)
         return revision_id_to_revno[revision_id]
 
     def revision_id_to_revno(self, revision_id):
@@ -1324,6 +1326,7 @@ class BzrBranch(Branch):
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
+        self._clear_cached_state()
         self._write_revision_history(rev_history)
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
@@ -1342,6 +1345,35 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
+
+    def _get_revno_map(self):
+        """Return the revision_id => dotted revno map.
+
+        This will be regenerated on demand, but will be cached.
+        """
+        if self._revision_id_to_revno_cache is not None:
+            mapping = self._revision_id_to_revno_cache
+        else:
+            mapping = self._gen_revno_map()
+            self._cache_revision_id_to_revno(mapping)
+        return mapping
+
+    def _gen_revno_map(self):
+        """Generate a mapping from revision ids to dotted revnos.
+
+        :return: A dict mapping revision_ids => dotted revnos
+        """
+        last_revision = self.last_revision()
+        revision_graph = self.repository.get_revision_graph(last_revision)
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in merge_sorted_revisions)
+        return revision_id_to_revno
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
