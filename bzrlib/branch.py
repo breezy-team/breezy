@@ -470,7 +470,7 @@ class Branch(object):
             return (0,)
         revision_id = osutils.safe_revision_id(revision_id)
 
-        revision_id_to_revno = self._get_revno_map()
+        revision_id_to_revno = self.get_revision_id_to_revno_map()
         if revision_id not in revision_id_to_revno:
             raise errors.NoSuchRevision(self, revision_id)
         return revision_id_to_revno[revision_id]
@@ -1346,16 +1346,24 @@ class BzrBranch(Branch):
             history.pop()
         return history
 
-    def _get_revno_map(self):
+    @needs_read_lock
+    def get_revision_id_to_revno_map(self):
         """Return the revision_id => dotted revno map.
 
         This will be regenerated on demand, but will be cached.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+            This dictionary should not be modified by the caller.
         """
         if self._revision_id_to_revno_cache is not None:
             mapping = self._revision_id_to_revno_cache
         else:
             mapping = self._gen_revno_map()
             self._cache_revision_id_to_revno(mapping)
+        # TODO: jam 20070417 Since this is being cached, should we be returning
+        #       a copy?
+        # I would rather not, and instead just declare that users should not
+        # modify the return value.
         return mapping
 
     def _gen_revno_map(self):

@@ -100,6 +100,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_break_lock',
         'bzrlib.tests.branch_implementations.test_create_checkout',
         'bzrlib.tests.branch_implementations.test_commit',
+        'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
         'bzrlib.tests.branch_implementations.test_last_revision_info',
