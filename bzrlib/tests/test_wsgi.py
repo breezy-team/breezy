@@ -83,7 +83,6 @@ class TestWSGI(tests.TestCase):
         self.assertTrue(('Allow', 'POST') in self.headers)
         
     def test_smart_wsgi_app_uses_given_relpath(self):
-        # XXX XXX XXX update comment
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
         # WSGI environ to clone from its backing transport to get a specific
         # transport for this request.
