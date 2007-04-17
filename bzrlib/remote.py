@@ -75,14 +75,17 @@ class RemoteBzrDir(BzrDir):
                 _found=True)
 
     def create_repository(self, shared=False):
+        self._ensure_real()
         self._real_bzrdir.create_repository(shared=shared)
         return self.open_repository()
 
     def create_branch(self):
+        self._ensure_real()
         real_branch = self._real_bzrdir.create_branch()
         return RemoteBranch(self, self.find_repository(), real_branch)
 
     def create_workingtree(self, revision_id=None):
+        self._ensure_real()
         real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
         return RemoteWorkingTree(self, real_workingtree)
 
@@ -145,12 +148,15 @@ class RemoteBzrDir(BzrDir):
         return client.remote_path_from_transport(self.root_transport)
 
     def get_branch_transport(self, branch_format):
+        self._ensure_real()
         return self._real_bzrdir.get_branch_transport(branch_format)
 
     def get_repository_transport(self, repository_format):
+        self._ensure_real()
         return self._real_bzrdir.get_repository_transport(repository_format)
 
     def get_workingtree_transport(self, workingtree_format):
+        self._ensure_real()
         return self._real_bzrdir.get_workingtree_transport(workingtree_format)
 
     def can_convert_format(self):

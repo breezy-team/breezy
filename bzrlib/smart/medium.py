@@ -26,6 +26,7 @@ bzrlib/transport/smart/__init__.py.
 
 import os
 import socket
+import sys
 
 from bzrlib import errors
 from bzrlib.smart import protocol
