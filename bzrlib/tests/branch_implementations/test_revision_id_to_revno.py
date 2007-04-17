@@ -18,7 +18,7 @@
 
 from bzrlib import errors
 
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
 class TestRevisionIdToRevno(TestCaseWithBranch):
@@ -27,6 +27,7 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         tree = self.create_tree_with_merge()
         the_branch = tree.branch
 
+        self.assertEqual(0, the_branch.revision_id_to_revno(None))
         self.assertEqual(1, the_branch.revision_id_to_revno('rev-1'))
         self.assertEqual(2, the_branch.revision_id_to_revno('rev-2'))
         self.assertEqual(3, the_branch.revision_id_to_revno('rev-3'))
