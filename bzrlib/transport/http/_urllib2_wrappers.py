@@ -157,14 +157,49 @@ class Request(urllib2.Request):
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
         self.set_auth(None, None, None) # Until the first 401
+        self.set_proxy_auth(None, None, None) # Until the first 407
 
     def set_auth(self, auth_scheme, user, password=None):
         self.auth_scheme = auth_scheme
         self.user = user
         self.password = password
 
+    # FIXME: this is not called, we incur a rountrip for each
+    # request.
+    def set_proxy_auth(self, auth_scheme, user, password=None):
+        self.proxy_auth_scheme = auth_scheme
+        self.proxy_user = user
+        self.proxy_password = password
+
     def get_method(self):
         return self.method
+
+
+def extract_credentials(url):
+    """Extracts credentials information from url.
+
+    Get user and password from url of the form: http://user:pass@host/path
+    :returns: (clean_url, user, password)
+    """
+    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+
+    if '@' in netloc:
+        auth, netloc = netloc.split('@', 1)
+        if ':' in auth:
+            user, password = auth.split(':', 1)
+        else:
+            user, password = auth, None
+        user = urllib.unquote(user)
+        if password is not None:
+            password = urllib.unquote(password)
+    else:
+        user = None
+        password = None
+
+    # Build the clean url
+    clean_url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+    return clean_url, user, password
 
 
 # The urlib2.xxxAuthHandler handle the authentication of the
@@ -594,8 +629,9 @@ class ProxyHandler(urllib2.ProxyHandler):
     handler_order = 100
     _debuglevel = DEBUG
 
-    def __init__(self, proxies=None):
+    def __init__(self, password_manager, proxies=None):
         urllib2.ProxyHandler.__init__(self, proxies)
+        self.password_manager = password_manager
         # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel > 0:
@@ -675,16 +711,13 @@ class ProxyHandler(urllib2.ProxyHandler):
             raise errors.InvalidURL(proxy,
                                     'Invalid syntax in proxy env variable')
         elif '@' in host:
-            user_pass, host = host.split('@', 1)
-            if ':' in user_pass:
-                user, password = user_pass.split(':', 1)
-            else:
-                user = user_pass
-                password = ''
-            user_pass = '%s:%s' % (urllib.unquote(user),
-                                   urllib.unquote(password))
-            user_pass = user_pass.encode('base64').strip()
-            request.add_header('Proxy-authorization', 'Basic ' + user_pass)
+            # Extract credentials from the url and store them in
+            # the password manager so that the
+            # ProxyxxxAuthHandler can use them later.
+            clean_url, user, password = extract_credentials(proxy)
+            if user and password is not None: # '' is a valid password
+                pm = self.password_manager
+                pm.add_password(None, self.base, self._user, self._password)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:
@@ -735,6 +768,55 @@ class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
             # succeeds. If another scheme is used or the
             # authentication fails, the response will be None.
             req.auth_scheme = 'basic'
+
+        return response
+
+
+class ProxyBasicAuthHandler(urllib2.ProxyBasicAuthHandler):
+    """Custom proxy basic authentication handler.
+
+    Send the authentication preventively to avoid the roundtrip
+    associated with the 407 error.
+    """
+
+    def get_auth(self, user, password):
+        raw = '%s:%s' % (user, password)
+        auth = 'Basic ' + raw.encode('base64').strip()
+        return auth
+
+    def set_auth(self, request):
+        """Add the authentication header if needed.
+
+        All required informations should be part of the request.
+        """
+        if request.proxy_password is not None:
+            request.add_header(self.auth_header,
+                               self.get_auth(request.proxy_user,
+                                             request.proxy_password))
+
+    def http_request(self, request):
+        """Insert an authentication header if information is available"""
+        if request.proxy_auth_scheme == 'basic' \
+                and request.proxy_password is not None:
+            self.set_auth(request)
+        return request
+
+    https_request = http_request # FIXME: Need test
+
+    def http_error_407(self, req, fp, code, msg, headers):
+        """Trap the 401 to gather the auth type."""
+        response = urllib2.ProxyBasicAuthHandler.http_error_407(self, req, fp,
+                                                                code, msg,
+                                                                headers)
+        if response is not None:
+            # We capture the auth_scheme to be able to send the
+            # authentication header with the next requests
+            # without waiting for a 407 error.
+            # The urllib2.ProxyBasicAuthHandler will return a
+            # response *only* if the basic authentication
+            # succeeds. If another scheme is used or the
+            # authentication fails, the response will be None.
+            req.proxy_auth_scheme = 'basic'
 
         return response
 
@@ -797,10 +879,10 @@ class Opener(object):
         # commented out below
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
-            ProxyHandler,
+            ProxyHandler(self.password_manager),
             HTTPBasicAuthHandler(self.password_manager),
             #urllib2.HTTPDigestAuthHandler(self.password_manager),
-            #urllib2.ProxyBasicAuthHandler,
+            ProxyBasicAuthHandler(self.password_manager),
             #urllib2.ProxyDigestAuthHandler,
             HTTPHandler,
             HTTPSHandler,

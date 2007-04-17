@@ -367,14 +367,8 @@ class AuthHTTPServer(HttpServer):
         return expected_password is not None and password == expected_password
 
 
-class BasicAuthRequestHandler(AbstractBasicAuthRequestHandler,
-                              FakeProxyRequestHandler):
-    """Requires a basic authentication to process requests.
-
-    Note: Each of the inherited request handler overrides
-    different parts of processing in a compatible way, so it is
-    okay to inherit from both.
-    """
+class BasicAuthRequestHandler(AbstractBasicAuthRequestHandler):
+    """Requires a basic authentication to process requests"""
 
     _auth_header_sent = 'WWW-Authenticate'
     _auth_header_recv = 'Authorization'
@@ -392,14 +386,16 @@ class ProxyBasicAuthRequestHandler(AbstractBasicAuthRequestHandler,
                                    FakeProxyRequestHandler):
     """Requires a basic authentication to proxy requests.
 
-    Note: Each of the inherited request handler overrides
-    different parts of processing in a compatible way, so it is
-    okay to inherit from both.
+    Note: We have to override translate_path because otherwise
+    AbstractBasicAuthRequestHandler.translate_path take
+    precedence.  
     """
 
     _auth_header_sent = 'Proxy-Authenticate'
     _auth_header_recv = 'Proxy-Authorization'
     _auth_error_code = 407
+
+    translate_path = FakeProxyRequestHandler.translate_path
 
 
 class ProxyBasicAuthHTTPServer(AuthHTTPServer):

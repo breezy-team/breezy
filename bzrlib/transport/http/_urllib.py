@@ -30,6 +30,7 @@ from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
+    extract_credentials,
     )
 
 
@@ -59,7 +60,7 @@ class HttpTransport_urllib(HttpTransportBase):
             # info in the urls. So we handle them separatly.
             # Note: we don't need to when cloning because it was
             # already done.
-            clean_base, user, password = self._extract_auth(base)
+            clean_base, user, password = extract_credentials(base)
             super(HttpTransport_urllib, self).__init__(clean_base,
                                                        from_transport)
             self._connection = None
@@ -93,31 +94,6 @@ class HttpTransport_urllib(HttpTransportBase):
                                                             user=self._user,
                                                             host=self._host)
                 pm.add_password(None, authuri, self._user, self._password)
-
-    def _extract_auth(self, url):
-        """Extracts authentication information from url.
-
-        Get user and password from url of the form: http://user:pass@host/path
-        :returns: (clean_url, user, password)
-        """
-        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-        if '@' in netloc:
-            auth, netloc = netloc.split('@', 1)
-            if ':' in auth:
-                user, password = auth.split(':', 1)
-            else:
-                user, password = auth, None
-            user = urllib.unquote(user)
-            if password is not None:
-                password = urllib.unquote(password)
-        else:
-            user = None
-            password = None
-
-        url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-
-        return url, user, password
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.

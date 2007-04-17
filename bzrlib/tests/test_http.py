@@ -71,6 +71,11 @@ from bzrlib.transport.http import (
     _urllib2_wrappers,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
+from bzrlib.transport.http._urllib2_wrappers import (
+    PasswordManager,
+    ProxyHandler,
+    Request,
+    )
 
 
 class FakeManager(object):
@@ -708,7 +713,7 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
 class TestHttpProxyWhiteBox(TestCase):
     """Whitebox test proxy http authorization.
 
-    These tests concern urllib implementation only.
+    Only the urllib implementation is tested here.
     """
 
     def setUp(self):
@@ -727,8 +732,8 @@ class TestHttpProxyWhiteBox(TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
+        handler = ProxyHandler(PasswordManager())
+        request = Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
@@ -736,17 +741,6 @@ class TestHttpProxyWhiteBox(TestCase):
         self._install_env({'http_proxy': 'http://bar.com'})
         request = self._proxied_request()
         self.assertFalse(request.headers.has_key('Proxy-authorization'))
-
-    def test_empty_pass(self):
-        self._install_env({'http_proxy': 'http://joe@bar.com'})
-        request = self._proxied_request()
-        self.assertEqual('Basic ' + 'joe:'.encode('base64').strip(),
-                         request.headers['Proxy-authorization'])
-    def test_user_pass(self):
-        self._install_env({'http_proxy': 'http://joe:foo@bar.com'})
-        request = self._proxied_request()
-        self.assertEqual('Basic ' + 'joe:foo'.encode('base64').strip(),
-                         request.headers['Proxy-authorization'])
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
@@ -1002,10 +996,10 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
     """Tests redirections for pycurl implementation"""
 
 
-class RedirectedRequest(_urllib2_wrappers.Request):
+class RedirectedRequest(Request):
     """Request following redirections"""
 
-    init_orig = _urllib2_wrappers.Request.__init__
+    init_orig = Request.__init__
 
     def __init__(self, method, url, *args, **kwargs):
         RedirectedRequest.init_orig(self, method, url, args, kwargs)
