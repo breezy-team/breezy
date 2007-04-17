@@ -77,6 +77,9 @@ IN DEVELOPMENT
       in this versus base, but it isn't marked as a rename).
       (John Arbash Meinel, #103870)
 
+    * FTP now works even when the FTP server does not support atomic rename.
+      (Aaron Bentley, #89436)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and

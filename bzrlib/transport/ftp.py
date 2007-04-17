@@ -29,6 +29,7 @@ import asyncore
 import errno
 import ftplib
 import os
+import os.path
 import urllib
 import urlparse
 import select
@@ -40,6 +41,7 @@ from warnings import warn
 
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
 from bzrlib.trace import mutter, warning
@@ -303,7 +305,8 @@ class FtpTransport(Transport):
         :param retries: Number of retries after temporary failures so far
                         for this operation.
 
-        TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
+        TODO: jam 20051215 ftp as a protocol seems to support chmod, but
+        ftplib does not
         """
         abspath = self._abspath(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
@@ -315,7 +318,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
-                f.rename(tmp_abspath, abspath)
+                self._rename_and_overwrite(tmp_abspath, abspath, f)
             except (ftplib.error_temp,EOFError), e:
                 warning("Failure during ftp PUT. Deleting temporary file.")
                 try:
@@ -434,6 +437,20 @@ class FtpTransport(Transport):
     #       to give it its own address as the 'to' location.
     #       So implement a fancier 'copy()'
 
+    def rename(self, rel_from, rel_to):
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
+        mutter("FTP rename: %s => %s", abs_from, abs_to)
+        f = self._get_FTP()
+        return self._rename(abs_from, abs_to, f)
+
+    def _rename(self, abs_from, abs_to, f):
+        try:
+            f.rename(abs_from, abs_to)
+        except ftplib.error_perm, e:
+            self._translate_perm_error(e, abs_from,
+                ': unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         abs_from = self._abspath(rel_from)
@@ -441,20 +458,30 @@ class FtpTransport(Transport):
         try:
             mutter("FTP mv: %s => %s", abs_from, abs_to)
             f = self._get_FTP()
-            f.rename(abs_from, abs_to)
+            self._rename_and_overwrite(abs_from, abs_to, f)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abs_from,
                 extra='unable to rename to %r' % (rel_to,), 
                 unknown_exc=errors.PathError)
 
-    rename = move
+    def _rename_and_overwrite(self, abs_from, abs_to, f):
+        """Do a fancy rename on the remote server.
+
+        Using the implementation provided by osutils.
+        """
+        osutils.fancy_rename(abs_from, abs_to,
+            rename_func=lambda p1, p2: self._rename(p1, p2, f),
+            unlink_func=lambda p: self._delete(p, f))
 
     def delete(self, relpath):
         """Delete the item at relpath"""
         abspath = self._abspath(relpath)
+        f = self._get_FTP()
+        self._delete(abspath, f)
+
+    def _delete(self, abspath, f):
         try:
             mutter("FTP rm: %s", abspath)
-            f = self._get_FTP()
             f.delete(abspath)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath, 'error deleting',
@@ -666,6 +693,9 @@ def _setup_medusa():
             pfrom = self.filesystem.translate(self._renaming)
             self._renaming = None
             pto = self.filesystem.translate(line[1])
+            if os.path.exists(pto):
+                self.respond('550 RNTO failed: file exists')
+                return
             try:
                 os.rename(pfrom, pto)
             except (IOError, OSError), e:
