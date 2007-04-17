@@ -233,6 +233,11 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_unexpected_smart_server_response(self):
+        e = errors.UnexpectedSmartServerResponse(('not yes',))
+        self.assertEqual(
+            "Could not understand response from smart server: ('not yes',)",
+            str(e))
 
 
 class PassThroughError(errors.BzrError):

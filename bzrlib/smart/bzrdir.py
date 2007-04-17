@@ -22,6 +22,22 @@ from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
+class SmartServerRequestOpenBzrDir(SmartServerRequest):
+
+    def do(self, path):
+        from bzrlib.bzrdir import BzrDirFormat
+        t = self._backing_transport.clone(path)
+        default_format = BzrDirFormat.get_default_format()
+        real_bzrdir = default_format.open(t, _found=True)
+        try:
+            real_bzrdir._format.probe_transport(t)
+        except (errors.NotBranchError, errors.UnknownFormatError):
+            answer = 'no'
+        else:
+            answer = 'yes'
+        return SmartServerResponse((answer,))
+
+
 class SmartServerRequestFindRepository(SmartServerRequest):
 
     def do(self, path):

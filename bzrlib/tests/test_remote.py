@@ -68,6 +68,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         # open a standalone branch in the working directory
         b = remote.RemoteBzrDir(self.transport)
         branch = b.open_branch()
+        self.assertIsInstance(branch, Branch)
 
     def test_remote_repository(self):
         b = BzrDir.open_from_transport(self.transport)

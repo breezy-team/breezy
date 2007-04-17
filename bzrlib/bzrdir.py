@@ -1377,6 +1377,17 @@ class BzrDirFormat(object):
         klass._control_formats.append(format)
 
     @classmethod
+    def register_control_server_format(klass, format):
+        """Register a control format for client-server environments.
+
+        These formats will be tried before ones registered with
+        register_control_format.  This gives implementations that decide to the
+        chance to grab it before anything looks at the contents of the format
+        file.
+        """
+        klass._control_formats.insert(0, format)
+
+    @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
         klass._set_default_format(format)
@@ -2237,9 +2248,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         return self.get_format_description() == other.get_format_description()
 
 
-# We can't use register_control_format because it adds it at a lower priority
-# than the existing branches, whereas this should take priority.
-BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat)
+BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
 
 
 class BzrDirFormatInfo(object):

@@ -34,7 +34,7 @@ from bzrlib.urlutils import unescape
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir):
-    """Control directory on a remote server, accessed by HPSS."""
+    """Control directory on a remote server, accessed via bzr:// or similar."""
 
     def __init__(self, transport, _client=None):
         """Construct a RemoteBzrDir.
@@ -45,8 +45,6 @@ class RemoteBzrDir(BzrDir):
         BzrDir.__init__(self, transport, RemoteBzrDirFormat())
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
-        # XXX: We should go into find_format, but not allow it to find
-        # RemoteBzrDirFormat and make sure it finds the real underlying format.
         self._real_bzrdir = None
 
         if _client is None:
@@ -59,17 +57,21 @@ class RemoteBzrDir(BzrDir):
 
         self._ensure_real()
         path = self._path_for_remote_call(self._client)
-        #self._real_bzrdir._format.probe_transport(transport)
-        response = self._client.call('probe_dont_use', path)
+        response = self._client.call('BzrDir.open', path)
+        if response not in [('yes',), ('no',)]:
+            raise errors.UnexpectedSmartServerResponse(response)
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
 
     def _ensure_real(self):
         """Ensure that there is a _real_bzrdir set.
 
-        used before calls to self._real_bzrdir.
+        Used before calls to self._real_bzrdir.
         """
         if not self._real_bzrdir:
+            # XXX: We can't use BzrDir.open_from_transport here because it
+            # causes infinite recursion, so just try opening the bzrdir with the
+            # default format.
             default_format = BzrDirFormat.get_default_format()
             self._real_bzrdir = default_format.open(self.root_transport,
                 _found=True)
@@ -216,8 +218,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 class RemoteRepository(object):
     """Repository accessed over rpc.
 
-    For the moment everything is delegated to IO-like operations over
-    the transport.
+    For the moment most operations are performed using local transport-backed
+    Repository objects.
     """
 
     def __init__(self, remote_bzrdir, format, real_repository=None, _client=None):
@@ -249,7 +251,7 @@ class RemoteRepository(object):
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
-        used before calls to self._real_repository.
+        Used before calls to self._real_repository.
         """
         if not self._real_repository:
             self.bzrdir._ensure_real()
@@ -267,7 +269,8 @@ class RemoteRepository(object):
         assert type(revision_id) is str
         response = self._client.call_expecting_body(
             'Repository.get_revision_graph', path, revision_id)
-        assert response[0][0] in ('ok', 'nosuchrevision'), 'unexpected response code %s' % (response[0],)
+        if response[0][0] not in ['ok', 'nosuchrevision']:
+            raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
             coded = response[1].read_body_bytes()
             if coded == '':
@@ -275,7 +278,6 @@ class RemoteRepository(object):
                 return {}
             lines = coded.split('\n')
             revision_graph = {}
-            # FIXME
             for line in lines:
                 d = list(line.split())
                 revision_graph[d[0]] = d[1:]
@@ -419,6 +421,8 @@ class RemoteRepository(object):
             if self._real_repository is not None:
                 self._real_repository.unlock()
             if mode != 'w':
+                # Only write-locked repositories need to make a remote method
+                # call to perfom the unlock.
                 return
             assert self._lock_token, 'Locked, but no token!'
             token = self._lock_token
@@ -617,10 +621,8 @@ class RemoteBranchLockableFiles(LockableFiles):
         self.bzrdir = bzrdir
         self._client = _client
         self._need_find_modes = True
-        # XXX: This assumes that the branch control directory is .bzr/branch,
-        # which isn't necessarily true.
         LockableFiles.__init__(
-            self, bzrdir.root_transport.clone('.bzr/branch'),
+            self, bzrdir.get_branch_transport(None),
             'lock', lockdir.LockDir)
 
     def _find_modes(self):
@@ -682,7 +684,9 @@ class RemoteBranch(branch.Branch):
             format, usually accessing the data via the VFS.
         :param _client: Private parameter for testing.
         """
-        #branch.Branch.__init__(self)
+        # We intentionally don't call the parent class's __init__, because it
+        # will try to assign to self.tags, which is a property in this subclass.
+        # And the parent's __init__ doesn't do much anyway.
         self._revision_history_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
@@ -714,7 +718,7 @@ class RemoteBranch(branch.Branch):
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
 
-        used before calls to self._real_branch.
+        Used before calls to self._real_branch.
         """
         if not self._real_branch:
             assert vfs.vfs_enabled()
@@ -836,6 +840,8 @@ class RemoteBranch(branch.Branch):
                     self._real_branch.repository.leave_lock_in_place()
                 self._real_branch.unlock()
             if mode != 'w':
+                # Only write-locked branched need to make a remote method call
+                # to perfom the unlock.
                 return
             assert self._lock_token, 'Locked, but no token!'
             branch_token = self._lock_token

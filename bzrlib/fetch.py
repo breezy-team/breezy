@@ -92,12 +92,6 @@ class RepoFetcher(object):
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
-        if isinstance(to_repository, RemoteRepository):
-            to_repository._ensure_real()
-            to_repository = to_repository._real_repository
-        if isinstance(from_repository, RemoteRepository):
-            from_repository._ensure_real()
-            from_repository = from_repository._real_repository
         if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
             # check that last_revision is in 'from' and then return a no-operation.
             if last_revision not in (None, NULL_REVISION):
