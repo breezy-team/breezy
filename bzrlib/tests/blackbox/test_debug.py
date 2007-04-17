@@ -47,10 +47,24 @@ class TestBreakin(TestCase):
         if sys.platform == 'win32':
             raise TestSkipped('breakin signal not tested on win32')
         proc = self.start_bzr_subprocess(['serve'])
+        # wait for it to get started
+        time.sleep(.5)
+        # first sigquit pops into debugger
+        os.kill(proc.pid, signal.SIGQUIT)
+        proc.stdin.write("q\n")
+        time.sleep(.5)
+        err = proc.stderr.readline()
+        self.assertContainsRe(err, r'entering debugger')
+
+    def test_breakin_harder(self):
+        if sys.platform == 'win32':
+            raise TestSkipped('breakin signal not tested on win32')
+        proc = self.start_bzr_subprocess(['serve'])
+        # wait for it to get started
+        time.sleep(.5)
+        # another hit gives the default behaviour of terminating it
+        os.kill(proc.pid, signal.SIGQUIT)
+        # wait for it to go into pdb
         time.sleep(.5)
         os.kill(proc.pid, signal.SIGQUIT)
-        time.sleep(.5)
-        proc.stdin.write('q\n')
-        err = proc.stderr.read()
-        self.assertContainsRe(err, r'entering debugger')
         proc.wait()
