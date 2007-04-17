@@ -38,6 +38,7 @@ WorkingTree.open(dir).
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -118,6 +119,8 @@ from bzrlib.symbol_versioning import (deprecated_passed,
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
+
+ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 @deprecated_function(zero_thirteen)
@@ -2119,7 +2122,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             current_disk = disk_iterator.next()
             disk_finished = False
         except OSError, e:
-            if e.errno != errno.ENOENT:
+            if not (e.errno == errno.ENOENT or
+                (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
                 raise
             current_disk = None
             disk_finished = True
