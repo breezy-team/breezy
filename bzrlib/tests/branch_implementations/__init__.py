@@ -24,20 +24,77 @@ Specific tests for individual formats are in the tests/test_branch file
 rather than in tests/branch_implementations/*.py.
 """
 
+from bzrlib import (
+    errors,
+    tests,
+    )
 from bzrlib.branch import (BranchFormat,
                            BranchTestProviderAdapter,
                            _legacy_formats,
                            )
-from bzrlib.tests import (
-                          adapt_modules,
-                          default_transport,
-                          TestLoader,
-                          TestSuite,
-                          )
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+
+
+class TestCaseWithBranch(TestCaseWithBzrDir):
+    """This helper will be adapted for each branch_implementation test."""
+
+    def setUp(self):
+        super(TestCaseWithBranch, self).setUp()
+        self.branch = None
+
+    def get_branch(self):
+        if self.branch is None:
+            self.branch = self.make_branch('')
+        return self.branch
+
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
+        # fixme RBC 20060210 this isnt necessarily a fixable thing,
+        # Skipped is the wrong exception to raise.
+        try:
+            return self.branch_format.initialize(repo.bzrdir)
+        except errors.UninitializableFormat:
+            raise tests.TestSkipped('Uninitializable branch format')
+
+    def make_repository(self, relpath, shared=False, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
+        return made_control.create_repository(shared=shared)
+
+    def create_tree_with_merge(self):
+        """Create a branch with a simple ancestry.
+
+        The graph should look like:
+            digraph H {
+                "rev-1" -> "rev-2" -> "rev-3";
+                "rev-1" -> "rev-1.1.1" -> "rev-3";
+            }
+
+        Or in ASCII:
+            1 - 2 - 3
+              \    /
+               1.1.1
+        """
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        try:
+            tree.add('')
+            tree.commit('first', rev_id='rev-1')
+            tree.commit('second', rev_id='rev-2')
+            # Uncommit that last commit
+            tree.branch.set_last_revision_info(1, 'rev-1')
+            tree.set_parent_ids(['rev-1'])
+            tree.commit('alt-second', rev_id='rev-1.1.1')
+            tree.branch.set_last_revision_info(2, 'rev-2')
+            tree.set_parent_ids(['rev-2', 'rev-1.1.1'])
+            tree.commit('third', rev_id='rev-3')
+        finally:
+            tree.unlock()
+
+        return tree
 
 
 def test_suite():
-    result = TestSuite()
+    result = tests.TestSuite()
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
@@ -63,11 +120,11 @@ def test_suite():
     combinations = [(format, format._matchingbzrdir) for format in 
          BranchFormat._formats.values() + _legacy_formats]
     adapter = BranchTestProviderAdapter(
-        default_transport,
+        tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         combinations)
-    loader = TestLoader()
-    adapt_modules(test_branch_implementations, adapter, loader, result)
+    loader = tests.TestLoader()
+    tests.adapt_modules(test_branch_implementations, adapter, loader, result)
     return result
