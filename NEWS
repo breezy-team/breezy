@@ -6,7 +6,7 @@ IN DEVELOPMENT
       like bundles can.  (Aaron Bentley)
 
     * Sending the SIGQUIT signal to bzr, which can be done on Unix by
-      pressing Control-Backspace, drops bzr into a debugger.  Type `c`
+      pressing Control-Backslash, drops bzr into a debugger.  Type `c`
       to continue.  (Martin Pool)
 
   INTERNALS:
