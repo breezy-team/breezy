@@ -79,12 +79,11 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         try:
             tree.add('')
             tree.commit('first', rev_id='rev-1')
-            tree.commit('second', rev_id='rev-2')
-            # Uncommit that last commit
+            tree.commit('second', rev_id='rev-1.1.1')
+            # Uncommit that last commitk and switch to the other line
             tree.branch.set_last_revision_info(1, 'rev-1')
             tree.set_parent_ids(['rev-1'])
-            tree.commit('alt-second', rev_id='rev-1.1.1')
-            tree.branch.set_last_revision_info(2, 'rev-2')
+            tree.commit('alt-second', rev_id='rev-2')
             tree.set_parent_ids(['rev-2', 'rev-1.1.1'])
             tree.commit('third', rev_id='rev-3')
         finally:
