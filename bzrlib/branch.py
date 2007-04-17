@@ -35,6 +35,7 @@ from bzrlib import (
         revision as _mod_revision,
         transport,
         tree,
+        tsort,
         ui,
         urlutils,
         )
@@ -452,6 +453,26 @@ class Branch(object):
         """
         raise NotImplementedError(self.update_revisions)
 
+    def revision_id_to_dotted_revno(self, revision_id):
+        """Given a revision id, return its dotted revno."""
+        if revision_id in (None, _mod_revision.NULL_REVISION):
+            return (0,)
+        revision_id = osutils.safe_revision_id(revision_id)
+
+        last_revision = self.last_revision()
+        revision_graph = self.repository.get_revision_graph(last_revision)
+        if revision_id not in revision_graph:
+            raise errors.NoSuchRevision(self, revision_id)
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in merge_sorted_revisions)
+        return revision_id_to_revno[revision_id]
+
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:
@@ -461,7 +482,7 @@ class Branch(object):
         try:
             return history.index(revision_id) + 1
         except ValueError:
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -470,7 +491,7 @@ class Branch(object):
         if history is None:
             history = self.revision_history()
         if revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
+            raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
@@ -1525,7 +1546,7 @@ class BzrBranch(Branch):
                 try: 
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
-                    raise bzrlib.errors.InvalidURL(url,
+                    raise errors.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
                         "use bzrlib.urlutils.escape")
             url = urlutils.relative_url(self.base, url)

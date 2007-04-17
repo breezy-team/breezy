@@ -109,6 +109,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_pull',
         'bzrlib.tests.branch_implementations.test_push',
         'bzrlib.tests.branch_implementations.test_revision_history',
+        'bzrlib.tests.branch_implementations.test_revision_id_to_dotted_revno',
         'bzrlib.tests.branch_implementations.test_revision_id_to_revno',
         'bzrlib.tests.branch_implementations.test_tags',
         'bzrlib.tests.branch_implementations.test_uncommit',
