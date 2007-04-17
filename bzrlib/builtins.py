@@ -2317,7 +2317,10 @@ class cmd_selftest(Command):
     hidden = True
     takes_args = ['testspecs*']
     takes_options = ['verbose',
-                     Option('one', help='stop when one test fails'),
+                     Option('one',
+                             help='stop when one test fails',
+                             short_name='1',
+                             ),
                      Option('keep-output',
                             help='keep output directories when tests fail'),
                      Option('transport',
@@ -2335,7 +2338,8 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      Option('first',
-                            help='run all tests, but run specified tests first'
+                            help='run all tests, but run specified tests first',
+                            short_name='f',
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
