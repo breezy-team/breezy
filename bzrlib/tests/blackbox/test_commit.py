@@ -361,11 +361,11 @@ class TestCommit(ExternalBase):
 
     def test_fixes_bug_output(self):
         """commit --fixes=lp:23452 succeeds without output."""
-        self.run_bzr("init")
-        self.build_tree(['hello.txt'])
-        self.run_bzr('add', 'hello.txt')
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
         output, err = self.run_bzr(
-            'commit', '-m', 'hello', '--fixes=lp:23452', 'hello.txt')
+            'commit', '-m', 'hello', '--fixes=lp:23452', 'tree/hello.txt')
         self.assertEqual('', output)
         self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
 

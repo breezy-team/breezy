@@ -20,7 +20,6 @@ from bzrlib.errors import MalformedBugIdentifier
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
-
 class TestGetBugURL(TestCaseWithMemoryTransport):
     """Tests for bugtracker.get_bug_url"""
 
@@ -59,6 +58,7 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         tracker = bugtracker.UniqueBugTracker()
         tracker.base_url = 'http://bugs.com'
         self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
+        self.assertEqual('http://bugs.com/red', tracker.get_bug_url('red'))
 
     def test_returns_tracker_if_tag_matches(self):
         """The get() classmethod should return an instance of the tracker if
@@ -72,6 +72,18 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         tracker = SomeTracker.get('xxx', branch)
         self.assertEqual('xxx', tracker.tag)
         self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
+
+    def test_returns_none_if_tag_doesnt_match(self):
+        """The get() classmethod should return None if the given tag doesn't
+        match the tracker's tag.
+        """
+        class SomeTracker(bugtracker.UniqueBugTracker):
+            tag = 'xxx'
+            base_url = 'http://bugs.com'
+
+        branch = self.make_branch('some_branch')
+        tracker = SomeTracker.get('xxx', branch)
+        self.assertEqual(None, SomeTracker.get('yyy', branch))
 
 
 class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
@@ -148,6 +160,8 @@ class TestDebianTracker(TestCaseWithMemoryTransport):
 
 
 class TestTracTracker(TestCaseWithMemoryTransport):
+    """Tests for TracTracker."""
+
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
         self.trac_url = 'http://twistedmatrix.com/trac'

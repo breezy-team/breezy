@@ -87,8 +87,10 @@ class UniqueBugTracker(object):
         return urlutils.join(self.base_url, bug_id)
 
     def check_bug_id(self, bug_id):
-        """Check that the bug_id is valid."""
-        pass
+        """Check that the bug_id is valid.
+
+        The base implementation assumes that all bug_ids are valid.
+        """
 
 
 class UniqueIntegerBugTracker(UniqueBugTracker):

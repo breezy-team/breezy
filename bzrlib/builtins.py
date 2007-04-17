@@ -31,6 +31,7 @@ import time
 import bzrlib
 from bzrlib import (
     branch,
+    bugtracker,
     bundle,
     bzrdir,
     delta,
@@ -2086,8 +2087,6 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     def _get_bug_fix_properties(self, fixes, branch):
-        from bzrlib.bugtracker import get_bug_url
-
         properties = []
         # Configure the properties for bug fixing attributes.
         for fixed_bug in fixes:
@@ -2098,7 +2097,7 @@ class cmd_commit(Command):
                     "Commit refused." % fixed_bug)
             tag, bug_id = tokens
             try:
-                bug_url = get_bug_url(tag, branch, bug_id)
+                bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
             except KeyError:
                 raise errors.BzrCommandError(
                     'Unrecognized bug %s. Commit refused.' % fixed_bug)

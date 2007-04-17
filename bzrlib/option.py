@@ -206,6 +206,16 @@ class Option(object):
 
 
 class ListOption(Option):
+    """Option used to provide a list of values.
+
+    On the command line, arguments are specified by a repeated use of the
+    option. '-' is a special argument that resets the list. For example,
+      --foo=a --foo=b
+    sets the value of the 'foo' option to ['a', 'b'], and
+      --foo=a --foo=b --foo=- --foo=c
+    sets the value of the 'foo' option to ['c'].
+    """
+
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
         option_strings = ['--%s' % self.name]
