@@ -402,7 +402,7 @@ class TestCommit(ExternalBase):
         del properties['branch-nick']
 
         self.assertEqual(
-            {'bugs': 'https://launchpad.net/bugs/123 fixed,'
+            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
                      'https://launchpad.net/bugs/235 fixed'},
             properties)
 
@@ -426,7 +426,7 @@ class TestCommit(ExternalBase):
         del properties['branch-nick']
 
         self.assertEqual(
-            {'bugs': 'https://launchpad.net/bugs/123 fixed,'
+            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
                      'http://twistedmatrix.com/trac/ticket/235 fixed'},
             properties)
 

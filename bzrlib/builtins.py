@@ -2107,7 +2107,7 @@ class cmd_commit(Command):
                     "Invalid bug identifier for %s. Commit refused."
                     % fixed_bug)
             properties.append('%s fixed' % bug_url)
-        return ','.join(properties)
+        return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None):
