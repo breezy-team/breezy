@@ -2317,7 +2317,10 @@ class cmd_selftest(Command):
     hidden = True
     takes_args = ['testspecs*']
     takes_options = ['verbose',
-                     Option('one', help='stop when one test fails'),
+                     Option('one',
+                             help='stop when one test fails',
+                             short_name='1',
+                             ),
                      Option('keep-output',
                             help='keep output directories when tests fail'),
                      Option('transport',
