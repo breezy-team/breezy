@@ -136,8 +136,8 @@ class RemoteBzrDir(BzrDir):
         assert len(response) == 4, 'incorrect response length %s' % (response,)
         if response[1] == '':
             format = RemoteRepositoryFormat()
-            format.rich_root_data = response[2] == 'True'
-            format.supports_tree_reference = response[3] == 'True'
+            format.rich_root_data = (response[2] == 'yes')
+            format.supports_tree_reference = (response[3] == 'yes')
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
@@ -735,6 +735,10 @@ class RemoteBranch(branch.Branch):
             # XXX: deal with _lock_mode == 'w'
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
+
+    def _get_checkout_format(self):
+        self._ensure_real()
+        return self._real_branch._get_checkout_format()
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""

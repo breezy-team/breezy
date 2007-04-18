@@ -83,13 +83,13 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         """
         repo = self.make_repository('.', shared=shared, format=format)
         if repo.supports_rich_root():
-            rich_root = 'True'
+            rich_root = 'yes'
         else:
-            rich_root = 'False'
+            rich_root = 'no'
         if repo._format.supports_tree_reference:
-            subtrees = 'True'
+            subtrees = 'yes'
         else:
-            subtrees = 'False'
+            subtrees = 'no'
         return SmartServerResponse(('ok', '', rich_root, subtrees))
 
     def test_shared_repository(self):
@@ -113,8 +113,8 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         request = smart.bzrdir.SmartServerRequestFindRepository(backing)
         result = self._make_repository_and_result(format='dirstate-with-subtree')
         # check the test will be valid
-        self.assertEqual('True', result.args[2])
-        self.assertEqual('True', result.args[3])
+        self.assertEqual('yes', result.args[2])
+        self.assertEqual('yes', result.args[3])
         self.assertEqual(result, request.execute(backing.local_abspath('')))
 
 

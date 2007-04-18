@@ -36,14 +36,16 @@ class TestBranchLocking(TestCaseWithBranch):
         # 'control_files' member. So we should fail gracefully if
         # not there. But assuming it has them lets us test the exact 
         # lock/unlock order.
-        if isinstance(self.bzrdir_format, RemoteBzrDirFormat):
-            raise TestSkipped(
-                "RemoteRepository objects don't have 'control_files'.")
         self.locks = []
         b = LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = LockWrapper(self.locks, b.repository, 'r')
         bcf = b.control_files
-        rcf = b.repository.control_files
+        rcf = getattr(b.repository, 'control_files', None)
+        if rcf is None:
+            raise TestSkipped(
+                "This tests depends on being able to instrument "
+                "repository.control_files, but %r doesn't have control_files."
+                % (b.repository,))
 
         # Look out for branch types that reuse their control files
         self.combined_control = bcf is rcf

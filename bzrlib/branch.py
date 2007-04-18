@@ -710,13 +710,10 @@ class Branch(object):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        from bzrlib.remote import RemoteBzrDir
         if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
             from bzrlib.repofmt import weaverepo
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = weaverepo.RepositoryFormat7()
-        elif isinstance(self.bzrdir, RemoteBzrDir):
-            format = bzrdir.BzrDirMetaFormat1()
         else:
             format = self.repository.bzrdir.checkout_metadir()
             format.set_branch_format(self._format)

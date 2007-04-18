@@ -147,7 +147,7 @@ class FakeClient(_SmartClient):
 class TestBzrDirOpenBranch(tests.TestCase):
 
     def test_branch_present(self):
-        client = FakeClient([(('ok', ''), ), (('ok', '', 'False', 'False'), )])
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -173,13 +173,13 @@ class TestBzrDirOpenBranch(tests.TestCase):
 
     def check_open_repository(self, rich_root, subtrees):
         if rich_root:
-            rich_response = 'True'
+            rich_response = 'yes'
         else:
-            rich_response = 'False'
+            rich_response = 'no'
         if subtrees:
-            subtree_response = 'True'
+            subtree_response = 'yes'
         else:
-            subtree_response = 'False'
+            subtree_response = 'no'
         client = FakeClient([(('ok', '', rich_response, subtree_response), ),])
         transport = MemoryTransport()
         transport.mkdir('quack')
