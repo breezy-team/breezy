@@ -227,37 +227,10 @@ def _show_log(branch,
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=include_merges)
     if specific_fileid:
-        # find all the revisions that change the specific file
-        sfw = branch.repository.weave_store.get_weave(specific_fileid,
-                    branch.repository.get_transaction())
-        sfw_revids = set(sfw.versions())
-        # build the ancestry of each revision in the graph
-        # - only listing the ancestors that change the specific file.
-        rev_graph = branch.repository.get_revision_graph(mainline_revs[-1])
-        sorted_rev_list = topo_sort(rev_graph)
-        ancestry = {}
-        for rev in sorted_rev_list:
-            rev_ancestry = set()
-            if rev in sfw_revids:
-                rev_ancestry.add(rev)
-            for parent in rev_graph[rev]:
-                rev_ancestry = rev_ancestry.union(ancestry[parent])
-            ancestry[rev] = rev_ancestry
-
-        def is_merging_rev():
-            parents = rev_graph[r]
-            if len(parents) > 1:
-                leftparent = parents[0]
-                for rightparent in parents[1:]:
-                    if not ancestry[leftparent].issuperset(
-                            ancestry[rightparent]):
-                        return True
-            return False        
-
-        # filter from the view the revisions that did not change or merge 
-        # the specific file
-        view_revisions = [(r, n, d) for r, n, d in view_revs_iter if
-                          r in sfw_revids or is_merging_rev()]
+        view_revisions = _get_revisions_touching_file_id(branch,
+                                                         specific_fileid,
+                                                         mainline_revs,
+                                                         view_revs_iter)
     else:
         view_revisions = list(view_revs_iter)
 
@@ -300,6 +273,56 @@ def _show_log(branch,
                 lf.show_merge(rev, merge_depth)
             else:
                 lf.show_merge_revno(rev, merge_depth, revno)
+
+
+def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
+                                    view_revs_iter):
+    """Return the list of revision ids which touch a given file id.
+
+    This includes the revisions which directly change the file id,
+    and the revisions which merge these changes. So if the
+    revision graph is::
+        A
+        |\
+        B C
+        |/
+        D
+
+    And 'C' changes a file, then both C and D will be returned.
+
+    This will also can be restricted based on a subset of the mainline.
+    """
+    # find all the revisions that change the specific file
+    sfw = branch.repository.weave_store.get_weave(file_id,
+                branch.repository.get_transaction())
+    sfw_revids = set(sfw.versions())
+    # build the ancestry of each revision in the graph
+    # - only listing the ancestors that change the specific file.
+    rev_graph = branch.repository.get_revision_graph(mainline_revisions[-1])
+    sorted_rev_list = topo_sort(rev_graph)
+    ancestry = {}
+    for rev in sorted_rev_list:
+        rev_ancestry = set()
+        if rev in sfw_revids:
+            rev_ancestry.add(rev)
+        for parent in rev_graph[rev]:
+            rev_ancestry = rev_ancestry.union(ancestry[parent])
+        ancestry[rev] = rev_ancestry
+
+    def is_merging_rev():
+        parents = rev_graph[r]
+        if len(parents) > 1:
+            leftparent = parents[0]
+            for rightparent in parents[1:]:
+                if not ancestry[leftparent].issuperset(
+                        ancestry[rightparent]):
+                    return True
+        return False
+
+    # filter from the view the revisions that did not change or merge 
+    # the specific file
+    return [(r, n, d) for r, n, d in view_revs_iter
+            if r in sfw_revids or is_merging_rev()]
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
