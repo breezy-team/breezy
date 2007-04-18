@@ -291,6 +291,8 @@ def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
     And 'C' changes a file, then both C and D will be returned.
 
     This will also can be restricted based on a subset of the mainline.
+
+    :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # find all the revisions that change the specific file
     file_weave = branch.repository.weave_store.get_weave(file_id,
