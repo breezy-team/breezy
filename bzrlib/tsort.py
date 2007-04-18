@@ -186,6 +186,22 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
 
 class MergeSorter(object):
 
+    __slots__ = ['_node_name_stack',
+                 '_node_merge_depth_stack',
+                 '_pending_parents_stack',
+                 '_assigned_sequence_stack',
+                 '_left_subtree_pushed_stack',
+                 '_generate_revno',
+                 '_graph',
+                 '_mainline_revisions',
+                 '_stop_revision',
+                 '_original_graph',
+                 '_revnos',
+                 '_root_sequence',
+                 '_completed_node_names',
+                 '_scheduled_nodes',
+                ]
+
     def __init__(self, graph, branch_tip, mainline_revisions=None,
         generate_revno=False):
         """Merge-aware topological sorting of a graph.
