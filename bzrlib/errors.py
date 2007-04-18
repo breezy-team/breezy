@@ -1626,8 +1626,8 @@ class BzrRemoveChangedFilesError(BzrError):
         self.changes_as_text = tree_delta.get_changes_as_text()
         #self.paths_as_string = '\n'.join(changed_files)
         #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
-        
-    
+
+
 class BzrBadParameterNotString(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is not a string or unicode string."

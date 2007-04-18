@@ -23,7 +23,7 @@ from bzrlib import errors, osutils
 class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""
 
-    files=['a', 'b/', 'b/c']
+    files=['a', 'b/', 'b/c', 'd/']
     a = ['a']
     b = ['b']
     b_c = ['b', 'b/c']
@@ -66,7 +66,7 @@ class TestRemove(TestCaseWithWorkingTree):
             self.fail('Should throw BzrRemoveChangedFilesError')
         except errors.BzrRemoveChangedFilesError, e:
             self.assertTrue(re.match('Can\'t remove changed or unknown files:'
-                '.*added:.*a.*b.*b/c.*',
+                '.*added:.*a.*b.*b/c.*d.*',
                 str(e), re.DOTALL))
         self.assertInWorkingTree(TestRemove.files)
         self.failUnlessExists(TestRemove.files)
@@ -95,7 +95,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.getTree()
         tree.add(TestRemove.files)
         tree.commit("make sure files are versioned")
-        for f in ['b/c','b','a']:
+        for f in ['b/c', 'b', 'a', 'd']:
             osutils.delete_any(f)
         self.assertInWorkingTree(TestRemove.files)
         self.failIfExists(TestRemove.files)
@@ -124,7 +124,7 @@ class TestRemove(TestCaseWithWorkingTree):
             self.fail('Should throw BzrRemoveChangedFilesError')
         except errors.BzrRemoveChangedFilesError, e:
             self.assertTrue(re.match('Can\'t remove changed or unknown files:'
-                '.*unknown:.*b/c.*b.*a.*',
+                '.*unknown:.*b/c.*b.*a.*d.*',
                 str(e), re.DOTALL))
 
     def test_remove_nonexisting_files(self):
@@ -149,7 +149,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove(TestRemove.b, keep_files=False)
         self.assertNotInWorkingTree(TestRemove.b)
         self.failIfExists(TestRemove.b)
-        
+
     def test_remove_nonempty_directory_with_unknowns(self):
         """Unchanged non-empty directories should be deleted."""
         tree = self.getTree()

@@ -25,7 +25,8 @@ _id='-id'
 a='a'
 b='b/'
 c='b/c'
-files=(a,b,c)
+d='d/'
+files=(a, b, c, d)
 
 
 class TestRemove(ExternalBase):
@@ -118,20 +119,22 @@ class TestRemove(ExternalBase):
     def test_remove_files(self):
         tree = self._make_add_and_assert_tree(files)
         self.run_bzr("commit -m 'added files'")
-        self.run_bzr('remove a b b/c', 
-                     error_regexes=["deleted a", "deleted b", "deleted b/c"])
+        self.run_bzr('remove a b b/c d',
+                     error_regexes=["deleted a", "deleted b", "deleted b/c",
+                     "deleted d"])
         self.assertFilesDeleted(files)
 
     def test_remove_keep_files(self):
         tree = self._make_add_and_assert_tree(files)
         self.run_bzr("commit -m 'added files'")
-        self.run_bzr('remove --keep a b b/c', 
-                     error_regexes=["removed a", "removed b", "removed b/c"])
+        self.run_bzr('remove --keep a b b/c d',
+                     error_regexes=["removed a", "removed b", "removed b/c",
+                     "removed d"])
         self.assertFilesUnversioned(files)
 
     def test_remove_on_deleted(self):
         tree = self._make_add_and_assert_tree([a])
-        self.run_bzr("commit -m 'added a'")        
+        self.run_bzr("commit -m 'added a'")
         os.unlink(a)
         self.assertInWorkingTree(a)
         self.run_bzr('remove a')

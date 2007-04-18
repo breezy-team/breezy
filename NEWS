@@ -8,7 +8,7 @@ IN DEVELOPMENT
       The old ``remove`` behaviour has been retained in the new option
       ``bzr remove --keep``, which will just stop versioning the file,
       but not delete it.
-      ``bzr remove --force`` have been added which will always delete the 
+      ``bzr remove --force`` have been added which will always delete the
       files.
       ``bzr remove`` is also more verbose.
       (Marius Kruger, #82602)

@@ -1234,7 +1234,7 @@ class TestCase(unittest.TestCase):
         stderr.encoding = encoding
 
         # magically convert commands like 'remove abc' to ['remove', 'abc']
-        if (isinstance(argv, tuple) and len(argv) == 1 and 
+        if (isinstance(argv, tuple) and len(argv) == 1 and
             isinstance(argv[0], basestring)):
             argv = shlex.split(argv[0])
 
@@ -1297,7 +1297,7 @@ class TestCase(unittest.TestCase):
         stdin = kwargs.pop('stdin', None)
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
-        
+
         out, err = self.run_bzr_captured(args, retcode=retcode,
             encoding=encoding, stdin=stdin, working_dir=working_dir)
 

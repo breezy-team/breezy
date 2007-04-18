@@ -1070,24 +1070,25 @@ class cmd_remove(Command):
     delete them if they can easily be recovered using revert.
 
     You can specify one or more files, and/or --new.  If you specify --new,
-    only 'added' files will be removed.  If you specify both, then new files 
+    only 'added' files will be removed.  If you specify both, then new files
     in the specified directories will be removed.  If the directories are
     also new, they will also be removed.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', 
+    takes_options = ['verbose',
         Option('new', help='remove newly-added files'),
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
-            safe='Only delete files if they can be safely recovered (default).',
+            safe='Only delete files if they can be'
+                 ' safely recovered (default).',
             keep="Don't delete any files.",
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
     aliases = ['rm']
     encoding_type = 'replace'
 
-    def run(self, file_list, verbose=False, new=False, 
+    def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
 
@@ -1104,7 +1105,7 @@ class cmd_remove(Command):
             if len(file_list) == 0:
                 raise errors.BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
-            keep_files=file_deletion_strategy=='keep', 
+            keep_files=file_deletion_strategy=='keep',
             force=file_deletion_strategy=='force')
 
 

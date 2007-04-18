@@ -364,11 +364,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
-    
+
     def canonicalpath(self, filename):
         """Normanize filename"""
         return self.relpath(self.abspath(filename))
-    
+
     def basis_tree(self):
         """Return RevisionTree for the current last revision.
         
@@ -1786,7 +1786,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         unknown_files_in_directory=set()
 
         def recurse_directory_to_add_files(directory):
-            # recurse directory and add all files 
+            # recurse directory and add all files
             # so we can check if they have changed.
             for contained_dir_info in self.walkdirs(directory):
                 for file_info in contained_dir_info[1]:
@@ -1803,7 +1803,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             filename = self.canonicalpath(filename)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(filename):
+                if osutils.isdir(filename) and len(os.listdir(filename)) > 0:
                     recurse_directory_to_add_files(filename)
         files = [f for f in new_files]
 
@@ -1841,12 +1841,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 message="removed %s" % (f,)
 
             if not keep_files:
-                if osutils.lexists(f):
-                    if osutils.isdir(f) and len(os.listdir(f)) > 0:
+                abs_path = self.abspath(f)
+                if osutils.lexists(abs_path):
+                    if (osutils.isdir(abs_path) and
+                        len(os.listdir(abs_path)) > 0):
                         message="%s is not empty directory "\
                             "and won't be deleted." % (f,)
                     else:
-                        osutils.delete_any(f)
+                        osutils.delete_any(abs_path)
                         message="deleted %s" % (f,)
                 elif message is not None:
                     # only care if we haven't done anything yet.
@@ -2158,7 +2160,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid), 
+                ((curren_directory_path, fileid),
                  [(file1_path, file1_name, file1_kind, (lstat), file1_id,
                    file1_kind), ... ])
 
@@ -2267,7 +2269,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
            :prefix: is used as the directrory to start with.
            returns a generator which yields items in the form:
-                ((curren_directory_path, fileid), 
+                ((curren_directory_path, fileid),
                  [(file1_path, file1_name, file1_kind, None, file1_id,
                    file1_kind), ... ])
         """
