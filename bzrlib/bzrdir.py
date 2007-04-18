@@ -527,7 +527,8 @@ class BzrDir(object):
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
-    def open_from_transport(transport, _unsupported=False):
+    def open_from_transport(transport, _unsupported=False,
+                            _server_formats=True):
         """Open a bzrdir within a particular directory.
 
         :param transport: Transport containing the bzrdir.
@@ -536,7 +537,8 @@ class BzrDir(object):
         base = transport.base
 
         def find_format(transport):
-            return transport, BzrDirFormat.find_format(transport)
+            return transport, BzrDirFormat.find_format(
+                transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
             qualified_source = e.get_source_url()
@@ -1213,15 +1215,25 @@ class BzrDirFormat(object):
     This is a list of BzrDirFormat objects.
     """
 
+    _control_server_formats = []
+    """The registered control server formats, e.g. RemoteBzrDirs.
+
+    This is a list of BzrDirFormat objects.
+    """
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
 
     @classmethod
-    def find_format(klass, transport):
+    def find_format(klass, transport, _server_formats=True):
         """Return the format present at transport."""
-        for format in klass._control_formats:
+        if _server_formats:
+            formats = klass._control_server_formats + klass._control_formats
+        else:
+            formats = klass._control_formats
+        for format in formats:
             try:
                 return format.probe_transport(transport)
             except errors.NotBranchError:
@@ -1385,7 +1397,7 @@ class BzrDirFormat(object):
         chance to grab it before anything looks at the contents of the format
         file.
         """
-        klass._control_formats.insert(0, format)
+        klass._control_server_formats.append(format)
 
     @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)

@@ -88,7 +88,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrDirFormat in BzrDirFormat._control_formats)
+        self.assertTrue(RemoteBzrDirFormat
+                        in BzrDirFormat._control_server_formats)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -323,10 +324,10 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch.unlock()
 
 
-class TestBranchControlGetBranchConf(tests.TestCase):
+class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
 
-    we special case RemoteBranch.control_files.get('branch.conf') to
+    We special case RemoteBranch.control_files.get('branch.conf') to
     call a specific API so that RemoteBranch's can intercept configuration
     file reading, allowing them to signal to the client about things like
     'email is configured for commits'.
@@ -335,9 +336,10 @@ class TestBranchControlGetBranchConf(tests.TestCase):
     def test_get_branch_conf(self):
         # in an empty branch we decode the response properly
         client = FakeClient([(('ok', ), 'config file body')])
-        transport = MemoryTransport()
-        transport.mkdir('quack')
-        transport = transport.clone('quack')
+        # we need to make a real branch because the remote_branch.control_files
+        # will trigger _ensure_real.
+        branch = self.make_branch('quack')
+        transport = branch.bzrdir.root_transport
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)

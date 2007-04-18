@@ -69,12 +69,8 @@ class RemoteBzrDir(BzrDir):
         Used before calls to self._real_bzrdir.
         """
         if not self._real_bzrdir:
-            # XXX: We can't use BzrDir.open_from_transport here because it
-            # causes infinite recursion, so just try opening the bzrdir with the
-            # default format.
-            default_format = BzrDirFormat.get_default_format()
-            self._real_bzrdir = default_format.open(self.root_transport,
-                _found=True)
+            self._real_bzrdir = BzrDir.open_from_transport(
+                self.root_transport, _server_formats=False)
 
     def create_repository(self, shared=False):
         self._ensure_real()
@@ -709,7 +705,7 @@ class RemoteBranch(branch.Branch):
         # Fill out expected attributes of branch for bzrlib api users.
         self._format = RemoteBranchFormat()
         self.base = self.bzrdir.root_transport.base
-        self.control_files = RemoteBranchLockableFiles(self.bzrdir, self._client)
+        self._control_files = None
         self._lock_mode = None
         self._lock_token = None
         self._lock_count = 0
@@ -735,6 +731,15 @@ class RemoteBranch(branch.Branch):
             # XXX: deal with _lock_mode == 'w'
             if self._lock_mode == 'r':
                 self._real_branch.lock_read()
+
+    @property
+    def control_files(self):
+        # Defer actually creating RemoteBranchLockableFiles until its needed,
+        # because it triggers an _ensure_real that we otherwise might not need.
+        if self._control_files is None:
+            self._control_files = RemoteBranchLockableFiles(
+                self.bzrdir, self._client)
+        return self._control_files
 
     def _get_checkout_format(self):
         self._ensure_real()
