@@ -18,7 +18,7 @@
 """Topological sorting routines."""
 
 
-import bzrlib.errors as errors
+from bzrlib import errors
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -420,20 +420,30 @@ class MergeSorter(object):
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
         """
-        while self._node_name_stack:
+        # These are safe to offload to local variables, because they are used
+        # as a stack and modified in place, never assigned to.
+        node_name_stack = self._node_name_stack
+        pending_parents_stack = self._pending_parents_stack
+        left_subtree_pushed_stack = self._left_subtree_pushed_stack
+        completed_node_names = self._completed_node_names
+
+        pop_node = self._pop_node
+        push_node = self._push_node
+
+        while node_name_stack:
             # loop until this call completes.
-            parents_to_visit = self._pending_parents_stack[-1]
+            parents_to_visit = pending_parents_stack[-1]
             # if all parents are done, the revision is done
             if not parents_to_visit:
                 # append the revision to the topo sorted scheduled list:
                 # all the nodes parents have been scheduled added, now
                 # we can add it to the output.
-                self._pop_node()
+                pop_node()
             else:
-                while self._pending_parents_stack[-1]:
-                    if not self._left_subtree_pushed_stack[-1]:
+                while pending_parents_stack[-1]:
+                    if not left_subtree_pushed_stack[-1]:
                         # recurse depth first into the primary parent
-                        next_node_name = self._pending_parents_stack[-1].pop(0)
+                        next_node_name = pending_parents_stack[-1].pop(0)
                     else:
                         # place any merges in right-to-left order for scheduling
                         # which gives us left-to-right order after we reverse
@@ -442,8 +452,8 @@ class MergeSorter(object):
                         # subtree rather than the left most, which will 
                         # display nicely (you get smaller trees at the top
                         # of the combined merge).
-                        next_node_name = self._pending_parents_stack[-1].pop()
-                    if next_node_name in self._completed_node_names:
+                        next_node_name = pending_parents_stack[-1].pop()
+                    if next_node_name in completed_node_names:
                         # this parent was completed by a child on the
                         # call stack. skip it.
                         continue
@@ -457,17 +467,17 @@ class MergeSorter(object):
                         # current search stack (but not completed or we would
                         # have hit the continue 4 lines up.
                         # this indicates a cycle.
-                        raise errors.GraphCycleError(self._node_name_stack)
+                        raise errors.GraphCycleError(node_name_stack)
                     next_merge_depth = 0
-                    if self._left_subtree_pushed_stack[-1]:
+                    if left_subtree_pushed_stack[-1]:
                         # a new child branch from name_stack[-1]
                         next_merge_depth = 1
                     else:
                         next_merge_depth = 0
-                        self._left_subtree_pushed_stack[-1] = True
+                        left_subtree_pushed_stack[-1] = True
                     next_merge_depth = (
                         self._node_merge_depth_stack[-1] + next_merge_depth)
-                    self._push_node(
+                    push_node(
                         next_node_name,
                         next_merge_depth,
                         parents)
@@ -476,24 +486,29 @@ class MergeSorter(object):
                     break
         # We have scheduled the graph. Now deliver the ordered output:
         sequence_number = 0
-        while self._scheduled_nodes:
-            node_name, merge_depth, revno = self._scheduled_nodes.pop()
-            if node_name == self._stop_revision:
+        scheduled_nodes = self._scheduled_nodes
+        stop_revision = self._stop_revision
+        generate_revno = self._generate_revno
+        original_graph = self._original_graph
+
+        while scheduled_nodes:
+            node_name, merge_depth, revno = scheduled_nodes.pop()
+            if node_name == stop_revision:
                 return
-            if not len(self._scheduled_nodes):
+            if not len(scheduled_nodes):
                 # last revision is the end of a merge
                 end_of_merge = True
-            elif self._scheduled_nodes[-1][1] < merge_depth:
+            elif scheduled_nodes[-1][1] < merge_depth:
                 # the next node is to our left
                 end_of_merge = True
-            elif (self._scheduled_nodes[-1][1] == merge_depth and
-                  (self._scheduled_nodes[-1][0] not in
-                   self._original_graph[node_name])):
+            elif (scheduled_nodes[-1][1] == merge_depth and
+                  (scheduled_nodes[-1][0] not in
+                   original_graph[node_name])):
                 # the next node was part of a multiple-merge.
                 end_of_merge = True
             else:
                 end_of_merge = False
-            if self._generate_revno:
+            if generate_revno:
                 yield (sequence_number, node_name, merge_depth, revno, end_of_merge)
             else:
                 yield (sequence_number, node_name, merge_depth, end_of_merge)
