@@ -17,6 +17,7 @@
 import os
 from cStringIO import StringIO
 
+from bzrlib import log
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
 from bzrlib.log import (show_log, 
                         get_view_revisions, 
@@ -497,3 +498,36 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         self.assertEqual([], delta.added)
         self.assertEqual([], delta.removed)
 
+    def assertAllRevisionsForFileID(self, tree, file_id, revisions):
+        """Make sure _get_revisions_touching_file_id returns the right values.
+
+        Get the return value from _get_revisions_touching_file_id and make
+        sure they are correct.
+        """
+        # The api for _get_revisions_touching_file_id is a little crazy,
+        # So we do the setup here.
+        mainline = tree.branch.revision_history()
+        mainline.insert(0, None)
+        revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
+        view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
+                                                'reverse', True)
+        actual_revs = log._get_revisions_touching_file_id(tree.branch, file_id,
+                                                          mainline,
+                                                          view_revs_iter)
+        self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
+
+    def test_file_id_f1(self):
+        tree = self.create_tree_with_single_merge()
+        # f1 should be marked as modified by revisions A and B
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['B', 'A'])
+
+    def test_file_id_f2(self):
+        tree = self.create_tree_with_single_merge()
+        # f2 should be marked as modified by revisions A, C, and D
+        # because D merged the changes from C.
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_file_id_f3(self):
+        tree = self.create_tree_with_single_merge()
+        # f3 should be marked as modified by revisions A, B, C, and D
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
