@@ -55,6 +55,9 @@ IN DEVELOPMENT
      instances of those objects can share a lock if it has the right token.
      (Andrew Bennetts, Robert Collins)
 
+    * Command objects can now declare related help topics by having _see_also
+      set to a list of related topic. (Robert Collins)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  

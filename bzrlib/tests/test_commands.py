@@ -21,12 +21,13 @@ from bzrlib import (
     commands,
     config,
     errors,
+    tests,
     )
 from bzrlib.commands import display_command
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestSkipped
 
 
-class TestCommands(TestCase):
+class TestCommands(tests.TestCase):
 
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
@@ -58,7 +59,7 @@ class TestCommands(TestCase):
                           commands.run_bzr, ['log', u'--option\xb5'])
 
 
-class TestGetAlias(TestCase):
+class TestGetAlias(tests.TestCase):
 
     def _get_config(self, config_text):
         my_config = config.GlobalConfig()
@@ -93,3 +94,34 @@ class TestGetAlias(TestCase):
             u"iam=whoami 'Erik B\u00e5gfors <erik@bagfors.nu>'\n")
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
                           commands.get_alias("iam", config=my_config))
+
+
+class TestSeeAlso(tests.TestCase):
+    """Tests for the see also functional of Command."""
+
+    def test_default_subclass_no_see_also(self):
+        class ACommand(commands.Command):
+            """A sample command."""
+        command = ACommand()
+        self.assertEqual([], command.get_see_also())
+
+    def test__see_also(self):
+        """When _see_also is defined, it sets the result of get_see_also()."""
+        class ACommand(commands.Command):
+            _see_also = ['bar', 'foo']
+        command = ACommand()
+        self.assertEqual(['bar', 'foo'], command.get_see_also())
+
+    def test_deduplication(self):
+        """Duplicates in _see_also are stripped out."""
+        class ACommand(commands.Command):
+            _see_also = ['foo', 'foo']
+        command = ACommand()
+        self.assertEqual(['foo'], command.get_see_also())
+
+    def test_sorted(self):
+        """_see_also is sorted by get_see_also."""
+        class ACommand(commands.Command):
+            _see_also = ['foo', 'bar']
+        command = ACommand()
+        self.assertEqual(['bar', 'foo'], command.get_see_also())
