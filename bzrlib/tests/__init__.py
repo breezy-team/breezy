@@ -752,15 +752,22 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        self._clear_hooks()
+
+    def _clear_hooks(self):
         # prevent hooks affecting tests
+        import bzrlib.branch
+        import bzrlib.smart.server
         self._preserved_hooks = {
-            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
-            bzrlib.smart.server.SmartTCPServer:bzrlib.smart.server.SmartTCPServer.hooks,
+            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = \
+            bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -2333,7 +2340,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             print >>sys.stderr, ('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(test_root))
+                                 '%s' % os.path.basename(dirname))
         else:
             raise
 

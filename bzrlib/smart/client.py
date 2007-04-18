@@ -20,7 +20,7 @@ from bzrlib.smart import protocol
 from bzrlib.urlutils import unescape
 
 
-class SmartClient(object):
+class _SmartClient(object):
 
     def __init__(self, medium):
         self._medium = medium
