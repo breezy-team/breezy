@@ -28,11 +28,17 @@ from bzrlib.branch import (BranchFormat,
                            BranchTestProviderAdapter,
                            _legacy_formats,
                            )
+from bzrlib.smart.server import (
+    SmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing,
+    )
 from bzrlib.tests import (
                           adapt_modules,
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -71,12 +77,6 @@ def test_suite():
     adapt_modules(test_branch_implementations, adapter, loader, result)
 
 
-    from bzrlib.smart.server import (
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        )
-    from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
-    from bzrlib.transport.memory import MemoryServer
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,

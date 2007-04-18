@@ -1747,7 +1747,7 @@ class RepositoryTestProviderAdapter(object):
     """
 
     def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None):
+                 vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._vfs_transport_factory = vfs_transport_factory
@@ -1760,6 +1760,8 @@ class RepositoryTestProviderAdapter(object):
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
+            # Only override the test's vfs_transport_factory if one was
+            # specified, otherwise just leave the default in place.
             if self._vfs_transport_factory:
                 new_test.vfs_transport_factory = self._vfs_transport_factory
             new_test.bzrdir_format = bzrdir_format
