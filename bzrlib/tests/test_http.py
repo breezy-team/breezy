@@ -1172,21 +1172,32 @@ class TestHTTPAuth(object):
         self.server.add_user('joe', '')
         t = self._transport(self.get_user_url('joe', ''))
         self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
 
     def test_user_pass(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('joe', 'foo'))
         self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
 
     def test_unknown_user(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('bill', 'foo'))
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+        # Two 'Authentication Required' errors should occur (the
+        # initial 'who are you' and 'I don't know you, who are
+        # you').
+        self.assertEqual(2, self.server.auth_required_errors)
 
     def test_wrong_pass(self):
         self.server.add_user('joe', 'foo')
         t = self._transport(self.get_user_url('joe', 'bar'))
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+        # Two 'Authentication Required' error should occur (the
+        # initial 'who are you' and 'this is not you, who are you')
+        self.assertEqual(2, self.server.auth_required_errors)
 
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
@@ -1201,6 +1212,9 @@ class TestHTTPAuth(object):
         t2 = t.clone()
         # And neither against a clone
         self.assertEqual('contents of b\n',t2.get('b').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
 
 
 class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
@@ -1223,7 +1237,6 @@ class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
 
     _transport = HttpTransport_urllib
     _auth_header = 'Proxy-authorization'
-    _test_class = TestCaseWithWebserver
 
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)

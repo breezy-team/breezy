@@ -331,6 +331,10 @@ class AbstractBasicAuthRequestHandler(TestingHTTPRequestHandler):
                 user, password = coded_auth.decode('base64').split(':')
                 authorized = tcs.authorized(user, password)
             if not authorized:
+                # Note that we must update tcs *before* sending
+                # the error or the client may try to read it
+                # before we have sent the whole error back.
+                tcs.auth_required_errors += 1
                 self.send_response(self._auth_error_code)
                 self.send_header(self._auth_header_sent,
                                  'Basic realm="Thou should not pass"')
@@ -353,6 +357,7 @@ class AuthHTTPServer(HttpServer):
         HttpServer.__init__(self, request_handler)
         self.auth_scheme = auth_scheme
         self.password_of = {}
+        self.auth_required_errors = 0
 
     def add_user(self, user, password):
         """Declare a user with an associated password.
