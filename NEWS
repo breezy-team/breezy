@@ -5,8 +5,8 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
-    * Tags are now included in logs, that use the default log 
-      formatter. (Erik Bågfors, Alexander Belchenko)
+    * Tags are now included in logs, that use the long log formatter. 
+      (Erik Bågfors, Alexander Belchenko)
 
   INTERNALS:
 
