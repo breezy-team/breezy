@@ -35,12 +35,8 @@ class TestCommandHelp(tests.TestCase):
         cmd = cmd_WithSeeAlso()
         helpfile = StringIO()
         help.help_on_command_object(cmd, 'cmd_sample', helpfile)
-        self.assertEqual('usage: bzr WithSeeAlso\n'
-            '\n'
-            'A sample command.\n'
-            '\n'
-            'Options:\n'
+        self.assertEndsWith(
+            helpfile.getvalue(),
             '  -h, --help  show help message\n'
             '\n'
-            'See also: bar, foo\n',
-            helpfile.getvalue())
+            'See also: bar, foo\n')
