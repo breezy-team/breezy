@@ -54,6 +54,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
 
+    def tearDown(self):
+        self.transport.disconnect()
+        tests.TestCaseWithTransport.tearDown(self)
+
     def test_is_readonly(self):
         # XXX: this is a poor way to test RemoteTransport, but currently there's
         # no easy way to substitute in a fake client on a transport like we can

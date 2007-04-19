@@ -794,6 +794,7 @@ class TestSmartTCPServer(tests.TestCase):
                 self.assertContainsRe(str(e), 'some random exception')
             else:
                 self.fail("get did not raise expected error")
+            transport.disconnect()
         finally:
             smart_server.stop_background_thread()
 

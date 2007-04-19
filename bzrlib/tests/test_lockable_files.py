@@ -373,11 +373,13 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # to end behaviour, so stubbing out the backend and simulating would
         # defeat the purpose. We test the protocol implementation separately
         # in test_remote and test_smart as usual.
-        self.make_branch('foo')
+        b = self.make_branch('foo')
+        self.addCleanup(b.bzrdir.transport.disconnect)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
 
     def get_lockable(self):
         # getting a new lockable involves opening a new instance of the branch
         branch = bzrlib.branch.Branch.open(self.get_url('foo'))
+        self.addCleanup(branch.bzrdir.transport.disconnect)
         return branch.control_files
