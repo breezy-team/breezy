@@ -9,7 +9,9 @@ IN DEVELOPMENT
       Pool)
 
     * ``bzr help`` now provides cross references to other help topics using
-      the _see_also facility on command classes. (Robert Collins)
+      the _see_also facility on command classes. Likewise the bzr_man
+      documentation, and the bzr.1 man page also include this information.
+      (Robert Collins)
 
   INTERNALS:
 
