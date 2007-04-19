@@ -8,6 +8,9 @@ IN DEVELOPMENT
     * ``selftest`` has new short options ``-f`` and ``-1``.  (Martin
       Pool)
 
+    * ``make docs`` now creates a man page at ``man1/bzr.1`` fixing bug 107388.
+      (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
