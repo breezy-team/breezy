@@ -8,6 +8,11 @@ IN DEVELOPMENT
     * ``selftest`` has new short options ``-f`` and ``-1``.  (Martin
       Pool)
 
+    * ``bzrlib.tsort.MergeSorter`` optimizations. Change the inner loop
+      into using local variables instead of going through ``self._var``.
+      Improves the time to ``merge_sort`` a 10k revision graph by
+      approximately 40% (~700->400ms).  (John Arbash Meinel)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
