@@ -877,8 +877,6 @@ class RemoteBranch(branch.Branch):
         assert response[0] == 'ok', 'unexpected response code %s' % (response,)
         revno = int(response[1])
         last_revision = response[2]
-        if last_revision == '':
-            last_revision = NULL_REVISION
         return (revno, last_revision)
 
     def _gen_revision_history(self):
@@ -900,7 +898,7 @@ class RemoteBranch(branch.Branch):
         # branch, NoSuchRevision will be raised.
         path = self.bzrdir._path_for_remote_call(self._client)
         if rev_history == []:
-            rev_id = ''
+            rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
         response = self._client.call('Branch.set_last_revision',

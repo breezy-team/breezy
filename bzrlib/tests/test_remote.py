@@ -206,7 +206,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
 
     def test_empty_branch(self):
         # in an empty branch we decode the response properly
-        client = FakeClient([(('ok', '0', ''), )])
+        client = FakeClient([(('ok', '0', 'null:'), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -264,7 +264,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         result = branch.set_revision_history([])
         self.assertEqual(
             [('call', 'Branch.set_last_revision',
-                ('///branch/', 'branch token', 'repo token', ''))],
+                ('///branch/', 'branch token', 'repo token', 'null:'))],
             client._calls)
         branch.unlock()
         self.assertEqual(None, result)

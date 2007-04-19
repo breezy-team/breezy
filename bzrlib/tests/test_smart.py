@@ -229,11 +229,11 @@ class TestSmartServerBranchRequest(tests.TestCaseWithTransport):
 class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
 
     def test_empty(self):
-        """For an empty branch, the result is ('ok', '0', '')."""
+        """For an empty branch, the result is ('ok', '0', 'null:')."""
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLastRevisionInfo(backing)
         self.make_branch('.')
-        self.assertEqual(SmartServerResponse(('ok', '0', '')),
+        self.assertEqual(SmartServerResponse(('ok', '0', 'null:')),
             request.execute(backing.local_abspath('')))
 
     def test_not_empty(self):
@@ -288,7 +288,8 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         try:
             self.assertEqual(SmartServerResponse(('ok',)),
                 request.execute(
-                    backing.local_abspath(''), branch_token, repo_token, ''))
+                    backing.local_abspath(''), branch_token, repo_token,
+                    'null:'))
         finally:
             b.unlock()
 
