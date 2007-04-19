@@ -701,7 +701,10 @@ def _setup_medusa():
             except (IOError, OSError), e:
                 # TODO: jam 20060516 return custom responses based on
                 #       why the command failed
-                self.respond('550 RNTO failed: %s' % (e,))
+                # (bialix 20070418) str(e) on Python 2.5 @ Windows
+                # sometimes don't provide expected error message;
+                # so we obtain such message via os.strerror()
+                self.respond('550 RNTO failed: %s' % os.strerror(e.errno))
             except:
                 self.respond('550 RNTO failed')
                 # For a test server, we will go ahead and just die
@@ -739,7 +742,11 @@ def _setup_medusa():
                     self.filesystem.mkdir (path)
                     self.respond ('257 MKD command successful.')
                 except (IOError, OSError), e:
-                    self.respond ('550 error creating directory: %s' % (e,))
+                    # (bialix 20070418) str(e) on Python 2.5 @ Windows
+                    # sometimes don't provide expected error message;
+                    # so we obtain such message via os.strerror()
+                    self.respond ('550 error creating directory: %s' %
+                                  os.strerror(e.errno))
                 except:
                     self.respond ('550 error creating directory.')
 

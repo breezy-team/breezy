@@ -2314,8 +2314,6 @@ def clean_selftest_output(root=None, quiet=False):
     :param  quiet:  suppress report about deleting directories
     """
     import re
-    import shutil
-
     re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
     if root is None:
         root = u'.'
