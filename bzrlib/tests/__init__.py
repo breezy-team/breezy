@@ -2173,6 +2173,7 @@ def test_suite():
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
+                   'bzrlib.tests.test_help',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
@@ -2313,8 +2314,6 @@ def clean_selftest_output(root=None, quiet=False):
     :param  quiet:  suppress report about deleting directories
     """
     import re
-    import shutil
-
     re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
     if root is None:
         root = u'.'

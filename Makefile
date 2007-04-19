@@ -62,24 +62,30 @@ $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
 	$(PRETTYDIR)/$*.htm
 
-doc/bzr_man.txt: bzrlib/builtins.py \
+MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
 		 bzrlib/sign_my_commits.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
 		 tools/doc_generate/autodoc_rstx.py
-	python generate_docs.py -o doc/bzr_man.txt rstx
 
-docs: $(htm_files) doc/HACKING.htm
+doc/bzr_man.txt: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ rstx
+
+MAN_PAGES = man1/bzr.1
+man1/bzr.1: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ man
+
+docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove doc/bzr_man.txt $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR)
+	python tools/win32/ostools.py remove $(htm_files) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt $(MAN_PAGES)
 
 
 # make bzr.exe for win32 with py2exe

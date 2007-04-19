@@ -189,6 +189,7 @@ class cmd_status(Command):
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
+    _see_also = ['diff', 'revert']
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
@@ -247,6 +248,7 @@ class cmd_remove_tree(Command):
 
     To re-create the working tree, use "bzr checkout".
     """
+    _see_also = ['checkout']
 
     takes_args = ['location?']
 
@@ -276,6 +278,7 @@ class cmd_revno(Command):
     This is equal to the number of revisions on this branch.
     """
 
+    _see_also = ['info']
     takes_args = ['location?']
 
     @display_command
@@ -352,6 +355,7 @@ class cmd_add(Command):
                      Option('file-ids-from', type=unicode,
                             help='Lookup file ids from here')]
     encoding_type = 'replace'
+    _see_also = ['remove']
 
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
@@ -436,14 +440,11 @@ class cmd_inventory(Command):
 
     It is also possible to restrict the list of files to a specific
     set. For example: bzr inventory --show-ids this/file
-
-    See also: bzr ls
     """
 
     hidden = True
-
+    _see_also = ['ls']
     takes_options = ['revision', 'show-ids', 'kind']
-
     takes_args = ['file*']
 
     @display_command
@@ -560,6 +561,7 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
+    _see_also = ['push', 'update']
     takes_options = ['remember', 'overwrite', 'revision', 'verbose',
         Option('directory',
             help='branch to pull into, '
@@ -666,6 +668,7 @@ class cmd_push(Command):
     location can be accessed.
     """
 
+    _see_also = ['pull', 'update']
     takes_options = ['remember', 'overwrite', 'verbose',
         Option('create-prefix',
                help='Create the path leading up to the branch '
@@ -848,6 +851,8 @@ class cmd_branch(Command):
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
     """
+
+    _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision']
     aliases = ['get', 'clone']
@@ -916,9 +921,9 @@ class cmd_checkout(Command):
     parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
     out of date [so you cannot commit] but it may be useful (i.e. to examine old
     code.)
-
-    See "help checkouts" for more information on checkouts.
     """
+
+    _see_also = ['checkouts', 'branch']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
@@ -978,6 +983,7 @@ class cmd_renames(Command):
     # TODO: Option to show renames between two historical versions.
 
     # TODO: Only show renames under dir, rather than in the whole branch.
+    _see_also = ['status']
     takes_args = ['dir?']
 
     @display_command
@@ -1010,6 +1016,8 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a 
     'bzr revert' instead of 'bzr commit' after the update.
     """
+
+    _see_also = ['pull']
     takes_args = ['dir?']
     aliases = ['up']
 
@@ -1053,6 +1061,7 @@ class cmd_info(Command):
 
     Branches and working trees will also report any missing revisions.
     """
+    _see_also = ['revno']
     takes_args = ['location?']
     takes_options = ['verbose']
 
@@ -1103,6 +1112,7 @@ class cmd_file_id(Command):
     """
 
     hidden = True
+    _see_also = ['inventory', 'ls']
     takes_args = ['filename']
 
     @display_command
@@ -1155,6 +1165,8 @@ class cmd_reconcile(Command):
 
     The branch *MUST* be on a listable system such as local disk or sftp.
     """
+
+    _see_also = ['check']
     takes_args = ['branch?']
 
     def run(self, branch="."):
@@ -1165,6 +1177,8 @@ class cmd_reconcile(Command):
 
 class cmd_revision_history(Command):
     """Display the list of revision ids on a branch."""
+
+    _see_also = ['log']
     takes_args = ['location?']
 
     hidden = True
@@ -1179,6 +1193,8 @@ class cmd_revision_history(Command):
 
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
+
+    _see_also = ['log', 'revision-history']
     takes_args = ['location?']
 
     hidden = True
@@ -1222,6 +1238,8 @@ class cmd_init(Command):
         bzr status
         bzr commit -m 'imported project'
     """
+
+    _see_also = ['init-repo', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
          RegistryOption('format',
@@ -1293,6 +1311,7 @@ class cmd_init_repository(Command):
         (add files here)
     """
 
+    _see_also = ['init', 'branch', 'checkout']
     takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
@@ -1358,6 +1377,7 @@ class cmd_diff(Command):
 
     # TODO: This probably handles non-Unix newlines poorly.
 
+    _see_also = ['status']
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options',
         Option('prefix', type=str,
@@ -1443,6 +1463,7 @@ class cmd_deleted(Command):
     # directories with readdir, rather than stating each one.  Same
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
+    _see_also = ['status', 'ls']
     takes_options = ['show-ids']
 
     @display_command
@@ -1468,11 +1489,10 @@ class cmd_deleted(Command):
 
 class cmd_modified(Command):
     """List files modified in working tree.
-
-    See also: "bzr status".
     """
 
     hidden = True
+    _see_also = ['status', 'ls']
 
     @display_command
     def run(self):
@@ -1484,11 +1504,10 @@ class cmd_modified(Command):
 
 class cmd_added(Command):
     """List files added in working tree.
-
-    See also: "bzr status".
     """
 
     hidden = True
+    _see_also = ['status', 'ls']
 
     @display_command
     def run(self):
@@ -1520,6 +1539,7 @@ class cmd_root(Command):
 
     The root is the nearest enclosing directory with a .bzr control
     directory."""
+
     takes_args = ['filename?']
     @display_command
     def run(self, filename=None):
@@ -1687,6 +1707,7 @@ class cmd_ls(Command):
     """List files in a tree.
     """
 
+    _see_also = ['status', 'cat']
     takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
     takes_options = ['verbose', 'revision',
@@ -1776,11 +1797,10 @@ class cmd_ls(Command):
 
 class cmd_unknowns(Command):
     """List unknown files.
-
-    See also: "bzr ls --unknown".
     """
 
     hidden = True
+    _see_also = ['ls']
 
     @display_command
     def run(self):
@@ -1821,6 +1841,8 @@ class cmd_ignore(Command):
         bzr ignore 'lib/**/*.o'
         bzr ignore 'RE:lib/.*\.o'
     """
+
+    _see_also = ['status', 'ignored']
     takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
@@ -1876,8 +1898,9 @@ class cmd_ignore(Command):
 
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
+    """
 
-    See also: bzr ignore"""
+    _see_also = ['ignore']
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -1972,6 +1995,7 @@ class cmd_cat(Command):
     binary file. 
     """
 
+    _see_also = ['ls']
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
     encoding_type = 'exact'
@@ -2063,6 +2087,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
+    _see_also = ['uncommit']
     takes_args = ['selected*']
     takes_options = ['message', 'verbose', 
                      Option('unchanged',
@@ -2160,6 +2185,8 @@ class cmd_check(Command):
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
     """
+
+    _see_also = ['reconcile']
     takes_args = ['branch?']
     takes_options = ['verbose']
 
@@ -2180,6 +2207,8 @@ class cmd_upgrade(Command):
     this command. When the default format has changed you may also be warned
     during other operations to upgrade.
     """
+
+    _see_also = ['check']
     takes_args = ['url?']
     takes_options = [
                     RegistryOption('format',
@@ -2248,6 +2277,8 @@ class cmd_nick(Command):
     If unset, the tree root directory name is used as the nickname
     To print the current nickname, execute with no argument.  
     """
+
+    _see_also = ['info']
     takes_args = ['nickname?']
     def run(self, nickname=None):
         branch = Branch.open_containing(u'.')[0]
@@ -2492,6 +2523,8 @@ class cmd_merge(Command):
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
     """
+
+    _see_also = ['update', 'remerge']
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
         Option('show-base', help="Show base revision text in "
@@ -2757,6 +2790,8 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
     """
+
+    _see_also = ['cat', 'export']
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
 
@@ -2796,9 +2831,9 @@ class cmd_assert_fail(Command):
 
 class cmd_help(Command):
     """Show help on a command or other topic.
-
-    For a list of all available commands, say 'bzr help commands'.
     """
+
+    _see_also = ['topics']
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
@@ -2845,6 +2880,8 @@ class cmd_missing(Command):
 
     OTHER_BRANCH may be local or remote.
     """
+
+    _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 
@@ -2947,7 +2984,7 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 
+    takes_options = ['revision',
                      Option('long', help='Produce long-format testament'), 
                      Option('strict', help='Produce a strict-format'
                             ' testament')]
@@ -3063,10 +3100,9 @@ class cmd_bind(Command):
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
-
-    See "help checkouts" for more information on checkouts.
     """
 
+    _see_also = ['checkouts', 'unbind']
     takes_args = ['location?']
     takes_options = []
 
@@ -3095,10 +3131,9 @@ class cmd_unbind(Command):
 
     After unbinding, the local branch is considered independent and subsequent
     commits will be local only.
-
-    See "help checkouts" for more information on checkouts.
     """
 
+    _see_also = ['checkouts', 'bind']
     takes_args = []
     takes_options = []
 
@@ -3123,6 +3158,7 @@ class cmd_uncommit(Command):
     # unreferenced information in 'branch-as-repository' branches.
     # TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
     # information in shared branches as well.
+    _see_also = ['commit']
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
                     Option('force', help='Say yes to all questions.')]
@@ -3279,6 +3315,7 @@ class cmd_serve(Command):
             sys.stdout.flush()
         smart_server.serve()
 
+
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
     
@@ -3300,6 +3337,7 @@ class cmd_join(Command):
     and merge, will recurse into the subtree.
     """
 
+    _see_also = ['split']
     takes_args = ['tree']
     takes_options = [Option('reference', 'join by reference')]
     hidden = True
@@ -3341,10 +3379,9 @@ class cmd_split(Command):
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
     If you want that behavior, do "bzr join --reference TREE".
-
-    To undo this operation, do "bzr join TREE".
     """
 
+    _see_also = ['join']
     takes_args = ['tree']
 
     hidden = True
@@ -3460,6 +3497,7 @@ class cmd_tag(Command):
     --force, in which case the tag is moved to point to the new revision.
     """
 
+    _see_also = ['commit', 'tags']
     takes_args = ['tag_name']
     takes_options = [
         Option('delete',
@@ -3511,6 +3549,7 @@ class cmd_tags(Command):
     This tag shows a table of tag names and the revisions they reference.
     """
 
+    _see_also = ['tag']
     takes_options = [
         Option('directory',
             help='Branch whose tags should be displayed',

@@ -13,6 +13,14 @@ IN DEVELOPMENT
       Improves the time to ``merge_sort`` a 10k revision graph by
       approximately 40% (~700->400ms).  (John Arbash Meinel)
 
+    * ``make docs`` now creates a man page at ``man1/bzr.1`` fixing bug 107388.
+      (Robert Collins)
+
+    * ``bzr help`` now provides cross references to other help topics using
+      the _see_also facility on command classes. Likewise the bzr_man
+      documentation, and the bzr.1 man page also include this information.
+      (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -59,6 +67,9 @@ IN DEVELOPMENT
      ``Branch`` now accept a ``token`` keyword argument, so that separate
      instances of those objects can share a lock if it has the right token.
      (Andrew Bennetts, Robert Collins)
+
+    * Command objects can now declare related help topics by having _see_also
+      set to a list of related topic. (Robert Collins)
 
   BUGFIXES:
 
