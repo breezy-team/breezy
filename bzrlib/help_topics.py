@@ -243,3 +243,6 @@ topic_registry.register('global-options', _global_options,
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 
+
+class HelpTopicContext(object):
+    """A context for bzr help that returns topics."""

@@ -21,6 +21,7 @@ from cStringIO import StringIO
 from bzrlib import (
     commands,
     help,
+    help_topics,
     tests,
     )
 
@@ -40,3 +41,11 @@ class TestCommandHelp(tests.TestCase):
             '  -h, --help  show help message\n'
             '\n'
             'See also: bar, foo\n')
+
+
+class TestTopicContext(tests.TestCase):
+    """Tests for the HelpTopicContext object."""
+
+    def test_construct(self):
+        context = help_topics.HelpTopicContext()
+
