@@ -49,3 +49,9 @@ class TestTopicContext(tests.TestCase):
     def test_construct(self):
         context = help_topics.HelpTopicContext()
 
+
+class TestCommandContext(tests.TestCase):
+    """Tests for the HelpCommandContext object."""
+
+    def test_construct(self):
+        context = commands.HelpCommandContext()

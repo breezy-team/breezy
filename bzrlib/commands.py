@@ -657,5 +657,10 @@ def run_bzr_catch_errors(argv):
             pdb.post_mortem(sys.exc_traceback)
         return 3
 
+
+class HelpCommandContext(object):
+    """A context for bzr help that returns commands."""
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
