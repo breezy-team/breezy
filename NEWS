@@ -8,6 +8,9 @@ IN DEVELOPMENT
     * ``selftest`` has new short options ``-f`` and ``-1``.  (Martin
       Pool)
 
+    * ``bzr help`` now provides cross references to other help topics using
+      the _see_also facility on command classes. (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
