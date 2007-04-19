@@ -127,10 +127,20 @@ def format_patch_date(secs, offset=0):
 
     Inverse of parse_patch_date.
     """
-    assert offset % 36 == 0
+    assert offset % 60 == 0, \
+        "can't represent timezone %s offset by fractional minutes" % offset
+    # so that we don't need to do calculations on pre-epoch times, 
+    # which doesn't work with win32 python gmtime, we always
+    # give the epoch in utc
+    if secs == 0:
+        offset = 0
+    if secs + offset < 0:
+        from warnings import warn
+        warn("gmtime of negative time (%s, %s) may not work on Windows" %
+                (secs, offset))
     tm = time.gmtime(secs+offset)
     time_str = time.strftime('%Y-%m-%d %H:%M:%S', tm)
-    return '%s %+05d' % (time_str, offset/36)
+    return '%s %+03d%02d' % (time_str, offset/3600, abs(offset/60) % 60)
 
 
 def parse_patch_date(date_str):
@@ -139,8 +149,11 @@ def parse_patch_date(date_str):
     Inverse of format_patch_date.
     """
     secs_str = date_str[:-6]
-    offset_str = date_str[-6:]
-    offset = int(offset_str) * 36
+    offset_str = date_str[-5:]
+    assert len(offset_str) == 5, \
+            "invalid timezone %r" % offset_str
+    offset_hours, offset_mins = offset_str[:3], offset_str[3:]
+    offset = int(offset_hours) * 3600 + int(offset_mins) * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
     # adjust seconds according to offset before converting to POSIX
     # timestamp, to avoid edge problems
