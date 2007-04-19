@@ -17,6 +17,8 @@
 import calendar
 import time
 
+from bzrlib import osutils
+
 
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
@@ -138,9 +140,8 @@ def format_patch_date(secs, offset=0):
         from warnings import warn
         warn("gmtime of negative time (%s, %s) may not work on Windows" %
                 (secs, offset))
-    tm = time.gmtime(secs+offset)
-    time_str = time.strftime('%Y-%m-%d %H:%M:%S', tm)
-    return '%s %+03d%02d' % (time_str, offset/3600, abs(offset/60) % 60)
+    return osutils.format_date(secs, offset=offset,
+            date_fmt='%Y-%m-%d %H:%M:%S')
 
 
 def parse_patch_date(date_str):
