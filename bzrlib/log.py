@@ -223,13 +223,13 @@ def _show_log(branch,
             DeprecationWarning, stacklevel=3)
     view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=include_merges))
-    
+
     use_tags = getattr(lf, 'supports_tags', False)
     if use_tags:
         rev_tag_dict = {}
         if branch.supports_tags():
             rev_tag_dict = branch.tags.get_reverse_tag_dict()
-    
+
     def iter_revisions():
         # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
@@ -263,11 +263,11 @@ def _show_log(branch,
 
         if merge_depth == 0:
             # a mainline revision.
-                
+
             if specific_fileid:
                 if not delta.touches_file_id(specific_fileid):
                     continue
-    
+
             if not verbose:
                 # although we calculated it, throw it away without display
                 delta = None
@@ -353,9 +353,10 @@ class LogFormatter(object):
 
     def short_committer(self, rev):
         return re.sub('<.*@.*>', '', rev.committer).strip(' ')
-    
-    
+
+
 class LongLogFormatter(LogFormatter):
+
     supports_tags = True    # must exist and be True
                             # if this log formatter support tags.
                             # .show() and .show_merge_revno() must then accept
@@ -392,7 +393,7 @@ class LongLogFormatter(LogFormatter):
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file,  indent+'committer:', rev.committer
-        
+
         try:
             print >>to_file, indent+'branch nick: %s' % \
                 rev.properties['branch-nick']

@@ -6,7 +6,7 @@ IN DEVELOPMENT
       like bundles can.  (Aaron Bentley)
 
     * Tags are now included in logs, that use the default log 
-      formatter. (Erik Bågfors)
+      formatter. (Erik Bågfors, Alexander Belchenko)
 
   INTERNALS:
 

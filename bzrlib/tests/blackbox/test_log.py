@@ -118,7 +118,7 @@ class TestLog(ExternalBase):
         out, err = self.run_bzr('log', 'does-not-exist', retcode=3)
         self.assertContainsRe(
             err, 'Path does not have any revision history: does-not-exist')
-        
+
     def test_log_with_tags(self):
         self._prepare(format='dirstate-tags')
         self.runbzr('tag -r1 tag1')
@@ -131,23 +131,22 @@ class TestLog(ExternalBase):
         log = self.runbzr("log -r1")[0]
         # I guess that we can't know the order of tags in the output
         # since dicts are unordered, need to check both possibilities
-        self.assertTrue(('tags: tag1, tag1.1' in log) or 
-                        ('tags: tag1.1, tag1' in log))
-                        
+        self.assertContainsRe(log, r'tags: (tag1, tag1\.1|tag1\.1, tag1)')
+
     def test_merged_log_with_tags(self):
         os.mkdir('branch1')
         os.chdir('branch1')
         self._prepare(format='dirstate-tags')
         os.chdir('..')
-        self.run_bzr('branch', 'branch1', 'branch2')
+        self.runbzr('branch branch1 branch2')
         os.chdir('branch1')
-        self.run_bzr('commit', '-m', 'foobar', '--unchanged')
+        self.runbzr('commit -m foobar --unchanged')
         self.runbzr('tag tag1')
         os.chdir('../branch2')
-        self.run_bzr('merge', '../branch1')
-        self.run_bzr('commit', '-m', 'merge branch 1')
+        self.runbzr('merge ../branch1')
+        self.runbzr('commit -m merge_branch_1')
         log = self.runbzr("log -r-1")[0]
-        self.assertTrue('    tags: tag1' in log)
+        self.assertContainsRe(log, r'    tags: tag1')
 
 
 class TestLogMerges(ExternalBase):
