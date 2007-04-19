@@ -59,7 +59,11 @@ import re
 import sys
 
 from bzrlib import __version__ as bzrlib_version
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
+
 
 
 # We define our own Response class to keep our httplib pipe clean
@@ -156,20 +160,10 @@ class Request(urllib2.Request):
         self.redirected_to = None
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
-        self.set_auth(None, None, None) # Until the first 401
-        self.set_proxy_auth(None, None, None) # Until the first 407
-
-    def set_auth(self, auth_scheme, user, password=None):
-        self.auth_scheme = auth_scheme
-        self.user = user
-        self.password = password
-
-    # FIXME: this is not called, we incur a rountrip for each
-    # request.
-    def set_proxy_auth(self, auth_scheme, user, password=None):
-        self.proxy_auth_scheme = auth_scheme
-        self.proxy_user = user
-        self.proxy_password = password
+        # auth and proxy_auth are (scheme, url, realm, user, password) tuples
+        # Note: some schemes may add other slots
+        self.auth = (None, None, None, None, None) # Until the first 401
+        self.proxy_auth = (None, None, None, None, None) # Until the first 407
 
     def get_method(self):
         return self.method
@@ -201,11 +195,23 @@ def extract_credentials(url):
 
     return clean_url, user, password
 
+def extract_authentication_uri(url):
+    """Extract the authentication uri from any url.
+
+    In the context of bzr, we simplified the authentication uri
+    to the host only. For the transport lifetime, we allow only
+    one user by realm on a given host. I.e. handling several
+    users for different paths for the same realm should be done
+    at a higher level.
+    """
+    scheme, host, path, query, fragment = urlparse.urlsplit(url)
+    return '%s://%s' % (scheme, host)
+
 
 # The urlib2.xxxAuthHandler handle the authentication of the
 # requests, to do that, they need an urllib2 PasswordManager *at
-# build time*. We also need one to reuse the passwords already
-# typed by the user.
+# build time*. We also need one to reuse the passwords entered by
+# the user.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
 
     def __init__(self):
@@ -702,6 +708,15 @@ class ProxyHandler(urllib2.ProxyHandler):
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
+        # Extract credentials from the url and store them in
+        # the password manager so that the
+        # proxy AuthHandler can use them later.
+        proxy, user, password = extract_credentials(proxy)
+        if request.proxy_auth == (None, None, None, None, None):
+            # scheme and realm will be set by the AuthHandler
+            request.proxy_auth = (None, proxy, None, user, password)
+        if user and password is not None: # '' is a valid password
+            self.password_manager.add_password(None, proxy, user, password)
         orig_type = request.get_type()
         scheme, r_scheme = urllib.splittype(proxy)
         if self._debuglevel > 0:
@@ -710,14 +725,6 @@ class ProxyHandler(urllib2.ProxyHandler):
         if host is None:
             raise errors.InvalidURL(proxy,
                                     'Invalid syntax in proxy env variable')
-        elif '@' in host:
-            # Extract credentials from the url and store them in
-            # the password manager so that the
-            # ProxyxxxAuthHandler can use them later.
-            clean_url, user, password = extract_credentials(proxy)
-            if user and password is not None: # '' is a valid password
-                pm = self.password_manager
-                pm.add_password(None, self.base, self._user, self._password)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:
@@ -725,100 +732,223 @@ class ProxyHandler(urllib2.ProxyHandler):
         return request
 
 
-class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
+class AbstractAuthHandler(urllib2.BaseHandler):
+    """A custom abstract authentication handler for all http authentications.
+
+    Provides the meat to handle authentication errors and
+    preventively set authentication headers after the first
+    successful authentication.
+
+    This can be used for http and proxy, as well as for basic and
+    digest authentications.
+
+    This provides an unified interface for all auth handlers
+    (urllib2 provides far too many with different policies).
+    """
+
+    # The following attributes should be defined by daughter
+    # classes:
+    # - auth_reqed_header:  the header received from the server
+    # - auth_header: the header sent in the request
+
+    def __init__(self, password_manager):
+        self.password_manager = password_manager
+        self.find_user_password = password_manager.find_user_password
+        self.add_password = password_manager.add_password
+
+    def auth_required(self, request, headers):
+        """Retry the request if the auth scheme is ours"""
+        server_header = headers.get(self.auth_reqed_header, None)
+        if server_header is None:
+            # The http error MUST have the associated
+            # header. This must never happen in production code.
+            raise KeyError('%s not found' % self.auth_reqed_header)
+
+        auth_params = self.get_auth_params(request)
+        match, auth_params = self.auth_match(server_header, auth_params)
+        if match:
+            client_header = self.build_auth_header(auth_params)
+            if client_header == request.get_header(self.auth_header, None):
+                # We already tried that, give up
+                return None
+
+            self.add_auth_header(request, client_header)
+            request.add_unredirected_header(self.auth_header, client_header)
+            response = self.parent.open(request)
+            if response:
+                self.auth_successful(request, auth_params)
+            return response
+        # We are not qualified to handle the authentication.
+        # Note: the authentication error handling will try all
+        # available handlers. If one of them authenticates
+        # successfully, a response will be returned. If none of
+        # them succeeds, None will be returned and the error
+        # handler will raise the 401 'Unauthorized' or the 407
+        # 'Proxy Authentication Required' error.
+        return None
+
+    def get_auth_params(self, request):
+        """Get the auth params from the request"""
+        raise NotImplementedError(self.get_auth_params)
+
+    def set_auth_params(self, request, auth_params):
+        """Set the auth params for the request"""
+        raise NotImplementedError(self.set_auth_params)
+
+    def add_auth_header(self, request, header):
+        request.add_unredirected_header(self.auth_header, header)
+
+    def auth_match(self, header, auth_params):
+        """Check that we are able to handle that authentication scheme.
+
+        The request authentication parameters may need to be
+        updated with info from the server.
+        
+        :param header: The authentication header sent by the server.
+        :param auth_params: The auth parameters already known.
+        :returns: match, auth_params. auth_params is a daughter class specific
+            tuple that will be passed to build_auth_header(). The tuple should
+            at least contain (scheme, auth_uri, user, password, realm).
+            Daughter classes can add specific attributes.
+        """
+        raise NotImplementedError(self.auth_match)
+
+    def update_auth_params(self, auth_params):
+        """Update auth parameters in the request with last values received.
+
+        The server may have modified some authentication parameters
+        between requests.
+        """
+        return auth_params
+
+    def build_auth_header(self, auth_params):
+        """Build the value of the header used to authenticate.
+
+        :param auth_params: A daughter class specific tuple returned by
+            auth_match()
+
+        :return: None or header.
+        """
+        raise NotImplementedError(self.build_auth_header)
+
+    def auth_successful(self, request, auth_params):
+        """The authentification was successful for the request.
+
+        The params are stored in the request to allow reuse and
+        avoid rountrips associated with authentication errors.
+
+        :param request: The succesfully authenticated request.
+        :param auth_params: The parameters used to succeed.
+        """
+        self.set_auth_params(request, auth_params)
+
+    def get_password(self, user, authuri, realm=None):
+        """ASk user for a password if none is already available.
+
+        """
+        user_found, password = self.find_user_password(realm, authuri)
+        if user_found != user:
+            # FIXME: write a test for that case
+            password = None
+
+        if password is None:
+            # Prompt user only if we can't find a password
+            if realm:
+                realm_prompt = " Realm: '%s'" % realm
+            else:
+                realm_prompt = ''
+            scheme, host, path, query, fragment = urlparse.urlsplit(authuri)
+            password = ui.ui_factory.get_password(prompt=self.password_prompt,
+                                                  user=user, host=host,
+                                                  realm=realm_prompt)
+            if password is not None:
+                self.add_password(realm, authuri, user, password)
+        return password
+
+    def http_request(self, request):
+        """Insert an authentication header if information is available"""
+        auth_params = self.get_auth_params(request)
+        if self.auth_params_reusable(auth_params):
+            self.add_auth_header(request, self.build_auth_header(auth_params))
+        return request
+
+    https_request = http_request # FIXME: Need test
+
+
+class AbstractBasicAuthHandler(AbstractAuthHandler):
+    """A custom basic auth handler."""
+
+    auth_regexp = re.compile('[ \t]*([^ \t]+)[ \t]+realm="([^"]*)"', re.I)
+
+    def build_auth_header(self, auth_params):
+        (scheme, host, realm, user, password) = auth_params
+        raw = '%s:%s' % (user, password)
+        auth_header = 'Basic ' + raw.encode('base64').strip()
+        return auth_header
+
+    def auth_match(self, header, auth_params):
+        (scheme, authuri, realm, user, password) = auth_params
+        match = self.auth_regexp.search(header)
+        if match:
+            scheme, realm = match.groups()
+            scheme = scheme.lower()
+            if scheme != 'basic':
+                match = None
+            else:
+                if password is None:
+                    password = self.get_password(user, authuri, realm)
+
+        return match, (scheme, authuri, realm, user, password)
+
+    def auth_params_reusable(self, auth_params):
+        (scheme, host, realm, user, password) = auth_params
+        # If the auth scheme is known, it means a previous
+        # authentication was succesful, all information is
+        # available, no further checks are needed.
+        return scheme == 'basic'
+
+
+class HTTPBasicAuthHandler(AbstractBasicAuthHandler):
     """Custom basic authentication handler.
 
     Send the authentication preventively to avoid the roundtrip
     associated with the 401 error.
     """
 
-    def get_auth(self, user, password):
-        raw = '%s:%s' % (user, password)
-        auth = 'Basic ' + raw.encode('base64').strip()
-        return auth
+    password_prompt = 'HTTP %(user)s@%(host)s%(realm)s password'
+    auth_reqed_header = 'www-authenticate'
+    auth_header = 'Authorization'
 
-    def set_auth(self, request):
-        """Add the authentication header if needed.
+    def get_auth_params(self, request):
+        return request.auth
 
-        All required informations should be part of the request.
-        """
-        if request.password is not None:
-            request.add_header(self.auth_header,
-                               self.get_auth(request.user, request.password))
-
-    def http_request(self, request):
-        """Insert an authentication header if information is available"""
-        if request.auth_scheme == 'basic' and request.password is not None:
-            self.set_auth(request)
-        return request
-
-    https_request = http_request # FIXME: Need test
+    def set_auth_params(self, request, auth_params):
+        request.auth = auth_params
 
     def http_error_401(self, req, fp, code, msg, headers):
-        """Trap the 401 to gather the auth type."""
-        response = urllib2.HTTPBasicAuthHandler.http_error_401(self, req, fp,
-                                                               code, msg,
-                                                               headers)
-        if response is not None:
-            # We capture the auth_scheme to be able to send the
-            # authentication header with the next requests
-            # without waiting for a 401 error.
-            # The urllib2.HTTPBasicAuthHandler will return a
-            # response *only* if the basic authentication
-            # succeeds. If another scheme is used or the
-            # authentication fails, the response will be None.
-            req.auth_scheme = 'basic'
-
-        return response
+        return self.auth_required(req, headers)
 
 
-class ProxyBasicAuthHandler(urllib2.ProxyBasicAuthHandler):
+class ProxyBasicAuthHandler(AbstractBasicAuthHandler):
     """Custom proxy basic authentication handler.
 
     Send the authentication preventively to avoid the roundtrip
     associated with the 407 error.
     """
 
-    def get_auth(self, user, password):
-        raw = '%s:%s' % (user, password)
-        auth = 'Basic ' + raw.encode('base64').strip()
-        return auth
+    password_prompt = 'Proxy %(user)s@%(host)s password'
+    auth_reqed_header = 'proxy-authenticate'
+    auth_header = 'Proxy-authorization'
 
-    def set_auth(self, request):
-        """Add the authentication header if needed.
+    def get_auth_params(self, request):
+        return request.proxy_auth
 
-        All required informations should be part of the request.
-        """
-        if request.proxy_password is not None:
-            request.add_header(self.auth_header,
-                               self.get_auth(request.proxy_user,
-                                             request.proxy_password))
-
-    def http_request(self, request):
-        """Insert an authentication header if information is available"""
-        if request.proxy_auth_scheme == 'basic' \
-                and request.proxy_password is not None:
-            self.set_auth(request)
-        return request
-
-    https_request = http_request # FIXME: Need test
+    def set_auth_params(self, request, auth_params):
+        request.proxy_auth = auth_params
 
     def http_error_407(self, req, fp, code, msg, headers):
-        """Trap the 401 to gather the auth type."""
-        response = urllib2.ProxyBasicAuthHandler.http_error_407(self, req, fp,
-                                                                code, msg,
-                                                                headers)
-        if response is not None:
-            # We capture the auth_scheme to be able to send the
-            # authentication header with the next requests
-            # without waiting for a 407 error.
-            # The urllib2.ProxyBasicAuthHandler will return a
-            # response *only* if the basic authentication
-            # succeeds. If another scheme is used or the
-            # authentication fails, the response will be None.
-            req.proxy_auth_scheme = 'basic'
+        return self.auth_required(req, headers)
 
-        return response
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):

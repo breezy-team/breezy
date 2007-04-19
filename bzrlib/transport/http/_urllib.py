@@ -18,10 +18,7 @@ from cStringIO import StringIO
 import urllib
 import urlparse
 
-from bzrlib import (
-    ui,
-    errors,
-    )
+from bzrlib import errors
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
@@ -30,6 +27,7 @@ from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
+    extract_authentication_uri,
     extract_credentials,
     )
 
@@ -51,9 +49,9 @@ class HttpTransport_urllib(HttpTransportBase):
         if from_transport is not None:
             super(HttpTransport_urllib, self).__init__(base, from_transport)
             self._connection = from_transport._connection
-            self._auth_scheme = from_transport._auth_scheme
-            self._user = from_transport._user
-            self._password = from_transport._password
+            self._auth = from_transport._auth
+            self._proxy_auth = from_transport._proxy_auth
+
             self._opener = from_transport._opener
         else:
             # urllib2 will be confused if it find authentication
@@ -64,36 +62,23 @@ class HttpTransport_urllib(HttpTransportBase):
             super(HttpTransport_urllib, self).__init__(clean_base,
                                                        from_transport)
             self._connection = None
-            # auth_scheme will be set once we authenticate
-            # successfully after a 401 error.
-            self._auth_scheme = None
-            self._user = user
-            self._password = password
             self._opener = self._opener_class()
+
+            # auth is a (scheme, url, realm, user, password) tuple
+            # scheme and realm will be set once we authenticate
+            # successfully after a 401 error.
+            # Note: some schemes may add other slots
+            self._auth = (None, self.base, None, user, password)
             if user and password is not None: # '' is a valid password
                 # Make the (user, password) available to urllib2
                 pm = self._opener.password_manager
-                pm.add_password(None, self.base, self._user, self._password)
-
-    def _ask_password(self):
-        """Ask for a password if none is already available"""
-        if self._password is None:
-            # We can't predict realm, let's try None, we'll get a
-            # 401 if we are wrong anyway
-            realm = None
-            # Query the password manager first
-            authuri = self.base
-            pm = self._opener.password_manager
-            user, password = pm.find_user_password(None, authuri)
-            if user == self._user and password is not None:
-                self._password = password
-            else:
-                # Ask the user if we MUST
-                http_pass = 'HTTP %(user)s@%(host)s password'
-                self._password = ui.ui_factory.get_password(prompt=http_pass,
-                                                            user=self._user,
-                                                            host=self._host)
-                pm.add_password(None, authuri, self._user, self._password)
+                pm.add_password(None, extract_authentication_uri(self.base),
+                                user, password)
+            # proxy_auth is a (scheme, url, realm, user, password) tuple
+            # it will be correctly set once we authenticate successfully
+            # after a 407 error.
+            # Note: some schemes may add other slots
+            self._proxy_auth = (None, None, None, None, None)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -103,12 +88,9 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
-        elif self._user:
-            # We will issue our first request, time to ask for a
-            # password if needed
-            self._ask_password()
         # Ensure authentication info is provided
-        request.set_auth(self._auth_scheme, self._user, self._password)
+        request.auth = self._auth
+        request.proxy_auth = self._proxy_auth
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
@@ -121,9 +103,8 @@ class HttpTransport_urllib(HttpTransportBase):
             # to connect to the server
             self._connection = request.connection
             # And get auth parameters too
-            self._auth_scheme = request.auth_scheme
-            self._user = request.user
-            self._password = request.password
+            self._auth = request.auth
+            self._proxy_auth = request.proxy_auth
 
         code = response.code
         if request.follow_redirections is False \

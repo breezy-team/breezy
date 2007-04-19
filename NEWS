@@ -44,6 +44,9 @@ IN DEVELOPMENT
     * urllib http implementation avoid roundtrips associated with 401 errors
       once the the authentication succeeds. (Vincent Ladeuil).
 
+    * urlib http now supports querying the user for a proxy password if
+      needed. (Vincent Ladeuil).
+
     * Renamed SmartTransport (and subclasses like SmartTCPTransport) to
       RemoteTransport (and subclasses to RemoteTCPTransport, etc).  This is more
       consistent with its new home in bzrlib/transport/remote.py, and because

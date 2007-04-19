@@ -1170,21 +1170,21 @@ class TestHTTPAuth(object):
 
     def test_empty_pass(self):
         self.server.add_user('joe', '')
-        t = self._transport(self.get_user_url('joe', ''))
+        t = self.get_user_transport('joe', '')
         self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_user_pass(self):
         self.server.add_user('joe', 'foo')
-        t = self._transport(self.get_user_url('joe', 'foo'))
+        t = self.get_user_transport('joe', 'foo')
         self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_unknown_user(self):
         self.server.add_user('joe', 'foo')
-        t = self._transport(self.get_user_url('bill', 'foo'))
+        t = self.get_user_transport('bill', 'foo')
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'I don't know you, who are
@@ -1193,7 +1193,7 @@ class TestHTTPAuth(object):
 
     def test_wrong_pass(self):
         self.server.add_user('joe', 'foo')
-        t = self._transport(self.get_user_url('joe', 'bar'))
+        t = self.get_user_transport('joe', 'bar')
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
         # Two 'Authentication Required' error should occur (the
         # initial 'who are you' and 'this is not you, who are you')
@@ -1201,7 +1201,7 @@ class TestHTTPAuth(object):
 
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
-        t = self._transport(self.get_user_url('joe'))
+        t = self.get_user_transport('joe', None)
         ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
@@ -1214,7 +1214,6 @@ class TestHTTPAuth(object):
         self.assertEqual('contents of b\n',t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
-
 
 
 class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
@@ -1231,6 +1230,9 @@ class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
     def create_transport_readonly_server(self):
         return BasicAuthHTTPServer()
 
+    def get_user_transport(self, user, password=None):
+        return self._transport(self.get_user_url(user, password))
+
 
 class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
     """Test basic http authentication scheme"""
@@ -1241,10 +1243,8 @@ class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)
         self.server = self.get_readonly_server()
-        self.proxy_url = self.server.get_url()
         self._old_env = {}
         self.addCleanup(self._restore_env)
-        self._install_env({'all_proxy': self.proxy_url})
         TestHTTPAuth.setUp(self)
         # Override the contents to avoid false positives
         self.build_tree_contents([('a', 'not proxied contents of a\n'),
@@ -1264,3 +1264,6 @@ class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
         for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
+    def get_user_transport(self, user, password=None):
+        self._install_env({'all_proxy': self.get_user_url(user, password)})
+        return self._transport(self.server.get_url())
