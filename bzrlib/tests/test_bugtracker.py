@@ -23,26 +23,42 @@ from bzrlib.tests import TestCaseWithMemoryTransport
 class TestGetBugURL(TestCaseWithMemoryTransport):
     """Tests for bugtracker.get_bug_url"""
 
-    def test_get_launchpad_url(self):
-        """No matter the branch, lp:1234 should map to a Launchpad URL."""
+    class TransientTracker(object):
+        """An transient tracker used for testing."""
+
+        @classmethod
+        def get(klass, abbreviation, branch):
+            klass.log.append(('get', abbreviation, branch))
+            if abbreviation != 'transient':
+                return None
+            return klass()
+
+        def get_bug_url(self, bug_id):
+            self.log.append(('get_bug_url', bug_id))
+            return "http://bugs.com/%s" % bug_id
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.tracker_type = TestGetBugURL.TransientTracker
+        self.tracker_type.log = []
+        bugtracker.tracker_registry.register('transient', self.tracker_type)
+        self.addCleanup(lambda:
+                        bugtracker.tracker_registry.remove('transient'))
+
+    def test_get_bug_url_for_transient_tracker(self):
         branch = self.make_branch('some_branch')
+        self.assertEqual('http://bugs.com/1234',
+                         bugtracker.get_bug_url('transient', branch, '1234'))
         self.assertEqual(
-            'https://launchpad.net/bugs/1234',
-            bugtracker.get_bug_url('lp', branch, '1234'))
+            [('get', 'transient', branch), ('get_bug_url', '1234')],
+            self.tracker_type.log)
 
-    def test_get_trac_url(self):
-        trac_url = 'http://twistedmatrix.com/trac'
-        branch = self.make_branch('some_branch')
-        config = branch.get_config()
-        config.set_user_option('trac_twisted_url', trac_url)
-        self.assertEqual('%s/ticket/1234' % trac_url,
-                         bugtracker.get_bug_url('twisted', branch, '1234'))
-
-    def test_unrecognized_abbreviation(self):
-        """If the abbreviation is unrecognized, then raise a KeyError."""
+    def test_unrecognized_abbreviation_raises_error(self):
+        """If the abbreviation is unrecognized, then raise an error."""
         branch = self.make_branch('some_branch')
         self.assertRaises(errors.UnknownBugTrackerAbbreviation,
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
+        self.assertEqual([('get', 'xxx', branch)], self.tracker_type.log)
 
 
 class TestUniqueBugTracker(TestCaseWithMemoryTransport):
@@ -60,28 +76,40 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.com/red', tracker.get_bug_url('red'))
 
     def test_returns_tracker_if_abbreviation_matches(self):
-        """The get() classmethod should return an instance of the tracker if
-        the given abbreviation matches the tracker's abbreviated name.
+        """The get() method should return an instance of the tracker if the
+        given abbreviation matches the tracker's abbreviated name.
         """
         tracker = bugtracker.UniqueBugTracker('xxx', 'http://bugs.com')
         branch = self.make_branch('some_branch')
         self.assertIs(tracker, tracker.get('xxx', branch))
 
     def test_returns_none_if_abbreviation_doesnt_match(self):
-        """The get() classmethod should return None if the given abbreviated
-        name doesn't match the tracker's abbreviation.
+        """The get() method should return None if the given abbreviated name
+        doesn't match the tracker's abbreviation.
         """
         tracker = bugtracker.UniqueBugTracker('xxx', 'http://bugs.com')
         branch = self.make_branch('some_branch')
-        self.assertEqual(None, tracker.get('yyy', branch))
+        self.assertIs(None, tracker.get('yyy', branch))
+
+    def test_doesnt_consult_branch(self):
+        """A UniqueBugTracker shouldn't consult the branch for tracker
+        information.
+        """
+        tracker = bugtracker.UniqueBugTracker('xxx', 'http://bugs.com')
+        self.assertIs(tracker, tracker.get('xxx', None))
+        self.assertIs(None, tracker.get('yyy', None))
 
 
 class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
 
     def test_check_bug_id_only_accepts_integers(self):
-        """An UniqueIntegerBugTracker only accepts integers as bug IDs."""
+        """A UniqueIntegerBugTracker accepts integers as bug IDs."""
         tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
-        self.assertEqual(None, tracker.check_bug_id('1234'))
+        tracker.check_bug_id('1234')
+
+    def test_check_bug_id_doesnt_accept_non_integers(self):
+        """A UniqueIntegerBugTracker rejects non-integers as bug IDs."""
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
         self.assertRaises(
             errors.MalformedBugIdentifier, tracker.check_bug_id, 'red')
 
