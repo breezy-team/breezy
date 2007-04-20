@@ -31,10 +31,18 @@ from bzrlib.bzrdir import (BzrDir,
                            )
 import bzrlib.errors as errors
 from bzrlib.tests import TestSkipped
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer, paramiko_loaded
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.transport.local import LocalURLServer
+from bzrlib.transport.memory import MemoryServer
 
 
-class BoundSFTPBranch(TestCaseWithSFTPServer):
+class BoundSFTPBranch(TestCaseWithTransport):
+
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.vfs_transport_factory = MemoryServer
+        if self.transport_server is LocalURLServer:
+            self.transport_server = None
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
@@ -58,11 +66,6 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1'], b_base.revision_history())
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
         return b_base, wt_child
-
-    def tearDown(self):
-        self.sftp_base = None
-        bzrlib.transport.sftp.clear_connection_cache()
-        super(BoundSFTPBranch, self).tearDown()
 
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])
@@ -331,7 +334,4 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
     # TODO: jam 20051231 We need invasive failure tests, so that we can show
     #       performance even when something fails.
 
-
-if not paramiko_loaded:
-    del BoundSFTPBranch
 

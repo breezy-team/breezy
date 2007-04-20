@@ -298,6 +298,17 @@ class TestBranchReference(TestCaseWithTransport):
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)
 
+    def test_get_reference(self):
+        """For a BranchReference, get_reference should reutrn the location."""
+        branch = self.make_branch('target')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        reference_url = branch.bzrdir.root_transport.abspath('') + '/'
+        # if the api for create_checkout changes to return different checkout types
+        # then this file read will fail.
+        self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
+        self.assertEqual(reference_url,
+            _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+
 
 class TestHooks(TestCase):
 
