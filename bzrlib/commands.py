@@ -296,6 +296,10 @@ class Command(object):
             result += '\n'
         return result
 
+    def get_help_topic(self):
+        """Return the commands help topic - its name."""
+        return self.name()
+
     def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this ommand.
         

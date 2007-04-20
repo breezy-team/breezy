@@ -75,6 +75,13 @@ class TestCommandHelp(tests.TestCase):
             '  -h, --help  show help message\n'
             '\n'
             'See also: gam\n')
+
+    def test_get_help_topic(self):
+        """The help topic for a Command is its name()."""
+        class cmd_foo_bar(commands.Command):
+            """A sample command."""
+        cmd = cmd_foo_bar()
+        self.assertEqual(cmd.name(), cmd.get_help_topic())
     
 
 class TestRegisteredTopic(tests.TestCase):
