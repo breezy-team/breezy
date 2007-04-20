@@ -118,7 +118,7 @@ tracker_registry.register(
 
 
 tracker_registry.register(
-    'debian', UniqueIntegerBugTracker('lp', 'https://launchpad.net/bugs/'))
+    'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
 
 
 class TracTracker(object):

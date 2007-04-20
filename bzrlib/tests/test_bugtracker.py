@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import unittest
+
 from bzrlib import bugtracker
 from bzrlib import errors
 from bzrlib.tests import TestCaseWithMemoryTransport
@@ -59,6 +61,28 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
         self.assertRaises(errors.UnknownBugTrackerAbbreviation,
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
         self.assertEqual([('get', 'xxx', branch)], self.tracker_type.log)
+
+
+class TestBuiltinTrackers(TestCaseWithMemoryTransport):
+    """Test that the builtin trackers are registered and return sane URLs."""
+
+    def test_launchpad_registered(self):
+        """The Launchpad bug tracker should be registered by default and
+        generate Launchpad bug page URLs.
+        """
+        branch = self.make_branch('some_branch')
+        tracker = bugtracker.tracker_registry.get_tracker('lp', branch)
+        self.assertEqual('https://launchpad.net/bugs/1234',
+                         tracker.get_bug_url('1234'))
+
+    def test_debian_registered(self):
+        """The Debian bug tracker should be registered by default and generate
+        bugs.debian.org bug page URLs.
+        """
+        branch = self.make_branch('some_branch')
+        tracker = bugtracker.tracker_registry.get_tracker('deb', branch)
+        self.assertEqual('http://bugs.debian.org/1234',
+                         tracker.get_bug_url('1234'))
 
 
 class TestUniqueBugTracker(TestCaseWithMemoryTransport):
