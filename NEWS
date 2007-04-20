@@ -102,6 +102,8 @@ IN DEVELOPMENT
     * FTP now works even when the FTP server does not support atomic rename.
       (Aaron Bentley, #89436)
 
+    * Typo in the help for ``register-branch`` fixed. (Robert Collins, #96770)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
