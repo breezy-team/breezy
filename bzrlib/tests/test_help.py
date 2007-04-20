@@ -131,6 +131,13 @@ class TestCommandIndex(tests.TestCase):
         index = commands.HelpCommandIndex()
         self.assertEqual('commands/', index.prefix)
 
+    def test_get_topic_with_prefix(self):
+        """Searching for commands/rocks returns the rocks command object."""
+        index = commands.HelpCommandIndex()
+        topics = index.get_topics('commands/rocks')
+        self.assertEqual(1, len(topics))
+        self.assertIsInstance(topics[0], builtins.cmd_rocks)
+
 
 class TestHelpIndices(tests.TestCase):
     """Tests for the HelpIndices class."""

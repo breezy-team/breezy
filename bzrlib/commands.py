@@ -729,6 +729,8 @@ class HelpCommandIndex(object):
         :return: A list which is either empty or contains a single
             Command entry.
         """
+        if topic and topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
         try:
             cmd = _get_cmd_object(topic)
         except KeyError:

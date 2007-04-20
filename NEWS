@@ -24,6 +24,12 @@ IN DEVELOPMENT
     * ``bzr help`` provides a clearer message when a help topic cannot be
       found (fixes bug 107656). (Robert Collins)
 
+    * ``bzr help`` now accepts optional prefixes for command help. The help
+      for all commands can now be found at ``bzr help commands/COMMANDNAME``
+      as well as ``bzr help COMMANDNAME`` (which only works for commands 
+      where the name is not the same as a more general help topic). 
+      (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -73,6 +79,9 @@ IN DEVELOPMENT
 
     * Command objects can now declare related help topics by having _see_also
       set to a list of related topic. (Robert Collins)
+
+    * ``bzrlib.help`` now delegates to the Command class for Command specific
+      help. (Robert Collins)
 
   BUGFIXES:
 
