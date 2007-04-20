@@ -8,6 +8,22 @@ IN DEVELOPMENT
     * New option '--fixes' to commit, which stores bug fixing annotations as
       revision properties. (Jonathan Lange, James Henstridge, Robert Collins)
 
+    * ``selftest`` has new short options ``-f`` and ``-1``.  (Martin
+      Pool)
+
+    * ``bzrlib.tsort.MergeSorter`` optimizations. Change the inner loop
+      into using local variables instead of going through ``self._var``.
+      Improves the time to ``merge_sort`` a 10k revision graph by
+      approximately 40% (~700->400ms).  (John Arbash Meinel)
+
+    * ``make docs`` now creates a man page at ``man1/bzr.1`` fixing bug 107388.
+      (Robert Collins)
+
+    * ``bzr help`` now provides cross references to other help topics using
+      the _see_also facility on command classes. Likewise the bzr_man
+      documentation, and the bzr.1 man page also include this information.
+      (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -43,7 +59,21 @@ IN DEVELOPMENT
     * Move most SmartServer code into a new package, bzrlib/smart.
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
+
+    * Renamed SmartTransport (and subclasses like SmartTCPTransport) to
+      RemoteTransport (and subclasses to RemoteTCPTransport, etc).  This is more
+      consistent with its new home in bzrlib/transport/remote.py, and because
+      it's not really a "smart" transport, just one that does file operations
+      via remote procedure calls.  (Andrew Bennetts)
  
+    * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
+     ``Branch`` now accept a ``token`` keyword argument, so that separate
+     instances of those objects can share a lock if it has the right token.
+     (Andrew Bennetts, Robert Collins)
+
+    * Command objects can now declare related help topics by having _see_also
+      set to a list of related topic. (Robert Collins)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
@@ -68,6 +98,9 @@ IN DEVELOPMENT
       and the containing directory is renamed. (The file path is different
       in this versus base, but it isn't marked as a rename).
       (John Arbash Meinel, #103870)
+
+    * FTP now works even when the FTP server does not support atomic rename.
+      (Aaron Bentley, #89436)
 
   TESTING:
 

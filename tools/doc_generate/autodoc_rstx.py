@@ -135,7 +135,14 @@ def format_command (params, cmd, name):
         aliases_str += ', '.join(cmd.aliases)
         aliases_str += '\n'
 
-    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
+    see_also_str = ""
+    see_also = cmd.get_see_also()
+    if see_also:
+        see_also_str += '\n    See also: '
+        see_also_str += ', '.join(see_also)
+        see_also_str += '\n'
+
+    return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
 
 
 ##

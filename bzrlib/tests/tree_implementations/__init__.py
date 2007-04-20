@@ -180,16 +180,31 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_with_subdirs_and_all_content_types(self):
         """Return a test tree with subdirs and all content types.
+        See get_tree_with_subdirs_and_all_supported_content_types for details.
+        """
+        return self.get_tree_with_subdirs_and_all_supported_content_types(True)
+
+    def get_tree_with_subdirs_and_all_supported_content_types(self, symlinks):
+        """Return a test tree with subdirs and all supported content types.
+        Some content types may not be created on some platforms
+        (like symlinks on native win32)
+
+        :param  symlinks:   control is symlink should be created in the tree.
+                            Note: if you wish to automatically set this
+                            parameters depending on underlying system,
+                            please use value returned
+                            by bzrlib.osutils.has_symlinks() function.
 
         The returned tree has the following inventory:
             [('', inventory.ROOT_ID),
              ('0file', '2file'),
              ('1top-dir', '1top-dir'),
              (u'2utf\u1234file', u'0utf\u1234file'),
-             ('symlink', 'symlink'),
+             ('symlink', 'symlink'),            # only if symlinks arg is True
              ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
              ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
-        where each component has the type of its name - i.e. '1file..' is afile.
+        where each component has the type of its name -
+        i.e. '1file..' is afile.
 
         note that the order of the paths and fileids is deliberately 
         mismatched to ensure that the result order is path based.
@@ -215,9 +230,10 @@ class TestCaseWithTree(TestCaseWithBzrDir):
                 'This platform does not support unicode file paths.')
         tree.add(paths, ids)
         tt = transform.TreeTransform(tree)
-        root_transaction_id = tt.trans_id_tree_path('')
-        tt.new_symlink('symlink',
-            root_transaction_id, 'link-target', 'symlink')
+        if symlinks:
+            root_transaction_id = tt.trans_id_tree_path('')
+            tt.new_symlink('symlink',
+                root_transaction_id, 'link-target', 'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 

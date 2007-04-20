@@ -42,7 +42,7 @@ class SmartStat(object):
         self.st_mode = mode
 
 
-class SmartTransport(transport.Transport):
+class RemoteTransport(transport.Transport):
     """Connection to a smart server.
 
     The connection holds references to pipes that can be used to send requests
@@ -56,13 +56,13 @@ class SmartTransport(transport.Transport):
 
     The connection can be made over a tcp socket, or (in future) an ssh pipe
     or a series of http requests.  There are concrete subclasses for each
-    type: SmartTCPTransport, etc.
+    type: RemoteTCPTransport, etc.
     """
 
-    # IMPORTANT FOR IMPLEMENTORS: SmartTransport MUST NOT be given encoding
+    # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
     # responsibilities: Put those on SmartClient or similar. This is vital for
     # the ability to support multiple versions of the smart protocol over time:
-    # SmartTransport is an adapter from the Transport object model to the 
+    # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
     def __init__(self, url, clone_from=None, medium=None):
@@ -76,7 +76,7 @@ class SmartTransport(transport.Transport):
         ### initialisation order things would blow up. 
         if not url.endswith('/'):
             url += '/'
-        super(SmartTransport, self).__init__(url)
+        super(RemoteTransport, self).__init__(url)
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         if clone_from is None:
@@ -98,14 +98,14 @@ class SmartTransport(transport.Transport):
         return self._unparse_url(self._remote_path(relpath))
     
     def clone(self, relative_url):
-        """Make a new SmartTransport related to me, sharing the same connection.
+        """Make a new RemoteTransport related to me, sharing the same connection.
 
         This essentially opens a handle on a different remote directory.
         """
         if relative_url is None:
-            return SmartTransport(self.base, self)
+            return RemoteTransport(self.base, self)
         else:
-            return SmartTransport(self.abspath(relative_url), self)
+            return RemoteTransport(self.abspath(relative_url), self)
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -399,7 +399,7 @@ class SmartTransport(transport.Transport):
 
 
 
-class SmartTCPTransport(SmartTransport):
+class RemoteTCPTransport(RemoteTransport):
     """Connection to smart server over plain tcp.
     
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -418,10 +418,10 @@ class SmartTCPTransport(SmartTransport):
                 raise errors.InvalidURL(
                     path=url, extra="invalid port %s" % _port)
         medium = SmartTCPClientMedium(_host, _port)
-        super(SmartTCPTransport, self).__init__(url, medium=medium)
+        super(RemoteTCPTransport, self).__init__(url, medium=medium)
 
 
-class SmartSSHTransport(SmartTransport):
+class RemoteSSHTransport(RemoteTransport):
     """Connection to smart server over SSH.
 
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -438,13 +438,13 @@ class SmartSSHTransport(SmartTransport):
             raise errors.InvalidURL(path=url, extra="invalid port %s" % 
                 _port)
         medium = SmartSSHClientMedium(_host, _port, _username, _password)
-        super(SmartSSHTransport, self).__init__(url, medium=medium)
+        super(RemoteSSHTransport, self).__init__(url, medium=medium)
 
 
-class SmartHTTPTransport(SmartTransport):
+class RemoteHTTPTransport(RemoteTransport):
     """Just a way to connect between a bzr+http:// url and http://.
     
-    This connection operates slightly differently than the SmartSSHTransport.
+    This connection operates slightly differently than the RemoteSSHTransport.
     It uses a plain http:// transport underneath, which defines what remote
     .bzr/smart URL we are connected to. From there, all paths that are sent are
     sent as relative paths, this way, the remote side can properly
@@ -461,7 +461,7 @@ class SmartHTTPTransport(SmartTransport):
         else:
             self._http_transport = http_transport
         http_medium = self._http_transport.get_smart_medium()
-        super(SmartHTTPTransport, self).__init__(url, medium=http_medium)
+        super(RemoteHTTPTransport, self).__init__(url, medium=http_medium)
 
     def _remote_path(self, relpath):
         """After connecting HTTP Transport only deals in relative URLs."""
@@ -479,10 +479,10 @@ class SmartHTTPTransport(SmartTransport):
         return self._unparse_url(self._combine_paths(self._path, relpath))
 
     def clone(self, relative_url):
-        """Make a new SmartHTTPTransport related to me.
+        """Make a new RemoteHTTPTransport related to me.
 
         This is re-implemented rather than using the default
-        SmartTransport.clone() because we must be careful about the underlying
+        RemoteTransport.clone() because we must be careful about the underlying
         http transport.
         """
         if relative_url:
@@ -492,7 +492,7 @@ class SmartHTTPTransport(SmartTransport):
         # By cloning the underlying http_transport, we are able to share the
         # connection.
         new_transport = self._http_transport.clone(relative_url)
-        return SmartHTTPTransport(abs_url, http_transport=new_transport)
+        return RemoteHTTPTransport(abs_url, http_transport=new_transport)
 
 
 def get_test_permutations():
@@ -500,4 +500,4 @@ def get_test_permutations():
     from bzrlib.smart import server
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
-    return [(SmartTCPTransport, server.SmartTCPServer_for_testing)]
+    return [(RemoteTCPTransport, server.SmartTCPServer_for_testing)]
