@@ -197,4 +197,8 @@ class HelpContexts(object):
         :param topic: A string naming the help topic to search for.
         :raises: NoHelpTopic if none of the contexts in search_path have topic.
         """
-        raise errors.NoHelpTopic(topic)
+        result = []
+        for context in self.search_path:
+            result.extend(context.get_topics(topic))
+        if not result:
+            raise errors.NoHelpTopic(topic)

@@ -78,3 +78,30 @@ class TestHelpContexts(tests.TestCase):
         contexts.search_path = []
         error = self.assertRaises(errors.NoHelpTopic, contexts.search, 'foo')
         self.assertEqual('foo', error.topic)
+
+    def test_search_calls_get_topic(self):
+        """Searching should call get_topics in all indexes in order."""
+        calls = []
+        class RecordingContext(object):
+            def __init__(self, name):
+                self.name = name
+            def get_topics(self, topic):
+                calls.append(('get_topics', self.name, topic))
+                return ['something']
+        contexts = help.HelpContexts()
+        contexts.search_path = [RecordingContext('1'), RecordingContext('2')]
+        # try with None
+        contexts.search(None)
+        self.assertEqual([
+            ('get_topics', '1', None),
+            ('get_topics', '2', None),
+            ],
+            calls)
+        # and with a string
+        del calls[:]
+        contexts.search('bar')
+        self.assertEqual([
+            ('get_topics', '1', 'bar'),
+            ('get_topics', '2', 'bar'),
+            ],
+            calls)
