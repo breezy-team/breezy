@@ -1926,14 +1926,7 @@ class InterDirStateTree(InterTree):
                     assert target_parent_entry != (None, None), (
                         "Could not find target parent in wt: %s\nparent of: %s"
                         % (new_dirname, entry))
-                    try:
-                        target_parent_id = target_parent_entry[0][2]
-                    except TypeError, e:
-                        sys.stderr.write('Failure: %s, %s, %s, %s\n%s\n'
-                                         % (type(target_parent_entry),
-                                            target_parent_entry,
-                                            target_index, new_dirname, entry))
-                        raise
+                    target_parent_id = target_parent_entry[0][2]
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         target_parent_id = None
