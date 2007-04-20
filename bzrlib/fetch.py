@@ -45,9 +45,6 @@ from bzrlib.trace import mutter
 import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), '''
-from bzrlib.remote import RemoteRepository
-''')
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
