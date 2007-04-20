@@ -30,6 +30,9 @@ IN DEVELOPMENT
       where the name is not the same as a more general help topic). 
       (Robert Collins)
 
+    * ``bzr help PLUGINNAME`` will now return the module docstring from the
+      plugin PLUGINNAME fixing bug 50408. (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
