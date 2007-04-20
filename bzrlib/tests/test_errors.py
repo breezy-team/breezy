@@ -91,6 +91,12 @@ class TestErrors(TestCaseWithTransport):
             "smart protocol.",
             str(error))
 
+    def test_no_help_topic(self):
+        error = errors.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'bzr help topics' to obtain a list of topics.",
+            str(error))
+
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "
