@@ -65,12 +65,12 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         the given abbreviation matches the tracker's abbreviated name.
         """
         class SomeTracker(bugtracker.UniqueBugTracker):
-            abbreviated_bugtracker_name = 'xxx'
+            abbreviation = 'xxx'
             base_url = 'http://bugs.com'
 
         branch = self.make_branch('some_branch')
         tracker = SomeTracker.get('xxx', branch)
-        self.assertEqual('xxx', tracker.abbreviated_bugtracker_name)
+        self.assertEqual('xxx', tracker.abbreviation)
         self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
 
     def test_returns_none_if_abbreviation_doesnt_match(self):
@@ -78,7 +78,7 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         name doesn't match the tracker's abbreviation.
         """
         class SomeTracker(bugtracker.UniqueBugTracker):
-            abbreviated_bugtracker_name = 'xxx'
+            abbreviation = 'xxx'
             base_url = 'http://bugs.com'
 
         branch = self.make_branch('some_branch')

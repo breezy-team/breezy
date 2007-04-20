@@ -72,9 +72,9 @@ class UniqueBugTracker(object):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then subclass this and add attributes
-    named 'abbreviated_bugtracker_name' and 'base_url'. The former is the
-    abbreviation that the user will use on the command line. The latter is the
-    url that the bug ids will be appended to.
+    named 'abbreviation' and 'base_url'. The former is the abbreviation that
+    the user will use on the command line. The latter is the url that the bug
+    ids will be appended to.
 
     If the bug_id must have a special form then override check_bug_id and
     raise an exception if the bug_id is not valid.
@@ -84,7 +84,7 @@ class UniqueBugTracker(object):
     def get(klass, abbreviated_bugtracker_name, branch):
         """Returns the tracker if the abbreviation matches. Returns None
         otherwise."""
-        if abbreviated_bugtracker_name != klass.abbreviated_bugtracker_name:
+        if abbreviated_bugtracker_name != klass.abbreviation:
             return None
         return klass()
 
@@ -112,7 +112,7 @@ class UniqueIntegerBugTracker(UniqueBugTracker):
 
 class LaunchpadTracker(UniqueIntegerBugTracker):
     """The Launchpad bug tracker."""
-    abbreviated_bugtracker_name = 'lp'
+    abbreviation = 'lp'
     base_url = 'https://launchpad.net/bugs/'
 
 tracker_registry.register('launchpad', LaunchpadTracker)
@@ -120,7 +120,7 @@ tracker_registry.register('launchpad', LaunchpadTracker)
 
 class DebianTracker(UniqueIntegerBugTracker):
     """The Debian bug tracker."""
-    abbreviated_bugtracker_name = 'deb'
+    abbreviation = 'deb'
     base_url = 'http://bugs.debian.org/'
 
 tracker_registry.register('debian', DebianTracker)
