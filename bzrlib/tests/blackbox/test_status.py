@@ -244,11 +244,12 @@ class BranchStatus(TestCaseWithTransport):
             tree.commit('add test file')
             # simulate what happens after a remote push
             tree.set_last_revision("0")
-            out, err = self.run_bzr('status')
-            self.assertEqual("working tree is out of date, run 'bzr update'\n",
-                             err)
         finally:
+            # before run another commands we should unlock tree
             tree.unlock()
+        out, err = self.run_bzr('status')
+        self.assertEqual("working tree is out of date, run 'bzr update'\n",
+                         err)
 
 
 class CheckoutStatus(BranchStatus):
