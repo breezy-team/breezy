@@ -246,3 +246,32 @@ topic_registry.register('checkouts', _checkouts,
 
 class HelpTopicContext(object):
     """A context for bzr help that returns topics."""
+
+    def get_topics(self, topic):
+        """Search for topic in the HelpTopicRegistry.
+
+        :param topic: A topic to search for. None is treated as 'basic'.
+        :return: A list which is either empty or contains a single
+            RegisteredTopic entry.
+        """
+        if topic is None:
+            topic = 'basic'
+        if topic in topic_registry:
+            return [RegisteredTopic(topic)]
+        else:
+            return []
+
+
+class RegisteredTopic(object):
+    """A help topic which has been registered in the HelpTopicRegistry.
+
+    These topics consist of nothing more than the name of the topic - all
+    data is retrieved on demand from the registry.
+    """
+
+    def __init__(self, topic):
+        """Constructor.
+
+        :param topic: The name of the topic that this represents.
+        """
+        self.topic = topic

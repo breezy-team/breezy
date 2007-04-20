@@ -44,11 +44,43 @@ class TestCommandHelp(tests.TestCase):
             'See also: bar, foo\n')
 
 
+class TestRegisteredTopic(tests.TestCase):
+    """Tests for the RegisteredTopic class."""
+
+    def test_contruct(self):
+        """Construction takes the help topic name for the registered item."""
+        # validate our test 
+        self.assertTrue('basic' in help_topics.topic_registry)
+        topic = help_topics.RegisteredTopic('basic')
+        self.assertEqual('basic', topic.topic)
+
+
 class TestTopicContext(tests.TestCase):
     """Tests for the HelpTopicContext class."""
 
     def test_default_constructable(self):
         context = help_topics.HelpTopicContext()
+
+    def test_get_topics_None(self):
+        """Searching for None returns the basic help topic."""
+        context = help_topics.HelpTopicContext()
+        topics = context.get_topics(None)
+        self.assertEqual(1, len(topics))
+        self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
+        self.assertEqual('basic', topics[0].topic)
+
+    def test_get_topics_topics(self):
+        """Searching for a string returns the matching string."""
+        context = help_topics.HelpTopicContext()
+        topics = context.get_topics('topics')
+        self.assertEqual(1, len(topics))
+        self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
+        self.assertEqual('topics', topics[0].topic)
+
+    def test_get_topics_no_topic(self):
+        """Searching for something not registered returns []."""
+        context = help_topics.HelpTopicContext()
+        self.assertEqual([], context.get_topics('nothing by this name'))
 
 
 class TestCommandContext(tests.TestCase):
