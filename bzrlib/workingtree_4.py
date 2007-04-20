@@ -670,7 +670,6 @@ class WorkingTree4(WorkingTree3):
             new_entry = to_block[1][added_entry_index]
             rollbacks.append(lambda:state._make_absent(new_entry))
 
-        # create rename entries and tuples
         for from_rel in from_paths:
             # from_rel is 'pathinroot/foo/bar'
             from_rel_utf8 = from_rel.encode('utf8')
@@ -774,11 +773,7 @@ class WorkingTree4(WorkingTree3):
 
                 if minikind == 'd':
                     def update_dirblock(from_dir, to_key, to_dir_utf8):
-                        """all entries in this block need updating.
-
-                        TODO: This is pretty ugly, and doesn't support
-                        reverting, but it works.
-                        """
+                        """Recursively update all entries in this dirblock."""
                         assert from_dir != '', "renaming root not supported"
                         from_key = (from_dir, '')
                         from_block_idx, present = \
@@ -795,7 +790,9 @@ class WorkingTree4(WorkingTree3):
                         to_block_index = state._ensure_block(
                             to_block_index, to_entry_index, to_dir_utf8)
                         to_block = state._dirblocks[to_block_index]
-                        for entry in from_block[1]:
+
+                        # Grab a copy since move_one may update the list.
+                        for entry in from_block[1][:]:
                             assert entry[0][0] == from_dir
                             cur_details = entry[1][0]
                             to_key = (to_dir_utf8, entry[0][1], entry[0][2])
