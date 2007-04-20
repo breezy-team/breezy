@@ -331,3 +331,7 @@ class ModuleHelpTopic(object):
             result += ', '.join(see_also)
             result += '\n'
         return result
+
+    def get_help_topic(self):
+        """Return the modules help topic - its __name__."""
+        return self.module.__name__

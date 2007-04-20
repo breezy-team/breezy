@@ -330,3 +330,12 @@ class TestModuleHelpTopic(tests.TestCase):
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("two lines of help\nand more\nSee also: bar, foo\n",
             topic.get_help_text(['foo', 'bar']))
+
+    def test_get_help_topic(self):
+        """The help topic for a plugin is its module name."""
+        mod = FakeModule('two lines of help\nand more', 'demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual('demo', topic.get_help_topic())
+        mod = FakeModule('two lines of help\nand more', 'foo_bar')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual('foo_bar', topic.get_help_topic())
