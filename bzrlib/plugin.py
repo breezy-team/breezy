@@ -333,5 +333,5 @@ class ModuleHelpTopic(object):
         return result
 
     def get_help_topic(self):
-        """Return the modules help topic - its __name__."""
-        return self.module.__name__
+        """Return the modules help topic - its __name__ after bzrlib.plugins.."""
+        return self.module.__name__[len('bzrlib.plugins.'):]
