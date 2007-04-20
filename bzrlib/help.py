@@ -39,7 +39,10 @@ def help(topic=None, outfile=None):
 
     indices = HelpIndices()
     topics = indices.search(topic)
-    outfile.write(topics[0][1].get_help_text())
+    shadowed_terms = []
+    for index, topic in topics[1:]:
+        shadowed_terms.append('%s%s' % (index.prefix, topic))
+    outfile.write(topics[0][1].get_help_text(shadowed_terms))
 
 
 def help_commands(outfile=None):
