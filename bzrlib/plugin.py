@@ -267,3 +267,13 @@ def load_from_zip(zip_name):
             warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             log_exception_quietly()
+
+
+class PluginsHelpIndex(object):
+    """A help index that returns help topics for plugins."""
+
+    def __init__(self):
+        self.prefix = 'plugins/'
+
+    def get_topics(self, topic):
+        return []

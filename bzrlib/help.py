@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     help_topics,
     osutils,
+    plugin,
     )
 
 
@@ -112,6 +113,7 @@ class HelpIndices(object):
         self.search_path = [
             help_topics.HelpTopicIndex(),
             _mod_commands.HelpCommandIndex(),
+            plugin.PluginsHelpIndex(),
             ]
 
     def _check_prefix_uniqueness(self):
