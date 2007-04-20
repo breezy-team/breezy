@@ -99,6 +99,10 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Fix ``InterDirstateTre._iter_changes`` to handle when we come across
+      an empty versioned directory, which now has files in it.
+      (John Arbash Meinel, #104257)
+
     * Teach ``common_ancestor`` to shortcut when the tip of one branch is
       inside the ancestry of the other. Saves a lot of graph processing
       (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
