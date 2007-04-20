@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import unittest
-
 from bzrlib import bugtracker
 from bzrlib import errors
 from bzrlib.tests import TestCaseWithMemoryTransport
@@ -167,10 +165,52 @@ class TestTracTracker(TestCaseWithMemoryTransport):
             bugtracker.TracTracker(self.trac_url).get_bug_url('1234'),
             tracker.get_bug_url('1234'))
 
-    def test_get_bug_url_for_bad_bag(self):
-        """When given a bug identifier that is invalid for Launchpad,
-        get_bug_url should raise an error.
+    def test_get_bug_url_for_bad_bug(self):
+        """When given a bug identifier that is invalid for Trac, get_bug_url
+        should raise an error.
         """
         tracker = bugtracker.TracTracker(self.trac_url)
+        self.assertRaises(
+            errors.MalformedBugIdentifier, tracker.get_bug_url, 'bad')
+
+
+class TestBugzillaTracker(TestCaseWithMemoryTransport):
+    """Tests for BugzillaTracker."""
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.bugzilla_url = 'http://issues.apache.org/bugzilla'
+
+    def test_get_bug_url(self):
+        """A BugzillaTracker should map a bug id to a URL for that instance."""
+        tracker = bugtracker.BugzillaTracker(self.bugzilla_url)
+        self.assertEqual(
+            '%s/show_bug.cgi?id=1234' % self.bugzilla_url,
+            tracker.get_bug_url('1234'))
+
+    def test_get_with_unsupported_tag(self):
+        """If asked for an unrecognized or unconfigured tag, return None."""
+        branch = self.make_branch('some_branch')
+        self.assertEqual(None, bugtracker.BugzillaTracker.get('lp', branch))
+        self.assertEqual(None,
+                         bugtracker.BugzillaTracker.get('twisted', branch))
+
+    def test_get_with_supported_tag(self):
+        """If asked for a valid tag, return a matching BugzillaTracker
+        instance.
+        """
+        branch = self.make_branch('some_branch')
+        config = branch.get_config()
+        config.set_user_option('bugzilla_apache_url', self.bugzilla_url)
+        tracker = bugtracker.BugzillaTracker.get('apache', branch)
+        self.assertEqual(
+            bugtracker.BugzillaTracker(self.bugzilla_url).get_bug_url('1234'),
+            tracker.get_bug_url('1234'))
+
+    def test_get_bug_url_for_bad_bug(self):
+        """When given a bug identifier that is invalid for Bugzilla,
+        get_bug_url should raise an error.
+        """
+        tracker = bugtracker.BugzillaTracker(self.bugzilla_url)
         self.assertRaises(
             errors.MalformedBugIdentifier, tracker.get_bug_url, 'bad')

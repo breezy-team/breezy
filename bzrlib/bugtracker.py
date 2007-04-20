@@ -152,3 +152,27 @@ class TracTracker(object):
         return urlutils.join(self._url, 'ticket', bug_id)
 
 tracker_registry.register('trac', TracTracker)
+
+
+
+class BugzillaTracker(object):
+    """A Bugzilla instance."""
+
+    @classmethod
+    def get(klass, abbreviated_bugtracker_name, branch):
+        config = branch.get_config()
+        url = config.get_user_option(
+            'bugzilla_%s_url' % (abbreviated_bugtracker_name,))
+        if url is None:
+            return None
+        return klass(url)
+
+    def __init__(self, base_url):
+        self._base_url = base_url
+
+    def get_bug_url(self, bug_id):
+        try:
+            int(bug_id)
+        except ValueError:
+            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
+        return "%s/show_bug.cgi?id=%s" % (self._base_url, bug_id)
