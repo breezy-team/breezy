@@ -183,7 +183,17 @@ help_topics.topic_registry.register("hidden-commands",
 
 
 class HelpContexts(object):
-    """An object to manage help in multiple contexts."""
+    """An object to manage help in multiple contexts.
+    
+    This maintains a list of places to search for help. It is currently
+    separate to the HelpTopicRegistry because of its ordered nature, but
+    possibly we should instread structure it as a search within the registry
+    and add ordering and searching facilities to the registry. The registry
+    would probably need to be restructured to support that cleanly which is
+    why this has been implemented in parallel even though it does as a result
+    permit searching for help in contexts which are not discoverable via
+    'help topics'.
+    """
 
     def __init__(self):
         self.search_path = [
