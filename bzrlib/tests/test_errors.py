@@ -242,9 +242,10 @@ class TestErrors(TestCaseWithTransport):
 
     def test_unknown_bug_tracker_abbreviation(self):
         """Test the formatting of UnknownBugTrackerAbbreviation."""
-        error = errors.UnknownBugTrackerAbbreviation('xxx')
+        branch = self.make_branch('some_branch')
+        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
         self.assertEqual(
-            "Cannot find registered bug tracker for xxx",
+            "Cannot find registered bug tracker called xxx on %s" % branch,
             str(error))
 
 
