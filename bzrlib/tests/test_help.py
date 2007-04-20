@@ -70,92 +70,92 @@ class TestRegisteredTopic(tests.TestCase):
             topic.get_help_text())
 
 
-class TestTopicContext(tests.TestCase):
-    """Tests for the HelpTopicContext class."""
+class TestTopicIndex(tests.TestCase):
+    """Tests for the HelpTopicIndex class."""
 
     def test_default_constructable(self):
-        context = help_topics.HelpTopicContext()
+        index = help_topics.HelpTopicIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns the basic help topic."""
-        context = help_topics.HelpTopicContext()
-        topics = context.get_topics(None)
+        index = help_topics.HelpTopicIndex()
+        topics = index.get_topics(None)
         self.assertEqual(1, len(topics))
         self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
         self.assertEqual('basic', topics[0].topic)
 
     def test_get_topics_topics(self):
         """Searching for a string returns the matching string."""
-        context = help_topics.HelpTopicContext()
-        topics = context.get_topics('topics')
+        index = help_topics.HelpTopicIndex()
+        topics = index.get_topics('topics')
         self.assertEqual(1, len(topics))
         self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
         self.assertEqual('topics', topics[0].topic)
 
     def test_get_topics_no_topic(self):
         """Searching for something not registered returns []."""
-        context = help_topics.HelpTopicContext()
-        self.assertEqual([], context.get_topics('nothing by this name'))
+        index = help_topics.HelpTopicIndex()
+        self.assertEqual([], index.get_topics('nothing by this name'))
 
 
-class TestCommandContext(tests.TestCase):
-    """Tests for the HelpCommandContext class."""
+class TestCommandIndex(tests.TestCase):
+    """Tests for the HelpCommandIndex class."""
 
     def test_default_constructable(self):
-        context = commands.HelpCommandContext()
+        index = commands.HelpCommandIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns an empty list."""
-        context = commands.HelpCommandContext()
-        self.assertEqual([], context.get_topics(None))
+        index = commands.HelpCommandIndex()
+        self.assertEqual([], index.get_topics(None))
 
     def test_get_topics_rocks(self):
         """Searching for 'rocks' returns the cmd_rocks command instance."""
-        context = commands.HelpCommandContext()
-        topics = context.get_topics('rocks')
+        index = commands.HelpCommandIndex()
+        topics = index.get_topics('rocks')
         self.assertEqual(1, len(topics))
         self.assertIsInstance(topics[0], builtins.cmd_rocks)
 
     def test_get_topics_no_topic(self):
         """Searching for something that is not a command returns []."""
-        context = commands.HelpCommandContext()
-        self.assertEqual([], context.get_topics('nothing by this name'))
+        index = commands.HelpCommandIndex()
+        self.assertEqual([], index.get_topics('nothing by this name'))
 
 
-class TestHelpContexts(tests.TestCase):
-    """Tests for the HelpContexts class."""
+class TestHelpIndexs(tests.TestCase):
+    """Tests for the HelpIndexs class."""
 
     def test_default_search_path(self):
-        """The default search path should include internal contexts."""
-        contexts = help.HelpContexts()
-        self.assertEqual(2, len(contexts.search_path))
+        """The default search path should include internal indexs."""
+        indexs = help.HelpIndexs()
+        self.assertEqual(2, len(indexs.search_path))
         # help topics should be searched in first.
-        self.assertIsInstance(contexts.search_path[0],
-            help_topics.HelpTopicContext)
+        self.assertIsInstance(indexs.search_path[0],
+            help_topics.HelpTopicIndex)
         # with commands being search second.
-        self.assertIsInstance(contexts.search_path[1],
-            commands.HelpCommandContext)
+        self.assertIsInstance(indexs.search_path[1],
+            commands.HelpCommandIndex)
 
     def test_search_for_unknown_topic_raises(self):
         """Searching for an unknown topic should raise NoHelpTopic."""
-        contexts = help.HelpContexts()
-        contexts.search_path = []
-        error = self.assertRaises(errors.NoHelpTopic, contexts.search, 'foo')
+        indexs = help.HelpIndexs()
+        indexs.search_path = []
+        error = self.assertRaises(errors.NoHelpTopic, indexs.search, 'foo')
         self.assertEqual('foo', error.topic)
 
     def test_search_calls_get_topic(self):
         """Searching should call get_topics in all indexes in order."""
         calls = []
-        class RecordingContext(object):
+        class RecordingIndex(object):
             def __init__(self, name):
                 self.name = name
             def get_topics(self, topic):
                 calls.append(('get_topics', self.name, topic))
                 return ['something']
-        contexts = help.HelpContexts()
-        contexts.search_path = [RecordingContext('1'), RecordingContext('2')]
+        index = help.HelpIndexs()
+        index.search_path = [RecordingIndex('1'), RecordingIndex('2')]
         # try with None
-        contexts.search(None)
+        index.search(None)
         self.assertEqual([
             ('get_topics', '1', None),
             ('get_topics', '2', None),
@@ -163,20 +163,20 @@ class TestHelpContexts(tests.TestCase):
             calls)
         # and with a string
         del calls[:]
-        contexts.search('bar')
+        index.search('bar')
         self.assertEqual([
             ('get_topics', '1', 'bar'),
             ('get_topics', '2', 'bar'),
             ],
             calls)
 
-    def test_search_returns_context_results(self):
+    def test_search_returns_index_results(self):
         """Searching should return all the help topics found."""
-        class CannedContext(object):
+        class CannedIndex(object):
             def __init__(self, search_result):
                 self.result = search_result
             def get_topics(self, topic):
                 return self.result
-        contexts = help.HelpContexts()
-        contexts.search_path = [CannedContext(['a']), CannedContext(['b', 'c'])]
-        self.assertEqual(['a', 'b', 'c'], contexts.search(None))
+        index = help.HelpIndexs()
+        index.search_path = [CannedIndex(['a']), CannedIndex(['b', 'c'])]
+        self.assertEqual(['a', 'b', 'c'], index.search(None))

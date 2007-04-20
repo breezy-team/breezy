@@ -716,8 +716,8 @@ def run_bzr_catch_errors(argv):
         return 3
 
 
-class HelpCommandContext(object):
-    """A context for bzr help that returns commands."""
+class HelpCommandIndex(object):
+    """A index for bzr help that returns commands."""
 
     def get_topics(self, topic):
         """Search for topic amongst commands.

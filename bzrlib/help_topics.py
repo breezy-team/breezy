@@ -244,8 +244,8 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 
 
-class HelpTopicContext(object):
-    """A context for bzr help that returns topics."""
+class HelpTopicIndex(object):
+    """A index for bzr help that returns topics."""
 
     def get_topics(self, topic):
         """Search for topic in the HelpTopicRegistry.
