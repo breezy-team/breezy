@@ -358,6 +358,44 @@ class TestMove(TestCaseWithWorkingTree):
                                ('a/c/d', 'd-id')], tree.basis_tree())
         tree._validate()
 
+    def test_move_directory_into_parent(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['c/', 'c/b/', 'c/b/d/'])
+        tree.add(['c', 'c/b', 'c/b/d'],
+                 ['c-id', 'b-id', 'd-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        self.assertEqual([('c/b', 'b')],
+                         tree.move(['c/b'], ''))
+        self.assertTreeLayout([('', root_id),
+                               ('b', 'b-id'),
+                               ('c', 'c-id'),
+                               ('b/d', 'd-id'),
+                              ], tree)
+        tree._validate()
+
+    def test_move_directory_into_parent_with_new_child(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['c/', 'c/b/', 'c/b/d/'])
+        tree.add(['c', 'c/b', 'c/b/d'],
+                 ['c-id', 'b-id', 'd-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        self.build_tree(['c/b/a/'])
+        tree.add(['c/b/a'], ['a-id'])
+
+        self.assertEqual([('c/b', 'b')],
+                         tree.move(['c/b'], ''))
+        self.assertTreeLayout([('', root_id),
+                               ('b', 'b-id'),
+                               ('c', 'c-id'),
+                               ('b/a', 'a-id'),
+                               ('b/d', 'd-id'),
+                              ], tree)
+        tree._validate()
+
     def test_move_moved(self):
         """Moving a moved entry works as expected."""
         tree = self.make_branch_and_tree('.')
