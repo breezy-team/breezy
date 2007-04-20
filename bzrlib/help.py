@@ -37,14 +37,9 @@ def help(topic=None, outfile=None):
     if outfile is None:
         outfile = sys.stdout
 
-    topic_context = help_topics.HelpTopicContext()
-    topics = topic_context.get_topics(topic)
-    if topics:
-        outfile.write(topics[0].get_help_text())
-    else:
-        cmdname = str(topic)
-        cmd_object = _mod_commands.get_cmd_object(cmdname)
-        outfile.write(cmd_object.get_help_text())
+    contexts = HelpContexts()
+    topics = contexts.search(topic)
+    outfile.write(topics[0].get_help_text())
 
 
 def help_commands(outfile=None):

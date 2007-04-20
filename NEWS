@@ -21,6 +21,9 @@ IN DEVELOPMENT
       documentation, and the bzr.1 man page also include this information.
       (Robert Collins)
 
+    * ``bzr help`` provides a clearer message when a help topic cannot be
+      found (fixes bug 107656). (Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
