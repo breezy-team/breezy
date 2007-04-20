@@ -83,11 +83,20 @@ def help_on_command(cmdname, outfile=None):
     from bzrlib.commands import get_cmd_object
 
     cmdname = str(cmdname)
+    cmd_object = get_cmd_object(cmdname)
 
+    return help_on_command_object(cmd_object, cmdname, outfile)
+
+
+def help_on_command_object(cmd_object, cmdname, outfile=None):
+    """Generate help on the cmd_object with a supplied name of cmdname.
+
+    :param cmd_object: An instance of a Command.
+    :param cmdname: The user supplied name. This might be an alias for example.
+    :param outfile: A stream to write the help to.
+    """
     if outfile is None:
         outfile = sys.stdout
-
-    cmd_object = get_cmd_object(cmdname)
 
     doc = cmd_object.help()
     if doc is None:
@@ -107,6 +116,11 @@ def help_on_command(cmdname, outfile=None):
     if doc[-1] != '\n':
         outfile.write('\n')
     help_on_command_options(cmd_object, outfile)
+    see_also = cmd_object.get_see_also()
+    if see_also:
+        outfile.write('\nSee also: ')
+        outfile.write(', '.join(see_also))
+        outfile.write('\n')
 
 
 def help_on_command_options(cmd, outfile=None):
