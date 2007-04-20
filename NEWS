@@ -114,6 +114,9 @@ IN DEVELOPMENT
 
     * Typo in the help for ``register-branch`` fixed. (Robert Collins, #96770)
 
+    * "dirstate" and "dirstate-tags" formats now produce branches compatible
+      with old versions of bzr. (Aaron Bentley, #107168))
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
