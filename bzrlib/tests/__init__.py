@@ -104,8 +104,6 @@ MODULES_TO_DOCTEST = [
                       bzrlib.store,
                       ]
 
-NUMBERED_DIRS = False   # dirs kind for TestCaseInTempDir (numbered or named)
-
 
 def packages_to_test():
     """Return a list of packages to test.
@@ -154,6 +152,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
+                 use_numbered_dirs=False,
                  ):
         """Construct new TestResult.
 
@@ -184,6 +183,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.skip_count = 0
         self.unsupported = {}
         self.count = 0
+        self.use_numbered_dirs = use_numbered_dirs
         self._overall_start_time = time.time()
     
     def extractBenchmarkTime(self, testCase):
@@ -290,7 +290,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.write("%s: " % flavour)
-            if NUMBERED_DIRS:
+            if self.use_numbered_dirs:
                 self.stream.write('#%d ' % test.number)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
@@ -320,9 +320,10 @@ class TextTestResult(ExtendedTestResult):
                  bench_history=None,
                  num_tests=None,
                  pb=None,
+                 use_numbered_dirs=False,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests)
+            bench_history, num_tests, use_numbered_dirs)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -364,7 +365,7 @@ class TextTestResult(ExtendedTestResult):
                 + self._shortened_test_description(test))
 
     def _test_description(self, test):
-        if NUMBERED_DIRS:
+        if self.use_numbered_dirs:
             return '#%d %s' % (self.count,
                                self._shortened_test_description(test))
         else:
@@ -433,7 +434,7 @@ class VerboseTestResult(ExtendedTestResult):
         # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
         # numbers, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
-        if NUMBERED_DIRS:
+        if self.use_numbered_dirs:
             self.stream.write('%5d ' % self.count)
             self.stream.write(self._ellipsize_to_right(name,
                                 osutils.terminal_width()-36))
@@ -444,7 +445,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def _error_summary(self, err):
         indent = ' ' * 4
-        if NUMBERED_DIRS:
+        if self.use_numbered_dirs:
             indent += ' ' * 6
         return '%s%s' % (indent, err[1])
 
@@ -493,12 +494,15 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 bench_history=None):
+                 bench_history=None,
+                 use_numbered_dirs=False,
+                 ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
         self._bench_history = bench_history
+        self.use_numbered_dirs = use_numbered_dirs
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -512,6 +516,7 @@ class TextTestRunner(object):
                               self.verbosity,
                               bench_history=self._bench_history,
                               num_tests=test.countTestCases(),
+                              use_numbered_dirs=self.use_numbered_dirs,
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
@@ -570,15 +575,7 @@ class TextTestRunner(object):
                 else:
                     test_root = test_root.encode(
                         sys.getfilesystemencoding())
-                try:
-                    osutils.rmtree(test_root)
-                except OSError, e:
-                    if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        print >>sys.stderr, ('Permission denied: '
-                                             'unable to remove testing dir '
-                                             '%s' % os.path.basename(test_root))
-                    else:
-                        raise
+                _rmtree_temp_dir(test_root)
         else:
             note("Failed tests working directories are in '%s'\n", test_root)
         TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -754,12 +751,22 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        self._clear_hooks()
+
+    def _clear_hooks(self):
         # prevent hooks affecting tests
-        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        import bzrlib.branch
+        import bzrlib.smart.server
+        self._preserved_hooks = {
+            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
+            }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = \
+            bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1098,7 +1105,8 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        bzrlib.branch.Branch.hooks = self._preserved_hooks
+        for klass, hooks in self._preserved_hooks.items():
+            setattr(klass, 'hooks', hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1820,6 +1828,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
+    use_numbered_dirs = False
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
@@ -1835,8 +1844,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        if NUMBERED_DIRS:       # strongly recommended on Windows
-                                # due the path length limitation (260 chars)
+        if self.use_numbered_dirs:  # strongly recommended on Windows
+                                    # due the path length limitation (260 ch.)
             candidate_dir = '%s/%dK/%05d' % (self.TEST_ROOT,
                                              int(self.number/1000),
                                              self.number)
@@ -2065,11 +2074,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
               numbered_dirs=None):
-    global NUMBERED_DIRS
-    if numbered_dirs is not None:
-        NUMBERED_DIRS = bool(numbered_dirs)
+    use_numbered_dirs = bool(numbered_dirs)
 
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
+    if numbered_dirs is not None:
+        TestCaseInTempDir.use_numbered_dirs = use_numbered_dirs
     if verbose:
         verbosity = 2
     else:
@@ -2078,7 +2087,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            bench_history=bench_history)
+                            bench_history=bench_history,
+                            use_numbered_dirs=use_numbered_dirs,
+                            )
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         if matching_tests_first:
@@ -2162,6 +2173,7 @@ def test_suite():
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
+                   'bzrlib.tests.test_help',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
@@ -2282,6 +2294,18 @@ def adapt_modules(mods_list, adapter, loader, suite):
         suite.addTests(adapter.adapt(test))
 
 
+def _rmtree_temp_dir(dirname):
+    try:
+        osutils.rmtree(dirname)
+    except OSError, e:
+        if sys.platform == 'win32' and e.errno == errno.EACCES:
+            print >>sys.stderr, ('Permission denied: '
+                                 'unable to remove testing dir '
+                                 '%s' % os.path.basename(dirname))
+        else:
+            raise
+
+
 def clean_selftest_output(root=None, quiet=False):
     """Remove all selftest output directories from root directory.
 
@@ -2290,8 +2314,6 @@ def clean_selftest_output(root=None, quiet=False):
     :param  quiet:  suppress report about deleting directories
     """
     import re
-    import shutil
-
     re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
     if root is None:
         root = u'.'
@@ -2299,7 +2321,7 @@ def clean_selftest_output(root=None, quiet=False):
         if os.path.isdir(i) and re_dir.match(i):
             if not quiet:
                 print 'delete directory:', i
-            shutil.rmtree(i)
+            _rmtree_temp_dir(i)
 
 
 class Feature(object):
