@@ -18,15 +18,12 @@
 
 import errno
 import socket
-import os
 import threading
 
 from bzrlib.hooks import Hooks
-from bzrlib.smart import medium
 from bzrlib import (
     trace,
     transport,
-    urlutils,
 )
 from bzrlib.smart.medium import SmartServerSocketStreamMedium
 

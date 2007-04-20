@@ -24,7 +24,6 @@ the object given a transport that supports smartserver rpc operations.
 from cStringIO import StringIO
 
 from bzrlib import (
-    bzrdir,
     errors,
     remote,
     tests,
@@ -40,7 +39,6 @@ from bzrlib.remote import (
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
 from bzrlib.smart.client import _SmartClient
-from bzrlib.transport import remote as remote_transport
 from bzrlib.transport.memory import MemoryTransport
 
 

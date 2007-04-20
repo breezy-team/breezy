@@ -19,7 +19,6 @@
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.revision import NULL_REVISION
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 

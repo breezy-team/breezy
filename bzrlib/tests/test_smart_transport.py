@@ -739,9 +739,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_socket_stream_error_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -753,8 +750,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
         to_server = StringIO('')
         from_server = StringIO()
         server = medium.SmartServerPipeStreamMedium(

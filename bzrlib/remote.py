@@ -18,18 +18,16 @@
 # across to run on the server.
 
 from cStringIO import StringIO
-from urlparse import urlparse
 
 from bzrlib import branch, errors, lockdir, repository
 from bzrlib.branch import BranchReferenceFormat
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
+from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
-from bzrlib.urlutils import unescape
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -83,9 +81,7 @@ class RemoteBzrDir(BzrDir):
         return RemoteBranch(self, self.find_repository(), real_branch)
 
     def create_workingtree(self, revision_id=None):
-        self._ensure_real()
-        real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
-        return RemoteWorkingTree(self, real_workingtree)
+        raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self):
         """Find the branch 'format' for this bzrdir.
