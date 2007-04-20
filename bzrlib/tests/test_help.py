@@ -100,6 +100,13 @@ class TestRegisteredTopic(tests.TestCase):
             '\n'
             'See also: bar, foo\n')
 
+    def test_get_help_topic(self):
+        """The help topic for a RegisteredTopic is its topic from construction."""
+        topic = help_topics.RegisteredTopic('foobar')
+        self.assertEqual('foobar', topic.get_help_topic())
+        topic = help_topics.RegisteredTopic('baz')
+        self.assertEqual('baz', topic.get_help_topic())
+
 
 class TestTopicIndex(tests.TestCase):
     """Tests for the HelpTopicIndex class."""

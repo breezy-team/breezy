@@ -298,3 +298,7 @@ class RegisteredTopic(object):
             result += ', '.join(see_also)
             result += '\n'
         return result
+
+    def get_help_topic(self):
+        """Return the help topic this can be found under."""
+        return self.topic
