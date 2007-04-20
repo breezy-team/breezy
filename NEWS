@@ -41,6 +41,9 @@ IN DEVELOPMENT
     * Convenience method TestCase.expectFailure ensures that known failures
       do not silently pass.  (Aaron Bentley)
 
+    * Transport.local_abspath now raises NotLocalUrl rather than 
+      TransportNotPossible. (Martin Pool, Ian Clatworthy)
+
     * New SmartServer hooks facility. There are two initial hooks documented
       in bzrlib.transport.smart.SmartServerHooks. The two initial hooks allow
       plugins to execute code upon server startup and shutdown.
