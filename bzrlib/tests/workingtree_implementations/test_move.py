@@ -375,6 +375,25 @@ class TestMove(TestCaseWithWorkingTree):
                               ], tree)
         tree._validate()
 
+    def test_move_directory_with_deleted_children(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'b/'])
+        tree.add(['a', 'b', 'a/b', 'a/c', 'a/d'],
+                 ['a-id', 'b-id', 'ab-id', 'ac-id', 'ad-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        tree.remove(['a/b', 'a/d'])
+
+        self.assertEqual([('a', 'b/a')],
+                         tree.move(['a'], 'b'))
+        self.assertTreeLayout([('', root_id),
+                               ('b', 'b-id'),
+                               ('b/a', 'a-id'),
+                               ('b/a/c', 'ac-id'),
+                              ], tree)
+        tree._validate()
+
     def test_move_directory_with_new_children(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/c', 'b/'])
