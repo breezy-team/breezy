@@ -91,4 +91,3 @@ class TestHelp(ExternalBase):
         for line in help.split('\n'):
             if '--long' in line:
                 self.assertTrue('show help on all commands' in line)
-

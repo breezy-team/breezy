@@ -175,6 +175,17 @@ class BzrCheckError(BzrError):
         self.message = message
 
 
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -796,6 +807,27 @@ class LockNotHeld(LockError):
 
     def __init__(self, lock):
         self.lock = lock
+
+
+class TokenLockingNotSupported(LockError):
+
+    _fmt = "The object %(obj)s does not support token specifying a token when locking."
+
+    internal_error = True
+
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class TokenMismatch(LockBroken):
+
+    _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
+
+    internal_error = True
+
+    def __init__(self, given_token, lock_token):
+        self.given_token = given_token
+        self.lock_token = lock_token
 
 
 class PointlessCommit(BzrError):
@@ -2023,7 +2055,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use bzr upgrade --dirstate-tags.")
 
     def __init__(self, branch):
         self.branch = branch

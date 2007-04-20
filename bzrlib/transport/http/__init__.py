@@ -508,8 +508,8 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
-    def __init__(self, smart_medium):
-        medium.SmartClientMediumRequest.__init__(self, smart_medium)
+    def __init__(self, client_medium):
+        medium.SmartClientMediumRequest.__init__(self, client_medium)
         self._buffer = ''
 
     def _accept_bytes(self, bytes):
