@@ -122,25 +122,25 @@ class TestCommandIndex(tests.TestCase):
         self.assertEqual([], index.get_topics('nothing by this name'))
 
 
-class TestHelpIndexs(tests.TestCase):
-    """Tests for the HelpIndexs class."""
+class TestHelpIndices(tests.TestCase):
+    """Tests for the HelpIndices class."""
 
     def test_default_search_path(self):
         """The default search path should include internal indexs."""
-        indexs = help.HelpIndexs()
-        self.assertEqual(2, len(indexs.search_path))
+        indices = help.HelpIndices()
+        self.assertEqual(2, len(indices.search_path))
         # help topics should be searched in first.
-        self.assertIsInstance(indexs.search_path[0],
+        self.assertIsInstance(indices.search_path[0],
             help_topics.HelpTopicIndex)
         # with commands being search second.
-        self.assertIsInstance(indexs.search_path[1],
+        self.assertIsInstance(indices.search_path[1],
             commands.HelpCommandIndex)
 
     def test_search_for_unknown_topic_raises(self):
         """Searching for an unknown topic should raise NoHelpTopic."""
-        indexs = help.HelpIndexs()
-        indexs.search_path = []
-        error = self.assertRaises(errors.NoHelpTopic, indexs.search, 'foo')
+        indices = help.HelpIndices()
+        indices.search_path = []
+        error = self.assertRaises(errors.NoHelpTopic, indices.search, 'foo')
         self.assertEqual('foo', error.topic)
 
     def test_search_calls_get_topic(self):
@@ -152,7 +152,7 @@ class TestHelpIndexs(tests.TestCase):
             def get_topics(self, topic):
                 calls.append(('get_topics', self.name, topic))
                 return ['something']
-        index = help.HelpIndexs()
+        index = help.HelpIndices()
         index.search_path = [RecordingIndex('1'), RecordingIndex('2')]
         # try with None
         index.search(None)
@@ -177,6 +177,6 @@ class TestHelpIndexs(tests.TestCase):
                 self.result = search_result
             def get_topics(self, topic):
                 return self.result
-        index = help.HelpIndexs()
+        index = help.HelpIndices()
         index.search_path = [CannedIndex(['a']), CannedIndex(['b', 'c'])]
         self.assertEqual(['a', 'b', 'c'], index.search(None))

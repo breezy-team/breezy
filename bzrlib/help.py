@@ -37,8 +37,8 @@ def help(topic=None, outfile=None):
     if outfile is None:
         outfile = sys.stdout
 
-    indexs = HelpIndexs()
-    topics = indexs.search(topic)
+    indices = HelpIndices()
+    topics = indices.search(topic)
     outfile.write(topics[0].get_help_text())
 
 
@@ -92,8 +92,8 @@ help_topics.topic_registry.register("hidden-commands",
                                     "All hidden commands")
 
 
-class HelpIndexs(object):
-    """An object to manage help in multiple indexs.
+class HelpIndices(object):
+    """An object to manage help in multiple indices.
     
     This maintains a list of places to search for help. It is currently
     separate to the HelpTopicRegistry because of its ordered nature, but
