@@ -105,3 +105,14 @@ class TestHelpContexts(tests.TestCase):
             ('get_topics', '2', 'bar'),
             ],
             calls)
+
+    def test_search_returns_context_results(self):
+        """Searching should return all the help topics found."""
+        class CannedContext(object):
+            def __init__(self, search_result):
+                self.result = search_result
+            def get_topics(self, topic):
+                return self.result
+        contexts = help.HelpContexts()
+        contexts.search_path = [CannedContext(['a']), CannedContext(['b', 'c'])]
+        self.assertEqual(['a', 'b', 'c'], contexts.search(None))
