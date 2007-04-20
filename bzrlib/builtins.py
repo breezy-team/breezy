@@ -3288,15 +3288,18 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.smart import server, medium
+        from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
+        from bzrlib.transport.chroot import ChrootServer
         from bzrlib.transport.remote import BZR_DEFAULT_PORT
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        t = get_transport(url)
+        chroot_server = ChrootServer(get_transport(url))
+        chroot_server.setUp()
+        t = get_transport(chroot_server.get_url())
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
@@ -3313,7 +3316,16 @@ class cmd_serve(Command):
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
             sys.stdout.flush()
-        smart_server.serve()
+        # for the duration of this server, no UI output is permitted.
+        # note that this may cause problems with blackbox tests. This should
+        # be changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
 
 
 class cmd_join(Command):

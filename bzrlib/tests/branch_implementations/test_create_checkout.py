@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     )
+from bzrlib.remote import RemoteBranch
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -27,6 +28,14 @@ class TestCreateCheckout(TestCaseWithBranch):
     def test_checkout_format(self):
         """Make sure the new checkout uses the same branch format."""
         a_branch = self.make_branch('branch')
+        if isinstance(a_branch, RemoteBranch):
+            # RemoteBranch formats are not the same as local ones, and dont
+            # duplicate the format string (because there is no format string as
+            # such - it might be e.g. totally virtual on the server end).
+            # This test can only assess the checkout format correctness *in
+            # general* when there is a real object locally present for both the
+            # source and target.
+            return
         tree = a_branch.create_checkout('checkout')
         if self.branch_format in branch._legacy_formats:
             # Legacy formats create checkouts with the default format.
@@ -34,8 +43,8 @@ class TestCreateCheckout(TestCaseWithBranch):
             expected_format = branch.BranchFormat.get_default_format()
         else:
             expected_format = a_branch._format
-        self.assertEqual(expected_format.get_format_string(),
-                         tree.branch._format.get_format_string())
+        self.assertEqual(expected_format.__class__,
+                         tree.branch._format.__class__)
 
     def test_create_revision_checkout(self):
         """Test that we can create a checkout from an earlier revision."""
