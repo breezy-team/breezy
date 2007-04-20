@@ -375,7 +375,7 @@ class TestMove(TestCaseWithWorkingTree):
                               ], tree)
         tree._validate()
 
-    def test_move_directory_into_parent_with_new_child(self):
+    def test_move_directory_into_parent_with_new_children(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
         tree.add(['c', 'c/b', 'c/b/d'],
@@ -383,8 +383,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-        self.build_tree(['c/b/a/'])
-        tree.add(['c/b/a'], ['a-id'])
+        self.build_tree(['c/b/a/', 'c/b/e/'])
+        tree.add(['c/b/a', 'c/b/e'], ['a-id', 'e-id'])
 
         self.assertEqual([('c/b', 'b')],
                          tree.move(['c/b'], ''))
@@ -393,6 +393,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('c', 'c-id'),
                                ('b/a', 'a-id'),
                                ('b/d', 'd-id'),
+                               ('b/e', 'e-id'),
                               ], tree)
         tree._validate()
 
