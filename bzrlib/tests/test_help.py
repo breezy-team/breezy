@@ -92,6 +92,13 @@ class TestRegisteredTopic(tests.TestCase):
         self.assertEqual(help_topics.topic_registry.get_detail('commands'),
             topic.get_help_text())
 
+    def test_get_help_text_with_additional_see_also(self):
+        topic = help_topics.RegisteredTopic('commands')
+        self.assertEndsWith(
+            topic.get_help_text(['foo', 'bar']),
+            '\n'
+            'See also: bar, foo\n')
+
 
 class TestTopicIndex(tests.TestCase):
     """Tests for the HelpTopicIndex class."""

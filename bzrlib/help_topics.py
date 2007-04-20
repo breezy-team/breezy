@@ -279,6 +279,19 @@ class RegisteredTopic(object):
         """
         self.topic = topic
 
-    def get_help_text(self):
-        """Return a string with the help for this topic."""
-        return topic_registry.get_detail(self.topic)
+    def get_help_text(self, additional_see_also=None):
+        """Return a string with the help for this topic.
+
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
+        result = topic_registry.get_detail(self.topic)
+        if additional_see_also is not None:
+            see_also = sorted(set(additional_see_also))
+        else:
+            see_also = None
+        if see_also:
+            result += '\nSee also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
