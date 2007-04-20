@@ -943,7 +943,7 @@ class ProxyBasicAuthHandler(AbstractBasicAuthHandler):
     password_prompt = 'Proxy %(user)s@%(host)s%(realm)s password'
     auth_reqed_header = 'proxy-authenticate'
     # FIXME: the correct capitalization is Proxy-Authorization,
-    # but python-2.4 urllib2.Request insist on using catilazze()
+    # but python-2.4 urllib2.Request insist on using capitalize()
     # instead of title().
     auth_header = 'Proxy-authorization'
 
