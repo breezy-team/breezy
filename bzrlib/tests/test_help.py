@@ -44,14 +44,29 @@ class TestCommandHelp(tests.TestCase):
 
 
 class TestTopicContext(tests.TestCase):
-    """Tests for the HelpTopicContext object."""
+    """Tests for the HelpTopicContext class."""
 
-    def test_construct(self):
+    def test_default_constructable(self):
         context = help_topics.HelpTopicContext()
 
 
 class TestCommandContext(tests.TestCase):
-    """Tests for the HelpCommandContext object."""
+    """Tests for the HelpCommandContext class."""
 
-    def test_construct(self):
+    def test_default_constructable(self):
         context = commands.HelpCommandContext()
+
+
+class TestHelpContexts(tests.TestCase):
+    """Tests for the HelpContexts class."""
+
+    def test_default_search_path(self):
+        """The default search path should include internal contexts."""
+        contexts = help.HelpContexts()
+        self.assertEqual(2, len(contexts.search_path))
+        # help topics should be searched in first.
+        self.assertIsInstance(contexts.search_path[0],
+            help_topics.HelpTopicContext)
+        # with commands being search second.
+        self.assertIsInstance(contexts.search_path[1],
+            commands.HelpCommandContext)

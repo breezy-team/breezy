@@ -25,6 +25,7 @@ import sys
 import textwrap
 
 from bzrlib import (
+    commands as _mod_commands,
     help_topics,
     osutils,
     )
@@ -80,10 +81,8 @@ def print_command_plugin(cmd_object, outfile, format):
 
 
 def help_on_command(cmdname, outfile=None):
-    from bzrlib.commands import get_cmd_object
-
     cmdname = str(cmdname)
-    cmd_object = get_cmd_object(cmdname)
+    cmd_object = _mod_commands.get_cmd_object(cmdname)
 
     return help_on_command_object(cmd_object, cmdname, outfile)
 
@@ -141,17 +140,14 @@ def help_commands(outfile=None):
 
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands"""
-    from bzrlib.commands import (builtin_command_names,
-                                 plugin_command_names,
-                                 get_cmd_object)
     out = []
     if topic == 'hidden-commands':
         hidden = True
     else:
         hidden = False
-    names = set(builtin_command_names()) # to eliminate duplicates
-    names.update(plugin_command_names())
-    commands = ((n, get_cmd_object(n)) for n in names)
+    names = set(_mod_commands.builtin_command_names()) # to eliminate duplicates
+    names.update(_mod_commands.plugin_command_names())
+    commands = ((n, _mod_commands.get_cmd_object(n)) for n in names)
     shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
     max_name = max(len(n) for n, o in shown_commands)
     indent = ' ' * (max_name + 1)
@@ -183,3 +179,13 @@ help_topics.topic_registry.register("commands",
 help_topics.topic_registry.register("hidden-commands",
                                     _help_commands_to_text,
                                     "All hidden commands")
+
+
+class HelpContexts(object):
+    """An object to manage help in multiple contexts."""
+
+    def __init__(self):
+        self.search_path = [
+            help_topics.HelpTopicContext(),
+            _mod_commands.HelpCommandContext(),
+            ]
