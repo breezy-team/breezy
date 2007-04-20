@@ -20,6 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     commands,
+    errors,
     help,
     help_topics,
     tests,
@@ -70,3 +71,10 @@ class TestHelpContexts(tests.TestCase):
         # with commands being search second.
         self.assertIsInstance(contexts.search_path[1],
             commands.HelpCommandContext)
+
+    def test_search_for_unknown_topic_raises(self):
+        """Searching for an unknown topic should raise NoHelpTopic."""
+        contexts = help.HelpContexts()
+        contexts.search_path = []
+        error = self.assertRaises(errors.NoHelpTopic, contexts.search, 'foo')
+        self.assertEqual('foo', error.topic)

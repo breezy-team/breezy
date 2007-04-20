@@ -26,6 +26,7 @@ import textwrap
 
 from bzrlib import (
     commands as _mod_commands,
+    errors,
     help_topics,
     osutils,
     )
@@ -189,3 +190,11 @@ class HelpContexts(object):
             help_topics.HelpTopicContext(),
             _mod_commands.HelpCommandContext(),
             ]
+
+    def search(self, topic):
+        """Search for topic across the help search path.
+        
+        :param topic: A string naming the help topic to search for.
+        :raises: NoHelpTopic if none of the contexts in search_path have topic.
+        """
+        raise errors.NoHelpTopic(topic)
