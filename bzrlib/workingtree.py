@@ -365,10 +365,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
 
-    def canonicalpath(self, filename):
-        """Normanize filename"""
-        return self.relpath(self.abspath(filename))
-
     def basis_tree(self):
         """Return RevisionTree for the current last revision.
         
@@ -1777,6 +1773,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
+        ## TODO: Normalize names
+
         if isinstance(files, basestring):
             files = [files]
 
@@ -1791,16 +1789,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for contained_dir_info in self.walkdirs(directory):
                 for file_info in contained_dir_info[1]:
                     if file_info[2] == 'file':
-                        canonicalpath = self.canonicalpath(file_info[0])
+                        relpath = self.relpath(file_info[0])
                         if file_info[4]: #is it versioned?
-                            new_files.add(canonicalpath)
+                            new_files.add(relpath)
                         else:
                             unknown_files_in_directory.add(
-                                (canonicalpath, None, file_info[2]))
+                                (relpath, None, file_info[2]))
 
         for filename in files:
             # Get file name into canonical form.
-            filename = self.canonicalpath(filename)
+            filename = self.relpath(self.abspath(filename))
             if len(filename) > 0:
                 new_files.add(filename)
                 if osutils.isdir(filename) and len(os.listdir(filename)) > 0:
