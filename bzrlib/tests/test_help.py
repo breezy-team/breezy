@@ -165,9 +165,9 @@ class TestHelpIndices(tests.TestCase):
         calls = []
         class RecordingIndex(object):
             def __init__(self, name):
-                self.name = name
+                self.prefix = name
             def get_topics(self, topic):
-                calls.append(('get_topics', self.name, topic))
+                calls.append(('get_topics', self.prefix, topic))
                 return ['something']
         index = help.HelpIndices()
         index.search_path = [RecordingIndex('1'), RecordingIndex('2')]
@@ -190,10 +190,18 @@ class TestHelpIndices(tests.TestCase):
     def test_search_returns_index_results(self):
         """Searching should return all the help topics found."""
         class CannedIndex(object):
-            def __init__(self, search_result):
+            def __init__(self, prefix, search_result):
+                self.prefix = prefix
                 self.result = search_result
             def get_topics(self, topic):
                 return self.result
         index = help.HelpIndices()
-        index.search_path = [CannedIndex(['a']), CannedIndex(['b', 'c'])]
+        index.search_path = [CannedIndex('1', ['a']), CannedIndex('2', ['b', 'c'])]
         self.assertEqual(['a', 'b', 'c'], index.search(None))
+
+    def test_search_checks_for_duplicate_prefixes(self):
+        """Its an error when there are multiple indices with the same prefix."""
+        indices = help.HelpIndices()
+        indices.search_path = [help_topics.HelpTopicIndex(),
+            help_topics.HelpTopicIndex()]
+        self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)

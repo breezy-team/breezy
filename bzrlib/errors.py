@@ -1540,6 +1540,14 @@ class DuplicateKey(BzrError):
     _fmt = "Key %(key)s is already present in map"
 
 
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+
 class MalformedTransform(BzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"

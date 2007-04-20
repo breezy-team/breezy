@@ -40,6 +40,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
                              ' as foo', str(error))
 
+    def test_duplicate_help_prefix(self):
+        error = errors.DuplicateHelpPrefix('foo')
+        self.assertEqualDiff('The prefix foo is in the help search path twice.',
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "

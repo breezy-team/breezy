@@ -111,6 +111,15 @@ class HelpIndices(object):
             _mod_commands.HelpCommandIndex(),
             ]
 
+    def _check_prefix_uniqueness(self):
+        """Ensure that the index collection is able to differentiate safely."""
+        prefixes = {}
+        for index in self.search_path:
+            prefixes.setdefault(index.prefix, []).append(index)
+        for prefix, indices in prefixes.items():
+            if len(indices) > 1:
+                raise errors.DuplicateHelpPrefix(prefix)
+
     def search(self, topic):
         """Search for topic across the help search path.
         
@@ -118,6 +127,7 @@ class HelpIndices(object):
         :raises: NoHelpTopic if none of the indexs in search_path have topic.
         :return: A list of HelpTopics which matched 'topic'.
         """
+        self._check_prefix_uniqueness()
         result = []
         for index in self.search_path:
             result.extend(index.get_topics(topic))
