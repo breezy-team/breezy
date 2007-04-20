@@ -260,8 +260,12 @@ class Command(object):
         s = s[:-1]
         return s
 
-    def get_help_text(self):
-        """Return a text string with help for this command."""
+    def get_help_text(self, additional_see_also=None):
+        """Return a text string with help for this command.
+        
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
         doc = self.help()
         if doc is None:
             raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
@@ -285,21 +289,25 @@ class Command(object):
             result += '\n'
         result += '\n'
         result += option.get_optparser(self.options()).format_option_help()
-        see_also = self.get_see_also()
+        see_also = self.get_see_also(additional_see_also)
         if see_also:
             result += '\nSee also: '
             result += ', '.join(see_also)
             result += '\n'
         return result
 
-    def get_see_also(self):
+    def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this ommand.
         
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
+        :param additional_terms: Additional help topics to cross-reference.
         :return: A list of help topics.
         """
-        return sorted(set(getattr(self, '_see_also', [])))
+        see_also = set(getattr(self, '_see_also', []))
+        if additional_terms:
+            see_also.update(additional_terms)
+        return sorted(see_also)
 
     def options(self):
         """Return dict of valid options for this command.

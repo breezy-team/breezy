@@ -51,6 +51,29 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext, 'usage:bzr Demo')
         self.assertEndsWith(helptext, 'show help message\n')
+
+    def test_command_with_additional_see_also(self):
+        class cmd_WithSeeAlso(commands.Command):
+            """A sample command."""
+            _see_also = ['foo', 'bar']
+        cmd = cmd_WithSeeAlso()
+        helptext = cmd.get_help_text(['gam'])
+        self.assertEndsWith(
+            helptext,
+            '  -h, --help  show help message\n'
+            '\n'
+            'See also: bar, foo, gam\n')
+
+    def test_command_only_additional_see_also(self):
+        class cmd_WithSeeAlso(commands.Command):
+            """A sample command."""
+        cmd = cmd_WithSeeAlso()
+        helptext = cmd.get_help_text(['gam'])
+        self.assertEndsWith(
+            helptext,
+            '  -h, --help  show help message\n'
+            '\n'
+            'See also: gam\n')
     
 
 class TestRegisteredTopic(tests.TestCase):
