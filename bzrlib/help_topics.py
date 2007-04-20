@@ -247,6 +247,9 @@ topic_registry.register('checkouts', _checkouts,
 class HelpTopicIndex(object):
     """A index for bzr help that returns topics."""
 
+    def __init__(self):
+        self.prefix = ''
+
     def get_topics(self, topic):
         """Search for topic in the HelpTopicRegistry.
 

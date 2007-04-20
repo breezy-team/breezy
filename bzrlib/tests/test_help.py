@@ -97,6 +97,11 @@ class TestTopicIndex(tests.TestCase):
         index = help_topics.HelpTopicIndex()
         self.assertEqual([], index.get_topics('nothing by this name'))
 
+    def test_prefix(self):
+        """TopicIndex has a prefix of ''."""
+        index = help_topics.HelpTopicIndex()
+        self.assertEqual('', index.prefix)
+
 
 class TestCommandIndex(tests.TestCase):
     """Tests for the HelpCommandIndex class."""
@@ -120,6 +125,11 @@ class TestCommandIndex(tests.TestCase):
         """Searching for something that is not a command returns []."""
         index = commands.HelpCommandIndex()
         self.assertEqual([], index.get_topics('nothing by this name'))
+
+    def test_prefix(self):
+        """CommandIndex has a prefix of 'commands/'."""
+        index = commands.HelpCommandIndex()
+        self.assertEqual('commands/', index.prefix)
 
 
 class TestHelpIndices(tests.TestCase):

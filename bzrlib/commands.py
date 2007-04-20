@@ -719,6 +719,9 @@ def run_bzr_catch_errors(argv):
 class HelpCommandIndex(object):
     """A index for bzr help that returns commands."""
 
+    def __init__(self):
+        self.prefix = 'commands/'
+
     def get_topics(self, topic):
         """Search for topic amongst commands.
 
