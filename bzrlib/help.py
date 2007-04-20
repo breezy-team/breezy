@@ -37,12 +37,10 @@ def help(topic=None, outfile=None):
     if outfile is None:
         outfile = sys.stdout
 
-    if topic is None:
-        topic = 'basic'
-
-    if topic in help_topics.topic_registry:
-        txt = help_topics.topic_registry.get_detail(topic)
-        outfile.write(txt)
+    topic_context = help_topics.HelpTopicContext()
+    topics = topic_context.get_topics(topic)
+    if topics:
+        outfile.write(topics[0].get_help_text())
     else:
         help_on_command(topic, outfile=outfile)
 
