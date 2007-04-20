@@ -477,6 +477,35 @@ class TestMove(TestCaseWithWorkingTree):
                               ], tree)
         tree._validate()
 
+    def test_move_directory_with_swapped_children(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'a/c', 'a/d', 'e/'])
+        tree.add(['a', 'a/b', 'a/c', 'a/d', 'e'],
+                 ['a-id', 'b-id', 'c-id', 'd-id', 'e-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        tree.rename_one('a/b', 'a/bb')
+        tree.rename_one('a/d', 'a/b')
+        tree.rename_one('a/bb', 'a/d')
+        self.assertTreeLayout([('', root_id),
+                               ('a', 'a-id'),
+                               ('e', 'e-id'),
+                               ('a/b', 'd-id'),
+                               ('a/c', 'c-id'),
+                               ('a/d', 'b-id'),
+                              ], tree)
+        self.assertEqual([('a', 'e/a')],
+                         tree.move(['a'], 'e'))
+        self.assertTreeLayout([('', root_id),
+                               ('e', 'e-id'),
+                               ('e/a', 'a-id'),
+                               ('e/a/b', 'd-id'),
+                               ('e/a/c', 'c-id'),
+                               ('e/a/d', 'b-id'),
+                              ], tree)
+        tree._validate()
+
     def test_move_moved(self):
         """Moving a moved entry works as expected."""
         tree = self.make_branch_and_tree('.')
