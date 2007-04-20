@@ -1246,7 +1246,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
 
-        These trees get an initial random root id.
+        These trees get an initial random root id, if their repository supports
+        rich root data, TREE_ROOT otherwise.
         """
         revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
@@ -1274,7 +1275,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
-                wt._set_root_id(generate_ids.gen_root_id())
+                if branch.repository.supports_rich_root():
+                    wt._set_root_id(generate_ids.gen_root_id())
+                else:
+                    wt._set_root_id(ROOT_ID)
                 wt.flush()
                 wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)

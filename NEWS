@@ -99,6 +99,9 @@ IN DEVELOPMENT
     * FTP now works even when the FTP server does not support atomic rename.
       (Aaron Bentley, #89436)
 
+    * "dirstate" and "dirstate-tags" formats now produce branches compatible
+      with old versions of bzr. (Aaron Bentley, #107168))
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
