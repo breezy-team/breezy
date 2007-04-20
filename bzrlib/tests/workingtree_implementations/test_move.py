@@ -452,6 +452,31 @@ class TestMove(TestCaseWithWorkingTree):
                               ], tree)
         tree._validate()
 
+    def test_move_directory_with_renamed_child(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'a/c', 'd/'])
+        tree.add(['a', 'a/b', 'a/c', 'd'],
+                 ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+
+        tree.rename_one('a/b', 'a/d')
+        self.assertTreeLayout([('', root_id),
+                               ('a', 'a-id'),
+                               ('d', 'd-id'),
+                               ('a/c', 'c-id'),
+                               ('a/d', 'b-id'),
+                              ], tree)
+        self.assertEqual([('a', 'd/a')],
+                         tree.move(['a'], 'd'))
+        self.assertTreeLayout([('', root_id),
+                               ('d', 'd-id'),
+                               ('d/a', 'a-id'),
+                               ('d/a/c', 'c-id'),
+                               ('d/a/d', 'b-id'),
+                              ], tree)
+        tree._validate()
+
     def test_move_moved(self):
         """Moving a moved entry works as expected."""
         tree = self.make_branch_and_tree('.')
