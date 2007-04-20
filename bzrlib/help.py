@@ -39,7 +39,7 @@ def help(topic=None, outfile=None):
 
     indices = HelpIndices()
     topics = indices.search(topic)
-    outfile.write(topics[0].get_help_text())
+    outfile.write(topics[0][1].get_help_text())
 
 
 def help_commands(outfile=None):
@@ -130,7 +130,7 @@ class HelpIndices(object):
         self._check_prefix_uniqueness()
         result = []
         for index in self.search_path:
-            result.extend(index.get_topics(topic))
+            result.extend([(index, _topic) for _topic in index.get_topics(topic)])
         if not result:
             raise errors.NoHelpTopic(topic)
         else:

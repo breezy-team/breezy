@@ -187,8 +187,8 @@ class TestHelpIndices(tests.TestCase):
             ],
             calls)
 
-    def test_search_returns_index_results(self):
-        """Searching should return all the help topics found."""
+    def test_search_returns_index_and_results(self):
+        """Searching should return help topics with their index"""
         class CannedIndex(object):
             def __init__(self, prefix, search_result):
                 self.prefix = prefix
@@ -196,8 +196,11 @@ class TestHelpIndices(tests.TestCase):
             def get_topics(self, topic):
                 return self.result
         index = help.HelpIndices()
-        index.search_path = [CannedIndex('1', ['a']), CannedIndex('2', ['b', 'c'])]
-        self.assertEqual(['a', 'b', 'c'], index.search(None))
+        index_one = CannedIndex('1', ['a'])
+        index_two = CannedIndex('2', ['b', 'c'])
+        index.search_path = [index_one, index_two]
+        self.assertEqual([(index_one, 'a'), (index_two, 'b'), (index_two, 'c')],
+            index.search(None))
 
     def test_search_checks_for_duplicate_prefixes(self):
         """Its an error when there are multiple indices with the same prefix."""
