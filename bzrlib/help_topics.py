@@ -286,6 +286,9 @@ class RegisteredTopic(object):
             cross-referenced.
         """
         result = topic_registry.get_detail(self.topic)
+        # there is code duplicated here and in bzrlib/plugin.py's 
+        # matching Topic code. This should probably be factored in
+        # to a helper function and a common base class.
         if additional_see_also is not None:
             see_also = sorted(set(additional_see_also))
         else:
