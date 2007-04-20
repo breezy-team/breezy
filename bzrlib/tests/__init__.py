@@ -35,7 +35,6 @@ import logging
 import os
 from pprint import pformat
 import re
-import shlex
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -1239,11 +1238,6 @@ class TestCase(unittest.TestCase):
         stderr = StringIOWrapper()
         stdout.encoding = encoding
         stderr.encoding = encoding
-
-        # magically convert commands like 'remove abc' to ['remove', 'abc']
-        if (isinstance(argv, tuple) and len(argv) == 1 and
-            isinstance(argv[0], basestring)):
-            argv = shlex.split(argv[0])
 
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
