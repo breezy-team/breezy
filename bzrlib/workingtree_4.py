@@ -799,9 +799,11 @@ class WorkingTree4(WorkingTree3):
                             from_path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
                             to_path_utf8 = osutils.pathjoin(to_dir_utf8, entry[0][1])
                             minikind = cur_details[0]
-                            if minikind == 'a':
+                            if minikind in 'ar':
                                 # Deleted children of a renamed directory
                                 # Do not need to be updated.
+                                # Children that have been renamed out of this
+                                # directory should also not be updated
                                 continue
                             move_one(entry, from_path_utf8=from_path_utf8,
                                      minikind=minikind,
