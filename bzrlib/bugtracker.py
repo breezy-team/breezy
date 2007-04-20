@@ -154,7 +154,6 @@ class TracTracker(object):
 tracker_registry.register('trac', TracTracker)
 
 
-
 class BugzillaTracker(object):
     """A Bugzilla instance."""
 

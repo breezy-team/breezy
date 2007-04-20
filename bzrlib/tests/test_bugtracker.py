@@ -179,7 +179,7 @@ class TestBugzillaTracker(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.bugzilla_url = 'http://issues.apache.org/bugzilla'
+        self.bugzilla_url = 'http://www.squid-cache.org/bugs'
 
     def test_get_bug_url(self):
         """A BugzillaTracker should map a bug id to a URL for that instance."""
@@ -201,8 +201,8 @@ class TestBugzillaTracker(TestCaseWithMemoryTransport):
         """
         branch = self.make_branch('some_branch')
         config = branch.get_config()
-        config.set_user_option('bugzilla_apache_url', self.bugzilla_url)
-        tracker = bugtracker.BugzillaTracker.get('apache', branch)
+        config.set_user_option('bugzilla_squid_url', self.bugzilla_url)
+        tracker = bugtracker.BugzillaTracker.get('squid', branch)
         self.assertEqual(
             bugtracker.BugzillaTracker(self.bugzilla_url).get_bug_url('1234'),
             tracker.get_bug_url('1234'))
