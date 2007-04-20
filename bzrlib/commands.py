@@ -137,6 +137,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     plugins_override
         If true, plugin commands can override builtins.
     """
+    try:
+        return _get_cmd_object(cmd_name, plugins_override)
+    except KeyError:
+        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+
+
+def _get_cmd_object(cmd_name, plugins_override=True):
+    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
     from bzrlib.externalcommand import ExternalCommand
 
     # We want only 'ascii' command names, but the user may have typed
@@ -159,8 +167,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
-
-    raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+    raise KeyError
 
 
 class Command(object):
@@ -711,6 +718,20 @@ def run_bzr_catch_errors(argv):
 
 class HelpCommandContext(object):
     """A context for bzr help that returns commands."""
+
+    def get_topics(self, topic):
+        """Search for topic amongst commands.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            Command entry.
+        """
+        try:
+            cmd = _get_cmd_object(topic)
+        except KeyError:
+            return []
+        else:
+            return [cmd]
 
 
 if __name__ == '__main__':

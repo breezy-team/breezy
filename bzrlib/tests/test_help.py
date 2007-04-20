@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import (
+    builtins,
     commands,
     errors,
     help,
@@ -102,6 +103,23 @@ class TestCommandContext(tests.TestCase):
 
     def test_default_constructable(self):
         context = commands.HelpCommandContext()
+
+    def test_get_topics_None(self):
+        """Searching for None returns an empty list."""
+        context = commands.HelpCommandContext()
+        self.assertEqual([], context.get_topics(None))
+
+    def test_get_topics_rocks(self):
+        """Searching for 'rocks' returns the cmd_rocks command instance."""
+        context = commands.HelpCommandContext()
+        topics = context.get_topics('rocks')
+        self.assertEqual(1, len(topics))
+        self.assertIsInstance(topics[0], builtins.cmd_rocks)
+
+    def test_get_topics_no_topic(self):
+        """Searching for something that is not a command returns []."""
+        context = commands.HelpCommandContext()
+        self.assertEqual([], context.get_topics('nothing by this name'))
 
 
 class TestHelpContexts(tests.TestCase):
