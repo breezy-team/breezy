@@ -233,6 +233,58 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def _usage(self):
+        """Return single-line grammar for this command.
+
+        Only describes arguments, not options.
+        """
+        s = 'bzr ' + self.name() + ' '
+        for aname in self.takes_args:
+            aname = aname.upper()
+            if aname[-1] in ['$', '+']:
+                aname = aname[:-1] + '...'
+            elif aname[-1] == '?':
+                aname = '[' + aname[:-1] + ']'
+            elif aname[-1] == '*':
+                aname = '[' + aname[:-1] + '...]'
+            s += aname + ' '
+                
+        assert s[-1] == ' '
+        s = s[:-1]
+        return s
+
+    def get_help_text(self):
+        """Return a text string with help for this command."""
+        doc = self.help()
+        if doc is None:
+            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+
+        result = ""
+        result += 'usage:%s\n' % self._usage()
+
+        if self.aliases:
+            result += 'aliases:\n'
+            result += ', '.join(self.aliases) + '\n'
+
+        result += '\n'
+
+        plugin_name = self.plugin_name()
+        if plugin_name is not None:
+            result += '(From plugin "%s")' % plugin_name
+            result += '\n\n'
+
+        result += doc
+        if result[-1] != '\n':
+            result += '\n'
+        result += '\n'
+        result += option.get_optparser(self.options()).format_option_help()
+        see_also = self.get_see_also()
+        if see_also:
+            result += '\nSee also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
+
     def get_see_also(self):
         """Return a list of help topics that are related to this ommand.
         
@@ -288,8 +340,7 @@ class Command(object):
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
-            from bzrlib.help import help_on_command
-            help_on_command(self.name())
+            sys.stdout.write(self.get_help_text())
             return 0
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)

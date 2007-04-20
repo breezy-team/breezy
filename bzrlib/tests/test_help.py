@@ -35,14 +35,22 @@ class TestCommandHelp(tests.TestCase):
             """A sample command."""
             _see_also = ['foo', 'bar']
         cmd = cmd_WithSeeAlso()
-        helpfile = StringIO()
-        help.help_on_command_object(cmd, 'cmd_sample', helpfile)
+        helptext = cmd.get_help_text()
         self.assertEndsWith(
-            helpfile.getvalue(),
+            helptext,
             '  -h, --help  show help message\n'
             '\n'
             'See also: bar, foo\n')
 
+    def test_get_help_text(self):
+        """Commands have a get_help_text method which returns their help."""
+        class cmd_Demo(commands.Command):
+            """A sample command."""
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertStartsWith(helptext, 'usage:bzr Demo')
+        self.assertEndsWith(helptext, 'show help message\n')
+    
 
 class TestRegisteredTopic(tests.TestCase):
     """Tests for the RegisteredTopic class."""

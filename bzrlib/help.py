@@ -42,92 +42,9 @@ def help(topic=None, outfile=None):
     if topics:
         outfile.write(topics[0].get_help_text())
     else:
-        help_on_command(topic, outfile=outfile)
-
-
-def command_usage(cmd_object):
-    """Return single-line grammar for command.
-
-    Only describes arguments, not options.
-    """
-    s = 'bzr ' + cmd_object.name() + ' '
-    for aname in cmd_object.takes_args:
-        aname = aname.upper()
-        if aname[-1] in ['$', '+']:
-            aname = aname[:-1] + '...'
-        elif aname[-1] == '?':
-            aname = '[' + aname[:-1] + ']'
-        elif aname[-1] == '*':
-            aname = '[' + aname[:-1] + '...]'
-        s += aname + ' '
-            
-    assert s[-1] == ' '
-    s = s[:-1]
-    
-    return s
-
-
-def print_command_plugin(cmd_object, outfile, format):
-    """Print the plugin that provides a command object, if any.
-
-    If the cmd_object is provided by a plugin, prints the plugin name to
-    outfile using the provided format string.
-    """
-    plugin_name = cmd_object.plugin_name()
-    if plugin_name is not None:
-        out_str = '(From plugin "%s")' % plugin_name
-        outfile.write(format % out_str)
-
-
-def help_on_command(cmdname, outfile=None):
-    cmdname = str(cmdname)
-    cmd_object = _mod_commands.get_cmd_object(cmdname)
-
-    return help_on_command_object(cmd_object, cmdname, outfile)
-
-
-def help_on_command_object(cmd_object, cmdname, outfile=None):
-    """Generate help on the cmd_object with a supplied name of cmdname.
-
-    :param cmd_object: An instance of a Command.
-    :param cmdname: The user supplied name. This might be an alias for example.
-    :param outfile: A stream to write the help to.
-    """
-    if outfile is None:
-        outfile = sys.stdout
-
-    doc = cmd_object.help()
-    if doc is None:
-        raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
-
-    print >>outfile, 'usage:', command_usage(cmd_object)
-
-    if cmd_object.aliases:
-        print >>outfile, 'aliases:',
-        print >>outfile, ', '.join(cmd_object.aliases)
-
-    print >>outfile
-
-    print_command_plugin(cmd_object, outfile, '%s\n\n')
-
-    outfile.write(doc)
-    if doc[-1] != '\n':
-        outfile.write('\n')
-    help_on_command_options(cmd_object, outfile)
-    see_also = cmd_object.get_see_also()
-    if see_also:
-        outfile.write('\nSee also: ')
-        outfile.write(', '.join(see_also))
-        outfile.write('\n')
-
-
-def help_on_command_options(cmd, outfile=None):
-    from bzrlib.option import Option, get_optparser
-    if outfile is None:
-        outfile = sys.stdout
-    options = cmd.options()
-    outfile.write('\n')
-    outfile.write(get_optparser(options).format_option_help())
+        cmdname = str(topic)
+        cmd_object = _mod_commands.get_cmd_object(cmdname)
+        outfile.write(cmd_object.get_help_text())
 
 
 def help_commands(outfile=None):

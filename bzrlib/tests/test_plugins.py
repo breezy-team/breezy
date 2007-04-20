@@ -160,17 +160,15 @@ class TestPluginHelp(TestCaseInTempDir):
         for cmd_name in bzrlib.commands.builtin_command_names():
             if cmd_name in bzrlib.commands.plugin_command_names():
                 continue
-            help = StringIO()
             try:
-                bzrlib.help.help_on_command(cmd_name, help)
+                help = bzrlib.commands.get_cmd_object(cmd_name).get_help_text()
             except NotImplementedError:
                 # some commands have no help
                 pass
             else:
-                help.seek(0)
-                self.assertNotContainsRe(help.read(), 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
 
-            if help in help_commands.keys():
+            if cmd_name in help_commands.keys():
                 # some commands are hidden
                 help = help_commands[cmd_name]
                 self.assertNotContainsRe(help, 'From plugin "[^"]*"')
