@@ -80,13 +80,16 @@ class UniqueBugTracker(object):
     raise an exception if the bug_id is not valid.
     """
 
-    @classmethod
-    def get(klass, abbreviated_bugtracker_name, branch):
+    def __init__(self, abbreviated_bugtracker_name, base_url):
+        self.abbreviation = abbreviated_bugtracker_name
+        self.base_url = base_url
+
+    def get(self, abbreviated_bugtracker_name, branch):
         """Returns the tracker if the abbreviation matches. Returns None
         otherwise."""
-        if abbreviated_bugtracker_name != klass.abbreviation:
+        if abbreviated_bugtracker_name != self.abbreviation:
             return None
-        return klass()
+        return self
 
     def get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
@@ -110,20 +113,12 @@ class UniqueIntegerBugTracker(UniqueBugTracker):
             raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
 
 
-class LaunchpadTracker(UniqueIntegerBugTracker):
-    """The Launchpad bug tracker."""
-    abbreviation = 'lp'
-    base_url = 'https://launchpad.net/bugs/'
-
-tracker_registry.register('launchpad', LaunchpadTracker)
+tracker_registry.register(
+    'launchpad', UniqueIntegerBugTracker('lp', 'https://launchpad.net/bugs/'))
 
 
-class DebianTracker(UniqueIntegerBugTracker):
-    """The Debian bug tracker."""
-    abbreviation = 'deb'
-    base_url = 'http://bugs.debian.org/'
-
-tracker_registry.register('debian', DebianTracker)
+tracker_registry.register(
+    'debian', UniqueIntegerBugTracker('lp', 'https://launchpad.net/bugs/'))
 
 
 class TracTracker(object):
