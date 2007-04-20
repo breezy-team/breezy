@@ -64,21 +64,15 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection = None
             self._opener = self._opener_class()
 
-            # auth is a (scheme, url, realm, user, password) tuple
-            # scheme and realm will be set once we authenticate
-            # successfully after a 401 error.
-            # Note: some schemes may add other slots
-            self._auth = (None, self.base, None, user, password)
+            authuri = extract_authentication_uri(self.base)
+            self._auth = {'user': user, 'password': password,
+                          'authuri': authuri}
             if user and password is not None: # '' is a valid password
                 # Make the (user, password) available to urllib2
-                pm = self._opener.password_manager
-                pm.add_password(None, extract_authentication_uri(self.base),
-                                user, password)
-            # proxy_auth is a (scheme, url, realm, user, password) tuple
-            # it will be correctly set once we authenticate successfully
-            # after a 407 error.
-            # Note: some schemes may add other slots
-            self._proxy_auth = (None, None, None, None, None)
+                # We default to a realm of None to catch them all.
+                self._opener.password_manager.add_password(None, authuri,
+                                                           user, password)
+            self._proxy_auth = {}
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.

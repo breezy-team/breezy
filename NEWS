@@ -45,7 +45,9 @@ IN DEVELOPMENT
       once the the authentication succeeds. (Vincent Ladeuil).
 
     * urlib http now supports querying the user for a proxy password if
-      needed. (Vincent Ladeuil).
+      needed. Realm is shown in the prompt for both HTTP and proxy
+      authentication when the user is required to type a password. 
+      (Vincent Ladeuil).
 
     * Renamed SmartTransport (and subclasses like SmartTCPTransport) to
       RemoteTransport (and subclasses to RemoteTCPTransport, etc).  This is more
@@ -82,6 +84,12 @@ IN DEVELOPMENT
       and the containing directory is renamed. (The file path is different
       in this versus base, but it isn't marked as a rename).
       (John Arbash Meinel, #103870)
+
+    * Don't preventively use basic authentication for proxy before receiving a
+      407 error. Otherwise people willing to use other authentication schemes
+      may expose their password in the clear. This add one roundtrip in case
+      basic authentication should be used, but plug the security
+      hole. (Vincent Ladeuil)
 
   TESTING:
 
