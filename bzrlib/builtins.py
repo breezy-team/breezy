@@ -2076,7 +2076,8 @@ class cmd_commit(Command):
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
                      ListOption('fixes', type=str,
-                                help="XXX -- fix a bug"),
+                                help="mark a bug as being fixed by this "
+                                     "revision."),
                      Option('local',
                             help="perform a local only commit in a bound "
                                  "branch. Such commits are not pushed to "
