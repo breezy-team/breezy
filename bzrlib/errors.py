@@ -2055,3 +2055,11 @@ class MalformedBugIdentifier(BzrError):
     def __init__(self, bug_id, reason):
         self.bug_id = bug_id
         self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = "Cannot find registered bug tracker for %(abbreviation)s"
+
+    def __init__(self, abbreviation):
+        self.abbreviation = abbreviation

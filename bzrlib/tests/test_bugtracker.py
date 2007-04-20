@@ -16,7 +16,7 @@
 
 
 from bzrlib import bugtracker
-from bzrlib.errors import MalformedBugIdentifier
+from bzrlib import errors
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -41,7 +41,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
     def test_unrecognized_abbreviation(self):
         """If the abbreviation is unrecognized, then raise a KeyError."""
         branch = self.make_branch('some_branch')
-        self.assertRaises(KeyError,
+        self.assertRaises(errors.UnknownBugTrackerAbbreviation,
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
 
 
@@ -82,7 +82,8 @@ class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
         """An UniqueIntegerBugTracker only accepts integers as bug IDs."""
         tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
         self.assertEqual(None, tracker.check_bug_id('1234'))
-        self.assertRaises(MalformedBugIdentifier, tracker.check_bug_id, 'red')
+        self.assertRaises(
+            errors.MalformedBugIdentifier, tracker.check_bug_id, 'red')
 
 
 class TestTracTracker(TestCaseWithMemoryTransport):
@@ -119,4 +120,5 @@ class TestTracTracker(TestCaseWithMemoryTransport):
         get_bug_url should raise an error.
         """
         tracker = bugtracker.TracTracker(self.trac_url)
-        self.assertRaises(MalformedBugIdentifier, tracker.get_bug_url, 'bad')
+        self.assertRaises(
+            errors.MalformedBugIdentifier, tracker.get_bug_url, 'bad')

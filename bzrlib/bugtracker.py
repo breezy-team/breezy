@@ -60,8 +60,7 @@ class TrackerRegistry(registry.Registry):
             tracker = tracker_type.get(abbreviated_bugtracker_name, branch)
             if tracker is not None:
                 return tracker
-        raise KeyError("No tracker found for %r on %r"
-                       % (abbreviated_bugtracker_name, branch))
+        raise errors.UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name)
 
 
 tracker_registry = TrackerRegistry()

@@ -233,6 +233,19 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_malformed_bug_identifier(self):
+        """Test the formatting of MalformedBugIdentifier."""
+        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
+        self.assertEqual(
+            "Did not understand bug identifier bogus: reason for bogosity",
+            str(error))
+
+    def test_unknown_bug_tracker_abbreviation(self):
+        """Test the formatting of UnknownBugTrackerAbbreviation."""
+        error = errors.UnknownBugTrackerAbbreviation('xxx')
+        self.assertEqual(
+            "Cannot find registered bug tracker for xxx",
+            str(error))
 
 
 class PassThroughError(errors.BzrError):
