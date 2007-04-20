@@ -275,3 +275,7 @@ class RegisteredTopic(object):
         :param topic: The name of the topic that this represents.
         """
         self.topic = topic
+
+    def get_help_text(self):
+        """Return a string with the help for this topic."""
+        return topic_registry.get_detail(self.topic)
