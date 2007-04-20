@@ -32,30 +32,36 @@ particularly given that many users will be using only a single bug tracker per
 branch.
 
 Thus, this module provides a registry of types of bug tracker (e.g. Launchpad,
-Trac). Given a short-hand tag (e.g. 'lp', 'twisted') and a branch with
+Trac). Given an abbreviated name (e.g. 'lp', 'twisted') and a branch with
 configuration information, these tracker types can return an instance capable
 of converting bug IDs into URLs.
 """
 
 
-def get_bug_url(tag, branch, bug_id):
-    """Return a URL pointing to the bug identified by 'bug_id'."""
-    return tracker_registry.get_tracker(tag, branch).get_bug_url(bug_id)
+def get_bug_url(abbreviated_bugtracker_name, branch, bug_id):
+    """Return a URL pointing to the canonical web page of the bug identified by
+    'bug_id'.
+    """
+    tracker = tracker_registry.get_tracker(abbreviated_bugtracker_name, branch)
+    return tracker.get_bug_url(bug_id)
 
 
 class TrackerRegistry(registry.Registry):
     """Registry of bug tracker types."""
 
-    def get_tracker(self, tag, branch):
-        """Return the first registered tracker that understands 'tag'.
+    def get_tracker(self, abbreviated_bugtracker_name, branch):
+        """Return the first registered tracker that understands
+        'abbreviated_bugtracker_name'.
 
         If no such tracker is found, raise KeyError.
         """
-        for tracker_name, tracker_type in self.iteritems():
-            tracker = tracker_type.get(tag, branch)
+        for tracker_name in self.keys():
+            tracker_type = self.get(tracker_name)
+            tracker = tracker_type.get(abbreviated_bugtracker_name, branch)
             if tracker is not None:
                 return tracker
-        raise KeyError("No tracker found for %r on %r" % (tag, branch))
+        raise KeyError("No tracker found for %r on %r"
+                       % (abbreviated_bugtracker_name, branch))
 
 
 tracker_registry = TrackerRegistry()
@@ -66,18 +72,19 @@ class UniqueBugTracker(object):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then subclass this and add attributes
-    named 'tag' and 'base_url'. The former is the tag that the user will use
-    on the command line. The latter is the url that the bug ids will be
-    appended to.
+    named 'abbreviated_bugtracker_name' and 'base_url'. The former is the
+    abbreviation that the user will use on the command line. The latter is the
+    url that the bug ids will be appended to.
 
     If the bug_id must have a special form then override check_bug_id and
     raise an exception if the bug_id is not valid.
     """
 
     @classmethod
-    def get(klass, tag, branch):
-        """Returns the tracker if the tag matches. Returns None otherwise."""
-        if tag != klass.tag:
+    def get(klass, abbreviated_bugtracker_name, branch):
+        """Returns the tracker if the abbreviation matches. Returns None
+        otherwise."""
+        if abbreviated_bugtracker_name != klass.abbreviated_bugtracker_name:
             return None
         return klass()
 
@@ -105,7 +112,7 @@ class UniqueIntegerBugTracker(UniqueBugTracker):
 
 class LaunchpadTracker(UniqueIntegerBugTracker):
     """The Launchpad bug tracker."""
-    tag = 'lp'
+    abbreviated_bugtracker_name = 'lp'
     base_url = 'https://launchpad.net/bugs/'
 
 tracker_registry.register('launchpad', LaunchpadTracker)
@@ -113,7 +120,7 @@ tracker_registry.register('launchpad', LaunchpadTracker)
 
 class DebianTracker(UniqueIntegerBugTracker):
     """The Debian bug tracker."""
-    tag = 'deb'
+    abbreviated_bugtracker_name = 'deb'
     base_url = 'http://bugs.debian.org/'
 
 tracker_registry.register('debian', DebianTracker)
@@ -123,15 +130,17 @@ class TracTracker(object):
     """A Trac instance."""
 
     @classmethod
-    def get(klass, tag, branch):
-        """Return a TracTracker for the given tag.
+    def get(klass, abbreviated_bugtracker_name, branch):
+        """Return a TracTracker for the given abbreviation.
 
-        Looks in the configuration of 'branch' for a 'trac_<tag>_url' setting,
-        which should refer to the base URL of a project's Trac instance.
-        e.g.
+        Looks in the configuration of 'branch' for a 'trac_<abbreviation>_url'
+        setting, which should refer to the base URL of a project's Trac
+        instance. e.g.
             trac_twisted_url = http://twistedmatrix.com
         """
-        url = branch.get_config().get_user_option('trac_%s_url' % (tag,))
+        config = branch.get_config()
+        url = config.get_user_option(
+            'trac_%s_url' % (abbreviated_bugtracker_name,))
         if url is None:
             return None
         return klass(url)

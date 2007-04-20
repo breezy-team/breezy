@@ -38,8 +38,8 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
         self.assertEqual('%s/ticket/1234' % trac_url,
                          bugtracker.get_bug_url('twisted', branch, '1234'))
 
-    def test_unrecognized_tag(self):
-        """If the tag is unrecognized, then raise a KeyError."""
+    def test_unrecognized_abbreviation(self):
+        """If the abbreviation is unrecognized, then raise a KeyError."""
         branch = self.make_branch('some_branch')
         self.assertRaises(KeyError,
                           bugtracker.get_bug_url, 'xxx', branch, '1234')
@@ -60,25 +60,25 @@ class TestUniqueBugTracker(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
         self.assertEqual('http://bugs.com/red', tracker.get_bug_url('red'))
 
-    def test_returns_tracker_if_tag_matches(self):
+    def test_returns_tracker_if_abbreviation_matches(self):
         """The get() classmethod should return an instance of the tracker if
-        the given tag matches the tracker's tag.
+        the given abbreviation matches the tracker's abbreviated name.
         """
         class SomeTracker(bugtracker.UniqueBugTracker):
-            tag = 'xxx'
+            abbreviated_bugtracker_name = 'xxx'
             base_url = 'http://bugs.com'
 
         branch = self.make_branch('some_branch')
         tracker = SomeTracker.get('xxx', branch)
-        self.assertEqual('xxx', tracker.tag)
+        self.assertEqual('xxx', tracker.abbreviated_bugtracker_name)
         self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
 
-    def test_returns_none_if_tag_doesnt_match(self):
-        """The get() classmethod should return None if the given tag doesn't
-        match the tracker's tag.
+    def test_returns_none_if_abbreviation_doesnt_match(self):
+        """The get() classmethod should return None if the given abbreviated
+        name doesn't match the tracker's abbreviation.
         """
         class SomeTracker(bugtracker.UniqueBugTracker):
-            tag = 'xxx'
+            abbreviated_bugtracker_name = 'xxx'
             base_url = 'http://bugs.com'
 
         branch = self.make_branch('some_branch')
