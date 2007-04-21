@@ -21,6 +21,9 @@ IN DEVELOPMENT
       documentation, and the bzr.1 man page also include this information.
       (Robert Collins)
 
+    * New help topics: ``urlspec``
+      This topics lists the availables transports
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -83,6 +86,9 @@ IN DEVELOPMENT
 
     * Command objects can now declare related help topics by having _see_also
       set to a list of related topic. (Robert Collins)
+
+    * New class 'TransportListRegistry', derived by the Register class, which 
+      simplifies the tracking available Transports.
 
   BUGFIXES:
 
