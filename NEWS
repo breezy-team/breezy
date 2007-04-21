@@ -21,6 +21,9 @@ IN DEVELOPMENT
       documentation, and the bzr.1 man page also include this information.
       (Robert Collins)
 
+    * Tags are now included in logs, that use the long log formatter. 
+      (Erik Bågfors, Alexander Belchenko)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
