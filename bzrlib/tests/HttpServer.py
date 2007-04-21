@@ -45,7 +45,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     """Handles one request.
 
     A TestingHTTPRequestHandler is instantiated for every request
-    recevied by the associated server.
+    received by the associated server.
     """
 
     def log_message(self, format, *args):

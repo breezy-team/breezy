@@ -30,9 +30,6 @@ connection even for requests that urllib2 doesn't expect to contain body data.
 
 And a custom Request class that lets us track redirections, and
 handle authentication schemes.
-
-We also create a Request hierarchy, to make it clear what type of
-request is being made.
 """
 
 DEBUG = 0
@@ -149,7 +146,6 @@ class Request(urllib2.Request):
 
     The Request object tracks:
     - the connection the request will be made on.
-
     - the authentication parameters needed to preventively set
       the authentication header once a first authentication have
        been made.
@@ -725,11 +721,11 @@ class ProxyHandler(urllib2.ProxyHandler):
             # No proxy auth parameter are available, we are
             # handling the first proxied request, intialize.
             # scheme and realm will be set by the AuthHandler
-            # We default to a realm of None to catch them all.
             authuri = extract_authentication_uri(proxy)
             request.proxy_auth = {'user': user, 'password': password,
                                   'authuri': authuri}
             if user and password is not None: # '' is a valid password
+                # We default to a realm of None to catch them all.
                 self.password_manager.add_password(None, authuri,
                                                    user, password)
         orig_type = request.get_type()
