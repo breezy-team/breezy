@@ -124,6 +124,9 @@ IN DEVELOPMENT
     * "dirstate" and "dirstate-tags" formats now produce branches compatible
       with old versions of bzr. (Aaron Bentley, #107168))
 
+    * Handle moving a directory when children have been added, removed,
+      and renamed. (John Arbash Meinel, #105479)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and

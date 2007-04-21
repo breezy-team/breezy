@@ -670,7 +670,6 @@ class WorkingTree4(WorkingTree3):
             new_entry = to_block[1][added_entry_index]
             rollbacks.append(lambda:state._make_absent(new_entry))
 
-        # create rename entries and tuples
         for from_rel in from_paths:
             # from_rel is 'pathinroot/foo/bar'
             from_rel_utf8 = from_rel.encode('utf8')
@@ -774,11 +773,7 @@ class WorkingTree4(WorkingTree3):
 
                 if minikind == 'd':
                     def update_dirblock(from_dir, to_key, to_dir_utf8):
-                        """all entries in this block need updating.
-
-                        TODO: This is pretty ugly, and doesn't support
-                        reverting, but it works.
-                        """
+                        """Recursively update all entries in this dirblock."""
                         assert from_dir != '', "renaming root not supported"
                         from_key = (from_dir, '')
                         from_block_idx, present = \
@@ -795,13 +790,21 @@ class WorkingTree4(WorkingTree3):
                         to_block_index = state._ensure_block(
                             to_block_index, to_entry_index, to_dir_utf8)
                         to_block = state._dirblocks[to_block_index]
-                        for entry in from_block[1]:
+
+                        # Grab a copy since move_one may update the list.
+                        for entry in from_block[1][:]:
                             assert entry[0][0] == from_dir
                             cur_details = entry[1][0]
                             to_key = (to_dir_utf8, entry[0][1], entry[0][2])
                             from_path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
                             to_path_utf8 = osutils.pathjoin(to_dir_utf8, entry[0][1])
                             minikind = cur_details[0]
+                            if minikind in 'ar':
+                                # Deleted children of a renamed directory
+                                # Do not need to be updated.
+                                # Children that have been renamed out of this
+                                # directory should also not be updated
+                                continue
                             move_one(entry, from_path_utf8=from_path_utf8,
                                      minikind=minikind,
                                      executable=cur_details[3],
@@ -1920,6 +1923,9 @@ class InterDirStateTree(InterTree):
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = state._get_entry(target_index,
                                                            path_utf8=new_dirname)
+                    assert target_parent_entry != (None, None), (
+                        "Could not find target parent in wt: %s\nparent of: %s"
+                        % (new_dirname, entry))
                     target_parent_id = target_parent_entry[0][2]
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
