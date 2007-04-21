@@ -34,6 +34,7 @@ from bzrlib import (
     lockdir,
     osutils,
     registry,
+    remote,
     revision as _mod_revision,
     symbol_versioning,
     transactions,
@@ -1210,10 +1211,12 @@ class RepositoryFormat(object):
 
         :param a_bzrdir: The bzrdir to put the new repository in it.
         :param shared: The repository should be initialized as a sharable one.
-
+        :returns: The new repository object.
+        
         This may raise UninitializableFormat if shared repository are not
         compatible the a_bzrdir.
         """
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?
@@ -1687,11 +1690,51 @@ class InterKnit1and2(InterKnitRepo):
         return f.count_copied, f.failed_revisions
 
 
+class InterRemoteRepository(InterRepository):
+    """Code for converting between RemoteRepository objects.
+
+    This just gets an non-remote repository from the RemoteRepository, and calls
+    InterRepository.get again.
+    """
+
+    def __init__(self, source, target):
+        if isinstance(source, remote.RemoteRepository):
+            source._ensure_real()
+            real_source = source._real_repository
+        else:
+            real_source = source
+        if isinstance(target, remote.RemoteRepository):
+            target._ensure_real()
+            real_target = target._real_repository
+        else:
+            real_target = target
+        self.real_inter = InterRepository.get(real_source, real_target)
+
+    @staticmethod
+    def is_compatible(source, target):
+        if isinstance(source, remote.RemoteRepository):
+            return True
+        if isinstance(target, remote.RemoteRepository):
+            return True
+        return False
+
+    def copy_content(self, revision_id=None):
+        self.real_inter.copy_content(revision_id=revision_id)
+
+    def fetch(self, revision_id=None, pb=None):
+        self.real_inter.fetch(revision_id=revision_id, pb=pb)
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
+InterRepository.register_optimiser(InterRemoteRepository)
 
 
 class RepositoryTestProviderAdapter(object):
@@ -1703,9 +1746,11 @@ class RepositoryTestProviderAdapter(object):
     to make it easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, transport_server, transport_readonly_server, formats,
+                 vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
+        self._vfs_transport_factory = vfs_transport_factory
         self._formats = formats
     
     def adapt(self, test):
@@ -1715,6 +1760,10 @@ class RepositoryTestProviderAdapter(object):
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
+            # Only override the test's vfs_transport_factory if one was
+            # specified, otherwise just leave the default in place.
+            if self._vfs_transport_factory:
+                new_test.vfs_transport_factory = self._vfs_transport_factory
             new_test.bzrdir_format = bzrdir_format
             new_test.repository_format = repository_format
             def make_new_test_id():

@@ -199,3 +199,9 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 # TODO: SmartBzrDir class, proxying all Branch etc methods across to another
 # branch doing file-level operations.
 #
+
+
+# Promote some attributes from submodules into this namespace
+from bzrlib.smart.request import SmartServerRequestHandler
+
+

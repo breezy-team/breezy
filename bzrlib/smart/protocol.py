@@ -340,4 +340,3 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
 
-

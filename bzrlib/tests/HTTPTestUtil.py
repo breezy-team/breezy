@@ -25,6 +25,7 @@ import time
 import urllib2
 import urlparse
 
+from bzrlib.smart import protocol
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HttpServer import (
     HttpServer,
@@ -33,7 +34,6 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.transport import (
     get_transport,
     )
-from bzrlib.smart import protocol
 
 
 class WallRequestHandler(TestingHTTPRequestHandler):

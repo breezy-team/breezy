@@ -233,6 +233,15 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def get_see_also(self):
+        """Return a list of help topics that are related to this ommand.
+        
+        The list is derived from the content of the _see_also attribute. Any
+        duplicates are removed and the result is in lexical order.
+        :return: A list of help topics.
+        """
+        return sorted(set(getattr(self, '_see_also', [])))
+
     def options(self):
         """Return dict of valid options for this command.
 

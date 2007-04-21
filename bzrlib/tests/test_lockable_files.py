@@ -20,8 +20,10 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib import lockdir
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
                                  ReadOnlyTransaction,
@@ -42,7 +44,7 @@ class _TestLockableFiles_mixin(object):
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo', 
+            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
                               StringIO(unicode_string))
             self.lockable.put('foo', StringIO(byte_string))
             self.assertEqual(byte_string,
@@ -358,3 +360,26 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     # TODO: Test the lockdir inherits the right file and directory permissions
     # from the LockableFiles.
+        
+
+class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
+                              _TestLockableFiles_mixin):
+    """LockableFile tests run with RemoteLockDir on a branch."""
+
+    def setUp(self):
+        TestCaseWithSmartMedium.setUp(self)
+        # can only get a RemoteLockDir with some RemoteObject...
+        # use a branch as thats what we want. These mixin tests test the end
+        # to end behaviour, so stubbing out the backend and simulating would
+        # defeat the purpose. We test the protocol implementation separately
+        # in test_remote and test_smart as usual.
+        b = self.make_branch('foo')
+        self.addCleanup(b.bzrdir.transport.disconnect)
+        self.transport = get_transport('.')
+        self.lockable = self.get_lockable()
+
+    def get_lockable(self):
+        # getting a new lockable involves opening a new instance of the branch
+        branch = bzrlib.branch.Branch.open(self.get_url('foo'))
+        self.addCleanup(branch.bzrdir.transport.disconnect)
+        return branch.control_files
