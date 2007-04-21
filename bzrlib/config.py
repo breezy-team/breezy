@@ -1,5 +1,6 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -839,7 +840,7 @@ class TreeConfig(IniBasedConfig):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
                             encoding='utf-8')
         except errors.NoSuchFile:
             obj = ConfigObj(encoding='utf=8')

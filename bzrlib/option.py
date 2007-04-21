@@ -26,6 +26,7 @@ import optparse
 from bzrlib import (
     errors,
     log,
+    registry,
     revisionspec,
     symbol_versioning,
     )
@@ -226,7 +227,7 @@ class RegistryOption(Option):
             return self.converter(value)
 
     def __init__(self, name, help, registry, converter=None,
-        value_switches=False, title=None):
+        value_switches=False, title=None, enum_switch=True):
         """
         Constructor.
 
@@ -236,29 +237,53 @@ class RegistryOption(Option):
         :param converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
         :param value_switches: If true, each possible value is assigned its
-            own switch.  For example, instead of '--format metaweave',
-            '--metaweave' can be used interchangeably.
+            own switch.  For example, instead of '--format knit',
+            '--knit' can be used interchangeably.
+        :param enum_switch: If true, a switch is provided with the option name,
+            which takes a value.
         """
         Option.__init__(self, name, help, type=self.convert)
         self.registry = registry
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
+        self.enum_switch = enum_switch
         self.title = title
         if self.title is None:
             self.title = name
+
+    @staticmethod
+    def from_kwargs(name_, help=None, title=None, value_switches=False,
+                    enum_switch=True, **kwargs):
+        """Convenience method to generate string-map registry options
+
+        name, help, value_switches and enum_switch are passed to the
+        RegistryOption constructor.  Any other keyword arguments are treated
+        as values for the option, and they value is treated as the help.
+        """
+        reg = registry.Registry()
+        for name, help in kwargs.iteritems():
+            name = name.replace('_', '-')
+            reg.register(name, name, help=help)
+        return RegistryOption(name_, help, reg, title=title,
+            value_switches=value_switches, enum_switch=enum_switch)
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
         if self.value_switches:
             parser = parser.add_option_group(self.title)
-        Option.add_option(self, parser, short_name)
+        if self.enum_switch:
+            Option.add_option(self, parser, short_name)
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]
+                if getattr(self.registry.get_info(key), 'hidden', False):
+                    help = optparse.SUPPRESS_HELP
+                else:
+                    help = self.registry.get_help(key)
                 parser.add_option(action='callback',
                               callback=self._optparse_value_callback(key),
-                                  help=self.registry.get_help(key),
+                                  help=help,
                                   *option_strings)
 
     def _optparse_value_callback(self, cb_value):
@@ -306,6 +331,19 @@ def _global_registry_option(name, help, registry, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
+class MergeTypeRegistry(registry.Registry):
+
+    pass
+
+
+_merge_type_registry = MergeTypeRegistry()
+_merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
+                                   "Native diff3-style merge")
+_merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
+                                   "Merge using external diff3")
+_merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
+                                   "Weave-based merge")
+
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
@@ -349,8 +387,9 @@ _global_option('short', help='Use moderately short log format. Same as --log-for
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_option('merge-type', type=_parse_merge_type, 
-               help='Select a particular merge algorithm')
+_global_registry_option('merge-type', 'Select a particular merge algorithm',
+                        _merge_type_registry, value_switches=True,
+                        title='Merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'

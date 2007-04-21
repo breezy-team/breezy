@@ -51,6 +51,12 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, 'ancestor:')
         self.assertContainsRe(out, 'branch:')
 
+    def test_help_checkouts(self):
+        """Smoke test for 'bzr help checkouts'"""
+        out, err = self.runbzr('help checkouts')
+        self.assertContainsRe(out, 'checkout')
+        self.assertContainsRe(out, 'lightweight')
+        
     def test_help_urlspec(self):
         """Smoke test for 'bzr help urlspec'"""
         out, err = self.run_bzr('help', 'urlspec')

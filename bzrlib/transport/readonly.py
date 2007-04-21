@@ -16,7 +16,7 @@
 
 """Implementation of Transport that adapts another transport to be readonly."""
 
-from bzrlib.errors import TransportNotPossible
+from bzrlib.errors import TransportNotPossible, NoSmartServer, NoSmartMedium
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
@@ -70,6 +70,13 @@ class ReadonlyTransportDecorator(TransportDecorator):
     def lock_write(self, relpath):
         """See Transport.lock_write."""
         raise TransportNotPossible('readonly transport')
+
+    def get_smart_client(self):
+        raise NoSmartServer(self.base)
+
+    def get_smart_medium(self):
+        raise NoSmartMedium(self)
+
 
 
 class ReadonlyServer(DecoratorServer):

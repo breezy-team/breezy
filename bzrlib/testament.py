@@ -98,7 +98,7 @@ class Testament(object):
 
     def __init__(self, rev, inventory):
         """Create a new testament for rev using inventory."""
-        self.revision_id = str(rev.revision_id)
+        self.revision_id = rev.revision_id
         self.committer = rev.committer
         self.timezone = rev.timezone or 0
         self.timestamp = rev.timestamp
@@ -166,7 +166,7 @@ class Testament(object):
             content_spacer = ' '
 
         l = u'  %s %s %s%s%s\n' % (ie.kind, self._escape_path(path),
-                                   unicode(ie.file_id),
+                                   ie.file_id.decode('utf8'),
                                    content_spacer, content)
         return l
 

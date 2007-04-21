@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import re
 
 from bzrlib import (
     cache_utf8,
+    errors,
     inventory,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
@@ -28,7 +29,8 @@ from bzrlib.errors import BzrError
 
 
 _utf8_re = None
-_utf8_escape_map = {
+_unicode_re = None
+_xml_escape_map = {
     "&":'&amp;',
     "'":"&apos;", # FIXME: overkill
     "\"":"&quot;",
@@ -38,14 +40,15 @@ _utf8_escape_map = {
 
 
 def _ensure_utf8_re():
-    """Make sure the _utf8_re regex has been compiled"""
-    global _utf8_re
-    if _utf8_re is not None:
-        return
-    _utf8_re = re.compile(u'[&<>\'\"\u0080-\uffff]')
+    """Make sure the _utf8_re and _unicode_re regexes have been compiled."""
+    global _utf8_re, _unicode_re
+    if _utf8_re is None:
+        _utf8_re = re.compile('[&<>\'\"]|[\x80-\xff]+')
+    if _unicode_re is None:
+        _unicode_re = re.compile(u'[&<>\'\"\u0080-\uffff]')
 
 
-def _utf8_escape_replace(match, _map=_utf8_escape_map):
+def _unicode_escape_replace(match, _map=_xml_escape_map):
     """Replace a string of non-ascii, non XML safe characters with their escape
 
     This will escape both Standard XML escapes, like <>"', etc.
@@ -64,29 +67,74 @@ def _utf8_escape_replace(match, _map=_utf8_escape_map):
         return "&#%d;" % ord(match.group())
 
 
-_unicode_to_escaped_map = {}
+def _utf8_escape_replace(match, _map=_xml_escape_map):
+    """Escape utf8 characters into XML safe ones.
 
-def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
+    This uses 2 tricks. It is either escaping "standard" characters, like "&<>,
+    or it is handling characters with the high-bit set. For ascii characters,
+    we just lookup the replacement in the dictionary. For everything else, we
+    decode back into Unicode, and then use the XML escape code.
+    """
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return ''.join('&#%d;' % ord(uni_chr)
+                       for uni_chr in match.group().decode('utf8'))
+
+
+_to_escaped_map = {}
+
+def _encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     """Encode the string into utf8, and escape invalid XML characters"""
     # We frequently get entities we have not seen before, so it is better
     # to check if None, rather than try/KeyError
-    text = _map.get(unicode_str)
+    text = _map.get(unicode_or_utf8_str)
     if text is None:
-        # The alternative policy is to do a regular UTF8 encoding
-        # and then escape only XML meta characters.
-        # Performance is equivalent once you use cache_utf8. *However*
-        # this makes the serialized texts incompatible with old versions
-        # of bzr. So no net gain. (Perhaps the read code would handle utf8
-        # better than entity escapes, but cElementTree seems to do just fine
-        # either way)
-        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str)) + '"'
-        _map[unicode_str] = text
+        if unicode_or_utf8_str.__class__ == unicode:
+            # The alternative policy is to do a regular UTF8 encoding
+            # and then escape only XML meta characters.
+            # Performance is equivalent once you use cache_utf8. *However*
+            # this makes the serialized texts incompatible with old versions
+            # of bzr. So no net gain. (Perhaps the read code would handle utf8
+            # better than entity escapes, but cElementTree seems to do just fine
+            # either way)
+            text = str(_unicode_re.sub(_unicode_escape_replace,
+                                       unicode_or_utf8_str)) + '"'
+        else:
+            # Plain strings are considered to already be in utf-8 so we do a
+            # slightly different method for escaping.
+            text = _utf8_re.sub(_utf8_escape_replace,
+                                unicode_or_utf8_str) + '"'
+        _map[unicode_or_utf8_str] = text
     return text
+
+
+def _get_utf8_or_ascii(a_str,
+                       _encode_utf8=cache_utf8.encode,
+                       _get_cached_ascii=cache_utf8.get_cached_ascii):
+    """Return a cached version of the string.
+
+    cElementTree will return a plain string if the XML is plain ascii. It only
+    returns Unicode when it needs to. We want to work in utf-8 strings. So if
+    cElementTree returns a plain string, we can just return the cached version.
+    If it is Unicode, then we need to encode it.
+
+    :param a_str: An 8-bit string or Unicode as returned by
+                  cElementTree.Element.get()
+    :return: A utf-8 encoded 8-bit string.
+    """
+    # This is fairly optimized because we know what cElementTree does, this is
+    # not meant as a generic function for all cases. Because it is possible for
+    # an 8-bit string to not be ascii or valid utf8.
+    if a_str.__class__ == unicode:
+        return _encode_utf8(a_str)
+    else:
+        return _get_cached_ascii(a_str)
 
 
 def _clear_cache():
     """Clean out the unicode => escaped map"""
-    _unicode_to_escaped_map.clear()
+    _to_escaped_map.clear()
 
 
 class Serializer_v5(Serializer):
@@ -100,6 +148,8 @@ class Serializer_v5(Serializer):
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
+
+    supported_kinds = set(['file', 'directory', 'symlink'])
 
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
@@ -143,8 +193,8 @@ class Serializer_v5(Serializer):
     def _append_entry(self, append, ie):
         """Convert InventoryEntry to XML element and append to output."""
         # TODO: should just be a plain assertion
-        assert InventoryEntry.versionable_kind(ie.kind), \
-            'unsupported entry kind %s' % ie.kind
+        if ie.kind not in self.supported_kinds:
+            raise errors.UnsupportedInventoryKind(ie.kind)
 
         append("<")
         append(ie.kind)
@@ -170,6 +220,9 @@ class Serializer_v5(Serializer):
             append('"')
         if ie.text_size is not None:
             append(' text_size="%d"' % ie.text_size)
+        if getattr(ie, 'reference_revision', None) is not None:
+            append(' reference_revision="')
+            append(_encode_and_escape(ie.reference_revision))
         append(" />\n")
         return
 
@@ -178,10 +231,17 @@ class Serializer_v5(Serializer):
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
+        # For the XML format, we need to write them as Unicode rather than as
+        # utf-8 strings. So that cElementTree can handle properly escaping
+        # them.
+        decode_utf8 = cache_utf8.decode
+        revision_id = rev.revision_id
+        if isinstance(revision_id, str):
+            revision_id = decode_utf8(revision_id)
         root = Element('revision',
                        committer = rev.committer,
                        timestamp = '%.3f' % rev.timestamp,
-                       revision_id = rev.revision_id,
+                       revision_id = revision_id,
                        inventory_sha1 = rev.inventory_sha1,
                        format='5',
                        )
@@ -198,6 +258,8 @@ class Serializer_v5(Serializer):
                 assert isinstance(parent_id, basestring)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
+                if isinstance(parent_id, str):
+                    parent_id = decode_utf8(parent_id)
                 p.set('revision_id', parent_id)
         if rev.properties:
             self._pack_revision_properties(rev, root)
@@ -219,6 +281,8 @@ class Serializer_v5(Serializer):
         """
         assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
+        root_id = _get_utf8_or_ascii(root_id)
+
         format = elt.get('format')
         if format is not None:
             if format != '5':
@@ -226,34 +290,26 @@ class Serializer_v5(Serializer):
                                 % format)
         revision_id = elt.get('revision_id')
         if revision_id is not None:
-            revision_id = cache_utf8.get_cached_unicode(revision_id)
+            revision_id = cache_utf8.encode(revision_id)
         inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)
-            if ie.parent_id == ROOT_ID:
+            if ie.parent_id is None:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
-    def _unpack_entry(self, elt, none_parents=False):
+    def _unpack_entry(self, elt):
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
-        get_cached = cache_utf8.get_cached_unicode
+        get_cached = _get_utf8_or_ascii
 
         parent_id = elt.get('parent_id')
-        if parent_id is None and not none_parents:
-            parent_id = ROOT_ID
-        # TODO: jam 20060817 At present, caching file ids costs us too 
-        #       much time. It slows down overall read performances from
-        #       approx 500ms to 700ms. And doesn't improve future reads.
-        #       it might be because revision ids and file ids are mixing.
-        #       Consider caching *just* the file ids, for a limited period
-        #       of time.
-        #parent_id = get_cached(parent_id)
-        #file_id = get_cached(elt.get('file_id'))
-        file_id = elt.get('file_id')
+        if parent_id is not None:
+            parent_id = get_cached(parent_id)
+        file_id = get_cached(elt.get('file_id'))
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
@@ -274,7 +330,7 @@ class Serializer_v5(Serializer):
                                          parent_id)
             ie.symlink_target = elt.get('symlink_target')
         else:
-            raise BzrError("unknown kind %r" % kind)
+            raise errors.UnsupportedInventoryKind(kind)
         revision = elt.get('revision')
         if revision is not None:
             revision = get_cached(revision)
@@ -290,7 +346,7 @@ class Serializer_v5(Serializer):
             if format != '5':
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
-        get_cached = cache_utf8.get_cached_unicode
+        get_cached = _get_utf8_or_ascii
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
                        revision_id = get_cached(elt.get('revision_id')),

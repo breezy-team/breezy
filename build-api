@@ -1,3 +1,0 @@
-#!/bin/bash
-mkdir -p api
-PYTHONPATH=$PWD epydoc -o api/html --docformat restructuredtext bzr bzrlib

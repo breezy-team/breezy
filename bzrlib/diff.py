@@ -30,6 +30,7 @@ from bzrlib import (
     osutils,
     patiencediff,
     textfile,
+    timestamp,
     )
 """)
 
@@ -95,14 +96,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     print >>to_file
 
 
-def _set_lang_C():
-    """Set the env vars LANG=C and LC_ALL=C."""
-    osutils.set_or_unset_env('LANG', 'C')
-    osutils.set_or_unset_env('LC_ALL', 'C')
-    osutils.set_or_unset_env('LC_CTYPE', None)
-    osutils.set_or_unset_env('LANGUAGE', None)
-
-
 def _spawn_external_diff(diffcmd, capture_errors=True):
     """Spawn the externall diff process, and return the child handle.
 
@@ -113,15 +106,17 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     :return: A Popen object.
     """
     if capture_errors:
-        if sys.platform == 'win32':
-            # Win32 doesn't support preexec_fn, but that is
-            # okay, because it doesn't support LANG and LC_ALL either.
-            preexec_fn = None
-        else:
-            preexec_fn = _set_lang_C
+        # construct minimal environment
+        env = {}
+        path = os.environ.get('PATH')
+        if path is not None:
+            env['PATH'] = path
+        env['LANGUAGE'] = 'C'   # on win32 only LANGUAGE has effect
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
         stderr = subprocess.PIPE
     else:
-        preexec_fn = None
+        env = None
         stderr = None
 
     try:
@@ -129,7 +124,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=stderr,
-                                preexec_fn=preexec_fn)
+                                env=env)
     except OSError, e:
         if e.errno == errno.ENOENT:
             raise errors.NoDiff(str(e))
@@ -397,6 +392,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     """
     old_tree.lock_read()
     try:
+        if extra_trees is not None:
+            for tree in extra_trees:
+                tree.lock_read()
         new_tree.lock_read()
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
@@ -405,6 +403,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                                     extra_trees=extra_trees)
         finally:
             new_tree.unlock()
+            if extra_trees is not None:
+                for tree in extra_trees:
+                    tree.unlock()
     finally:
         old_tree.unlock()
 
@@ -470,8 +471,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
-        old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id, path))
+        # The file may be in a different location in the old tree (because
+        # the containing dir was renamed, but the file itself was not)
+        old_path = old_tree.id2path(file_id)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id, old_path))
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
         if text_modified:
@@ -484,8 +488,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    tm = time.gmtime(tree.get_file_mtime(file_id, path))
-    return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
+    mtime = tree.get_file_mtime(file_id, path)
+    assert mtime is not None, \
+        "got an mtime of None for file-id %s, path %s in tree %s" % (
+                file_id, path, tree)
+    return timestamp.format_patch_date(mtime)
 
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):

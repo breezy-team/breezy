@@ -62,11 +62,12 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
              specific_files, extra_trees, require_versioned, 
-             include_root)
+             include_root, want_unversioned)
             )
     
     @classmethod
@@ -98,16 +99,17 @@ class TestTree(TestCaseWithTransport):
                 extra_trees='extra',
                 require_versioned='require',
                 include_root=True,
+                want_unversioned=True,
                 )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', tree2, tree, False, None, None, False, False),
+             ('compare', tree2, tree, False, None, None, False, False, False),
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True),
+              'require', True, False),
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True),
+              'require', True, True),
             ], RecordingOptimiser.calls)
 
     def test_changes_from_with_root(self):

@@ -22,7 +22,8 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.transport import chroot, get_transport, smart
+from bzrlib.smart import protocol
+from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
 
@@ -94,8 +95,15 @@ class SmartWSGIApp(object):
         # accidentally let people access locations they shouldn't.
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
-        self.backing_transport = chroot.ChrootTransportDecorator(
-            'chroot+' + backing_transport.base, _decorated=backing_transport)
+        self.chroot_server = chroot.ChrootServer(backing_transport)
+        self.chroot_server.setUp()
+        self.backing_transport = get_transport(self.chroot_server.get_url())
+        # While the chroot server can technically be torn down at this point,
+        # as all it does is remove the scheme registration from transport's 
+        # protocol dictionary, we don't *just in case* there are parts of 
+        # bzrlib that will invoke 'get_transport' on urls rather than cloning
+        # around the existing transport.
+        #self.chroot_server.tearDown()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""
@@ -124,4 +132,4 @@ class SmartWSGIApp(object):
         return [response_data]
 
     def make_request(self, transport, write_func):
-        return smart.SmartServerRequestProtocolOne(transport, write_func)
+        return protocol.SmartServerRequestProtocolOne(transport, write_func)

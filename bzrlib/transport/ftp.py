@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,8 +29,10 @@ import asyncore
 import errno
 import ftplib
 import os
+import os.path
 import urllib
 import urlparse
+import select
 import stat
 import threading
 import time
@@ -39,6 +41,7 @@ from warnings import warn
 
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
 from bzrlib.trace import mutter, warning
@@ -47,6 +50,7 @@ from bzrlib.transport import (
     split_url,
     Transport,
     )
+from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
 
 _have_medusa = False
@@ -161,6 +165,7 @@ class FtpTransport(Transport):
         if ('no such file' in s
             or 'could not open' in s
             or 'no such dir' in s
+            or 'could not create file' in s # vsftpd
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
@@ -300,7 +305,8 @@ class FtpTransport(Transport):
         :param retries: Number of retries after temporary failures so far
                         for this operation.
 
-        TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
+        TODO: jam 20051215 ftp as a protocol seems to support chmod, but
+        ftplib does not
         """
         abspath = self._abspath(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
@@ -312,7 +318,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
-                f.rename(tmp_abspath, abspath)
+                self._rename_and_overwrite(tmp_abspath, abspath, f)
             except (ftplib.error_temp,EOFError), e:
                 warning("Failure during ftp PUT. Deleting temporary file.")
                 try:
@@ -431,6 +437,20 @@ class FtpTransport(Transport):
     #       to give it its own address as the 'to' location.
     #       So implement a fancier 'copy()'
 
+    def rename(self, rel_from, rel_to):
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
+        mutter("FTP rename: %s => %s", abs_from, abs_to)
+        f = self._get_FTP()
+        return self._rename(abs_from, abs_to, f)
+
+    def _rename(self, abs_from, abs_to, f):
+        try:
+            f.rename(abs_from, abs_to)
+        except ftplib.error_perm, e:
+            self._translate_perm_error(e, abs_from,
+                ': unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         abs_from = self._abspath(rel_from)
@@ -438,20 +458,30 @@ class FtpTransport(Transport):
         try:
             mutter("FTP mv: %s => %s", abs_from, abs_to)
             f = self._get_FTP()
-            f.rename(abs_from, abs_to)
+            self._rename_and_overwrite(abs_from, abs_to, f)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abs_from,
                 extra='unable to rename to %r' % (rel_to,), 
                 unknown_exc=errors.PathError)
 
-    rename = move
+    def _rename_and_overwrite(self, abs_from, abs_to, f):
+        """Do a fancy rename on the remote server.
+
+        Using the implementation provided by osutils.
+        """
+        osutils.fancy_rename(abs_from, abs_to,
+            rename_func=lambda p1, p2: self._rename(p1, p2, f),
+            unlink_func=lambda p: self._delete(p, f))
 
     def delete(self, relpath):
         """Delete the item at relpath"""
         abspath = self._abspath(relpath)
+        f = self._get_FTP()
+        self._delete(abspath, f)
+
+    def _delete(self, abspath, f):
         try:
             mutter("FTP rm: %s", abspath)
-            f = self._get_FTP()
             f.delete(abspath)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath, 'error deleting',
@@ -549,10 +579,12 @@ class FtpServer(Server):
         """This is used by medusa.ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self):
-
+    def setUp(self, vfs_server=None):
         if not _have_medusa:
             raise RuntimeError('Must have medusa to run the FtpServer')
+
+        assert vfs_server is None or isinstance(vfs_server, LocalURLServer), \
+            "FtpServer currently assumes local transport, got %s" % vfs_server
 
         self._root = os.getcwdu()
         self._ftp_server = _ftp_server(
@@ -565,7 +597,8 @@ class FtpServer(Server):
         self._port = self._ftp_server.getsockname()[1]
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 100s, or 1000 requests
-        self._async_thread = threading.Thread(target=asyncore.loop,
+        self._async_thread = threading.Thread(
+                target=FtpServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':1000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
@@ -576,6 +609,19 @@ class FtpServer(Server):
         self._ftp_server.del_channel()
         asyncore.close_all()
         self._async_thread.join()
+
+    @staticmethod
+    def _asyncore_loop_ignore_EBADF(*args, **kwargs):
+        """Ignore EBADF during server shutdown.
+
+        We close the socket to get the server to shutdown, but this causes
+        select.select() to raise EBADF.
+        """
+        try:
+            asyncore.loop(*args, **kwargs)
+        except select.error, e:
+            if e.args[0] != errno.EBADF:
+                raise
 
 
 _ftp_channel = None
@@ -647,12 +693,18 @@ def _setup_medusa():
             pfrom = self.filesystem.translate(self._renaming)
             self._renaming = None
             pto = self.filesystem.translate(line[1])
+            if os.path.exists(pto):
+                self.respond('550 RNTO failed: file exists')
+                return
             try:
                 os.rename(pfrom, pto)
             except (IOError, OSError), e:
                 # TODO: jam 20060516 return custom responses based on
                 #       why the command failed
-                self.respond('550 RNTO failed: %s' % (e,))
+                # (bialix 20070418) str(e) on Python 2.5 @ Windows
+                # sometimes don't provide expected error message;
+                # so we obtain such message via os.strerror()
+                self.respond('550 RNTO failed: %s' % os.strerror(e.errno))
             except:
                 self.respond('550 RNTO failed')
                 # For a test server, we will go ahead and just die
@@ -690,7 +742,11 @@ def _setup_medusa():
                     self.filesystem.mkdir (path)
                     self.respond ('257 MKD command successful.')
                 except (IOError, OSError), e:
-                    self.respond ('550 error creating directory: %s' % (e,))
+                    # (bialix 20070418) str(e) on Python 2.5 @ Windows
+                    # sometimes don't provide expected error message;
+                    # so we obtain such message via os.strerror()
+                    self.respond ('550 error creating directory: %s' %
+                                  os.strerror(e.errno))
                 except:
                     self.respond ('550 error creating directory.')
 

@@ -18,6 +18,7 @@
 """
 
 import os
+from collections import deque
 from cStringIO import StringIO
 
 import bzrlib
@@ -29,7 +30,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
@@ -57,7 +58,8 @@ class Tree(object):
     """
     
     def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -72,6 +74,7 @@ class Tree(object):
         :param require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
+        :param want_unversioned: Scan for unversioned paths.
 
         The comparison will be performed by an InterTree object looked up on 
         self and other.
@@ -84,20 +87,26 @@ class Tree(object):
             specific_files=specific_files,
             extra_trees=extra_trees,
             require_versioned=require_versioned,
-            include_root=include_root
+            include_root=include_root,
+            want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False, 
-                     specific_file_ids=None, pb=None):
+    def _iter_changes(self, from_tree, include_unchanged=False,
+                     specific_files=None, pb=None, extra_trees=None,
+                     require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(from_tree, self, include_unchanged, 
-                                       specific_file_ids, pb)
+        return intertree._iter_changes(include_unchanged, specific_files, pb,
+            extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
 
         Each conflict is an instance of bzrlib.conflicts.Conflict.
         """
+        return []
+
+    def extras(self):
+        """For trees that can have unversioned files, return all such paths."""
         return []
 
     def get_parent_ids(self):
@@ -114,19 +123,34 @@ class Tree(object):
         raise NotImplementedError()
 
     def has_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return self.inventory.has_id(file_id)
 
     __contains__ = has_id
 
     def has_or_had_id(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
+
+    def is_ignored(self, filename):
+        """Check whether the filename is ignored by this tree.
+
+        :param filename: The relative filename within the tree.
+        :return: True if the filename is ignored.
+        """
+        return False
 
     def __iter__(self):
         return iter(self.inventory)
 
     def id2path(self, file_id):
+        """Return the path for a file id.
+
+        :raises NoSuchId:
+        """
+        file_id = osutils.safe_file_id(file_id)
         return self.inventory.id2path(file_id)
 
     def is_control_filename(self, filename):
@@ -141,6 +165,7 @@ class Tree(object):
         """
         return self.bzrdir.is_control_filename(filename)
 
+    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.
 
@@ -152,8 +177,19 @@ class Tree(object):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)
 
+    def iter_references(self):
+        for path, entry in self.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                yield path, entry.file_id
+
     def kind(self, file_id):
-        raise NotImplementedError("subclasses must implement kind")
+        raise NotImplementedError("Tree subclass %s must implement kind"
+            % self.__class__.__name__)
+
+    def get_reference_revision(self, file_id, path=None):
+        raise NotImplementedError("Tree subclass %s must implement "
+                                  "get_reference_revision"
+            % self.__class__.__name__)
 
     def _comparison_data(self, entry, path):
         """Return a tuple of kind, executable, stat_value for a file.
@@ -166,7 +202,7 @@ class Tree(object):
         """
         raise NotImplementedError(self._comparison_data)
 
-    def _file_size(entry, stat_value):
+    def _file_size(self, entry, stat_value):
         raise NotImplementedError(self._file_size)
 
     def _get_inventory(self):
@@ -175,9 +211,28 @@ class Tree(object):
     def get_file(self, file_id):
         """Return a file object for the file file_id in the tree."""
         raise NotImplementedError(self.get_file)
-    
+
+    def get_file_mtime(self, file_id, path=None):
+        """Return the modification time for a file.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        """
+        raise NotImplementedError(self.get_file_mtime)
+
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
+
+    def get_symlink_target(self, file_id):
+        """Get the target for a given file_id.
+
+        It is assumed that the caller already knows that file_id is referencing
+        a symlink.
+        :param file_id: Handle for the symlink entry.
+        :return: The path the symlink points to.
+        """
+        raise NotImplementedError(self.get_symlink_target)
 
     def annotate_iter(self, file_id):
         """Return an iterator of revision_id, line tuples
@@ -211,17 +266,53 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
+    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
         return self._inventory.path2id(path)
 
+    def paths2ids(self, paths, trees=[], require_versioned=True):
+        """Return all the ids that can be reached by walking from paths.
+        
+        Each path is looked up in each this tree and any extras provided in
+        trees, and this is repeated recursively: the children in an extra tree
+        of a directory that has been renamed under a provided path in this tree
+        are all returned, even if none exist until a provided path in this
+        tree, and vice versa.
+
+        :param paths: An iterable of paths to start converting to ids from.
+            Alternatively, if paths is None, no ids should be calculated and None
+            will be returned. This is offered to make calling the api unconditional
+            for code that *might* take a list of files.
+        :param trees: Additional trees to consider.
+        :param require_versioned: If False, do not raise NotVersionedError if
+            an element of paths is not versioned in this tree and all of trees.
+        """
+        return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
+
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
+        file_id = osutils.safe_file_id(file_id)
         import sys
         sys.stdout.write(self.get_file_text(file_id))
 
     def lock_read(self):
         pass
+
+    def revision_tree(self, revision_id):
+        """Obtain a revision tree for the revision revision_id.
+
+        The intention of this method is to allow access to possibly cached
+        tree data. Implementors of this method should raise NoSuchRevision if
+        the tree is not locally available, even if they could obtain the 
+        tree via a repository or some other means. Callers are responsible 
+        for finding the ultimate source for a revision tree.
+
+        :param revision_id: The revision_id of the requested tree.
+        :return: A Tree.
+        :raises: NoSuchRevision if the tree cannot be obtained.
+        """
+        raise errors.NoSuchRevisionInTree(self, revision_id)
 
     def unknowns(self):
         """What files are present in this tree and unknown.
@@ -234,7 +325,7 @@ class Tree(object):
         pass
 
     def filter_unversioned_files(self, paths):
-        """Filter out paths that are not versioned.
+        """Filter out paths that are versioned.
 
         :return: set of paths.
         """
@@ -243,6 +334,39 @@ class Tree(object):
         # are not versioned.
         pred = self.inventory.has_filename
         return set((p for p in paths if not pred(p)))
+
+    def walkdirs(self, prefix=""):
+        """Walk the contents of this tree from path down.
+
+        This yields all the data about the contents of a directory at a time.
+        After each directory has been yielded, if the caller has mutated the
+        list to exclude some directories, they are then not descended into.
+        
+        The data yielded is of the form:
+        ((directory-relpath, directory-path-from-root, directory-fileid),
+        [(relpath, basename, kind, lstat, path_from_tree_root, file_id, 
+          versioned_kind), ...]),
+         - directory-relpath is the containing dirs relpath from prefix
+         - directory-path-from-root is the containing dirs path from /
+         - directory-fileid is the id of the directory if it is versioned.
+         - relpath is the relative path within the subtree being walked.
+         - basename is the basename
+         - kind is the kind of the file now. If unknonwn then the file is not
+           present within the tree - but it may be recorded as versioned. See
+           versioned_kind.
+         - lstat is the stat data *if* the file was statted.
+         - path_from_tree_root is the path from the root of the tree.
+         - file_id is the file_id is the entry is versioned.
+         - versioned_kind is the kind of the file as last recorded in the 
+           versioning system. If 'unknown' the file is not versioned.
+        One of 'kind' and 'versioned_kind' must not be 'unknown'.
+
+        :param prefix: Start walking from prefix within the tree rather than
+        at the root. This allows one to walk a subtree but get paths that are
+        relative to a tree rooted higher up.
+        :return: an iterator over the directory data.
+        """
+        raise NotImplementedError(self.walkdirs)
 
 
 class EmptyTree(Tree):
@@ -263,6 +387,7 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
@@ -270,6 +395,7 @@ class EmptyTree(Tree):
         return iter([])
     
     def __contains__(self, file_id):
+        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -356,28 +482,28 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     """
     if not filenames:
         return None
-    specified_ids = _find_filename_ids_across_trees(filenames, trees, 
-                                                    require_versioned)
-    return _find_children_across_trees(specified_ids, trees)
+    specified_path_ids = _find_ids_across_trees(filenames, trees,
+        require_versioned)
+    return _find_children_across_trees(specified_path_ids, trees)
 
 
-def _find_filename_ids_across_trees(filenames, trees, require_versioned):
+def _find_ids_across_trees(filenames, trees, require_versioned):
     """Find the ids corresponding to specified filenames.
     
-    All matches in all trees will be used.
+    All matches in all trees will be used, but subdirectories are not scanned.
 
     :param filenames: The filenames to find file_ids for
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
-    at least one tree.
-    :return: a set of file ids for the specified filenames
+        at least one tree.
+    :return: a set of (path, file ids) for the specified filenames
     """
     not_versioned = []
     interesting_ids = set()
     for tree_path in filenames:
         not_found = True
         for tree in trees:
-            file_id = tree.inventory.path2id(tree_path)
+            file_id = tree.path2id(tree_path)
             if file_id is not None:
                 interesting_ids.add(file_id)
                 not_found = False
@@ -404,7 +530,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if file_id not in tree:
+                if not tree.has_id(file_id):
                     continue
                 entry = tree.inventory[file_id]
                 for child in getattr(entry, 'children', {}).itervalues():
@@ -430,7 +556,8 @@ class InterTree(InterObject):
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False):
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -445,47 +572,94 @@ class InterTree(InterObject):
         :param require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
+        :param want_unversioned: Scan for unversioned paths.
         """
-        # NB: show_status depends on being able to pass in non-versioned files and
-        # report them as unknown
-        trees = (self.source, self.target)
+        # NB: show_status depends on being able to pass in non-versioned files
+        # and report them as unknown
+        trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
-        specific_file_ids = find_ids_across_trees(specific_files,
-            trees, require_versioned=require_versioned)
+        # target is usually the newer tree:
+        specific_file_ids = self.target.paths2ids(specific_files, trees,
+            require_versioned=require_versioned)
         if specific_files and not specific_file_ids:
             # All files are unversioned, so just return an empty delta
             # _compare_trees would think we want a complete delta
-            return delta.TreeDelta()
+            result = delta.TreeDelta()
+            fake_entry = InventoryFile('unused', 'unused', 'unused')
+            result.unversioned = [(path, None,
+                self.target._comparison_data(fake_entry, path)[0]) for path in
+                specific_files]
+            return result
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids, include_root)
+            specific_files, include_root, extra_trees=extra_trees,
+            want_unversioned=want_unversioned)
 
-    def _iter_changes(self, from_tree, to_tree, include_unchanged, 
-                      specific_file_ids, pb):
+    def _iter_changes(self, include_unchanged=False,
+                      specific_files=None, pb=None, extra_trees=[],
+                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
-        (file_id, path, changed_content, versioned, parent, name, kind,
+        (file_id, (path_in_source, path_in_target),
+         changed_content, versioned, parent, name, kind,
          executable)
 
-        Path is relative to the to_tree.  changed_content is True if the file's
-        content has changed.  This includes changes to its kind, and to
-        a symlink's target.
+        Changed_content is True if the file's content has changed.  This
+        includes changes to its kind, and to a symlink's target.
 
         versioned, parent, name, kind, executable are tuples of (from, to).
         If a file is missing in a tree, its kind is None.
 
-        Iteration is done in parent-to-child order, relative to the to_tree.
+        Iteration is done in parent-to-child order, relative to the target
+        tree.
+
+        There is no guarantee that all paths are in sorted order: the
+        requirement to expand the search due to renames may result in children
+        that should be found early being found late in the search, after
+        lexically later results have been returned.
+        :param require_versioned: Raise errors.PathsNotVersionedError if a
+            path in the specific_files list is not versioned in one of
+            source, target or extra_trees.
+        :param want_unversioned: Should unversioned files be returned in the
+            output. An unversioned file is defined as one with (False, False)
+            for the versioned pair.
         """
+        result = []
+        lookup_trees = [self.source]
+        if extra_trees:
+             lookup_trees.extend(extra_trees)
+        specific_file_ids = self.target.paths2ids(specific_files,
+            lookup_trees, require_versioned=require_versioned)
+        if want_unversioned:
+            all_unversioned = sorted([(p.split('/'), p) for p in self.target.extras()
+                if not specific_files or
+                    osutils.is_inside_any(specific_files, p)])
+            all_unversioned = deque(all_unversioned)
+        else:
+            all_unversioned = deque()
         to_paths = {}
-        from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
+        # the unversioned path lookup only occurs on real trees - where there 
+        # can be extras. So the fake_entry is solely used to look up
+        # executable it values when execute is not supported.
+        fake_entry = InventoryFile('unused', 'unused', 'unused')
         for to_path, to_entry in to_entries_by_dir:
+            while all_unversioned and all_unversioned[0][0] < to_path.split('/'):
+                unversioned_path = all_unversioned.popleft()
+                to_kind, to_executable, to_stat = \
+                    self.target._comparison_data(fake_entry, unversioned_path[1])
+                yield (None, (None, unversioned_path[1]), True, (False, False),
+                    (None, None),
+                    (None, unversioned_path[0][-1]),
+                    (None, to_kind),
+                    (None, to_executable))
             file_id = to_entry.file_id
             to_paths[file_id] = to_path
             entry_count += 1
@@ -497,7 +671,7 @@ class InterTree(InterObject):
                 from_name = from_entry.name
                 from_parent = from_entry.parent_id
                 from_kind, from_executable, from_stat = \
-                    from_tree._comparison_data(from_entry, from_path)
+                    self.source._comparison_data(from_entry, from_path)
                 entry_count += 1
             else:
                 from_versioned = False
@@ -507,49 +681,71 @@ class InterTree(InterObject):
                 from_executable = None
             versioned = (from_versioned, True)
             to_kind, to_executable, to_stat = \
-                to_tree._comparison_data(to_entry, to_path)
+                self.target._comparison_data(to_entry, to_path)
             kind = (from_kind, to_kind)
             if kind[0] != kind[1]:
                 changed_content = True
             elif from_kind == 'file':
-                from_size = from_tree._file_size(from_entry, from_stat)
-                to_size = to_tree._file_size(to_entry, to_stat)
+                from_size = self.source._file_size(from_entry, from_stat)
+                to_size = self.target._file_size(to_entry, to_stat)
                 if from_size != to_size:
                     changed_content = True
-                elif (from_tree.get_file_sha1(file_id, from_path, from_stat) !=
-                    to_tree.get_file_sha1(file_id, to_path, to_stat)):
+                elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
+                    self.target.get_file_sha1(file_id, to_path, to_stat)):
                     changed_content = True
             elif from_kind == 'symlink':
-                if (from_tree.get_symlink_target(file_id) != 
-                    to_tree.get_symlink_target(file_id)):
+                if (self.source.get_symlink_target(file_id) !=
+                    self.target.get_symlink_target(file_id)):
                     changed_content = True
+                elif from_kind == 'tree-reference':
+                    if (self.source.get_reference_revision(file_id, from_path)
+                        != self.target.get_reference_revision(file_id, to_path)):
+                        changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
             executable = (from_executable, to_executable)
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
-            if (changed_content is not False or versioned[0] != versioned[1] 
+            if (changed_content is not False or versioned[0] != versioned[1]
                 or parent[0] != parent[1] or name[0] != name[1] or 
                 executable[0] != executable[1] or include_unchanged):
-                yield (file_id, to_path, changed_content, versioned, parent,
-                       name, kind, executable)
+                yield (file_id, (from_path, to_path), changed_content,
+                    versioned, parent, name, kind, executable)
 
-        def get_to_path(from_entry):
-            if from_entry.parent_id is None:
-                to_path = ''
+        while all_unversioned:
+            # yield any trailing unversioned paths
+            unversioned_path = all_unversioned.popleft()
+            to_kind, to_executable, to_stat = \
+                self.target._comparison_data(fake_entry, unversioned_path[1])
+            yield (None, (None, unversioned_path[1]), True, (False, False),
+                (None, None),
+                (None, unversioned_path[0][-1]),
+                (None, to_kind),
+                (None, to_executable))
+
+        def get_to_path(to_entry):
+            if to_entry.parent_id is None:
+                to_path = '' # the root
             else:
-                if from_entry.parent_id not in to_paths:
-                    get_to_path(from_tree.inventory[from_entry.parent_id])
-                to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
-                                           from_entry.name)
-            to_paths[from_entry.file_id] = to_path
+                if to_entry.parent_id not in to_paths:
+                    # recurse up
+                    return get_to_path(self.target.inventory[to_entry.parent_id])
+                to_path = osutils.pathjoin(to_paths[to_entry.parent_id],
+                                           to_entry.name)
+            to_paths[to_entry.file_id] = to_path
             return to_path
 
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
             if file_id in to_paths:
+                # already returned
                 continue
-            to_path = get_to_path(from_entry)
+            if not file_id in self.target.inventory:
+                # common case - paths we have not emitted are not present in
+                # target.
+                to_path = None
+            else:
+                to_path = get_to_path(self.target.inventory[file_id])
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -557,12 +753,12 @@ class InterTree(InterObject):
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)
             from_kind, from_executable, stat_value = \
-                from_tree._comparison_data(from_entry, path)
+                self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
             changed_content = True
             # the parent's path is necessarily known at this point.
-            yield(file_id, to_path, changed_content, versioned, parent,
+            yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,7 +58,11 @@ from bzrlib.symbol_versioning import (
         zero_eight,
         zero_eleven,
         )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import (
+    note,
+    mutter,
+    warning,
+    )
 from bzrlib import registry
 
 
@@ -90,6 +94,8 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
+    # Add chroot directly, because there is not handler registered for it.
+    modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
     return result
@@ -148,6 +154,19 @@ def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
+
+
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    l = transport_list_registry.get(scheme)
+    for i in l:
+        o = i.get_obj( )
+        if o == factory:
+            transport_list_registry.get(scheme).remove(i)
+            break
+    if len(l) == 0:
+        transport_list_registry.remove(scheme)
+
 
 
 def split_url(url):
@@ -392,9 +411,8 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
-        raise errors.TransportNotPossible('This is not a LocalTransport,'
-            ' so there is no local representation for a path')
+        raise errors.NotLocalUrl(self.abspath(relpath))
+
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -607,8 +625,9 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -629,8 +648,9 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -1008,11 +1028,9 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
-    # TODO: give a better error if base looks like a url but there's no
-    # handler for the scheme?
+
     if base is None:
         base = '.'
-
     last_err = None
 
     def convert_path_to_url(base, error_str):
@@ -1048,6 +1066,47 @@ def get_transport(base):
     return _try_transport_factories(base,
                     transport_list_registry.get(None))[0]
                                                    
+def do_catching_redirections(action, transport, redirected):
+    """Execute an action with given transport catching redirections.
+
+    This is a facility provided for callers needing to follow redirections
+    silently. The silence is relative: it is the caller responsability to
+    inform the user about each redirection or only inform the user of a user
+    via the exception parameter.
+
+    :param action: A callable, what the caller want to do while catching
+                  redirections.
+    :param transport: The initial transport used.
+    :param redirected: A callable receiving the redirected transport and the 
+                  RedirectRequested exception.
+
+    :return: Whatever 'action' returns
+    """
+    MAX_REDIRECTIONS = 8
+
+    # If a loop occurs, there is little we can do. So we don't try to detect
+    # them, just getting out if too much redirections occurs. The solution
+    # is outside: where the loop is defined.
+    for redirections in range(MAX_REDIRECTIONS):
+        try:
+            return action(transport)
+        except errors.RedirectRequested, e:
+            redirection_notice = '%s is%s redirected to %s' % (
+                e.source, e.permanently, e.target)
+            transport = redirected(transport, e, redirection_notice)
+    else:
+        # Loop exited without resolving redirect ? Either the
+        # user has kept a very very very old reference or a loop
+        # occurred in the redirections.  Nothing we can cure here:
+        # tell the user. Note that as the user has been informed
+        # about each redirection (it is the caller responsibility
+        # to do that in redirected via the provided
+        # redirection_notice). The caller may provide more
+        # information if needed (like what file or directory we
+        # were trying to act upon when the redirection loop
+        # occurred).
+        raise errors.TooManyRedirections
+
 
 def _try_transport_factories(base, factory_list):
     last_err = None
@@ -1094,7 +1153,11 @@ class Server(object):
         raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect."""
+        """Return a url for this protocol, that will fail to connect.
+        
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
         raise NotImplementedError
 
 
@@ -1165,6 +1228,7 @@ class TransportLogger(object):
         self._calls.append((name, offsets))
         return self._adapted.readv(name, offsets)
 
+
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
@@ -1174,7 +1238,7 @@ transport_list_registry.set_default_transport("file://")
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).")
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
-
+# Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
             )
@@ -1195,6 +1259,7 @@ register_transport_proto('https+pycurl://',
             )
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+# Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
             help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
@@ -1216,8 +1281,7 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_transport_proto('chroot+')
-register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
-                        'ChrootTransportDecorator')
+
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
@@ -1232,16 +1296,16 @@ register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.")
 
 register_lazy_transport('bzr://',
-                        'bzrlib.transport.smart',
-                        'SmartTCPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
              )
 register_lazy_transport('bzr+http://',
-                        'bzrlib.transport.smart',
-                        'SmartHTTPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
             help="Fast access using the Bazaar smart server over SSH.")
 register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.smart',
-                        'SmartSSHTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteSSHTransport')

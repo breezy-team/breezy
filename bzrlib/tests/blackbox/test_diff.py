@@ -79,6 +79,12 @@ class TestDiff(DiffBase):
 
 ''')
 
+    def test_diff_illegal_prefix_value(self):
+        # There was an error in error reporting for this option
+        out, err = self.runbzr('diff --prefix old/', retcode=3)
+        self.assertContainsRe(err,
+            '--prefix expects two values separated by a colon')
+
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
         self.make_example_branch()

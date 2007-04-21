@@ -21,6 +21,7 @@ import sys
 from bzrlib import (
     errors,
     generate_ids,
+    symbol_versioning,
     tests,
     urlutils,
     )
@@ -39,11 +40,11 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               find_interesting, build_tree, get_backup_name)
 
 
-class TestTreeTransform(TestCaseInTempDir):
+class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = BzrDir.create_standalone_workingtree('.')
+        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
         os.chdir('..')
 
     def get_transform(self):
@@ -126,9 +127,20 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(self.wt.path2id('oz/dorothy'), 'dorothy-id')
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
-        self.assertEqual('toto-contents', 
+        self.assertEqual('toto-contents',
                          self.wt.get_file_byname('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('toto-id'), False)
+
+    def test_tree_reference(self):
+        transform, root = self.get_transform()
+        tree = transform._tree
+        trans_id = transform.new_directory('reference', root, 'subtree-id')
+        transform.set_tree_reference('subtree-revision', trans_id)
+        transform.apply()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('subtree-revision',
+                         tree.inventory['subtree-id'].reference_revision)
 
     def test_conflicts(self):
         transform, root = self.get_transform()
@@ -516,10 +528,9 @@ class TestTreeTransform(TestCaseInTempDir):
         create.new_file('vfile', root, 'myfile-text', 'myfile-id')
         create.new_file('uvfile', root, 'othertext')
         create.apply()
-        self.assertEqual(find_interesting(wt, wt, ['vfile']),
-                         set(['myfile-id']))
-        self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
-                          ['uvfile'])
+        result = self.applyDeprecated(symbol_versioning.zero_fifteen,
+            find_interesting, wt, wt, ['vfile'])
+        self.assertEqual(result, set(['myfile-id']))
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
@@ -587,6 +598,181 @@ class TestTreeTransform(TestCaseInTempDir):
         bar1_abspath = self.wt.abspath('bar')
         self.assertEqual([bar1_abspath], stat_paths)
 
+    def test_iter_changes(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1', True)
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            self.assertEqual([], list(transform._iter_changes()))
+            old = transform.trans_id_tree_file_id('id-1')
+            transform.unversion_file(old)
+            self.assertEqual([('id-1', ('old', None), False, (True, False),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (True, True))], list(transform._iter_changes()))
+            transform.new_directory('new', root, 'id-1')
+            self.assertEqual([('id-1', ('old', 'new'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'new'),
+                ('file', 'directory'),
+                (True, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_new(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            transform.version_file('id-1', old)
+            self.assertEqual([('id-1', (None, 'old'), False, (False, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_modifications(self):
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_file('new', root, 'blah')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            new = transform.trans_id_tree_path('new')
+            self.assertEqual([], list(transform._iter_changes()))
+
+            #content deletion
+            transform.delete_contents(old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', None),
+                (False, False))], list(transform._iter_changes()))
+
+            #content change
+            transform.create_file('blah', old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_deletion(old)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_creation(old)
+
+            # move file_id to a different file
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.unversion_file(old)
+            transform.version_file('id-1', new)
+            transform.adjust_path('old', root, new)
+            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform.cancel_versioning(new)
+            transform._removed_id = set()
+
+            #execute bit
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.set_executability(True, old)
+            self.assertEqual([('id-1', ('old', 'old'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (False, True))], list(transform._iter_changes()))
+            transform.set_executability(None, old)
+
+            # filename
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', root, old)
+            transform._new_parent = {}
+            self.assertEqual([('id-1', ('old', 'new'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('old', 'new'), ('file', 'file'),
+                (False, False))], list(transform._iter_changes()))
+            transform._new_name = {}
+
+            # parent directory
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.adjust_path('new', subdir, old)
+            transform._new_name = {}
+            self.assertEqual([('id-1', ('old', 'subdir/old'), False,
+                (True, True), ('eert_toor', 'subdir-id'), ('old', 'old'),
+                ('file', 'file'), (False, False))],
+                list(transform._iter_changes()))
+            transform._new_path = {}
+
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_modified_bleed(self):
+        self.wt.set_root_id('eert_toor')
+        """Modified flag should not bleed from one change to another"""
+        # unfortunately, we have no guarantee that file1 (which is modified)
+        # will be applied before file2.  And if it's applied after file2, it
+        # obviously can't bleed into file2's change output.  But for now, it
+        # works.
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'blah', 'id-1')
+        transform.new_file('file2', root, 'blah', 'id-2')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            transform.delete_contents(transform.trans_id_file_id('id-1'))
+            transform.set_executability(True,
+            transform.trans_id_file_id('id-2'))
+            self.assertEqual([('id-1', (u'file1', u'file1'), True, (True, True),
+                ('eert_toor', 'eert_toor'), ('file1', u'file1'),
+                ('file', None), (False, False)),
+                ('id-2', (u'file2', u'file2'), False, (True, True),
+                ('eert_toor', 'eert_toor'), ('file2', u'file2'),
+                ('file', 'file'), (False, True))],
+                list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_move_missing(self):
+        """Test moving ids with no files around"""
+        self.wt.set_root_id('toor_eert')
+        # Need two steps because versioning a non-existant file is a conflict.
+        transform, root = self.get_transform()
+        transform.new_directory('floater', root, 'floater-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        transform.delete_contents(transform.trans_id_tree_path('floater'))
+        transform.apply()
+        transform, root = self.get_transform()
+        floater = transform.trans_id_tree_path('floater')
+        try:
+            transform.adjust_path('flitter', root, floater)
+            self.assertEqual([('floater-id', ('floater', 'flitter'), False,
+            (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
+            (None, None), (False, False))], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
+
+    def test_iter_changes_pointless(self):
+        """Ensure that no-ops are not treated as modifications"""
+        self.wt.set_root_id('eert_toor')
+        transform, root = self.get_transform()
+        transform.new_file('old', root, 'blah', 'id-1')
+        transform.new_directory('subdir', root, 'subdir-id')
+        transform.apply()
+        transform, root = self.get_transform()
+        try:
+            old = transform.trans_id_tree_path('old')
+            subdir = transform.trans_id_tree_file_id('subdir-id')
+            self.assertEqual([], list(transform._iter_changes()))
+            transform.delete_contents(subdir)
+            transform.create_directory(subdir)
+            transform.set_executability(False, old)
+            transform.unversion_file(old)
+            transform.version_file('id-1', old)
+            transform.adjust_path('old', root, old)
+            self.assertEqual([], list(transform._iter_changes()))
+        finally:
+            transform.finalize()
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
@@ -597,6 +783,7 @@ class TransformGroup(object):
         self.b = self.wt.branch
         self.tt = TreeTransform(self.wt)
         self.root = self.tt.trans_id_tree_file_id(self.wt.get_root_id())
+
 
 def conflict_text(tree, merge):
     template = '%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'
@@ -802,10 +989,24 @@ class TestBuildTree(tests.TestCaseWithTransport):
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
         b = BzrDir.create_standalone_workingtree('b')
-        build_tree(a.basis_tree(), b)
+        basis = a.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        build_tree(basis, b)
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+
+    def test_build_with_references(self):
+        tree = self.make_branch_and_tree('source',
+            format='dirstate-with-subtree')
+        subtree = self.make_branch_and_tree('source/subtree',
+            format='dirstate-with-subtree')
+        tree.add_reference(subtree)
+        tree.commit('a revision')
+        tree.branch.create_checkout('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/subtree')
 
     def test_file_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""

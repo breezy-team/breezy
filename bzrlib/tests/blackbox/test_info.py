@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,7 +72,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % branch1.bzrdir.root_transport.base, out)
@@ -117,7 +116,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch2.bzrdir.root_transport.base,
@@ -151,7 +150,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: %s
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -170,13 +169,14 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch3.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        bound_tree._format.get_format_description(),      
+       branch3._format.get_format_description(),
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -220,7 +220,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch4.bzrdir.root_transport.base,
@@ -245,7 +245,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
+  working tree: Working tree format 4
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -265,7 +265,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          0 KiB
 """ % (tree5.bzrdir.root_transport.base,
@@ -313,7 +313,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          0 KiB
 """ % (branch2.bzrdir.root_transport.base,
@@ -357,7 +357,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch3.bzrdir.root_transport.base,
@@ -403,7 +403,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch4.bzrdir.root_transport.base,
@@ -426,7 +426,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
+  working tree: Working tree format 4
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -449,7 +449,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          0 KiB
 """ % (tree5.bzrdir.root_transport.base,
@@ -470,22 +470,23 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (branch.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -500,7 +501,7 @@ Format:
        control: Meta directory format 1
     repository: %s
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -520,16 +521,17 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -563,8 +565,8 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
-        branch: Branch format 5
+  working tree: Working tree format 4
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -584,11 +586,12 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -606,8 +609,8 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
-        branch: Branch format 5
+  working tree: Working tree format 4
+        branch: %s
     repository: %s
 
 Branch is out of date: missing 1 revision.
@@ -625,11 +628,12 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -646,8 +650,8 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
-        branch: Branch format 5
+  working tree: Working tree format 4
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -667,10 +671,11 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -692,8 +697,8 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 3
-        branch: Branch format 5
+  working tree: Working tree format 4
+        branch: %s
     repository: %s
 
 Working tree is out of date: missing 1 revision.
@@ -715,11 +720,12 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -737,7 +743,7 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 Branch history:
@@ -747,10 +753,11 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
@@ -769,7 +776,7 @@ Format:
        control: Meta directory format 1
     repository: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -781,7 +788,7 @@ Revision store:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -798,7 +805,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -822,7 +829,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -839,10 +846,11 @@ Branch history:
          0 revisions
          0 committers
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -863,7 +871,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -882,10 +890,11 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -907,7 +916,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -924,11 +933,12 @@ Branch history:
          0 revisions
          0 committers
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -951,7 +961,7 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -970,11 +980,12 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -995,7 +1006,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1008,7 +1019,7 @@ Revision store:
         self.assertEqual('', err)
     
     def test_info_shared_repository_with_tree_in_root(self):
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1025,7 +1036,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1046,7 +1057,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: Branch format 5
+        branch: %s
     repository: %s
 
 In the working tree:
@@ -1062,10 +1073,11 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1145,7 +1157,7 @@ Revision store:
 Format:
        control: Meta directory format 1
   working tree: %s
-        branch: Branch format 5
+        branch: %s
     repository: %s
 %s
 In the working tree:
@@ -1161,12 +1173,13 @@ In the working tree:
 Branch history:
          0 revisions
 %s
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ %  (tree_data,
         branch_data,
         lco_tree._format.get_format_description(),
+        lco_tree.branch._format.get_format_description(),
         lco_tree.branch.repository._format.get_format_description(),
         expected_lock_output,
         verbose_info,
@@ -1310,7 +1323,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree.bzrdir.root_transport.base,
@@ -1343,7 +1356,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree.bzrdir.root_transport.base,

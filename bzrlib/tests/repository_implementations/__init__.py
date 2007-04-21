@@ -27,16 +27,19 @@ rather than in tests/branch_implementations/*.py.
 from bzrlib import (
     repository,
     )
-from bzrlib.repository import (_legacy_formats,
-                               RepositoryTestProviderAdapter,
-                               )
-                            
+from bzrlib.repository import (
+    RepositoryTestProviderAdapter,
+    )
+from bzrlib.repofmt import (
+    weaverepo,
+    )
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -45,13 +48,22 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_break_lock',
         'bzrlib.tests.repository_implementations.test_commit_builder',
         'bzrlib.tests.repository_implementations.test_fileid_involved',
+        'bzrlib.tests.repository_implementations.test_iter_reverse_revision_history',
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         'bzrlib.tests.repository_implementations.test_statistics',
         ]
-    all_formats = [v for (k, v) in repository.format_registry.iteritems()]
-    all_formats.extend(_legacy_formats)
+
+    from bzrlib.smart.server import (
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        )
+    from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+
+    registry = repository.format_registry
+    all_formats = [registry.get(k) for k in registry.keys()]
+    all_formats.extend(weaverepo._legacy_formats)
     adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
@@ -60,4 +72,16 @@ def test_suite():
         [(format, format._matchingbzrdir) for format in all_formats])
     loader = TestLoader()
     adapt_modules(test_repository_implementations, adapter, loader, result)
+
+    adapt_to_smart_server = RepositoryTestProviderAdapter(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        MemoryServer
+        )
+    adapt_modules(test_repository_implementations,
+                  adapt_to_smart_server,
+                  loader,
+                  result)
+
     return result

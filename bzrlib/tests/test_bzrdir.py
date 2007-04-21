@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+    # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,23 +23,34 @@ import os.path
 from StringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
+    errors,
     help_topics,
+    repository,
     symbol_versioning,
     urlutils,
+    workingtree,
     )
 import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
-from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    test_sftp_transport
+    )
 from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.HTTPTestUtil import (
+    TestCaseWithTwoWebservers,
+    HTTPServerRedirecting,
+    )
+from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import get_transport
+from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
-import bzrlib.workingtree as workingtree
+from bzrlib.repofmt import knitrepo, weaverepo
 
 
 class TestDefaultFormat(TestCase):
@@ -70,14 +81,27 @@ class TestFormatRegistry(TestCase):
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir', 
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-            'Format using knits')
+        my_format_registry.register_metadir('knit',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+            'Format using knits',
+            )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-            'Transitional format in 0.8.  Slower than knit.', deprecated=True)
-        my_format_registry.register_metadir('experimental-knit2', 
-                                            'RepositoryFormatKnit2',
-            'Experimental successor to knit.  Use at your own risk.')
+        my_format_registry.register_metadir(
+            'branch6',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+            'Experimental successor to knit.  Use at your own risk.',
+            branch_format='bzrlib.branch.BzrBranchFormat6')
+        my_format_registry.register_metadir(
+            'hidden format',
+            'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
+            'Experimental successor to knit.  Use at your own risk.',
+            branch_format='bzrlib.branch.BzrBranchFormat6', hidden=True)
+        my_format_registry.register('hiddenweave', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', hidden=True)
+        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.bzrdir',
+            'BzrDirFormat6', 'Format registered lazily', deprecated=True,
+            hidden=True)
         return my_format_registry
 
     def test_format_registry(self):
@@ -88,13 +112,13 @@ class TestFormatRegistry(TestCase):
         self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('default')
         self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1)
+            knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('knit')
         self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1)
-        my_bzrdir = my_format_registry.make_bzrdir('metaweave')
-        self.assertIsInstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormat7)
+            knitrepo.RepositoryFormatKnit1)
+        my_bzrdir = my_format_registry.make_bzrdir('branch6')
+        self.assertIsInstance(my_bzrdir.get_branch_format(),
+                              bzrlib.branch.BzrBranchFormat6)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
@@ -119,20 +143,22 @@ class TestFormatRegistry(TestCase):
             '  knit/default:\n    \(native\) Format using knits\n')
         self.assertContainsRe(deprecated, 
             '  lazy:\n    \(native\) Format registered lazily\n')
+        self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
         default_factory = bzrdir.format_registry.get('default')
         old_default = [k for k, v in bzrdir.format_registry.iteritems()
                        if v == default_factory and k != 'default'][0]
-        bzrdir.format_registry.set_default_repository('metaweave')
+        bzrdir.format_registry.set_default_repository('dirstate-with-subtree')
         try:
-            self.assertIs(bzrdir.format_registry.get('metaweave'),
+            self.assertIs(bzrdir.format_registry.get('dirstate-with-subtree'),
                           bzrdir.format_registry.get('default'))
             self.assertIs(
                 repository.RepositoryFormat.get_default_format().__class__,
-                repository.RepositoryFormat7)
+                knitrepo.RepositoryFormatKnit3)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
+
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
@@ -319,7 +345,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience_root(self):
         """Creating a branch at the root of a fs should work."""
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(), 
@@ -397,7 +423,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
@@ -438,6 +464,12 @@ class ChrootedTests(TestCaseWithTransport):
                          local_branch_path(branch))
         self.assertIs(tree.bzrdir, branch.bzrdir)
         self.assertEqual('foo', relpath)
+        # opening from non-local should not return the tree
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            self.get_readonly_url('topdir/foo'))
+        self.assertEqual(None, tree)
+        self.assertEqual('foo', relpath)
+        # without a tree:
         self.make_branch('topdir/foo')
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             'topdir/foo')
@@ -468,6 +500,43 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
                           transport)
 
+    def test_sprout_recursive(self):
+        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+            format='dirstate-with-subtree')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.sprout('tree2')
+        self.failUnlessExists('tree2/subtree/file')
+
+    def test_cloning_metadir(self):
+        """Ensure that cloning metadir is suitable"""
+        bzrdir = self.make_bzrdir('bzrdir')
+        bzrdir.cloning_metadir()
+        branch = self.make_branch('branch', format='knit')
+        format = branch.bzrdir.cloning_metadir()
+        self.assertIsInstance(format.workingtree_format,
+            workingtree.WorkingTreeFormat3)
+
+    def test_sprout_recursive_treeless(self):
+        tree = self.make_branch_and_tree('tree1',
+            format='dirstate-with-subtree')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+            format='dirstate-with-subtree')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.destroy_workingtree()
+        repo = self.make_repository('repo', shared=True,
+            format='dirstate-with-subtree')
+        repo.set_make_working_trees(False)
+        tree.bzrdir.sprout('repo/tree2')
+        self.failUnlessExists('repo/tree2/subtree')
+        self.failIfExists('repo/tree2/subtree/file')
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""
@@ -482,7 +551,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
         self.assertEqual(repository_base,
-                         dir.get_repository_transport(repository.RepositoryFormat7()).base)
+                         dir.get_repository_transport(weaverepo.RepositoryFormat7()).base)
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
@@ -494,7 +563,35 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         t = dir.transport
         self.assertIsDirectory('branch-lock', t)
 
-        
+    def test_comparison(self):
+        """Equality and inequality behave properly.
+
+        Metadirs should compare equal iff they have the same repo, branch and
+        tree formats.
+        """
+        mydir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(mydir, mydir)
+        self.assertFalse(mydir != mydir)
+        otherdir = bzrdir.format_registry.make_bzrdir('knit')
+        self.assertEqual(otherdir, mydir)
+        self.assertFalse(otherdir != mydir)
+        otherdir2 = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        self.assertNotEqual(otherdir2, mydir)
+        self.assertFalse(otherdir2 == mydir)
+
+    def test_needs_conversion_different_working_tree(self):
+        # meta1dirs need an conversion if any element is not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        # test with 
+        new_default = bzrdir.format_registry.make_bzrdir('dirstate')
+        bzrdir.BzrDirFormat._set_default_format(new_default)
+        try:
+            tree = self.make_branch_and_tree('tree', format='knit')
+            self.assertTrue(tree.bzrdir.needs_format_conversion())
+        finally:
+            bzrdir.BzrDirFormat._set_default_format(old_format)
+
+
 class TestFormat5(TestCaseWithTransport):
     """Tests specific to the version 5 bzrdir format."""
 
@@ -635,7 +732,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def setUp(self):
         super(NonLocalTests, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
     
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
@@ -669,9 +766,80 @@ class NonLocalTests(TestCaseWithTransport):
         result.open_branch()
         result.open_repository()
 
+    def test_checkout_metadir(self):
+        # checkout_metadir has reasonable working tree format even when no
+        # working tree is present
+        self.make_branch('branch-knit2', format='dirstate-with-subtree')
+        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
+        checkout_format = my_bzrdir.checkout_metadir()
+        self.assertIsInstance(checkout_format.workingtree_format,
+                              workingtree.WorkingTreeFormat3)
 
-class TestRemoteSFTP(test_sftp_transport.TestCaseWithSFTPServer):
 
-    def test_open_containing_tree_or_branch(self):
-        tree = self.make_branch_and_tree('tree')
-        bzrdir.BzrDir.open_containing_tree_or_branch(self.get_url('tree'))
+class TestHTTPRedirectionLoop(object):
+    """Test redirection loop between two http servers.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithTwoWebservers.
+
+    We can't inherit directly from TestCaseWithTwoWebservers or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete. 
+    """
+
+    # Should be defined by daughter classes to ensure redirection
+    # still use the same transport implementation (not currently
+    # enforced as it's a bit tricky to get right (see the FIXME
+    # in BzrDir.open_from_transport for the unique use case so
+    # far)
+    _qualifier = None
+
+    def create_transport_readonly_server(self):
+        return HTTPServerRedirecting()
+
+    def create_transport_secondary_server(self):
+        return HTTPServerRedirecting()
+
+    def setUp(self):
+        # Both servers redirect to each server creating a loop
+        super(TestHTTPRedirectionLoop, self).setUp()
+        # The redirections will point to the new server
+        self.new_server = self.get_readonly_server()
+        # The requests to the old server will be redirected
+        self.old_server = self.get_secondary_server()
+        # Configure the redirections
+        self.old_server.redirect_to(self.new_server.host, self.new_server.port)
+        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
+
+    def _qualified_url(self, host, port):
+        return 'http+%s://%s:%s' % (self._qualifier, host, port)
+
+    def test_loop(self):
+        # Starting from either server should loop
+        old_url = self._qualified_url(self.old_server.host, 
+                                      self.old_server.port)
+        oldt = self._transport(old_url)
+        self.assertRaises(errors.NotBranchError,
+                          bzrdir.BzrDir.open_from_transport, oldt)
+        new_url = self._qualified_url(self.new_server.host, 
+                                      self.new_server.port)
+        newt = self._transport(new_url)
+        self.assertRaises(errors.NotBranchError,
+                          bzrdir.BzrDir.open_from_transport, newt)
+
+
+class TestHTTPRedirections_urllib(TestHTTPRedirectionLoop,
+                                  TestCaseWithTwoWebservers):
+    """Tests redirections for urllib implementation"""
+
+    _qualifier = 'urllib'
+    _transport = HttpTransport_urllib
+
+
+
+class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
+                                  TestHTTPRedirectionLoop,
+                                  TestCaseWithTwoWebservers):
+    """Tests redirections for pycurl implementation"""
+
+    _qualifier = 'pycurl'
