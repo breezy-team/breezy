@@ -2229,11 +2229,10 @@ class DirState(object):
                 raise AssertionError(
                     "no parent entry for: %s in tree %s"
                     % (this_path, tree_index))
-            else:
-                if parent_entry[1][tree_index][0] != 'd':
-                    raise AssertionError(
-                        "Parent entry for %s is not marked as a valid"
-                        " directory. %s" % (this_path, parent_entry,))
+            if parent_entry[1][tree_index][0] != 'd':
+                raise AssertionError(
+                    "Parent entry for %s is not marked as a valid"
+                    " directory. %s" % (this_path, parent_entry,))
 
         # For each file id, for each tree: either
         # the file id is not present at all; all rows with that id in the
