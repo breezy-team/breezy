@@ -792,7 +792,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             request.add_unredirected_header(self.auth_header, client_header)
             response = self.parent.open(request)
             if response:
-                self.auth_successful(request, auth)
+                self.auth_successful(request, response, auth)
             return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
@@ -836,13 +836,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """
         raise NotImplementedError(self.build_auth_header)
 
-    def auth_successful(self, request, auth):
+    def auth_successful(self, request, response, auth):
         """The authentification was successful for the request.
 
         The params are stored in the request to allow reuse and
         avoid rountrips associated with authentication errors.
 
         :param request: The succesfully authenticated request.
+        :param response: The server response (may contain auth info).
         :param auth: The parameters used to succeed.
         """
         self.set_auth(request, auth)

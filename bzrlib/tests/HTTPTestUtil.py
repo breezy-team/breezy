@@ -19,6 +19,7 @@ import errno
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import re
 import socket
+import urllib2
 import urlparse
 
 from bzrlib.tests import TestCaseWithTransport
@@ -204,26 +205,10 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self.__secondary_server
 
 
-class FakeProxyRequestHandler(TestingHTTPRequestHandler):
-    """Append a '-proxied' suffix to file served"""
+class ProxyServer(HttpServer):
+    """A proxy test server for http transports."""
 
-    def translate_path(self, path):
-        # We need to act as a proxy and accept absolute urls,
-        # which SimpleHTTPRequestHandler (grand parent) is not
-        # ready for. So we just drop the protocol://host:port
-        # part in front of the request-url (because we know we
-        # would not forward the request to *another* proxy).
-
-        # So we do what SimpleHTTPRequestHandler.translate_path
-        # do beginning with python 2.4.3: abandon query
-        # parameters, scheme, host port, etc (which ensure we
-        # provide the right behaviour on all python versions).
-        path = urlparse.urlparse(path)[2]
-        # And now, we can apply *our* trick to proxy files
-        self.path += '-proxied'
-        # An finally we leave our mother class do whatever it
-        # wants with the path
-        return TestingHTTPRequestHandler.translate_path(self, path)
+    proxy_requests = True
 
 
 class RedirectRequestHandler(TestingHTTPRequestHandler):
@@ -309,49 +294,92 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.old_server = self.get_secondary_server()
 
 
-class AbstractBasicAuthRequestHandler(TestingHTTPRequestHandler):
-    """Requires a basic authentication to process requests.
+class AuthRequestHandler(TestingHTTPRequestHandler):
+    """Requires an authentication to process requests.
 
     This is intended to be used with a server that always and
-    only use basic authentication.
+    only use one authentication scheme (implemented by daughter
+    classes).
     """
 
-    # The following attribute should be set dy daughter classes
-    _auth_header_sent = None
-    _auth_header_recv = None
-    _auth_error_code = None
+    # The following attributes should be defined in the server
+    # - _auth_header_sent: the header name sent to require auth
+    # - _auth_header_recv: the header received containing auth
+    # - _auth_error_code: the error code to indicate auth required
 
     def do_GET(self):
-        tcs = self.server.test_case_server
-        if tcs.auth_scheme == 'basic':
-            auth_header = self.headers.get(self._auth_header_recv)
-            authorized = False
-            if auth_header and auth_header.lower().startswith('basic '):
-                coded_auth = auth_header[len('Basic '):]
-                user, password = coded_auth.decode('base64').split(':')
-                authorized = tcs.authorized(user, password)
-            if not authorized:
-                # Note that we must update tcs *before* sending
-                # the error or the client may try to read it
-                # before we have sent the whole error back.
-                tcs.auth_required_errors += 1
-                self.send_response(self._auth_error_code)
-                self.send_header(self._auth_header_sent,
-                                 'Basic realm="Thou should not pass"')
-                self.end_headers()
-                return
+        if self.authorized():
+            return TestingHTTPRequestHandler.do_GET(self)
+        else:
+            # Note that we must update test_case_server *before*
+            # sending the error or the client may try to read it
+            # before we have sent the whole error back.
+            tcs = self.server.test_case_server
+            tcs.auth_required_errors += 1
+            self.send_response(tcs.auth_error_code)
+            self.send_header_auth_reqed()
+            self.end_headers()
+            return
 
         TestingHTTPRequestHandler.do_GET(self)
 
 
-class AuthHTTPServer(HttpServer):
-    """AuthHTTPServer extends HttpServer with a dictionary of passwords.
+class BasicAuthRequestHandler(AuthRequestHandler):
+    """Implements the basic authentication of a request"""
 
-    This is used as a base class for various schemes.
+    def authorized(self):
+        tcs = self.server.test_case_server
+        if tcs.auth_scheme != 'basic':
+            return False
+
+        auth_header = self.headers.get(tcs.auth_header_recv)
+        if auth_header and auth_header.lower().startswith('basic '):
+            raw_auth = auth_header[len('Basic '):]
+            user, password = raw_auth.decode('base64').split(':')
+            return tcs.authorized(user, password)
+
+        return False
+
+    def send_header_auth_reqed(self):
+        self.send_header(self.server.test_case_server.auth_header_sent,
+                         'Basic realm="Thou should not pass"')
+
+
+class DigestAuthRequestHandler(AuthRequestHandler):
+    """Implements the digest authentication of a request"""
+
+    def authorized(self):
+        tcs = self.server.test_case_server
+        if tcs.auth_scheme != 'digest':
+            return False
+
+        auth_header = self.headers.get(tcs.auth_header_recv)
+        if auth_header and auth_header.lower().startswith('digest '):
+            raw_auth = auth_header[len('Basic '):]
+            user, password = raw_auth.decode('base64').split(':')
+            return tcs.authorized(user, password)
+
+        return False
+
+    def send_header_auth_reqed(self):
+        self.send_header(self.server.test_case_server.auth_header_sent,
+                         'Basic realm="Thou should not pass"')
+
+class AuthServer(HttpServer):
+    """Extends HttpServer with a dictionary of passwords.
+
+    This is used as a base class for various schemes which should
+    all use or redefined the associated AuthRequestHandler.
 
     Note that no users are defined by default, so add_user should
     be called before issuing the first request.
+
     """
+    # The following attributes should be set dy daughter classes
+    # and are used by AuthRequestHandler.
+    auth_header_sent = None
+    auth_header_recv = None
+    auth_error_code = None
 
     def __init__(self, request_handler, auth_scheme):
         HttpServer.__init__(self, request_handler)
@@ -372,39 +400,48 @@ class AuthHTTPServer(HttpServer):
         return expected_password is not None and password == expected_password
 
 
-class BasicAuthRequestHandler(AbstractBasicAuthRequestHandler):
-    """Requires a basic authentication to process requests"""
+class HTTPAuthServer(AuthServer):
+    """An HTTP server requiring authentication"""
 
-    _auth_header_sent = 'WWW-Authenticate'
-    _auth_header_recv = 'Authorization'
-    _auth_error_code = 401
+    auth_header_sent = 'WWW-Authenticate'
+    auth_header_recv = 'Authorization'
+    auth_error_code = 401
 
 
-class BasicAuthHTTPServer(AuthHTTPServer):
+class ProxyAuthServer(AuthServer):
+    """A proxy server requiring authentication"""
+
+    proxy_requests = True
+    auth_header_sent = 'Proxy-Authenticate'
+    auth_header_recv = 'Proxy-Authorization'
+    auth_error_code = 407
+
+
+class HTTPBasicAuthServer(HTTPAuthServer):
     """An HTTP server requiring basic authentication"""
 
     def __init__(self):
-        AuthHTTPServer.__init__(self, BasicAuthRequestHandler, 'basic')
+        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
 
 
-class ProxyBasicAuthRequestHandler(AbstractBasicAuthRequestHandler,
-                                   FakeProxyRequestHandler):
-    """Requires a basic authentication to proxy requests.
-
-    Note: We have to override translate_path because otherwise
-    AbstractBasicAuthRequestHandler.translate_path take
-    precedence.  
-    """
-
-    _auth_header_sent = 'Proxy-Authenticate'
-    _auth_header_recv = 'Proxy-Authorization'
-    _auth_error_code = 407
-
-    translate_path = FakeProxyRequestHandler.translate_path
-
-
-class ProxyBasicAuthHTTPServer(AuthHTTPServer):
-    """An HTTP server requiring basic authentication"""
+class HTTPDigestAuthServer(HTTPAuthServer):
+    """An HTTP server requiring digest authentication"""
 
     def __init__(self):
-        AuthHTTPServer.__init__(self, ProxyBasicAuthRequestHandler, 'basic')
+        HTTPAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+
+
+class ProxyBasicAuthServer(ProxyAuthServer):
+    """An proxy server requiring basic authentication"""
+
+    def __init__(self):
+        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+
+
+class ProxyDigestAuthServer(ProxyAuthServer):
+    """An proxy server requiring basic authentication"""
+
+    def __init__(self):
+        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+
+

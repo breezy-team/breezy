@@ -219,13 +219,39 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.get_multiple_ranges(file, file_size, ranges)
         file.close()
 
+    def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+
+        If the server requires it, proxy the path before the usual translation
+        """
+        if self.server.test_case_server.proxy_requests:
+            # We need to act as a proxy and accept absolute urls,
+            # which SimpleHTTPRequestHandler (parent) is not
+            # ready for. So we just drop the protocol://host:port
+            # part in front of the request-url (because we know
+            # we would not forward the request to *another*
+            # proxy).
+
+            # So we do what SimpleHTTPRequestHandler.translate_path
+            # do beginning with python 2.4.3: abandon query
+            # parameters, scheme, host port, etc (which ensure we
+            # provide the right behaviour on all python versions).
+            path = urlparse.urlparse(path)[2]
+            # And now, we can apply *our* trick to proxy files
+            path += '-proxied'
+
+        return self._translate_path(path)
+
+    def _translate_path(self, path):
+        return SimpleHTTPRequestHandler.translate_path(self, path)
+
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
         # decoding them into unicode first.
         # However, under Linux, you can access bytestream paths
         # without any problems. If this function was always active
         # it would probably break tests when LANG=C was set
-        def translate_path(self, path):
+        def _translate_path(self, path):
             """Translate a /-separated PATH to the local filename syntax.
 
             For bzr, all url paths are considered to be utf8 paths.
@@ -266,6 +292,10 @@ class HttpServer(Server):
 
     Subclasses can provide a specific request handler.
     """
+
+    # Whether or not we proxy the requests (see
+    # TestingHTTPRequestHandler.translate_path).
+    proxy_requests = False
 
     # used to form the url that connects to this server
     _url_protocol = 'http'

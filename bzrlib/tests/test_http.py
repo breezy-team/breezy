@@ -47,13 +47,15 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.tests.HTTPTestUtil import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
-    BasicAuthHTTPServer,
-    FakeProxyRequestHandler,
     ForbiddenRequestHandler,
+    HTTPBasicAuthServer,
+    HTTPDigestAuthServer,
     HTTPServerRedirecting,
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
-    ProxyBasicAuthHTTPServer,
+    ProxyBasicAuthServer,
+    ProxyDigestAuthServer,
+    ProxyServer,
     SingleRangeRequestHandler,
     TestCaseWithRedirectedWebserver,
     TestCaseWithTwoWebservers,
@@ -788,7 +790,7 @@ class TestProxyHttpServer(object):
         """Creates an http server that will serve files with
         '-proxied' appended to their names.
         """
-        return HttpServer(FakeProxyRequestHandler)
+        return ProxyServer()
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1133,7 +1135,7 @@ class TestDoCatchRedirections(TestCaseWithRedirectedWebserver):
                           self.get_a, self.old_transport, redirected)
 
 
-class TestHTTPAuth(object):
+class TestAuth(object):
     """Test some authentication scheme specified by daughter class.
 
     This MUST be used by daughter classes that also inherit from
@@ -1216,36 +1218,36 @@ class TestHTTPAuth(object):
         self.assertEqual(1, self.server.auth_required_errors)
 
 
-class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
-    """Test basic http authentication scheme"""
+class TestHTTPAuth(TestAuth):
+    """Test HTTP authentication schemes.
 
-    _transport = HttpTransport_urllib
+    Daughter classes MUST inherit from TestCaseWithWebserver too.
+    """
+
     _auth_header = 'Authorization'
 
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
         self.server = self.get_readonly_server()
-        TestHTTPAuth.setUp(self)
-
-    def create_transport_readonly_server(self):
-        return BasicAuthHTTPServer()
+        TestAuth.setUp(self)
 
     def get_user_transport(self, user, password=None):
         return self._transport(self.get_user_url(user, password))
 
 
-class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
-    """Test basic http authentication scheme"""
+class TestProxyAuth(TestAuth):
+    """Test proxy authentication schemes.
 
-    _transport = HttpTransport_urllib
+    Daughter classes MUST also inherit from TestCaseWithWebserver.
+    """
     _auth_header = 'Proxy-authorization'
 
     def setUp(self):
-        TestCaseWithTwoWebservers.setUp(self)
+        TestCaseWithWebserver.setUp(self)
         self.server = self.get_readonly_server()
         self._old_env = {}
         self.addCleanup(self._restore_env)
-        TestHTTPAuth.setUp(self)
+        TestAuth.setUp(self)
         # Override the contents to avoid false positives
         self.build_tree_contents([('a', 'not proxied contents of a\n'),
                                   ('b', 'not proxied contents of b\n'),
@@ -1253,8 +1255,9 @@ class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
                                   ('b-proxied', 'contents of b\n'),
                                   ])
 
-    def create_transport_readonly_server(self):
-        return ProxyBasicAuthHTTPServer()
+    def get_user_transport(self, user, password=None):
+        self._install_env({'all_proxy': self.get_user_url(user, password)})
+        return self._transport(self.server.get_url())
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1264,6 +1267,39 @@ class TestHTTPProxyBasicAuth(TestHTTPAuth, TestCaseWithTwoWebservers):
         for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
-    def get_user_transport(self, user, password=None):
-        self._install_env({'all_proxy': self.get_user_url(user, password)})
-        return self._transport(self.server.get_url())
+
+class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
+    """Test http basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return HTTPBasicAuthServer()
+
+
+class TestHTTPProxyBasicAuth(TestProxyAuth, TestCaseWithWebserver):
+    """Test proxy basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return ProxyBasicAuthServer()
+
+
+class TestHTTPDigestAuth(TestHTTPAuth, TestCaseWithWebserver):
+    """Test http digest authentication scheme"""
+
+    _transport = HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return HTTPDigestAuthServer()
+
+
+class TestHTTPProxyDigestAuth(TestProxyAuth, TestCaseWithWebserver):
+    """Test proxy digest authentication scheme"""
+
+    _transport = HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return ProxyDigestAuthServer()
+
