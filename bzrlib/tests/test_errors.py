@@ -30,6 +30,11 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_disabled_method(self):
+        error = errors.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
+
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
@@ -114,7 +119,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
-            "the current request that is open.",
+            "the currently open request.",
             str(error))
 
     def test_unknown_hook(self):
@@ -228,6 +233,11 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_unexpected_smart_server_response(self):
+        e = errors.UnexpectedSmartServerResponse(('not yes',))
+        self.assertEqual(
+            "Could not understand response from smart server: ('not yes',)",
+            str(e))
 
 
 class PassThroughError(errors.BzrError):

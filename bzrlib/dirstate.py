@@ -1407,12 +1407,8 @@ class DirState(object):
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
-        The object will be write locked when returned to the caller,
-        unless there was an exception in the writing, in which case it
-        will be unlocked.
-
         :param path: The name of the file for the dirstate.
-        :return: A DirState object.
+        :return: A write-locked DirState object.
         """
         # This constructs a new DirState object on a path, sets the _state_file
         # to a new empty file for that path. It then calls _set_data() with our

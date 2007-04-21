@@ -49,6 +49,7 @@ from bzrlib.tests import (
                           TestSuite,
                           TextTestRunner,
                           UnavailableFeature,
+                          clean_selftest_output,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -192,17 +193,21 @@ class TestBzrDirProviderAdapter(TestCase):
         from bzrlib.bzrdir import BzrDirTestProviderAdapter
         input_test = TestBzrDirProviderAdapter(
             "test_adapted_tests")
+        vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        adapter = BzrDirTestProviderAdapter(vfs_factory,
+            server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
         self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -231,6 +236,19 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].repository_format, formats[1][0])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
+
+    def test_setting_vfs_transport(self):
+        """The vfs_transport_factory can be set optionally."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        formats = [("c", "C")]
+        adapter = RepositoryTestProviderAdapter(None, None, formats,
+            vfs_transport_factory="vfs")
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(1, len(tests))
+        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
 
 
 class TestInterRepositoryProviderAdapter(TestCase):
@@ -738,8 +756,10 @@ class TestTestResult(TestCase):
         result.report_known_failure(test, err)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
-    
+        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        self.assertEqual(lines[1], '    foo')
+        self.assertEqual(2, len(lines))
+
     def test_text_report_known_failure(self):
         # text test output formatting
         pb = MockProgress()
@@ -932,13 +952,12 @@ class TestRunner(TestCase):
         stream = StringIO()
         runner = TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
-        self.assertEqual(
+        self.assertContainsRe(stream.getvalue(),
             '\n'
-            '----------------------------------------------------------------------\n'
-            'Ran 1 test in 0.000s\n'
+            '-*\n'
+            'Ran 1 test in .*\n'
             '\n'
-            'OK (known_failures=1)\n',
-            stream.getvalue())
+            'OK \\(known_failures=1\\)\n')
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -1162,8 +1181,8 @@ class TestTestCase(TestCase):
         """The bzrlib hooks should be sanitised by setUp."""
         self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
-        self.assertEqual(bzrlib.transport.smart.SmartServerHooks(),
-            bzrlib.transport.smart.SmartTCPServer.hooks)
+        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+            bzrlib.smart.server.SmartTCPServer.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -1396,17 +1415,9 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
 
     def test_clean_output(self):
         # test functionality of clean_selftest_output()
-        from bzrlib.tests import clean_selftest_output
-
-        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
-        files = ('bzr', 'setup.py', 'test9999.tmp')
-        for i in dirs:
-            os.mkdir(i)
-        for i in files:
-            f = file(i, 'wb')
-            f.write('content of ')
-            f.write(i)
-            f.close()
+        self.build_tree(['test0000.tmp/', 'test0001.tmp/',
+                         'bzrlib/', 'tests/',
+                         'bzr', 'setup.py', 'test9999.tmp'])
 
         root = os.getcwdu()
         before = os.listdir(root)
@@ -1421,6 +1432,17 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
+
+    def test_clean_readonly(self):
+        # test for delete read-only files
+        self.build_tree(['test0000.tmp/', 'test0000.tmp/foo'])
+        osutils.make_readonly('test0000.tmp/foo')
+        root = os.getcwdu()
+        before = os.listdir(root);  before.sort()
+        self.assertEquals(['test0000.tmp'], before)
+        clean_selftest_output(root, quiet=True)
+        after = os.listdir(root);   after.sort()
+        self.assertEquals([], after)
 
 
 class TestKnownFailure(TestCase):

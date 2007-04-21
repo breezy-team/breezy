@@ -403,9 +403,7 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
-        raise errors.TransportNotPossible('This is not a LocalTransport,'
-            ' so there is no local representation for a path')
+        raise errors.NotLocalUrl(self.abspath(relpath))
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -618,8 +616,9 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -640,8 +639,9 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -1243,19 +1243,17 @@ register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTran
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
-register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
-                        'ChrootTransportDecorator')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
 register_lazy_transport('bzr://',
-                        'bzrlib.transport.smart',
-                        'SmartTCPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteTCPTransport')
 register_lazy_transport('bzr+http://',
-                        'bzrlib.transport.smart',
-                        'SmartHTTPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
 register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.smart',
-                        'SmartSSHTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteSSHTransport')

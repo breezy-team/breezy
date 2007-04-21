@@ -99,6 +99,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 # This is the Windows equivalent of ENOTDIR
 # It is defined in pywin32.winerror, but we don't want a strong dependency for
 # just an error code.
+ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
 
 
@@ -1245,7 +1246,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
 
-        These trees get an initial random root id.
+        These trees get an initial random root id, if their repository supports
+        rich root data, TREE_ROOT otherwise.
         """
         revision_id = osutils.safe_revision_id(revision_id)
         if not isinstance(a_bzrdir.transport, LocalTransport):
@@ -1273,7 +1275,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
-                wt._set_root_id(generate_ids.gen_root_id())
+                if branch.repository.supports_rich_root():
+                    wt._set_root_id(generate_ids.gen_root_id())
+                else:
+                    wt._set_root_id(ROOT_ID)
                 wt.flush()
                 wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)
@@ -2082,13 +2087,15 @@ class InterDirStateTree(InterTree):
                     # python 2.5 has e.errno == EINVAL,
                     #            and e.winerror == ERROR_DIRECTORY
                     e_winerror = getattr(e, 'winerror', None)
+                    win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
                     # there may be directories in the inventory even though
                     # this path is not a file on disk: so mark it as end of
                     # iterator
                     if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                         current_dir_info = None
                     elif (sys.platform == 'win32'
-                          and ERROR_DIRECTORY in (e.errno, e_winerror)):
+                          and (e.errno in win_errors
+                               or e_winerror in win_errors)):
                         current_dir_info = None
                     else:
                         raise
@@ -2114,11 +2121,40 @@ class InterDirStateTree(InterTree):
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
                         # B) it is not versioned.
-                        # in either case it was processed by the containing directories walk:
-                        # if it is root/foo, when we walked root we emitted it,
-                        # or if we ere given root/foo to walk specifically, we
-                        # emitted it when checking the walk-root entries
-                        # advance the iterator and loop - we dont need to emit it.
+
+                        # if (A) then we need to recurse into it to check for
+                        # new unknown files or directories.
+                        # if (B) then we should ignore it, because we don't
+                        # recurse into unknown directories.
+                        if want_unversioned:
+                            path_index = 0
+                            while path_index < len(current_dir_info[1]):
+                                    current_path_info = current_dir_info[1][path_index]
+                                    if current_path_info[2] == 'directory':
+                                        if self.target._directory_is_tree_reference(
+                                            current_path_info[0].decode('utf8')):
+                                            current_path_info = current_path_info[:2] + \
+                                                ('tree-reference',) + current_path_info[3:]
+                                    new_executable = bool(
+                                        stat.S_ISREG(current_path_info[3].st_mode)
+                                        and stat.S_IEXEC & current_path_info[3].st_mode)
+                                    yield (None,
+                                        (None, utf8_decode_or_none(current_path_info[0])),
+                                        True,
+                                        (False, False),
+                                        (None, None),
+                                        (None, utf8_decode_or_none(current_path_info[1])),
+                                        (None, current_path_info[2]),
+                                        (None, new_executable))
+                                    # dont descend into this unversioned path if it is
+                                    # a dir
+                                    if current_path_info[2] in ('directory',
+                                                                'tree-reference'):
+                                        del current_dir_info[1][path_index]
+                                        path_index -= 1
+                                    path_index += 1
+
+                        # This dir info has been handled, go to the next
                         try:
                             current_dir_info = dir_iterator.next()
                         except StopIteration:
@@ -2287,15 +2323,14 @@ class InterDirStateTree(InterTree):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
-                                if want_unversioned:
-                                    yield (None,
-                                        (None, utf8_decode_or_none(current_path_info[0])),
-                                        True,
-                                        (False, False),
-                                        (None, None),
-                                        (None, utf8_decode_or_none(current_path_info[1])),
-                                        (None, current_path_info[2]),
-                                        (None, new_executable))
+                                yield (None,
+                                    (None, utf8_decode_or_none(current_path_info[0])),
+                                    True,
+                                    (False, False),
+                                    (None, None),
+                                    (None, utf8_decode_or_none(current_path_info[1])),
+                                    (None, current_path_info[2]),
+                                    (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] in ('directory'):
