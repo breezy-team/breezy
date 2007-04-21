@@ -22,6 +22,7 @@ TransportTestProviderAdapter.
 
 import os
 from cStringIO import StringIO
+from StringIO import StringIO as pyStringIO
 import stat
 import sys
 
@@ -30,28 +31,31 @@ from bzrlib import (
     osutils,
     urlutils,
     )
-from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, NoSmartServer, PathError,
-                           TransportNotPossible, ConnectionError,
-                           InvalidURL)
+from bzrlib.errors import (ConnectionError,
+                           DirectoryNotEmpty,
+                           FileExists,
+                           InvalidURL,
+                           LockError,
+                           NoSmartServer,
+                           NoSuchFile,
+                           NotLocalUrl,
+                           PathError,
+                           TransportNotPossible,
+                           )
 from bzrlib.osutils import getcwd
+from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, smart
+from bzrlib.transport import memory, remote
 import bzrlib.transport
 
 
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    try:
-        f.write(txt.read())
-    finally:
-        f.close()
-
-
 class TransportTests(TestTransportImplementation):
+
+    def setUp(self):
+        super(TransportTests, self).setUp()
+        self._captureVar('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
@@ -372,6 +376,34 @@ class TransportTests(TestTransportImplementation):
         t.put_file_non_atomic('dir777/mode664', sio, mode=0664,
                               dir_mode=0777, create_parent_dir=True)
         self.assertTransportMode(t, 'dir777', 0777)
+
+    def test_put_bytes_unicode(self):
+        # Expect put_bytes to raise AssertionError or UnicodeEncodeError if
+        # given unicode "bytes".  UnicodeEncodeError doesn't really make sense
+        # (we don't want to encode unicode here at all, callers should be
+        # strictly passing bytes to put_bytes), but we allow it for backwards
+        # compatibility.  At some point we should use a specific exception.
+        # See https://bugs.launchpad.net/bzr/+bug/106898.
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        unicode_string = u'\u1234'
+        self.assertRaises(
+            (AssertionError, UnicodeEncodeError),
+            t.put_bytes, 'foo', unicode_string)
+
+    def test_put_file_unicode(self):
+        # Like put_bytes, except with a StringIO.StringIO of a unicode string.
+        # This situation can happen (and has) if code is careless about the type
+        # of "string" they initialise/write to a StringIO with.  We cannot use
+        # cStringIO, because it never returns unicode from read.
+        # Like put_bytes, UnicodeEncodeError isn't quite the right exception to
+        # raise, but we raise it for hysterical raisins.
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        unicode_file = pyStringIO(u'\u1234')
+        self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
 
     def test_put_multi(self):
         t = self.get_transport()
@@ -1118,7 +1150,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except TransportNotPossible:
+        except NotLocalUrl:
             pass # This is not a local transport
         else:
             self.assertEqual(getcwd(), p)
@@ -1315,7 +1347,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             client_medium = transport.get_smart_medium()
-            self.assertIsInstance(client_medium, smart.SmartClientMedium)
+            self.assertIsInstance(client_medium, medium.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass

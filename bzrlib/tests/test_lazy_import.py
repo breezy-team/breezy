@@ -96,6 +96,15 @@ class TestScopeReplacer(TestCase):
     get collisions.
     """
 
+    def setUp(self):
+        TestCase.setUp(self)
+        # These tests assume we will not be proxying, so make sure proxying is
+        # disabled.
+        orig_proxy = lazy_import.ScopeReplacer._should_proxy
+        def restore():
+            lazy_import.ScopeReplacer._should_proxy = orig_proxy
+        lazy_import.ScopeReplacer._should_proxy = False
+
     def test_object(self):
         """ScopeReplacer can create an instance in local scope.
         
@@ -326,7 +335,6 @@ class TestScopeReplacer(TestCase):
         self.assertRaises(errors.IllegalUseOfScopeReplacer,
                           getattr, test_obj3, 'foo')
         
-        # However, the 
         self.assertEqual([('__getattribute__', 'foo'),
                           '_replace',
                           'factory',
@@ -336,6 +344,65 @@ class TestScopeReplacer(TestCase):
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
                           '_replace',
+                         ], actions)
+
+    def test_enable_proxying(self):
+        """Test that we can allow ScopeReplacer to proxy."""
+        actions = []
+        InstrumentedReplacer.use_actions(actions)
+        TestClass.use_actions(actions)
+
+        def factory(replacer, scope, name):
+            actions.append('factory')
+            return TestClass()
+
+        try:
+            test_obj4
+        except NameError:
+            # test_obj4 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj4 was not supposed to exist yet')
+
+        lazy_import.ScopeReplacer._should_proxy = True
+        InstrumentedReplacer(scope=globals(), name='test_obj4',
+                             factory=factory)
+
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj4, '__class__'))
+        test_obj5 = test_obj4
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj4, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+
+        # The first use of the alternate variable causes test_obj2 to
+        # be replaced.
+        self.assertEqual('foo', test_obj4.foo(1))
+        self.assertEqual(TestClass,
+                         object.__getattribute__(test_obj4, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+        # We should be able to access test_obj4 attributes normally
+        self.assertEqual('foo', test_obj4.foo(2))
+        # because we enabled proxying, test_obj5 can access its members as well
+        self.assertEqual('foo', test_obj5.foo(3))
+        self.assertEqual('foo', test_obj5.foo(4))
+
+        # However, it cannot be replaced by the ScopeReplacer
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj5, '__class__'))
+
+        self.assertEqual([('__getattribute__', 'foo'),
+                          '_replace',
+                          'factory',
+                          'init',
+                          ('foo', 1),
+                          ('foo', 2),
+                          ('__getattribute__', 'foo'),
+                          ('foo', 3),
+                          ('__getattribute__', 'foo'),
+                          ('foo', 4),
                          ], actions)
 
 

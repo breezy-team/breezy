@@ -128,7 +128,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual('foo', relpath)
         self.assertEqual(wt.basedir + '/', local_base)
 
-
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
         tree = self.make_branch_and_tree('.')

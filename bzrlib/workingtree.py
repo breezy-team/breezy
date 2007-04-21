@@ -38,6 +38,7 @@ WorkingTree.open(dir).
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -68,7 +69,9 @@ from bzrlib import (
     revisiontree,
     repository,
     textui,
+    trace,
     transform,
+    ui,
     urlutils,
     xml5,
     xml6,
@@ -116,6 +119,8 @@ from bzrlib.symbol_versioning import (deprecated_passed,
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
+
+ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 @deprecated_function(zero_thirteen)
@@ -524,7 +529,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None, basis=None):
+    def clone(self, to_bzrdir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
         
         Specifically modified files are kept as modified, but
@@ -536,10 +541,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             If not None, the cloned tree will have its last revision set to 
             revision, and and difference between the source trees last revision
             and this one merged in.
-
-        basis
-            If not None, a closer copy of a tree which may have some files in
-            common, and which file content should be preferentially copied from.
         """
         # assumes the target bzr dir format is compatible.
         result = self._format.initialize(to_bzrdir)
@@ -1397,7 +1398,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # prevent race conditions with the lock
         return iter(
             [subp for subp in self.extras() if not self.is_ignored(subp)])
-    
+
     @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
@@ -1603,7 +1604,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)
             if not supports_executable():
-                executable = entry.executable
+                executable = entry is not None and entry.executable
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
@@ -2121,7 +2122,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             current_disk = disk_iterator.next()
             disk_finished = False
         except OSError, e:
-            if e.errno != errno.ENOENT:
+            if not (e.errno == errno.ENOENT or
+                (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
                 raise
             current_disk = None
             disk_finished = True
@@ -2266,6 +2268,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         resolved.remove_files(self)
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
+
+    def _validate(self):
+        """Validate internal structures.
+
+        This is meant mostly for the test suite. To give it a chance to detect
+        corruption after actions have occurred. The default implementation is a
+        just a no-op.
+
+        :return: None. An exception should be raised if there is an error.
+        """
+        return
 
 
 class WorkingTree2(WorkingTree):
@@ -2432,6 +2445,8 @@ class WorkingTreeFormat(object):
 
     requires_rich_root = False
 
+    upgrade_recommended = False
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2486,12 +2501,13 @@ class WorkingTreeFormat(object):
         del klass._formats[format.get_format_string()]
 
 
-
 class WorkingTreeFormat2(WorkingTreeFormat):
     """The second working tree format. 
 
     This format modified the hash cache from the format 1 hash cache.
     """
+
+    upgrade_recommended = True
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -2561,11 +2577,11 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
+        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
-
+        return wt
 
 class WorkingTreeFormat3(WorkingTreeFormat):
     """The second working tree format updated to record a format marker.
@@ -2578,6 +2594,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         - is new in bzr 0.8
         - uses a LockDir to guard access for writes.
     """
+    
+    upgrade_recommended = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
@@ -2668,7 +2686,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        return wt
 
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.

@@ -16,31 +16,20 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import os
 import re
-import sys
 
 import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
-    lockdir,
+    remote,
     repository,
     )
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
-from bzrlib.errors import (FileExists,
-                           NoSuchRevision,
-                           NoSuchFile,
-                           UninitializableFormat,
-                           NotBranchError,
-                           )
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repofmt import knitrepo
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -48,19 +37,23 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
 
-    def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=None)
-        return repo.bzrdir.create_branch()
-
     def make_repository(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath)
-        return self.repository_format.initialize(made_control)
+        if format is None:
+            # Create a repository of the type we are trying to test.
+            made_control = self.make_bzrdir(relpath)
+            return self.repository_format.initialize(made_control)
+        else:
+            return super(TestCaseWithRepository, self).make_repository(
+                relpath, format)
 
 
 class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
     def test_repository_format(self):
-        # make sure the repository on tree.branch is of the desired format
+        # make sure the repository on tree.branch is of the desired format,
+        # because developers use this api to setup the tree, branch and 
+        # repository for their tests: having it now give the right repository
+        # type would invalidate the tests.
         tree = self.make_branch_and_tree('repo')
         self.assertIsInstance(tree.branch.repository._format,
             self.repository_format.__class__)
@@ -88,7 +81,7 @@ class TestRepository(TestCaseWithRepository):
         second_revision = tree.commit('')
         inv = tree.branch.repository.revision_tree(second_revision).inventory
         rich_root = (inv.root.revision != second_revision)
-        self.assertEqual(rich_root, 
+        self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
 
     def test_clone_specific_format(self):
@@ -195,25 +188,26 @@ class TestRepository(TestCaseWithRepository):
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
 
-    def test_fetch_knit2(self):
+    def test_fetch_knit3(self):
+        # create a repository of the sort we are testing.
         tree_a = self.make_branch_and_tree('a', '')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        # fetch with a default limit (grab everything)
+        # create a knit-3 based format to fetch into
         f = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         try:
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)
+            # if we cannot convert data to knit3, skip the test.
         except errors.BadConversionTarget, e:
             raise TestSkipped(str(e))
         self.get_transport().mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
-        repo = b_bzrdir.create_repository()
-        repo.fetch(tree_a.branch.repository,
-                   revision_id=None,
-                   pb=bzrlib.progress.DummyProgress())
-        rev1_tree = repo.revision_tree('rev1')
+        knit3_repo = b_bzrdir.create_repository()
+        # fetch with a default limit (grab everything)
+        knit3_repo.fetch(tree_a.branch.repository, revision_id=None)
+        rev1_tree = knit3_repo.revision_tree('rev1')
         lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
@@ -224,7 +218,7 @@ class TestRepository(TestCaseWithRepository):
             raise TestSkipped("cannot make working tree with transport %r"
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
-        rev2_tree = repo.revision_tree('rev2')
+        rev2_tree = knit3_repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
 
     def test_get_revision_delta(self):
@@ -252,20 +246,6 @@ class TestRepository(TestCaseWithRepository):
     def test_clone_repository_basis_revision(self):
         raise TestSkipped('the use of a basis should not add noise data to the result.')
 
-    def test_clone_repository_incomplete_source_with_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_repository('source')
-        # this gives us an incomplete repository
-        tree.branch.repository.copy_content_into(source)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        self.assertFalse(source.has_revision('2'))
-        target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
-        self.assertTrue(target.open_repository().has_revision('2'))
-
     def test_clone_shared_no_tree(self):
         # cloning a shared repository keeps it shared
         # and preserves the make_working_tree setting.
@@ -279,9 +259,9 @@ class TestRepository(TestCaseWithRepository):
         try:
             made_repo.set_make_working_trees(False)
         except NotImplementedError:
-            if made_repo.make_working_trees():
-                # this repository always makes working trees.
-                return
+            # the repository does not support having its tree-making flag
+            # toggled.
+            return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
         made_repo.has_revision('foo')
@@ -421,6 +401,8 @@ class TestRepository(TestCaseWithRepository):
         if self.repository_format.get_format_description() \
             == "Repository format 4":
             raise TestSkipped('Cannot convert format-4 to itself')
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            return # local conversion to/from RemoteObjects is irrelevant.
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
@@ -443,10 +425,58 @@ class TestRepository(TestCaseWithRepository):
         # template from the test suite parameterisation.
         repo = self.make_repository('.')
         repo._format.rich_root_data
-        repo._format.support_tree_reference
+        repo._format.supports_tree_reference
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
+
+    def test_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Lock the repository, then use leave_lock_in_place so that when we
+        # unlock the repository the lock is still held on disk.
+        token = repo.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError, repo.leave_lock_in_place)
+                return
+            repo.leave_lock_in_place()
+        finally:
+            repo.unlock()
+        # We should be unable to relock the repo.
+        self.assertRaises(errors.LockContention, repo.lock_write)
+
+    def test_dont_leave_lock_in_place(self):
+        repo = self.make_repository('r')
+        # Create a lock on disk.
+        token = repo.lock_write()
+        try:
+            if token is None:
+                # This test does not apply, because this repository refuses lock
+                # tokens.
+                self.assertRaises(NotImplementedError,
+                                  repo.dont_leave_lock_in_place)
+                return
+            try:
+                repo.leave_lock_in_place()
+            except NotImplementedError:
+                # This repository doesn't support this API.
+                return
+        finally:
+            repo.unlock()
+        # Reacquire the lock (with a different repository object) by using the
+        # token.
+        new_repo = repo.bzrdir.open_repository()
+        new_repo.lock_write(token=token)
+        # Call dont_leave_lock_in_place, so that the lock will be released by
+        # this instance, even though the lock wasn't originally acquired by it.
+        new_repo.dont_leave_lock_in_place()
+        new_repo.unlock()
+        # Now the repository is unlocked.  Test this by locking it (without a
+        # token).
+        repo.lock_write()
+        repo.unlock()
 
     def test_lock_read_then_unlock(self):
         # Calling lock_read then unlocking should work without errors.
@@ -521,7 +551,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual({'rev1':[],
                           'rev2':['rev1']},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
         # and ghosts are not mentioned
@@ -636,6 +666,11 @@ class TestEscaping(TestCaseWithTransport):
     """
 
     def test_on_vfat(self):
+        # dont bother with remote repository testing, because this test is
+        # about local disk layout/support.
+        from bzrlib.remote import RemoteRepositoryFormat
+        if isinstance(self.repository_format, RemoteRepositoryFormat):
+            return
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1' 
         # this makes a default format repository always, which is wrong: 

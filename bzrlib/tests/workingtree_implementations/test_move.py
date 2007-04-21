@@ -54,6 +54,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial commit')
         self.assertEqual([('a1', 'sub1/a1')],
             tree.move(['a1'], to_dir='sub1', after=False))
+        tree._validate()
 
     def test_move_correct_call_unnamed(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -66,6 +67,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial commit')
         self.assertEqual([('a1', 'sub1/a1')],
             tree.move(['a1'], 'sub1', after=False))
+        tree._validate()
 
     def test_move_deprecated_wrong_call(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -79,6 +81,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertRaises(TypeError, tree.move, ['a1'],
                           to_this_parameter_does_not_exist='sub1',
                           after=False)
+        tree._validate()
 
     def test_move_deprecated_call(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -100,6 +103,7 @@ class TestMove(TestCaseWithWorkingTree):
             # since it was deprecated before the class was introduced.
             if not isinstance(self.workingtree_format, WorkingTreeFormat4):
                 raise
+        tree._validate()
 
     def test_move_target_not_dir(self):
         tree = self.make_branch_and_tree('.')
@@ -109,6 +113,7 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'not-a-dir')
+        tree._validate()
 
     def test_move_non_existent(self):
         tree = self.make_branch_and_tree('.')
@@ -119,6 +124,7 @@ class TestMove(TestCaseWithWorkingTree):
                           tree.move, ['not-a-file'], 'a')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['not-a-file'], '')
+        tree._validate()
 
     def test_move_target_not_versioned(self):
         tree = self.make_branch_and_tree('.')
@@ -127,6 +133,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b'], 'a')
+        tree._validate()
 
     def test_move_unversioned(self):
         tree = self.make_branch_and_tree('.')
@@ -135,6 +142,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b'], 'a')
+        tree._validate()
 
     def test_move_multi_unversioned(self):
         tree = self.make_branch_and_tree('.')
@@ -157,6 +165,7 @@ class TestMove(TestCaseWithWorkingTree):
                                    ('d', 'd-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('d', 'd-id')], tree.basis_tree())
+        tree._validate()
 
     def test_move_subdir(self):
         tree = self.make_branch_and_tree('.')
@@ -177,6 +186,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('b/c', 'c-id')], tree.basis_tree())
         self.failIfExists('a')
         self.assertFileEqual(a_contents, 'b/a')
+        tree._validate()
 
     def test_move_parent_dir(self):
         tree = self.make_branch_and_tree('.')
@@ -193,6 +203,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('b/c', 'c-id')], tree.basis_tree())
         self.failIfExists('b/c')
         self.assertFileEqual(c_contents, 'c')
+        tree._validate()
 
     def test_move_fail_consistent(self):
         tree = self.make_branch_and_tree('.')
@@ -214,6 +225,7 @@ class TestMove(TestCaseWithWorkingTree):
                                    ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('c', 'c-id')], tree.basis_tree())
+        tree._validate()
 
     def test_move_onto_self(self):
         tree = self.make_branch_and_tree('.')
@@ -223,6 +235,7 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['b/a'], 'b')
+        tree._validate()
 
     def test_move_onto_self_root(self):
         tree = self.make_branch_and_tree('.')
@@ -232,6 +245,7 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'a')
+        tree._validate()
 
     def test_move_after(self):
         tree = self.make_branch_and_tree('.')
@@ -251,6 +265,7 @@ class TestMove(TestCaseWithWorkingTree):
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
+        tree._validate()
 
     def test_move_after_with_after(self):
         tree = self.make_branch_and_tree('.')
@@ -269,6 +284,7 @@ class TestMove(TestCaseWithWorkingTree):
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
+        tree._validate()
 
     def test_move_after_no_target(self):
         tree = self.make_branch_and_tree('.')
@@ -282,6 +298,7 @@ class TestMove(TestCaseWithWorkingTree):
                           tree.move, ['a'], 'b', after=True)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
+        tree._validate()
 
     def test_move_after_source_and_dest(self):
         tree = self.make_branch_and_tree('.')
@@ -321,6 +338,7 @@ class TestMove(TestCaseWithWorkingTree):
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
+        tree._validate()
 
     def test_move_directory(self):
         tree = self.make_branch_and_tree('.')
@@ -338,6 +356,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('e', 'e-id'),
                                ('a/b', 'b-id'), ('a/c', 'c-id'),
                                ('a/c/d', 'd-id')], tree.basis_tree())
+        tree._validate()
 
     def test_move_moved(self):
         """Moving a moved entry works as expected."""
@@ -360,3 +379,4 @@ class TestMove(TestCaseWithWorkingTree):
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
+        tree._validate()

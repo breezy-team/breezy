@@ -26,6 +26,7 @@ from bzrlib import (
     gpg,
     urlutils,
     transactions,
+    remote,
     repository,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
@@ -46,11 +47,6 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-
-
-# TODO: Make a branch using basis branch, and check that it 
-# doesn't request any files that could have been avoided, by 
-# hooking into the Transport.
 
 
 class TestCaseWithBranch(TestCaseWithBzrDir):
@@ -162,16 +158,6 @@ class TestBranch(TestCaseWithBranch):
         tree_a, tree_b = self.get_unbalanced_tree_pair()
         tree_b.branch.repository.fetch(tree_a.branch.repository)
         return tree_a, tree_b
-
-    def test_clone_branch(self):
-        """Copy the stores from one branch to another"""
-        tree_a, tree_b = self.get_balanced_branch_pair()
-        tree_b.commit("silly commit")
-        os.mkdir('c')
-        # this fails to test that the history from a was not used.
-        dir_c = tree_a.bzrdir.clone('c', basis=tree_b.bzrdir)
-        self.assertEqual(tree_a.branch.revision_history(),
-                         dir_c.open_branch().revision_history())
 
     def test_clone_partial(self):
         """Copy only part of the history of a branch."""
@@ -367,14 +353,9 @@ class TestBranch(TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        try:
+        if not isinstance(branch, remote.RemoteBranch):
             controlfilename = branch.control_files.controlfilename
-        except AttributeError:
-            # remote branches don't have control_files
-            pass
-        else:
-            self.failUnless(
-                t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -613,6 +594,17 @@ class TestBranchPushLocations(TestCaseWithBranch):
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
 
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
@@ -645,7 +637,7 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):

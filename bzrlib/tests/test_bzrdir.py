@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+    # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,9 +36,19 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    test_sftp_transport
+    )
 from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.HTTPTestUtil import (
+    TestCaseWithTwoWebservers,
+    HTTPServerRedirecting,
+    )
+from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import get_transport
+from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.repofmt import knitrepo, weaverepo
 
@@ -764,3 +774,72 @@ class NonLocalTests(TestCaseWithTransport):
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
                               workingtree.WorkingTreeFormat3)
+
+
+class TestHTTPRedirectionLoop(object):
+    """Test redirection loop between two http servers.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithTwoWebservers.
+
+    We can't inherit directly from TestCaseWithTwoWebservers or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete. 
+    """
+
+    # Should be defined by daughter classes to ensure redirection
+    # still use the same transport implementation (not currently
+    # enforced as it's a bit tricky to get right (see the FIXME
+    # in BzrDir.open_from_transport for the unique use case so
+    # far)
+    _qualifier = None
+
+    def create_transport_readonly_server(self):
+        return HTTPServerRedirecting()
+
+    def create_transport_secondary_server(self):
+        return HTTPServerRedirecting()
+
+    def setUp(self):
+        # Both servers redirect to each server creating a loop
+        super(TestHTTPRedirectionLoop, self).setUp()
+        # The redirections will point to the new server
+        self.new_server = self.get_readonly_server()
+        # The requests to the old server will be redirected
+        self.old_server = self.get_secondary_server()
+        # Configure the redirections
+        self.old_server.redirect_to(self.new_server.host, self.new_server.port)
+        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
+
+    def _qualified_url(self, host, port):
+        return 'http+%s://%s:%s' % (self._qualifier, host, port)
+
+    def test_loop(self):
+        # Starting from either server should loop
+        old_url = self._qualified_url(self.old_server.host, 
+                                      self.old_server.port)
+        oldt = self._transport(old_url)
+        self.assertRaises(errors.NotBranchError,
+                          bzrdir.BzrDir.open_from_transport, oldt)
+        new_url = self._qualified_url(self.new_server.host, 
+                                      self.new_server.port)
+        newt = self._transport(new_url)
+        self.assertRaises(errors.NotBranchError,
+                          bzrdir.BzrDir.open_from_transport, newt)
+
+
+class TestHTTPRedirections_urllib(TestHTTPRedirectionLoop,
+                                  TestCaseWithTwoWebservers):
+    """Tests redirections for urllib implementation"""
+
+    _qualifier = 'urllib'
+    _transport = HttpTransport_urllib
+
+
+
+class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
+                                  TestHTTPRedirectionLoop,
+                                  TestCaseWithTwoWebservers):
+    """Tests redirections for pycurl implementation"""
+
+    _qualifier = 'pycurl'

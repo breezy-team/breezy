@@ -44,6 +44,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
 from bzrlib.trace import mutter
 import bzrlib.ui
 
+from bzrlib.lazy_import import lazy_import
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
