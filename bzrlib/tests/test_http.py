@@ -1170,6 +1170,13 @@ class TestAuth(object):
         url += '%s:%s/' % (self.server.host, self.server.port)
         return url
 
+    def test_no_user(self):
+        self.server.add_user('joe', 'foo')
+        t = self.get_user_transport()
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
     def test_empty_pass(self):
         self.server.add_user('joe', '')
         t = self.get_user_transport('joe', '')
@@ -1231,7 +1238,7 @@ class TestHTTPAuth(TestAuth):
         self.server = self.get_readonly_server()
         TestAuth.setUp(self)
 
-    def get_user_transport(self, user, password=None):
+    def get_user_transport(self, user=None, password=None):
         return self._transport(self.get_user_url(user, password))
 
 
@@ -1255,7 +1262,7 @@ class TestProxyAuth(TestAuth):
                                   ('b-proxied', 'contents of b\n'),
                                   ])
 
-    def get_user_transport(self, user, password=None):
+    def get_user_transport(self, user=None, password=None):
         self._install_env({'all_proxy': self.get_user_url(user, password)})
         return self._transport(self.server.get_url())
 

@@ -5,6 +5,9 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * digest authentication is now supported for proxy and http.
+      (Vincent Ladeuil).
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -91,6 +94,9 @@ IN DEVELOPMENT
       may expose their password in the clear. This add one roundtrip in case
       basic authentication should be used, but plug the security
       hole. (Vincent Ladeuil)
+
+    * Handle http and proxy digest authentication.
+      (Vincent Ladeuil, #94034).
 
   TESTING:
 

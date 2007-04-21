@@ -51,12 +51,15 @@ DEBUG = 0
 # ensure that.
 
 import httplib
+import md5
+import sha
 import socket
 import urllib
 import urllib2
 import urlparse
 import re
 import sys
+import time
 
 from bzrlib import __version__ as bzrlib_version
 from bzrlib import (
@@ -760,7 +763,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
     # The following attributes should be defined by daughter
     # classes:
-    # - auth_reqed_header:  the header received from the server
+    # - auth_required_header:  the header received from the server
     # - auth_header: the header sent in the request
 
     def __init__(self, password_manager):
@@ -775,21 +778,32 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         :param headers: The headers for the authentication error response.
         :return: None or the response for the authenticated request.
         """
-        server_header = headers.get(self.auth_reqed_header, None)
+        server_header = headers.get(self.auth_required_header, None)
         if server_header is None:
             # The http error MUST have the associated
             # header. This must never happen in production code.
-            raise KeyError('%s not found' % self.auth_reqed_header)
+            raise KeyError('%s not found' % self.auth_required_header)
 
-        auth = self.get_auth(request)
+        auth = self.get_auth(request).copy()
+        if auth.get('user', None) is None:
+            # Without a known user, we can't authenticate
+            return None
+
         if self.auth_match(server_header, auth):
-            client_header = self.build_auth_header(auth)
-            if client_header == request.get_header(self.auth_header, None):
+            # auth_match may have modified auth (by adding the
+            # password or changing the realm, for example)
+            old = self.get_auth(request)
+            if request.get_header(self.auth_header, None) is not None \
+                    and old.get('user') == auth.get('user') \
+                    and old.get('realm') == auth.get('realm') \
+                    and old.get('password') == auth.get('password'):
                 # We already tried that, give up
                 return None
 
-            self.add_auth_header(request, client_header)
-            request.add_unredirected_header(self.auth_header, client_header)
+            # We will try to authenticate, save the auth so that
+            # the build_auth_header that will be called during
+            # parent.open use the right values
+            self.set_auth(request, auth)
             response = self.parent.open(request)
             if response:
                 self.auth_successful(request, response, auth)
@@ -803,15 +817,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # 'Proxy Authentication Required' error.
         return None
 
-    def get_auth(self, request):
-        """Get the auth params from the request"""
-        raise NotImplementedError(self.get_auth)
-
-    def set_auth(self, request, auth):
-        """Set the auth params for the request"""
-        raise NotImplementedError(self.set_auth)
-
     def add_auth_header(self, request, header):
+        """Add the authentication header to the request"""
         request.add_unredirected_header(self.auth_header, header)
 
     def auth_match(self, header, auth):
@@ -827,10 +834,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """
         raise NotImplementedError(self.auth_match)
 
-    def build_auth_header(self, auth):
+    def build_auth_header(self, auth, request):
         """Build the value of the header used to authenticate.
 
         :param auth: The auth parameters needed to build the header.
+        :param request: The request needing authentication.
 
         :return: None or header.
         """
@@ -875,88 +883,212 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """Insert an authentication header if information is available"""
         auth = self.get_auth(request)
         if self.auth_params_reusable(auth):
-            self.add_auth_header(request, self.build_auth_header(auth))
+            self.add_auth_header(request, self.build_auth_header(auth, request))
         return request
 
     https_request = http_request # FIXME: Need test
 
 
-class AbstractBasicAuthHandler(AbstractAuthHandler):
-    """A custom basic auth handler."""
+class BasicAuthHandler(AbstractAuthHandler):
+    """A custom basic authentication handler."""
 
-    auth_regexp = re.compile('[ \t]*([^ \t]+)[ \t]+realm="([^"]*)"', re.I)
+    auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
-    def build_auth_header(self, auth):
+    def build_auth_header(self, auth, request):
         raw = '%s:%s' % (auth['user'], auth['password'])
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
     def auth_match(self, header, auth):
-        match = self.auth_regexp.search(header)
-        if match:
-            scheme, auth['realm'] = match.groups()
-            auth['scheme'] = scheme.lower()
-            if auth['scheme'] != 'basic':
-                match = None
-            else:
-                if auth.get('password',None) is None:
-                    auth['password'] = self.get_password(auth['user'],
-                                                         auth['authuri'],
-                                                         auth['realm'])
+        scheme, raw_auth = header.split(None, 1)
+        scheme = scheme.lower()
+        if scheme != 'basic':
+            return False
 
+        match = self.auth_regexp.search(raw_auth)
+        if match:
+            realm = match.groups()
+            if scheme != 'basic':
+                return False
+
+            # Put useful info into auth
+            auth['scheme'] = scheme
+            auth['realm'] = realm
+            if auth.get('password',None) is None:
+                auth['password'] = self.get_password(auth['user'],
+                                                     auth['authuri'],
+                                                     auth['realm'])
         return match is not None
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
         # authentication was succesful, all information is
         # available, no further checks are needed.
-        return auth.get('scheme',None) == 'basic'
+        return auth.get('scheme', None) == 'basic'
 
 
-class HTTPBasicAuthHandler(AbstractBasicAuthHandler):
-    """Custom basic authentication handler.
+def get_digest_algorithm_impls(algorithm):
+    H = None
+    if algorithm == 'MD5':
+        H = lambda x: md5.new(x).hexdigest()
+    elif algorithm == 'SHA':
+        H = lambda x: sha.new(x).hexdigest()
+    if H is not None:
+        KD = lambda secret, data: H("%s:%s" % (secret, data))
+    return H, KD
+
+
+class DigestAuthHandler(AbstractAuthHandler):
+    """A custom digest authentication handler."""
+
+    def auth_params_reusable(self, auth):
+        # If the auth scheme is known, it means a previous
+        # authentication was succesful, all information is
+        # available, no further checks are needed.
+        return auth.get('scheme', None) == 'digest'
+
+    def auth_match(self, header, auth):
+        scheme, raw_auth = header.split(None, 1)
+        scheme = scheme.lower()
+        if scheme != 'digest':
+            return False
+
+        # Put the requested authentication info into a dict
+        req_auth = urllib2.parse_keqv_list(urllib2.parse_http_list(raw_auth))
+
+        # Check that we can handle that authentication
+        qop = req_auth.get('qop', None)
+        if qop != 'auth': # No auth-int so far
+            return False
+
+        nonce = req_auth.get('nonce', None)
+        old_nonce = auth.get('nonce', None)
+        if nonce and old_nonce and nonce == old_nonce:
+            # We already tried that
+            return False
+
+        algorithm = req_auth.get('algorithm', 'MD5')
+        H, KD = get_digest_algorithm_impls(algorithm)
+        if H is None:
+            return False
+
+        realm = req_auth.get('realm', None)
+        if auth.get('password',None) is None:
+            auth['password'] = self.get_password(auth['user'],
+                                                 auth['authuri'],
+                                                 realm)
+        # Put useful info into auth
+        try:
+            auth['scheme'] = scheme
+            auth['algorithm'] = algorithm
+            auth['realm'] = req_auth['realm']
+            auth['nonce'] = req_auth['nonce']
+            auth['qop'] = qop
+            auth['opaque'] = req_auth.get('opaque', None)
+        except KeyError:
+            return False
+
+        return True
+
+    def build_auth_header(self, auth, request):
+        uri = request.get_selector()
+        A1 = '%s:%s:%s' % (auth['user'], auth['realm'], auth['password'])
+        A2 = '%s:%s' % (request.get_method(), uri)
+        nonce = auth['nonce']
+        qop = auth['qop']
+
+        H, KD = get_digest_algorithm_impls(auth['algorithm'])
+        nonce_count = auth.get('nonce_count',0)
+        nonce_count += 1
+        ncvalue = '%08x' % nonce_count
+        cnonce = sha.new("%s:%s:%s:%s" % (nonce_count, nonce,
+                                          time.ctime(), urllib2.randombytes(8))
+                         ).hexdigest()[:16]
+        noncebit = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
+        response_digest = KD(H(A1), noncebit)
+
+        header = 'Digest '
+        header += 'username="%s", realm="%s", nonce="%s",' % (auth['user'],
+                                                             auth['realm'],
+                                                             nonce)
+        header += ' uri="%s", response="%s"' % (uri, response_digest)
+        opaque = auth.get('opaque', None)
+        if opaque:
+            header += ', opaque="%s"' % opaque
+        header += ', algorithm="%s"' % auth['algorithm']
+        header += ', qop="%s", nc="%s", cnonce="%s"' % (qop, ncvalue, cnonce)
+
+        # We have used the nonce once more, update the count
+        auth['nonce_count'] = nonce_count
+
+        return header
+
+
+class HTTPAuthHandler(AbstractAuthHandler):
+    """Custom http authentication handler.
 
     Send the authentication preventively to avoid the roundtrip
-    associated with the 401 error.
+    associated with the 401 error and keep the revelant info in
+    the auth request attribute.
     """
 
     password_prompt = 'HTTP %(user)s@%(host)s%(realm)s password'
-    auth_reqed_header = 'www-authenticate'
+    auth_required_header = 'www-authenticate'
     auth_header = 'Authorization'
 
     def get_auth(self, request):
+        """Get the auth params from the request"""
         return request.auth
 
     def set_auth(self, request, auth):
+        """Set the auth params for the request"""
         request.auth = auth
 
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
 
-class ProxyBasicAuthHandler(AbstractBasicAuthHandler):
-    """Custom proxy basic authentication handler.
+class ProxyAuthHandler(AbstractAuthHandler):
+    """Custom proxy authentication handler.
 
     Send the authentication preventively to avoid the roundtrip
-    associated with the 407 error.
+    associated with the 407 error and keep the revelant info in
+    the proxy_auth request attribute..
     """
 
     password_prompt = 'Proxy %(user)s@%(host)s%(realm)s password'
-    auth_reqed_header = 'proxy-authenticate'
+    auth_required_header = 'proxy-authenticate'
     # FIXME: the correct capitalization is Proxy-Authorization,
     # but python-2.4 urllib2.Request insist on using capitalize()
     # instead of title().
     auth_header = 'Proxy-authorization'
 
     def get_auth(self, request):
+        """Get the auth params from the request"""
         return request.proxy_auth
 
     def set_auth(self, request, auth):
+        """Set the auth params for the request"""
         request.proxy_auth = auth
 
     def http_error_407(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
+
+class HTTPBasicAuthHandler(BasicAuthHandler, HTTPAuthHandler):
+    """Custom http basic authentication handler"""
+
+
+class ProxyBasicAuthHandler(BasicAuthHandler, ProxyAuthHandler):
+    """Custom proxy basic authentication handler"""
+
+
+class HTTPDigestAuthHandler(DigestAuthHandler, HTTPAuthHandler):
+    """Custom http basic authentication handler"""
+
+
+class ProxyDigestAuthHandler(DigestAuthHandler, ProxyAuthHandler):
+    """Custom proxy basic authentication handler"""
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
@@ -1013,15 +1145,13 @@ class Opener(object):
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
         self.password_manager = PasswordManager()
-        # TODO: Implements the necessary wrappers for the handlers
-        # commented out below
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
             ProxyHandler(self.password_manager),
             HTTPBasicAuthHandler(self.password_manager),
-            #urllib2.HTTPDigestAuthHandler(self.password_manager),
+            HTTPDigestAuthHandler(self.password_manager),
             ProxyBasicAuthHandler(self.password_manager),
-            #urllib2.ProxyDigestAuthHandler,
+            ProxyDigestAuthHandler(self.password_manager),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,

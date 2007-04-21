@@ -16,9 +16,12 @@
 
 from cStringIO import StringIO
 import errno
+import md5
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import re
+import sha
 import socket
+import time
 import urllib2
 import urlparse
 
@@ -332,38 +335,54 @@ class BasicAuthRequestHandler(AuthRequestHandler):
         if tcs.auth_scheme != 'basic':
             return False
 
-        auth_header = self.headers.get(tcs.auth_header_recv)
-        if auth_header and auth_header.lower().startswith('basic '):
-            raw_auth = auth_header[len('Basic '):]
-            user, password = raw_auth.decode('base64').split(':')
-            return tcs.authorized(user, password)
+        auth_header = self.headers.get(tcs.auth_header_recv, None)
+        if auth_header:
+            scheme, raw_auth = auth_header.split(' ', 1)
+            if scheme.lower() == tcs.auth_scheme:
+                user, password = raw_auth.decode('base64').split(':')
+                return tcs.authorized(user, password)
 
         return False
 
     def send_header_auth_reqed(self):
-        self.send_header(self.server.test_case_server.auth_header_sent,
-                         'Basic realm="Thou should not pass"')
+        tcs = self.server.test_case_server
+        self.send_header(tcs.auth_header_sent,
+                         'Basic realm="%s"' % tcs.auth_realm)
 
+
+# FIXME: We should send an Authentication-Info header too when
+# the autheticaion is succesful
 
 class DigestAuthRequestHandler(AuthRequestHandler):
-    """Implements the digest authentication of a request"""
+    """Implements the digest authentication of a request.
+
+    We need persistence for some attributes and that can't be
+    achieved here since we get instantiated for each request. We
+    rely on the DigestAuthServer to take care of them.
+    """
 
     def authorized(self):
         tcs = self.server.test_case_server
         if tcs.auth_scheme != 'digest':
             return False
 
-        auth_header = self.headers.get(tcs.auth_header_recv)
-        if auth_header and auth_header.lower().startswith('digest '):
-            raw_auth = auth_header[len('Basic '):]
-            user, password = raw_auth.decode('base64').split(':')
-            return tcs.authorized(user, password)
+        auth_header = self.headers.get(tcs.auth_header_recv, None)
+        if auth_header is None:
+            return False
+        scheme, auth = auth_header.split(None, 1)
+        if scheme.lower() == tcs.auth_scheme:
+            auth_dict = urllib2.parse_keqv_list(urllib2.parse_http_list(auth))
+
+            return tcs.digest_authorized(auth_dict, self.command)
 
         return False
 
     def send_header_auth_reqed(self):
-        self.send_header(self.server.test_case_server.auth_header_sent,
-                         'Basic realm="Thou should not pass"')
+        tcs = self.server.test_case_server
+        header = 'Digest realm="%s", ' % tcs.auth_realm
+        header += 'nonce="%s", algorithm=%s, qop=auth' % (tcs.auth_nonce, 'MD5')
+        self.send_header(tcs.auth_header_sent,header)
+
 
 class AuthServer(HttpServer):
     """Extends HttpServer with a dictionary of passwords.
@@ -373,13 +392,14 @@ class AuthServer(HttpServer):
 
     Note that no users are defined by default, so add_user should
     be called before issuing the first request.
-
     """
+
     # The following attributes should be set dy daughter classes
     # and are used by AuthRequestHandler.
     auth_header_sent = None
     auth_header_recv = None
     auth_error_code = None
+    auth_realm = "Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme):
         HttpServer.__init__(self, request_handler)
@@ -396,25 +416,71 @@ class AuthServer(HttpServer):
         self.password_of[user] = password
 
     def authorized(self, user, password):
+        """Check that the given user provided the right password"""
         expected_password = self.password_of.get(user, None)
         return expected_password is not None and password == expected_password
 
 
+class DigestAuthServer(AuthServer):
+    """A digest authentication server"""
+
+    auth_nonce = 'rRQ+Lp4uBAA=301b77beb156b6158b73dee026b8be23302292b4'
+
+    def __init__(self, request_handler, auth_scheme):
+        AuthServer.__init__(self, request_handler, auth_scheme)
+
+    def digest_authorized(self, auth, command):
+        realm = auth['realm']
+        if realm != self.auth_realm:
+            return False
+        user = auth['username']
+        if not self.password_of.has_key(user):
+            return False
+        algorithm= auth['algorithm']
+        if algorithm != 'MD5':
+            return False
+        qop = auth['qop']
+        if qop != 'auth':
+            return False
+
+        password = self.password_of[user]
+
+        # Recalculate the response_digest to compare with the one
+        # sent by the client
+        A1 = '%s:%s:%s' % (user, realm, password)
+        A2 = '%s:%s' % (command, auth['uri'])
+
+        H = lambda x: md5.new(x).hexdigest()
+        KD = lambda secret, data: H("%s:%s" % (secret, data))
+
+        nonce = auth['nonce']
+        nonce_count = int(auth['nc'], 16)
+
+        ncvalue = '%08x' % nonce_count
+
+        cnonce = auth['cnonce']
+        noncebit = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
+        response_digest = KD(H(A1), noncebit)
+
+        return response_digest == auth['response']
+
 class HTTPAuthServer(AuthServer):
     """An HTTP server requiring authentication"""
 
-    auth_header_sent = 'WWW-Authenticate'
-    auth_header_recv = 'Authorization'
-    auth_error_code = 401
+    def init_http_auth(self):
+        self.auth_header_sent = 'WWW-Authenticate'
+        self.auth_header_recv = 'Authorization'
+        self.auth_error_code = 401
 
 
 class ProxyAuthServer(AuthServer):
     """A proxy server requiring authentication"""
 
-    proxy_requests = True
-    auth_header_sent = 'Proxy-Authenticate'
-    auth_header_recv = 'Proxy-Authorization'
-    auth_error_code = 407
+    def init_proxy_auth(self):
+        self.proxy_requests = True
+        self.auth_header_sent = 'Proxy-Authenticate'
+        self.auth_header_recv = 'Proxy-Authorization'
+        self.auth_error_code = 407
 
 
 class HTTPBasicAuthServer(HTTPAuthServer):
@@ -422,26 +488,30 @@ class HTTPBasicAuthServer(HTTPAuthServer):
 
     def __init__(self):
         HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+        self.init_http_auth()
 
 
-class HTTPDigestAuthServer(HTTPAuthServer):
+class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
     """An HTTP server requiring digest authentication"""
 
     def __init__(self):
-        HTTPAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+        self.init_http_auth()
 
 
 class ProxyBasicAuthServer(ProxyAuthServer):
-    """An proxy server requiring basic authentication"""
+    """A proxy server requiring basic authentication"""
 
     def __init__(self):
         ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+        self.init_proxy_auth()
 
 
-class ProxyDigestAuthServer(ProxyAuthServer):
-    """An proxy server requiring basic authentication"""
+class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
+    """A proxy server requiring basic authentication"""
 
     def __init__(self):
         ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+        self.init_proxy_auth()
 
 

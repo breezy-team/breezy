@@ -64,7 +64,7 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection = None
             self._opener = self._opener_class()
 
-            authuri = extract_authentication_uri(self.base)
+            authuri = extract_authentication_uri(self._real_abspath(self._path))
             self._auth = {'user': user, 'password': password,
                           'authuri': authuri}
             if user and password is not None: # '' is a valid password
