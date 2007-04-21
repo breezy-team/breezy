@@ -41,8 +41,9 @@ IN DEVELOPMENT
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
 
-    * urllib http implementation avoid roundtrips associated with 401 errors
-      once the the authentication succeeds. (Vincent Ladeuil).
+    * urllib http implementation avoid roundtrips associated with
+      401 (and 407) errors once the the authentication succeeds.
+      (Vincent Ladeuil).
 
     * urlib http now supports querying the user for a proxy password if
       needed. Realm is shown in the prompt for both HTTP and proxy
@@ -120,6 +121,10 @@ IN DEVELOPMENT
       of this many tests were adjusted to remove dependencies on local disk
       access.
       (Robert Collins, Andrew Bennetts)
+
+    * Refactored proxy and authentication handling to simplify the
+      implementation of new auth schemes for both http and proxy.
+      (vincent Ladeuil)
 
 
 bzr 0.15 2007-04-01

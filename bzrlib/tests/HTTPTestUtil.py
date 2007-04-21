@@ -303,9 +303,9 @@ class AuthRequestHandler(TestingHTTPRequestHandler):
     """
 
     # The following attributes should be defined in the server
-    # - _auth_header_sent: the header name sent to require auth
-    # - _auth_header_recv: the header received containing auth
-    # - _auth_error_code: the error code to indicate auth required
+    # - auth_header_sent: the header name sent to require auth
+    # - auth_header_recv: the header received containing auth
+    # - auth_error_code: the error code to indicate auth required
 
     def do_GET(self):
         if self.authorized():
