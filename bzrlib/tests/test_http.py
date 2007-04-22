@@ -1204,7 +1204,7 @@ class TestAuth(object):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'bar')
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
-        # Two 'Authentication Required' error should occur (the
+        # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'this is not you, who are you')
         self.assertEqual(2, self.server.auth_required_errors)
 
@@ -1304,10 +1304,10 @@ class TestDigestAuth(object):
         # Only one 'Authentication Required' error should have
         # occured so far
         self.assertEqual(1, self.server.auth_required_errors)
-        # So far, so good, let's have fun now
-        self.server.auth_nonce = self.server.auth_nonce + 'tagada'
+        # The server invalidates the current nonce
+        self.server.auth_nonce = self.server.auth_nonce + '. No, now!'
         self.assertEqual('contents of a\n', t.get('a').read())
-        # Two 'Authentication Required' error should occur (the
+        # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and a second 'who are you' with the new nonce)
         self.assertEqual(2, self.server.auth_required_errors)
 

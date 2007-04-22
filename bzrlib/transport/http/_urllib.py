@@ -90,15 +90,14 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._debuglevel > 0:
             print 'perform: %s base: %s, url: %s' % (request.method, self.base,
                                                      request.get_full_url())
-
         response = self._opener.open(request)
         if self._connection is None:
             # Acquire connection when the first request is able
             # to connect to the server
             self._connection = request.connection
-            # And get auth parameters too
-            self._auth = request.auth
-            self._proxy_auth = request.proxy_auth
+        # Always get auth parameters, they may change
+        self._auth = request.auth
+        self._proxy_auth = request.proxy_auth
 
         code = response.code
         if request.follow_redirections is False \

@@ -424,12 +424,15 @@ class AuthServer(HttpServer):
 class DigestAuthServer(AuthServer):
     """A digest authentication server"""
 
-    auth_nonce = 'rRQ+Lp4uBAA=301b77beb156b6158b73dee026b8be23302292b4'
+    auth_nonce = 'now!'
 
     def __init__(self, request_handler, auth_scheme):
         AuthServer.__init__(self, request_handler, auth_scheme)
 
     def digest_authorized(self, auth, command):
+        nonce = auth['nonce']
+        if nonce != self.auth_nonce:
+            return False
         realm = auth['realm']
         if realm != self.auth_realm:
             return False
@@ -453,7 +456,6 @@ class DigestAuthServer(AuthServer):
         H = lambda x: md5.new(x).hexdigest()
         KD = lambda secret, data: H("%s:%s" % (secret, data))
 
-        nonce = auth['nonce']
         nonce_count = int(auth['nc'], 16)
 
         ncvalue = '%08x' % nonce_count

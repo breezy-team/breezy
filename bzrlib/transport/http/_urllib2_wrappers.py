@@ -753,8 +753,32 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     This can be used for http and proxy, as well as for basic and
     digest authentications.
 
-    This provides an unified interface for all auth handlers
+    This provides an unified interface for all authentication handlers
     (urllib2 provides far too many with different policies).
+
+    The interaction between this handler and the urllib2
+    framework is not obvious, it works as follow:
+
+    opener.open(request) is called:
+
+    - that may trigger http_request which will add an authentication header
+      (self.build_header) if enough info is available.
+
+    - the request is sent to the server,
+
+    - if an authentication error is received self.auth_required is called,
+      we acquire the authentication info in the error headers and call
+      self.auth_match to check that we are able to try the
+      authentication and complete the authentication parameters,
+
+    - we call parent.open(request), that may trigger http_request
+      and will add a header (self.build_header), but here we have
+      all the required info (keep in mind that the request and
+      authentication used in the recursive calls are really (and must be)
+      the *same* objects).
+
+    - if the call returns a response, the authentication have been
+      successful and the request authentication parameters have been updated.
     """
 
     # The following attributes should be defined by daughter
@@ -766,6 +790,13 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         self.password_manager = password_manager
         self.find_user_password = password_manager.find_user_password
         self.add_password = password_manager.add_password
+
+    def update_auth(self, auth, key, value):
+        """Update a value in auth marking the auth as modified if needed"""
+        old_value = auth.get(key, None)
+        if old_value != value:
+            auth[key] = value
+            auth['modified'] = True
 
     def auth_required(self, request, headers):
         """Retry the request if the auth scheme is ours.
@@ -780,29 +811,23 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             # header. This must never happen in production code.
             raise KeyError('%s not found' % self.auth_required_header)
 
-        auth = self.get_auth(request).copy()
+        auth = self.get_auth(request)
         if auth.get('user', None) is None:
             # Without a known user, we can't authenticate
             return None
 
+        auth['modified'] = False
         if self.auth_match(server_header, auth):
             # auth_match may have modified auth (by adding the
             # password or changing the realm, for example)
-            old = self.get_auth(request)
             if request.get_header(self.auth_header, None) is not None \
-                    and old.get('user') == auth.get('user') \
-                    and old.get('realm') == auth.get('realm') \
-                    and old.get('password') == auth.get('password'):
+                    and not auth['modified']:
                 # We already tried that, give up
                 return None
 
-            # We will try to authenticate, save the auth so that
-            # the build_auth_header that will be called during
-            # parent.open use the right values
-            self.set_auth(request, auth)
             response = self.parent.open(request)
             if response:
-                self.auth_successful(request, response, auth)
+                self.auth_successful(request, response)
             return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
@@ -821,7 +846,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """Check that we are able to handle that authentication scheme.
 
         The request authentication parameters may need to be
-        updated with info from the server.
+        updated with info from the server. Some of these
+        parameters, when combined, are considered to be the
+        authentication key, if one of them change the
+        authentication result may change. 'user' and 'password'
+        are exampls, but some auth schemes may have others
+        (digest's nonce is an example, digest's nonce_count is a
+        *counter-example*). Such parameters must be updated by
+        using the update_auth() method.
         
         :param header: The authentication header sent by the server.
         :param auth: The auth parameters already known. They may be
@@ -840,22 +872,18 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """
         raise NotImplementedError(self.build_auth_header)
 
-    def auth_successful(self, request, response, auth):
+    def auth_successful(self, request, response):
         """The authentification was successful for the request.
 
-        The params are stored in the request to allow reuse and
-        avoid rountrips associated with authentication errors.
+        Additional infos may be available in the response.
 
         :param request: The succesfully authenticated request.
         :param response: The server response (may contain auth info).
-        :param auth: The parameters used to succeed.
         """
-        self.set_auth(request, auth)
+        pass
 
     def get_password(self, user, authuri, realm=None):
-        """ASk user for a password if none is already available.
-
-        """
+        """Ask user for a password if none is already available."""
         user_found, password = self.find_user_password(realm, authuri)
         if user_found != user:
             # FIXME: write a test for that case
@@ -908,12 +936,12 @@ class BasicAuthHandler(AbstractAuthHandler):
                 return False
 
             # Put useful info into auth
-            auth['scheme'] = scheme
-            auth['realm'] = realm
+            self.update_auth(auth, 'scheme', scheme)
+            self.update_auth(auth, 'realm', realm)
             if auth.get('password',None) is None:
-                auth['password'] = self.get_password(auth['user'],
-                                                     auth['authuri'],
-                                                     auth['realm'])
+                password = self.get_password(auth['user'], auth['authuri'],
+                                             auth['realm'])
+                self.update_auth(auth, 'password', password)
         return match is not None
 
     def auth_params_reusable(self, auth):
@@ -964,12 +992,6 @@ class DigestAuthHandler(AbstractAuthHandler):
         if qop != 'auth': # No auth-int so far
             return False
 
-        nonce = req_auth.get('nonce', None)
-        old_nonce = auth.get('nonce', None)
-        if nonce and old_nonce and nonce == old_nonce:
-            # We already tried that
-            return False
-
         H, KD = get_digest_algorithm_impls(req_auth.get('algorithm', 'MD5'))
         if H is None:
             return False
@@ -981,12 +1003,16 @@ class DigestAuthHandler(AbstractAuthHandler):
                                                  realm)
         # Put useful info into auth
         try:
-            auth['scheme'] = scheme
+            self.update_auth(auth, 'scheme', scheme)
             if req_auth.get('algorithm', None) is not None:
-                auth['algorithm'] = req_auth.get('algorithm')
-            auth['realm'] = req_auth['realm']
-            auth['nonce'] = req_auth['nonce']
-            auth['qop'] = qop
+                self.update_auth(auth, 'algorithm', req_auth.get('algorithm'))
+            self.update_auth(auth, 'realm', realm)
+            nonce = req_auth['nonce']
+            if auth.get('nonce', None) != nonce:
+                # A new nonce, never used
+                self.update_auth(auth, 'nonce_count', 0)
+            self.update_auth(auth, 'nonce', nonce)
+            self.update_auth(auth, 'qop', qop)
             auth['opaque'] = req_auth.get('opaque', None)
         except KeyError:
             # Some required field is not there
@@ -1004,8 +1030,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         nonce = auth['nonce']
         qop = auth['qop']
 
-        nonce_count = auth.get('nonce_count',0)
-        nonce_count += 1
+        nonce_count = auth['nonce_count'] + 1
         ncvalue = '%08x' % nonce_count
         cnonce = get_new_cnonce(nonce, nonce_count)
 

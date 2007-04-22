@@ -24,7 +24,8 @@ IN DEVELOPMENT
     * Tags are now included in logs, that use the long log formatter. 
       (Erik Bågfors, Alexander Belchenko)
 
-    * digest authentication is now supported for proxy and http.
+    * digest authentication is now supported for proxy and
+      http. Tested against Apache 2.0.55 and Squid 2.6.5.
       (Vincent Ladeuil).
 
   INTERNALS:
