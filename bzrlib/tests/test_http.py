@@ -1293,7 +1293,26 @@ class TestHTTPProxyBasicAuth(TestProxyAuth, TestCaseWithWebserver):
         return ProxyBasicAuthServer()
 
 
-class TestHTTPDigestAuth(TestHTTPAuth, TestCaseWithWebserver):
+class TestDigestAuth(object):
+    """Digest Authentication specific tests"""
+
+    def test_changing_nonce(self):
+        self.server.add_user('joe', 'foo')
+        t = self.get_user_transport('joe', 'foo')
+        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual('contents of b\n', t.get('b').read())
+        # Only one 'Authentication Required' error should have
+        # occured so far
+        self.assertEqual(1, self.server.auth_required_errors)
+        # So far, so good, let's have fun now
+        self.server.auth_nonce = self.server.auth_nonce + 'tagada'
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Two 'Authentication Required' error should occur (the
+        # initial 'who are you' and a second 'who are you' with the new nonce)
+        self.assertEqual(2, self.server.auth_required_errors)
+
+
+class TestHTTPDigestAuth(TestHTTPAuth, TestDigestAuth, TestCaseWithWebserver):
     """Test http digest authentication scheme"""
 
     _transport = HttpTransport_urllib
@@ -1302,7 +1321,8 @@ class TestHTTPDigestAuth(TestHTTPAuth, TestCaseWithWebserver):
         return HTTPDigestAuthServer()
 
 
-class TestHTTPProxyDigestAuth(TestProxyAuth, TestCaseWithWebserver):
+class TestHTTPProxyDigestAuth(TestProxyAuth, TestDigestAuth,
+                              TestCaseWithWebserver):
     """Test proxy digest authentication scheme"""
 
     _transport = HttpTransport_urllib
