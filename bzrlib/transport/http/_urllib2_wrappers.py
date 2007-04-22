@@ -918,13 +918,14 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
-        # authentication was succesful, all information is
+        # authentication was successful, all information is
         # available, no further checks are needed.
         return auth.get('scheme', None) == 'basic'
 
 
 def get_digest_algorithm_impls(algorithm):
     H = None
+    KD = None
     if algorithm == 'MD5':
         H = lambda x: md5.new(x).hexdigest()
     elif algorithm == 'SHA':
@@ -934,12 +935,18 @@ def get_digest_algorithm_impls(algorithm):
     return H, KD
 
 
+def get_new_cnonce(nonce, nonce_count):
+    raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
+                           urllib2.randombytes(8))
+    return sha.new(raw).hexdigest()[:16]
+
+
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
-        # authentication was succesful, all information is
+        # authentication was successful, all information is
         # available, no further checks are needed.
         return auth.get('scheme', None) == 'digest'
 
@@ -963,8 +970,7 @@ class DigestAuthHandler(AbstractAuthHandler):
             # We already tried that
             return False
 
-        algorithm = req_auth.get('algorithm', 'MD5')
-        H, KD = get_digest_algorithm_impls(algorithm)
+        H, KD = get_digest_algorithm_impls(req_auth.get('algorithm', 'MD5'))
         if H is None:
             return False
 
@@ -976,43 +982,51 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         try:
             auth['scheme'] = scheme
-            auth['algorithm'] = algorithm
+            if req_auth.get('algorithm', None) is not None:
+                auth['algorithm'] = req_auth.get('algorithm')
             auth['realm'] = req_auth['realm']
             auth['nonce'] = req_auth['nonce']
             auth['qop'] = qop
             auth['opaque'] = req_auth.get('opaque', None)
         except KeyError:
+            # Some required field is not there
             return False
 
         return True
 
     def build_auth_header(self, auth, request):
-        uri = request.get_selector()
+        url_scheme, url_selector = urllib.splittype(request.get_selector())
+        sel_host, uri = urllib.splithost(url_selector)
+
         A1 = '%s:%s:%s' % (auth['user'], auth['realm'], auth['password'])
         A2 = '%s:%s' % (request.get_method(), uri)
+
         nonce = auth['nonce']
         qop = auth['qop']
 
-        H, KD = get_digest_algorithm_impls(auth['algorithm'])
         nonce_count = auth.get('nonce_count',0)
         nonce_count += 1
         ncvalue = '%08x' % nonce_count
-        cnonce = sha.new("%s:%s:%s:%s" % (nonce_count, nonce,
-                                          time.ctime(), urllib2.randombytes(8))
-                         ).hexdigest()[:16]
-        noncebit = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
-        response_digest = KD(H(A1), noncebit)
+        cnonce = get_new_cnonce(nonce, nonce_count)
+
+        H, KD = get_digest_algorithm_impls(auth.get('algorithm', 'MD5'))
+        nonce_data = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
+        request_digest = KD(H(A1), nonce_data)
 
         header = 'Digest '
-        header += 'username="%s", realm="%s", nonce="%s",' % (auth['user'],
+        header += 'username="%s", realm="%s", nonce="%s"' % (auth['user'],
                                                              auth['realm'],
                                                              nonce)
-        header += ' uri="%s", response="%s"' % (uri, response_digest)
+        header += ', uri="%s"' % uri
+        header += ', cnonce="%s", nc=%s' % (cnonce, ncvalue)
+        header += ', qop="%s"' % qop
+        header += ', response="%s"' % request_digest
+        # Append the optional fields
         opaque = auth.get('opaque', None)
         if opaque:
             header += ', opaque="%s"' % opaque
-        header += ', algorithm="%s"' % auth['algorithm']
-        header += ', qop="%s", nc="%s", cnonce="%s"' % (qop, ncvalue, cnonce)
+        if auth.get('algorithm', None):
+            header += ', algorithm="%s"' % auth.get('algorithm')
 
         # We have used the nonce once more, update the count
         auth['nonce_count'] = nonce_count
