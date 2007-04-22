@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import textwrap
 
-from bzrlib import registry
+from bzrlib import registry, help_topics
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import errors, urlutils
@@ -62,6 +63,15 @@ class TrackerRegistry(registry.Registry):
                 return tracker
         raise errors.UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name,
                                                    branch)
+
+    def help_topic(self, topic):
+        return textwrap.dedent("""\
+        Bazaar provides the ability to store information about bugs being fixed
+        as metadata on a revision.
+
+        For each bug marked as fixed, an entry is included in the 'bugs'
+        revision property stating '<url> <status>'.
+        """)
 
 
 tracker_registry = TrackerRegistry()

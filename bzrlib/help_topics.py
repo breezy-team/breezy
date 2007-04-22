@@ -242,4 +242,7 @@ topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
-
+def get_bugs_topic(topic):
+    from bzrlib import bugtracker
+    return bugtracker.tracker_registry.help_topic(topic)
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
