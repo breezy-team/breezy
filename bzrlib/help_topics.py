@@ -81,7 +81,7 @@ def _help_on_topics(dummy):
 
 
 def _help_on_revisionspec(name):
-    """"Write the summary help for all documented topics to outfile."""
+    """Write the summary help for all documented topics to outfile."""
     import bzrlib.revisionspec
 
     out = []
