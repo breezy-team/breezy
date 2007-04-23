@@ -35,6 +35,7 @@ from StringIO import StringIO
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.remote import RemoteBranchFormat
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_permissions import chmod_r, check_mode_r
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -45,6 +46,10 @@ from bzrlib.workingtree import WorkingTree
 class TestPermissions(TestCaseWithTransport):
 
     def test_new_branch(self):
+        if isinstance(self.branch_format, RemoteBranchFormat):
+            # Remote branch format have no permission logic in them; there's
+            # nothing to test here.
+            return
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
         # also, these are BzrBranch format specific things..

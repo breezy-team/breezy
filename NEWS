@@ -21,6 +21,9 @@ IN DEVELOPMENT
       documentation, and the bzr.1 man page also include this information.
       (Robert Collins)
 
+    * Tags are now included in logs, that use the long log formatter. 
+      (Erik Bågfors, Alexander Belchenko)
+
     * ``bzr help`` provides a clearer message when a help topic cannot be
       found (fixes bug 107656). (Robert Collins)
 
@@ -53,6 +56,9 @@ IN DEVELOPMENT
     * Convenience method TestCase.expectFailure ensures that known failures
       do not silently pass.  (Aaron Bentley)
 
+    * Transport.local_abspath now raises NotLocalUrl rather than 
+      TransportNotPossible. (Martin Pool, Ian Clatworthy)
+
     * New SmartServer hooks facility. There are two initial hooks documented
       in bzrlib.transport.smart.SmartServerHooks. The two initial hooks allow
       plugins to execute code upon server startup and shutdown.
@@ -76,9 +82,19 @@ IN DEVELOPMENT
       via remote procedure calls.  (Andrew Bennetts)
  
     * The ``lock_write`` method of ``LockableFiles``, ``Repository`` and
-     ``Branch`` now accept a ``token`` keyword argument, so that separate
-     instances of those objects can share a lock if it has the right token.
-     (Andrew Bennetts, Robert Collins)
+      ``Branch`` now accept a ``token`` keyword argument, so that separate
+      instances of those objects can share a lock if it has the right token.
+      (Andrew Bennetts, Robert Collins)
+
+    * New method 'get_branch_reference' on 'BzrDir' allows the detection of
+      branch references - which the smart server component needs.
+
+    * The Repository API ``make_working_trees`` is now permitted to return
+      False when ``set_make_working_trees`` is not implemented - previously
+      an unimplemented ``set_make_working_trees`` implied the result True
+      from ``make_working_trees``. This has been changed to accomodate the
+      smart server, where it does not make sense (at this point) to ever
+      make working trees by default. (Robert Collins)
 
     * Command objects can now declare related help topics by having _see_also
       set to a list of related topic. (Robert Collins)
@@ -101,6 +117,10 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Fix ``InterDirstateTre._iter_changes`` to handle when we come across
+      an empty versioned directory, which now has files in it.
+      (John Arbash Meinel, #104257)
+
     * Teach ``common_ancestor`` to shortcut when the tip of one branch is
       inside the ancestry of the other. Saves a lot of graph processing
       (with an ancestry of 16k revisions, ``bzr merge ../already-merged``
@@ -113,6 +133,14 @@ IN DEVELOPMENT
 
     * FTP now works even when the FTP server does not support atomic rename.
       (Aaron Bentley, #89436)
+
+    * Typo in the help for ``register-branch`` fixed. (Robert Collins, #96770)
+
+    * "dirstate" and "dirstate-tags" formats now produce branches compatible
+      with old versions of bzr. (Aaron Bentley, #107168))
+
+    * Handle moving a directory when children have been added, removed,
+      and renamed. (John Arbash Meinel, #105479)
 
   TESTING:
 
@@ -700,6 +728,9 @@ bzr 0.13rc1  2006-11-27
 
     * ``MemoryTransport.list_dir()`` would strip the first character for
       files or directories in root directory. (John Arbash Meinel)
+
+    * New method 'get_branch_reference' on 'BzrDir' allows the detection of 
+      branch references - which the smart server component needs.
   
     * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
       prefix.  It disallows any access to locations above a set URL.  (Andrew

@@ -193,17 +193,21 @@ class TestBzrDirProviderAdapter(TestCase):
         from bzrlib.bzrdir import BzrDirTestProviderAdapter
         input_test = TestBzrDirProviderAdapter(
             "test_adapted_tests")
+        vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        adapter = BzrDirTestProviderAdapter(vfs_factory,
+            server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
         self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -232,6 +236,19 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].repository_format, formats[1][0])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
+
+    def test_setting_vfs_transport(self):
+        """The vfs_transport_factory can be set optionally."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        formats = [("c", "C")]
+        adapter = RepositoryTestProviderAdapter(None, None, formats,
+            vfs_transport_factory="vfs")
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(1, len(tests))
+        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
 
 
 class TestInterRepositoryProviderAdapter(TestCase):

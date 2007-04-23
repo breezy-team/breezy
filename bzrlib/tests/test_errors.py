@@ -130,7 +130,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
-            "the current request that is open.",
+            "the currently open request.",
             str(error))
 
     def test_unknown_hook(self):
@@ -244,6 +244,11 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_unexpected_smart_server_response(self):
+        e = errors.UnexpectedSmartServerResponse(('not yes',))
+        self.assertEqual(
+            "Could not understand response from smart server: ('not yes',)",
+            str(e))
 
 
 class PassThroughError(errors.BzrError):
