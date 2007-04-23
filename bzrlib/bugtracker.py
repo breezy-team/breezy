@@ -147,40 +147,27 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker):
     'squid' or 'apache').
     """
 
-    type_name = None
-
-    @classmethod
-    def get(klass, abbreviation, branch):
+    def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (klass.type_name, abbreviation))
+            "%s_%s_url" % (self.type_name, abbreviation))
         if url is None:
             return None
-        return klass(url)
-
-    def __init__(self, url):
         self._base_url = url
+        return self
 
-
-class TracTracker(URLParametrizedIntegerBugTracker):
-    """A Trac instance."""
-
-    type_name = 'trac'
+    def __init__(self, type_name, bug_area):
+        self.type_name = type_name
+        self._bug_area = bug_area
 
     def _get_bug_url(self, bug_id):
         """Return a URL for a bug on this Trac instance."""
-        return urlutils.join(self._base_url, 'ticket', bug_id)
-
-tracker_registry.register('trac', TracTracker)
+        return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
 
 
-class BugzillaTracker(URLParametrizedIntegerBugTracker):
-    """A Bugzilla instance."""
+tracker_registry.register(
+    'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
 
-    type_name = 'bugzilla'
-
-    def _get_bug_url(self, bug_id):
-        """Return a URL for a bug on this Bugzilla instance."""
-        return "%s/show_bug.cgi?id=%s" % (self._base_url, bug_id)
-
-tracker_registry.register('bugzilla', BugzillaTracker)
+tracker_registry.register(
+    'bugzilla',
+    URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))

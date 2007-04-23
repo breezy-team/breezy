@@ -15,8 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import bugtracker
-from bzrlib import errors
+from bzrlib import bugtracker, errors, urlutils
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -155,62 +154,32 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
         self.url = 'http://twistedmatrix.com/trac'
+        self.tracker = bugtracker.URLParametrizedIntegerBugTracker('some',
+                                                                   'ticket/')
 
     def test_get_with_unsupported_tag(self):
         """If asked for an unrecognized or unconfigured tag, return None."""
         branch = self.make_branch('some_branch')
-        self.assertEqual(
-            None,
-            bugtracker.URLParametrizedIntegerBugTracker.get('lp', branch))
-        self.assertEqual(
-            None,
-            bugtracker.URLParametrizedIntegerBugTracker.get('twisted', branch))
+        self.assertEqual(None, self.tracker.get('lp', branch))
+        self.assertEqual(None, self.tracker.get('twisted', branch))
 
     def test_get_with_supported_tag(self):
-        """If asked for a valid tag, return a matching tracker instance."""
-        class SomeTracker(bugtracker.URLParametrizedIntegerBugTracker):
-            type_name = 'some'
-
-            def _get_bug_url(self, bug_id):
-                return self._base_url + bug_id
+        """If asked for a valid tag, return a tracker instance that can map bug
+        IDs to <base_url>/<bug_area> + <bug_id>."""
+        bugtracker.tracker_registry.register('some', self.tracker)
+        self.addCleanup(lambda: bugtracker.tracker_registry.remove('some'))
 
         branch = self.make_branch('some_branch')
         config = branch.get_config()
         config.set_user_option('some_twisted_url', self.url)
-        tracker = SomeTracker.get('twisted', branch)
-        self.assertEqual(tracker.get_bug_url('1234'), self.url + '1234')
+        tracker = self.tracker.get('twisted', branch)
+        self.assertEqual(
+            urlutils.join(self.url, 'ticket/') + '1234',
+            tracker.get_bug_url('1234'))
 
     def test_get_bug_url_for_bad_bug(self):
         """When given a bug identifier that is invalid for Trac, get_bug_url
         should raise an error.
         """
-        tracker = bugtracker.URLParametrizedIntegerBugTracker(self.url)
         self.assertRaises(
-            errors.MalformedBugIdentifier, tracker.get_bug_url, 'bad')
-
-
-class TestTracTracker(TestCaseWithMemoryTransport):
-    """Tests for TracTracker."""
-
-    def test_get_bug_url(self):
-        """A URLParametrizedIntegerBugTracker should map a Trac bug to a URL
-        for that instance.
-        """
-        url = 'http://twistedmatrix.com/trac'
-        tracker = bugtracker.TracTracker(url)
-        self.assertEqual('%s/ticket/1234' % url, tracker.get_bug_url('1234'))
-
-
-class TestBugzillaTracker(TestCaseWithMemoryTransport):
-    """Tests for BugzillaTracker."""
-
-    def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
-
-    def test_get_bug_url(self):
-        """A BugzillaTracker should map a bug id to a URL for that instance."""
-        bugzilla_url = 'http://www.squid-cache.org/bugs'
-        tracker = bugtracker.BugzillaTracker(bugzilla_url)
-        self.assertEqual(
-            '%s/show_bug.cgi?id=1234' % bugzilla_url,
-            tracker.get_bug_url('1234'))
+            errors.MalformedBugIdentifier, self.tracker.get_bug_url, 'bad')
