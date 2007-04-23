@@ -135,7 +135,11 @@ class RemoteBzrDir(BzrDir):
             raise errors.NoRepositoryPresent(self)
 
     def open_workingtree(self, recommend_upgrade=True):
-        raise errors.NotLocalUrl(self.root_transport)
+        self._ensure_real()
+        if self._real_bzrdir.has_workingtree():
+            raise errors.NotLocalUrl(self.root_transport)
+        else:
+            raise errors.NoWorkingTree(self.root_transport.base)
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
