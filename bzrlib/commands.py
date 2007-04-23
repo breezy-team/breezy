@@ -137,6 +137,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     plugins_override
         If true, plugin commands can override builtins.
     """
+    try:
+        return _get_cmd_object(cmd_name, plugins_override)
+    except KeyError:
+        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+
+
+def _get_cmd_object(cmd_name, plugins_override=True):
+    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
     from bzrlib.externalcommand import ExternalCommand
 
     # We want only 'ascii' command names, but the user may have typed
@@ -159,8 +167,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
-
-    raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+    raise KeyError
 
 
 class Command(object):
@@ -233,14 +240,78 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
-    def get_see_also(self):
+    def _usage(self):
+        """Return single-line grammar for this command.
+
+        Only describes arguments, not options.
+        """
+        s = 'bzr ' + self.name() + ' '
+        for aname in self.takes_args:
+            aname = aname.upper()
+            if aname[-1] in ['$', '+']:
+                aname = aname[:-1] + '...'
+            elif aname[-1] == '?':
+                aname = '[' + aname[:-1] + ']'
+            elif aname[-1] == '*':
+                aname = '[' + aname[:-1] + '...]'
+            s += aname + ' '
+                
+        assert s[-1] == ' '
+        s = s[:-1]
+        return s
+
+    def get_help_text(self, additional_see_also=None):
+        """Return a text string with help for this command.
+        
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
+        doc = self.help()
+        if doc is None:
+            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+
+        result = ""
+        result += 'usage: %s\n' % self._usage()
+
+        if self.aliases:
+            result += 'aliases:\n'
+            result += ', '.join(self.aliases) + '\n'
+
+        result += '\n'
+
+        plugin_name = self.plugin_name()
+        if plugin_name is not None:
+            result += '(From plugin "%s")' % plugin_name
+            result += '\n\n'
+
+        result += doc
+        if result[-1] != '\n':
+            result += '\n'
+        result += '\n'
+        result += option.get_optparser(self.options()).format_option_help()
+        see_also = self.get_see_also(additional_see_also)
+        if see_also:
+            result += '\nSee also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
+
+    def get_help_topic(self):
+        """Return the commands help topic - its name."""
+        return self.name()
+
+    def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this ommand.
         
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
+        :param additional_terms: Additional help topics to cross-reference.
         :return: A list of help topics.
         """
-        return sorted(set(getattr(self, '_see_also', [])))
+        see_also = set(getattr(self, '_see_also', []))
+        if additional_terms:
+            see_also.update(additional_terms)
+        return sorted(see_also)
 
     def options(self):
         """Return dict of valid options for this command.
@@ -288,8 +359,7 @@ class Command(object):
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
-            from bzrlib.help import help_on_command
-            help_on_command(self.name())
+            sys.stdout.write(self.get_help_text())
             return 0
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
@@ -656,6 +726,30 @@ def run_bzr_catch_errors(argv):
             import pdb
             pdb.post_mortem(sys.exc_traceback)
         return 3
+
+
+class HelpCommandIndex(object):
+    """A index for bzr help that returns commands."""
+
+    def __init__(self):
+        self.prefix = 'commands/'
+
+    def get_topics(self, topic):
+        """Search for topic amongst commands.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            Command entry.
+        """
+        if topic and topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
+        try:
+            cmd = _get_cmd_object(topic)
+        except KeyError:
+            return []
+        else:
+            return [cmd]
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

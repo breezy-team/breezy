@@ -243,3 +243,62 @@ topic_registry.register('global-options', _global_options,
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 
+
+class HelpTopicIndex(object):
+    """A index for bzr help that returns topics."""
+
+    def __init__(self):
+        self.prefix = ''
+
+    def get_topics(self, topic):
+        """Search for topic in the HelpTopicRegistry.
+
+        :param topic: A topic to search for. None is treated as 'basic'.
+        :return: A list which is either empty or contains a single
+            RegisteredTopic entry.
+        """
+        if topic is None:
+            topic = 'basic'
+        if topic in topic_registry:
+            return [RegisteredTopic(topic)]
+        else:
+            return []
+
+
+class RegisteredTopic(object):
+    """A help topic which has been registered in the HelpTopicRegistry.
+
+    These topics consist of nothing more than the name of the topic - all
+    data is retrieved on demand from the registry.
+    """
+
+    def __init__(self, topic):
+        """Constructor.
+
+        :param topic: The name of the topic that this represents.
+        """
+        self.topic = topic
+
+    def get_help_text(self, additional_see_also=None):
+        """Return a string with the help for this topic.
+
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
+        result = topic_registry.get_detail(self.topic)
+        # there is code duplicated here and in bzrlib/plugin.py's 
+        # matching Topic code. This should probably be factored in
+        # to a helper function and a common base class.
+        if additional_see_also is not None:
+            see_also = sorted(set(additional_see_also))
+        else:
+            see_also = None
+        if see_also:
+            result += '\nSee also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
+
+    def get_help_topic(self):
+        """Return the help topic this can be found under."""
+        return self.topic
