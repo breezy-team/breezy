@@ -109,13 +109,8 @@ class IntegerBugTracker(BugTracker):
 class UniqueIntegerBugTracker(IntegerBugTracker):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
-    If you have one of these trackers then subclass this and add attributes
-    named 'abbreviation' and 'base_url'. The former is the abbreviation that
-    the user will use on the command line. The latter is the url that the bug
-    ids will be appended to.
-
-    If the bug_id must have a special form then override check_bug_id and
-    raise an exception if the bug_id is not valid.
+    If you have one of these trackers then register an instance passing in an
+    abbreviated name for the bug tracker and a base URL.
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
