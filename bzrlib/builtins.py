@@ -3291,7 +3291,7 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT
+        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3304,14 +3304,12 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
+            host = BZR_DEFAULT_INTERFACE
             if port is None:
                 port = BZR_DEFAULT_PORT
-                host = '127.0.0.1'
             else:
                 if ':' in port:
                     host, port = port.split(':')
-                else:
-                    host = '127.0.0.1'
                 port = int(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
