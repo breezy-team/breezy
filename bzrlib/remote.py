@@ -599,6 +599,9 @@ class RemoteRepository(object):
             osutils.rmtree(tmpdir)
         # TODO: if the server doesn't support this operation, maybe do it the
         # slow way using the _real_repository?
+        #
+        # TODO: Suggestion from john: using external tar is much faster than
+        # python's tarfile library, but it may not work on windows.
 
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)
