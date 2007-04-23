@@ -25,6 +25,7 @@ from bzrlib import (
     osutils,
     )
 import bzrlib.errors
+from bzrlib.bundle import apply_bundle
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
@@ -112,7 +113,7 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.bundle.serializer import unpack_highres_date
+        from bzrlib.timestamp import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -431,6 +432,11 @@ class BundleInfo(object):
                 raise BzrError('Bogus action line'
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
+
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
+        apply_bundle.install_bundle(target_repo, self)
+        return self.target
 
 
 class BundleTree(Tree):

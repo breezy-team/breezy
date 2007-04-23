@@ -17,11 +17,11 @@
 import os
 
 from bzrlib.errors import BzrCommandError, NoSuchRevision
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 
 
-class TestRevisionInfo(TestCaseWithTransport):
+class TestRevisionInfo(ExternalBase):
     
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
@@ -30,14 +30,6 @@ class TestRevisionInfo(TestCaseWithTransport):
         number of arguments to bzr.
         """
         self.assertContainsRe(self.run_bzr_captured(args, retcode=3)[1], output)
-
-    def check_output(self, output, *args):
-        """Verify that the expected output matches what bzr says.
-        
-        The output is supplied first, so that you can supply a variable
-        number of arguments to bzr.
-        """
-        self.assertEquals(self.run_bzr_captured(args)[0], output)
 
     def test_revision_info(self):
         """Test that 'bzr revision-info' reports the correct thing."""
@@ -80,32 +72,3 @@ class TestRevisionInfo(TestCaseWithTransport):
         
         self.check_output('   1 a@r-0-1\n', 'revision-info', '-r', 'revid:a@r-0-1')
         self.check_output('   2 a@r-0-2\n', 'revision-info', '--revision', 'revid:a@r-0-2')
-
-    def test_cat_revision(self):
-        """Test bzr cat-revision.
-        """
-        wt = self.make_branch_and_tree('.')
-        r = wt.branch.repository
-
-        wt.commit('Commit one', rev_id='a@r-0-1')
-        wt.commit('Commit two', rev_id='a@r-0-2')
-        wt.commit('Commit three', rev_id='a@r-0-3')
-
-        revs = {
-            1:r.get_revision_xml('a@r-0-1'),
-            2:r.get_revision_xml('a@r-0-2'),
-            3:r.get_revision_xml('a@r-0-3'),
-        }
-
-        self.check_output(revs[1], 'cat-revision', 'a@r-0-1')
-        self.check_output(revs[2], 'cat-revision', 'a@r-0-2')
-        self.check_output(revs[3], 'cat-revision', 'a@r-0-3')
-
-        self.check_output(revs[1], 'cat-revision', '-r', '1')
-        self.check_output(revs[2], 'cat-revision', '-r', '2')
-        self.check_output(revs[3], 'cat-revision', '-r', '3')
-
-        self.check_output(revs[1], 'cat-revision', '-r', 'revid:a@r-0-1')
-        self.check_output(revs[2], 'cat-revision', '-r', 'revid:a@r-0-2')
-        self.check_output(revs[3], 'cat-revision', '-r', 'revid:a@r-0-3')
-

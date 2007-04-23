@@ -175,13 +175,6 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
 
-    def test_checkout_format(self):
-        branch = self.make_repository('repository', shared=True)
-        branch = self.make_branch('repository/branch',
-            format='metaweave')
-        tree = branch.create_checkout('checkout')
-        self.assertIs(tree.branch.__class__, _mod_branch.BzrBranch5)
-
 
 class TestBranch6(TestCaseWithTransport):
 
@@ -190,19 +183,19 @@ class TestBranch6(TestCaseWithTransport):
         format.set_branch_format(_mod_branch.BzrBranchFormat6())
         branch = self.make_branch('a', format=format)
         self.assertIsInstance(branch, _mod_branch.BzrBranch6)
-        branch = self.make_branch('b', format='dirstate-with-subtree')
+        branch = self.make_branch('b', format='dirstate-tags')
         self.assertIsInstance(branch, _mod_branch.BzrBranch6)
         branch = _mod_branch.Branch.open('a')
         self.assertIsInstance(branch, _mod_branch.BzrBranch6)
 
     def test_layout(self):
-        branch = self.make_branch('a', format='dirstate-with-subtree')
+        branch = self.make_branch('a', format='dirstate-tags')
         self.failUnlessExists('a/.bzr/branch/last-revision')
         self.failIfExists('a/.bzr/branch/revision-history')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
-        branch = self.make_branch('a', format='dirstate-with-subtree')
+        branch = self.make_branch('a', format='dirstate-tags')
         branch.set_parent('http://bazaar-vcs.org')
         self.failIfExists('a/.bzr/branch/parent')
         self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
@@ -216,7 +209,7 @@ class TestBranch6(TestCaseWithTransport):
 
     def test_set_revision_history(self):
         tree = self.make_branch_and_memory_tree('.',
-            format='dirstate-with-subtree')
+            format='dirstate-tags')
         tree.lock_write()
         try:
             tree.add('.')
@@ -231,7 +224,7 @@ class TestBranch6(TestCaseWithTransport):
 
     def test_append_revision(self):
         tree = self.make_branch_and_tree('branch1',
-            format='dirstate-with-subtree')
+            format='dirstate-tags')
         tree.lock_write()
         try:
             tree.commit('foo', rev_id='foo')
@@ -305,6 +298,17 @@ class TestBranchReference(TestCaseWithTransport):
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)
 
+    def test_get_reference(self):
+        """For a BranchReference, get_reference should reutrn the location."""
+        branch = self.make_branch('target')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        reference_url = branch.bzrdir.root_transport.abspath('') + '/'
+        # if the api for create_checkout changes to return different checkout types
+        # then this file read will fail.
+        self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
+        self.assertEqual(reference_url,
+            _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+
 
 class TestHooks(TestCase):
 
@@ -320,7 +324,7 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks, BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
 
     def test_install_hook_raises_unknown_hook(self):
         """install_hook should raise UnknownHook if a hook is unknown."""

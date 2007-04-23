@@ -22,8 +22,6 @@ import os
 from bzrlib import errors
 from bzrlib.bundle.serializer import (BundleSerializer,
                                       BUNDLE_HEADER,
-                                      format_highres_date,
-                                      unpack_highres_date,
                                      )
 from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
@@ -31,9 +29,12 @@ from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
 from bzrlib.testament import StrictTestament
+from bzrlib.timestamp import (
+    format_highres_date,
+    unpack_highres_date,
+)
 from bzrlib.textfile import text_file
 from bzrlib.trace import mutter
 
@@ -526,7 +527,6 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
-
 
 class BundleInfo08(BundleInfo):
 

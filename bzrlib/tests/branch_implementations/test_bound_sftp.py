@@ -30,16 +30,28 @@ from bzrlib.bzrdir import (BzrDir,
                            BzrDirMetaFormat1,
                            )
 import bzrlib.errors as errors
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer, paramiko_loaded
+from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.transport.local import LocalURLServer
+from bzrlib.transport.memory import MemoryServer
 
 
-class BoundSFTPBranch(TestCaseWithSFTPServer):
+class BoundSFTPBranch(TestCaseWithTransport):
+
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.vfs_transport_factory = MemoryServer
+        if self.transport_server is LocalURLServer:
+            self.transport_server = None
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
         format = bzrdir.format_registry.make_bzrdir('knit')
-        wt_base = BzrDir.create_standalone_workingtree('base',
-            format=format)
+        try:
+            wt_base = BzrDir.create_standalone_workingtree(
+                self.get_url('base'), format=format)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
     
         b_base = wt_base.branch
 
@@ -55,14 +67,12 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
         return b_base, wt_child
 
-    def tearDown(self):
-        self.sftp_base = None
-        bzrlib.transport.sftp.clear_connection_cache()
-        super(BoundSFTPBranch, self).tearDown()
-
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])
-        wt_base = BzrDir.create_standalone_workingtree('base')
+        try:
+            wt_base = BzrDir.create_standalone_workingtree(self.get_url('base'))
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
 
         wt_base.add('a')
         wt_base.add('b')
@@ -324,7 +334,4 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
     # TODO: jam 20051231 We need invasive failure tests, so that we can show
     #       performance even when something fails.
 
-
-if not paramiko_loaded:
-    del BoundSFTPBranch
 

@@ -30,10 +30,20 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_disabled_method(self):
+        error = errors.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
+
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
                              ' as foo', str(error))
+
+    def test_duplicate_help_prefix(self):
+        error = errors.DuplicateHelpPrefix('foo')
+        self.assertEqualDiff('The prefix foo is in the help search path twice.',
+            str(error))
 
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
@@ -86,6 +96,12 @@ class TestErrors(TestCaseWithTransport):
             "smart protocol.",
             str(error))
 
+    def test_no_help_topic(self):
+        error = errors.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'bzr help topics' to obtain a list of topics.",
+            str(error))
+
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "
@@ -105,11 +121,16 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
+    def test_read_only_lock_error(self):
+        error = errors.ReadOnlyLockError('filename', 'error message')
+        self.assertEqualDiff("Cannot acquire write lock on filename."
+                             " error message", str(error))
+
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
-            "the current request that is open.",
+            "the currently open request.",
             str(error))
 
     def test_unknown_hook(self):
@@ -223,6 +244,11 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_unexpected_smart_server_response(self):
+        e = errors.UnexpectedSmartServerResponse(('not yes',))
+        self.assertEqual(
+            "Could not understand response from smart server: ('not yes',)",
+            str(e))
 
 
 class PassThroughError(errors.BzrError):

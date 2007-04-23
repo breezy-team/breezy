@@ -26,7 +26,12 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.osutils import has_symlinks
+from bzrlib.tests import (
+        TestCase,
+        TestCaseWithTransport,
+        TestSkipped,
+        )
 
 
 # TODO:
@@ -97,7 +102,9 @@ class TestCaseWithDirState(TestCaseWithTransport):
          b/g      g-file
          b/h\xc3\xa5  h-\xc3\xa5-file  #This is u'\xe5' encoded into utf-8
 
-        # Notice that a/e is an empty directory.
+        Notice that a/e is an empty directory.
+
+        :return: The dirstate, still write-locked.
         """
         packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         null_sha = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
@@ -166,7 +173,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
             state.save()
         finally:
             state.unlock()
-        del state # Callers should unlock
+        del state
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
@@ -174,6 +181,168 @@ class TestCaseWithDirState(TestCaseWithTransport):
         finally:
             state.unlock()
 
+    def create_basic_dirstate(self):
+        """Create a dirstate with a few files and directories.
+
+            a
+            b/
+              c
+              d/
+                e
+            f
+        """
+        tree = self.make_branch_and_tree('tree')
+        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'f']
+        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id']
+        self.build_tree(['tree/' + p for p in paths])
+        tree.set_root_id('TREE_ROOT')
+        tree.add([p.rstrip('/') for p in paths], file_ids)
+        tree.commit('initial', rev_id='rev-1')
+        revision_id = 'rev-1'
+        # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
+        t = self.get_transport().clone('tree')
+        a_text = t.get_bytes('a')
+        a_sha = osutils.sha_string(a_text)
+        a_len = len(a_text)
+        # b_packed_stat = dirstate.pack_stat(os.stat('tree/b'))
+        # c_packed_stat = dirstate.pack_stat(os.stat('tree/b/c'))
+        c_text = t.get_bytes('b/c')
+        c_sha = osutils.sha_string(c_text)
+        c_len = len(c_text)
+        # d_packed_stat = dirstate.pack_stat(os.stat('tree/b/d'))
+        # e_packed_stat = dirstate.pack_stat(os.stat('tree/b/d/e'))
+        e_text = t.get_bytes('b/d/e')
+        e_sha = osutils.sha_string(e_text)
+        e_len = len(e_text)
+        # f_packed_stat = dirstate.pack_stat(os.stat('tree/f'))
+        f_text = t.get_bytes('f')
+        f_sha = osutils.sha_string(f_text)
+        f_len = len(f_text)
+        null_stat = dirstate.DirState.NULLSTAT
+        expected = {
+            '':(('', '', 'TREE_ROOT'), [
+                  ('d', '', 0, False, null_stat),
+                  ('d', '', 0, False, revision_id),
+                ]),
+            'a':(('', 'a', 'a-id'), [
+                   ('f', '', 0, False, null_stat),
+                   ('f', a_sha, a_len, False, revision_id),
+                 ]),
+            'b':(('', 'b', 'b-id'), [
+                  ('d', '', 0, False, null_stat),
+                  ('d', '', 0, False, revision_id),
+                 ]),
+            'b/c':(('b', 'c', 'c-id'), [
+                    ('f', '', 0, False, null_stat),
+                    ('f', c_sha, c_len, False, revision_id),
+                   ]),
+            'b/d':(('b', 'd', 'd-id'), [
+                    ('d', '', 0, False, null_stat),
+                    ('d', '', 0, False, revision_id),
+                   ]),
+            'b/d/e':(('b/d', 'e', 'e-id'), [
+                      ('f', '', 0, False, null_stat),
+                      ('f', e_sha, e_len, False, revision_id),
+                     ]),
+            'f':(('', 'f', 'f-id'), [
+                  ('f', '', 0, False, null_stat),
+                  ('f', f_sha, f_len, False, revision_id),
+                 ]),
+        }
+        state = dirstate.DirState.from_tree(tree, 'dirstate')
+        try:
+            state.save()
+        finally:
+            state.unlock()
+        # Use a different object, to make sure nothing is pre-cached in memory.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        self.addCleanup(state.unlock)
+        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                         state._dirblock_state)
+        # This is code is only really tested if we actually have to make more
+        # than one read, so set the page size to something smaller.
+        # We want it to contain about 2.2 records, so that we have a couple
+        # records that we can read per attempt
+        state._bisect_page_size = 200
+        return tree, state, expected
+
+    def create_duplicated_dirstate(self):
+        """Create a dirstate with a deleted and added entries.
+
+        This grabs a basic_dirstate, and then removes and re adds every entry
+        with a new file id.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        # Now we will just remove and add every file so we get an extra entry
+        # per entry. Unversion in reverse order so we handle subdirs
+        tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
+        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
+                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
+
+        # Update the expected dictionary.
+        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
+            orig = expected[path]
+            path2 = path + '2'
+            # This record was deleted in the current tree
+            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
+                                        orig[1][1]])
+            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
+            # And didn't exist in the basis tree
+            expected[path2] = (new_key, [orig[1][0],
+                                         dirstate.DirState.NULL_PARENT_DETAILS])
+
+        # We will replace the 'dirstate' file underneath 'state', but that is
+        # okay as lock as we unlock 'state' first.
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            # But we need to leave state in a read-lock because we already have
+            # a cleanup scheduled
+            state.lock_read()
+        return tree, state, expected
+
+    def create_renamed_dirstate(self):
+        """Create a dirstate with a few internal renames.
+
+        This takes the basic dirstate, and moves the paths around.
+        """
+        tree, state, expected = self.create_basic_dirstate()
+        # Rename a file
+        tree.rename_one('a', 'b/g')
+        # And a directory
+        tree.rename_one('b/d', 'h')
+
+        old_a = expected['a']
+        expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
+        expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
+                                                ('r', 'a', 0, False, '')])
+        old_d = expected['b/d']
+        expected['b/d'] = (old_d[0], [('r', 'h', 0, False, ''), old_d[1][1]])
+        expected['h'] = (('', 'h', 'd-id'), [old_d[1][0],
+                                             ('r', 'b/d', 0, False, '')])
+
+        old_e = expected['b/d/e']
+        expected['b/d/e'] = (old_e[0], [('r', 'h/e', 0, False, ''),
+                             old_e[1][1]])
+        expected['h/e'] = (('h', 'e', 'e-id'), [old_e[1][0],
+                                                ('r', 'b/d/e', 0, False, '')])
+
+        state.unlock()
+        try:
+            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
+            try:
+                new_state.save()
+            finally:
+                new_state.unlock()
+        finally:
+            state.lock_read()
+        return tree, state, expected
 
 class TestTreeToDirState(TestCaseWithDirState):
 
@@ -201,7 +370,11 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
-        state._validate()
+        state.lock_read()
+        try:
+            state._validate()
+        finally:
+            state.unlock()
 
     def test_2_parents_empty_to_dirstate(self):
         # create a parent by doing a commit
@@ -218,7 +391,11 @@ class TestTreeToDirState(TestCaseWithDirState):
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
-        state._validate()
+        state.lock_read()
+        try:
+            state._validate()
+        finally:
+            state.unlock()
 
     def test_empty_unknowns_are_ignored_to_dirstate(self):
         """We should be able to create a dirstate for an empty tree."""
@@ -362,6 +539,102 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def test_can_save_in_read_lock(self):
+        self.build_tree(['a-file'])
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            # No stat and no sha1 sum.
+            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.save()
+        finally:
+            state.unlock()
+
+        # Now open in readonly mode
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            # The current sha1 sum should be empty
+            self.assertEqual('', entry[1][0][1])
+            # We should have a real entry.
+            self.assertNotEqual((None, None), entry)
+            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            # We should have gotten a real sha1
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
+
+            # The dirblock has been updated
+            self.assertEqual(sha1sum, entry[1][0][1])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+
+            del entry
+            # Now, since we are the only one holding a lock, we should be able
+            # to save and have it written to disk
+            state.save()
+        finally:
+            state.unlock()
+
+        # Re-open the file, and ensure that the state has been updated.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            self.assertEqual(sha1sum, entry[1][0][1])
+        finally:
+            state.unlock()
+
+    def test_save_fails_quietly_if_locked(self):
+        """If dirstate is locked, save will fail without complaining."""
+        self.build_tree(['a-file'])
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            # No stat and no sha1 sum.
+            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.save()
+        finally:
+            state.unlock()
+
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            sha1sum = state.update_entry(entry, 'a-file', os.lstat('a-file'))
+            # We should have gotten a real sha1
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+
+            # Now, before we try to save, grab another dirstate, and take out a
+            # read lock.
+            # TODO: jam 20070315 Ideally this would be locked by another
+            #       process. To make sure the file is really OS locked.
+            state2 = dirstate.DirState.on_file('dirstate')
+            state2.lock_read()
+            try:
+                # This won't actually write anything, because it couldn't grab
+                # a write lock. But it shouldn't raise an error, either.
+                # TODO: jam 20070315 We should probably distinguish between
+                #       being dirty because of 'update_entry'. And dirty
+                #       because of real modification. So that save() *does*
+                #       raise a real error if it fails when we have real
+                #       modifications.
+                state.save()
+            finally:
+                state2.unlock()
+        finally:
+            state.unlock()
+        
+        # The file on disk should not be modified.
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            entry = state._get_entry(0, path_utf8='a-file')
+            self.assertEqual('', entry[1][0][1])
+        finally:
+            state.unlock()
+
 
 class TestDirStateInitialize(TestCaseWithDirState):
 
@@ -375,12 +648,14 @@ class TestDirStateInitialize(TestCaseWithDirState):
         try:
             self.assertIsInstance(state, dirstate.DirState)
             lines = state.get_lines()
-            self.assertFileEqual(''.join(state.get_lines()),
-                'dirstate')
-            self.check_state_with_reopen(expected_result, state)
-        except:
+        finally:
             state.unlock()
-            raise
+        # On win32 you can't read from a locked file, even within the same
+        # process. So we have to unlock and release before we check the file
+        # contents.
+        self.assertFileEqual(''.join(lines), 'dirstate')
+        state.lock_read() # check_state_with_reopen will unlock
+        self.check_state_with_reopen(expected_result, state)
 
 
 class TestDirStateManipulations(TestCaseWithDirState):
@@ -432,9 +707,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
-        state._validate()
         state.lock_read()
         try:
+            state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
         finally:
             state.unlock()
@@ -684,8 +959,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_add_symlink_to_root_no_parents_all_data(self):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
-        ## TODO: windows: dont fail this test. Also, how are symlinks meant to
-        # be represented on windows.
+        # bzr doesn't support fake symlinks on windows, yet.
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         os.symlink('target', 'a link')
         stat = os.lstat('a link')
         expected_entries = [
@@ -1201,7 +1477,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1286,6 +1563,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         This should not be called if this platform does not have symlink
         support.
         """
+        # caller should care about skipping test on platforms without symlinks
         os.symlink('path/to/foo', 'a')
 
         stat_value = os.lstat('a')
@@ -1320,7 +1598,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_missing_symlink(self):
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         packed_stat = self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1341,7 +1620,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_file(state, entry)
         os.remove('a')
@@ -1357,7 +1637,8 @@ class TestUpdateEntry(TestCaseWithDirState):
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
         if not osutils.has_symlinks():
-            return # PlatformDeficiency / TestSkipped
+            # PlatformDeficiency / TestSkipped
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_dir(state, entry)
         os.rmdir('a')
@@ -1365,6 +1646,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1372,6 +1655,8 @@ class TestUpdateEntry(TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
         state, entry = self.get_state_with_a()
         self.create_and_test_symlink(state, entry)
         os.remove('a')
@@ -1452,171 +1737,9 @@ class TestPackStat(TestCaseWithTransport):
         self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
 
 
-class TestBisect(TestCaseWithTransport):
+class TestBisect(TestCaseWithDirState):
     """Test the ability to bisect into the disk format."""
 
-    def create_basic_dirstate(self):
-        """Create a dirstate with a few files and directories.
-
-            a
-            b/
-              c
-              d/
-                e
-            f
-        """
-        tree = self.make_branch_and_tree('tree')
-        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'f']
-        file_ids = ['a-id', 'b-id', 'c-id', 'd-id', 'e-id', 'f-id']
-        self.build_tree(['tree/' + p for p in paths])
-        tree.set_root_id('TREE_ROOT')
-        tree.add([p.rstrip('/') for p in paths], file_ids)
-        tree.commit('initial', rev_id='rev-1')
-        revision_id = 'rev-1'
-        # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
-        t = self.get_transport().clone('tree')
-        a_text = t.get_bytes('a')
-        a_sha = osutils.sha_string(a_text)
-        a_len = len(a_text)
-        # b_packed_stat = dirstate.pack_stat(os.stat('tree/b'))
-        # c_packed_stat = dirstate.pack_stat(os.stat('tree/b/c'))
-        c_text = t.get_bytes('b/c')
-        c_sha = osutils.sha_string(c_text)
-        c_len = len(c_text)
-        # d_packed_stat = dirstate.pack_stat(os.stat('tree/b/d'))
-        # e_packed_stat = dirstate.pack_stat(os.stat('tree/b/d/e'))
-        e_text = t.get_bytes('b/d/e')
-        e_sha = osutils.sha_string(e_text)
-        e_len = len(e_text)
-        # f_packed_stat = dirstate.pack_stat(os.stat('tree/f'))
-        f_text = t.get_bytes('f')
-        f_sha = osutils.sha_string(f_text)
-        f_len = len(f_text)
-        null_stat = dirstate.DirState.NULLSTAT
-        expected = {
-            '':(('', '', 'TREE_ROOT'), [
-                  ('d', '', 0, False, null_stat),
-                  ('d', '', 0, False, revision_id),
-                ]),
-            'a':(('', 'a', 'a-id'), [
-                   ('f', '', 0, False, null_stat),
-                   ('f', a_sha, a_len, False, revision_id),
-                 ]),
-            'b':(('', 'b', 'b-id'), [
-                  ('d', '', 0, False, null_stat),
-                  ('d', '', 0, False, revision_id),
-                 ]),
-            'b/c':(('b', 'c', 'c-id'), [
-                    ('f', '', 0, False, null_stat),
-                    ('f', c_sha, c_len, False, revision_id),
-                   ]),
-            'b/d':(('b', 'd', 'd-id'), [
-                    ('d', '', 0, False, null_stat),
-                    ('d', '', 0, False, revision_id),
-                   ]),
-            'b/d/e':(('b/d', 'e', 'e-id'), [
-                      ('f', '', 0, False, null_stat),
-                      ('f', e_sha, e_len, False, revision_id),
-                     ]),
-            'f':(('', 'f', 'f-id'), [
-                  ('f', '', 0, False, null_stat),
-                  ('f', f_sha, f_len, False, revision_id),
-                 ]),
-        }
-        state = dirstate.DirState.from_tree(tree, 'dirstate')
-        try:
-            state.save()
-        finally:
-            state.unlock()
-        # Use a different object, to make sure nothing is pre-cached in memory.
-        state = dirstate.DirState.on_file('dirstate')
-        state.lock_read()
-        self.addCleanup(state.unlock)
-        self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
-                         state._dirblock_state)
-        # This is code is only really tested if we actually have to make more
-        # than one read, so set the page size to something smaller.
-        # We want it to contain about 2.2 records, so that we have a couple
-        # records that we can read per attempt
-        state._bisect_page_size = 200
-        return tree, state, expected
-
-    def create_duplicated_dirstate(self):
-        """Create a dirstate with a deleted and added entries.
-
-        This grabs a basic_dirstate, and then removes and re adds every entry
-        with a new file id.
-        """
-        tree, state, expected = self.create_basic_dirstate()
-        # Now we will just remove and add every file so we get an extra entry
-        # per entry. Unversion in reverse order so we handle subdirs
-        tree.unversion(['f-id', 'e-id', 'd-id', 'c-id', 'b-id', 'a-id'])
-        tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f'],
-                 ['a-id2', 'b-id2', 'c-id2', 'd-id2', 'e-id2', 'f-id2'])
-
-        # Update the expected dictionary.
-        for path in ['a', 'b', 'b/c', 'b/d', 'b/d/e', 'f']:
-            orig = expected[path]
-            path2 = path + '2'
-            # This record was deleted in the current tree
-            expected[path] = (orig[0], [dirstate.DirState.NULL_PARENT_DETAILS,
-                                        orig[1][1]])
-            new_key = (orig[0][0], orig[0][1], orig[0][2]+'2')
-            # And didn't exist in the basis tree
-            expected[path2] = (new_key, [orig[1][0],
-                                         dirstate.DirState.NULL_PARENT_DETAILS])
-
-        # We will replace the 'dirstate' file underneath 'state', but that is
-        # okay as lock as we unlock 'state' first.
-        state.unlock()
-        try:
-            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
-            try:
-                new_state.save()
-            finally:
-                new_state.unlock()
-        finally:
-            # But we need to leave state in a read-lock because we already have
-            # a cleanup scheduled
-            state.lock_read()
-        return tree, state, expected
-
-    def create_renamed_dirstate(self):
-        """Create a dirstate with a few internal renames.
-
-        This takes the basic dirstate, and moves the paths around.
-        """
-        tree, state, expected = self.create_basic_dirstate()
-        # Rename a file
-        tree.rename_one('a', 'b/g')
-        # And a directory
-        tree.rename_one('b/d', 'h')
-
-        old_a = expected['a']
-        expected['a'] = (old_a[0], [('r', 'b/g', 0, False, ''), old_a[1][1]])
-        expected['b/g'] = (('b', 'g', 'a-id'), [old_a[1][0],
-                                                ('r', 'a', 0, False, '')])
-        old_d = expected['b/d']
-        expected['b/d'] = (old_d[0], [('r', 'h', 0, False, ''), old_d[1][1]])
-        expected['h'] = (('', 'h', 'd-id'), [old_d[1][0],
-                                             ('r', 'b/d', 0, False, '')])
-
-        old_e = expected['b/d/e']
-        expected['b/d/e'] = (old_e[0], [('r', 'h/e', 0, False, ''),
-                             old_e[1][1]])
-        expected['h/e'] = (('h', 'e', 'e-id'), [old_e[1][0],
-                                                ('r', 'b/d/e', 0, False, '')])
-
-        state.unlock()
-        try:
-            new_state = dirstate.DirState.from_tree(tree, 'dirstate')
-            try:
-                new_state.save()
-            finally:
-                new_state.unlock()
-        finally:
-            state.lock_read()
-        return tree, state, expected
 
     def assertBisect(self, expected_map, map_keys, state, paths):
         """Assert that bisecting for paths returns the right result.
@@ -1929,3 +2052,59 @@ class TestBisectDirblock(TestCase):
         for path in paths:
             self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
 
+
+class TestDirstateValidation(TestCaseWithDirState):
+
+    def test_validate_correct_dirstate(self):
+        state = self.create_complex_dirstate()
+        state._validate()
+        state.unlock()
+        # and make sure we can also validate with a read lock
+        state.lock_read()
+        try:
+            state._validate()
+        finally:
+            state.unlock()
+
+    def test_dirblock_not_sorted(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
+        # we're appending to the dirblock, but this name comes before some of
+        # the existing names; that's wrong
+        last_dirblock[1].append(
+            (('h', 'aaaa', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e), 'not sorted')
+
+    def test_dirblock_name_mismatch(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
+        # add an entry with the wrong directory name
+        last_dirblock[1].append(
+            (('', 'z', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e),
+            "doesn't match directory name")
+
+    def test_dirblock_missing_rename(self):
+        tree, state, expected = self.create_renamed_dirstate()
+        state._read_dirblocks_if_needed()
+        last_dirblock = state._dirblocks[-1]
+        # make another entry for a-id, without a correct 'r' pointer to
+        # the real occurrence in the working tree
+        last_dirblock[1].append(
+            (('h', 'z', 'a-id'),
+             [('a', '', 0, False, ''),
+              ('a', '', 0, False, '')]))
+        e = self.assertRaises(AssertionError,
+            state._validate)
+        self.assertContainsRe(str(e),
+            'file a-id is absent in row')

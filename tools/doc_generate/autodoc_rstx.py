@@ -73,7 +73,7 @@ Command overview
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            usage = bzrlib.help.command_usage(cmd_object)
+            usage = cmd_object._usage()
             tmp = '**%s**\n\t%s\n\n' % (usage, firstline)
             output = output + tmp
         else:
@@ -97,7 +97,7 @@ Command reference
 
 def format_command (params, cmd, name):
     """Provides long help for each public command"""
-    usage = bzrlib.help.command_usage(cmd)
+    usage = cmd._usage()
     subsection_header = """
 %s
 %s
@@ -135,7 +135,14 @@ def format_command (params, cmd, name):
         aliases_str += ', '.join(cmd.aliases)
         aliases_str += '\n'
 
-    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
+    see_also_str = ""
+    see_also = cmd.get_see_also()
+    if see_also:
+        see_also_str += '\n    See also: '
+        see_also_str += ', '.join(see_also)
+        see_also_str += '\n'
+
+    return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
 
 
 ##
@@ -188,7 +195,7 @@ rstx_foot = """
 Environment
 ===========
 **BZRPATH**
-                Path where **%(bzrcmd)s** is to look for external command.
+                Path where **%(bzrcmd)s** is to look for shell plugin external commands.
 
 **BZR_EMAIL**
                 E-Mail address of the user. Overrides default user config.
@@ -216,7 +223,7 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the users default configuration. The section ``[DEFAULT]`` is
+Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.
 The section ``[ALIASES]`` can be used to create command aliases for
 commonly used options.

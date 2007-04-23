@@ -103,7 +103,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.run_bzr('unbind', retcode=3)
 
     def test_bind_branch6(self):
-        branch1 = self.make_branch('branch1', format='dirstate-with-subtree')
+        branch1 = self.make_branch('branch1', format='dirstate-tags')
         os.chdir('branch1')
         error = self.run_bzr('bind', retcode=3)[1]
         self.assertContainsRe(error, 'no previous location known')
@@ -115,7 +115,7 @@ class TestBoundBranches(TestCaseWithTransport):
         branch2.unbind()
 
     def test_rebind_branch6(self):
-        self.setup_rebind('dirstate-with-subtree')
+        self.setup_rebind('dirstate-tags')
         os.chdir('branch2')
         self.run_bzr('bind')
         b = Branch.open('.')
@@ -128,7 +128,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.assertContainsRe(error, 'old locations')
 
     def init_meta_branch(self, path):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = bzrdir.format_registry.make_bzrdir('default')
         return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):

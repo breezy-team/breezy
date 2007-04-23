@@ -60,25 +60,35 @@ def _get_tree(treespec, local_branch=None):
         return tree.branch, tree
     branch = Branch.open_containing(location)[0]
     if revno == -1:
-        revision = branch.last_revision()
+        revision_id = branch.last_revision()
     else:
-        revision = branch.get_rev_id(revno)
-        if revision is None:
-            revision = NULL_REVISION
-    return branch, _get_revid_tree(branch, revision, local_branch)
+        revision_id = branch.get_rev_id(revno)
+    if revision_id is None:
+        revision_id = NULL_REVISION
+    return branch, _get_revid_tree(branch, revision_id, local_branch)
 
 
-def _get_revid_tree(branch, revision, local_branch):
-    if revision is None:
+def _get_revid_tree(branch, revision_id, local_branch):
+    if revision_id is None:
         base_tree = branch.bzrdir.open_workingtree()
     else:
         if local_branch is not None:
             if local_branch.base != branch.base:
-                local_branch.fetch(branch, revision)
-            base_tree = local_branch.repository.revision_tree(revision)
+                local_branch.fetch(branch, revision_id)
+            base_tree = local_branch.repository.revision_tree(revision_id)
         else:
-            base_tree = branch.repository.revision_tree(revision)
+            base_tree = branch.repository.revision_tree(revision_id)
     return base_tree
+
+
+def _get_revid_tree_from_tree(tree, revision_id, local_branch):
+    if revision_id is None:
+        return tree
+    if local_branch is not None:
+        if local_branch.base != tree.branch.base:
+            local_branch.fetch(tree.branch, revision_id)
+        return local_branch.repository.revision_tree(revision_id)
+    return tree.branch.repository.revision_tree(revision_id)
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
@@ -255,8 +265,9 @@ class Merger(object):
                     pb.finished()
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,
-                                            None)
+            self.base_tree = _get_revid_tree_from_tree(self.this_tree,
+                                                       self.base_rev_id,
+                                                       None)
             self.base_is_ancestor = True
         else:
             base_branch, self.base_tree = _get_tree(base_revision)
@@ -1002,11 +1013,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        warnings.warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
-             "bzrlib version 0.8.",
-             DeprecationWarning,
-             stacklevel=2)
-        this_tree = this_branch.bzrdir.open_workingtree()
+        raise BzrError("bzrlib.merge.merge_inner requires a this_tree "
+            "parameter as of bzrlib version 0.8.")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files

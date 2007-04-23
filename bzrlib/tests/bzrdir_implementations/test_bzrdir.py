@@ -51,6 +51,7 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
+from bzrlib.remote import RemoteBzrDir
 from bzrlib.repofmt import weaverepo
 
 
@@ -136,7 +137,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestSkipped("cannot make working tree with transport %r"
                               % a_bzrdir.transport)
 
-    def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None, basis=None,
+    def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
                      force_new_repo=False):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
         
@@ -145,7 +146,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         try:
             target = from_bzrdir.sprout(to_url, revision_id=revision_id,
-                                        basis=basis,
                                         force_new_repo=force_new_repo)
         except errors.NotLocalUrl:
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
@@ -155,7 +155,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
         dir.create_branch()
-        wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        try:
+            wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         self.assertEqual([], wt.get_parent_ids())
 
     def test_destroy_workingtree(self):
@@ -228,23 +232,34 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
 
     def test_clone_bzrdir_repository_branch_both_under_shared(self):
+        # Create a shared repository
         try:
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
             return
+        # Make a branch, 'commit_tree', and working tree outside of the shared
+        # repository, and commit some revisions to it.
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
-        tree.bzrdir.open_repository().copy_content_into(shared_repo)
+        # Copy the content (i.e. revisions) from the 'commit_tree' branch's
+        # repository into the shared repository.
+        tree.branch.repository.copy_content_into(shared_repo)
+        # Make a branch 'source' inside the shared repository.
         dir = self.make_bzrdir('shared/source')
         dir.create_branch()
+        # Clone 'source' to 'target', also inside the shared repository.
         target = dir.clone(self.get_url('shared/target'))
+        # 'source', 'target', and the shared repo all have distinct bzrdirs.
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
+        # The shared repository will contain revisions from the 'commit_tree'
+        # repository, even revisions that are not part of the history of the
+        # 'commit_tree' branch.
         self.assertTrue(shared_repo.has_revision('1'))
 
     def test_clone_bzrdir_repository_branch_only_source_under_shared(self):
@@ -253,15 +268,16 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             return
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.branch.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
-        tree.bzrdir.open_repository().copy_content_into(shared_repo)
-        shared_repo.set_make_working_trees(False)
-        self.assertFalse(shared_repo.make_working_trees())
+        tree.branch.repository.copy_content_into(shared_repo)
+        if shared_repo.make_working_trees():
+            shared_repo.set_make_working_trees(False)
+            self.assertFalse(shared_repo.make_working_trees())
         self.assertTrue(shared_repo.has_revision('1'))
         dir = self.make_bzrdir('shared/source')
         dir.create_branch()
@@ -275,7 +291,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
@@ -298,26 +314,26 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and clone it with a revision limit.
         # 
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.branch.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
-        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source)
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='2')
         raise TestSkipped('revision limiting not strict yet')
 
     def test_clone_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -333,12 +349,12 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
         # by default cloning into a shared repo uses the shared repo.
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -353,12 +369,12 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_clone_bzrdir_branch_and_repo_into_shared_repo_force_new_repo(self):
         # by default cloning into a shared repo uses the shared repo.
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -393,20 +409,20 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and clone it with a revision limit.
         # 
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
-        tree.bzrdir.open_branch().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source.repository)
+        tree.branch.copy_content_into(source)
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='1')
         self.assertEqual('1', target.open_branch().last_revision())
         
     def test_clone_bzrdir_tree_branch_repo(self):
-        tree = self.make_branch_and_tree('sourcce')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         dir = tree.bzrdir
@@ -425,8 +441,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         target.open_workingtree().revert([])
 
     def test_revert_inventory(self):
-        tree = self.make_branch_and_tree('sourcce')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         dir = tree.bzrdir
@@ -481,7 +497,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # This smoke test just checks the revision-id is right. Tree specific
         # tests will check corner cases.
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
@@ -490,29 +506,31 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.skipIfNoWorkingTree(target)
         self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
 
-    def test_clone_bzrdir_incomplete_source_with_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-        tree.copy_content_into(source)
-        self.assertFalse(source.branch.repository.has_revision('2'))
-        dir = source.bzrdir
-        target = dir.clone(self.get_url('target'), basis=tree.bzrdir)
-        self.assertEqual('2', target.open_branch().last_revision())
+    def test_get_branch_reference_on_reference(self):
+        """get_branch_reference should return the right url."""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('source')
         try:
-            self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
-        except errors.NoWorkingTree:
-            # It should have a working tree if it's able to have one, so if
-            # we're here make sure it really can't have one.
-            self.assertRaises(errors.NotLocalUrl, target.create_workingtree)
-        self.assertTrue(target.open_branch().repository.has_revision('2'))
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
+                referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            return
+        self.assertEqual(referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_get_branch_reference_on_non_reference(self):
+        """get_branch_reference should return None for non-reference branches."""
+        branch = self.make_branch('referenced')
+        self.assertEqual(None, branch.bzrdir.get_branch_reference())
+
+    def test_get_branch_reference_no_branch(self):
+        """get_branch_reference should not mask NotBranchErrors."""
+        dir = self.make_bzrdir('source')
+        if dir.has_branch():
+            # this format does not support branchless bzrdirs.
+            return
+        self.assertRaises(errors.NotBranchError, dir.get_branch_reference)
 
     def test_sprout_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
@@ -533,7 +551,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target/child'))
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
         target.open_branch()
-        target.open_workingtree()
+        try:
+            target.open_workingtree()
+        except errors.NotLocalUrl:
+            # bzrdir's that test against non-local urls are allowed to pass:
+            # whitelist them for now
+            self.assertIsInstance(target, RemoteBzrDir)
 
     def test_sprout_bzrdir_empty_under_shared_repo_force_new(self):
         # the force_new_repo parameter should force use of a new repo in an empty
@@ -587,14 +610,14 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_sprout_bzrdir_with_repository_to_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
-        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source)
         dir = source.bzrdir
         try:
             shared_repo = self.make_repository('target', shared=True)
@@ -610,13 +633,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             return
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
-        tree.bzrdir.open_repository().copy_content_into(shared_repo)
+        tree.branch.repository.copy_content_into(shared_repo)
         dir = self.make_bzrdir('shared/source')
         dir.create_branch()
         target = self.sproutOrSkip(dir, self.get_url('shared/target'))
@@ -630,15 +653,16 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             return
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
-        tree.bzrdir.open_repository().copy_content_into(shared_repo)
-        shared_repo.set_make_working_trees(False)
-        self.assertFalse(shared_repo.make_working_trees())
+        tree.branch.repository.copy_content_into(shared_repo)
+        if shared_repo.make_working_trees():
+            shared_repo.set_make_working_trees(False)
+            self.assertFalse(shared_repo.make_working_trees())
         self.assertTrue(shared_repo.has_revision('1'))
         dir = self.make_bzrdir('shared/source')
         dir.create_branch()
@@ -647,19 +671,20 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
         branch = target.open_branch()
         self.assertTrue(branch.repository.has_revision('1'))
-        self.assertTrue(branch.repository.make_working_trees())
+        if not isinstance(branch.bzrdir, RemoteBzrDir):
+            self.assertTrue(branch.repository.make_working_trees())
         self.assertFalse(branch.repository.is_shared())
 
     def test_sprout_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
-        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source)
         dir = source.bzrdir
         try:
             shared_repo = self.make_repository('target', shared=True)
@@ -676,25 +701,25 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and sprout it with a revision limit.
         # 
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
-        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.branch.repository.copy_content_into(source)
         dir = source.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='2')
         raise TestSkipped('revision limiting not strict yet')
 
     def test_sprout_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.branch.repository.copy_content_into(source.repository)
         tree.bzrdir.open_branch().copy_content_into(source)
         dir = source.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'))
@@ -718,11 +743,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         # sprouting a branch with a repo into a shared repo uses the shared
         # repo
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.branch.repository.copy_content_into(source.repository)
         tree.bzrdir.open_branch().copy_content_into(source)
         dir = source.bzrdir
         try:
@@ -736,11 +761,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         # sprouting a branch with a repo into a shared repo uses the shared
         # repo
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.branch.repository.copy_content_into(source.repository)
         tree.bzrdir.open_branch().copy_content_into(source)
         dir = source.bzrdir
         try:
@@ -829,19 +854,19 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and sprout it with a revision limit.
         # 
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         source = self.make_branch('source')
-        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.branch.repository.copy_content_into(source.repository)
         tree.bzrdir.open_branch().copy_content_into(source)
         dir = source.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='1')
         self.assertEqual('1', target.open_branch().last_revision())
         
     def test_sprout_bzrdir_tree_branch_repo(self):
-        tree = self.make_branch_and_tree('sourcce')
+        tree = self.make_branch_and_tree('source')
         self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1')
@@ -874,7 +899,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
-        tree.bzrdir.root_transport.mkdir('subdir')
+        self.build_tree(['source/subdir/'])
         tree.add('subdir')
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -900,7 +925,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
-        self.build_tree(['foo'], transport=dir.root_transport)
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
@@ -923,33 +948,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         # This smoke test just checks the revision-id is right. Tree specific
         # tests will check corner cases.
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
+        self.build_tree(['source/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='1')
         self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
-
-    def test_sprout_bzrdir_incomplete_source_with_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-        tree.copy_content_into(source)
-        self.assertFalse(source.branch.repository.has_revision('2'))
-        dir = source.bzrdir
-        target = self.sproutOrSkip(dir, self.get_url('target'),
-                                   basis=tree.bzrdir)
-        self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
-        self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -1018,7 +1023,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
         self.assertEqual(made_control, made_repo.bzrdir)
 
     def test_create_repository_shared(self):
@@ -1086,7 +1092,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         source = self.make_branch_and_tree('source')
         source.commit('a', rev_id='a', allow_pointless=True)
         source.commit('b', rev_id='b', allow_pointless=True)
-        self.build_tree(['new/'])
+        t.mkdir('new')
         t_new = t.clone('new')
         made_control = self.bzrdir_format.initialize_on_transport(t_new)
         source.branch.repository.clone(made_control)
@@ -1103,13 +1109,17 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        # this has to be tested with local access as we still support creating 
+        # this has to be tested with local access as we still support creating
         # format 6 bzrdirs
-        t = get_transport('.')
-        made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository()
-        made_branch = made_control.create_branch()
-        made_tree = made_control.create_workingtree()
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+            made_repo = made_control.create_repository()
+            made_branch = made_control.create_branch()
+            made_tree = made_control.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.failUnless(isinstance(opened_tree, made_tree.__class__))
@@ -1330,12 +1340,14 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_retire_bzrdir(self):
         bd = self.make_bzrdir('.')
+        transport = bd.root_transport
         # must not overwrite existing directories
-        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',])
-        self.failUnlessExists('.bzr')
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
+            transport=transport)
+        self.failUnless(transport.has('.bzr'))
         bd.retire_bzrdir()
-        self.failIfExists('.bzr')
-        self.failUnlessExists('.bzr.retired.1')
+        self.failIf(transport.has('.bzr'))
+        self.failUnless(transport.has('.bzr.retired.1'))
 
 class TestBreakLock(TestCaseWithBzrDir):
 
@@ -1456,9 +1468,11 @@ class ChrootedBzrDirTests(ChrootedTestCase):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        url = self.get_url('subdir')
-        get_transport(self.get_url()).mkdir('subdir')
-        made_control = self.bzrdir_format.initialize(url)
+        # - do the vfs initialisation over the basic vfs transport
+        # XXX: TODO this should become a 'bzrdirlocation' api call.
+        url = self.get_vfs_only_url('subdir')
+        get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()
             # if there is a repository, then the format cannot ever hit this 
@@ -1466,7 +1480,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
             return
         except errors.NoRepositoryPresent:
             pass
-        opened_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
+        made_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
         self.assertRaises(errors.NoRepositoryPresent,
-                          opened_control.find_repository)
+                          made_control.find_repository)
 

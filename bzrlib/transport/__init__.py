@@ -58,7 +58,11 @@ from bzrlib.symbol_versioning import (
         zero_eight,
         zero_eleven,
         )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import (
+    note,
+    mutter,
+    warning,
+    )
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -107,6 +111,13 @@ def register_lazy_transport(scheme, module, classname):
     register_transport(scheme, _loader)
 
 
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    _protocol_handlers[scheme].remove(factory)
+    if _protocol_handlers[scheme] == []:
+        del _protocol_handlers[scheme]
+
+
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
     return _protocol_handlers
@@ -133,10 +144,12 @@ def _get_transport_modules():
         for factory in factory_list:
             if factory.__module__ == "bzrlib.transport":
                 # this is a lazy load transport, because no real ones
-                # are directlry in bzrlib.transport
+                # are directly in bzrlib.transport
                 modules.add(factory.module)
             else:
                 modules.add(factory.__module__)
+    # Add chroot directly, because there is not handler registered for it.
+    modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
     return result
@@ -390,9 +403,7 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
-        raise errors.TransportNotPossible('This is not a LocalTransport,'
-            ' so there is no local representation for a path')
+        raise errors.NotLocalUrl(self.abspath(relpath))
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -605,8 +616,9 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -627,8 +639,9 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise AssertionError(
+                'bytes must be a plain string, not %s' % type(bytes))
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -1044,6 +1057,48 @@ def get_transport(base):
     return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
+def do_catching_redirections(action, transport, redirected):
+    """Execute an action with given transport catching redirections.
+
+    This is a facility provided for callers needing to follow redirections
+    silently. The silence is relative: it is the caller responsability to
+    inform the user about each redirection or only inform the user of a user
+    via the exception parameter.
+
+    :param action: A callable, what the caller want to do while catching
+                  redirections.
+    :param transport: The initial transport used.
+    :param redirected: A callable receiving the redirected transport and the 
+                  RedirectRequested exception.
+
+    :return: Whatever 'action' returns
+    """
+    MAX_REDIRECTIONS = 8
+
+    # If a loop occurs, there is little we can do. So we don't try to detect
+    # them, just getting out if too much redirections occurs. The solution
+    # is outside: where the loop is defined.
+    for redirections in range(MAX_REDIRECTIONS):
+        try:
+            return action(transport)
+        except errors.RedirectRequested, e:
+            redirection_notice = '%s is%s redirected to %s' % (
+                e.source, e.permanently, e.target)
+            transport = redirected(transport, e, redirection_notice)
+    else:
+        # Loop exited without resolving redirect ? Either the
+        # user has kept a very very very old reference or a loop
+        # occurred in the redirections.  Nothing we can cure here:
+        # tell the user. Note that as the user has been informed
+        # about each redirection (it is the caller responsibility
+        # to do that in redirected via the provided
+        # redirection_notice). The caller may provide more
+        # information if needed (like what file or directory we
+        # were trying to act upon when the redirection loop
+        # occurred).
+        raise errors.TooManyRedirections
+
+
 def _try_transport_factories(base, factory_list):
     last_err = None
     for factory in factory_list:
@@ -1089,7 +1144,11 @@ class Server(object):
         raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect."""
+        """Return a url for this protocol, that will fail to connect.
+        
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
         raise NotImplementedError
 
 
@@ -1165,6 +1224,7 @@ class TransportLogger(object):
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+# Decorated http transport
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
@@ -1173,6 +1233,7 @@ register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+# Default http transports (last declared wins (if it can be imported))
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
@@ -1182,19 +1243,17 @@ register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTran
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
-register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
-                        'ChrootTransportDecorator')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
 register_lazy_transport('bzr://',
-                        'bzrlib.transport.smart',
-                        'SmartTCPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteTCPTransport')
 register_lazy_transport('bzr+http://',
-                        'bzrlib.transport.smart',
-                        'SmartHTTPTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
 register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.smart',
-                        'SmartSSHTransport')
+                        'bzrlib.transport.remote',
+                        'RemoteSSHTransport')

@@ -244,11 +244,12 @@ class BranchStatus(TestCaseWithTransport):
             tree.commit('add test file')
             # simulate what happens after a remote push
             tree.set_last_revision("0")
-            out, err = self.run_bzr('status')
-            self.assertEqual("working tree is out of date, run 'bzr update'\n",
-                             err)
         finally:
+            # before run another commands we should unlock tree
             tree.unlock()
+        out, err = self.run_bzr('status')
+        self.assertEqual("working tree is out of date, run 'bzr update'\n",
+                         err)
 
 
 class CheckoutStatus(BranchStatus):
@@ -267,26 +268,20 @@ class CheckoutStatus(BranchStatus):
 
 class TestStatus(TestCaseWithTransport):
 
-    def test_status(self):
+    def test_status_plain(self):
         self.run_bzr("init")
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
-        self.assert_("unknown:\n  hello.txt\n" in result, result)
-        result = self.run_bzr("status","--short")[0]
-        self.assertContainsRe(result, "[?]   hello.txt\n")
+        self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
         self.run_bzr("add", "hello.txt")
         result = self.run_bzr("status")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
-        result = self.run_bzr("status","--short")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.run_bzr("commit", "-m", "added")
         result = self.run_bzr("status", "-r", "0..1")[0]
         self.assertContainsRe(result, "added:\n  hello.txt\n")
-        result = self.run_bzr("status", "--short", "-r", "0..1")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status", "-r", "0")[0]
@@ -294,10 +289,49 @@ class TestStatus(TestCaseWithTransport):
                                       "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status", "-r", "0..")[0]
         self.assertEquals(result2, result)
+
+    def test_status_short(self):
+        self.run_bzr("init")
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status","--short")[0]
+        self.assertContainsRe(result, "[?]   hello.txt\n")
+
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status","--short")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "--short", "-r", "0..1")[0]
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
+
+        self.build_tree(['world.txt'])
         result = self.run_bzr("status", "--short", "-r", "0")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
         result2 = self.run_bzr("status", "--short", "-r", "0..")[0]
+        self.assertEquals(result2, result)
+
+    def test_status_versioned(self):
+        self.run_bzr("init")
+
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status", "--versioned")[0]
+        self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
+
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status", "--versioned")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "--versioned", "-r", "0..1")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status", "--versioned", "-r", "0")[0]
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
+        result2 = self.run_bzr("status", "--versioned", "-r", "0..")[0]
         self.assertEquals(result2, result)
 
     def assertStatusContains(self, pattern):

@@ -363,3 +363,23 @@ bbb
 
     def test_binary(self):
         self.assertRaises(BinaryFile, Merge3, ['\x00'], ['a'], ['b'])
+
+    def test_dos_text(self):
+        base_text = 'a\r\n'
+        this_text = 'b\r\n'
+        other_text = 'c\r\n'
+        m3 = Merge3(base_text.splitlines(True), other_text.splitlines(True),
+                    this_text.splitlines(True))
+        m_lines = m3.merge_lines('OTHER', 'THIS')
+        self.assertEqual('<<<<<<< OTHER\r\nc\r\n=======\r\nb\r\n'
+            '>>>>>>> THIS\r\n'.splitlines(True), list(m_lines))
+
+    def test_mac_text(self):
+        base_text = 'a\r'
+        this_text = 'b\r'
+        other_text = 'c\r'
+        m3 = Merge3(base_text.splitlines(True), other_text.splitlines(True),
+                    this_text.splitlines(True))
+        m_lines = m3.merge_lines('OTHER', 'THIS')
+        self.assertEqual('<<<<<<< OTHER\rc\r=======\rb\r'
+            '>>>>>>> THIS\r'.splitlines(True), list(m_lines))
