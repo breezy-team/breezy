@@ -271,7 +271,7 @@ class Command(object):
             raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
 
         result = ""
-        result += 'usage:%s\n' % self._usage()
+        result += 'usage: %s\n' % self._usage()
 
         if self.aliases:
             result += 'aliases:\n'

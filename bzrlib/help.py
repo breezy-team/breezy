@@ -30,6 +30,7 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
+    symbol_versioning,
     )
 
 
@@ -51,6 +52,11 @@ def help_commands(outfile=None):
     if outfile is None:
         outfile = sys.stdout
     outfile.write(_help_commands_to_text('commands'))
+
+
+@symbol_versioning.deprecated_function(symbol_versioning.zero_sixteen)
+def command_usage(cmd):
+    return cmd._usage()
 
 
 def _help_commands_to_text(topic):
@@ -97,16 +103,18 @@ help_topics.topic_registry.register("hidden-commands",
 
 
 class HelpIndices(object):
-    """An object to manage help in multiple indices.
+    """Maintainer of help topics across multiple indices.
     
-    This maintains a list of places to search for help. It is currently
-    separate to the HelpTopicRegistry because of its ordered nature, but
-    possibly we should instread structure it as a search within the registry
-    and add ordering and searching facilities to the registry. The registry
-    would probably need to be restructured to support that cleanly which is
-    why this has been implemented in parallel even though it does as a result
-    permit searching for help in indexs which are not discoverable via
+    It is currently separate to the HelpTopicRegistry because of its ordered
+    nature, but possibly we should instead structure it as a search within the
+    registry and add ordering and searching facilities to the registry. The
+    registry would probably need to be restructured to support that cleanly
+    which is why this has been implemented in parallel even though it does as a
+    result permit searching for help in indices which are not discoverable via
     'help topics'.
+
+    Each index has a unique prefix string, such as "commands", and contains
+    help topics which can be listed or searched.
     """
 
     def __init__(self):
