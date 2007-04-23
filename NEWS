@@ -32,6 +32,21 @@ IN DEVELOPMENT
     * Tags are now included in logs, that use the long log formatter. 
       (Erik Bågfors, Alexander Belchenko)
 
+    * ``bzr help`` provides a clearer message when a help topic cannot be
+      found (fixes bug 107656). (Robert Collins)
+
+    * ``bzr help`` now accepts optional prefixes for command help. The help
+      for all commands can now be found at ``bzr help commands/COMMANDNAME``
+      as well as ``bzr help COMMANDNAME`` (which only works for commands 
+      where the name is not the same as a more general help topic). 
+      (Robert Collins)
+
+    * ``bzr help PLUGINNAME`` will now return the module docstring from the
+      plugin PLUGINNAME fixing bug 50408. (Robert Collins)
+
+    * New help topic ``urlspec`` which lists the availables transports.
+      (Goffredo Baroncelli)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -94,6 +109,12 @@ IN DEVELOPMENT
 
     * Command objects can now declare related help topics by having _see_also
       set to a list of related topic. (Robert Collins)
+
+    * ``bzrlib.help`` now delegates to the Command class for Command specific
+      help. (Robert Collins)
+
+    * New class 'TransportListRegistry', derived from the Registry class, which 
+      simplifies tracking the available Transports. (Goffredo Baroncelli)
 
   BUGFIXES:
 
@@ -165,6 +186,9 @@ IN DEVELOPMENT
       access.
       (Robert Collins, Andrew Bennetts)
 
+    * Mark bzrlib.tests and bzrlib.tests.TestUtil as providing assertFOO helper
+      functions by adding a __unittest global attribute. (Robert Collins,
+      Andrew Bennetts, Martin Pool, Jonathan Lange)
 
 bzr 0.15 2007-04-01
 

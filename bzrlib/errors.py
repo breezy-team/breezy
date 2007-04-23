@@ -223,6 +223,16 @@ class ReservedId(BzrError):
     def __init__(self, revision_id):
         self.revision_id = revision_id
 
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
+
 class NoSuchId(BzrError):
 
     _fmt = "The file id %(file_id)s is not present in the tree %(tree)s."
@@ -1528,6 +1538,14 @@ class DuplicateFileId(BzrError):
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"
+
+
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
 
 
 class MalformedTransform(BzrError):
