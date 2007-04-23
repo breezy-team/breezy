@@ -78,7 +78,35 @@ tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
 
-class UniqueBugTracker(object):
+class BugTracker(object):
+    """Base class for bug trackers."""
+
+    def check_bug_id(self, bug_id):
+        """Check that the bug_id is valid.
+
+        The base implementation assumes that all bug_ids are valid.
+        """
+
+    def get_bug_url(self, bug_id):
+        """Return the URL for bug_id. Raise an error if bug ID is malformed."""
+        self.check_bug_id(bug_id)
+        return self._get_bug_url(bug_id)
+
+    def _get_bug_url(self, bug_id):
+        """Given a validated bug_id, return the bug's web page's URL."""
+
+
+class IntegerBugTracker(BugTracker):
+    """A bug tracker that only allows integer bug IDs."""
+
+    def check_bug_id(self, bug_id):
+        try:
+            int(bug_id)
+        except ValueError:
+            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
+
+
+class UniqueIntegerBugTracker(IntegerBugTracker):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then subclass this and add attributes
@@ -101,26 +129,9 @@ class UniqueBugTracker(object):
             return None
         return self
 
-    def get_bug_url(self, bug_id):
+    def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        self.check_bug_id(bug_id)
         return urlutils.join(self.base_url, bug_id)
-
-    def check_bug_id(self, bug_id):
-        """Check that the bug_id is valid.
-
-        The base implementation assumes that all bug_ids are valid.
-        """
-
-
-class UniqueIntegerBugTracker(UniqueBugTracker):
-    """A SimpleBugtracker where the bug ids must be integers"""
-
-    def check_bug_id(self, bug_id):
-        try:
-            int(bug_id)
-        except ValueError:
-            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
 
 
 tracker_registry.register(
@@ -131,57 +142,50 @@ tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
 
 
-class TracTracker(object):
-    """A Trac instance."""
+class URLParametrizedIntegerBugTracker(IntegerBugTracker):
+    """A type of bug tracker that can be found on a variety of different sites,
+    and thus needs to have the base URL configured.
+
+    Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
+    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
+    and `abbreviation` is a short name for the particular instance (e.g.
+    'squid' or 'apache').
+    """
+
+    type_name = None
 
     @classmethod
-    def get(klass, abbreviated_bugtracker_name, branch):
-        """Return a TracTracker for the given abbreviation.
-
-        Looks in the configuration of 'branch' for a 'trac_<abbreviation>_url'
-        setting, which should refer to the base URL of a project's Trac
-        instance. e.g.
-            trac_twisted_url = http://twistedmatrix.com
-        """
+    def get(klass, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            'trac_%s_url' % (abbreviated_bugtracker_name,))
+            "%s_%s_url" % (klass.type_name, abbreviation))
         if url is None:
             return None
         return klass(url)
 
     def __init__(self, url):
-        self._url = url
+        self._base_url = url
 
-    def get_bug_url(self, bug_id):
+
+class TracTracker(URLParametrizedIntegerBugTracker):
+    """A Trac instance."""
+
+    type_name = 'trac'
+
+    def _get_bug_url(self, bug_id):
         """Return a URL for a bug on this Trac instance."""
-        try:
-            int(bug_id)
-        except ValueError:
-            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
-        return urlutils.join(self._url, 'ticket', bug_id)
+        return urlutils.join(self._base_url, 'ticket', bug_id)
 
 tracker_registry.register('trac', TracTracker)
 
 
-class BugzillaTracker(object):
+class BugzillaTracker(URLParametrizedIntegerBugTracker):
     """A Bugzilla instance."""
 
-    @classmethod
-    def get(klass, abbreviated_bugtracker_name, branch):
-        config = branch.get_config()
-        url = config.get_user_option(
-            'bugzilla_%s_url' % (abbreviated_bugtracker_name,))
-        if url is None:
-            return None
-        return klass(url)
+    type_name = 'bugzilla'
 
-    def __init__(self, base_url):
-        self._base_url = base_url
-
-    def get_bug_url(self, bug_id):
-        try:
-            int(bug_id)
-        except ValueError:
-            raise errors.MalformedBugIdentifier(bug_id, "Must be an integer")
+    def _get_bug_url(self, bug_id):
+        """Return a URL for a bug on this Bugzilla instance."""
         return "%s/show_bug.cgi?id=%s" % (self._base_url, bug_id)
+
+tracker_registry.register('bugzilla', BugzillaTracker)
