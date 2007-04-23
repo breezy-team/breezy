@@ -304,11 +304,17 @@ def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
     sorted_rev_list = topo_sort(rev_graph)
     ancestry = {}
     for rev in sorted_rev_list:
-        rev_ancestry = set()
-        if rev in weave_modifed_revisions:
-            rev_ancestry.add(rev)
-        for parent in rev_graph[rev]:
-            rev_ancestry = rev_ancestry.union(ancestry[parent])
+        parents = rev_graph[rev]
+        if rev not in weave_modifed_revisions and len(parents) == 1:
+            # We will not be adding anything new, so just use a reference to
+            # the parent ancestry.
+            rev_ancestry = ancestry[parents[0]]
+        else:
+            rev_ancestry = set()
+            if rev in weave_modifed_revisions:
+                rev_ancestry.add(rev)
+            for parent in parents:
+                rev_ancestry = rev_ancestry.union(ancestry[parent])
         ancestry[rev] = rev_ancestry
 
     def is_merging_rev(r):
