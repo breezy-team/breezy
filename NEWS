@@ -57,7 +57,8 @@ IN DEVELOPMENT
       (Aaron Bentley)
 
     * Fix ``bzr log <file>`` so it only logs the revisions that changed
-      the file, and does it faster. (Kent Gibson, #51980, #69477)
+      the file, and does it faster.
+      (Kent Gibson, John Arbash Meinel, #51980, #69477)
  
   TESTING:
 
