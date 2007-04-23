@@ -81,7 +81,7 @@ def _help_on_topics(dummy):
 
 
 def _help_on_revisionspec(name):
-    """"Write the summary help for all documented topics to outfile."""
+    """Write the summary help for all documented topics to outfile."""
     import bzrlib.revisionspec
 
     out = []
@@ -291,6 +291,10 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
+def get_bugs_topic(topic):
+    from bzrlib import bugtracker
+    return bugtracker.tracker_registry.help_topic(topic)
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
 
 
 class HelpTopicIndex(object):

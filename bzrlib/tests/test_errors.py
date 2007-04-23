@@ -244,6 +244,21 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_malformed_bug_identifier(self):
+        """Test the formatting of MalformedBugIdentifier."""
+        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
+        self.assertEqual(
+            "Did not understand bug identifier bogus: reason for bogosity",
+            str(error))
+
+    def test_unknown_bug_tracker_abbreviation(self):
+        """Test the formatting of UnknownBugTrackerAbbreviation."""
+        branch = self.make_branch('some_branch')
+        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
+        self.assertEqual(
+            "Cannot find registered bug tracker called xxx on %s" % branch,
+            str(error))
+
     def test_unexpected_smart_server_response(self):
         e = errors.UnexpectedSmartServerResponse(('not yes',))
         self.assertEqual(

@@ -2087,10 +2087,28 @@ class TagAlreadyExists(BzrError):
         self.tag_name = tag_name
 
 
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
 class UnexpectedSmartServerResponse(BzrError):
 
     _fmt = "Could not understand response from smart server: %(response_tuple)r"
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
-

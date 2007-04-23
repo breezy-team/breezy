@@ -31,6 +31,7 @@ import time
 import bzrlib
 from bzrlib import (
     branch,
+    bugtracker,
     bundle,
     bzrdir,
     delta,
@@ -59,7 +60,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -2087,7 +2088,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
-    _see_also = ['uncommit']
+    _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = ['message', 'verbose', 
                      Option('unchanged',
@@ -2099,6 +2100,9 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     ListOption('fixes', type=str,
+                                help="mark a bug as being fixed by this "
+                                     "revision."),
                      Option('local',
                             help="perform a local only commit in a bound "
                                  "branch. Such commits are not pushed to "
@@ -2108,8 +2112,30 @@ class cmd_commit(Command):
                      ]
     aliases = ['ci', 'checkin']
 
+    def _get_bug_fix_properties(self, fixes, branch):
+        properties = []
+        # Configure the properties for bug fixing attributes.
+        for fixed_bug in fixes:
+            tokens = fixed_bug.split(':')
+            if len(tokens) != 2:
+                raise errors.BzrCommandError(
+                    "Invalid bug %s. Must be in the form of 'tag:id'. "
+                    "Commit refused." % fixed_bug)
+            tag, bug_id = tokens
+            try:
+                bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
+            except errors.UnknownBugTrackerAbbreviation:
+                raise errors.BzrCommandError(
+                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
+            except errors.MalformedBugIdentifier:
+                raise errors.BzrCommandError(
+                    "Invalid bug identifier for %s. Commit refused."
+                    % fixed_bug)
+            properties.append('%s fixed' % bug_url)
+        return '\n'.join(properties)
+
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False):
+            unchanged=False, strict=False, local=False, fixes=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2121,12 +2147,17 @@ class cmd_commit(Command):
 
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
+
+        properties = {}
+
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
+
+        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -2149,7 +2180,7 @@ class cmd_commit(Command):
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
-        
+
         if verbose:
             reporter = ReportCommitToLog()
         else:
@@ -2159,7 +2190,7 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter)
+                        reporter=reporter, revprops=properties)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
