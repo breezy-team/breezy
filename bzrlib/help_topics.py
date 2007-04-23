@@ -100,6 +100,53 @@ def _help_on_revisionspec(name):
     return ''.join(out)
 
 
+def _help_on_transport(name):
+    from bzrlib.transport import (
+        transport_list_registry,
+    )
+    import textwrap
+
+    def add_string(proto, help, maxl, prefix_width=20):
+       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       line_with_indent = '\n' + ' ' * prefix_width
+       help_text = line_with_indent.join(help_lines)
+       return "%-20s%s\n" % (proto, help_text)
+
+    def sort_func(a,b):
+        a1 = a[:a.rfind("://")]
+        b1 = b[:b.rfind("://")]
+        if a1>b1:
+            return +1
+        elif a1<b1:
+            return -1
+        else:
+            return 0
+
+    out = []
+    protl = []
+    decl = []
+    protos = transport_list_registry.keys( )
+    protos.sort(sort_func)
+    for proto in protos:
+        shorthelp = transport_list_registry.get_help(proto)
+        if not shorthelp:
+            continue
+        if proto.endswith("://"):
+            protl.extend(add_string(proto, shorthelp, 79))
+        else:
+            decl.extend(add_string(proto, shorthelp, 79))
+
+
+    out = "\nSupported URL prefix\n--------------------\n" + \
+            ''.join(protl)
+
+    if len(decl):
+        out += "\nSupported modifiers\n-------------------\n" + \
+            ''.join(decl)
+
+    return out
+
+
 _basic_help= \
 """Bazaar -- a free distributed version-control tool
 http://bazaar-vcs.org/
@@ -242,6 +289,8 @@ topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
+topic_registry.register('urlspec', _help_on_transport,
+                        "Supported transport protocols")
 
 
 class HelpTopicIndex(object):

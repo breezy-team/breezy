@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * ``bzr help PLUGINNAME`` will now return the module docstring from the
       plugin PLUGINNAME fixing bug 50408. (Robert Collins)
 
+    * New help topic ``urlspec`` which lists the availables transports.
+      (Goffredo Baroncelli)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -101,6 +104,9 @@ IN DEVELOPMENT
 
     * ``bzrlib.help`` now delegates to the Command class for Command specific
       help. (Robert Collins)
+
+    * New class 'TransportListRegistry', derived from the Registry class, which 
+      simplifies tracking the available Transports. (Goffredo Baroncelli)
 
   BUGFIXES:
 

@@ -34,11 +34,12 @@ from bzrlib.errors import (ConnectionError,
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
                               _get_protocol_handlers,
+                              _set_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
-                              _protocol_handlers,
                               register_lazy_transport,
-                              _set_protocol_handlers,
+                              register_transport_proto,
+                              _clear_protocol_handlers,
                               Transport,
                               )
 from bzrlib.transport.chroot import ChrootServer
@@ -55,10 +56,10 @@ class TestTransport(TestCase):
 
     def test__get_set_protocol_handlers(self):
         handlers = _get_protocol_handlers()
-        self.assertNotEqual({}, handlers)
+        self.assertNotEqual([], handlers.keys( ))
         try:
-            _set_protocol_handlers({})
-            self.assertEqual({}, _get_protocol_handlers())
+            _clear_protocol_handlers()
+            self.assertEqual([], _get_protocol_handlers().keys())
         finally:
             _set_protocol_handlers(handlers)
 
@@ -67,9 +68,10 @@ class TestTransport(TestCase):
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         try:
-            my_handlers = {}
-            _set_protocol_handlers(my_handlers)
+            _clear_protocol_handlers()
+            register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            register_transport_proto('bar')
             register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
             self.assertEqual([SampleHandler.__module__, 'bzrlib.transport.chroot'],
                              _get_transport_modules())
@@ -80,6 +82,7 @@ class TestTransport(TestCase):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
         try:
+            register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
             try:
@@ -100,7 +103,8 @@ class TestTransport(TestCase):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
         try:
-            _set_protocol_handlers({})
+            _clear_protocol_handlers()
+            register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BackupTransportHandler')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
@@ -361,14 +365,14 @@ class ChrootServerTest(TestCase):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
-        self.assertTrue(server.scheme in _protocol_handlers.keys())
+        self.assertTrue(server.scheme in _get_protocol_handlers().keys())
 
     def test_tearDown(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
         server.tearDown()
-        self.assertFalse(server.scheme in _protocol_handlers.keys())
+        self.assertFalse(server.scheme in _get_protocol_handlers().keys())
 
     def test_get_url(self):
         backing_transport = MemoryTransport()
