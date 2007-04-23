@@ -1,4 +1,6 @@
-all: 
+all: extensions
+
+extensions:
 	@echo "building extension modules."
 	./setup.py build_ext -i
 
@@ -25,7 +27,7 @@ clean:
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp
 
-.PHONY: all
+.PHONY: all extensions
 
 
 # build emacs cross-reference
