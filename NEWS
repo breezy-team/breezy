@@ -178,6 +178,9 @@ IN DEVELOPMENT
       access.
       (Robert Collins, Andrew Bennetts)
 
+    * Mark bzrlib.tests and bzrlib.tests.TestUtil as providing assertFOO helper
+      functions by adding a __unittest global attribute. (Robert Collins,
+      Andrew Bennetts, Martin Pool, Jonathan Lange)
 
 bzr 0.15 2007-04-01
 
