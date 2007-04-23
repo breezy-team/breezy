@@ -220,8 +220,8 @@ the bound_location.  This option is normally set by ``bind``/``unbind``.
 Bug Tracker Options
 ===================
 
-These options can go into bazaar.conf or into a branch-specific configuration
-section in locations.conf.
+These options can go into bazaar.conf, branch.conf or into a branch-specific
+configuration section in locations.conf.
 
 bugzilla_<tracker_abbreviation>_url
 -----------------------------------
