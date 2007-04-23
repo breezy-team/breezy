@@ -321,11 +321,11 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('tree2')
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        # try:
-        os.symlink('target', 'tree2/link')
-        links_supported = True
-        # except ???:
-        #   links_supported = False
+        if has_symlinks():
+            os.symlink('target', 'tree2/link')
+            links_supported = True
+        else:
+            links_supported = False
         tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
         self.assertEqual([], d.added)
@@ -333,8 +333,11 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
         self.assertEqual([], d.unchanged)
-        self.assertEqual([(u'dir', None, 'directory'), (u'file', None, 'file'),
-            (u'link', None, 'symlink')], d.unversioned)
+        expected_unversioned = [(u'dir', None, 'directory'),
+                                (u'file', None, 'file')]
+        if links_supported:
+            expected_unversioned.append((u'link', None, 'symlink'))
+        self.assertEqual(expected_unversioned, d.unversioned)
 
 
 class TestIterChanges(TestCaseWithTwoTrees):
@@ -776,11 +779,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('tree2')
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        # try:
-        os.symlink('target', 'tree2/link')
-        links_supported = True
-        # except ???:
-        #   links_supported = False
+        if has_symlinks():
+            os.symlink('target', 'tree2/link')
+            links_supported = True
+        else:
+            links_supported = False
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected = [
             self.unversioned(tree2, 'file'),
@@ -796,11 +799,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        # try:
-        os.symlink('target', 'tree2/link')
-        links_supported = True
-        # except ???:
-        #   links_supported = False
+        if has_symlinks():
+            os.symlink('target', 'tree2/link')
+            links_supported = True
+        else:
+            links_supported = False
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected = [
             self.unversioned(tree2, 'file'),
@@ -829,16 +832,18 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.build_tree(['tree2/file', 'tree2/dir/',
             'tree1/file', 'tree2/movedfile',
             'tree1/dir/', 'tree2/moveddir/'])
-        # try:
-        os.symlink('target', 'tree1/link')
-        os.symlink('target', 'tree2/link')
-        os.symlink('target', 'tree2/movedlink')
-        links_supported = True
-        # except ???:
-        #   links_supported = False
-        tree1.add(['file', 'dir', 'link'], ['file-id', 'dir-id', 'link-id'])
-        tree2.add(['movedfile', 'moveddir', 'movedlink'],
-            ['file-id', 'dir-id', 'link-id'])
+        if has_symlinks():
+            os.symlink('target', 'tree1/link')
+            os.symlink('target', 'tree2/link')
+            os.symlink('target', 'tree2/movedlink')
+            links_supported = True
+        else:
+            links_supported = False
+        tree1.add(['file', 'dir'], ['file-id', 'dir-id'])
+        tree2.add(['movedfile', 'moveddir'], ['file-id', 'dir-id'])
+        if links_supported:
+            tree1.add(['link'], ['link-id'])
+            tree2.add(['movedlink'], ['link-id'])
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         root_id = tree1.path2id('')
         expected = [
@@ -1211,3 +1216,33 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], # Without want_unversioned we should get nothing
                          self.do_iter_changes(tree1, tree2,
                                               specific_files=[u'\u03b1']))
+
+    def test_unknown_empty_dir(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # Start with 2 identical trees
+        self.build_tree(['tree1/a/', 'tree1/b/',
+                         'tree2/a/', 'tree2/b/'])
+        self.build_tree_contents([('tree1/b/file', 'contents\n'),
+                                  ('tree2/b/file', 'contents\n')])
+        tree1.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
+        tree2.add(['a', 'b', 'b/file'], ['a-id', 'b-id', 'b-file-id'])
+
+        # Now create some unknowns in tree2
+        # We should find both a/file and a/dir as unknown, but we shouldn't
+        # recurse into a/dir to find that a/dir/subfile is also unknown.
+        self.build_tree(['tree2/a/file', 'tree2/a/dir/', 'tree2/a/dir/subfile'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.unversioned(tree2, u'a/file'),
+            self.unversioned(tree2, u'a/dir'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              require_versioned=False,
+                                              want_unversioned=True))

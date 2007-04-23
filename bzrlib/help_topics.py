@@ -81,7 +81,7 @@ def _help_on_topics(dummy):
 
 
 def _help_on_revisionspec(name):
-    """"Write the summary help for all documented topics to outfile."""
+    """Write the summary help for all documented topics to outfile."""
     import bzrlib.revisionspec
 
     out = []
@@ -98,6 +98,53 @@ def _help_on_revisionspec(name):
         out.append("  %s %s\n\n" % (i.prefix, doc))
 
     return ''.join(out)
+
+
+def _help_on_transport(name):
+    from bzrlib.transport import (
+        transport_list_registry,
+    )
+    import textwrap
+
+    def add_string(proto, help, maxl, prefix_width=20):
+       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       line_with_indent = '\n' + ' ' * prefix_width
+       help_text = line_with_indent.join(help_lines)
+       return "%-20s%s\n" % (proto, help_text)
+
+    def sort_func(a,b):
+        a1 = a[:a.rfind("://")]
+        b1 = b[:b.rfind("://")]
+        if a1>b1:
+            return +1
+        elif a1<b1:
+            return -1
+        else:
+            return 0
+
+    out = []
+    protl = []
+    decl = []
+    protos = transport_list_registry.keys( )
+    protos.sort(sort_func)
+    for proto in protos:
+        shorthelp = transport_list_registry.get_help(proto)
+        if not shorthelp:
+            continue
+        if proto.endswith("://"):
+            protl.extend(add_string(proto, shorthelp, 79))
+        else:
+            decl.extend(add_string(proto, shorthelp, 79))
+
+
+    out = "\nSupported URL prefix\n--------------------\n" + \
+            ''.join(protl)
+
+    if len(decl):
+        out += "\nSupported modifiers\n-------------------\n" + \
+            ''.join(decl)
+
+    return out
 
 
 _basic_help= \
@@ -242,4 +289,69 @@ topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
+topic_registry.register('urlspec', _help_on_transport,
+                        "Supported transport protocols")
+def get_bugs_topic(topic):
+    from bzrlib import bugtracker
+    return bugtracker.tracker_registry.help_topic(topic)
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
 
+
+class HelpTopicIndex(object):
+    """A index for bzr help that returns topics."""
+
+    def __init__(self):
+        self.prefix = ''
+
+    def get_topics(self, topic):
+        """Search for topic in the HelpTopicRegistry.
+
+        :param topic: A topic to search for. None is treated as 'basic'.
+        :return: A list which is either empty or contains a single
+            RegisteredTopic entry.
+        """
+        if topic is None:
+            topic = 'basic'
+        if topic in topic_registry:
+            return [RegisteredTopic(topic)]
+        else:
+            return []
+
+
+class RegisteredTopic(object):
+    """A help topic which has been registered in the HelpTopicRegistry.
+
+    These topics consist of nothing more than the name of the topic - all
+    data is retrieved on demand from the registry.
+    """
+
+    def __init__(self, topic):
+        """Constructor.
+
+        :param topic: The name of the topic that this represents.
+        """
+        self.topic = topic
+
+    def get_help_text(self, additional_see_also=None):
+        """Return a string with the help for this topic.
+
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
+        result = topic_registry.get_detail(self.topic)
+        # there is code duplicated here and in bzrlib/plugin.py's 
+        # matching Topic code. This should probably be factored in
+        # to a helper function and a common base class.
+        if additional_see_also is not None:
+            see_also = sorted(set(additional_see_also))
+        else:
+            see_also = None
+        if see_also:
+            result += '\nSee also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
+
+    def get_help_topic(self):
+        """Return the help topic this can be found under."""
+        return self.topic

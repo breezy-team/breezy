@@ -28,12 +28,17 @@ from bzrlib.branch import (BranchFormat,
                            BranchTestProviderAdapter,
                            _legacy_formats,
                            )
+from bzrlib.smart.server import (
+    SmartTCPServer_for_testing,
+    ReadonlySmartTCPServer_for_testing,
+    )
 from bzrlib.tests import (
                           adapt_modules,
-                          default_transport,
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -62,11 +67,25 @@ def test_suite():
     combinations = [(format, format._matchingbzrdir) for format in 
          BranchFormat._formats.values() + _legacy_formats]
     adapter = BranchTestProviderAdapter(
-        default_transport,
+        # None here will cause the default vfs transport server to be used.
+        None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         combinations)
     loader = TestLoader()
     adapt_modules(test_branch_implementations, adapter, loader, result)
+
+
+    adapt_to_smart_server = BranchTestProviderAdapter(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        MemoryServer
+        )
+    adapt_modules(test_branch_implementations,
+                  adapt_to_smart_server,
+                  loader,
+                  result)
+
     return result

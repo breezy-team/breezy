@@ -234,6 +234,12 @@ def _show_log(branch,
     else:
         view_revisions = list(view_revs_iter)
 
+    use_tags = getattr(lf, 'supports_tags', False)
+    if use_tags:
+        rev_tag_dict = {}
+        if branch.supports_tags():
+            rev_tag_dict = branch.tags.get_reverse_tag_dict()
+
     def iter_revisions():
         # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
@@ -266,13 +272,19 @@ def _show_log(branch,
                 continue
 
         if merge_depth == 0:
-            # a mainline revision.
-            lf.show(revno, rev, delta)
+            if use_tags:
+                lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
+            else:
+                lf.show(revno, rev, delta)
         else:
             if show_merge_revno is None:
                 lf.show_merge(rev, merge_depth)
             else:
-                lf.show_merge_revno(rev, merge_depth, revno)
+                if use_tags:
+                    lf.show_merge_revno(rev, merge_depth, revno,
+                                        rev_tag_dict.get(rev_id))
+                else:
+                    lf.show_merge_revno(rev, merge_depth, revno)
 
 
 def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
@@ -399,28 +411,38 @@ class LogFormatter(object):
 
     def short_committer(self, rev):
         return re.sub('<.*@.*>', '', rev.committer).strip(' ')
-    
-    
+
+
 class LongLogFormatter(LogFormatter):
-    def show(self, revno, rev, delta):
-        return self._show_helper(revno=revno, rev=rev, delta=delta)
+
+    supports_tags = True    # must exist and be True
+                            # if this log formatter support tags.
+                            # .show() and .show_merge_revno() must then accept
+                            # the 'tags'-argument with list of tags
+
+    def show(self, revno, rev, delta, tags=None):
+        return self._show_helper(revno=revno, rev=rev, delta=delta, tags=tags)
 
     @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
-        return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
+        return self._show_helper(rev=rev, indent='    '*merge_depth,
+                                 merged=True, delta=None)
 
-    def show_merge_revno(self, rev, merge_depth, revno):
+    def show_merge_revno(self, rev, merge_depth, revno, tags=None):
         """Show a merged revision rev, with merge_depth and a revno."""
         return self._show_helper(rev=rev, revno=revno,
-            indent='    '*merge_depth, merged=True, delta=None)
+            indent='    '*merge_depth, merged=True, delta=None, tags=tags)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False,
+                     delta=None, tags=None):
         """Show a revision, either merged or not."""
         from bzrlib.osutils import format_date
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
         if revno is not None:
             print >>to_file,  indent+'revno:', revno
+        if tags:
+            print >>to_file, indent+'tags: %s' % (', '.join(tags))
         if merged:
             print >>to_file,  indent+'merged:', rev.revision_id
         elif self.show_ids:
@@ -429,6 +451,7 @@ class LongLogFormatter(LogFormatter):
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
         print >>to_file,  indent+'committer:', rev.committer
+
         try:
             print >>to_file, indent+'branch nick: %s' % \
                 rev.properties['branch-nick']

@@ -22,9 +22,58 @@ import tempfile
 from bzrlib import (
     bzrdir,
     errors,
-    revision
+    registry,
+    revision,
     )
 from bzrlib.bundle.serializer import write_bundle
+
+
+class SmartServerRequest(object):
+    """Base class for request handlers."""
+
+    def __init__(self, backing_transport):
+        """Constructor.
+
+        :param backing_transport: the base transport to be used when performing
+            this request.
+        """
+        self._backing_transport = backing_transport
+
+    def _check_enabled(self):
+        """Raises DisabledMethod if this method is disabled."""
+        pass
+
+    def do(self, *args):
+        """Mandatory extension point for SmartServerRequest subclasses.
+        
+        Subclasses must implement this.
+        
+        This should return a SmartServerResponse if this command expects to
+        receive no body.
+        """
+        raise NotImplementedError(self.do)
+
+    def execute(self, *args):
+        """Public entry point to execute this request.
+
+        It will return a SmartServerResponse if the command does not expect a
+        body.
+
+        :param *args: the arguments of the request.
+        """
+        self._check_enabled()
+        return self.do(*args)
+
+    def do_body(self, body_bytes):
+        """Called if the client sends a body with the request.
+        
+        Must return a SmartServerResponse.
+        """
+        # TODO: if a client erroneously sends a request that shouldn't have a
+        # body, what to do?  Probably SmartServerRequestHandler should catch
+        # this NotImplementedError and translate it into a 'bad request' error
+        # to send to the client.
+        raise NotImplementedError(self.do_body)
 
 
 class SmartServerResponse(object):
@@ -34,10 +83,14 @@ class SmartServerResponse(object):
         self.args = args
         self.body = body
 
-# XXX: TODO: Create a SmartServerRequestHandler which will take the responsibility
-# for delivering the data for a request. This could be done with as the
-# StreamServer, though that would create conflation between request and response
-# which may be undesirable.
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return other.args == self.args and other.body == self.body
+
+    def __repr__(self):
+        return "<SmartServerResponse args=%r body=%r>" % (self.args, self.body)
+
 
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
@@ -55,163 +108,46 @@ class SmartServerRequestHandler(object):
 
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
-    
-    def __init__(self, backing_transport):
+
+    def __init__(self, backing_transport, commands):
+        """Constructor.
+
+        :param backing_transport: a Transport to handle requests for.
+        :param commands: a registry mapping command names to SmartServerRequest
+            subclasses. e.g. bzrlib.transport.smart.vfs.vfs_commands.
+        """
         self._backing_transport = backing_transport
-        self._converted_command = False
-        self.finished_reading = False
+        self._commands = commands
         self._body_bytes = ''
         self.response = None
+        self.finished_reading = False
+        self._command = None
 
     def accept_body(self, bytes):
-        """Accept body data.
+        """Accept body data."""
 
-        This should be overriden for each command that desired body data to
-        handle the right format of that data. I.e. plain bytes, a bundle etc.
+        # TODO: This should be overriden for each command that desired body data
+        # to handle the right format of that data, i.e. plain bytes, a bundle,
+        # etc.  The deserialisation into that format should be done in the
+        # Protocol object.
 
-        The deserialisation into that format should be done in the Protocol
-        object. Set self.desired_body_format to the format your method will
-        handle.
-        """
         # default fallback is to accumulate bytes.
         self._body_bytes += bytes
         
-    def _end_of_body_handler(self):
-        """An unimplemented end of body handler."""
-        raise NotImplementedError(self._end_of_body_handler)
-        
-    def do_hello(self):
-        """Answer a version request with my version."""
-        return SmartServerResponse(('ok', '1'))
-
-    def do_has(self, relpath):
-        r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        return SmartServerResponse((r,))
-
-    def do_get(self, relpath):
-        backing_bytes = self._backing_transport.get_bytes(relpath)
-        return SmartServerResponse(('ok',), backing_bytes)
-
-    def _deserialise_optional_mode(self, mode):
-        # XXX: FIXME this should be on the protocol object.
-        if mode == '':
-            return None
-        else:
-            return int(mode)
-
-    def do_append(self, relpath, mode):
-        self._converted_command = True
-        self._relpath = relpath
-        self._mode = self._deserialise_optional_mode(mode)
-        self._end_of_body_handler = self._handle_do_append_end
-    
-    def _handle_do_append_end(self):
-        old_length = self._backing_transport.append_bytes(
-            self._relpath, self._body_bytes, self._mode)
-        self.response = SmartServerResponse(('appended', '%d' % old_length))
-
-    def do_delete(self, relpath):
-        self._backing_transport.delete(relpath)
-
-    def do_iter_files_recursive(self, relpath):
-        transport = self._backing_transport.clone(relpath)
-        filenames = transport.iter_files_recursive()
-        return SmartServerResponse(('names',) + tuple(filenames))
-
-    def do_list_dir(self, relpath):
-        filenames = self._backing_transport.list_dir(relpath)
-        return SmartServerResponse(('names',) + tuple(filenames))
-
-    def do_mkdir(self, relpath, mode):
-        self._backing_transport.mkdir(relpath,
-                                      self._deserialise_optional_mode(mode))
-
-    def do_move(self, rel_from, rel_to):
-        self._backing_transport.move(rel_from, rel_to)
-
-    def do_put(self, relpath, mode):
-        self._converted_command = True
-        self._relpath = relpath
-        self._mode = self._deserialise_optional_mode(mode)
-        self._end_of_body_handler = self._handle_do_put
-
-    def _handle_do_put(self):
-        self._backing_transport.put_bytes(self._relpath,
-                self._body_bytes, self._mode)
-        self.response = SmartServerResponse(('ok',))
-
-    def _deserialise_offsets(self, text):
-        # XXX: FIXME this should be on the protocol object.
-        offsets = []
-        for line in text.split('\n'):
-            if not line:
-                continue
-            start, length = line.split(',')
-            offsets.append((int(start), int(length)))
-        return offsets
-
-    def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
-        self._converted_command = True
-        self._end_of_body_handler = self._handle_put_non_atomic
-        self._relpath = relpath
-        self._dir_mode = self._deserialise_optional_mode(dir_mode)
-        self._mode = self._deserialise_optional_mode(mode)
-        # a boolean would be nicer XXX
-        self._create_parent = (create_parent == 'T')
-
-    def _handle_put_non_atomic(self):
-        self._backing_transport.put_bytes_non_atomic(self._relpath,
-                self._body_bytes,
-                mode=self._mode,
-                create_parent_dir=self._create_parent,
-                dir_mode=self._dir_mode)
-        self.response = SmartServerResponse(('ok',))
-
-    def do_readv(self, relpath):
-        self._converted_command = True
-        self._end_of_body_handler = self._handle_readv_offsets
-        self._relpath = relpath
-
     def end_of_body(self):
         """No more body data will be received."""
-        self._run_handler_code(self._end_of_body_handler, (), {})
+        self._run_handler_code(self._command.do_body, (self._body_bytes,), {})
         # cannot read after this.
         self.finished_reading = True
 
-    def _handle_readv_offsets(self):
-        """accept offsets for a readv request."""
-        offsets = self._deserialise_offsets(self._body_bytes)
-        backing_bytes = ''.join(bytes for offset, bytes in
-            self._backing_transport.readv(self._relpath, offsets))
-        self.response = SmartServerResponse(('readv',), backing_bytes)
-        
-    def do_rename(self, rel_from, rel_to):
-        self._backing_transport.rename(rel_from, rel_to)
-
-    def do_rmdir(self, relpath):
-        self._backing_transport.rmdir(relpath)
-
-    def do_stat(self, relpath):
-        stat = self._backing_transport.stat(relpath)
-        return SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
-        
-    def do_get_bundle(self, path, revision_id):
-        # open transport relative to our base
-        t = self._backing_transport.clone(path)
-        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
-        repo = control.open_repository()
-        tmpf = tempfile.TemporaryFile()
-        base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
-        tmpf.seek(0)
-        return SmartServerResponse((), tmpf.read())
-
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        func = getattr(self, 'do_' + cmd, None)
-        if func is None:
+        try:
+            command = self._commands.get(cmd)
+        except LookupError:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self._run_handler_code(func, args, {})
+        self._command = command(self._backing_transport)
+        self._run_handler_code(self._command.execute, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
@@ -223,17 +159,15 @@ class SmartServerRequestHandler(object):
         from them.
         """
         result = self._call_converting_errors(callable, args, kwargs)
+
         if result is not None:
             self.response = result
             self.finished_reading = True
-        # handle unconverted commands
-        if not self._converted_command:
-            self.finished_reading = True
-            if result is None:
-                self.response = SmartServerResponse(('ok',))
 
     def _call_converting_errors(self, callable, args, kwargs):
         """Call callable converting errors to Response objects."""
+        # XXX: most of this error conversion is VFS-related, and thus ought to
+        # be in SmartServerVFSRequestHandler somewhere.
         try:
             return callable(*args, **kwargs)
         except errors.NoSuchFile, e:
@@ -265,3 +199,104 @@ class SmartServerRequestHandler(object):
                 raise
 
 
+class HelloRequest(SmartServerRequest):
+    """Answer a version request with my version."""
+
+    def do(self):
+        return SmartServerResponse(('ok', '1'))
+
+
+class GetBundleRequest(SmartServerRequest):
+    """Get a bundle of from the null revision to the specified revision."""
+
+    def do(self, path, revision_id):
+        # open transport relative to our base
+        t = self._backing_transport.clone(path)
+        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
+        repo = control.open_repository()
+        tmpf = tempfile.TemporaryFile()
+        base_revision = revision.NULL_REVISION
+        write_bundle(repo, revision_id, base_revision, tmpf)
+        tmpf.seek(0)
+        return SmartServerResponse((), tmpf.read())
+
+
+class SmartServerIsReadonly(SmartServerRequest):
+    # XXX: this request method belongs somewhere else.
+
+    def do(self):
+        if self._backing_transport.is_readonly():
+            answer = 'yes'
+        else:
+            answer = 'no'
+        return SmartServerResponse((answer,))
+
+
+request_handlers = registry.Registry()
+request_handlers.register_lazy(
+    'append', 'bzrlib.smart.vfs', 'AppendRequest')
+request_handlers.register_lazy(
+    'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
+request_handlers.register_lazy(
+    'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
+request_handlers.register_lazy(
+    'Branch.revision_history', 'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
+request_handlers.register_lazy(
+    'Branch.set_last_revision', 'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
+request_handlers.register_lazy(
+    'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
+request_handlers.register_lazy(
+    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepository')
+request_handlers.register_lazy(
+    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
+request_handlers.register_lazy(
+    'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
+request_handlers.register_lazy(
+    'get', 'bzrlib.smart.vfs', 'GetRequest')
+request_handlers.register_lazy(
+    'get_bundle', 'bzrlib.smart.request', 'GetBundleRequest')
+request_handlers.register_lazy(
+    'has', 'bzrlib.smart.vfs', 'HasRequest')
+request_handlers.register_lazy(
+    'hello', 'bzrlib.smart.request', 'HelloRequest')
+request_handlers.register_lazy(
+    'iter_files_recursive', 'bzrlib.smart.vfs', 'IterFilesRecursiveRequest')
+request_handlers.register_lazy(
+    'list_dir', 'bzrlib.smart.vfs', 'ListDirRequest')
+request_handlers.register_lazy(
+    'mkdir', 'bzrlib.smart.vfs', 'MkdirRequest')
+request_handlers.register_lazy(
+    'move', 'bzrlib.smart.vfs', 'MoveRequest')
+request_handlers.register_lazy(
+    'put', 'bzrlib.smart.vfs', 'PutRequest')
+request_handlers.register_lazy(
+    'put_non_atomic', 'bzrlib.smart.vfs', 'PutNonAtomicRequest')
+request_handlers.register_lazy(
+    'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
+request_handlers.register_lazy(
+    'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy('Repository.gather_stats',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryGatherStats')
+request_handlers.register_lazy(
+    'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
+request_handlers.register_lazy(
+    'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
+request_handlers.register_lazy(
+    'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
+request_handlers.register_lazy(
+    'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
+request_handlers.register_lazy(
+    'stat', 'bzrlib.smart.vfs', 'StatRequest')
+request_handlers.register_lazy(
+    'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
+request_handlers.register_lazy(
+    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')

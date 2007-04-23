@@ -175,6 +175,17 @@ class BzrCheckError(BzrError):
         self.message = message
 
 
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -211,6 +222,16 @@ class ReservedId(BzrError):
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
+
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
 
 class NoSuchId(BzrError):
 
@@ -798,6 +819,27 @@ class LockNotHeld(LockError):
         self.lock = lock
 
 
+class TokenLockingNotSupported(LockError):
+
+    _fmt = "The object %(obj)s does not support token specifying a token when locking."
+
+    internal_error = True
+
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class TokenMismatch(LockBroken):
+
+    _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
+
+    internal_error = True
+
+    def __init__(self, given_token, lock_token):
+        self.given_token = given_token
+        self.lock_token = lock_token
+
+
 class PointlessCommit(BzrError):
 
     _fmt = "No changes to commit"
@@ -1205,7 +1247,7 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current request that is open.")
+            " currently open request.")
 
     internal_error = True
 
@@ -1496,6 +1538,14 @@ class DuplicateFileId(BzrError):
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"
+
+
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
 
 
 class MalformedTransform(BzrError):
@@ -2023,7 +2073,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use bzr upgrade --dirstate-tags.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -2035,3 +2085,30 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
+class UnexpectedSmartServerResponse(BzrError):
+
+    _fmt = "Could not understand response from smart server: %(response_tuple)r"
+
+    def __init__(self, response_tuple):
+        self.response_tuple = response_tuple

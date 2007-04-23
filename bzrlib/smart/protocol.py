@@ -90,7 +90,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 first_line += '\n'
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
-                    self._backing_transport)
+                    self._backing_transport, commands=request.request_handlers)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
@@ -338,6 +338,5 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             return 1
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
-
 
 
