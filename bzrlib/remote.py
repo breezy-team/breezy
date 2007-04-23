@@ -427,6 +427,12 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.break_lock()
 
+    def sprout(self, to_bzrdir, revision_id=None):
+        # TODO: Option to control what format is created?
+        to_repo = to_bzrdir.create_repository()
+        to_repo.fetch(self, revision_id=revision_id)
+        return to_repo
+
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
