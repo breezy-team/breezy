@@ -661,8 +661,8 @@ class TestRepositoryTarball(TestRemoteRepository):
         self.assertEqual(expected_calls, client._calls)
         self.assertEqual(self.tarball_content, tarball_data)
 
-    def test_copy_content_into_uses_tarball(self):
-        # copy_content_into on a RemoteRepository should try to use the
+    def test_sprout_uses_tarball(self):
+        # RemoteRepository.sprout should try to use the
         # tarball command rather than accessing all the files
         transport_path = 'srcrepo'
         expected_responses = [(('ok',), self.tarball_content),
@@ -676,9 +676,8 @@ class TestRepositoryTarball(TestRemoteRepository):
         dest_transport.mkdir('destrepo')
         bzrdir_format = bzrdir.format_registry.make_bzrdir('default')
         dest_bzrdir = bzrdir_format.initialize_on_transport(dest_transport)
-        dest_repo = dest_bzrdir.create_repository()
         # try to copy...
-        remote_repo.copy_content_into(dest_repo)
+        remote_repo.sprout(dest_bzrdir)
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):

@@ -442,6 +442,12 @@ class RemoteRepository(object):
         else:
             raise errors.SmartServerError(error_code=response)
 
+    def sprout(self, to_bzrdir, revision_id=None):
+        # TODO: Option to control what format is created?
+        to_repo = to_bzrdir.create_repository()
+        self._copy_repository_tarball(to_repo, revision_id)
+        return to_repo
+
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
@@ -578,6 +584,11 @@ class RemoteRepository(object):
         return self._real_repository.check(revision_ids)
 
     def copy_content_into(self, destination, revision_id=None):
+        self._ensure_real()
+        return self._real_repository.copy_content_into(
+            destination, revision_id=revision_id)
+
+    def _copy_repository_tarball(self, destination, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
         # destination
         from bzrlib import osutils
