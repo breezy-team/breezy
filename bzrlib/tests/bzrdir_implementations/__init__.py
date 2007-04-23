@@ -50,8 +50,6 @@ def test_suite():
     loader = TestLoader()
     adapt_modules(test_bzrdir_implementations, adapter, loader, result)
 
-    ## >>>>>>>
-    # XXX:
     # This will always add the tests for smart server transport, regardless of
     # the --transport option the user specified to 'bzr selftest'.
     from bzrlib.smart.server import SmartTCPServer_for_testing, ReadonlySmartTCPServer_for_testing
@@ -69,6 +67,5 @@ def test_suite():
                   TestLoader(),
                   smart_server_suite)
     result.addTests(smart_server_suite)
-    ## >>>>>>>
 
     return result

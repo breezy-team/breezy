@@ -403,7 +403,6 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
         raise errors.NotLocalUrl(self.abspath(relpath))
 
     def has(self, relpath):

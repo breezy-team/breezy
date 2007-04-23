@@ -56,7 +56,7 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
-from bzrlib.smart.client import SmartClient
+from bzrlib.smart.client import _SmartClient
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -527,7 +527,8 @@ class BzrDir(object):
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
-    def open_from_transport(transport, _unsupported=False):
+    def open_from_transport(transport, _unsupported=False,
+                            _server_formats=True):
         """Open a bzrdir within a particular directory.
 
         :param transport: Transport containing the bzrdir.
@@ -536,7 +537,8 @@ class BzrDir(object):
         base = transport.base
 
         def find_format(transport):
-            return transport, BzrDirFormat.find_format(transport)
+            return transport, BzrDirFormat.find_format(
+                transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
             qualified_source = e.get_source_url()
@@ -653,8 +655,11 @@ class BzrDir(object):
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
         """Open the workingtree object at this BzrDir if one is present.
-        
-        TODO: static convenience version of this?
+
+        :param recommend_upgrade: Optional keyword parameter, when True (the
+            default), emit through the ui module a recommendation that the user
+            upgrade the working tree when the workingtree being opened is old
+            (but still fully supported).
         """
         raise NotImplementedError(self.open_workingtree)
 
@@ -1216,15 +1221,25 @@ class BzrDirFormat(object):
     This is a list of BzrDirFormat objects.
     """
 
+    _control_server_formats = []
+    """The registered control server formats, e.g. RemoteBzrDirs.
+
+    This is a list of BzrDirFormat objects.
+    """
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
 
     @classmethod
-    def find_format(klass, transport):
+    def find_format(klass, transport, _server_formats=True):
         """Return the format present at transport."""
-        for format in klass._control_formats:
+        if _server_formats:
+            formats = klass._control_server_formats + klass._control_formats
+        else:
+            formats = klass._control_formats
+        for format in formats:
             try:
                 return format.probe_transport(transport)
             except errors.NotBranchError:
@@ -1378,6 +1393,17 @@ class BzrDirFormat(object):
         implementation.
         """
         klass._control_formats.append(format)
+
+    @classmethod
+    def register_control_server_format(klass, format):
+        """Register a control format for client-server environments.
+
+        These formats will be tried before ones registered with
+        register_control_format.  This gives implementations that decide to the
+        chance to grab it before anything looks at the contents of the format
+        file.
+        """
+        klass._control_server_formats.append(format)
 
     @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
@@ -2225,9 +2251,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = SmartClient(medium)
+        client = _SmartClient(medium)
         path = client.remote_path_from_transport(transport)
-        response = SmartClient(medium).call('BzrDirFormat.initialize', path)
+        response = _SmartClient(medium).call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
@@ -2240,9 +2266,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         return self.get_format_description() == other.get_format_description()
 
 
-# We can't use register_control_format because it adds it at a lower priority
-# than the existing branches, whereas this should take priority.
-BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat)
+BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
 
 
 class BzrDirFormatInfo(object):

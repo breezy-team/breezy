@@ -26,6 +26,7 @@ bzrlib/transport/smart/__init__.py.
 
 import os
 import socket
+import sys
 
 from bzrlib import errors
 from bzrlib.smart import protocol
@@ -137,6 +138,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param backing_transport: Transport for the directory served.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
+        if sys.platform == 'win32':
+            # force binary mode for files
+            import msvcrt
+            for f in (in_file, out_file):
+                fileno = getattr(f, 'fileno', None)
+                if fileno:
+                    msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
         self._out = out_file
 

@@ -2069,11 +2069,9 @@ class TagAlreadyExists(BzrError):
         self.tag_name = tag_name
 
 
-class SmartServerError(BzrError):
+class UnexpectedSmartServerResponse(BzrError):
 
-    _fmt = "Smart Server encountered error %(error_cde)s: %(error_msg)s."
+    _fmt = "Could not understand response from smart server: %(response_tuple)r"
 
-    def __init__(self, error_code, error_msg=''):
-        self.error_code = error_code
-        self.error_msg = error_msg
-
+    def __init__(self, response_tuple):
+        self.response_tuple = response_tuple

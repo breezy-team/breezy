@@ -133,8 +133,19 @@ for grammatical correctness)::
 Documentation
 =============
 
-If you change the behaviour of a command, please update its docstring
-in bzrlib/commands.py.  This is displayed by the 'bzr help' command.
+When you change bzrlib, please update the relevant documentation for the
+change you made: Changes to commands should update their help, and
+possibly end user tutorials; changes to the core library should be
+reflected in API documentation.
+
+Commands
+--------
+
+The docstring of a command is used by ``bzr help`` to generate help output
+for the command. The list 'takes_options' attribute on a command is used by
+``bzr help`` to document the options for the command - the command
+docstring does not need to document them. Finally, the '_see_also'
+attribute on a command can be used to reference other related help topics.
 
 NEWS file
 ---------

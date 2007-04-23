@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,10 +31,17 @@ from bzrlib import (
     osutils,
     urlutils,
     )
-from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, NoSmartServer, PathError,
-                           TransportNotPossible, ConnectionError,
-                           InvalidURL)
+from bzrlib.errors import (ConnectionError,
+                           DirectoryNotEmpty,
+                           FileExists,
+                           InvalidURL,
+                           LockError,
+                           NoSmartServer,
+                           NoSuchFile,
+                           NotLocalUrl,
+                           PathError,
+                           TransportNotPossible,
+                           )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
@@ -1144,6 +1151,7 @@ class TransportTests(TestTransportImplementation):
         try:
             p = transport.local_abspath('.')
         except (errors.NotLocalUrl, TransportNotPossible), e:
+            # should be formattable
             s = str(e)
         else:
             self.assertEqual(getcwd(), p)

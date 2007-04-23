@@ -15,14 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import cStringIO
-import os
 import sys
 
-from bzrlib import urlutils
-from bzrlib.branch import Branch
 import bzrlib.errors
-from bzrlib.osutils import abspath, realpath, getcwd
+from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib import urlutils
 

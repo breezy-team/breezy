@@ -34,7 +34,7 @@ class cmd_register_branch(Command):
     """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
-    launchpad.net.  Registration allows the bug to be associated with
+    launchpad.net.  Registration allows the branch to be associated with
     bugs or specifications.
     
     Before using this command you must register the product to which the

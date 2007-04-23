@@ -87,13 +87,13 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         """
         repo = self.make_repository('.', shared=shared, format=format)
         if repo.supports_rich_root():
-            rich_root = 'True'
+            rich_root = 'yes'
         else:
-            rich_root = 'False'
+            rich_root = 'no'
         if repo._format.supports_tree_reference:
-            subtrees = 'True'
+            subtrees = 'yes'
         else:
-            subtrees = 'False'
+            subtrees = 'no'
         return SmartServerResponse(('ok', '', rich_root, subtrees))
 
     def test_shared_repository(self):
@@ -117,8 +117,8 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         request = smart.bzrdir.SmartServerRequestFindRepository(backing)
         result = self._make_repository_and_result(format='dirstate-with-subtree')
         # check the test will be valid
-        self.assertEqual('True', result.args[2])
-        self.assertEqual('True', result.args[3])
+        self.assertEqual('yes', result.args[2])
+        self.assertEqual('yes', result.args[3])
         self.assertEqual(result, request.execute(backing.local_abspath('')))
 
 
@@ -233,11 +233,11 @@ class TestSmartServerBranchRequest(tests.TestCaseWithTransport):
 class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
 
     def test_empty(self):
-        """For an empty branch, the result is ('ok', '0', '')."""
+        """For an empty branch, the result is ('ok', '0', 'null:')."""
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLastRevisionInfo(backing)
         self.make_branch('.')
-        self.assertEqual(SmartServerResponse(('ok', '0', '')),
+        self.assertEqual(SmartServerResponse(('ok', '0', 'null:')),
             request.execute(backing.local_abspath('')))
 
     def test_not_empty(self):
@@ -292,7 +292,8 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
         try:
             self.assertEqual(SmartServerResponse(('ok',)),
                 request.execute(
-                    backing.local_abspath(''), branch_token, repo_token, ''))
+                    backing.local_abspath(''), branch_token, repo_token,
+                    'null:'))
         finally:
             b.unlock()
 
@@ -575,7 +576,7 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath(''), 'revid'))
 
     def test_present_revision(self):
-        """For a present revision, ('ok', ) is returned."""
+        """For a present revision, ('yes', ) is returned."""
         backing = self.get_transport()
         request = smart.repository.SmartServerRequestHasRevision(backing)
         tree = self.make_branch_and_memory_tree('.')
@@ -585,7 +586,7 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
         r1 = tree.commit('a commit', rev_id=rev_id_utf8)
         tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
-        self.assertEqual(SmartServerResponse(('ok', )),
+        self.assertEqual(SmartServerResponse(('yes', )),
             request.execute(backing.local_abspath(''), rev_id_utf8))
 
 

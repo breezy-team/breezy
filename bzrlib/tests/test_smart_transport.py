@@ -27,7 +27,6 @@ from bzrlib import (
         bzrdir,
         errors,
         osutils,
-        smart,
         tests,
         urlutils,
         )
@@ -740,9 +739,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_socket_stream_error_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -754,8 +750,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
         to_server = StringIO('')
         from_server = StringIO()
         server = medium.SmartServerPipeStreamMedium(
@@ -795,6 +789,7 @@ class TestSmartTCPServer(tests.TestCase):
                 self.assertContainsRe(str(e), 'some random exception')
             else:
                 self.fail("get did not raise expected error")
+            transport.disconnect()
         finally:
             smart_server.stop_background_thread()
 
@@ -1016,11 +1011,12 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
-        return smart.SmartServerRequestHandler(transport, request.request_handlers)
+        return request.SmartServerRequestHandler(transport,
+                                                 request.request_handlers)
 
     def test_construct_request_handler(self):
         """Constructing a request handler should be easy and set defaults."""
-        handler = smart.SmartServerRequestHandler(None, None)
+        handler = request.SmartServerRequestHandler(None, None)
         self.assertFalse(handler.finished_reading)
 
     def test_hello(self):
@@ -1447,14 +1443,14 @@ class TestSmartProtocol(tests.TestCase):
 
 
 class TestSmartClientUnicode(tests.TestCase):
-    """SmartClient tests for unicode arguments.
+    """_SmartClient tests for unicode arguments.
 
     Unicode arguments to call_with_body_bytes are not correct (remote method
     names, arguments, and bodies must all be expressed as byte strings), but
-    SmartClient should gracefully reject them, rather than getting into a broken
-    state that prevents future correct calls from working.  That is, it should
-    be possible to issue more requests on the medium afterwards, rather than
-    allowing one bad call to call_with_body_bytes to cause later calls to
+    _SmartClient should gracefully reject them, rather than getting into a
+    broken state that prevents future correct calls from working.  That is, it
+    should be possible to issue more requests on the medium afterwards, rather
+    than allowing one bad call to call_with_body_bytes to cause later calls to
     mysteriously fail with TooManyConcurrentRequests.
     """
 
@@ -1466,7 +1462,7 @@ class TestSmartClientUnicode(tests.TestCase):
         input = StringIO("\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        smart_client = client.SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium)
         self.assertRaises(TypeError,
             smart_client.call_with_body_bytes, method, args, body)
         self.assertEqual("", output.getvalue())

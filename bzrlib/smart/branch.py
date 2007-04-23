@@ -19,7 +19,6 @@
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.revision import NULL_REVISION
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
@@ -97,15 +96,13 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         revno, last_revision = branch.last_revision_info()
-        if last_revision == NULL_REVISION:
-            last_revision = ''
         return SmartServerResponse(('ok', str(revno), last_revision))
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
     
     def do_with_locked_branch(self, branch, new_last_revision_id):
-        if new_last_revision_id == '':
+        if new_last_revision_id == 'null:':
             branch.set_revision_history([])
         else:
             if not branch.repository.has_revision(new_last_revision_id):

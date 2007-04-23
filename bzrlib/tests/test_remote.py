@@ -42,8 +42,7 @@ from bzrlib.remote import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
-from bzrlib.smart.client import SmartClient
-from bzrlib.transport import remote as remote_transport
+from bzrlib.smart.client import _SmartClient
 from bzrlib.transport.memory import MemoryTransport
 
 
@@ -56,6 +55,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
+
+    def tearDown(self):
+        self.transport.disconnect()
+        tests.TestCaseWithTransport.tearDown(self)
 
     def test_is_readonly(self):
         # XXX: this is a poor way to test RemoteTransport, but currently there's
@@ -71,6 +74,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         # open a standalone branch in the working directory
         b = remote.RemoteBzrDir(self.transport)
         branch = b.open_branch()
+        self.assertIsInstance(branch, Branch)
 
     def test_remote_repository(self):
         b = BzrDir.open_from_transport(self.transport)
@@ -90,7 +94,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrDirFormat in BzrDirFormat._control_formats)
+        self.assertTrue(RemoteBzrDirFormat
+                        in BzrDirFormat._control_server_formats)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -123,8 +128,8 @@ class FakeProtocol(object):
         return self._body_buffer.read(count)
 
 
-class FakeClient(SmartClient):
-    """Lookalike for SmartClient allowing testing."""
+class FakeClient(_SmartClient):
+    """Lookalike for _SmartClient allowing testing."""
     
     def __init__(self, responses):
         # We don't call the super init because there is no medium.
@@ -149,7 +154,7 @@ class FakeClient(SmartClient):
 class TestBzrDirOpenBranch(tests.TestCase):
 
     def test_branch_present(self):
-        client = FakeClient([(('ok', ''), ), (('ok', '', 'False', 'False'), )])
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -175,13 +180,13 @@ class TestBzrDirOpenBranch(tests.TestCase):
 
     def check_open_repository(self, rich_root, subtrees):
         if rich_root:
-            rich_response = 'True'
+            rich_response = 'yes'
         else:
-            rich_response = 'False'
+            rich_response = 'no'
         if subtrees:
-            subtree_response = 'True'
+            subtree_response = 'yes'
         else:
-            subtree_response = 'False'
+            subtree_response = 'no'
         client = FakeClient([(('ok', '', rich_response, subtree_response), ),])
         transport = MemoryTransport()
         transport.mkdir('quack')
@@ -207,7 +212,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
 
     def test_empty_branch(self):
         # in an empty branch we decode the response properly
-        client = FakeClient([(('ok', '0', ''), )])
+        client = FakeClient([(('ok', '0', 'null:'), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -265,7 +270,7 @@ class TestBranchSetLastRevision(tests.TestCase):
         result = branch.set_revision_history([])
         self.assertEqual(
             [('call', 'Branch.set_last_revision',
-                ('///branch/', 'branch token', 'repo token', ''))],
+                ('///branch/', 'branch token', 'repo token', 'null:'))],
             client._calls)
         branch.unlock()
         self.assertEqual(None, result)
@@ -325,10 +330,10 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch.unlock()
 
 
-class TestBranchControlGetBranchConf(tests.TestCase):
+class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
 
-    we special case RemoteBranch.control_files.get('branch.conf') to
+    We special case RemoteBranch.control_files.get('branch.conf') to
     call a specific API so that RemoteBranch's can intercept configuration
     file reading, allowing them to signal to the client about things like
     'email is configured for commits'.
@@ -337,9 +342,10 @@ class TestBranchControlGetBranchConf(tests.TestCase):
     def test_get_branch_conf(self):
         # in an empty branch we decode the response properly
         client = FakeClient([(('ok', ), 'config file body')])
-        transport = MemoryTransport()
-        transport.mkdir('quack')
-        transport = transport.clone('quack')
+        # we need to make a real branch because the remote_branch.control_files
+        # will trigger _ensure_real.
+        branch = self.make_branch('quack')
+        transport = branch.bzrdir.root_transport
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
