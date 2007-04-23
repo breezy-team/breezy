@@ -16,17 +16,16 @@ enter the URL to the branch in the Bazaar command you are running.::
 
     bzr log http://bazaar-vcs.org/bzr/bzr.dev
 
-Bazaar supports writing over FTP, SFTP and via a plugin over HTTP-WebDAV.
+Bazaar supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 
 High-performance server
 =======================
 
-**In development**
-
-The high-performance server is currently in development.  The version of Bazaar
-that accompanies this documentation is able to use the servers underlying
-protocol as a dumb server.  This is the first stage high-performance server
-functionality to be delivered.
+The high-performance server is currently in development.  It provides a dumb
+server facility as well as additional capabilities which allow the version of
+bzr that accompanies this documentation to perform some operations much faster
+than via dumb servers.  In future releases of bzr the range of operations that
+are improved by using the high-performance server will increase.
 
 To maintain the highest security possible, the current
 high-performance server provides read-only access by default.  To
@@ -49,7 +48,8 @@ which requires the `bzr` executable to be on the default search path.
 
 The ``bzr+ssh://`` URL scheme only supports absolute paths from the
 root of the filesystem.  Future versions are expected to support ``~``
-in the same way as ``sftp://`` URLs.
+in the same way as ``sftp://`` URLs
+(https://bugs.launchpad.net/bzr/+bug/109143).
 
 inetd
 -----
@@ -60,12 +60,12 @@ for a shared repository in ``/srv/bzr/repo`` which has a branch at
 
 Running a Bazaar server from inetd requires an inetd.conf entry::
 
-    1234  stream  tcp  nowait  bzruser  /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
 
 When running client commands, the URL you supply is a `bzr://` URL relative to
 the ``--directory`` option given in inetd.conf::
 
-    bzr log bzr://host:1234/branchname
+    bzr log bzr://host/branchname
 
 Dedicated
 ---------
@@ -82,3 +82,8 @@ client::
 
     bzr log bzr://host:1234/branchname
 
+This example runs bzr on its official port number of `4155` and listens on all
+interfaces.
+
+server::
+    bzr serve --directory=/srv/bzr/repo

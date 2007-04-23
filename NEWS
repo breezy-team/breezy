@@ -39,6 +39,10 @@ IN DEVELOPMENT
     * New help topic ``urlspec`` which lists the availables transports.
       (Goffredo Baroncelli)
 
+    * doc/server.txt updated to document the default bzr:// port (fixes
+      #107125) and also update the blurb about the hpss' current status.
+      (Robert Collins).
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
