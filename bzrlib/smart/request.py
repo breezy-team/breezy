@@ -92,6 +92,14 @@ class SmartServerResponse(object):
         return "<SmartServerResponse args=%r body=%r>" % (self.args, self.body)
 
 
+class FailedSmartServerResponse(SmartServerResponse):
+    """A SmartServerResponse for a request which failed."""
+
+    def is_successful(self):
+        """FailedSmartServerResponse are not successful."""
+        return False
+
+
 class SuccessfulSmartServerResponse(SmartServerResponse):
     """A SmartServerResponse for a successfully completed request."""
 

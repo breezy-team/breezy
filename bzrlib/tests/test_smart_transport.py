@@ -1926,6 +1926,21 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
         self.assertEqual(True, response.is_successful())
 
 
+class TestFailedSmartServerResponse(tests.TestCase):
+
+    def test_construct(self):
+        response = request.FailedSmartServerResponse(('foo', 'bar'))
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual(None, response.body)
+        response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual('bytes', response.body)
+
+    def test_is_successful(self):
+        """is_successful should return False for FailedSmartServerResponse."""
+        response = request.FailedSmartServerResponse(('error',))
+        self.assertEqual(False, response.is_successful())
+
 
 class FakeHTTPMedium(object):
     def __init__(self):
