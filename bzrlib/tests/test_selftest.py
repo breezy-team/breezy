@@ -193,17 +193,21 @@ class TestBzrDirProviderAdapter(TestCase):
         from bzrlib.bzrdir import BzrDirTestProviderAdapter
         input_test = TestBzrDirProviderAdapter(
             "test_adapted_tests")
+        vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        adapter = BzrDirTestProviderAdapter(vfs_factory,
+            server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
         self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -232,6 +236,19 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].repository_format, formats[1][0])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
+
+    def test_setting_vfs_transport(self):
+        """The vfs_transport_factory can be set optionally."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        formats = [("c", "C")]
+        adapter = RepositoryTestProviderAdapter(None, None, formats,
+            vfs_transport_factory="vfs")
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(1, len(tests))
+        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
 
 
 class TestInterRepositoryProviderAdapter(TestCase):
@@ -739,8 +756,10 @@ class TestTestResult(TestCase):
         result.report_known_failure(test, err)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
-    
+        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        self.assertEqual(lines[1], '    foo')
+        self.assertEqual(2, len(lines))
+
     def test_text_report_known_failure(self):
         # text test output formatting
         pb = MockProgress()
@@ -933,13 +952,12 @@ class TestRunner(TestCase):
         stream = StringIO()
         runner = TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
-        self.assertEqual(
+        self.assertContainsRe(stream.getvalue(),
             '\n'
-            '----------------------------------------------------------------------\n'
-            'Ran 1 test in 0.000s\n'
+            '-*\n'
+            'Ran 1 test in .*\n'
             '\n'
-            'OK (known_failures=1)\n',
-            stream.getvalue())
+            'OK \\(known_failures=1\\)\n')
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still

@@ -26,6 +26,7 @@ from bzrlib import (
     gpg,
     urlutils,
     transactions,
+    remote,
     repository,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
@@ -336,14 +337,9 @@ class TestBranch(TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        try:
+        if not isinstance(branch, remote.RemoteBranch):
             controlfilename = branch.control_files.controlfilename
-        except AttributeError:
-            # remote branches don't have control_files
-            pass
-        else:
-            self.failUnless(
-                t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -582,6 +578,17 @@ class TestBranchPushLocations(TestCaseWithBranch):
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
 
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
@@ -614,7 +621,7 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):

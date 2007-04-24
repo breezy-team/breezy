@@ -1407,12 +1407,8 @@ class DirState(object):
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
-        The object will be write locked when returned to the caller,
-        unless there was an exception in the writing, in which case it
-        will be unlocked.
-
         :param path: The name of the file for the dirstate.
-        :return: A DirState object.
+        :return: A write-locked DirState object.
         """
         # This constructs a new DirState object on a path, sets the _state_file
         # to a new empty file for that path. It then calls _set_data() with our
@@ -2216,6 +2212,28 @@ class DirState(object):
                     "dirblock for %r is not sorted:\n%s" % \
                     (dirblock[0], pformat(dirblock)))
 
+
+        def check_valid_parent():
+            """Check that the current entry has a valid parent.
+
+            This makes sure that the parent has a record,
+            and that the parent isn't marked as "absent" in the
+            current tree. (It is invalid to have a non-absent file in an absent
+            directory.)
+            """
+            if entry[0][0:2] == ('', ''):
+                # There should be no parent for the root row
+                return
+            parent_entry = self._get_entry(tree_index, path_utf8=entry[0][0])
+            if parent_entry == (None, None):
+                raise AssertionError(
+                    "no parent entry for: %s in tree %s"
+                    % (this_path, tree_index))
+            if parent_entry[1][tree_index][0] != 'd':
+                raise AssertionError(
+                    "Parent entry for %s is not marked as a valid"
+                    " directory. %s" % (this_path, parent_entry,))
+
         # For each file id, for each tree: either
         # the file id is not present at all; all rows with that id in the
         # key have it marked as 'absent'
@@ -2262,6 +2280,7 @@ class DirState(object):
                             raise AssertionError(
                             "entry %r inconsistent with previous path %r" % \
                             (entry, previous_path))
+                        check_valid_parent()
                 else:
                     if minikind == 'a':
                         # absent; should not occur anywhere else
@@ -2271,6 +2290,7 @@ class DirState(object):
                         this_tree_map[file_id] = tree_state[1]
                     else:
                         this_tree_map[file_id] = this_path
+                        check_valid_parent()
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""

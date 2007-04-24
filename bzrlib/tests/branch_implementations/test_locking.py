@@ -18,6 +18,7 @@
 
 from bzrlib import errors
 from bzrlib.branch import BzrBranchFormat4
+from bzrlib.bzrdir import RemoteBzrDirFormat
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
@@ -39,7 +40,12 @@ class TestBranchLocking(TestCaseWithBranch):
         b = LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = LockWrapper(self.locks, b.repository, 'r')
         bcf = b.control_files
-        rcf = b.repository.control_files
+        rcf = getattr(b.repository, 'control_files', None)
+        if rcf is None:
+            raise TestSkipped(
+                "This tests depends on being able to instrument "
+                "repository.control_files, but %r doesn't have control_files."
+                % (b.repository,))
 
         # Look out for branch types that reuse their control files
         self.combined_control = bcf is rcf

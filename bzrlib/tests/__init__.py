@@ -89,6 +89,11 @@ from bzrlib.tests.TestUtil import (
 from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
+# Mark this python module as being part of the implementation
+# of unittest: this gives us better tracebacks where the last
+# shown frame is the test code, not our assertXYZ.
+__unittest = 1
+
 default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
@@ -751,15 +756,22 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        self._clear_hooks()
+
+    def _clear_hooks(self):
         # prevent hooks affecting tests
+        import bzrlib.branch
+        import bzrlib.smart.server
         self._preserved_hooks = {
-            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
-            bzrlib.smart.server.SmartTCPServer:bzrlib.smart.server.SmartTCPServer.hooks,
+            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = \
+            bzrlib.smart.server.SmartServerHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -2142,6 +2154,7 @@ def test_suite():
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
@@ -2166,6 +2179,7 @@ def test_suite():
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
+                   'bzrlib.tests.test_help',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
@@ -2196,6 +2210,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
+                   'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
@@ -2206,6 +2221,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_source',
@@ -2293,7 +2309,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             print >>sys.stderr, ('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(test_root))
+                                 '%s' % os.path.basename(dirname))
         else:
             raise
 
@@ -2306,8 +2322,6 @@ def clean_selftest_output(root=None, quiet=False):
     :param  quiet:  suppress report about deleting directories
     """
     import re
-    import shutil
-
     re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
     if root is None:
         root = u'.'
