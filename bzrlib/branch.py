@@ -505,18 +505,6 @@ class Branch(object):
         """
         raise NotImplementedError(self.update_revisions)
 
-    @needs_read_lock
-    def revision_id_to_dotted_revno(self, revision_id):
-        """Given a revision id, return its dotted revno."""
-        if revision_id in (None, _mod_revision.NULL_REVISION):
-            return (0,)
-        revision_id = osutils.safe_revision_id(revision_id)
-
-        revision_id_to_revno = self.get_revision_id_to_revno_map()
-        if revision_id not in revision_id_to_revno:
-            raise errors.NoSuchRevision(self, revision_id)
-        return revision_id_to_revno[revision_id]
-
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:

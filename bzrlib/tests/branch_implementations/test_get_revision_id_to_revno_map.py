@@ -45,9 +45,7 @@ class TestCaching(TestCaseWithBranch):
     regenerated or reread each time.
 
     We test if revision_history is using the cache by instrumenting the branch's
-    _gen_revno_map method, which is called by
-    Branch.revision_id_to_dotted_revno if the branch does not have a cache of
-    the dotted revnos.
+    _gen_revno_map method, which is called by get_revision_id_to_revno_map.
     """
 
     def get_instrumented_branch(self):
