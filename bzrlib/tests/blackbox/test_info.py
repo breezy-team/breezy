@@ -1109,8 +1109,9 @@ Repository:
         :param verbose: If true, expect verbose output
         """
         if tree_locked and sys.platform == 'win32':
-            # Arguably neither can Linux, but for now OS Locks are
-            # not exclusive in-process.
+            # We expect this to fail because of locking errors. (A write-locked
+            # file cannot be read-locked in the same process).
+            # This should be removed when the locking errors are fixed.
             args = command_string.split(' ')
             self.run_bzr_error([], 'info', *args)
             return
