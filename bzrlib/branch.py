@@ -197,6 +197,48 @@ class Branch(object):
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
 
+    @needs_read_lock
+    def get_revision_id_to_revno_map(self):
+        """Return the revision_id => dotted revno map.
+
+        This will be regenerated on demand, but will be cached.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+            This dictionary should not be modified by the caller.
+        """
+        if self._revision_id_to_revno_cache is not None:
+            mapping = self._revision_id_to_revno_cache
+        else:
+            mapping = self._gen_revno_map()
+            self._cache_revision_id_to_revno(mapping)
+        # TODO: jam 20070417 Since this is being cached, should we be returning
+        #       a copy?
+        # I would rather not, and instead just declare that users should not
+        # modify the return value.
+        return mapping
+
+    def _gen_revno_map(self):
+        """Create a new mapping from revision ids to dotted revnos.
+
+        Dotted revnos are generated based on the current tip in the revision
+        history.
+        This is the worker function for get_revision_id_to_revno_map, which
+        just caches the return value.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+        """
+        last_revision = self.last_revision()
+        revision_graph = self.repository.get_revision_graph(last_revision)
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in merge_sorted_revisions)
+        return revision_id_to_revno
+
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
         object is unlocked.
@@ -1367,43 +1409,6 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
-
-    @needs_read_lock
-    def get_revision_id_to_revno_map(self):
-        """Return the revision_id => dotted revno map.
-
-        This will be regenerated on demand, but will be cached.
-
-        :return: A dictionary mapping revision_id => dotted revno.
-            This dictionary should not be modified by the caller.
-        """
-        if self._revision_id_to_revno_cache is not None:
-            mapping = self._revision_id_to_revno_cache
-        else:
-            mapping = self._gen_revno_map()
-            self._cache_revision_id_to_revno(mapping)
-        # TODO: jam 20070417 Since this is being cached, should we be returning
-        #       a copy?
-        # I would rather not, and instead just declare that users should not
-        # modify the return value.
-        return mapping
-
-    def _gen_revno_map(self):
-        """Generate a mapping from revision ids to dotted revnos.
-
-        :return: A dict mapping revision_ids => dotted revnos
-        """
-        last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
-        merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
-            last_revision,
-            None,
-            generate_revno=True)
-        revision_id_to_revno = dict((rev_id, revno)
-                                    for seq_num, rev_id, depth, revno, end_of_merge
-                                     in merge_sorted_revisions)
-        return revision_id_to_revno
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
