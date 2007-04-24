@@ -35,6 +35,7 @@ from bzrlib import (
         revision as _mod_revision,
         transport,
         tree,
+        tsort,
         ui,
         urlutils,
         )
@@ -100,6 +101,7 @@ class Branch(object):
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._make_tags()
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -194,6 +196,48 @@ class Branch(object):
 
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
+
+    @needs_read_lock
+    def get_revision_id_to_revno_map(self):
+        """Return the revision_id => dotted revno map.
+
+        This will be regenerated on demand, but will be cached.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+            This dictionary should not be modified by the caller.
+        """
+        if self._revision_id_to_revno_cache is not None:
+            mapping = self._revision_id_to_revno_cache
+        else:
+            mapping = self._gen_revno_map()
+            self._cache_revision_id_to_revno(mapping)
+        # TODO: jam 20070417 Since this is being cached, should we be returning
+        #       a copy?
+        # I would rather not, and instead just declare that users should not
+        # modify the return value.
+        return mapping
+
+    def _gen_revno_map(self):
+        """Create a new mapping from revision ids to dotted revnos.
+
+        Dotted revnos are generated based on the current tip in the revision
+        history.
+        This is the worker function for get_revision_id_to_revno_map, which
+        just caches the return value.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+        """
+        last_revision = self.last_revision()
+        revision_graph = self.repository.get_revision_graph(last_revision)
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in merge_sorted_revisions)
+        return revision_id_to_revno
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
@@ -344,6 +388,14 @@ class Branch(object):
         """
         self._revision_history_cache = rev_history
 
+    def _cache_revision_id_to_revno(self, revision_id_to_revno):
+        """Set the cached revision_id => revno map to revision_id_to_revno.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_id_to_revno_cache = revision_id_to_revno
+
     def _clear_cached_state(self):
         """Clear any cached data on this branch, e.g. cached revision history.
 
@@ -354,6 +406,7 @@ class Branch(object):
         should consider it to be private.
         """
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -461,7 +514,7 @@ class Branch(object):
         try:
             return history.index(revision_id) + 1
         except ValueError:
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -470,7 +523,7 @@ class Branch(object):
         if history is None:
             history = self.revision_history()
         if revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
+            raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
@@ -1325,6 +1378,7 @@ class BzrBranch(Branch):
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
+        self._clear_cached_state()
         self._write_revision_history(rev_history)
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
@@ -1542,7 +1596,7 @@ class BzrBranch(Branch):
                 try: 
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
-                    raise bzrlib.errors.InvalidURL(url,
+                    raise errors.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
                         "use bzrlib.urlutils.escape")
             url = urlutils.relative_url(self.base, url)

@@ -140,6 +140,12 @@ IN DEVELOPMENT
     * New class 'TransportListRegistry', derived from the Registry class, which 
       simplifies tracking the available Transports. (Goffredo Baroncelli)
 
+    * New function ``Branch.get_revision_id_to_revno_map`` which will
+      return a dictionary mapping revision ids to dotted revnos. Since
+      dotted revnos are defined in the context of the branch tip, it makes
+      sense to generate them from a ``Branch`` object.
+      (John Arbash Meinel)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
