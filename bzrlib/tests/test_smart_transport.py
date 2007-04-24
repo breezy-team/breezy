@@ -1267,7 +1267,7 @@ class TestSmartProtocol(tests.TestCase):
             def do_body(cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
-                return request.SmartServerResponse(('ok', ))
+                return request.SuccessfulSmartServerResponse(('ok', ))
         smart_protocol.request._command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
@@ -1408,6 +1408,13 @@ class TestSmartProtocolOne(TestSmartProtocol):
         smart_protocol._send_response(
             request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
+
+    def test__send_response_errors_with_base_response(self):
+        """Ensure that only the Successful/Failed subclasses are used."""
+        smart_protocol = protocol.SmartServerRequestProtocolOne(
+            None, lambda x: None)
+        self.assertRaises(AttributeError, smart_protocol._send_response,
+            request.SmartServerResponse(('x',)))
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolOne should return a number.
@@ -1626,6 +1633,13 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol._send_response(
             request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
+
+    def test__send_response_errors_with_base_response(self):
+        """Ensure that only the Successful/Failed subclasses are used."""
+        smart_protocol = protocol.SmartServerRequestProtocolOne(
+            None, lambda x: None)
+        self.assertRaises(AttributeError, smart_protocol._send_response,
+            request.SmartServerResponse(('x',)))
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolTwo should return a number.

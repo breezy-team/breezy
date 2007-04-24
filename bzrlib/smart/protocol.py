@@ -133,6 +133,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def _send_response(self, response):
         """Send a smart server response down the output stream."""
         assert not self._finished, 'response already sent'
+        response.is_successful()
         args = response.args
         body = response.body
         self._finished = True
