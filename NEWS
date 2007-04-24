@@ -55,6 +55,11 @@ IN DEVELOPMENT
       serve out to the local LAN (and anyone in the world that can reach the
       machine running ``bzr serve``. (Robert Collins, #98918)
 
+    * The bzr protocol version 2 indicates success or failure in every response
+      without depending on particular commands encoding that consistently,
+      allowing future client refactorings to be much more robust about error
+      handling. (Robert Collins, Martin Pool, Andrew Bennetts)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
