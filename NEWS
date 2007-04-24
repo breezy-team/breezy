@@ -24,8 +24,15 @@ IN DEVELOPMENT
     * Tags are now included in logs, that use the long log formatter. 
       (Erik Bågfors, Alexander Belchenko)
 
-    * digest authentication is now supported for proxy and
-      http. Tested against Apache 2.0.55 and Squid 2.6.5.
+    * digest authentication is now supported for proxies and HTTP by the urllib
+      based http implementation. Tested against Apache 2.0.55 and Squid
+      2.6.5. Basic and digest authentication are handled coherently for HTTP
+      and proxy: if the user is provided in the url (bzr command line for HTTP,
+      proxy environment variables for proxies), the password is prompted for
+      (only once). If the password is provided, it is taken into account. Once
+      the first authentication is successful, all further authentication
+      roundtrips are avoided by preventively setting the right authentication
+      header(s).
       (Vincent Ladeuil).
 
   INTERNALS:
@@ -68,7 +75,7 @@ IN DEVELOPMENT
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
 
     * urllib http implementation avoid roundtrips associated with
-      401 (and 407) errors once the the authentication succeeds.
+      401 (and 407) errors once the authentication succeeds.
       (Vincent Ladeuil).
 
     * urlib http now supports querying the user for a proxy password if
@@ -142,9 +149,10 @@ IN DEVELOPMENT
 
     * Don't preventively use basic authentication for proxy before receiving a
       407 error. Otherwise people willing to use other authentication schemes
-      may expose their password in the clear. This add one roundtrip in case
-      basic authentication should be used, but plug the security
-      hole. (Vincent Ladeuil)
+      may expose their password in the clear (or nearly). This add one
+      roundtrip in case basic authentication should be used, but plug the
+      security hole.
+      (Vincent Ladeuil)
 
     * Handle http and proxy digest authentication.
       (Vincent Ladeuil, #94034).
