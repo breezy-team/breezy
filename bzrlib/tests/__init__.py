@@ -89,6 +89,11 @@ from bzrlib.tests.TestUtil import (
 from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
+# Mark this python module as being part of the implementation
+# of unittest: this gives us better tracebacks where the last
+# shown frame is the test code, not our assertXYZ.
+__unittest = 1
+
 default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
@@ -2149,6 +2154,7 @@ def test_suite():
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
@@ -2204,6 +2210,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
+                   'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
@@ -2214,6 +2221,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_source',

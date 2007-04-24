@@ -1,4 +1,4 @@
-# Copyright (C) 2006,2007 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ bzrlib/transport/smart/__init__.py.
 import os
 import socket
 import sys
+
 from bzrlib import errors
 from bzrlib.smart.protocol import (
     SmartServerRequestProtocolOne,
@@ -69,8 +70,8 @@ class SmartServerStreamMedium(object):
         from sys import stderr
         try:
             while not self.finished:
-                protocol = self._build_protocol()
-                self._serve_one_request(protocol)
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
@@ -78,7 +79,7 @@ class SmartServerStreamMedium(object):
     def _build_protocol(self):
         # Identify the protocol version.
         bytes = self._get_bytes(2)
-        if bytes.startswith('2\x01'):
+        if bytes.startswith('2\n'):
             protocol_class = SmartServerRequestProtocolTwo
             bytes = bytes[2:]
         else:
@@ -551,5 +552,4 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         on the mediums stream.
         """
         return self._medium._read_bytes(count)
-
 

@@ -579,7 +579,8 @@ class Branch(object):
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
-        raise NotImplementedError(self.get_push_location)
+        push_loc = self.get_config().get_user_option('push_location')
+        return push_loc
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
@@ -707,7 +708,7 @@ class Branch(object):
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repostory uses weaves.
+        Weaves are used if this branch's repository uses weaves.
         """
         if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
             from bzrlib.repofmt import weaverepo
@@ -812,6 +813,18 @@ class BranchFormat(object):
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
+
+    def get_reference(self, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -1049,13 +1062,16 @@ class BzrBranchFormat5(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return BzrBranch5(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                         lockdir.LockDir)
+            return BzrBranch5(_format=self,
+                              _control_files=control_files,
+                              a_bzrdir=a_bzrdir,
+                              _repository=a_bzrdir.find_repository())
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
@@ -1125,6 +1141,11 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
         
+    def get_reference(self, a_bzrdir):
+        """See BranchFormat.get_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        return transport.get('location').read()
+
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
@@ -1152,7 +1173,7 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, _found=False, location=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -1161,8 +1182,9 @@ class BranchReferenceFormat(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        real_bzrdir = bzrdir.BzrDir.open(transport.get('location').read())
+        if location is None:
+            location = self.get_reference(a_bzrdir)
+        real_bzrdir = bzrdir.BzrDir.open(location)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
@@ -1501,11 +1523,6 @@ class BzrBranch(Branch):
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
 
-    def get_push_location(self):
-        """See Branch.get_push_location."""
-        push_loc = self.get_config().get_user_option('push_location')
-        return push_loc
-
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
@@ -1745,6 +1762,19 @@ class BzrBranchExperimental(BzrBranch5):
         return "Experimental branch format"
 
     @classmethod
+    def get_reference(cls, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
+
+    @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
             lock_class):
         branch_transport = a_bzrdir.get_branch_transport(cls)
@@ -1982,7 +2012,8 @@ class BranchTestProviderAdapter(object):
     easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
