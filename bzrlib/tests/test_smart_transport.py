@@ -1206,8 +1206,8 @@ class InstrumentedServerProtocol(medium.SmartServerStreamMedium):
         self._write_output_list = write_output_list
 
 
-class TestSmartProtocolOne(tests.TestCase):
-    """Tests for the smart protocol.
+class TestSmartProtocol(tests.TestCase):
+    """Base class for smart protocol tests.
 
     Each test case gets a smart_server and smart_client created during setUp().
 
@@ -1217,10 +1217,15 @@ class TestSmartProtocolOne(tests.TestCase):
     serialised client request. Output done by the client or server for these
     calls will be captured to self.to_server and self.to_client. Each element
     in the list is a write call from the client or server respectively.
+
+    Subclasses can override client_protocol_class and server_protocol_class.
     """
 
+    client_protocol_class = None
+    server_protocol_class = None
+
     def setUp(self):
-        super(TestSmartProtocolOne, self).setUp()
+        super(TestSmartProtocol, self).setUp()
         # XXX: self.server_to_client doesn't seem to be used.  If so,
         # InstrumentedServerProtocol is redundant too.
         self.server_to_client = []
@@ -1228,8 +1233,7 @@ class TestSmartProtocolOne(tests.TestCase):
         self.to_client = StringIO()
         self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
             self.to_server)
-        self.client_protocol = protocol.SmartClientRequestProtocolOne(
-            self.client_medium)
+        self.client_protocol = self.client_protocol_class(self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
         self.smart_server_request = request.SmartServerRequestHandler(
             None, request.request_handlers)
@@ -1255,8 +1259,7 @@ class TestSmartProtocolOne(tests.TestCase):
 
     def build_protocol_waiting_for_body(self):
         out_stream = StringIO()
-        smart_protocol = protocol.SmartServerRequestProtocolOne(None,
-                out_stream.write)
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
         smart_protocol.has_dispatched = True
         smart_protocol.request = self.smart_server_request
         class FakeCommand(object):
@@ -1271,6 +1274,35 @@ class TestSmartProtocolOne(tests.TestCase):
         #   -- Andrew Bennetts, 2006-09-28
         smart_protocol.accept_bytes('')
         return smart_protocol
+
+    def assertServerToClientEncoding(self, expected_bytes, expected_tuple,
+            input_tuples):
+        """Assert that each input_tuple serialises as expected_bytes, and the
+        bytes deserialise as expected_tuple.
+        """
+        # check the encoding of the server for all input_tuples matches
+        # expected bytes
+        for input_tuple in input_tuples:
+            server_output = StringIO()
+            server_protocol = self.server_protocol_class(
+                None, server_output.write)
+            server_protocol._send_response(input_tuple)
+            self.assertEqual(expected_bytes, server_output.getvalue())
+        # check the decoding of the client smart_protocol from expected_bytes:
+        input = StringIO(expected_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('foo')
+        self.assertEqual(expected_tuple, smart_protocol.read_response_tuple())
+
+
+class TestSmartProtocolOne(TestSmartProtocol):
+    """Tests for the smart protocol version one."""
+
+    client_protocol_class = protocol.SmartClientRequestProtocolOne
+    server_protocol_class = protocol.SmartServerRequestProtocolOne
 
     def test_construct_version_one_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolOne(None, None)
@@ -1391,28 +1423,6 @@ class TestSmartProtocolOne(tests.TestCase):
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         self.assertEqual(2, smart_protocol.query_version())
 
-    def assertServerToClientEncoding(self, expected_bytes, expected_tuple,
-            input_tuples):
-        """Assert that each input_tuple serialises as expected_bytes, and the
-        bytes deserialise as expected_tuple.
-        """
-        # check the encoding of the server for all input_tuples matches
-        # expected bytes
-        for input_tuple in input_tuples:
-            server_output = StringIO()
-            server_protocol = protocol.SmartServerRequestProtocolOne(
-                None, server_output.write)
-            server_protocol._send_response(input_tuple)
-            self.assertEqual(expected_bytes, server_output.getvalue())
-        # check the decoding of the client smart_protocol from expected_bytes:
-        input = StringIO(expected_bytes)
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('foo')
-        self.assertEqual(expected_tuple, smart_protocol.read_response_tuple())
-
     def test_client_call_empty_response(self):
         # protocol.call() can get back an empty tuple as a response. This occurs
         # when the parsed line is an empty line, and results in a tuple with
@@ -1501,73 +1511,14 @@ class TestSmartProtocolOne(tests.TestCase):
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
 
-class TestSmartProtocolTwo(tests.TestCase):
+class TestSmartProtocolTwo(TestSmartProtocol):
     """Tests for the smart protocol version two.
-
-    Each test case gets a smart_server and smart_client created during setUp().
-
-    It is planned that the client can be called with self.call_client() giving
-    it an expected server response, which will be fed into it when it tries to
-    read. Likewise, self.call_server will call a servers method with a canned
-    serialised client request. Output done by the client or server for these
-    calls will be captured to self.to_server and self.to_client. Each element
-    in the list is a write call from the client or server respectively.
 
     This test case is mostly the same as TestSmartProtocolOne.
     """
 
-    def setUp(self):
-        super(TestSmartProtocolTwo, self).setUp()
-        # XXX: self.server_to_client doesn't seem to be used.  If so,
-        # InstrumentedServerProtocol is redundant too.
-        self.server_to_client = []
-        self.to_server = StringIO()
-        self.to_client = StringIO()
-        self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
-            self.to_server)
-        self.client_protocol = protocol.SmartClientRequestProtocolTwo(
-            self.client_medium)
-        self.smart_server = InstrumentedServerProtocol(self.server_to_client)
-        self.smart_server_request = request.SmartServerRequestHandler(
-            None, request.request_handlers)
-
-    def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
-        client):
-        """Check that smart (de)serialises offsets as expected.
-        
-        We check both serialisation and deserialisation at the same time
-        to ensure that the round tripping cannot skew: both directions should
-        be as expected.
-        
-        :param expected_offsets: a readv offset list.
-        :param expected_seralised: an expected serial form of the offsets.
-        """
-        # XXX: '_deserialise_offsets' should be a method of the
-        # SmartServerRequestProtocol in future.
-        readv_cmd = vfs.ReadvRequest(None)
-        offsets = readv_cmd._deserialise_offsets(expected_serialised)
-        self.assertEqual(expected_offsets, offsets)
-        serialised = client._serialise_offsets(offsets)
-        self.assertEqual(expected_serialised, serialised)
-
-    def build_protocol_waiting_for_body(self):
-        out_stream = StringIO()
-        smart_protocol = protocol.SmartServerRequestProtocolTwo(None,
-                out_stream.write)
-        smart_protocol.has_dispatched = True
-        smart_protocol.request = self.smart_server_request
-        class FakeCommand(object):
-            def do_body(cmd, body_bytes):
-                self.end_received = True
-                self.assertEqual('abcdefg', body_bytes)
-                return request.SmartServerResponse(('ok', ))
-        smart_protocol.request._command = FakeCommand()
-        # Call accept_bytes to make sure that internal state like _body_decoder
-        # is initialised.  This test should probably be given a clearer
-        # interface to work with that will not cause this inconsistency.
-        #   -- Andrew Bennetts, 2006-09-28
-        smart_protocol.accept_bytes('')
-        return smart_protocol
+    client_protocol_class = protocol.SmartClientRequestProtocolTwo
+    server_protocol_class = protocol.SmartServerRequestProtocolTwo
 
     def test_construct_version_two_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(None, None)
@@ -1689,35 +1640,13 @@ class TestSmartProtocolTwo(tests.TestCase):
         smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         self.assertEqual(2, smart_protocol.query_version())
 
-    def assertServerToClientEncoding(self, expected_bytes, expected_tuple,
-            input_tuples):
-        """Assert that each input_tuple serialises as expected_bytes, and the
-        bytes deserialise as expected_tuple.
-        """
-        # check the encoding of the server for all input_tuples matches
-        # expected bytes
-        for input_tuple in input_tuples:
-            server_output = StringIO()
-            server_protocol = protocol.SmartServerRequestProtocolTwo(
-                None, server_output.write)
-            server_protocol._send_response(input_tuple)
-            self.assertEqual(expected_bytes, server_output.getvalue())
-        # check the decoding of the client smart_protocol from expected_bytes:
-        input = StringIO(expected_bytes)
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        smart_protocol.call('foo')
-        self.assertEqual(expected_tuple, smart_protocol.read_response_tuple())
-
     def test_client_call_empty_response(self):
         # protocol.call() can get back an empty tuple as a response. This occurs
         # when the parsed line is an empty line, and results in a tuple with
         # one element - an empty string.
         self.assertServerToClientEncoding('2\n\n', ('', ), [(), ('', )])
 
-    def untest_client_call_three_element_response(self):
+    def test_client_call_three_element_response(self):
         # protocol.call() can get back tuples of other lengths. A three element
         # tuple should be unpacked as three strings.
         self.assertServerToClientEncoding('2\na\x01b\x0134\n', ('a', 'b', '34'),
