@@ -39,6 +39,7 @@ del scheme
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_INTERFACE = '0.0.0.0'
 BZR_DEFAULT_PORT = 4155
 
 

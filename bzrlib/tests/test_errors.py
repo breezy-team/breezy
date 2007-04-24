@@ -40,6 +40,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('File id {a_file_id} already exists in inventory'
                              ' as foo', str(error))
 
+    def test_duplicate_help_prefix(self):
+        error = errors.DuplicateHelpPrefix('foo')
+        self.assertEqualDiff('The prefix foo is in the help search path twice.',
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -89,6 +94,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
             "smart protocol.",
+            str(error))
+
+    def test_no_help_topic(self):
+        error = errors.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'bzr help topics' to obtain a list of topics.",
             str(error))
 
     def test_no_such_id(self):
@@ -232,6 +243,21 @@ class TestErrors(TestCaseWithTransport):
             'Unable to connect to ssh host ahost:444; my_error',
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
+
+    def test_malformed_bug_identifier(self):
+        """Test the formatting of MalformedBugIdentifier."""
+        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
+        self.assertEqual(
+            "Did not understand bug identifier bogus: reason for bogosity",
+            str(error))
+
+    def test_unknown_bug_tracker_abbreviation(self):
+        """Test the formatting of UnknownBugTrackerAbbreviation."""
+        branch = self.make_branch('some_branch')
+        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
+        self.assertEqual(
+            "Cannot find registered bug tracker called xxx on %s" % branch,
+            str(error))
 
     def test_unexpected_smart_server_response(self):
         e = errors.UnexpectedSmartServerResponse(('not yes',))

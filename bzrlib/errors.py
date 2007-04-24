@@ -223,6 +223,16 @@ class ReservedId(BzrError):
     def __init__(self, revision_id):
         self.revision_id = revision_id
 
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
+
 class NoSuchId(BzrError):
 
     _fmt = "The file id %(file_id)s is not present in the tree %(tree)s."
@@ -1530,6 +1540,14 @@ class DuplicateKey(BzrError):
     _fmt = "Key %(key)s is already present in map"
 
 
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+
 class MalformedTransform(BzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
@@ -2069,10 +2087,28 @@ class TagAlreadyExists(BzrError):
         self.tag_name = tag_name
 
 
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
 class UnexpectedSmartServerResponse(BzrError):
 
     _fmt = "Could not understand response from smart server: %(response_tuple)r"
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
-

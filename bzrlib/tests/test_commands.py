@@ -125,3 +125,12 @@ class TestSeeAlso(tests.TestCase):
             _see_also = ['foo', 'bar']
         command = ACommand()
         self.assertEqual(['bar', 'foo'], command.get_see_also())
+
+    def test_additional_terms(self):
+        """Additional terms can be supplied and are deduped and sorted."""
+        class ACommand(commands.Command):
+            _see_also = ['foo', 'bar']
+        command = ACommand()
+        self.assertEqual(['bar', 'foo', 'gam'],
+            command.get_see_also(['gam', 'bar', 'gam']))
+

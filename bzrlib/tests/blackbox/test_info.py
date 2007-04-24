@@ -1108,6 +1108,13 @@ Repository:
         :param repo_locked: If true, expect the repository to be locked.
         :param verbose: If true, expect verbose output
         """
+        if tree_locked and sys.platform == 'win32':
+            # We expect this to fail because of locking errors. (A write-locked
+            # file cannot be read-locked in the same process).
+            # This should be removed when the locking errors are fixed.
+            args = command_string.split(' ')
+            self.run_bzr_error([], 'info', *args)
+            return
         out, err = self.runbzr('info %s' % command_string)
         if repo_locked or branch_locked or tree_locked:
             def locked_message(a_bool):
@@ -1284,6 +1291,10 @@ Repository:
         finally:
             lco_tree.branch.repository.lock_write()
             lco_tree.branch.unlock()
+
+        if sys.platform == 'win32':
+            self.knownFailure('Win32 cannot run "bzr info"'
+                              ' when the tree is locked.')
 
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":

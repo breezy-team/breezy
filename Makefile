@@ -17,12 +17,15 @@
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
 
-.PHONY: all clean pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs
 
+all: extensions
 
-all:
+extensions:
+	@echo "building extension modules."
+	./setup.py build_ext -i
 
-check:
+check: extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)

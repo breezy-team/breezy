@@ -31,6 +31,7 @@ import time
 import bzrlib
 from bzrlib import (
     branch,
+    bugtracker,
     bundle,
     bzrdir,
     delta,
@@ -59,7 +60,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -2087,7 +2088,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
-    _see_also = ['uncommit']
+    _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = ['message', 'verbose', 
                      Option('unchanged',
@@ -2099,6 +2100,9 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     ListOption('fixes', type=str,
+                                help="mark a bug as being fixed by this "
+                                     "revision."),
                      Option('local',
                             help="perform a local only commit in a bound "
                                  "branch. Such commits are not pushed to "
@@ -2108,8 +2112,30 @@ class cmd_commit(Command):
                      ]
     aliases = ['ci', 'checkin']
 
+    def _get_bug_fix_properties(self, fixes, branch):
+        properties = []
+        # Configure the properties for bug fixing attributes.
+        for fixed_bug in fixes:
+            tokens = fixed_bug.split(':')
+            if len(tokens) != 2:
+                raise errors.BzrCommandError(
+                    "Invalid bug %s. Must be in the form of 'tag:id'. "
+                    "Commit refused." % fixed_bug)
+            tag, bug_id = tokens
+            try:
+                bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
+            except errors.UnknownBugTrackerAbbreviation:
+                raise errors.BzrCommandError(
+                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
+            except errors.MalformedBugIdentifier:
+                raise errors.BzrCommandError(
+                    "Invalid bug identifier for %s. Commit refused."
+                    % fixed_bug)
+            properties.append('%s fixed' % bug_url)
+        return '\n'.join(properties)
+
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False):
+            unchanged=False, strict=False, local=False, fixes=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2121,12 +2147,17 @@ class cmd_commit(Command):
 
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
+
+        properties = {}
+
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
+
+        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -2149,7 +2180,7 @@ class cmd_commit(Command):
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
-        
+
         if verbose:
             reporter = ReportCommitToLog()
         else:
@@ -2159,7 +2190,7 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter)
+                        reporter=reporter, revprops=properties)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -2295,7 +2326,7 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but not
+    This creates temporary test directories in the working directory, but no
     existing data is affected.  These directories are deleted if the tests
     pass, or left behind to help in debugging if they fail and --keep-output
     is specified.
@@ -2307,6 +2338,21 @@ class cmd_selftest(Command):
     Alternatively if --first is given, matching tests are run first and then
     all other tests are run.  This is useful if you have been working in a
     particular area, but want to make sure nothing else was broken.
+
+    If --exclude is given, tests that match that regular expression are
+    excluded, regardless of whether they match --first or not.
+
+    To help catch accidential dependencies between tests, the --randomize
+    option is useful. In most cases, the argument used is the word 'now'.
+    Note that the seed used for the random number generator is displayed
+    when this option is used. The seed can be explicitly passed as the
+    argument to this option if required. This enables reproduction of the
+    actual ordering used if and when an order sensitive problem is encountered.
+
+    If --list-only is given, the tests that would be run are listed. This is
+    useful when combined with --first, --exclude and/or --randomize to
+    understand their impact. The test harness reports "Listed nn tests in ..."
+    instead of "Ran nn tests in ..." when list mode is enabled.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
@@ -2326,8 +2372,6 @@ class cmd_selftest(Command):
     of running tests to create such subdirectories. This is default behavior
     on Windows because of path length limitation.
     """
-    # TODO: --list should give a list of all available tests
-
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
     def get_transport_type(typestring):
@@ -2374,13 +2418,23 @@ class cmd_selftest(Command):
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
+                     Option('list-only',
+                            help='list the tests instead of running them'),
+                     Option('randomize', type=str, argname="SEED",
+                            help='randomize the order of tests using the given'
+                                 ' seed or "now" for the current time'),
+                     Option('exclude', type=str, argname="PATTERN",
+                            short_name='x',
+                            help='exclude tests that match this regular'
+                                 ' expression'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None):
+            first=False, numbered_dirs=None, list_only=False,
+            randomize=None, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2425,6 +2479,9 @@ class cmd_selftest(Command):
                               bench_history=benchfile,
                               matching_tests_first=first,
                               numbered_dirs=numbered_dirs,
+                              list_only=list_only,
+                              random_seed=randomize,
+                              exclude_pattern=exclude
                               )
         finally:
             if benchfile is not None:
@@ -3291,7 +3348,7 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT
+        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3304,14 +3361,12 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
+            host = BZR_DEFAULT_INTERFACE
             if port is None:
                 port = BZR_DEFAULT_PORT
-                host = '127.0.0.1'
             else:
                 if ':' in port:
                     host, port = port.split(':')
-                else:
-                    host = '127.0.0.1'
                 port = int(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port

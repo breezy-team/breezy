@@ -73,7 +73,7 @@ Command overview
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            usage = bzrlib.help.command_usage(cmd_object)
+            usage = cmd_object._usage()
             tmp = '**%s**\n\t%s\n\n' % (usage, firstline)
             output = output + tmp
         else:
@@ -97,7 +97,7 @@ Command reference
 
 def format_command (params, cmd, name):
     """Provides long help for each public command"""
-    usage = bzrlib.help.command_usage(cmd)
+    usage = cmd._usage()
     subsection_header = """
 %s
 %s

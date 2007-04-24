@@ -179,6 +179,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         bzrdir.destroy_workingtree_metadata()
         self.failUnlessExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+
+    def test_open_workingtree_raises_no_working_tree(self):
+        """BzrDir.open_workingtree() should raise NoWorkingTree (rather than
+        e.g. NotLocalUrl) if there is no working tree.
+        """
+        dir = self.make_bzrdir('source')
+        vfs_dir = bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
+        if vfs_dir.has_workingtree():
+            # This BzrDir format doesn't support BzrDirs without working trees,
+            # so this test is irrelevant.
+            return
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
             
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
@@ -553,9 +565,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         target.open_branch()
         try:
             target.open_workingtree()
-        except errors.NotLocalUrl:
-            # bzrdir's that test against non-local urls are allowed to pass:
-            # whitelist them for now
+        except errors.NoWorkingTree:
+            # bzrdir's that never have working trees are allowed to pass;
+            # whitelist them for now.
             self.assertIsInstance(target, RemoteBzrDir)
 
     def test_sprout_bzrdir_empty_under_shared_repo_force_new(self):

@@ -14,23 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Blackbox tests for -D debug options"""
-
 import os
 import signal
-import subprocess
-import sys
-import time
 
-from bzrlib.tests import TestCase, TestSkipped
+def _debug(signal_number, interrupted_frame):
+    import pdb
+    import sys
+    sys.stderr.write("** SIGQUIT received, entering debugger\n"
+            "** Type 'c' to continue or 'q' to stop the process\n"
+            "** Or SIGQUIT again to quit (and possibly dump core)\n"
+            )
+    # restore default meaning so that you can kill the process by hitting it
+    # twice
+    signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+    try:
+        pdb.set_trace()
+    finally:
+        signal.signal(signal.SIGQUIT, _debug)
 
-class TestDebugOption(TestCase):
 
-    def test_dash_derror(self):
-        """With -Derror, tracebacks are shown even for user errors"""
-        out, err = self.run_bzr("-Derror", "branch", "nonexistent-location",
-                retcode=3)
-        # error output should contain a traceback; we used to look for code in
-        # here but it may be missing if the source is not in sync with the
-        # pyc file.
-        self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
+def hook_sigquit():
+    # when sigquit (C-\) is received go into pdb
+    # XXX: is this meaningful on Windows?
+    if os.environ.get('BZR_SIGQUIT_PDB', '1') == '0':
+        return
+    signal.signal(signal.SIGQUIT, _debug)

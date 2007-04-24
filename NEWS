@@ -5,6 +5,30 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * Sending the SIGQUIT signal to bzr, which can be done on Unix by
+      pressing Control-Backslash, drops bzr into a debugger.  Type `c`
+      to continue.  This can be disabled by setting the environment variable
+      BZR_SIGQUIT_PDB=0.  (Martin Pool)
+
+    * selftest now supports --list-only to list tests instead of running
+      them. (Ian Clatworthy)
+
+    * selftest now supports --exclude PATTERN (or -x PATTERN) to exclude
+      tests with names that match that regular expression.
+      (Ian Clatworthy, #102679)
+
+    * selftest now supports --randomize SEED to run tests in a random order.
+      SEED is typically the value 'now' meaning 'use the current time'.
+      (Ian Clatworthy, #102686)
+
+    * New option ``--fixes`` to commit, which stores bug fixing annotations as
+      revision properties. Built-in support for Launchpad, Debian, Trac and
+      Bugzilla bug trackers. (Jonathan Lange, James Henstridge, Robert Collins)
+
+    * New API, ``bzrlib.bugtracker.tracker_registry``, for adding support for
+      other bug trackers to ``fixes``. (Jonathan Lange, James Henstridge,
+      Robert Collins)
+
     * ``selftest`` has new short options ``-f`` and ``-1``.  (Martin
       Pool)
 
@@ -24,6 +48,29 @@ IN DEVELOPMENT
     * Tags are now included in logs, that use the long log formatter. 
       (Erik Bågfors, Alexander Belchenko)
 
+    * ``bzr help`` provides a clearer message when a help topic cannot be
+      found (fixes bug 107656). (Robert Collins)
+
+    * ``bzr help`` now accepts optional prefixes for command help. The help
+      for all commands can now be found at ``bzr help commands/COMMANDNAME``
+      as well as ``bzr help COMMANDNAME`` (which only works for commands 
+      where the name is not the same as a more general help topic). 
+      (Robert Collins)
+
+    * ``bzr help PLUGINNAME`` will now return the module docstring from the
+      plugin PLUGINNAME fixing bug 50408. (Robert Collins)
+
+    * New help topic ``urlspec`` which lists the availables transports.
+      (Goffredo Baroncelli)
+
+    * doc/server.txt updated to document the default bzr:// port (fixes
+      #107125) and also update the blurb about the hpss' current status.
+      (Robert Collins).
+
+    * ``bzr serve`` now listens on interface 0.0.0.0 by default, making it
+      serve out to the local LAN (and anyone in the world that can reach the
+      machine running ``bzr serve``. (Robert Collins, #98918)
+
     * digest authentication is now supported for proxies and HTTP by the urllib
       based http implementation. Tested against Apache 2.0.55 and Squid
       2.6.5. Basic and digest authentication are handled coherently for HTTP
@@ -34,6 +81,7 @@ IN DEVELOPMENT
       roundtrips are avoided by preventively setting the right authentication
       header(s).
       (Vincent Ladeuil).
+
 
   INTERNALS:
 
@@ -106,6 +154,12 @@ IN DEVELOPMENT
 
     * Command objects can now declare related help topics by having _see_also
       set to a list of related topic. (Robert Collins)
+
+    * ``bzrlib.help`` now delegates to the Command class for Command specific
+      help. (Robert Collins)
+
+    * New class 'TransportListRegistry', derived from the Registry class, which 
+      simplifies tracking the available Transports. (Goffredo Baroncelli)
 
   BUGFIXES:
 
@@ -186,6 +240,10 @@ IN DEVELOPMENT
       of this many tests were adjusted to remove dependencies on local disk
       access.
       (Robert Collins, Andrew Bennetts)
+
+    * Mark bzrlib.tests and bzrlib.tests.TestUtil as providing assertFOO helper
+      functions by adding a __unittest global attribute. (Robert Collins,
+      Andrew Bennetts, Martin Pool, Jonathan Lange)
 
     * Refactored proxy and authentication handling to simplify the
       implementation of new auth schemes for both http and proxy.

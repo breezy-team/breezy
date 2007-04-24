@@ -27,9 +27,11 @@ from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
 
+
 def parse(options, args):
     parser = option.get_optparser(dict((o.name, o) for o in options))
     return parser.parse_args(args)
+
 
 class OptionTests(TestCase):
     """Command-line option tests"""
@@ -38,16 +40,14 @@ class OptionTests(TestCase):
         """Option parser"""
         eq = self.assertEquals
         eq(parse_args(cmd_commit(), ['--help']),
-           ([], {'help': True}))
+           ([], {'fixes': [], 'help': True}))
         eq(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'message': 'biter'}))
-        ## eq(parse_args(cmd_log(),  '-r 500'.split()),
-        ##   ([], {'revision': RevisionSpec_int(500)}))
+           ([], {'fixes': [], 'message': 'biter'}))
 
     def test_no_more_opts(self):
         """Terminated options"""
         self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {}))
+                          (['-file-with-dashes'], {'fixes': []}))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -112,7 +112,8 @@ class OptionTests(TestCase):
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
-        self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
+        self.assertEqual(
+            (['-'], {'fixes': []}), parse_args(cmd_commit(), ['-']))
 
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
@@ -231,11 +232,38 @@ class OptionTests(TestCase):
                           ('two', None, None, 'two help'),
                           ])
 
-#     >>> parse_args('log -r 500'.split())
-#     (['log'], {'revision': [<RevisionSpec_int 500>]})
-#     >>> parse_args('log -r500..600'.split())
-#     (['log'], {'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-#     >>> parse_args('log -vr500..600'.split())
-#     (['log'], {'verbose': True, 'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-#     >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
-#     (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
+
+class TestListOptions(TestCase):
+    """Tests for ListOption, used to specify lists on the command-line."""
+
+    def parse(self, options, args):
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        return parser.parse_args(args)
+
+    def test_list_option(self):
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(options, ['--hello=world', '--hello=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.hello)
+
+    def test_list_option_no_arguments(self):
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(options, [])
+        self.assertEqual([], opts.hello)
+
+    def test_list_option_with_int_type(self):
+        options = [option.ListOption('hello', type=int)]
+        opts, args = self.parse(options, ['--hello=2', '--hello=3'])
+        self.assertEqual([2, 3], opts.hello)
+
+    def test_list_option_with_int_type_can_be_reset(self):
+        options = [option.ListOption('hello', type=int)]
+        opts, args = self.parse(options, ['--hello=2', '--hello=3',
+                                          '--hello=-', '--hello=5'])
+        self.assertEqual([5], opts.hello)
+
+    def test_list_option_can_be_reset(self):
+        """Passing an option of '-' to a list option should reset the list."""
+        options = [option.ListOption('hello', type=str)]
+        opts, args = self.parse(
+            options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
+        self.assertEqual(['c'], opts.hello)
