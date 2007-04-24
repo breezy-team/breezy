@@ -746,9 +746,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_socket_stream_error_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -780,6 +777,62 @@ class TestSmartServerStreamMedium(tests.TestCase):
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
         server_sock.close()
         self.assertEqual('', client_sock.recv(1))
+
+    def build_protocol_pipe_like(self, bytes):
+        to_server = StringIO(bytes)
+        from_server = StringIO()
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
+        return server._build_protocol()
+
+    def build_protocol_socket(self, bytes):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(
+            server_sock, None)
+        client_sock.sendall(bytes)
+        client_sock.close()
+        return server._build_protocol()
+
+    def assertProtocolOne(self, server_protocol):
+        # Use assertIs because assertIsInstance will wrongly pass
+        # SmartServerRequestProtocolTwo (because it subclasses
+        # SmartServerRequestProtocolOne).
+        self.assertIs(
+            type(server_protocol), protocol.SmartServerRequestProtocolOne)
+
+    def assertProtocolTwo(self, server_protocol):
+        self.assertIsInstance(
+            server_protocol, protocol.SmartServerRequestProtocolTwo)
+
+    def test_pipe_like_build_protocol_empty_bytes(self):
+        # Any empty request (i.e. no bytes) is detected as protocol version one.
+        server_protocol = self.build_protocol_pipe_like('')
+        self.assertProtocolOne(server_protocol)
+        
+    def test_socket_like_build_protocol_empty_bytes(self):
+        # Any empty request (i.e. no bytes) is detected as protocol version one.
+        server_protocol = self.build_protocol_socket('')
+        self.assertProtocolOne(server_protocol)
+
+    def test_pipe_like_build_protocol_non_two(self):
+        # A request that doesn't start with "2\x01" is version one.
+        server_protocol = self.build_protocol_pipe_like('2-')
+        self.assertProtocolOne(server_protocol)
+
+    def test_socket_build_protocol_non_two(self):
+        # A request that doesn't start with "2\x01" is version one.
+        server_protocol = self.build_protocol_socket('2-')
+        self.assertProtocolOne(server_protocol)
+
+    def test_pipe_like_build_protocol_two(self):
+        # A request that starts with "2\x01" is version two.
+        server_protocol = self.build_protocol_pipe_like('2\x01')
+        self.assertProtocolTwo(server_protocol)
+
+    def test_socket_build_protocol_two(self):
+        # A request that starts with "2\x01" is version two.
+        server_protocol = self.build_protocol_socket('2\x01')
+        self.assertProtocolTwo(server_protocol)
         
 
 class TestSmartTCPServer(tests.TestCase):

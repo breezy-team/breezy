@@ -28,7 +28,10 @@ import os
 import socket
 import sys
 from bzrlib import errors
-from bzrlib.smart.protocol import SmartServerRequestProtocolOne
+from bzrlib.smart.protocol import (
+    SmartServerRequestProtocolOne,
+    SmartServerRequestProtocolTwo,
+    )
 
 try:
     from bzrlib.transport import ssh
@@ -66,12 +69,23 @@ class SmartServerStreamMedium(object):
         from sys import stderr
         try:
             while not self.finished:
-                protocol = SmartServerRequestProtocolOne(self.backing_transport,
-                                                         self._write_out)
+                protocol = self._build_protocol()
                 self._serve_one_request(protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+
+    def _build_protocol(self):
+        # Identify the protocol version.
+        bytes = self._get_bytes(2)
+        if bytes.startswith('2\x01'):
+            protocol_class = SmartServerRequestProtocolTwo
+            bytes = bytes[2:]
+        else:
+            protocol_class = SmartServerRequestProtocolOne
+        protocol = protocol_class(self.backing_transport, self._write_out)
+        protocol.accept_bytes(bytes)
+        return protocol
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -88,6 +102,13 @@ class SmartServerStreamMedium(object):
     def terminate_due_to_error(self):
         """Called when an unhandled exception from the protocol occurs."""
         raise NotImplementedError(self.terminate_due_to_error)
+
+    def _get_bytes(self, desired_count):
+        """Get some bytes from the medium.
+
+        :param desired_count: number of bytes we want to read.
+        """
+        raise NotImplementedError(self._get_bytes)
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
@@ -109,13 +130,18 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                 protocol.accept_bytes(self.push_back)
                 self.push_back = ''
             else:
-                bytes = self.socket.recv(4096)
+                bytes = self._get_bytes(4096)
                 if bytes == '':
                     self.finished = True
                     return
                 protocol.accept_bytes(bytes)
         
         self.push_back = protocol.excess_buffer
+
+    def _get_bytes(self, desired_count):
+        # We ignore the desired_count because on sockets it's more efficient to
+        # read 4k at a time.
+        return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
         """Called when an unhandled exception from the protocol occurs."""
@@ -155,13 +181,16 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 # Finished serving this request.
                 self._out.flush()
                 return
-            bytes = self._in.read(bytes_to_read)
+            bytes = self._get_bytes(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def _get_bytes(self, desired_count):
+        return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
