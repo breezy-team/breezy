@@ -34,6 +34,7 @@ import errno
 import logging
 import os
 from pprint import pformat
+import random
 import re
 import shlex
 import stat
@@ -501,6 +502,7 @@ class TextTestRunner(object):
                  keep_output=False,
                  bench_history=None,
                  use_numbered_dirs=False,
+                 list_only=False
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
@@ -508,6 +510,7 @@ class TextTestRunner(object):
         self.keep_output = keep_output
         self._bench_history = bench_history
         self.use_numbered_dirs = use_numbered_dirs
+        self.list_only = list_only
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -525,14 +528,24 @@ class TextTestRunner(object):
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
-        test.run(result)
+        if self.list_only:
+            if self.verbosity >= 2:
+                self.stream.writeln("Listing tests only ...\n")
+            run = 0
+            for t in iter_suite_tests(test):
+                self.stream.writeln("%s" % (t.id()))
+                run += 1
+            actionTaken = "Listed"
+        else: 
+            test.run(result)
+            run = result.testsRun
+            actionTaken = "Ran"
         stopTime = time.time()
         timeTaken = stopTime - startTime
         result.printErrors()
         self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+                            run, run != 1 and "s" or "", timeTaken))
         self.stream.writeln()
         if not result.wasSuccessful():
             self.stream.write("FAILED (")
@@ -2053,24 +2066,50 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern):
-    result = TestUtil.TestSuite()
-    filter_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            result.addTest(test)
-    return result
+def filter_suite_by_re(suite, pattern, exclude_pattern=None,
+                       random_order=False):
+    """Create a test suite by filtering another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :returns: the newly created suite
+    """ 
+    return sort_suite_by_re(suite, pattern, exclude_pattern,
+        random_order, False)
 
 
-def sort_suite_by_re(suite, pattern):
+def sort_suite_by_re(suite, pattern, exclude_pattern=None,
+                     random_order=False, append_rest=True):
+    """Create a test suite by sorting another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match in order to go
+                            first in the new suite
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :param append_rest:     if False, pattern is a strict filter and not
+                            just an ordering directive
+    :returns: the newly created suite
+    """ 
     first = []
     second = []
     filter_re = re.compile(pattern)
+    if exclude_pattern is not None:
+        exclude_re = re.compile(exclude_pattern)
     for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            first.append(test)
-        else:
-            second.append(test)
+        test_id = test.id()
+        if exclude_pattern is None or not exclude_re.search(test_id):
+            if filter_re.search(test_id):
+                first.append(test)
+            elif append_rest:
+                second.append(test)
+    if random_order:
+        random.shuffle(first)
+        random.shuffle(second)
     return TestUtil.TestSuite(first + second)
 
 
@@ -2078,7 +2117,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
-              numbered_dirs=None):
+              numbered_dirs=None,
+              list_only=False,
+              random_seed=None,
+              exclude_pattern=None,
+              ):
     use_numbered_dirs = bool(numbered_dirs)
 
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
@@ -2094,13 +2137,33 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             keep_output=keep_output,
                             bench_history=bench_history,
                             use_numbered_dirs=use_numbered_dirs,
+                            list_only=list_only,
                             )
     runner.stop_on_failure=stop_on_failure
-    if pattern != '.*':
-        if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern)
+    # Initialise the random number generator and display the seed used.
+    # We convert the seed to a long to make it reuseable across invocations.
+    random_order = False
+    if random_seed is not None:
+        random_order = True
+        if random_seed == "now":
+            random_seed = long(time.time())
         else:
-            suite = filter_suite_by_re(suite, pattern)
+            # Convert the seed to a long if we can
+            try:
+                random_seed = long(random_seed)
+            except:
+                pass
+        runner.stream.writeln("Randomizing test order using seed %s\n" %
+            (random_seed))
+        random.seed(random_seed)
+    # Customise the list of tests if requested
+    if pattern != '.*' or exclude_pattern is not None or random_order:
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
+        else:
+            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -2112,7 +2175,10 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None,
              matching_tests_first=None,
-             numbered_dirs=None):
+             numbered_dirs=None,
+             list_only=False,
+             random_seed=None,
+             exclude_pattern=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2136,7 +2202,10 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
                      matching_tests_first=matching_tests_first,
-                     numbered_dirs=numbered_dirs)
+                     numbered_dirs=numbered_dirs,
+                     list_only=list_only,
+                     random_seed=random_seed,
+                     exclude_pattern=exclude_pattern)
     finally:
         default_transport = old_transport
 

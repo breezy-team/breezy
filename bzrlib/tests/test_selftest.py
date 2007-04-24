@@ -47,9 +47,14 @@ from bzrlib.tests import (
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
+                          TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
                           clean_selftest_output,
+                          iter_suite_tests,
+                          filter_suite_by_re,
+                          sort_suite_by_re,
+                          test_suite
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -1506,3 +1511,27 @@ class TestUnavailableFeature(TestCase):
         feature = Feature()
         exception = UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+class TestSelftestFiltering(TestCase):
+
+    def setUp(self):
+        self.suite = TestUtil.TestSuite()
+        self.loader = TestUtil.TestLoader()
+        self.suite.addTest(self.loader.loadTestsFromModuleNames([
+            'bzrlib.tests.test_selftest']))
+        self.all_names = [t.id() for t in iter_suite_tests(self.suite)]
+
+    def test_filter_suite_by_re(self):
+        filtered_suite = filter_suite_by_re(self.suite, 'test_filter')
+        filtered_names = [t.id() for t in iter_suite_tests(filtered_suite)]
+        self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
+            'TestSelftestFiltering.test_filter_suite_by_re'])
+            
+    def test_sort_suite_by_re(self):
+        sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
+        sorted_names = [t.id() for t in iter_suite_tests(sorted_suite)]
+        self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
+            'TestSelftestFiltering.test_filter_suite_by_re')
+        self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+
