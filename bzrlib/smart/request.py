@@ -203,7 +203,7 @@ class HelloRequest(SmartServerRequest):
     """Answer a version request with my version."""
 
     def do(self):
-        return SmartServerResponse(('ok', '1'))
+        return SmartServerResponse(('ok', '2'))
 
 
 class GetBundleRequest(SmartServerRequest):
