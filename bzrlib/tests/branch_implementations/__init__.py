@@ -76,9 +76,11 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
             }
 
         Or in ASCII:
-            1 - 2 - 3
-              \    /
-               1.1.1
+            1
+            |\
+            2 1.1.1
+            |/
+            3
         """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
