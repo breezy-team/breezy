@@ -35,6 +35,7 @@ from bzrlib.smart import (
         medium,
         protocol,
         request,
+        request as _mod_request,
         server,
         vfs,
 )
@@ -1378,7 +1379,8 @@ class TestSmartProtocolOne(tests.TestCase):
         smart_protocol = protocol.SmartServerRequestProtocolOne(
             None, lambda x: None)
         self.assertEqual(1, smart_protocol.next_read_size())
-        smart_protocol._send_response(('x',))
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
 
     def test_query_version(self):
@@ -1409,7 +1411,8 @@ class TestSmartProtocolOne(tests.TestCase):
             server_output = StringIO()
             server_protocol = protocol.SmartServerRequestProtocolOne(
                 None, server_output.write)
-            server_protocol._send_response(input_tuple)
+            server_protocol._send_response(
+                _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
         # check the decoding of the client smart_protocol from expected_bytes:
         input = StringIO(expected_bytes)
@@ -1676,7 +1679,8 @@ class TestSmartProtocolTwo(tests.TestCase):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, lambda x: None)
         self.assertEqual(1, smart_protocol.next_read_size())
-        smart_protocol._send_response(('x',))
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
 
     def test_query_version(self):
@@ -1707,7 +1711,8 @@ class TestSmartProtocolTwo(tests.TestCase):
             server_output = StringIO()
             server_protocol = protocol.SmartServerRequestProtocolTwo(
                 None, server_output.write)
-            server_protocol._send_response(input_tuple)
+            server_protocol._send_response(
+                _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
         # check the decoding of the client smart_protocol from expected_bytes:
         input = StringIO(expected_bytes)

@@ -96,13 +96,13 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     # trivial request
                     self.excess_buffer = self.in_buffer
                     self.in_buffer = ''
-                    self._send_response(self.request.response.args,
-                        self.request.response.body)
+                    self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
-                self._send_response(('error', str(exception)))
+                self._send_response(request.FailedSmartServerResponse(
+                    ('error', str(exception))))
                 return
 
         if self.has_dispatched:
@@ -123,17 +123,18 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 assert self.request.finished_reading, \
                     "no more body, request not finished"
             if self.request.response is not None:
-                self._send_response(self.request.response.args,
-                    self.request.response.body)
+                self._send_response(self.request.response)
                 self.excess_buffer = self.in_buffer
                 self.in_buffer = ''
             else:
                 assert not self.request.finished_reading, \
                     "no response and we have finished reading."
 
-    def _send_response(self, args, body=None):
+    def _send_response(self, response):
         """Send a smart server response down the output stream."""
         assert not self._finished, 'response already sent'
+        args = response.args
+        body = response.body
         self._finished = True
         self._write_protocol_version()
         self._write_func(_encode_tuple(args))
