@@ -2243,9 +2243,8 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # server doesn't support our required version (2).
             request = client.get_request()
             smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-            smart_protocol.call('hello')
-            server_version = smart_protocol.read_response_tuple(expect_body=False)
-            if server_version != '2':
+            server_version = smart_protocol.query_version()
+            if server_version != 2:
                 raise errors.NotBranchError(path=transport.base)
             return klass()
 

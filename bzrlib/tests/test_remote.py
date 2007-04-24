@@ -37,7 +37,7 @@ from bzrlib.remote import (
     RemoteRepository,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import server
+from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.transport.memory import MemoryTransport
 
@@ -202,6 +202,38 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.check_open_repository(False, True)
         self.check_open_repository(True, False)
         self.check_open_repository(False, False)
+
+    def test_old_server(self):
+        """RemoteBzrDirFormat should fail to probe if the server version is too
+        old.
+        """
+        self.assertRaises(errors.NotBranchError,
+            RemoteBzrDirFormat.probe_transport, OldServerTransport())
+
+
+class OldSmartClient(object):
+    """A fake smart client for test_old_version that just returns a version one
+    response to the 'hello' (query version) command.
+    """
+
+    def get_request(self):
+        input_file = StringIO('ok\x011\n')
+        output_file = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            input_file, output_file)
+        return medium.SmartClientStreamMediumRequest(client_medium)
+
+
+class OldServerTransport(object):
+    """A fake transport for test_old_server that reports it's smart server
+    protocol version as version one.
+    """
+
+    def __init__(self):
+        self.base = 'fake:'
+
+    def get_smart_client(self):
+        return OldSmartClient()
 
 
 class TestBranchLastRevisionInfo(tests.TestCase):
