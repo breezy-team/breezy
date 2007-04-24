@@ -204,7 +204,7 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('error\x01incomplete request\n', response)
 
     def test_protocol_version_detection_one(self):
-        # SmartWSGIApp detects requests that don't start with '2\x01' as version
+        # SmartWSGIApp detects requests that don't start with '2\n' as version
         # one.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
@@ -222,10 +222,10 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('ok\x012\n', response)
 
     def test_protocol_version_detection_two(self):
-        # SmartWSGIApp detects requests that start with '2\x01' as version two.
+        # SmartWSGIApp detects requests that start with '2\n' as version two.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        fake_input = StringIO('2\x01hello\n')
+        fake_input = StringIO('2\nhello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -236,7 +236,7 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 2-encoded response.
-        self.assertEqual('2\x01ok\x012\n', response)
+        self.assertEqual('2\nok\x012\n', response)
 
 
 class FakeRequest(object):

@@ -79,7 +79,7 @@ class SmartServerStreamMedium(object):
     def _build_protocol(self):
         # Identify the protocol version.
         bytes = self._get_bytes(2)
-        if bytes.startswith('2\x01'):
+        if bytes.startswith('2\n'):
             protocol_class = SmartServerRequestProtocolTwo
             bytes = bytes[2:]
         else:

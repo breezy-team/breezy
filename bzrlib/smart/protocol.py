@@ -160,15 +160,15 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
     r"""Version two of the server side of the smart protocol.
    
-    This prefixes responses with the protocol version: "2\x01".
+    This prefixes responses with the protocol version: "2\n".
     """
 
     def _write_protocol_version(self):
         r"""Write any prefixes this protocol requires.
         
-        Version two sends "2\x01".
+        Version two sends "2\n".
         """
-        self._write_func('2\x01')
+        self._write_func('2\n')
 
 
 class LengthPrefixedBodyDecoder(object):
@@ -374,10 +374,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     r"""Version two of the client side of the smart protocol.
     
-    This prefixes the request with the protocol version: "2\x01".
+    This prefixes the request with the protocol version: "2\n".
     """
 
-    _version_string = '2\x01'
+    _version_string = '2\n'
 
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire.
@@ -392,7 +392,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     def _write_protocol_version(self):
         r"""Write any prefixes this protocol requires.
         
-        Version two sends "2\x01".
+        Version two sends "2\n".
         """
         self._request.accept_bytes(SmartClientRequestProtocolTwo._version_string)
 
