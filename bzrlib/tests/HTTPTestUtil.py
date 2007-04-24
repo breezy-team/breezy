@@ -350,8 +350,8 @@ class BasicAuthRequestHandler(AuthRequestHandler):
                          'Basic realm="%s"' % tcs.auth_realm)
 
 
-# FIXME: We should send an Authentication-Info header too when
-# the autheticaion is succesful
+# FIXME: We could send an Authentication-Info header too when
+# the authentication is succesful
 
 class DigestAuthRequestHandler(AuthRequestHandler):
     """Implements the digest authentication of a request.
@@ -421,6 +421,11 @@ class AuthServer(HttpServer):
         return expected_password is not None and password == expected_password
 
 
+# FIXME: There is some code duplication with
+# _urllib2_wrappers.py.DigestAuthHandler. If that duplciation
+# grows, it may require a refactoring. Also, we don't implement
+# SHA algorithm nor MD5-sess here, but that does not seem worth
+# it.
 class DigestAuthServer(AuthServer):
     """A digest authentication server"""
 

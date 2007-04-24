@@ -246,9 +246,8 @@ IN DEVELOPMENT
       Andrew Bennetts, Martin Pool, Jonathan Lange)
 
     * Refactored proxy and authentication handling to simplify the
-      implementation of new auth schemes for both http and proxy.
-      (vincent Ladeuil)
-
+      implementation of new auth schemes for both http and proxy. 
+      (Vincent Ladeuil)
 
 bzr 0.15 2007-04-01
 
