@@ -34,37 +34,3 @@ class TestDebugOption(TestCase):
         # here but it may be missing if the source is not in sync with the
         # pyc file.
         self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
-
-class TestBreakin(TestCase):
-
-    def test_breakin(self):
-        # Break in to a debugger while bzr is running
-        # we need to test against a command that will wait for 
-        # a while -- bzr serve should do
-        #
-        # this may not work on windows but i don't think this use of signals
-        # will work there
-        if sys.platform == 'win32':
-            raise TestSkipped('breakin signal not tested on win32')
-        proc = self.start_bzr_subprocess(['serve'])
-        # wait for it to get started
-        time.sleep(.5)
-        # first sigquit pops into debugger
-        os.kill(proc.pid, signal.SIGQUIT)
-        proc.stdin.write("q\n")
-        time.sleep(.5)
-        err = proc.stderr.readline()
-        self.assertContainsRe(err, r'entering debugger')
-
-    def test_breakin_harder(self):
-        if sys.platform == 'win32':
-            raise TestSkipped('breakin signal not tested on win32')
-        proc = self.start_bzr_subprocess(['serve'])
-        # wait for it to get started
-        time.sleep(.5)
-        # another hit gives the default behaviour of terminating it
-        os.kill(proc.pid, signal.SIGQUIT)
-        # wait for it to go into pdb
-        time.sleep(.5)
-        os.kill(proc.pid, signal.SIGQUIT)
-        proc.wait()

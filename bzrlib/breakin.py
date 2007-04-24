@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 import signal
 
 def _debug(signal_number, interrupted_frame):
@@ -23,12 +24,18 @@ def _debug(signal_number, interrupted_frame):
             "** Type 'c' to continue or 'q' to stop the process\n"
             "** Or SIGQUIT again to quit (and possibly dump core)\n"
             )
+    # restore default meaning so that you can kill the process by hitting it
+    # twice
     signal.signal(signal.SIGQUIT, signal.SIG_DFL)
-    pdb.set_trace()
-    signal.signal(signal.SIGQUIT, _debug)
+    try:
+        pdb.set_trace()
+    finally:
+        signal.signal(signal.SIGQUIT, _debug)
 
 
 def hook_sigquit():
     # when sigquit (C-\) is received go into pdb
     # XXX: is this meaningful on Windows?
+    if os.environ.get('BZR_SIGQUIT_PDB', '1') == '0':
+        return
     signal.signal(signal.SIGQUIT, _debug)

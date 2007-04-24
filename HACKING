@@ -481,7 +481,7 @@ Debugging
 Bazaar has a few facilities to help debug problems by going into pdb_, the
 Python debugger.
 
-http://docs.python.org/lib/debugger-commands.html
+.. _pdb: http://docs.python.org/lib/debugger-commands.html
 
 If the ``BZR_PDB`` environment variable is set 
 then bzr will go into pdb post-mortem mode when an unhandled exception
@@ -489,7 +489,8 @@ occurs.
 
 If you send a SIGQUIT signal to bzr, which can be done by pressing C-\ on Unix,
 bzr will go into the debugger immediately.  You can continue execution by
-typing ``c``.
+typing ``c``.  This can be disabled if necessary by setting the
+environment variable ``BZR_SIGQUIT_PDB=0``.
 
 
 

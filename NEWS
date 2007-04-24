@@ -7,7 +7,8 @@ IN DEVELOPMENT
 
     * Sending the SIGQUIT signal to bzr, which can be done on Unix by
       pressing Control-Backslash, drops bzr into a debugger.  Type `c`
-      to continue.  (Martin Pool)
+      to continue.  This can be disabled by setting the environment variable
+      BZR_SIGQUIT_PDB=0.  (Martin Pool)
 
   INTERNALS:
 
