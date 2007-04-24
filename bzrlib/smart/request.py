@@ -236,6 +236,24 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
+    'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
+request_handlers.register_lazy(
+    'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
+request_handlers.register_lazy(
+    'Branch.revision_history', 'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
+request_handlers.register_lazy(
+    'Branch.set_last_revision', 'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
+request_handlers.register_lazy(
+    'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
+request_handlers.register_lazy(
+    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepository')
+request_handlers.register_lazy(
+    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
+request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(
     'get', 'bzrlib.smart.vfs', 'GetRequest')
@@ -261,7 +279,24 @@ request_handlers.register_lazy(
     'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy('Repository.gather_stats',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryGatherStats')
+request_handlers.register_lazy(
+    'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
+request_handlers.register_lazy(
+    'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
+request_handlers.register_lazy(
+    'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
+request_handlers.register_lazy(
+    'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
+request_handlers.register_lazy(
+    'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
+request_handlers.register_lazy(
+    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
