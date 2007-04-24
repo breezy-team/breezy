@@ -92,6 +92,14 @@ class SmartServerResponse(object):
         return "<SmartServerResponse args=%r body=%r>" % (self.args, self.body)
 
 
+class SuccessfulSmartServerResponse(SmartServerResponse):
+    """A SmartServerResponse for a successfully completed request."""
+
+    def is_successful(self):
+        """SuccessfulSmartServerResponse are successful."""
+        return True
+
+
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
     

@@ -1910,6 +1910,23 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         self.assertEqual('', decoder.unused_data)
 
 
+class TestSuccessfulSmartServerResponse(tests.TestCase):
+
+    def test_construct(self):
+        response = request.SuccessfulSmartServerResponse(('foo', 'bar'))
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual(None, response.body)
+        response = request.SuccessfulSmartServerResponse(('foo', 'bar'), 'bytes')
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual('bytes', response.body)
+
+    def test_is_successful(self):
+        """is_successful should return True for SuccessfulSmartServerResponse."""
+        response = request.SuccessfulSmartServerResponse(('error',))
+        self.assertEqual(True, response.is_successful())
+
+
+
 class FakeHTTPMedium(object):
     def __init__(self):
         self.written_request = None
