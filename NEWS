@@ -5,6 +5,11 @@ IN DEVELOPMENT
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
 
+    * Sending the SIGQUIT signal to bzr, which can be done on Unix by
+      pressing Control-Backslash, drops bzr into a debugger.  Type `c`
+      to continue.  This can be disabled by setting the environment variable
+      BZR_SIGQUIT_PDB=0.  (Martin Pool)
+
     * selftest now supports --list-only to list tests instead of running
       them. (Ian Clatworthy)
 
