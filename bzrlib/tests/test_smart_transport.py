@@ -31,6 +31,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.smart import (
+        client,
         medium,
         protocol,
         request,
@@ -41,6 +42,7 @@ from bzrlib.tests.HTTPTestUtil import (
         HTTPServerWithSmarts,
         SmartRequestHandler,
         )
+from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.transport import (
         get_transport,
         local,
@@ -519,15 +521,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
 
-class RemoteTransportTests(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        super(RemoteTransportTests, self).setUp()
-        # We're allowed to set  the transport class here, so that we don't use
-        # the default or a parameterized class, but rather use the
-        # TestCaseWithTransport infrastructure to set up a smart server and
-        # transport.
-        self.transport_server = server.SmartTCPServer_for_testing
+class RemoteTransportTests(TestCaseWithSmartMedium):
 
     def test_plausible_url(self):
         self.assert_(self.get_url().startswith('bzr://'))
@@ -539,8 +533,8 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
     def test_get_medium_from_transport(self):
         """Remote transport has a medium always, which it can return."""
         t = self.get_transport()
-        smart_medium = t.get_smart_medium()
-        self.assertIsInstance(smart_medium, medium.SmartClientMedium)
+        client_medium = t.get_smart_medium()
+        self.assertIsInstance(client_medium, medium.SmartClientMedium)
 
 
 class ErrorRaisingProtocol(object):
@@ -745,9 +739,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_socket_stream_error_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -759,8 +750,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
         
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
         to_server = StringIO('')
         from_server = StringIO()
         server = medium.SmartServerPipeStreamMedium(
@@ -800,6 +789,7 @@ class TestSmartTCPServer(tests.TestCase):
                 self.assertContainsRe(str(e), 'some random exception')
             else:
                 self.fail("get did not raise expected error")
+            transport.disconnect()
         finally:
             smart_server.stop_background_thread()
 
@@ -1021,7 +1011,8 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
-        return request.SmartServerRequestHandler(transport, request.request_handlers)
+        return request.SmartServerRequestHandler(transport,
+                                                 request.request_handlers)
 
     def test_construct_request_handler(self):
         """Constructing a request handler should be easy and set defaults."""
@@ -1035,13 +1026,13 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, handler.response.body)
         
     def test_disable_vfs_handler_classes_via_environment(self):
-        # VFS handler classes will raise an error from "execute" if BZR_NO_SMART_VFS
-        # is set.
+        # VFS handler classes will raise an error from "execute" if
+        # BZR_NO_SMART_VFS is set.
         handler = vfs.HasRequest(None)
         # set environment variable after construction to make sure it's
         # examined.
-        # Note that we can safely clobber BZR_NO_SMART_VFS here, because setUp has
-        # called _captureVar, so it will be restored to the right state
+        # Note that we can safely clobber BZR_NO_SMART_VFS here, because setUp
+        # has called _captureVar, so it will be restored to the right state
         # afterwards.
         os.environ['BZR_NO_SMART_VFS'] = ''
         self.assertRaises(errors.DisabledMethod, handler.execute)
@@ -1449,6 +1440,43 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(3, input.tell())
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
+
+class TestSmartClientUnicode(tests.TestCase):
+    """_SmartClient tests for unicode arguments.
+
+    Unicode arguments to call_with_body_bytes are not correct (remote method
+    names, arguments, and bodies must all be expressed as byte strings), but
+    _SmartClient should gracefully reject them, rather than getting into a
+    broken state that prevents future correct calls from working.  That is, it
+    should be possible to issue more requests on the medium afterwards, rather
+    than allowing one bad call to call_with_body_bytes to cause later calls to
+    mysteriously fail with TooManyConcurrentRequests.
+    """
+
+    def assertCallDoesNotBreakMedium(self, method, args, body):
+        """Call a medium with the given method, args and body, then assert that
+        the medium is left in a sane state, i.e. is capable of allowing further
+        requests.
+        """
+        input = StringIO("\n")
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        smart_client = client._SmartClient(client_medium)
+        self.assertRaises(TypeError,
+            smart_client.call_with_body_bytes, method, args, body)
+        self.assertEqual("", output.getvalue())
+        self.assertEqual(None, client_medium._current_request)
+
+    def test_call_with_body_bytes_unicode_method(self):
+        self.assertCallDoesNotBreakMedium(u'method', ('args',), 'body')
+
+    def test_call_with_body_bytes_unicode_args(self):
+        self.assertCallDoesNotBreakMedium('method', (u'args',), 'body')
+        self.assertCallDoesNotBreakMedium('method', ('arg1', u'arg2'), 'body')
+
+    def test_call_with_body_bytes_unicode_body(self):
+        self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):

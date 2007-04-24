@@ -80,7 +80,7 @@ def getcommand_list (params):
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            usage = bzrlib.help.command_usage(cmd_object)
+            usage = cmd_object._usage()
             tmp = '.TP\n.B "%s"\n%s\n' % (usage, firstline)
             output = output + tmp
         else:
@@ -101,7 +101,7 @@ def getcommand_help(params):
 
 def format_command (params, cmd):
     """Provides long help for each public command"""
-    subsection_header = '.SS "%s"\n' % (bzrlib.help.command_usage(cmd))
+    subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
     doc = cmd.help()
 
@@ -131,7 +131,14 @@ def format_command (params, cmd):
         aliases_str += ', '.join(cmd.aliases)
         aliases_str += '\n'
 
-    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
+    see_also_str = ""
+    see_also = cmd.get_see_also()
+    if see_also:
+        see_also_str += '\nSee also: '
+        see_also_str += ', '.join(see_also)
+        see_also_str += '\n'
+
+    return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
 
 
 man_preamble = """\

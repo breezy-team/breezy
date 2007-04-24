@@ -16,6 +16,8 @@
 
 """Tests for the test trees used by the tree_implementations tests."""
 
+from bzrlib.osutils import has_symlinks
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
@@ -146,6 +148,8 @@ class TestTreeShapes(TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
+        if not has_symlinks():
+            raise TestSkipped('No symlink support')
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -172,6 +176,38 @@ class TestTreeShapes(TestCaseWithTree):
              ('1top-dir', '1top-dir', 'directory'),
              (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
              ('symlink', 'symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
+             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
+            [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])
+
+    def test_tree_with_subdirs_and_all_content_types_wo_symlinks(self):
+        # currently this test tree requires unicode. It might be good
+        # to have it simply stop having the single unicode file in it
+        # when dealing with a non-unicode filesystem.
+        tree = self.get_tree_with_subdirs_and_all_supported_content_types(False)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        tree_root = tree.path2id('')
+        self.assertEqual(
+            set([tree_root,
+                '2file',
+                '1top-dir',
+                '1file-in-1topdir',
+                '0dir-in-1topdir',
+                 u'0utf\u1234file'.encode('utf8'),
+                 ]),
+            set(iter(tree)))
+        # note that the order of the paths and fileids is deliberately 
+        # mismatched to ensure that the result order is path based.
+        self.assertEqual(
+            [('', tree_root, 'directory'),
+             ('0file', '2file', 'file'),
+             ('1top-dir', '1top-dir', 'directory'),
+             (u'2utf\u1234file', u'0utf\u1234file'.encode('utf8'), 'file'),
              ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
              ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
             [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])

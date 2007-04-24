@@ -23,6 +23,7 @@ from bzrlib import (
     bzrdir,
     dirstate,
     errors,
+    inventory,
     workingtree_4,
     )
 from bzrlib.lockdir import LockDir
@@ -463,6 +464,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         validate()
         wt.commit('again')
         validate()
+
+    def test_default_root_id(self):
+        tree = self.make_branch_and_tree('tag', format='dirstate-tags')
+        self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
+        tree = self.make_branch_and_tree('subtree',
+                                         format='dirstate-with-subtree')
+        self.assertNotEqual(inventory.ROOT_ID, tree.get_root_id())
 
     def test_non_subtree_with_nested_trees(self):
         # prior to dirstate, st/diff/commit ignored nested trees.
