@@ -31,6 +31,7 @@ import time
 import bzrlib
 from bzrlib import (
     branch,
+    bugtracker,
     bundle,
     bzrdir,
     delta,
@@ -59,7 +60,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option, RegistryOption
+from bzrlib.option import ListOption, Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -189,6 +190,7 @@ class cmd_status(Command):
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
+    _see_also = ['diff', 'revert']
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
@@ -247,6 +249,7 @@ class cmd_remove_tree(Command):
 
     To re-create the working tree, use "bzr checkout".
     """
+    _see_also = ['checkout']
 
     takes_args = ['location?']
 
@@ -276,6 +279,7 @@ class cmd_revno(Command):
     This is equal to the number of revisions on this branch.
     """
 
+    _see_also = ['info']
     takes_args = ['location?']
 
     @display_command
@@ -352,6 +356,7 @@ class cmd_add(Command):
                      Option('file-ids-from', type=unicode,
                             help='Lookup file ids from here')]
     encoding_type = 'replace'
+    _see_also = ['remove']
 
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
@@ -436,14 +441,11 @@ class cmd_inventory(Command):
 
     It is also possible to restrict the list of files to a specific
     set. For example: bzr inventory --show-ids this/file
-
-    See also: bzr ls
     """
 
     hidden = True
-
+    _see_also = ['ls']
     takes_options = ['revision', 'show-ids', 'kind']
-
     takes_args = ['file*']
 
     @display_command
@@ -560,6 +562,7 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
+    _see_also = ['push', 'update']
     takes_options = ['remember', 'overwrite', 'revision', 'verbose',
         Option('directory',
             help='branch to pull into, '
@@ -666,6 +669,7 @@ class cmd_push(Command):
     location can be accessed.
     """
 
+    _see_also = ['pull', 'update']
     takes_options = ['remember', 'overwrite', 'verbose',
         Option('create-prefix',
                help='Create the path leading up to the branch '
@@ -848,6 +852,8 @@ class cmd_branch(Command):
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
     """
+
+    _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision']
     aliases = ['get', 'clone']
@@ -916,9 +922,9 @@ class cmd_checkout(Command):
     parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
     out of date [so you cannot commit] but it may be useful (i.e. to examine old
     code.)
-
-    See "help checkouts" for more information on checkouts.
     """
+
+    _see_also = ['checkouts', 'branch']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
@@ -978,6 +984,7 @@ class cmd_renames(Command):
     # TODO: Option to show renames between two historical versions.
 
     # TODO: Only show renames under dir, rather than in the whole branch.
+    _see_also = ['status']
     takes_args = ['dir?']
 
     @display_command
@@ -1010,6 +1017,8 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a 
     'bzr revert' instead of 'bzr commit' after the update.
     """
+
+    _see_also = ['pull']
     takes_args = ['dir?']
     aliases = ['up']
 
@@ -1053,6 +1062,7 @@ class cmd_info(Command):
 
     Branches and working trees will also report any missing revisions.
     """
+    _see_also = ['revno']
     takes_args = ['location?']
     takes_options = ['verbose']
 
@@ -1103,6 +1113,7 @@ class cmd_file_id(Command):
     """
 
     hidden = True
+    _see_also = ['inventory', 'ls']
     takes_args = ['filename']
 
     @display_command
@@ -1155,6 +1166,8 @@ class cmd_reconcile(Command):
 
     The branch *MUST* be on a listable system such as local disk or sftp.
     """
+
+    _see_also = ['check']
     takes_args = ['branch?']
 
     def run(self, branch="."):
@@ -1165,6 +1178,8 @@ class cmd_reconcile(Command):
 
 class cmd_revision_history(Command):
     """Display the list of revision ids on a branch."""
+
+    _see_also = ['log']
     takes_args = ['location?']
 
     hidden = True
@@ -1179,6 +1194,8 @@ class cmd_revision_history(Command):
 
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
+
+    _see_also = ['log', 'revision-history']
     takes_args = ['location?']
 
     hidden = True
@@ -1222,6 +1239,8 @@ class cmd_init(Command):
         bzr status
         bzr commit -m 'imported project'
     """
+
+    _see_also = ['init-repo', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
          RegistryOption('format',
@@ -1293,6 +1312,7 @@ class cmd_init_repository(Command):
         (add files here)
     """
 
+    _see_also = ['init', 'branch', 'checkout']
     takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
@@ -1358,6 +1378,7 @@ class cmd_diff(Command):
 
     # TODO: This probably handles non-Unix newlines poorly.
 
+    _see_also = ['status']
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options',
         Option('prefix', type=str,
@@ -1443,6 +1464,7 @@ class cmd_deleted(Command):
     # directories with readdir, rather than stating each one.  Same
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
+    _see_also = ['status', 'ls']
     takes_options = ['show-ids']
 
     @display_command
@@ -1468,11 +1490,10 @@ class cmd_deleted(Command):
 
 class cmd_modified(Command):
     """List files modified in working tree.
-
-    See also: "bzr status".
     """
 
     hidden = True
+    _see_also = ['status', 'ls']
 
     @display_command
     def run(self):
@@ -1484,11 +1505,10 @@ class cmd_modified(Command):
 
 class cmd_added(Command):
     """List files added in working tree.
-
-    See also: "bzr status".
     """
 
     hidden = True
+    _see_also = ['status', 'ls']
 
     @display_command
     def run(self):
@@ -1520,6 +1540,7 @@ class cmd_root(Command):
 
     The root is the nearest enclosing directory with a .bzr control
     directory."""
+
     takes_args = ['filename?']
     @display_command
     def run(self, filename=None):
@@ -1687,6 +1708,7 @@ class cmd_ls(Command):
     """List files in a tree.
     """
 
+    _see_also = ['status', 'cat']
     takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
     takes_options = ['verbose', 'revision',
@@ -1776,11 +1798,10 @@ class cmd_ls(Command):
 
 class cmd_unknowns(Command):
     """List unknown files.
-
-    See also: "bzr ls --unknown".
     """
 
     hidden = True
+    _see_also = ['ls']
 
     @display_command
     def run(self):
@@ -1821,6 +1842,8 @@ class cmd_ignore(Command):
         bzr ignore 'lib/**/*.o'
         bzr ignore 'RE:lib/.*\.o'
     """
+
+    _see_also = ['status', 'ignored']
     takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
@@ -1876,8 +1899,9 @@ class cmd_ignore(Command):
 
 class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
+    """
 
-    See also: bzr ignore"""
+    _see_also = ['ignore']
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -1972,6 +1996,7 @@ class cmd_cat(Command):
     binary file. 
     """
 
+    _see_also = ['ls']
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
     encoding_type = 'exact'
@@ -2063,6 +2088,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
+    _see_also = ['bugs', 'uncommit']
     takes_args = ['selected*']
     takes_options = ['message', 'verbose', 
                      Option('unchanged',
@@ -2074,6 +2100,9 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     ListOption('fixes', type=str,
+                                help="mark a bug as being fixed by this "
+                                     "revision."),
                      Option('local',
                             help="perform a local only commit in a bound "
                                  "branch. Such commits are not pushed to "
@@ -2083,8 +2112,30 @@ class cmd_commit(Command):
                      ]
     aliases = ['ci', 'checkin']
 
+    def _get_bug_fix_properties(self, fixes, branch):
+        properties = []
+        # Configure the properties for bug fixing attributes.
+        for fixed_bug in fixes:
+            tokens = fixed_bug.split(':')
+            if len(tokens) != 2:
+                raise errors.BzrCommandError(
+                    "Invalid bug %s. Must be in the form of 'tag:id'. "
+                    "Commit refused." % fixed_bug)
+            tag, bug_id = tokens
+            try:
+                bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
+            except errors.UnknownBugTrackerAbbreviation:
+                raise errors.BzrCommandError(
+                    'Unrecognized bug %s. Commit refused.' % fixed_bug)
+            except errors.MalformedBugIdentifier:
+                raise errors.BzrCommandError(
+                    "Invalid bug identifier for %s. Commit refused."
+                    % fixed_bug)
+            properties.append('%s fixed' % bug_url)
+        return '\n'.join(properties)
+
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False, local=False):
+            unchanged=False, strict=False, local=False, fixes=None):
         from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
@@ -2096,12 +2147,17 @@ class cmd_commit(Command):
 
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
+
+        properties = {}
+
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
+
+        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -2124,7 +2180,7 @@ class cmd_commit(Command):
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
-        
+
         if verbose:
             reporter = ReportCommitToLog()
         else:
@@ -2134,7 +2190,7 @@ class cmd_commit(Command):
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
-                        reporter=reporter)
+                        reporter=reporter, revprops=properties)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -2160,6 +2216,8 @@ class cmd_check(Command):
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
     """
+
+    _see_also = ['reconcile']
     takes_args = ['branch?']
     takes_options = ['verbose']
 
@@ -2180,6 +2238,8 @@ class cmd_upgrade(Command):
     this command. When the default format has changed you may also be warned
     during other operations to upgrade.
     """
+
+    _see_also = ['check']
     takes_args = ['url?']
     takes_options = [
                     RegistryOption('format',
@@ -2248,6 +2308,8 @@ class cmd_nick(Command):
     If unset, the tree root directory name is used as the nickname
     To print the current nickname, execute with no argument.  
     """
+
+    _see_also = ['info']
     takes_args = ['nickname?']
     def run(self, nickname=None):
         branch = Branch.open_containing(u'.')[0]
@@ -2264,7 +2326,7 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but not
+    This creates temporary test directories in the working directory, but no
     existing data is affected.  These directories are deleted if the tests
     pass, or left behind to help in debugging if they fail and --keep-output
     is specified.
@@ -2276,6 +2338,21 @@ class cmd_selftest(Command):
     Alternatively if --first is given, matching tests are run first and then
     all other tests are run.  This is useful if you have been working in a
     particular area, but want to make sure nothing else was broken.
+
+    If --exclude is given, tests that match that regular expression are
+    excluded, regardless of whether they match --first or not.
+
+    To help catch accidential dependencies between tests, the --randomize
+    option is useful. In most cases, the argument used is the word 'now'.
+    Note that the seed used for the random number generator is displayed
+    when this option is used. The seed can be explicitly passed as the
+    argument to this option if required. This enables reproduction of the
+    actual ordering used if and when an order sensitive problem is encountered.
+
+    If --list-only is given, the tests that would be run are listed. This is
+    useful when combined with --first, --exclude and/or --randomize to
+    understand their impact. The test harness reports "Listed nn tests in ..."
+    instead of "Ran nn tests in ..." when list mode is enabled.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
@@ -2295,8 +2372,6 @@ class cmd_selftest(Command):
     of running tests to create such subdirectories. This is default behavior
     on Windows because of path length limitation.
     """
-    # TODO: --list should give a list of all available tests
-
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
     def get_transport_type(typestring):
@@ -2317,7 +2392,10 @@ class cmd_selftest(Command):
     hidden = True
     takes_args = ['testspecs*']
     takes_options = ['verbose',
-                     Option('one', help='stop when one test fails'),
+                     Option('one',
+                             help='stop when one test fails',
+                             short_name='1',
+                             ),
                      Option('keep-output',
                             help='keep output directories when tests fail'),
                      Option('transport',
@@ -2335,17 +2413,28 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      Option('first',
-                            help='run all tests, but run specified tests first'
+                            help='run all tests, but run specified tests first',
+                            short_name='f',
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
+                     Option('list-only',
+                            help='list the tests instead of running them'),
+                     Option('randomize', type=str, argname="SEED",
+                            help='randomize the order of tests using the given'
+                                 ' seed or "now" for the current time'),
+                     Option('exclude', type=str, argname="PATTERN",
+                            short_name='x',
+                            help='exclude tests that match this regular'
+                                 ' expression'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None):
+            first=False, numbered_dirs=None, list_only=False,
+            randomize=None, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2390,6 +2479,9 @@ class cmd_selftest(Command):
                               bench_history=benchfile,
                               matching_tests_first=first,
                               numbered_dirs=numbered_dirs,
+                              list_only=list_only,
+                              random_seed=randomize,
+                              exclude_pattern=exclude
                               )
         finally:
             if benchfile is not None:
@@ -2488,6 +2580,8 @@ class cmd_merge(Command):
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
     """
+
+    _see_also = ['update', 'remerge']
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
         Option('show-base', help="Show base revision text in "
@@ -2753,6 +2847,8 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
     """
+
+    _see_also = ['cat', 'export']
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
 
@@ -2792,9 +2888,9 @@ class cmd_assert_fail(Command):
 
 class cmd_help(Command):
     """Show help on a command or other topic.
-
-    For a list of all available commands, say 'bzr help commands'.
     """
+
+    _see_also = ['topics']
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
@@ -2841,6 +2937,8 @@ class cmd_missing(Command):
 
     OTHER_BRANCH may be local or remote.
     """
+
+    _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 
@@ -2943,7 +3041,7 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 
+    takes_options = ['revision',
                      Option('long', help='Produce long-format testament'), 
                      Option('strict', help='Produce a strict-format'
                             ' testament')]
@@ -3059,10 +3157,9 @@ class cmd_bind(Command):
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
-
-    See "help checkouts" for more information on checkouts.
     """
 
+    _see_also = ['checkouts', 'unbind']
     takes_args = ['location?']
     takes_options = []
 
@@ -3091,10 +3188,9 @@ class cmd_unbind(Command):
 
     After unbinding, the local branch is considered independent and subsequent
     commits will be local only.
-
-    See "help checkouts" for more information on checkouts.
     """
 
+    _see_also = ['checkouts', 'bind']
     takes_args = []
     takes_options = []
 
@@ -3119,6 +3215,7 @@ class cmd_uncommit(Command):
     # unreferenced information in 'branch-as-repository' branches.
     # TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
     # information in shared branches as well.
+    _see_also = ['commit']
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
                     Option('force', help='Say yes to all questions.')]
@@ -3248,32 +3345,43 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.smart import server, medium
+        from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT
+        from bzrlib.transport.chroot import ChrootServer
+        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        t = get_transport(url)
+        chroot_server = ChrootServer(get_transport(url))
+        chroot_server.setUp()
+        t = get_transport(chroot_server.get_url())
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
+            host = BZR_DEFAULT_INTERFACE
             if port is None:
                 port = BZR_DEFAULT_PORT
-                host = '127.0.0.1'
             else:
                 if ':' in port:
                     host, port = port.split(':')
-                else:
-                    host = '127.0.0.1'
                 port = int(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
             sys.stdout.flush()
-        smart_server.serve()
+        # for the duration of this server, no UI output is permitted.
+        # note that this may cause problems with blackbox tests. This should
+        # be changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
+
 
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
@@ -3296,6 +3404,7 @@ class cmd_join(Command):
     and merge, will recurse into the subtree.
     """
 
+    _see_also = ['split']
     takes_args = ['tree']
     takes_options = [Option('reference', 'join by reference')]
     hidden = True
@@ -3337,10 +3446,9 @@ class cmd_split(Command):
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
     If you want that behavior, do "bzr join --reference TREE".
-
-    To undo this operation, do "bzr join TREE".
     """
 
+    _see_also = ['join']
     takes_args = ['tree']
 
     hidden = True
@@ -3456,6 +3564,7 @@ class cmd_tag(Command):
     --force, in which case the tag is moved to point to the new revision.
     """
 
+    _see_also = ['commit', 'tags']
     takes_args = ['tag_name']
     takes_options = [
         Option('delete',
@@ -3507,6 +3616,7 @@ class cmd_tags(Command):
     This tag shows a table of tag names and the revisions they reference.
     """
 
+    _see_also = ['tag']
     takes_options = [
         Option('directory',
             help='Branch whose tags should be displayed',
