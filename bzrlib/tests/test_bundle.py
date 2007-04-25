@@ -905,6 +905,55 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertTrue(branch2.repository.has_revision('rev2a'))
         self.assertEqual('rev2a', target_revision)
 
+    def test_bundle_empty_property(self):
+        """Test serializing revision properties with an empty value."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   branch-nick: tree\n'
+                              '#   empty:\n'
+                              '#   one: two\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
+                         rev.properties)
+
+    def test_bundle_empty_property_alt(self):
+        """Test serializing revision properties with an empty value."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        txt = bundle_sio.getvalue()
+        loc = txt.find('#   empty:') + len('#   empty:')
+        # Create a new bundle, which just has a trailing space after empty
+        bundle_sio = StringIO(txt[:loc] + ' ' + txt[loc:])
+
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   branch-nick: tree\n'
+                              '#   empty: \n'
+                              '#   one: two\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
+                         rev.properties)
+
     def test_bundle_sorted_properties(self):
         """For stability the writer should write properties in sorted order."""
         tree = self.make_branch_and_memory_tree('tree')
