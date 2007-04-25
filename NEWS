@@ -174,6 +174,10 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Fix ``bzr log <file>`` so it only logs the revisions that changed
+      the file, and does it faster.
+      (Kent Gibson, John Arbash Meinel, #51980, #69477)
+ 
     * Fix ``InterDirstateTre._iter_changes`` to handle when we come across
       an empty versioned directory, which now has files in it.
       (John Arbash Meinel, #104257)
