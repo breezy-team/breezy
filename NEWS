@@ -164,6 +164,9 @@ IN DEVELOPMENT
     * Handle moving a directory when children have been added, removed,
       and renamed. (John Arbash Meinel, #105479)
 
+    * Bundles properly read and write revision properties that have an
+      empty value. And when the value is not ASCII. (John Arbash Meinel)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
