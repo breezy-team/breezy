@@ -1074,10 +1074,10 @@ class cmd_info(Command):
 
 
 class cmd_remove(Command):
-    """Make a file unversioned.
+    """Remove files or directories.
 
-    This makes bzr stop tracking changes to a versioned file.  It does
-    not delete the working copy.
+    This makes bzr stop tracking changes to the specified files and
+    delete them if they can easily be recovered using revert.
 
     You can specify one or more files, and/or --new.  If you specify --new,
     only 'added' files will be removed.  If you specify both, then new files
@@ -1085,23 +1085,38 @@ class cmd_remove(Command):
     also new, they will also be removed.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', Option('new', help='remove newly-added files')]
+    takes_options = ['verbose',
+        Option('new', help='remove newly-added files'),
+        RegistryOption.from_kwargs('file-deletion-strategy',
+            'The file deletion mode to be used',
+            title='Deletion Strategy', value_switches=True, enum_switch=False,
+            safe='Only delete files if they can be'
+                 ' safely recovered (default).',
+            keep="Don't delete any files.",
+            force='Delete all the specified files, even if they can not be '
+                'recovered and even if they are non-empty directories.')]
     aliases = ['rm']
     encoding_type = 'replace'
-    
-    def run(self, file_list, verbose=False, new=False):
+
+    def run(self, file_list, verbose=False, new=False,
+        file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
-        if new is False:
-            if file_list is None:
-                raise errors.BzrCommandError('Specify one or more files to'
-                                             ' remove, or use --new.')
-        else:
+
+        if file_list is not None:
+            file_list = [f for f in file_list if f != '']
+        elif not new:
+            raise errors.BzrCommandError('Specify one or more files to'
+            ' remove, or use --new.')
+
+        if new:
             added = tree.changes_from(tree.basis_tree(),
                 specific_files=file_list).added
             file_list = sorted([f[0] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise errors.BzrCommandError('No matching files.')
-        tree.remove(file_list, verbose=verbose, to_file=self.outf)
+        tree.remove(file_list, verbose=verbose, to_file=self.outf,
+            keep_files=file_deletion_strategy=='keep',
+            force=file_deletion_strategy=='force')
 
 
 class cmd_file_id(Command):
