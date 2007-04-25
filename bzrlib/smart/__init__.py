@@ -23,49 +23,77 @@ docstrings for details.
 Overview
 ========
 
-Requests are sent as a command and list of arguments, followed by optional
-bulk body data.  Responses are similarly a response and list of arguments,
-followed by bulk body data. ::
+The smart protocol provides a way to send a requests and corresponding
+responses to communicate with a remote bzr process.
 
-  SEP := '\001'
-    Fields are separated by Ctrl-A.
-  BULK_DATA := CHUNK TRAILER
-    Chunks can be repeated as many times as necessary.
-  CHUNK := CHUNK_LEN CHUNK_BODY
-  CHUNK_LEN := DIGIT+ NEWLINE
-    Gives the number of bytes in the following chunk.
-  CHUNK_BODY := BYTE[chunk_len]
-  TRAILER := SUCCESS_TRAILER | ERROR_TRAILER
-  SUCCESS_TRAILER := 'done' NEWLINE
-  ERROR_TRAILER := 
+Layering
+========
 
-Paths are passed across the network.  The client needs to see a namespace that
-includes any repository that might need to be referenced, and the client needs
-to know about a root directory beyond which it cannot ascend.
+Medium
+------
 
-Servers run over ssh will typically want to be able to access any path the user 
-can access.  Public servers on the other hand (which might be over http, ssh
-or tcp) will typically want to restrict access to only a particular directory 
-and its children, so will want to do a software virtual root at that level.
-In other words they'll want to rewrite incoming paths to be under that level
-(and prevent escaping using ../ tricks.)
-
-URLs that include ~ should probably be passed across to the server verbatim
-and the server can expand them.  This will proably not be meaningful when 
-limited to a directory?
-
-At the bottom level socket, pipes, HTTP server.  For sockets, we have the idea
-that you have multiple requests and get a read error because the other side did
-shutdown.  For pipes we have read pipe which will have a zero read which marks
-end-of-file.  For HTTP server environment there is not end-of-stream because
-each request coming into the server is independent.
+At the bottom level there is either a socket, pipes, or an HTTP
+request/response.  We call this layer the *medium*.  It is responsible for
+carrying bytes between a client and server.  For sockets, we have the
+idea that you have multiple requests and get a read error because the other side
+did shutdown.  For pipes we have read pipe which will have a zero read which
+marks end-of-file.  For HTTP server environment there is no end-of-stream
+because each request coming into the server is independent.
 
 So we need a wrapper around pipes and sockets to seperate out requests from
-substrate and this will give us a single model which is consist for HTTP,
+substrate and this will give us a single model which is consistent for HTTP,
 sockets and pipes.
+
+Protocol
+--------
+
+On top of the medium is the *protocol*.  This is the layer that deserialises
+bytes into the structured data that requests and responses consist of.
+
+Version one of the protocol (for requests and responses) is described by::
+
+  REQUEST := MESSAGE_V1
+  RESPONSE := MESSAGE_V1
+  MESSAGE_V1 := ARGS BODY
+
+  ARGS := ARG [MORE_ARGS] NEWLINE
+  MORE_ARGS := SEP ARG [MORE_ARGS]
+  SEP := 0x01
+
+  BODY := LENGTH NEWLINE BODY_BYTES TRAILER
+  LENGTH := decimal integer
+  TRAILER := "done" NEWLINE
+
+That is, a tuple of arguments separated by Ctrl-A and terminated with a newline,
+followed by length prefixed body with a constant trailer.  Note that although
+arguments are not 8-bit safe (they cannot include 0x01 or 0x0a bytes without
+breaking the protocol encoding), the body is.
+
+Version two of the request protocol is::
+
+  REQUEST_V2 := "bzr request 2" NEWLINE MESSAGE_V1
+
+Version two of the response protocol is::
+
+  RESPONSE_V2 := "bzr request 2" NEWLINE MESSAGE_V1
+
+Future versions should follow this structure, like version two does::
+
+  FUTURE_MESSAGE := VERSION_STRING NEWLINE REST_OF_MESSAGE
+
+This is that clients and servers can read bytes up to the first newline byte to
+determine what version a message is.
+
+Request/Response processing
+---------------------------
+
+On top of the protocol is the logic for processing requests (on the server) or
+responses (on the client).
 
 Server-side
 -----------
+
+Sketch::
 
  MEDIUM  (factory for protocol, reads bytes & pushes to protocol,
           uses protocol to detect end-of-request, sends written
@@ -74,7 +102,7 @@ Server-side
   | bytes.
   v
 
-PROTOCOL  (serialization, deserialization)  accepts bytes for one
+ PROTOCOL(serialization, deserialization)  accepts bytes for one
           request, decodes according to internal state, pushes
           structured data to handler.  accepts structured data from
           handler and encodes and writes to the medium.  factory for
@@ -83,23 +111,27 @@ PROTOCOL  (serialization, deserialization)  accepts bytes for one
   | structured data
   v
 
-HANDLER   (domain logic) accepts structured data, operates state
+ HANDLER  (domain logic) accepts structured data, operates state
           machine until the request can be satisfied,
           sends structured data to the protocol.
+
+Request handlers are registered in `bzrlib.smart.request`.
 
 
 Client-side
 -----------
 
- CLIENT             domain logic, accepts domain requests, generated structured
-                    data, reads structured data from responses and turns into
-                    domain data.  Sends structured data to the protocol.
-                    Operates state machines until the request can be delivered
-                    (e.g. reading from a bundle generated in bzrlib to deliver a
-                    complete request).
+Sketch::
 
-                    Possibly this should just be RemoteBzrDir, RemoteTransport,
-                    ...
+ CLIENT   domain logic, accepts domain requests, generated structured
+          data, reads structured data from responses and turns into
+          domain data.  Sends structured data to the protocol.
+          Operates state machines until the request can be delivered
+          (e.g. reading from a bundle generated in bzrlib to deliver a
+          complete request).
+
+          Possibly this should just be RemoteBzrDir, RemoteTransport,
+          ...
   ^
   | structured data
   v
@@ -113,6 +145,30 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 
  MEDIUM  (accepts bytes from the protocol & delivers to the remote server.
           Allows the potocol to read bytes e.g. socket, pipe, HTTP request.
+
+The domain logic is in `bzrlib.remote`: `RemoteBzrDir`, `RemoteBranch`, and so
+on.
+
+There is also an plain file-level transport that calls remote methods to
+manipulate files on the server in `bzrlib.transport.remote`.
+
+Paths
+=====
+
+Paths are passed across the network.  The client needs to see a namespace that
+includes any repository that might need to be referenced, and the client needs
+to know about a root directory beyond which it cannot ascend.
+
+Servers run over ssh will typically want to be able to access any path the user
+can access.  Public servers on the other hand (which might be over http, ssh
+or tcp) will typically want to restrict access to only a particular directory
+and its children, so will want to do a software virtual root at that level.
+In other words they'll want to rewrite incoming paths to be under that level
+(and prevent escaping using ../ tricks.)
+
+URLs that include ~ should probably be passed across to the server verbatim
+and the server can expand them.  This will proably not be meaningful when
+limited to a directory?
 """
 
 # TODO: _translate_error should be on the client, not the transport because
@@ -126,8 +182,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 # Also needs to somehow report protocol errors like bad requests.  Need to
 # consider how we'll handle error reporting, e.g. if we get halfway through a
 # bulk transfer and then something goes wrong.
-
-# TODO: Standard marker at start of request/response lines?
 
 # TODO: Make each request and response self-validatable, e.g. with checksums.
 #
@@ -155,8 +209,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 # connection?  Perhaps all Transports should factor out a common connection
 # from the thing that has the directory context?
 #
-# TODO: Pull more things common to sftp and ssh to a higher level.
-#
 # TODO: The server that manages a connection should be quite small and retain
 # minimum state because each of the requests are supposed to be stateless.
 # Then we can write another implementation that maps to http.
@@ -179,26 +231,10 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 # urlescape them instead.  Indeed possibly this should just literally be
 # http-over-ssh.
 #
-# FIXME: This transport, with several others, has imperfect handling of paths
-# within urls.  It'd probably be better for ".." from a root to raise an error
-# rather than return the same directory as we do at present.
-#
-# TODO: Rather than working at the Transport layer we want a Branch,
-# Repository or BzrDir objects that talk to a server.
-#
 # TODO: Probably want some way for server commands to gradually produce body
 # data rather than passing it as a string; they could perhaps pass an
 # iterator-like callback that will gradually yield data; it probably needs a
 # close() method that will always be closed to do any necessary cleanup.
-#
-# TODO: Split the actual smart server from the ssh encoding of it.
-#
-# TODO: Perhaps support file-level readwrite operations over the transport
-# too.
-#
-# TODO: SmartBzrDir class, proxying all Branch etc methods across to another
-# branch doing file-level operations.
-#
 
 
 # Promote some attributes from submodules into this namespace

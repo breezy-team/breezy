@@ -55,6 +55,10 @@ IN DEVELOPMENT
       serve out to the local LAN (and anyone in the world that can reach the
       machine running ``bzr serve``. (Robert Collins, #98918)
 
+    * A new smart server protocol version has been added.  It prefixes requests
+      and responses with an explicit version identifier so that future protocol
+      revisions can be dealt with gracefully.  (Andrew Bennetts, Robert Collins)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some

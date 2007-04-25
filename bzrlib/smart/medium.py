@@ -78,6 +78,14 @@ class SmartServerStreamMedium(object):
             raise
 
     def _build_protocol(self):
+        """Identifies the version of the incoming request, and returns an
+        a protocol object that can interpret it.
+
+        If more bytes than the version prefix of the request are read, they will
+        be fed into the protocol before it is returned.
+
+        :returns: a SmartServerRequestProtocol.
+        """
         # Identify the protocol version.
         bytes = self._get_line()
         if bytes.startswith(REQUEST_VERSION_TWO):
