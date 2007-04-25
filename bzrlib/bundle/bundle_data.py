@@ -81,8 +81,8 @@ class RevisionInfo(object):
                     key = str(property[:-1])
                     value = ''
                 else:
-                    key = property[:key_end].encode('utf8')
-                    value = property[key_end+2:].encode('utf8')
+                    key = str(property[:key_end])
+                    value = property[key_end+2:]
                 rev.properties[key] = value
 
         return rev
