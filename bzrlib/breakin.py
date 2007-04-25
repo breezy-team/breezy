@@ -35,7 +35,7 @@ def _debug(signal_number, interrupted_frame):
 
 def hook_sigquit():
     # when sigquit (C-\) is received go into pdb
-    # XXX: is this meaningful on Windows?
-    if os.environ.get('BZR_SIGQUIT_PDB', '1') == '0':
+    if (os.environ.get('BZR_SIGQUIT_PDB', '1') == '0'
+        or getattr(signal, 'SIGQUIT', None) is None):
         return
     signal.signal(signal.SIGQUIT, _debug)
