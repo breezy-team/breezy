@@ -134,9 +134,9 @@ class SmartWSGIApp(object):
     def make_request(self, transport, write_func, request_bytes):
         # XXX: This duplicates the logic in
         # SmartServerStreamMedium._build_protocol.
-        if request_bytes.startswith('2\n'):
+        if request_bytes.startswith(protocol.REQUEST_VERSION_TWO):
             protocol_class = protocol.SmartServerRequestProtocolTwo
-            request_bytes = request_bytes[2:]
+            request_bytes = request_bytes[len(protocol.REQUEST_VERSION_TWO):]
         else:
             protocol_class = protocol.SmartServerRequestProtocolOne
         server_protocol = protocol_class(transport, write_func)

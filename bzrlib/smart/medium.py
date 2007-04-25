@@ -30,6 +30,7 @@ import sys
 
 from bzrlib import errors
 from bzrlib.smart.protocol import (
+    REQUEST_VERSION_TWO,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
@@ -78,10 +79,10 @@ class SmartServerStreamMedium(object):
 
     def _build_protocol(self):
         # Identify the protocol version.
-        bytes = self._get_bytes(2)
-        if bytes.startswith('2\n'):
+        bytes = self._get_line()
+        if bytes.startswith(REQUEST_VERSION_TWO):
             protocol_class = SmartServerRequestProtocolTwo
-            bytes = bytes[2:]
+            bytes = bytes[len(REQUEST_VERSION_TWO):]
         else:
             protocol_class = SmartServerRequestProtocolOne
         protocol = protocol_class(self.backing_transport, self._write_out)
@@ -110,6 +111,24 @@ class SmartServerStreamMedium(object):
         :param desired_count: number of bytes we want to read.
         """
         raise NotImplementedError(self._get_bytes)
+
+    def _get_line(self):
+        """Read bytes from this request's response until a newline byte.
+        
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
+        line = ''
+        while not line or line[-1] != '\n':
+            new_char = self._get_bytes(1)
+            line += new_char
+            if new_char == '':
+                # Ran out of bytes before receiving a complete line.
+                break
+        return line
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
@@ -300,7 +319,7 @@ class SmartClientMediumRequest(object):
 
         This method will block and wait for count bytes to be read. It may not
         be invoked until finished_writing() has been called - this is to ensure
-        a message-based approach to requests, for compatability with message
+        a message-based approach to requests, for compatibility with message
         based mediums like HTTP.
         """
         if self._state == "writing":
@@ -317,6 +336,24 @@ class SmartClientMediumRequest(object):
         actual read.
         """
         raise NotImplementedError(self._read_bytes)
+
+    def read_line(self):
+        """Read bytes from this request's response until a newline byte.
+        
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
+        line = ''
+        while not line or line[-1] != '\n':
+            new_char = self.read_bytes(1)
+            line += new_char
+            if new_char == '':
+                raise errors.SmartProtocolError(
+                    'unexpected end of file reading from server')
+        return line
 
 
 class SmartClientMedium(object):
