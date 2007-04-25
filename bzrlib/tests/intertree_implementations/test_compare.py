@@ -1312,3 +1312,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
                                               want_unversioned=True))
+        expected = sorted([
+            self.deleted(tree1, 'b-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=False))
