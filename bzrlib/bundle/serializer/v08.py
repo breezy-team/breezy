@@ -225,7 +225,7 @@ class BundleSerializerV08(BundleSerializer):
             w('base id', base_rev)
         if rev.properties:
             self._write('properties', None, indent=1)
-            for name, value in rev.properties.items():
+            for name, value in sorted(rev.properties.items()):
                 self._write(name, value, indent=3)
         
         # Add an extra blank space at the end

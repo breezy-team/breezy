@@ -905,6 +905,26 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertTrue(branch2.repository.has_revision('rev2a'))
         self.assertEqual('rev2a', target_revision)
 
+    def test_bundle_sorted_properties(self):
+        """For stability the writer should write properties in sorted order."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', rev_id='rev1',
+                    revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   a: 4\n'
+                              '#   b: 3\n'
+                              '#   branch-nick: tree\n'
+                              '#   c: 2\n'
+                              '#   d: 1\n'
+                             )
+
 
 class V09BundleKnit2Tester(V08BundleTester):
 
