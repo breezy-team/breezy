@@ -917,7 +917,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
                               '#   branch-nick: tree\n'
-                              '#   empty:\n'
+                              '#   empty: \n'
                               '#   one: two\n'
                              )
         bundle = read_bundle(bundle_sio)
@@ -928,7 +928,13 @@ class V08BundleTester(TestCaseWithTransport):
                          rev.properties)
 
     def test_bundle_empty_property_alt(self):
-        """Test serializing revision properties with an empty value."""
+        """Test serializing revision properties with an empty value.
+
+        Older readers had a bug when reading an empty property.
+        They assumed that all keys ended in ': \n'. However they would write an
+        empty value as ':\n'. This tests make sure that all newer bzr versions
+        can handle th second form.
+        """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -937,14 +943,14 @@ class V08BundleTester(TestCaseWithTransport):
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
         txt = bundle_sio.getvalue()
-        loc = txt.find('#   empty:') + len('#   empty:')
-        # Create a new bundle, which just has a trailing space after empty
-        bundle_sio = StringIO(txt[:loc] + ' ' + txt[loc:])
+        loc = txt.find('#   empty: ') + len('#   empty:')
+        # Create a new bundle, which strips the trailing space after empty
+        bundle_sio = StringIO(txt[:loc] + txt[loc+1:])
 
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
                               '#   branch-nick: tree\n'
-                              '#   empty: \n'
+                              '#   empty:\n'
                               '#   one: two\n'
                              )
         bundle = read_bundle(bundle_sio)
