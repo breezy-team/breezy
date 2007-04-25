@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
+from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
+                           NoWorkingTree)
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
 
@@ -108,7 +109,7 @@ class SvnRemoteAccess(BzrDir):
         BzrDir can not be associated with working trees.
         """
         # Working trees never exist on remote Subversion repositories
-        raise NotLocalUrl(self.root_transport.base)
+        raise NoWorkingTree(self.root_transport.base)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().

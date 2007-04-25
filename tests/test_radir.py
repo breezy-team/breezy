@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoRepositoryPresent, NotBranchError, NotLocalUrl
+from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
+                           NoWorkingTree)
 
 from tests import TestCaseWithSubversionRepository
 
@@ -31,7 +32,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_open_workingtree(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)
-        self.assertRaises(NotLocalUrl, x.open_workingtree)
+        self.assertRaises(NoWorkingTree, x.open_workingtree)
 
     def test_create_workingtree(self):
         repos_url = self.make_client("d", "dc")

@@ -6,6 +6,8 @@ bzr-svn 0.3.3	UNRELEASED
 
   * Set parent URLs in svn-import. (#94406)
 
+  * Don't show "not updating working tree" warnings when pushing.
+
 bzr-svn 0.3.2	2007-03-13
 
   BUG FIXES
