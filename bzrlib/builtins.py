@@ -2157,7 +2157,9 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
-        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
+        bug_property = self._get_bug_fix_properties(fixes, tree.branch)
+        if bug_property:
+            properties['bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
