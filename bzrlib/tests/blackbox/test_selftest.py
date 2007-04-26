@@ -103,6 +103,7 @@ class TestRunBzr(ExternalBase):
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
+        return '', ''
 
     def test_args(self):
         """Test that run_bzr passes args correctly to run_bzr_captured"""

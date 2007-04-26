@@ -685,6 +685,7 @@ C Extension Modules
 
 We write some extensions in C using pyrex. We design these to work in
 three scenarios:
+
  * User with no C compiler
  * User with C compiler
  * Developers
@@ -709,8 +710,10 @@ changes need to be present in the .pyx file.
 
 Note that pyrex does not support all 2.4 programming idioms, so some
 syntax changes may be required. I.e. 
+
  - 'from foo import (bar, gam)' needs to change to not use the brackets. 
  - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+
 If the changes are too dramatic, consider
 maintaining the python code twice - once in the .pyx, and once in the .py,
 and no longer including the .py file.

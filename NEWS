@@ -1,5 +1,18 @@
 IN DEVELOPMENT
 
+  NOTES WHEN UPGRADING:
+
+    * ``bzr remove`` and ``bzr rm`` will now remove the working file, if
+      it could be recovered again.
+      This has been done for consistency with svn and the unix rm command.
+      The old ``remove`` behaviour has been retained in the new option
+      ``bzr remove --keep``, which will just stop versioning the file,
+      but not delete it.
+      ``bzr remove --force`` have been added which will always delete the
+      files.
+      ``bzr remove`` is also more verbose.
+      (Marius Kruger, #82602)
+
   IMPROVEMENTS:
 
     * Merge directives can now be supplied as input to `merge` and `pull`,
@@ -71,6 +84,20 @@ IN DEVELOPMENT
       serve out to the local LAN (and anyone in the world that can reach the
       machine running ``bzr serve``. (Robert Collins, #98918)
 
+    * A new smart server protocol version has been added.  It prefixes requests
+      and responses with an explicit version identifier so that future protocol
+      revisions can be dealt with gracefully.  (Andrew Bennetts, Robert Collins)
+
+    * The bzr protocol version 2 indicates success or failure in every response
+      without depending on particular commands encoding that consistently,
+      allowing future client refactorings to be much more robust about error
+      handling. (Robert Collins, Martin Pool, Andrew Bennetts)
+
+    * The smart protocol over HTTP client has been changed to always post to the
+      same .bzr/smart URL under the original location when it can.  This allows
+      HTTP servers to only have to pass URLs ending in .bzr/smart to the smart
+      server handler, and not arbitrary .bzr/*/smart URLs.  (Andrew Bennetts)
+
     * digest authentication is now supported for proxies and HTTP by the urllib
       based http implementation. Tested against Apache 2.0.55 and Squid
       2.6.5. Basic and digest authentication are handled coherently for HTTP
@@ -81,7 +108,6 @@ IN DEVELOPMENT
       roundtrips are avoided by preventively setting the right authentication
       header(s).
       (Vincent Ladeuil).
-
 
   INTERNALS:
 
@@ -161,6 +187,21 @@ IN DEVELOPMENT
     * New class 'TransportListRegistry', derived from the Registry class, which 
       simplifies tracking the available Transports. (Goffredo Baroncelli)
 
+    * New function ``Branch.get_revision_id_to_revno_map`` which will
+      return a dictionary mapping revision ids to dotted revnos. Since
+      dotted revnos are defined in the context of the branch tip, it makes
+      sense to generate them from a ``Branch`` object.
+      (John Arbash Meinel)
+
+    * Fix the 'Unprintable error' message display to use the repr of the 
+      exception that prevented printing the error because the str value
+      for it is often not useful in debugging (e.g. KeyError('foo') has a
+      str() of 'foo' but a repr of 'KeyError('foo')' which is much more
+      useful. (Robert Collins)
+
+    * urlutils.normalize_url now unescapes unreserved characters, such as "~".
+      (Andrew Bennetts)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
@@ -176,6 +217,10 @@ IN DEVELOPMENT
     * Don't produce encoding error when adding duplicate files.
       (Aaron Bentley)
 
+    * Fix ``bzr log <file>`` so it only logs the revisions that changed
+      the file, and does it faster.
+      (Kent Gibson, John Arbash Meinel, #51980, #69477)
+ 
     * Fix ``InterDirstateTre._iter_changes`` to handle when we come across
       an empty versioned directory, which now has files in it.
       (John Arbash Meinel, #104257)
@@ -2117,7 +2162,6 @@ bzr 0.7 2006-01-09
 
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
-		   
    
     * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
       is exposed as Branch().control_files. Also this has been altered with the
