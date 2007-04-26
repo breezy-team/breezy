@@ -35,6 +35,7 @@ from bzrlib.smart import (
         medium,
         protocol,
         request,
+        request as _mod_request,
         server,
         vfs,
 )
@@ -1266,7 +1267,7 @@ class TestSmartProtocol(tests.TestCase):
             def do_body(cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
-                return request.SmartServerResponse(('ok', ))
+                return request.SuccessfulSmartServerResponse(('ok', ))
         smart_protocol.request._command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
@@ -1286,7 +1287,8 @@ class TestSmartProtocol(tests.TestCase):
             server_output = StringIO()
             server_protocol = self.server_protocol_class(
                 None, server_output.write)
-            server_protocol._send_response(input_tuple)
+            server_protocol._send_response(
+                _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
         # check the decoding of the client smart_protocol from expected_bytes:
         input = StringIO(expected_bytes)
@@ -1403,8 +1405,16 @@ class TestSmartProtocolOne(TestSmartProtocol):
         smart_protocol = protocol.SmartServerRequestProtocolOne(
             None, lambda x: None)
         self.assertEqual(1, smart_protocol.next_read_size())
-        smart_protocol._send_response(('x',))
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
+
+    def test__send_response_errors_with_base_response(self):
+        """Ensure that only the Successful/Failed subclasses are used."""
+        smart_protocol = protocol.SmartServerRequestProtocolOne(
+            None, lambda x: None)
+        self.assertRaises(AttributeError, smart_protocol._send_response,
+            request.SmartServerResponse(('x',)))
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolOne should return a number.
@@ -1557,7 +1567,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol.accept_bytes('\n')
         self.assertEqual(
             protocol.RESPONSE_VERSION_TWO +
-            "error\x01Generic bzr smart protocol error: bad request 'abc'\n",
+            "failed\nerror\x01Generic bzr smart protocol error: bad request 'abc'\n",
             out_stream.getvalue())
         self.assertTrue(smart_protocol.has_dispatched)
         self.assertEqual(0, smart_protocol.next_read_size())
@@ -1581,7 +1591,8 @@ class TestSmartProtocolTwo(TestSmartProtocol):
                 out_stream.write)
         smart_protocol.accept_bytes('readv\x01foo\n3\n3,3done\n')
         self.assertEqual(0, smart_protocol.next_read_size())
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'readv\n3\ndefdone\n',
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO +
+                         'success\nreadv\n3\ndefdone\n',
                          out_stream.getvalue())
         self.assertEqual('', smart_protocol.excess_buffer)
         self.assertEqual('', smart_protocol.in_buffer)
@@ -1591,7 +1602,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, out_stream.write)
         smart_protocol.accept_bytes('hello\nhello\n')
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + "ok\x012\n",
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + "success\nok\x012\n",
                          out_stream.getvalue())
         self.assertEqual("hello\n", smart_protocol.excess_buffer)
         self.assertEqual("", smart_protocol.in_buffer)
@@ -1615,7 +1626,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, out_stream.write)
         smart_protocol.accept_bytes('hello\n')
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + "ok\x012\n",
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + "success\nok\x012\n",
                          out_stream.getvalue())
         smart_protocol.accept_bytes(protocol.REQUEST_VERSION_TWO + 'hel')
         self.assertEqual(protocol.REQUEST_VERSION_TWO + "hel",
@@ -1629,8 +1640,34 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, lambda x: None)
         self.assertEqual(1, smart_protocol.next_read_size())
-        smart_protocol._send_response(('x',))
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
+
+    def test__send_response_errors_with_base_response(self):
+        """Ensure that only the Successful/Failed subclasses are used."""
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, lambda x: None)
+        self.assertRaises(AttributeError, smart_protocol._send_response,
+            request.SmartServerResponse(('x',)))
+
+    def test__send_response_includes_failure_marker(self):
+        """FailedSmartServerResponse have 'failed\n' after the version."""
+        out_stream = StringIO()
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, out_stream.write)
+        smart_protocol._send_response(
+            request.FailedSmartServerResponse(('x',)))
+        self.assertEqual('2\nfailed\nx\n', out_stream.getvalue())
+
+    def test__send_response_includes_success_marker(self):
+        """SuccessfulSmartServerResponse have 'success\n' after the version."""
+        out_stream = StringIO()
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, out_stream.write)
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
+        self.assertEqual('2\nsuccess\nx\n', out_stream.getvalue())
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolTwo should return a number.
@@ -1642,7 +1679,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
         # response of tuple-encoded (ok, 1).  Also, seperately we should test
         # the error if the response is a non-understood version.
-        input = StringIO(protocol.RESPONSE_VERSION_TWO + 'ok\x012\n')
+        input = StringIO(protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n')
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
         request = client_medium.get_request()
@@ -1654,13 +1691,14 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         # when the parsed line is an empty line, and results in a tuple with
         # one element - an empty string.
         self.assertServerToClientEncoding(
-            protocol.RESPONSE_VERSION_TWO + '\n', ('', ), [(), ('', )])
+            protocol.RESPONSE_VERSION_TWO + 'success\n\n', ('', ), [(), ('', )])
 
     def test_client_call_three_element_response(self):
         # protocol.call() can get back tuples of other lengths. A three element
         # tuple should be unpacked as three strings.
         self.assertServerToClientEncoding(
-            protocol.RESPONSE_VERSION_TWO + 'a\x01b\x0134\n', ('a', 'b', '34'),
+            protocol.RESPONSE_VERSION_TWO + 'success\na\x01b\x0134\n',
+            ('a', 'b', '34'),
             [('a', 'b', '34')])
 
     def test_client_call_with_body_bytes_uploads(self):
@@ -1687,11 +1725,23 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
+    def test_client_read_response_tuple_sets_response_status(self):
+        server_bytes = "2\nsuccess\nok\n"
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(False)
+        self.assertEqual(True, smart_protocol.response_status)
+
     def test_client_read_body_bytes_all(self):
         # read_body_bytes should decode the body bytes from the wire into
         # a response.
         expected_bytes = "1234567"
-        server_bytes = protocol.RESPONSE_VERSION_TWO + "ok\n7\n1234567done\n"
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n7\n1234567done\n")
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
@@ -1708,7 +1758,8 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         # LengthPrefixedBodyDecoder that is already well tested - we can skip
         # that.
         expected_bytes = "1234567"
-        server_bytes = protocol.RESPONSE_VERSION_TWO + "ok\n7\n1234567done\n"
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n7\n1234567done\n")
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
@@ -1725,7 +1776,8 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         # cancelling the expected body needs to finish the request, but not
         # read any more bytes.
         expected_bytes = "1234567"
-        server_bytes = protocol.RESPONSE_VERSION_TWO + "ok\n7\n1234567done\n"
+        server_bytes = (protocol.RESPONSE_VERSION_TWO +
+                        "success\nok\n7\n1234567done\n")
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
@@ -1734,7 +1786,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         smart_protocol.call('foo')
         smart_protocol.read_response_tuple(True)
         smart_protocol.cancel_read_body()
-        self.assertEqual(len(protocol.RESPONSE_VERSION_TWO + 'ok\n'),
+        self.assertEqual(len(protocol.RESPONSE_VERSION_TWO + 'success\nok\n'),
                          input.tell())
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
@@ -1842,6 +1894,38 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
+
+
+class TestSuccessfulSmartServerResponse(tests.TestCase):
+
+    def test_construct(self):
+        response = request.SuccessfulSmartServerResponse(('foo', 'bar'))
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual(None, response.body)
+        response = request.SuccessfulSmartServerResponse(('foo', 'bar'), 'bytes')
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual('bytes', response.body)
+
+    def test_is_successful(self):
+        """is_successful should return True for SuccessfulSmartServerResponse."""
+        response = request.SuccessfulSmartServerResponse(('error',))
+        self.assertEqual(True, response.is_successful())
+
+
+class TestFailedSmartServerResponse(tests.TestCase):
+
+    def test_construct(self):
+        response = request.FailedSmartServerResponse(('foo', 'bar'))
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual(None, response.body)
+        response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
+        self.assertEqual(('foo', 'bar'), response.args)
+        self.assertEqual('bytes', response.body)
+
+    def test_is_successful(self):
+        """is_successful should return False for FailedSmartServerResponse."""
+        response = request.FailedSmartServerResponse(('error',))
+        self.assertEqual(False, response.is_successful())
 
 
 class FakeHTTPMedium(object):

@@ -238,7 +238,8 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 2-encoded response.
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'ok\x012\n', response)
+        self.assertEqual(
+            protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n', response)
 
 
 class FakeRequest(object):

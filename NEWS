@@ -88,6 +88,11 @@ IN DEVELOPMENT
       and responses with an explicit version identifier so that future protocol
       revisions can be dealt with gracefully.  (Andrew Bennetts, Robert Collins)
 
+    * The bzr protocol version 2 indicates success or failure in every response
+      without depending on particular commands encoding that consistently,
+      allowing future client refactorings to be much more robust about error
+      handling. (Robert Collins, Martin Pool, Andrew Bennetts)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
