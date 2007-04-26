@@ -102,11 +102,11 @@ class BzrError(StandardError):
                     return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
+            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
-                   str(e))
+                   e)
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -154,9 +154,9 @@ class BzrNewError(BzrError):
                 return s.encode('utf8')
             return s
         except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %s' \
+            return 'Unprintable exception %s(%r): %r' \
                 % (self.__class__.__name__,
-                   self.__dict__, str(e))
+                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
