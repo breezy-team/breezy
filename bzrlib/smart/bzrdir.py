@@ -19,7 +19,11 @@
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+    )
 
 
 class SmartServerRequestOpenBzrDir(SmartServerRequest):
@@ -35,7 +39,7 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
             answer = 'no'
         else:
             answer = 'yes'
-        return SmartServerResponse((answer,))
+        return SuccessfulSmartServerResponse((answer,))
 
 
 class SmartServerRequestFindRepository(SmartServerRequest):
@@ -68,9 +72,9 @@ class SmartServerRequestFindRepository(SmartServerRequest):
                 tree_ref = 'yes'
             else:
                 tree_ref = 'no'
-            return SmartServerResponse(('ok', '/'.join(segments), rich_root, tree_ref))
+            return SuccessfulSmartServerResponse(('ok', '/'.join(segments), rich_root, tree_ref))
         except errors.NoRepositoryPresent:
-            return SmartServerResponse(('norepository', ))
+            return FailedSmartServerResponse(('norepository', ))
 
 
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):
@@ -83,7 +87,7 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         """
         target_transport = self._backing_transport.clone(path)
         BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
-        return SmartServerResponse(('ok', ))
+        return SuccessfulSmartServerResponse(('ok', ))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequest):
@@ -98,8 +102,8 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
         try:
             reference_url = bzrdir.get_branch_reference()
             if reference_url is None:
-                return SmartServerResponse(('ok', ''))
+                return SuccessfulSmartServerResponse(('ok', ''))
             else:
-                return SmartServerResponse(('ok', reference_url))
+                return SuccessfulSmartServerResponse(('ok', reference_url))
         except errors.NotBranchError:
-            return SmartServerResponse(('nobranch', ))
+            return FailedSmartServerResponse(('nobranch', ))

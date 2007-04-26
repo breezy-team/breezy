@@ -54,7 +54,6 @@ class RemoteBzrDir(BzrDir):
             self._medium = None
             return
 
-        self._ensure_real()
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:

@@ -15,11 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import urllib
+import urlparse
 
-from bzrlib import (
-    ui,
-    errors,
-    )
+from bzrlib import errors
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
@@ -28,6 +27,8 @@ from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
+    extract_authentication_uri,
+    extract_credentials,
     )
 
 
@@ -45,40 +46,33 @@ class HttpTransport_urllib(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
-        super(HttpTransport_urllib, self).__init__(base, from_transport)
         if from_transport is not None:
+            super(HttpTransport_urllib, self).__init__(base, from_transport)
             self._connection = from_transport._connection
-            self._user = from_transport._user
-            self._password = from_transport._password
+            self._auth = from_transport._auth
+            self._proxy_auth = from_transport._proxy_auth
+
             self._opener = from_transport._opener
         else:
+            # urllib2 will be confused if it find authentication
+            # info in the urls. So we handle them separatly.
+            # Note: we don't need to when cloning because it was
+            # already done.
+            clean_base, user, password = extract_credentials(base)
+            super(HttpTransport_urllib, self).__init__(clean_base,
+                                                       from_transport)
             self._connection = None
-            self._user = None
-            self._password = None
             self._opener = self._opener_class()
 
-    def ask_password(self, request):
-        """Ask for a password if none is already provided in the request"""
-        # TODO: jam 20060915 There should be a test that asserts we ask 
-        #       for a password at the right time.
-        if request.password is None:
-            # We can't predict realm, let's try None, we'll get a
-            # 401 if we are wrong anyway
-            realm = None
-            host = request.get_host()
-            password_manager = self._opener.password_manager
-            # Query the password manager first
-            user, password = password_manager.find_user_password(None, host)
-            if user == request.user and password is not None:
-                request.password = password
-            else:
-                # Ask the user if we MUST
-                http_pass = 'HTTP %(user)s@%(host)s password'
-                request.password = ui.ui_factory.get_password(prompt=http_pass,
-                                                              user=request.user,
-                                                              host=host)
-                password_manager.add_password(None, host,
-                                              request.user, request.password)
+            authuri = extract_authentication_uri(self._real_abspath(self._path))
+            self._auth = {'user': user, 'password': password,
+                          'authuri': authuri}
+            if user and password is not None: # '' is a valid password
+                # Make the (user, password) available to urllib2
+                # We default to a realm of None to catch them all.
+                self._opener.password_manager.add_password(None, authuri,
+                                                           user, password)
+            self._proxy_auth = {}
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -88,26 +82,22 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
-            if self._user is not None:
-                request.user = self._user
-                request.password = self._password
-        elif request.user is not None:
-            # We will issue our first request, time to ask for a
-            # password if needed
-            self.ask_password(request)
+        # Ensure authentication info is provided
+        request.auth = self._auth
+        request.proxy_auth = self._proxy_auth
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
             print 'perform: %s base: %s, url: %s' % (request.method, self.base,
                                                      request.get_full_url())
-
         response = self._opener.open(request)
         if self._connection is None:
             # Acquire connection when the first request is able
             # to connect to the server
             self._connection = request.connection
-            self._user = request.user
-            self._password = request.password
+        # Always get auth parameters, they may change
+        self._auth = request.auth
+        self._proxy_auth = request.proxy_auth
 
         code = response.code
         if request.follow_redirections is False \

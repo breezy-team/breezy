@@ -57,6 +57,7 @@ from bzrlib.osutils import (
     sha_string,
     )
 from bzrlib.smart.client import _SmartClient
+from bzrlib.smart import protocol
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -2232,12 +2233,20 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
-            transport.get_smart_client()
+            client = transport.get_smart_client()
         except (NotImplementedError, AttributeError,
                 errors.TransportNotPossible):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
+            # Send a 'hello' request in protocol version one, and decline to
+            # open it if the server doesn't support our required version (2) so
+            # that the VFS-based transport will do it.
+            request = client.get_request()
+            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+            server_version = smart_protocol.query_version()
+            if server_version != 2:
+                raise errors.NotBranchError(path=transport.base)
             return klass()
 
     def initialize_on_transport(self, transport):

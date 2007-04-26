@@ -103,13 +103,13 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     # trivial request
                     self.excess_buffer = self.in_buffer
                     self.in_buffer = ''
-                    self._send_response(self.request.response.args,
-                        self.request.response.body)
+                    self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
-                self._send_response(('error', str(exception)))
+                self._send_response(request.FailedSmartServerResponse(
+                    ('error', str(exception))))
                 return
 
         if self.has_dispatched:
@@ -130,19 +130,21 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 assert self.request.finished_reading, \
                     "no more body, request not finished"
             if self.request.response is not None:
-                self._send_response(self.request.response.args,
-                    self.request.response.body)
+                self._send_response(self.request.response)
                 self.excess_buffer = self.in_buffer
                 self.in_buffer = ''
             else:
                 assert not self.request.finished_reading, \
                     "no response and we have finished reading."
 
-    def _send_response(self, args, body=None):
+    def _send_response(self, response):
         """Send a smart server response down the output stream."""
         assert not self._finished, 'response already sent'
+        args = response.args
+        body = response.body
         self._finished = True
         self._write_protocol_version()
+        self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(args))
         if body is not None:
             assert isinstance(body, str), 'body must be a str'
@@ -154,6 +156,14 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         
         Version one doesn't send protocol versions.
         """
+
+    def _write_success_or_failure_prefix(self, response):
+        """Write the protocol specific success/failure prefix.
+
+        For SmartServerRequestProtocolOne this is omitted but we
+        call is_successful to ensure that the response is valid.
+        """
+        response.is_successful()
 
     def next_read_size(self):
         if self._finished:
@@ -169,6 +179,13 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
    
     This prefixes responses with the value of RESPONSE_VERSION_TWO.
     """
+
+    def _write_success_or_failure_prefix(self, response):
+        """Write the protocol specific success/failure prefix."""
+        if response.is_successful():
+            self._write_func('success\n')
+        else:
+            self._write_func('failed\n')
 
     def _write_protocol_version(self):
         r"""Write any prefixes this protocol requires.
@@ -347,13 +364,17 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
     def _recv_tuple(self):
         """Receive a tuple from the medium request."""
+        return _decode_tuple(self._recv_line())
+
+    def _recv_line(self):
+        """Read an entire line from the medium request."""
         line = ''
         while not line or line[-1] != '\n':
             # TODO: this is inefficient - but tuples are short.
             new_char = self._request.read_bytes(1)
             line += new_char
             assert new_char != '', "end of file reading from server."
-        return _decode_tuple(line)
+        return line
 
     def query_version(self):
         """Return protocol version number of the server."""
@@ -392,6 +413,11 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         version = self._request.read_line()
         if version != RESPONSE_VERSION_TWO:
             raise errors.SmartProtocolError('bad protocol marker %r' % version)
+        response_status = self._recv_line()
+        if response_status not in ('success\n', 'failed\n'):
+            raise errors.SmartProtocolError(
+                'bad protocol status %r' % response_status)
+        self.response_status = response_status == 'success\n'
         return SmartClientRequestProtocolOne.read_response_tuple(self, expect_body)
 
     def _write_protocol_version(self):

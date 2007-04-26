@@ -22,8 +22,11 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
-from bzrlib.transport.local import LocalTransport
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+    )
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -65,12 +68,12 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.
-            return SmartServerResponse(('nosuchrevision', revision_id), '')
+            return FailedSmartServerResponse(('nosuchrevision', revision_id), '')
 
         for revision, parents in revision_graph.items():
             lines.append(' '.join([revision,] + parents))
 
-        return SmartServerResponse(('ok', ), '\n'.join(lines))
+        return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
@@ -84,9 +87,9 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             present.
         """
         if repository.has_revision(revision_id):
-            return SmartServerResponse(('yes', ))
+            return SuccessfulSmartServerResponse(('yes', ))
         else:
-            return SmartServerResponse(('no', ))
+            return SuccessfulSmartServerResponse(('no', ))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
@@ -129,7 +132,7 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
         if stats.has_key('size'):
             body += 'size: %d\n' % stats['size']
 
-        return SmartServerResponse(('ok', ), body)
+        return SuccessfulSmartServerResponse(('ok', ), body)
 
 
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
@@ -142,9 +145,9 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
-            return SmartServerResponse(('yes', ))
+            return SuccessfulSmartServerResponse(('yes', ))
         else:
-            return SmartServerResponse(('no', ))
+            return SuccessfulSmartServerResponse(('no', ))
 
 
 class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
@@ -156,14 +159,14 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         try:
             token = repository.lock_write(token=token)
         except errors.LockContention, e:
-            return SmartServerResponse(('LockContention',))
+            return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
-            return SmartServerResponse(('UnlockableTransport',))
+            return FailedSmartServerResponse(('UnlockableTransport',))
         repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
             token = ''
-        return SmartServerResponse(('ok', token))
+        return SuccessfulSmartServerResponse(('ok', token))
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
@@ -172,10 +175,10 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         try:
             repository.lock_write(token=token)
         except errors.TokenMismatch, e:
-            return SmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse(('TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
-        return SmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse(('ok',))
 
 
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
@@ -213,7 +216,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             self._tarball_of_dir(tmp_dirname, compression, temp.name)
             # all finished; write the tempfile out to the network
             temp.seek(0)
-            return SmartServerResponse(('ok',), temp.read())
+            return SuccessfulSmartServerResponse(('ok',), temp.read())
             # FIXME: Don't read the whole thing into memory here; rather stream it
             # out from the file onto the network. mbp 20070411
         finally:
