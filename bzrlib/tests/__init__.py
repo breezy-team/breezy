@@ -780,11 +780,12 @@ class TestCase(unittest.TestCase):
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
-        # this list of hooks must be kept in sync with the defaults
-        # in branch.py
+        # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
-        bzrlib.smart.server.SmartTCPServer.hooks = \
-            bzrlib.smart.server.SmartServerHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        # FIXME: Rather than constructing new objects like this, how about
+        # having save() and clear() methods on the base Hook class? mbp
+        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1745,7 +1746,13 @@ class TestCaseWithMemoryTransport(TestCase):
     def get_vfs_only_url(self, relpath=None):
         """Get a URL (or maybe a path for the plain old vfs transport.
 
-        This will never be a smart protocol.
+        This will never be a smart protocol.  It always has all the
+        capabilities of the local filesystem, but it might actually be a
+        MemoryTransport or some other similar virtual filesystem.
+
+        This is the backing transport (if any) of the server returned by 
+        get_url and get_readonly_url.
+
         :param relpath: provides for clients to get a path relative to the base
             url.  These should only be downwards relative, not upwards.
         """
@@ -1811,7 +1818,14 @@ class TestCaseWithMemoryTransport(TestCase):
             raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
-        """Create a repository on our default transport at relpath."""
+        """Create a repository on our default transport at relpath.
+        
+        Note that relpath must be a relative path, not a full url.
+        """
+        # FIXME: If you create a remoterepository this returns the underlying
+        # real format, which is incorrect.  Actually we should make sure that 
+        # RemoteBzrDir returns a RemoteRepository.
+        # maybe  mbp 20070410
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 

@@ -253,14 +253,16 @@ class TestHelpIndex(tests.TestCase):
     def test_get_topics_launchpad(self):
         """Searching for 'launchpad' returns the launchpad plugin docstring."""
         index = plugin.PluginsHelpIndex()
-        # if bzr was run with '--no-plugins' we need to manually load the
-        # reference plugin. Its shipped with bzr, and loading at this point
-        # won't add additional tests to run.
-        import bzrlib.plugins.launchpad
-        topics = index.get_topics('launchpad')
-        self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
-        self.assertEqual(bzrlib.plugins.launchpad, topics[0].module)
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
+        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
+        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        try:
+            topics = index.get_topics('get_topics')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.get_topics']
 
     def test_get_topics_no_topic(self):
         """Searching for something that is not a plugin returns []."""
@@ -277,14 +279,16 @@ class TestHelpIndex(tests.TestCase):
     def test_get_topic_with_prefix(self):
         """Searching for plugins/launchpad returns launchpad module help."""
         index = plugin.PluginsHelpIndex()
-        # if bzr was run with '--no-plugins' we need to manually load the
-        # reference plugin. Its shipped with bzr, and loading at this point
-        # won't add additional tests to run.
-        import bzrlib.plugins.launchpad
-        topics = index.get_topics('plugins/launchpad')
-        self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
-        self.assertEqual(bzrlib.plugins.launchpad, topics[0].module)
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
+        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
+        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        try:
+            topics = index.get_topics('plugins/get_topics')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.get_topics']
 
 
 class FakeModule(object):

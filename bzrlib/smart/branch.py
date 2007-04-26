@@ -19,7 +19,11 @@
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+    )
 
 
 class SmartServerBranchRequest(SmartServerRequest):
@@ -73,7 +77,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
             content = branch.control_files.get('branch.conf').read()
         except errors.NoSuchFile:
             content = ''
-        return SmartServerResponse( ('ok', ), content)
+        return SuccessfulSmartServerResponse( ('ok', ), content)
 
 
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
@@ -84,7 +88,7 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
-        return SmartServerResponse(
+        return SuccessfulSmartServerResponse(
             ('ok', ), ('\x00'.join(branch.revision_history())))
 
 
@@ -96,7 +100,7 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         revno, last_revision = branch.last_revision_info()
-        return SmartServerResponse(('ok', str(revno), last_revision))
+        return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
@@ -106,10 +110,10 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
             branch.set_revision_history([])
         else:
             if not branch.repository.has_revision(new_last_revision_id):
-                return SmartServerResponse(
+                return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
             branch.generate_revision_history(new_last_revision_id)
-        return SmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse(('ok',))
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
@@ -126,15 +130,15 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             finally:
                 branch.repository.unlock()
         except errors.LockContention:
-            return SmartServerResponse(('LockContention',))
+            return FailedSmartServerResponse(('LockContention',))
         except errors.TokenMismatch:
-            return SmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse(('TokenMismatch',))
         except errors.UnlockableTransport:
-            return SmartServerResponse(('UnlockableTransport',))
+            return FailedSmartServerResponse(('UnlockableTransport',))
         branch.repository.leave_lock_in_place()
         branch.leave_lock_in_place()
         branch.unlock()
-        return SmartServerResponse(('ok', branch_token, repo_token))
+        return SuccessfulSmartServerResponse(('ok', branch_token, repo_token))
 
 
 class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
@@ -147,9 +151,9 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
             finally:
                 branch.repository.unlock()
         except errors.TokenMismatch:
-            return SmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse(('TokenMismatch',))
         branch.repository.dont_leave_lock_in_place()
         branch.dont_leave_lock_in_place()
         branch.unlock()
-        return SmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse(('ok',))
         

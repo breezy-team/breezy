@@ -84,6 +84,31 @@ IN DEVELOPMENT
       serve out to the local LAN (and anyone in the world that can reach the
       machine running ``bzr serve``. (Robert Collins, #98918)
 
+    * A new smart server protocol version has been added.  It prefixes requests
+      and responses with an explicit version identifier so that future protocol
+      revisions can be dealt with gracefully.  (Andrew Bennetts, Robert Collins)
+
+    * The bzr protocol version 2 indicates success or failure in every response
+      without depending on particular commands encoding that consistently,
+      allowing future client refactorings to be much more robust about error
+      handling. (Robert Collins, Martin Pool, Andrew Bennetts)
+
+    * The smart protocol over HTTP client has been changed to always post to the
+      same .bzr/smart URL under the original location when it can.  This allows
+      HTTP servers to only have to pass URLs ending in .bzr/smart to the smart
+      server handler, and not arbitrary .bzr/*/smart URLs.  (Andrew Bennetts)
+
+    * digest authentication is now supported for proxies and HTTP by the urllib
+      based http implementation. Tested against Apache 2.0.55 and Squid
+      2.6.5. Basic and digest authentication are handled coherently for HTTP
+      and proxy: if the user is provided in the url (bzr command line for HTTP,
+      proxy environment variables for proxies), the password is prompted for
+      (only once). If the password is provided, it is taken into account. Once
+      the first authentication is successful, all further authentication
+      roundtrips are avoided by preventively setting the right authentication
+      header(s).
+      (Vincent Ladeuil).
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -123,6 +148,15 @@ IN DEVELOPMENT
       bzrlib/transport/remote.py contains just the Transport classes that used
       to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
 
+    * urllib http implementation avoid roundtrips associated with
+      401 (and 407) errors once the authentication succeeds.
+      (Vincent Ladeuil).
+
+    * urlib http now supports querying the user for a proxy password if
+      needed. Realm is shown in the prompt for both HTTP and proxy
+      authentication when the user is required to type a password. 
+      (Vincent Ladeuil).
+
     * Renamed SmartTransport (and subclasses like SmartTCPTransport) to
       RemoteTransport (and subclasses to RemoteTCPTransport, etc).  This is more
       consistent with its new home in bzrlib/transport/remote.py, and because
@@ -158,6 +192,15 @@ IN DEVELOPMENT
       dotted revnos are defined in the context of the branch tip, it makes
       sense to generate them from a ``Branch`` object.
       (John Arbash Meinel)
+
+    * Fix the 'Unprintable error' message display to use the repr of the 
+      exception that prevented printing the error because the str value
+      for it is often not useful in debugging (e.g. KeyError('foo') has a
+      str() of 'foo' but a repr of 'KeyError('foo')' which is much more
+      useful. (Robert Collins)
+
+    * urlutils.normalize_url now unescapes unreserved characters, such as "~".
+      (Andrew Bennetts)
 
   BUGFIXES:
 
@@ -195,6 +238,12 @@ IN DEVELOPMENT
     * FTP now works even when the FTP server does not support atomic rename.
       (Aaron Bentley, #89436)
 
+    * Correct handling in bundles and merge directives of timezones with
+      that are not an integer number of hours offset from UTC.  Always 
+      represent the epoch time in UTC to avoid problems with formatting 
+      earlier times on win32.  (Martin Pool, Alexander Belchenko, John
+      Arbash Meinel)
+
     * Typo in the help for ``register-branch`` fixed. (Robert Collins, #96770)
 
     * "dirstate" and "dirstate-tags" formats now produce branches compatible
@@ -207,6 +256,16 @@ IN DEVELOPMENT
       on top of it. Also handle the case of ``bzr rm --keep foo``. ``bzr
       status`` should show the removed file and an unknown file in its
       place. (John Arbash Meinel, #109993)
+
+    * Don't preventively use basic authentication for proxy before receiving a
+      407 error. Otherwise people willing to use other authentication schemes
+      may expose their password in the clear (or nearly). This add one
+      roundtrip in case basic authentication should be used, but plug the
+      security hole.
+      (Vincent Ladeuil)
+
+    * Handle http and proxy digest authentication.
+      (Vincent Ladeuil, #94034).
 
   TESTING:
 
@@ -241,6 +300,10 @@ IN DEVELOPMENT
     * Mark bzrlib.tests and bzrlib.tests.TestUtil as providing assertFOO helper
       functions by adding a __unittest global attribute. (Robert Collins,
       Andrew Bennetts, Martin Pool, Jonathan Lange)
+
+    * Refactored proxy and authentication handling to simplify the
+      implementation of new auth schemes for both http and proxy. 
+      (Vincent Ladeuil)
 
 bzr 0.15 2007-04-01
 
