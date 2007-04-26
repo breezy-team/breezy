@@ -369,6 +369,22 @@ class TestCommit(ExternalBase):
         self.assertEqual('', output)
         self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
 
+    def test_no_bugs_no_properties(self):
+        """If no bugs are fixed, the bugs property is not set.
+
+        see https://beta.launchpad.net/bzr/+bug/109613
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr( 'commit', '-m', 'hello', 'tree/hello.txt')
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+        self.assertFalse('bugs' in properties)
+
     def test_fixes_bug_sets_property(self):
         """commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
         tree = self.make_branch_and_tree('tree')

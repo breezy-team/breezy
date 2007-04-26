@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1150,8 +1150,9 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except NotLocalUrl:
-            pass # This is not a local transport
+        except (errors.NotLocalUrl, TransportNotPossible), e:
+            # should be formattable
+            s = str(e)
         else:
             self.assertEqual(getcwd(), p)
 

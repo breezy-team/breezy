@@ -395,6 +395,23 @@ class Repository(object):
 
         :return: The newly created destination repository.
         """
+        # TODO: deprecate after 0.16; cloning this with all its settings is
+        # probably not very useful -- mbp 20070423
+        dest_repo = self._create_sprouting_repo(a_bzrdir, shared=self.is_shared())
+        self.copy_content_into(dest_repo, revision_id)
+        return dest_repo
+
+    @needs_read_lock
+    def sprout(self, to_bzrdir, revision_id=None):
+        """Create a descendent repository for new development.
+
+        Unlike clone, this does not copy the settings of the repository.
+        """
+        dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
+        dest_repo.fetch(self, revision_id=revision_id)
+        return dest_repo
+
+    def _create_sprouting_repo(self, a_bzrdir, shared):
         if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
             # use target default format.
             dest_repo = a_bzrdir.create_repository()
@@ -402,10 +419,9 @@ class Repository(object):
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_bzrdir, shared=self.is_shared())
+                dest_repo = self._format.initialize(a_bzrdir, shared=shared)
             except errors.UninitializableFormat:
                 dest_repo = a_bzrdir.open_repository()
-        self.copy_content_into(dest_repo, revision_id)
         return dest_repo
 
     @needs_read_lock
@@ -772,7 +788,7 @@ class Repository(object):
         reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
-    
+
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1385,6 +1401,9 @@ class InterSameDataRepository(InterRepository):
     @needs_write_lock
     def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
+
+        This copies both the repository's revision data, and configuration information
+        such as the make_working_trees setting.
         
         This is a destructive operation! Do not use it on existing 
         repositories.

@@ -245,6 +245,13 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parents ids of the working tree.
+
+        :param revision_ids: A list of revision_ids.
+        """
+        raise NotImplementedError(self.set_parent_ids)
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 

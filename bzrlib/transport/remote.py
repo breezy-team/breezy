@@ -29,6 +29,7 @@ import urlparse
 from bzrlib import (
     errors,
     transport,
+    urlutils,
     )
 from bzrlib.smart import client, medium, protocol
 
@@ -485,10 +486,12 @@ class RemoteHTTPTransport(RemoteTransport):
 
     def _remote_path(self, relpath):
         """After connecting HTTP Transport only deals in relative URLs."""
-        if relpath == '.':
-            return ''
-        else:
-            return relpath
+        # Adjust the relpath based on which URL this smart transport is
+        # connected to.
+        base = self._http_transport.base
+        url = urlutils.join(self.base[len('bzr+'):], relpath)
+        url = urlutils.normalize_url(url)
+        return urlutils.relative_url(base, url)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -504,15 +507,28 @@ class RemoteHTTPTransport(RemoteTransport):
         This is re-implemented rather than using the default
         RemoteTransport.clone() because we must be careful about the underlying
         http transport.
+
+        Also, the cloned smart transport will POST to the same .bzr/smart
+        location as this transport (although obviously the relative paths in the
+        smart requests may be different).  This is so that the server doesn't
+        have to handle .bzr/smart requests at arbitrary places inside .bzr
+        directories, just at the initial URL the user uses.
+
+        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # By cloning the underlying http_transport, we are able to share the
-        # connection.
-        new_transport = self._http_transport.clone(relative_url)
-        return RemoteHTTPTransport(abs_url, http_transport=new_transport)
+        # We either use the exact same http_transport (for child locations), or
+        # a clone of the underlying http_transport (for parent locations).  This
+        # means we share the connection.
+        normalized_rel_url = urlutils.relative_url(self.base, abs_url)
+        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
+            http_transport = self._http_transport.clone(normalized_rel_url)
+        else:
+            http_transport = self._http_transport
+        return RemoteHTTPTransport(abs_url, http_transport=http_transport)
 
 
 def get_test_permutations():

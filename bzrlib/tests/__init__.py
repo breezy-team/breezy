@@ -36,7 +36,6 @@ import os
 from pprint import pformat
 import random
 import re
-import shlex
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -54,6 +53,7 @@ from bzrlib import (
     progress,
     ui,
     urlutils,
+    workingtree,
     )
 import bzrlib.branch
 import bzrlib.commands
@@ -780,11 +780,12 @@ class TestCase(unittest.TestCase):
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
-        # this list of hooks must be kept in sync with the defaults
-        # in branch.py
+        # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
-        bzrlib.smart.server.SmartTCPServer.hooks = \
-            bzrlib.smart.server.SmartServerHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        # FIXME: Rather than constructing new objects like this, how about
+        # having save() and clear() methods on the base Hook class? mbp
+        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1294,7 +1295,8 @@ class TestCase(unittest.TestCase):
         if err:
             self.log('errors:\n%r', err)
         if retcode is not None:
-            self.assertEquals(retcode, result)
+            self.assertEquals(retcode, result,
+                              message='Unexpected return code')
         return out, err
 
     def run_bzr(self, *args, **kwargs):
@@ -1315,8 +1317,15 @@ class TestCase(unittest.TestCase):
         encoding = kwargs.pop('encoding', None)
         stdin = kwargs.pop('stdin', None)
         working_dir = kwargs.pop('working_dir', None)
-        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding,
-                                     stdin=stdin, working_dir=working_dir)
+        error_regexes = kwargs.pop('error_regexes', [])
+
+        out, err = self.run_bzr_captured(args, retcode=retcode,
+            encoding=encoding, stdin=stdin, working_dir=working_dir)
+
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
+
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:
@@ -1349,9 +1358,7 @@ class TestCase(unittest.TestCase):
                                'commit', '--strict', '-m', 'my commit comment')
         """
         kwargs.setdefault('retcode', 3)
-        out, err = self.run_bzr(*args, **kwargs)
-        for regex in error_regexes:
-            self.assertContainsRe(err, regex)
+        out, err = self.run_bzr(error_regexes=error_regexes, *args, **kwargs)
         return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
@@ -1739,7 +1746,13 @@ class TestCaseWithMemoryTransport(TestCase):
     def get_vfs_only_url(self, relpath=None):
         """Get a URL (or maybe a path for the plain old vfs transport.
 
-        This will never be a smart protocol.
+        This will never be a smart protocol.  It always has all the
+        capabilities of the local filesystem, but it might actually be a
+        MemoryTransport or some other similar virtual filesystem.
+
+        This is the backing transport (if any) of the server returned by 
+        get_url and get_readonly_url.
+
         :param relpath: provides for clients to get a path relative to the base
             url.  These should only be downwards relative, not upwards.
         """
@@ -1805,7 +1818,14 @@ class TestCaseWithMemoryTransport(TestCase):
             raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
-        """Create a repository on our default transport at relpath."""
+        """Create a repository on our default transport at relpath.
+        
+        Note that relpath must be a relative path, not a full url.
+        """
+        # FIXME: If you create a remoterepository this returns the underlying
+        # real format, which is incorrect.  Actually we should make sure that 
+        # RemoteBzrDir returns a RemoteRepository.
+        # maybe  mbp 20070410
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
@@ -1953,12 +1973,41 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path),path+" does not exist")
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path),path+" exists")
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
+    def assertInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertInWorkingTree(p,tree=tree)
+        else:
+            self.assertIsNot(tree.path2id(path), None,
+                path+' not in working tree.')
+
+    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are not in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertNotInWorkingTree(p,tree=tree)
+        else:
+            self.assertIs(tree.path2id(path), None, path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -2236,7 +2285,6 @@ def test_suite():
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
-                   'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',

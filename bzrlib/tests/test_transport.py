@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,10 @@ import stat
 from cStringIO import StringIO
 
 import bzrlib
-from bzrlib import urlutils
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.errors import (ConnectionError,
                            DependencyNotPresent,
                            FileExists,
@@ -124,6 +127,12 @@ class TestTransport(TestCase):
                          t._combine_paths('/home/sarah', '../../../etc'))
         self.assertEqual('/etc',
                          t._combine_paths('/home/sarah', '/etc'))
+
+    def test_local_abspath_non_local_transport(self):
+        # the base implementation should throw
+        t = MemoryTransport()
+        e = self.assertRaises(errors.NotLocalUrl, t.local_abspath, 't')
+        self.assertEqual('memory:///t is not a local path.', str(e))
 
 
 class TestCoalesceOffsets(TestCase):
@@ -465,7 +474,7 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         transport = self.get_nfs_transport('.')
         self.build_tree(['from/', 'from/foo', 'to/', 'to/bar'],
                         transport=transport)
-        self.assertRaises(bzrlib.errors.ResourceBusy,
+        self.assertRaises(errors.ResourceBusy,
                           transport.rename, 'from', 'to')
 
 
@@ -563,6 +572,11 @@ class TestLocalTransports(TestCase):
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
+
+    def test_local_abspath(self):
+        here = os.path.abspath('.')
+        t = get_transport(here)
+        self.assertEquals(t.local_abspath(''), here)
 
 
 class TestWin32LocalTransport(TestCase):

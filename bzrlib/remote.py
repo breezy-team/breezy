@@ -28,6 +28,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -53,7 +54,6 @@ class RemoteBzrDir(BzrDir):
             self._medium = None
             return
 
-        self._ensure_real()
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:
@@ -431,6 +431,30 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.break_lock()
 
+    def _get_tarball(self, compression):
+        """Return a TemporaryFile containing a repository tarball"""
+        import tempfile
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.tarball', path, compression)
+        assert response[0] in ('ok', 'failure'), \
+            'unexpected response code %s' % (response,)
+        if response[0] == 'ok':
+            # Extract the tarball and return it
+            t = tempfile.NamedTemporaryFile()
+            # TODO: rpc layer should read directly into it...
+            t.write(protocol.read_body_bytes())
+            t.seek(0)
+            return t
+        else:
+            raise errors.SmartServerError(error_code=response)
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        # TODO: Option to control what format is created?
+        to_repo = to_bzrdir.create_repository()
+        self._copy_repository_tarball(to_repo, revision_id)
+        return to_repo
+
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
@@ -570,6 +594,35 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.copy_content_into(
             destination, revision_id=revision_id)
+
+    def _copy_repository_tarball(self, destination, revision_id=None):
+        # get a tarball of the remote repository, and copy from that into the
+        # destination
+        from bzrlib import osutils
+        import tarfile
+        import tempfile
+        from StringIO import StringIO
+        # TODO: Maybe a progress bar while streaming the tarball?
+        note("Copying repository content as tarball...")
+        tar_file = self._get_tarball('bz2')
+        try:
+            tar = tarfile.open('repository', fileobj=tar_file,
+                mode='r|bz2')
+            tmpdir = tempfile.mkdtemp()
+            try:
+                _extract_tar(tar, tmpdir)
+                tmp_bzrdir = BzrDir.open(tmpdir)
+                tmp_repo = tmp_bzrdir.open_repository()
+                tmp_repo.copy_content_into(destination, revision_id)
+            finally:
+                osutils.rmtree(tmpdir)
+        finally:
+            tar_file.close()
+        # TODO: if the server doesn't support this operation, maybe do it the
+        # slow way using the _real_repository?
+        #
+        # TODO: Suggestion from john: using external tar is much faster than
+        # python's tarfile library, but it may not work on windows.
 
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)
@@ -901,6 +954,7 @@ class RemoteBranch(branch.Branch):
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
+        self._clear_cached_state()
         response = self._client.call('Branch.set_last_revision',
             path, self._lock_token, self._repo_lock_token, rev_id)
         if response[0] == 'NoSuchRevision':
@@ -926,9 +980,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        self._ensure_real()
         result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
-        self._real_branch.copy_content_into(result, revision_id=revision_id)
+        self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
@@ -990,3 +1043,11 @@ class RemoteBranchConfig(BranchConfig):
             self._branch_data_config = TreeConfig(self.branch._real_branch)
         return self._branch_data_config
 
+
+def _extract_tar(tar, to_dir):
+    """Extract all the contents of a tarfile object.
+
+    A replacement for extractall, which is not present in python2.4
+    """
+    for tarinfo in tar:
+        tar.extract(tarinfo, to_dir)
