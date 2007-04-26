@@ -34,6 +34,11 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         x = BzrDir.open(repos_url)
         self.assertRaises(NoWorkingTree, x.open_workingtree)
 
+    def test_open_workingtree_recommend_arg(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url)
+        self.assertRaises(NoWorkingTree, lambda: x.open_workingtree(recommend_upgrade=True))
+
     def test_create_workingtree(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)

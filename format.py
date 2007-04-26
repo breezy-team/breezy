@@ -102,7 +102,8 @@ class SvnRemoteAccess(BzrDir):
             transport = SvnRaTransport(self.svn_root_url)
         return SvnRepository(self, transport)
 
-    def open_workingtree(self):
+    def open_workingtree(self, _unsupported=False,
+            recommend_upgrade=True):
         """See BzrDir.open_workingtree().
 
         Will always raise NotLocalUrl as this 
