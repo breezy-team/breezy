@@ -2058,6 +2058,36 @@ class SampleSocket(object):
             return self.writefile
 
 
+class RemoteHTTPTransportTestCase(tests.TestCase):
+
+    def test_remote_path_after_clone_child(self):
+        # If a user enters "bzr+http://host/foo", we want to sent all smart
+        # requests for child URLs of that to the original URL.  i.e., we want to
+        # POST to "bzr+http://host/foo/.bzr/smart" and never something like
+        # "bzr+http://host/foo/.bzr/branch/.bzr/smart".  So, a cloned
+        # RemoteHTTPTransport remembers the initial URL, and adjusts the relpaths
+        # it sends in smart requests accordingly.
+        base_transport = remote.RemoteHTTPTransport('bzr+http://host/path')
+        new_transport = base_transport.clone('child_dir')
+        self.assertEqual(base_transport._http_transport,
+                         new_transport._http_transport)
+        self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
+
+    def test_remote_path_after_clone_parent(self):
+        # However, accessing a parent directory should go direct to the parent's
+        # URL.  We don't send relpaths like "../foo" in smart requests.
+        base_transport = remote.RemoteHTTPTransport('bzr+http://host/path1/path2')
+        new_transport = base_transport.clone('..')
+        self.assertEqual('foo', new_transport._remote_path('foo'))
+        new_transport = base_transport.clone('../')
+        self.assertEqual('foo', new_transport._remote_path('foo'))
+        new_transport = base_transport.clone('../abc')
+        self.assertEqual('foo', new_transport._remote_path('foo'))
+        # "abc/../.." should be equivalent to ".."
+        new_transport = base_transport.clone('abc/../..')
+        self.assertEqual('foo', new_transport._remote_path('foo'))
+
+        
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.

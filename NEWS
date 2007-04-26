@@ -93,6 +93,11 @@ IN DEVELOPMENT
       allowing future client refactorings to be much more robust about error
       handling. (Robert Collins, Martin Pool, Andrew Bennetts)
 
+    * The smart protocol over HTTP client has been changed to always post to the
+      same .bzr/smart URL under the original location when it can.  This allows
+      HTTP servers to only have to pass URLs ending in .bzr/smart to the smart
+      server handler, and not arbitrary .bzr/*/smart URLs.  (Andrew Bennetts)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
@@ -173,6 +178,9 @@ IN DEVELOPMENT
       for it is often not useful in debugging (e.g. KeyError('foo') has a
       str() of 'foo' but a repr of 'KeyError('foo')' which is much more
       useful. (Robert Collins)
+
+    * urlutils.normalize_url now unescapes unreserved characters, such as "~".
+      (Andrew Bennetts)
 
   BUGFIXES:
 
