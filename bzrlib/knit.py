@@ -1,8 +1,4 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-# Written by Martin Pool.
-# Modified by Johan Rydberg <jrydberg@gnu.org>
-# Modified by Robert Collins <robert.collins@canonical.com>
-# Modified by Aaron Bentley <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,16 +73,28 @@ import bzrlib
 from bzrlib import (
     cache_utf8,
     errors,
+    osutils,
     patiencediff,
     progress,
+    ui,
     )
-from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
-        InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
-        RevisionNotPresent, RevisionAlreadyPresent
+from bzrlib.errors import (
+    FileExists,
+    NoSuchFile,
+    KnitError,
+    InvalidRevisionId,
+    KnitCorrupt,
+    KnitHeaderError,
+    RevisionNotPresent,
+    RevisionAlreadyPresent,
+    )
 from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
-from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
-     sha_strings
+from bzrlib.osutils import (
+    contains_whitespace,
+    contains_linebreaks,
+    sha_strings,
+    )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.ui
@@ -149,9 +157,9 @@ class KnitContent(object):
 class _KnitFactory(object):
     """Base factory for creating content objects."""
 
-    def make(self, lines, version):
+    def make(self, lines, version_id):
         num_lines = len(lines)
-        return KnitContent(zip([version] * num_lines, lines))
+        return KnitContent(zip([version_id] * num_lines, lines))
 
 
 class KnitAnnotateFactory(_KnitFactory):
@@ -159,7 +167,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
     annotated = True
 
-    def parse_fulltext(self, content, version):
+    def parse_fulltext(self, content, version_id):
         """Convert fulltext to internal representation
 
         fulltext content is of the format
@@ -167,17 +175,17 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is of the format:
         (revid, plaintext)
         """
-        decode_utf8 = cache_utf8.decode
-        lines = []
-        for line in content:
-            origin, text = line.split(' ', 1)
-            lines.append((decode_utf8(origin), text))
+        # TODO: jam 20070209 The tests expect this to be returned as tuples,
+        #       but the code itself doesn't really depend on that.
+        #       Figure out a way to not require the overhead of turning the
+        #       list back into tuples.
+        lines = [tuple(line.split(' ', 1)) for line in content]
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
         return iter(self.parse_line_delta(lines))
 
-    def parse_line_delta(self, lines, version):
+    def parse_line_delta(self, lines, version_id):
         """Convert a line based delta into internal representation.
 
         line delta is in the form of:
@@ -187,19 +195,19 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
-        decode_utf8 = cache_utf8.decode
         result = []
         lines = iter(lines)
         next = lines.next
+
+        cache = {}
+        def cache_and_return(line):
+            origin, text = line.split(' ', 1)
+            return cache.setdefault(origin, origin), text
+
         # walk through the lines parsing.
         for header in lines:
             start, end, count = [int(n) for n in header.split(',')]
-            contents = []
-            remaining = count
-            while remaining:
-                origin, text = next().split(' ', 1)
-                remaining -= 1
-                contents.append((decode_utf8(origin), text))
+            contents = [tuple(next().split(' ', 1)) for i in xrange(count)]
             result.append((start, end, count, contents))
         return result
 
@@ -227,19 +235,21 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        encode_utf8 = cache_utf8.encode
-        return ['%s %s' % (encode_utf8(o), t) for o, t in content._lines]
+        # TODO: jam 20070209 We only do the caching thing to make sure that
+        #       the origin is a valid utf-8 line, eventually we could remove it
+        return ['%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
-        encode_utf8 = cache_utf8.encode
+        # TODO: jam 20070209 We only do the caching thing to make sure that
+        #       the origin is a valid utf-8 line, eventually we could remove it
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
-            out.extend(encode_utf8(origin) + ' ' + text
+            out.extend(origin + ' ' + text
                        for origin, text in lines)
         return out
 
@@ -249,26 +259,26 @@ class KnitPlainFactory(_KnitFactory):
 
     annotated = False
 
-    def parse_fulltext(self, content, version):
+    def parse_fulltext(self, content, version_id):
         """This parses an unannotated fulltext.
 
         Note that this is not a noop - the internal representation
         has (versionid, line) - its just a constant versionid.
         """
-        return self.make(content, version)
+        return self.make(content, version_id)
 
-    def parse_line_delta_iter(self, lines, version):
+    def parse_line_delta_iter(self, lines, version_id):
         cur = 0
         num_lines = len(lines)
         while cur < num_lines:
             header = lines[cur]
             cur += 1
             start, end, c = [int(n) for n in header.split(',')]
-            yield start, end, c, zip([version] * c, lines[cur:cur+c])
+            yield start, end, c, zip([version_id] * c, lines[cur:cur+c])
             cur += c
 
-    def parse_line_delta(self, lines, version):
-        return list(self.parse_line_delta_iter(lines, version))
+    def parse_line_delta(self, lines, version_id):
+        return list(self.parse_line_delta_iter(lines, version_id))
 
     def get_fulltext_content(self, lines):
         """Extract just the content lines from a fulltext."""
@@ -493,7 +503,7 @@ class KnitVersionedFile(VersionedFile):
         return KnitVersionedFile(name, transport, factory=self.factory,
                                  delta=self.delta, create=True)
     
-    def _fix_parents(self, version, new_parents):
+    def _fix_parents(self, version_id, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -501,9 +511,9 @@ class KnitVersionedFile(VersionedFile):
         the parents list must be a superset of the current
         list.
         """
-        current_values = self._index._cache[version]
+        current_values = self._index._cache[version_id]
         assert set(current_values[4]).difference(set(new_parents)) == set()
-        self._index.add_version(version,
+        self._index.add_version(version_id,
                                 current_values[1], 
                                 current_values[2],
                                 current_values[3],
@@ -511,6 +521,8 @@ class KnitVersionedFile(VersionedFile):
 
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
+        version_id = osutils.safe_revision_id(version_id)
+        self.check_not_reserved_id(version_id)
         if not self.has_version(version_id):
             raise RevisionNotPresent(version_id, self.filename)
         
@@ -521,10 +533,9 @@ class KnitVersionedFile(VersionedFile):
             parent = None
         data_pos, data_size = self._index.get_position(version_id)
         data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
-        version_idx = self._index.lookup(version_id)
         noeol = 'no-eol' in self._index.get_options(version_id)
         if 'fulltext' == self._index.get_method(version_id):
-            new_content = self.factory.parse_fulltext(data, version_idx)
+            new_content = self.factory.parse_fulltext(data, version_id)
             if parent is not None:
                 reference_content = self._get_content(parent)
                 old_texts = reference_content.text()
@@ -534,7 +545,7 @@ class KnitVersionedFile(VersionedFile):
             delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
             return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
         else:
-            delta = self.factory.parse_line_delta(data, version_idx)
+            delta = self.factory.parse_line_delta(data, version_id)
             return parent, sha1, noeol, delta
         
     def get_graph_with_ghosts(self):
@@ -544,6 +555,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
+        version_id = osutils.safe_revision_id(version_id)
         record_map = self._get_record_map([version_id])
         method, content, digest, next = record_map[version_id]
         return digest 
@@ -555,6 +567,7 @@ class KnitVersionedFile(VersionedFile):
 
     def has_ghost(self, version_id):
         """True if there is a ghost reference in the file to version_id."""
+        version_id = osutils.safe_revision_id(version_id)
         # maybe we have it
         if self.has_version(version_id):
             return False
@@ -573,6 +586,7 @@ class KnitVersionedFile(VersionedFile):
 
     def has_version(self, version_id):
         """See VersionedFile.has_version."""
+        version_id = osutils.safe_revision_id(version_id)
         return self._index.has_version(version_id)
 
     __contains__ = has_version
@@ -659,12 +673,7 @@ class KnitVersionedFile(VersionedFile):
 
     def _check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
-        version_ids = set(version_ids)
-        for r in list(version_ids):
-            if self._index.has_version(r):
-                version_ids.remove(r)
-        if version_ids:
-            raise RevisionNotPresent(list(version_ids)[0], self.filename)
+        self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines_with_ghosts()."""
@@ -683,6 +692,7 @@ class KnitVersionedFile(VersionedFile):
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
+        self.check_not_reserved_id(version_id)
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)
@@ -734,6 +744,7 @@ class KnitVersionedFile(VersionedFile):
             # I/O and the time spend applying deltas.
             delta = self._check_should_delta(present_parents)
 
+        assert isinstance(version_id, str)
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
@@ -795,6 +806,9 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
+        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
+        for version_id in version_ids:
+            self.check_not_reserved_id(version_id)
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
 
@@ -828,12 +842,11 @@ class KnitVersionedFile(VersionedFile):
                 if component_id in content_map:
                     content = content_map[component_id]
                 else:
-                    version_idx = self._index.lookup(component_id)
                     if method == 'fulltext':
                         assert content is None
-                        content = self.factory.parse_fulltext(data, version_idx)
+                        content = self.factory.parse_fulltext(data, version_id)
                     elif method == 'line-delta':
-                        delta = self.factory.parse_line_delta(data, version_idx)
+                        delta = self.factory.parse_line_delta(data, version_id)
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
@@ -859,6 +872,8 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
+        else:
+            version_ids = [osutils.safe_revision_id(v) for v in version_ids]
         if pb is None:
             pb = progress.DummyProgress()
         # we don't care about inclusions, the caller cares.
@@ -881,7 +896,6 @@ class KnitVersionedFile(VersionedFile):
             enumerate(self._data.read_records_iter(version_id_records)):
             pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
-            version_idx = self._index.lookup(version_id)
 
             assert method in ('fulltext', 'line-delta')
             if method == 'fulltext':
@@ -901,6 +915,7 @@ class KnitVersionedFile(VersionedFile):
 
     def annotate_iter(self, version_id):
         """See VersionedFile.annotate_iter."""
+        version_id = osutils.safe_revision_id(version_id)
         content = self._get_content(version_id)
         for origin, text in content.annotate_iter():
             yield origin, text
@@ -910,6 +925,7 @@ class KnitVersionedFile(VersionedFile):
         # perf notes:
         # optimism counts!
         # 52554 calls in 1264 872 internal down from 3674
+        version_id = osutils.safe_revision_id(version_id)
         try:
             return self._index.get_parents(version_id)
         except KeyError:
@@ -917,6 +933,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_parents_with_ghosts(self, version_id):
         """See VersionedFile.get_parents."""
+        version_id = osutils.safe_revision_id(version_id)
         try:
             return self._index.get_parents_with_ghosts(version_id)
         except KeyError:
@@ -928,7 +945,7 @@ class KnitVersionedFile(VersionedFile):
             versions = [versions]
         if not versions:
             return []
-        self._check_versions_present(versions)
+        versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry(versions)
 
     def get_ancestry_with_ghosts(self, versions):
@@ -937,7 +954,7 @@ class KnitVersionedFile(VersionedFile):
             versions = [versions]
         if not versions:
             return []
-        self._check_versions_present(versions)
+        versions = [osutils.safe_revision_id(v) for v in versions]
         return self._index.get_ancestry_with_ghosts(versions)
 
     #@deprecated_method(zero_eight)
@@ -963,6 +980,8 @@ class KnitVersionedFile(VersionedFile):
 
     def plan_merge(self, ver_a, ver_b):
         """See VersionedFile.plan_merge."""
+        ver_a = osutils.safe_revision_id(ver_a)
+        ver_b = osutils.safe_revision_id(ver_b)
         ancestors_b = set(self.get_ancestry(ver_b))
         def status_a(revision, text):
             if revision in ancestors_b:
@@ -1014,12 +1033,16 @@ class _KnitComponentFile(object):
         self._create_parent_dir = create_parent_dir
         self._need_to_create = False
 
+    def _full_path(self):
+        """Return the full path to this file."""
+        return self._transport.base + self._filename
+
     def check_header(self, fp):
         line = fp.readline()
         if line == '':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise errors.NoSuchFile(self._transport.base + self._filename)
+            raise errors.NoSuchFile(self._full_path())
         if line != self.HEADER:
             raise KnitHeaderError(badline=line,
                               filename=self._transport.abspath(self._filename))
@@ -1073,10 +1096,10 @@ class _KnitIndex(_KnitComponentFile):
     The ' :' marker is the end of record marker.
     
     partial writes:
-    when a write is interrupted to the index file, it will result in a line that
-    does not end in ' :'. If the ' :' is not present at the end of a line, or at
-    the end of the file, then the record that is missing it will be ignored by
-    the parser.
+    when a write is interrupted to the index file, it will result in a line
+    that does not end in ' :'. If the ' :' is not present at the end of a line,
+    or at the end of the file, then the record that is missing it will be
+    ignored by the parser.
 
     When writing new records to the index file, the data is preceded by '\n'
     to ensure that records always start on new lines even if the last write was
@@ -1091,8 +1114,8 @@ class _KnitIndex(_KnitComponentFile):
 
     def _cache_version(self, version_id, options, pos, size, parents):
         """Cache a version record in the history array and index cache.
-        
-        This is inlined into __init__ for performance. KEEP IN SYNC.
+
+        This is inlined into _load_data for performance. KEEP IN SYNC.
         (It saves 60ms, 25% of the __init__ overhead on local 4000 record
          indexes).
         """
@@ -1122,150 +1145,113 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
-        decode_utf8 = cache_utf8.decode
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            count = 0
-            total = 1
+            fp = self._transport.get(self._filename)
             try:
-                pb.update('read knit index', count, total)
-                fp = self._transport.get(self._filename)
-                try:
-                    self.check_header(fp)
-                    # readlines reads the whole file at once:
-                    # bad for transports like http, good for local disk
-                    # we save 60 ms doing this one change (
-                    # from calling readline each time to calling
-                    # readlines once.
-                    # probably what we want for nice behaviour on
-                    # http is a incremental readlines that yields, or
-                    # a check for local vs non local indexes,
-                    for l in fp.readlines():
-                        rec = l.split()
-                        if len(rec) < 5 or rec[-1] != ':':
-                            # corrupt line.
-                            # FIXME: in the future we should determine if its a
-                            # short write - and ignore it 
-                            # or a different failure, and raise. RBC 20060407
-                            continue
-                        count += 1
-                        total += 1
-                        #pb.update('read knit index', count, total)
-                        # See self._parse_parents
-                        parents = []
-                        for value in rec[4:-1]:
-                            if '.' == value[0]:
-                                # uncompressed reference
-                                parents.append(decode_utf8(value[1:]))
-                            else:
-                                # this is 15/4000ms faster than isinstance,
-                                # (in lsprof)
-                                # this function is called thousands of times a 
-                                # second so small variations add up.
-                                assert value.__class__ is str
-                                parents.append(self._history[int(value)])
-                        # end self._parse_parents
-                        # self._cache_version(decode_utf8(rec[0]),
-                        #                     rec[1].split(','),
-                        #                     int(rec[2]),
-                        #                     int(rec[3]),
-                        #                     parents)
-                        # --- self._cache_version
-                        # only want the _history index to reference the 1st 
-                        # index entry for version_id
-                        version_id = decode_utf8(rec[0])
-                        if version_id not in self._cache:
-                            index = len(self._history)
-                            self._history.append(version_id)
-                        else:
-                            index = self._cache[version_id][5]
-                        self._cache[version_id] = (version_id,
-                                                   rec[1].split(','),
-                                                   int(rec[2]),
-                                                   int(rec[3]),
-                                                   parents,
-                                                   index)
-                        # --- self._cache_version 
-                finally:
-                    fp.close()
-            except NoSuchFile, e:
-                if mode != 'w' or not create:
-                    raise
-                if delay_create:
-                    self._need_to_create = True
-                else:
-                    self._transport.put_bytes_non_atomic(self._filename,
-                        self.HEADER, mode=self._file_mode)
-
-        finally:
-            pb.update('read knit index', total, total)
-            pb.finished()
-
-    def _parse_parents(self, compressed_parents):
-        """convert a list of string parent values into version ids.
-
-        ints are looked up in the index.
-        .FOO values are ghosts and converted in to FOO.
-
-        NOTE: the function is retained here for clarity, and for possible
-              use in partial index reads. However bulk processing now has
-              it inlined in __init__ for inner-loop optimisation.
-        """
-        result = []
-        for value in compressed_parents:
-            if value[-1] == '.':
-                # uncompressed reference
-                result.append(cache_utf8.decode_utf8(value[1:]))
+                # _load_data may raise NoSuchFile if the target knit is
+                # completely empty.
+                self._load_data(fp)
+            finally:
+                fp.close()
+        except NoSuchFile:
+            if mode != 'w' or not create:
+                raise
+            elif delay_create:
+                self._need_to_create = True
             else:
-                # this is 15/4000ms faster than isinstance,
-                # this function is called thousands of times a 
-                # second so small variations add up.
-                assert value.__class__ is str
-                result.append(self._history[int(value)])
-        return result
+                self._transport.put_bytes_non_atomic(
+                    self._filename, self.HEADER, mode=self._file_mode)
+
+    def _load_data(self, fp):
+        cache = self._cache
+        history = self._history
+
+        self.check_header(fp)
+        # readlines reads the whole file at once:
+        # bad for transports like http, good for local disk
+        # we save 60 ms doing this one change (
+        # from calling readline each time to calling
+        # readlines once.
+        # probably what we want for nice behaviour on
+        # http is a incremental readlines that yields, or
+        # a check for local vs non local indexes,
+        history_top = len(history) - 1
+        for line in fp.readlines():
+            rec = line.split()
+            if len(rec) < 5 or rec[-1] != ':':
+                # corrupt line.
+                # FIXME: in the future we should determine if its a
+                # short write - and ignore it 
+                # or a different failure, and raise. RBC 20060407
+                continue
+
+            parents = []
+            for value in rec[4:-1]:
+                if value[0] == '.':
+                    # uncompressed reference
+                    parent_id = value[1:]
+                else:
+                    parent_id = history[int(value)]
+                parents.append(parent_id)
+
+            version_id, options, pos, size = rec[:4]
+            version_id = version_id
+
+            # See self._cache_version
+            # only want the _history index to reference the 1st 
+            # index entry for version_id
+            if version_id not in cache:
+                history_top += 1
+                index = history_top
+                history.append(version_id)
+            else:
+                index = cache[version_id][5]
+            cache[version_id] = (version_id,
+                                 options.split(','),
+                                 int(pos),
+                                 int(size),
+                                 parents,
+                                 index)
+            # end self._cache_version 
 
     def get_graph(self):
-        graph = []
-        for version_id, index in self._cache.iteritems():
-            graph.append((version_id, index[4]))
-        return graph
+        return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
 
     def get_ancestry(self, versions):
         """See VersionedFile.get_ancestry."""
         # get a graph of all the mentioned versions:
         graph = {}
         pending = set(versions)
-        while len(pending):
+        cache = self._cache
+        while pending:
             version = pending.pop()
-            parents = self._cache[version][4]
-            # got the parents ok
             # trim ghosts
-            parents = [parent for parent in parents if parent in self._cache]
-            for parent in parents:
-                # if not completed and not a ghost
-                if parent not in graph:
-                    pending.add(parent)
+            try:
+                parents = [p for p in cache[version][4] if p in cache]
+            except KeyError:
+                raise RevisionNotPresent(version, self._filename)
+            # if not completed and not a ghost
+            pending.update([p for p in parents if p not in graph])
             graph[version] = parents
         return topo_sort(graph.items())
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry_with_ghosts."""
         # get a graph of all the mentioned versions:
+        self.check_versions_present(versions)
+        cache = self._cache
         graph = {}
         pending = set(versions)
-        while len(pending):
+        while pending:
             version = pending.pop()
             try:
-                parents = self._cache[version][4]
+                parents = cache[version][4]
             except KeyError:
                 # ghost, fake it
                 graph[version] = []
-                pass
             else:
-                # got the parents ok
-                for parent in parents:
-                    if parent not in graph:
-                        pending.add(parent)
+                # if not completed
+                pending.update([p for p in parents if p not in graph])
                 graph[version] = parents
         return topo_sort(graph.items())
 
@@ -1285,15 +1271,15 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
-        encode_utf8 = cache_utf8.encode
         result_list = []
+        cache = self._cache
         for version in versions:
-            if version in self._cache:
+            if version in cache:
                 # -- inlined lookup() --
-                result_list.append(str(self._cache[version][5]))
+                result_list.append(str(cache[version][5]))
                 # -- end lookup () --
             else:
-                result_list.append('.' + encode_utf8(version))
+                result_list.append('.' + version)
         return ' '.join(result_list)
 
     def add_version(self, version_id, options, pos, size, parents):
@@ -1307,13 +1293,12 @@ class _KnitIndex(_KnitComponentFile):
                          (version_id, options, pos, size, parents).
         """
         lines = []
-        encode_utf8 = cache_utf8.encode
         orig_history = self._history[:]
         orig_cache = self._cache.copy()
 
         try:
             for version_id, options, pos, size, parents in versions:
-                line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
+                line = "\n%s %s %s %s %s :" % (version_id,
                                                ','.join(options),
                                                pos,
                                                size,
@@ -1342,12 +1327,12 @@ class _KnitIndex(_KnitComponentFile):
 
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return (version_id in self._cache)
+        return version_id in self._cache
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
-        return (self._cache[version_id][2], \
-                self._cache[version_id][3])
+        entry = self._cache[version_id]
+        return entry[2], entry[3]
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
@@ -1355,7 +1340,8 @@ class _KnitIndex(_KnitComponentFile):
         if 'fulltext' in options:
             return 'fulltext'
         else:
-            assert 'line-delta' in options
+            if 'line-delta' not in options:
+                raise errors.KnitIndexUnknownMethod(self._full_path(), options)
             return 'line-delta'
 
     def get_options(self, version_id):
@@ -1372,12 +1358,10 @@ class _KnitIndex(_KnitComponentFile):
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
-        version_ids = set(version_ids)
-        for version_id in list(version_ids):
-            if version_id in self._cache:
-                version_ids.remove(version_id)
-        if version_ids:
-            raise RevisionNotPresent(list(version_ids)[0], self.filename)
+        cache = self._cache
+        for version_id in version_ids:
+            if version_id not in cache:
+                raise RevisionNotPresent(version_id, self._filename)
 
 
 class _KnitData(_KnitComponentFile):
@@ -1428,13 +1412,13 @@ class _KnitData(_KnitComponentFile):
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
 
-        version_id_utf8 = cache_utf8.encode(version_id)
+        assert isinstance(version_id, str)
         data_file.writelines(chain(
-            ["version %s %d %s\n" % (version_id_utf8,
+            ["version %s %d %s\n" % (version_id,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id_utf8]))
+            ["end %s\n" % version_id]))
         data_file.close()
         length= sio.tell()
 
@@ -1482,27 +1466,52 @@ class _KnitData(_KnitComponentFile):
                  as (stream, header_record)
         """
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
-        rec = df.readline().split()
-        if len(rec) != 4:
-            raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if cache_utf8.decode(rec[1]) != version_id:
-            raise KnitCorrupt(self._filename, 
-                              'unexpected version, wanted %r, got %r' % (
-                                version_id, rec[1]))
+        try:
+            rec = self._check_header(version_id, df.readline())
+        except Exception, e:
+            raise KnitCorrupt(self._filename,
+                              "While reading {%s} got %s(%s)"
+                              % (version_id, e.__class__.__name__, str(e)))
         return df, rec
+
+    def _check_header(self, version_id, line):
+        rec = line.split()
+        if len(rec) != 4:
+            raise KnitCorrupt(self._filename,
+                              'unexpected number of elements in record header')
+        if rec[1] != version_id:
+            raise KnitCorrupt(self._filename,
+                              'unexpected version, wanted %r, got %r'
+                              % (version_id, rec[1]))
+        return rec
 
     def _parse_record(self, version_id, data):
         # profiling notes:
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df, rec = self._parse_record_header(version_id, data)
-        record_contents = df.readlines()
-        l = record_contents.pop()
-        assert len(record_contents) == int(rec[2])
-        if l != 'end %s\n' % cache_utf8.encode(version_id):
-            raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
-                        % (l, version_id))
+        df = GzipFile(mode='rb', fileobj=StringIO(data))
+
+        try:
+            record_contents = df.readlines()
+        except Exception, e:
+            raise KnitCorrupt(self._filename,
+                              "While reading {%s} got %s(%s)"
+                              % (version_id, e.__class__.__name__, str(e)))
+        header = record_contents.pop(0)
+        rec = self._check_header(version_id, header)
+
+        last_line = record_contents.pop()
+        if len(record_contents) != int(rec[2]):
+            raise KnitCorrupt(self._filename,
+                              'incorrect number of lines %s != %s'
+                              ' for version {%s}'
+                              % (len(record_contents), int(rec[2]),
+                                 version_id))
+        if last_line != 'end %s\n' % rec[1]:
+            raise KnitCorrupt(self._filename,
+                              'unexpected version end line %r, wanted %r' 
+                              % (last_line, version_id))
         df.close()
         return record_contents, rec[3]
 
@@ -1526,7 +1535,6 @@ class _KnitData(_KnitComponentFile):
                                                in records]
 
             raw_records = self._transport.readv(self._filename, needed_offsets)
-                
 
         for version_id, pos, size in records:
             if version_id in self._cache:
@@ -1622,7 +1630,7 @@ class InterKnit(InterVersionedFile):
         if not version_ids:
             return 0
 
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             version_ids = list(version_ids)
             if None in version_ids:
@@ -1739,7 +1747,7 @@ class WeaveToKnit(InterVersionedFile):
         if not version_ids:
             return 0
 
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             version_ids = list(version_ids)
     
@@ -1939,4 +1947,3 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             bestsize = bestsize + 1
 
         return besti, bestj, bestsize
-

@@ -1,4 +1,5 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +17,7 @@
 
 import os
 import socket
+import sys
 import threading
 import time
 
@@ -55,7 +57,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        set_test_transport_to_sftp(self) 
+        set_test_transport_to_sftp(self)
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
@@ -105,11 +107,18 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
 
     def test__remote_path(self):
         t = self.get_transport()
+        # This test require unix-like absolute path
+        test_dir = self.test_dir
+        if sys.platform == 'win32':
+            # using hack suggested by John Meinel.
+            # TODO: write another mock server for this test
+            #       and use absolute path without drive letter
+            test_dir = '/' + test_dir
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(self.test_dir + '/relative', t._remote_path('relative'))
+        self.assertEqual(test_dir + '/relative', t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
-        root_segments = self.test_dir.split('/')
+        root_segments = test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
         self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
@@ -205,16 +214,16 @@ class SFTPNonServerTest(TestCase):
         """Test that if no 'ssh' is available we get builtin paramiko"""
         from bzrlib.transport import ssh
         # set '.' as the only location in the path, forcing no 'ssh' to exist
-        orig_vendor = ssh._ssh_vendor
+        orig_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         orig_path = set_or_unset_env('PATH', '.')
         try:
             # No vendor defined yet, query for one
-            ssh._ssh_vendor = None
+            ssh._ssh_vendor_manager.clear_cache()
             vendor = ssh._get_ssh_vendor()
             self.assertIsInstance(vendor, ssh.ParamikoVendor)
         finally:
             set_or_unset_env('PATH', orig_path)
-            ssh._ssh_vendor = orig_vendor
+            ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
 
     def test_abspath_root_sibling_server(self):
         from bzrlib.transport.sftp import SFTPSiblingAbsoluteServer
@@ -293,7 +302,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
             server._vendor = self._test_vendor
             return server
         self._test_vendor = 'loopback'
-        self.transport_server = create_server
+        self.vfs_transport_server = create_server
         f = open('a_file', 'wb')
         try:
             f.write('foobar\n')
@@ -338,15 +347,15 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         s.bind(('localhost', 0))
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-        orig_vendor = bzrlib.transport.ssh._ssh_vendor
+        orig_vendor = bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor
         def reset():
-            bzrlib.transport.ssh._ssh_vendor = orig_vendor
+            bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
             s.close()
         self.addCleanup(reset)
 
     def set_vendor(self, vendor):
         import bzrlib.transport.ssh
-        bzrlib.transport.ssh._ssh_vendor = vendor
+        bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = vendor
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""

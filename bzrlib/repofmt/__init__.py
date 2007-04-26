@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,4 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.branch import Branch
-
-# TODO: perhaps doc_generate should be moved into bzrlib instead?
-
-class TestDocGenerate(TestCaseInTempDir):
-
-    def test_generate_manpage(self):
-        """Simple smoke test for doc_generate"""
-        try:
-            import tools.doc_generate
-        except ImportError, e:
-            raise TestSkipped("can't load doc_generate: %s" % e)
-        infogen_mod = tools.doc_generate.get_module("man")
+"""Repository formats"""

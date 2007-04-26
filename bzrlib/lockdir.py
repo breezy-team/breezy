@@ -160,12 +160,12 @@ class LockDir(object):
         self.transport = transport
         self.path = path
         self._lock_held = False
+        self._locked_via_token = False
         self._fake_read_lock = False
         self._held_dir = path + '/held'
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
-        self.nonce = rand_chars(20)
 
         self._report_function = note
 
@@ -209,6 +209,7 @@ class LockDir(object):
                 # After creating the lock directory, try again
                 self.transport.mkdir(tmpname)
 
+            self.nonce = rand_chars(20)
             info_bytes = self._prepare_info()
             # We use put_file_non_atomic because we just created a new unique
             # directory so we don't have to worry about files existing there.
@@ -220,6 +221,8 @@ class LockDir(object):
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
+        except errors.PermissionDenied:
+            raise
         except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
             mutter("contention on %r: %s", self, e)
             raise LockContention(self)
@@ -232,15 +235,19 @@ class LockDir(object):
             return
         if not self._lock_held:
             raise LockNotHeld(self)
-        # rename before deleting, because we can't atomically remove the whole
-        # tree
-        tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
-        # gotta own it to unlock
-        self.confirm()
-        self.transport.rename(self._held_dir, tmpname)
-        self._lock_held = False
-        self.transport.delete(tmpname + self.__INFO_NAME)
-        self.transport.rmdir(tmpname)
+        if self._locked_via_token:
+            self._locked_via_token = False
+            self._lock_held = False
+        else:
+            # rename before deleting, because we can't atomically remove the
+            # whole tree
+            tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+            # gotta own it to unlock
+            self.confirm()
+            self.transport.rename(self._held_dir, tmpname)
+            self._lock_held = False
+            self.transport.delete(tmpname + self.__INFO_NAME)
+            self.transport.rmdir(tmpname)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -412,10 +419,39 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+    
+    def leave_in_place(self):
+        self._locked_via_token = True
 
-    def lock_write(self):
-        """Wait for and acquire the lock."""
-        self.wait_lock()
+    def dont_leave_in_place(self):
+        self._locked_via_token = False
+
+    def lock_write(self, token=None):
+        """Wait for and acquire the lock.
+        
+        :param token: if this is already locked, then lock_write will fail
+            unless the token matches the existing lock.
+        :returns: a token if this instance supports tokens, otherwise None.
+        :raises TokenLockingNotSupported: when a token is given but this
+            instance doesn't support using token locks.
+        :raises MismatchedToken: if the specified token doesn't match the token
+            of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+         
+        XXX: docstring duplicated from LockableFiles.lock_write.
+        """
+        if token is not None:
+            self.validate_token(token)
+            self.nonce = token
+            self._lock_held = True
+            self._locked_via_token = True
+            return token
+        else:
+            self.wait_lock()
+            return self.peek().get('nonce')
 
     def lock_read(self):
         """Compatibility-mode shared lock.
@@ -454,4 +490,15 @@ class LockDir(object):
             'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
             'locked %s' % (format_delta(delta),),
             ]
+
+    def validate_token(self, token):
+        if token is not None:
+            info = self.peek()
+            if info is None:
+                # Lock isn't held
+                lock_token = None
+            else:
+                lock_token = info.get('nonce')
+            if token != lock_token:
+                raise errors.TokenMismatch(token, lock_token)
 

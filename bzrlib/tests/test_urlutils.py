@@ -20,7 +20,7 @@ import os
 import re
 import sys
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils, urlutils, win32utils
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -203,21 +203,24 @@ class TestUrlToPath(TestCase):
             joined = urlutils.join(*args)
             self.assertEqual(expected, joined)
 
-        # Test a single element
-        test('foo', 'foo')
-
         # Test relative path joining
+        test('foo', 'foo') # relative fragment with nothing is preserved.
         test('foo/bar', 'foo', 'bar')
         test('http://foo/bar', 'http://foo', 'bar')
         test('http://foo/bar', 'http://foo', '.', 'bar')
         test('http://foo/baz', 'http://foo', 'bar', '../baz')
         test('http://foo/bar/baz', 'http://foo', 'bar/baz')
         test('http://foo/baz', 'http://foo', 'bar/../baz')
+        test('http://foo/baz', 'http://foo/bar/', '../baz')
 
         # Absolute paths
+        test('http://foo', 'http://foo') # abs url with nothing is preserved.
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+        test('http://bar/', 'http://foo', 'http://bar/')
+        test('http://bar/a', 'http://foo', 'http://bar/a')
+        test('http://bar/a/', 'http://foo', 'http://bar/a/')
 
         # From a base path
         test('file:///foo', 'file:///', 'foo')
@@ -227,8 +230,47 @@ class TestUrlToPath(TestCase):
         
         # Invalid joinings
         # Cannot go above root
+        # Implicitly at root:
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo', '/..')
+        # Joining from a path explicitly under the root.
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo/a', '../../b')
+
+    def test_joinpath(self):
+        def test(expected, *args):
+            joined = urlutils.joinpath(*args)
+            self.assertEqual(expected, joined)
+
+        # Test a single element
+        test('foo', 'foo')
+
+        # Test relative path joining
+        test('foo/bar', 'foo', 'bar')
+        test('foo/bar', 'foo', '.', 'bar')
+        test('foo/baz', 'foo', 'bar', '../baz')
+        test('foo/bar/baz', 'foo', 'bar/baz')
+        test('foo/baz', 'foo', 'bar/../baz')
+
+        # Test joining to an absolute path
+        test('/foo', '/foo')
+        test('/foo', '/foo', '.')
+        test('/foo/bar', '/foo', 'bar')
+        test('/', '/foo', '..')
+
+        # Test joining with an absolute path
+        test('/bar', 'foo', '/bar')
+
+        # Test joining to a path with a trailing slash
+        test('foo/bar', 'foo/', 'bar')
+        
+        # Invalid joinings
+        # Cannot go above root
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '..')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '/..')
 
     def test_function_type(self):
         if sys.platform == 'win32':
@@ -512,6 +554,9 @@ class TestCwdToURL(TestCaseInTempDir):
         self.assertEndsWith(url, '/mytest')
 
     def test_non_ascii(self):
+        if win32utils.winver == 'Windows 98':
+            raise TestSkipped('Windows 98 cannot handle unicode filenames')
+
         try:
             os.mkdir(u'dod\xe9')
         except UnicodeError:

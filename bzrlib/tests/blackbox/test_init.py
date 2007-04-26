@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,11 @@
 import os
 import re
 
+from bzrlib import (
+    branch as _mod_branch,
+    )
 from bzrlib.bzrdir import BzrDirMetaFormat1
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
@@ -72,8 +76,8 @@ class TestInit(ExternalBase):
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: .*'
-            '\[Errno 2\] No such file or directory')
+            r'^bzr: ERROR: No such file: .*'
+            '\[Err(no|or) 2\]')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -93,7 +97,8 @@ class TestInit(ExternalBase):
 
     def test_init_existing_without_workingtree(self):
         # make a repository
-        self.run_bzr('init-repo', '.')
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
         # make a branch; by default without a working tree
         self.run_bzr('init', 'subdir')
         # fail
@@ -105,6 +110,15 @@ class TestInit(ExternalBase):
         """Init creates no default ignore rules."""
         self.run_bzr('init')
         self.assertFalse(os.path.exists('.bzrignore'))
+
+    def test_init_unicode(self):
+        # Make sure getcwd can handle unicode filenames
+        try:
+            os.mkdir(u'mu-\xb5')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+        # try to init unicode dir
+        self.run_bzr('init', u'mu-\xb5')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
@@ -124,7 +138,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
         # make sure using 'bzr checkout' is not suggested
         # for remote locations missing a working tree
-        self.assertFalse(re.search(r'checkout', err))
+        self.assertFalse(re.search(r'use bzr checkout', err))
 
     def test_init_existing_branch_with_workingtree(self):
         # don't distinguish between the branch having a working tree or not
@@ -133,3 +147,14 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
         # rely on SFTPServer get_url() pointing at '.'
         self.run_bzr_error(['Already a branch'], 'init', self.get_url())
+
+    def test_init_append_revisions_only(self):
+        self.run_bzr('init', '--dirstate-tags', 'normal_branch6')
+        branch = _mod_branch.Branch.open('normal_branch6')
+        self.assertEqual(False, branch._get_append_revisions_only())
+        self.run_bzr('init', '--append-revisions-only',
+                     '--dirstate-tags', 'branch6')
+        branch = _mod_branch.Branch.open('branch6')
+        self.assertEqual(True, branch._get_append_revisions_only())
+        self.run_bzr_error(['cannot be set to append-revisions-only'], 'init',
+            '--append-revisions-only', '--knit', 'knit')

@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +23,7 @@ import sys
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
+from bzrlib import urlutils
 
 
 class TestPull(ExternalBase):
@@ -95,6 +95,19 @@ class TestPull(ExternalBase):
         self.runbzr('commit -m blah8 --unchanged')
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
+
+    def test_pull_dash_d(self):
+        os.mkdir('a')
+        os.chdir('a')
+        self.example_branch()
+        self.runbzr('init ../b')
+        self.runbzr('init ../c')
+        # pull into that branch
+        self.runbzr('pull -d ../b .')
+        # pull into a branch specified by a url
+        c_url = urlutils.local_path_to_url('../c')
+        self.assertStartsWith(c_url, 'file://')
+        self.runbzr('pull -d %s .' % c_url)
 
     def test_pull_revision(self):
         """Pull some changes from one branch to another."""
@@ -247,7 +260,8 @@ class TestPull(ExternalBase):
         tree_b.commit('commit d')
         out = self.runbzr('pull ../branch_a', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: These branches have diverged.  Use the merge command to reconcile them.\n'))
+                ('','bzr: ERROR: These branches have diverged.'
+                    ' Use the merge command to reconcile them.\n'))
         self.assertEquals(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
@@ -284,10 +298,11 @@ class TestPull(ExternalBase):
         bundle_file.close()
 
         os.chdir('../branch_b')
-        output = self.run_bzr('pull', '../bundle')
-        self.assertEqual('', output[0])
-        self.assertEqual('All changes applied successfully.\n'
-                         '1 revision(s) pulled.\n', output[1])
+        out, err = self.run_bzr('pull', '../bundle')
+        self.assertEqual(out,
+                         'Now on revision 2.\n')
+        self.assertEqual(err,
+                ' M  a\nAll changes applied successfully.\n')
 
         self.assertEqualDiff(tree_a.branch.revision_history(),
                              tree_b.branch.revision_history())
@@ -300,6 +315,6 @@ class TestPull(ExternalBase):
                              testament_b.as_text())
 
         # it is legal to attempt to pull an already-merged bundle
-        output = self.run_bzr('pull', '../bundle')
-        self.assertEqual('', output[0])
-        self.assertEqual('0 revision(s) pulled.\n', output[1])
+        out, err = self.run_bzr('pull', '../bundle')
+        self.assertEqual(err, '')
+        self.assertEqual(out, 'No revisions to pull.\n')

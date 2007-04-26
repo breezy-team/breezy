@@ -17,7 +17,7 @@ import bzrlib
 META_INFO = {'name':         'bzr',
              'version':      bzrlib.__version__,
              'author':       'Canonical Ltd',
-             'author_email': 'bazaar-ng@lists.ubuntu.com',
+             'author_email': 'bazaar@lists.canonical.com',
              'url':          'http://www.bazaar-vcs.org/',
              'description':  'Friendly distributed version control system',
              'license':      'GNU GPL v2',
@@ -99,9 +99,6 @@ class my_install_scripts(install_scripts):
     Create bzr.bat for win32.
     """
     def run(self):
-        import os
-        import sys
-
         install_scripts.run(self)   # standard action
 
         if sys.platform == "win32":
@@ -127,7 +124,8 @@ class my_install_scripts(install_scripts):
             return path
 
     def _win_batch_args(self):
-        if os.name == 'nt':
+        from bzrlib.win32utils import winver
+        if winver == 'Windows NT':
             return '%*'
         else:
             return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
@@ -148,6 +146,25 @@ class bzr_build(build):
 ########################
 ## Setup
 ########################
+
+command_classes = {'install_scripts': my_install_scripts,
+                  'build': bzr_build}
+ext_modules = []
+try:
+    from Pyrex.Distutils import build_ext
+except ImportError:
+    # try to build the extension from the prior generated source.
+    print ("Pyrex not available, while bzr will build, "
+           "you cannot modify the C extensions.")
+    from distutils.command.build_ext import build_ext
+    from distutils.extension import Extension
+    #ext_modules.append(
+    #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
+else:
+    from distutils.extension import Extension
+    #ext_modules.append(
+    #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+command_classes['build_ext'] = build_ext
 
 if 'bdist_wininst' in sys.argv:
     import glob
@@ -188,12 +205,24 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2006",
+                                     copyright = "(c) Canonical Ltd, 2005-2007",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
+
+    additional_packages =  []
+    if sys.version.startswith('2.4'):
+        # adding elementtree package
+        additional_packages.append('elementtree')
+    elif sys.version.startswith('2.5'):
+        additional_packages.append('xml.etree')
+    else:
+        import warnings
+        warnings.warn('Unknown Python version.\n'
+                      'Please check setup.py script for compatibility.')
+
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
-                                           ['elementtree'],
+                                           additional_packages,
                                "excludes": ["Tkinter", "medusa"],
                                "dist_dir": "win32_bzr.exe",
                               },
@@ -208,9 +237,8 @@ else:
     # std setup
     ARGS = {'scripts': ['bzr'],
             'data_files': [('man/man1', ['bzr.1'])],
-            'cmdclass': {'build': bzr_build,
-                         'install_scripts': my_install_scripts,
-                        },
+            'cmdclass': command_classes,
+            'ext_modules': ext_modules,
            }
     
     ARGS.update(META_INFO)

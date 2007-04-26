@@ -59,8 +59,8 @@ class TestCommands(ExternalBase):
         self.build_tree(['dir1/', 'dir1/foo',
                          'dir2/', 'dir2/bar',
                          'dir3/', 'dir3/baz'])
-        self.runbzr('ignore dir1 dir2/')
-        self.check_file_contents('.bzrignore', 'dir1\ndir2\n')
+        self.runbzr('ignore dir1 dir2/ dir4\\')
+        self.check_file_contents('.bzrignore', 'dir1\ndir2\ndir4\n')
         self.assertEquals(self.capture('unknowns'), 'dir3\n')
 
     def test_ignore_patterns(self):

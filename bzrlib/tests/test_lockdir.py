@@ -17,20 +17,23 @@
 """Tests for LockDir"""
 
 from cStringIO import StringIO
+import os
 from threading import Thread, Lock
 import time
 
 import bzrlib
 from bzrlib import (
     config,
+    errors,
     osutils,
+    tests,
     )
 from bzrlib.errors import (
         LockBreakMismatch,
         LockContention, LockError, UnlockableTransport,
         LockNotHeld, LockBroken
         )
-from bzrlib.lockdir import LockDir, _DEFAULT_TIMEOUT_SECONDS
+from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import note
 
@@ -283,6 +286,9 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_34_lock_write_waits(self):
         """LockDir.lock_write() will wait for the lock.""" 
+        # the test suite sets the default to 0 to make deadlocks fail fast.
+        # change it for this test, as we want to try a manual deadlock.
+        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 300
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -600,3 +606,12 @@ class TestLockDir(TestCaseWithTransport):
         ld1.create()
         ld1.lock_write()
         ld1.unlock()
+
+    def test_lock_permission(self):
+        if not osutils.supports_posix_readonly():
+            raise tests.TestSkipped('Cannot induce a permission failure')
+        ld1 = self.get_lock()
+        lock_path = ld1.transport.local_abspath('test_lock')
+        os.mkdir(lock_path)
+        osutils.make_readonly(lock_path)
+        self.assertRaises(errors.PermissionDenied, ld1.attempt_lock)

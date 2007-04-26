@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import re
 
 from bzrlib import (
     errors,
+    osutils,
     revision,
     symbol_versioning,
     trace,
@@ -92,6 +93,18 @@ class RevisionInfo(object):
     def __repr__(self):
         return '<bzrlib.revisionspec.RevisionInfo object %s, %s for %r>' % (
             self.revno, self.rev_id, self.branch)
+
+    @staticmethod
+    def from_revision_id(branch, revision_id, revs):
+        """Construct a RevisionInfo given just the id.
+
+        Use this if you don't know or care what the revno is.
+        """
+        try:
+            revno = revs.index(revision_id) + 1
+        except ValueError:
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
 
 
 # classes in this list should have a "prefix" attribute, against which
@@ -308,14 +321,10 @@ class RevisionSpec_revno(RevisionSpec):
         if dotted:
             branch.lock_read()
             try:
-                last_rev = branch.last_revision()
-                merge_sorted_revisions = tsort.merge_sort(
-                    branch.repository.get_revision_graph(last_rev),
-                    last_rev,
-                    generate_revno=True)
-                def match(item):
-                    return item[3] == match_revno
-                revisions = filter(match, merge_sorted_revisions)
+                revision_id_to_revno = branch.get_revision_id_to_revno_map()
+                revisions = [revision_id for revision_id, revno
+                             in revision_id_to_revno.iteritems()
+                             if revno == match_revno]
             finally:
                 branch.unlock()
             if len(revisions) != 1:
@@ -323,9 +332,11 @@ class RevisionSpec_revno(RevisionSpec):
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return RevisionInfo(branch, None, revisions[0][1])
+                return RevisionInfo(branch, None, revisions[0])
         else:
             if revno < 0:
+                # if get_rev_id supported negative revnos, there would not be a
+                # need for this special case.
                 if (-revno) >= len(revs):
                     revno = 1
                 else:
@@ -365,11 +376,11 @@ class RevisionSpec_revid(RevisionSpec):
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
-        try:
-            revno = revs.index(self.spec) + 1
-        except ValueError:
-            revno = None
-        return RevisionInfo(branch, revno, self.spec)
+        # self.spec comes straight from parsing the command line arguments,
+        # so we expect it to be a Unicode string. Switch it to the internal
+        # representation.
+        revision_id = osutils.safe_revision_id(self.spec, warn=False)
+        return RevisionInfo.from_revision_id(branch, revision_id, revs)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 
@@ -463,16 +474,20 @@ SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
-    """To be implemented."""
+    """Select a revision identified by tag name"""
 
-    help_txt = """To be implemented."""
+    help_txt = """Selects a revision identified by a tag name.
+
+    Tags are stored in the branch and created by the 'tag' command.
+    """
 
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
-        raise errors.InvalidRevisionSpec(self.user_spec, branch,
-                                         'tag: namespace registered,'
-                                         ' but not implemented')
+        # Can raise tags not supported, NoSuchTag, etc
+        return RevisionInfo.from_revision_id(branch,
+            branch.tags.lookup_tag(self.spec),
+            revs)
 
 SPEC_TYPES.append(RevisionSpec_tag)
 
@@ -604,10 +619,14 @@ class RevisionSpec_ancestor(RevisionSpec):
     prefix = 'ancestor:'
 
     def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        return self._find_revision_info(branch, self.spec)
+
+    @staticmethod
+    def _find_revision_info(branch, other_location):
         from bzrlib.branch import Branch
 
-        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
-        other_branch = Branch.open(self.spec)
+        other_branch = Branch.open(other_location)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
@@ -622,7 +641,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, rev_id)
-        
+
+
 SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
@@ -653,3 +673,39 @@ class RevisionSpec_branch(RevisionSpec):
         return RevisionInfo(branch, revno, revision_b)
         
 SPEC_TYPES.append(RevisionSpec_branch)
+
+
+class RevisionSpec_submit(RevisionSpec_ancestor):
+    """Selects a common ancestor with a submit branch."""
+
+    help_txt = """Selects a common ancestor with the submit branch.
+
+    Diffing against this shows all the changes that were made in this branch,
+    and is a good predictor of what merge will do.  The submit branch is
+    used by the bundle and merge directive comands.  If no submit branch
+    is specified, the parent branch is used instead.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    examples:
+      $ bzr diff -r submit:
+    """
+
+    prefix = 'submit:'
+
+    def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        submit_location = branch.get_submit_branch()
+        location_type = 'submit branch'
+        if submit_location is None:
+            submit_location = branch.get_parent()
+            location_type = 'parent branch'
+        if submit_location is None:
+            raise errors.NoSubmitBranch(branch)
+        trace.note('Using %s %s', location_type, submit_location)
+        return self._find_revision_info(branch, submit_location)
+
+
+SPEC_TYPES.append(RevisionSpec_submit)

@@ -16,8 +16,10 @@
 
 from cStringIO import StringIO
 
-from bzrlib import ui
-from bzrlib.errors import NoSuchFile
+from bzrlib import (
+    ui,
+    errors,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
@@ -43,7 +45,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
-        super(HttpTransport_urllib, self).__init__(base)
+        super(HttpTransport_urllib, self).__init__(base, from_transport)
         if from_transport is not None:
             self._connection = from_transport._connection
             self._user = from_transport._user
@@ -107,9 +109,15 @@ class HttpTransport_urllib(HttpTransportBase):
             self._user = request.user
             self._password = request.password
 
+        code = response.code
+        if request.follow_redirections is False \
+                and code in (301, 302, 303, 307):
+            raise errors.RedirectRequested(request.get_full_url(),
+                                           request.redirected_to,
+                                           is_permament=(code == 301),
+                                           qual_proto=self._qualified_proto)
+
         if request.redirected_to is not None:
-            # TODO: Update the transport so that subsequent
-            # requests goes directly to the right host
             mutter('redirected from: %s to: %s' % (request.get_full_url(),
                                                    request.redirected_to))
 
@@ -132,7 +140,7 @@ class HttpTransport_urllib(HttpTransportBase):
         code = response.code
         if code == 404: # not found
             self._connection.fake_close()
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
 
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline
@@ -171,12 +179,10 @@ class HttpTransport_urllib(HttpTransportBase):
         response = self._head(relpath)
 
         code = response.code
-        # FIXME: 302 MAY have been already processed by the
-        # redirection handler
-        if code in (200, 302): # "ok", "found"
+        if code == 200: # "ok",
             return True
         else:
-            assert(code == 404, 'Only 200, 404 or may be 302 are correct')
+            assert(code == 404, 'Only 200 or 404 are correct')
             return False
 
 

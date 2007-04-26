@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import codecs
+from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -38,7 +40,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import string
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -46,11 +47,14 @@ from tempfile import (
 import unicodedata
 
 from bzrlib import (
+    cache_utf8,
     errors,
+    win32utils,
     )
 """)
 
 import bzrlib
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
     zero_nine,
@@ -141,26 +145,29 @@ def get_umask():
     return umask
 
 
+_kind_marker_map = {
+    "file": "",
+    _directory_kind: "/",
+    "symlink": "@",
+    'tree-reference': '+',
+}
+
+
 def kind_marker(kind):
-    if kind == 'file':
-        return ''
-    elif kind == _directory_kind:
-        return '/'
-    elif kind == 'symlink':
-        return '@'
-    else:
+    try:
+        return _kind_marker_map[kind]
+    except KeyError:
         raise errors.BzrError('invalid file kind %r' % kind)
+
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if getattr(os, 'lstat') is not None:
-                os.lstat(f)
-            else:
-                os.stat(f)
+            stat = getattr(os, 'lstat', os.stat)
+            stat(f)
             return True
-        except OSError,e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
@@ -257,6 +264,36 @@ def _win32_abspath(path):
     return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
 
+def _win98_abspath(path):
+    """Return the absolute version of a path.
+    Windows 98 safe implementation (python reimplementation
+    of Win32 API function GetFullPathNameW)
+    """
+    # Corner cases:
+    #   C:\path     => C:/path
+    #   C:/path     => C:/path
+    #   \\HOST\path => //HOST/path
+    #   //HOST/path => //HOST/path
+    #   path        => C:/cwd/path
+    #   /path       => C:/path
+    path = unicode(path)
+    # check for absolute path
+    drive = _nt_splitdrive(path)[0]
+    if drive == '' and path[:2] not in('//','\\\\'):
+        cwd = os.getcwdu()
+        # we cannot simply os.path.join cwd and path
+        # because os.path.join('C:','/path') produce '/path'
+        # and this is incorrect
+        if path[:1] in ('/','\\'):
+            cwd = _nt_splitdrive(cwd)[0]
+            path = path[1:]
+        path = cwd + '\\' + path
+    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+
+if win32utils.winver == 'Windows 98':
+    _win32_abspath = _win98_abspath
+
+
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
@@ -310,6 +347,8 @@ getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+split = os.path.split
+splitext = os.path.splitext
 # These were already imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
@@ -377,6 +416,17 @@ def get_terminal_encoding():
         output_encoding = bzrlib.user_encoding
         mutter('cp0 is invalid encoding.'
                ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+    # check encoding
+    try:
+        codecs.lookup(output_encoding)
+    except LookupError:
+        sys.stderr.write('bzr: warning:'
+                         ' unknown terminal encoding %s.\n'
+                         '  Using encoding %s instead.\n'
+                         % (output_encoding, bzrlib.user_encoding)
+                        )
+        output_encoding = bzrlib.user_encoding
+
     return output_encoding
 
 
@@ -471,8 +521,7 @@ def is_inside_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname):
             return True
-    else:
-        return False
+    return False
 
 
 def is_inside_or_parent_of_any(dir_list, fname):
@@ -480,8 +529,7 @@ def is_inside_or_parent_of_any(dir_list, fname):
     for dirname in dir_list:
         if is_inside(dirname, fname) or is_inside(fname, dirname):
             return True
-    else:
-        return False
+    return False
 
 
 def pumpfile(fromfile, tofile):
@@ -552,14 +600,10 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
-    # python2.3 localtime() can't take None
     if t is None:
         t = time.time()
-        
-    if time.localtime(t).tm_isdst and time.daylight:
-        return -time.altzone
-    else:
-        return -time.timezone
+    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
+    return offset.days * 86400 + offset.seconds
 
     
 def format_date(t, offset=0, timezone='original', date_fmt=None, 
@@ -706,7 +750,7 @@ def splitpath(p):
     return rps
 
 def joinpath(p):
-    assert isinstance(p, list)
+    assert isinstance(p, (list, tuple))
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
@@ -766,7 +810,18 @@ def has_symlinks():
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
-    for ch in string.whitespace:
+    # string.whitespace can include '\xa0' in certain locales, because it is
+    # considered "non-breaking-space" as part of ISO-8859-1. But it
+    # 1) Isn't a breaking whitespace
+    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
+    #    separators
+    # 3) '\xa0' isn't unicode safe since it is >128.
+
+    # This should *not* be a unicode set of characters in case the source
+    # string is not a Unicode string. We can auto-up-cast the characters since
+    # they are ascii, but we don't want to auto-up-cast the string in case it
+    # is utf-8
+    for ch in ' \t\n\r\v\f':
         if ch in s:
             return True
     else:
@@ -832,6 +887,71 @@ def safe_unicode(unicode_or_utf8_string):
         raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
+def safe_utf8(unicode_or_utf8_string):
+    """Coerce unicode_or_utf8_string to a utf8 string.
+
+    If it is a str, it is returned.
+    If it is Unicode, it is encoded into a utf-8 string.
+    """
+    if isinstance(unicode_or_utf8_string, str):
+        # TODO: jam 20070209 This is overkill, and probably has an impact on
+        #       performance if we are dealing with lots of apis that want a
+        #       utf-8 revision id
+        try:
+            # Make sure it is a valid utf-8 string
+            unicode_or_utf8_string.decode('utf-8')
+        except UnicodeDecodeError:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        return unicode_or_utf8_string
+    return unicode_or_utf8_string.encode('utf-8')
+
+
+_revision_id_warning = ('Unicode revision ids were deprecated in bzr 0.15.'
+                        ' Revision id generators should be creating utf8'
+                        ' revision ids.')
+
+
+def safe_revision_id(unicode_or_utf8_string, warn=True):
+    """Revision ids should now be utf8, but at one point they were unicode.
+
+    :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 revision id.
+    """
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_revision_id_warning, DeprecationWarning,
+                               stacklevel=2)
+    return cache_utf8.encode(unicode_or_utf8_string)
+
+
+_file_id_warning = ('Unicode file ids were deprecated in bzr 0.15. File id'
+                    ' generators should be creating utf8 file ids.')
+
+
+def safe_file_id(unicode_or_utf8_string, warn=True):
+    """File ids should now be utf8, but at one point they were unicode.
+
+    This is the same as safe_utf8, except it uses the cached encode functions
+    to save a little bit of performance.
+
+    :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
+        utf8 or None).
+    :param warn: Functions that are sanitizing user data can set warn=False
+    :return: None or a utf8 file id.
+    """
+    if (unicode_or_utf8_string is None
+        or unicode_or_utf8_string.__class__ == str):
+        return unicode_or_utf8_string
+    if warn:
+        symbol_versioning.warn(_file_id_warning, DeprecationWarning,
+                               stacklevel=2)
+    return cache_utf8.encode(unicode_or_utf8_string)
+
+
 _platform_normalizes_filenames = False
 if sys.platform == 'darwin':
     _platform_normalizes_filenames = True
@@ -879,8 +999,7 @@ else:
 def terminal_width():
     """Return estimated terminal width."""
     if sys.platform == 'win32':
-        import bzrlib.win32console
-        return bzrlib.win32console.get_console_size()[0]
+        return win32utils.get_console_size()[0]
     width = 0
     try:
         import struct, fcntl, termios
@@ -901,6 +1020,19 @@ def terminal_width():
 
 
 def supports_executable():
+    return sys.platform != "win32"
+
+
+def supports_posix_readonly():
+    """Return True if 'readonly' has POSIX semantics, False otherwise.
+
+    Notably, a win32 readonly file cannot be deleted, unlike POSIX where the
+    directory controls creation/deletion, etc.
+
+    And under win32, readonly means that the directory itself cannot be
+    deleted.  The contents of a readonly directory can be changed, unlike POSIX
+    where files in readonly directories cannot be added, deleted or renamed.
+    """
     return sys.platform != "win32"
 
 
@@ -946,7 +1078,7 @@ def walkdirs(top, prefix=""):
     
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
-    [(relpath, basename, kind, lstat), ...]),
+    [(directory-relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
      - directory-path-from-root is the path including top for this directory. 
@@ -970,31 +1102,127 @@ def walkdirs(top, prefix=""):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    lstat = os.lstat
-    pending = []
+    _lstat = os.lstat
     _directory = _directory_kind
     _listdir = os.listdir
-    pending = [(prefix, "", _directory, None, top)]
+    _kind_from_mode = _formats.get
+    pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
-        dirblock = []
-        currentdir = pending.pop()
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-        top = currentdir[4]
-        if currentdir[0]:
-            relroot = currentdir[0] + '/'
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + u'/'
         else:
-            relroot = ""
+            relprefix = ''
+        top_slash = top + u'/'
+
+        dirblock = []
+        append = dirblock.append
         for name in sorted(_listdir(top)):
-            abspath = top + '/' + name
-            statvalue = lstat(abspath)
-            dirblock.append((relroot + name, name,
-                file_kind_from_stat_mode(statvalue.st_mode),
-                statvalue, abspath))
-        yield (currentdir[0], top), dirblock
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name, name, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
         # push the user specified dirs from dirblock
-        for dir in reversed(dirblock):
-            if dir[2] == _directory:
-                pending.append(dir)
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+def _walkdirs_utf8(top, prefix=""):
+    """Yield data about all the directories in a tree.
+
+    This yields the same information as walkdirs() only each entry is yielded
+    in utf-8. On platforms which have a filesystem encoding of utf8 the paths
+    are returned as exact byte-strings.
+
+    :return: yields a tuple of (dir_info, [file_info])
+        dir_info is (utf8_relpath, path-from-top)
+        file_info is (utf8_relpath, utf8_name, kind, lstat, path-from-top)
+        if top is an absolute path, path-from-top is also an absolute path.
+        path-from-top might be unicode or utf8, but it is the correct path to
+        pass to os functions to affect the file in question. (such as os.lstat)
+    """
+    fs_encoding = sys.getfilesystemencoding()
+    if (sys.platform == 'win32' or
+        fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
+        return _walkdirs_unicode_to_utf8(top, prefix=prefix)
+    else:
+        return _walkdirs_fs_utf8(top, prefix=prefix)
+
+
+def _walkdirs_fs_utf8(top, prefix=""):
+    """See _walkdirs_utf8.
+
+    This sub-function is called when we know the filesystem is already in utf8
+    encoding. So we don't need to transcode filenames.
+    """
+    _lstat = os.lstat
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = _formats.get
+
+    # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+    # But we don't actually uses 1-3 in pending, so set them to None
+    pending = [(safe_utf8(prefix), None, None, None, safe_utf8(top))]
+    while pending:
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + '/'
+        else:
+            relprefix = ''
+        top_slash = top + '/'
+
+        dirblock = []
+        append = dirblock.append
+        for name in sorted(_listdir(top)):
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name, name, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+
+
+def _walkdirs_unicode_to_utf8(top, prefix=""):
+    """See _walkdirs_utf8
+
+    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
+    Unicode paths.
+    This is currently the fallback code path when the filesystem encoding is
+    not UTF-8. It may be better to implement an alternative so that we can
+    safely handle paths that are not properly decodable in the current
+    encoding.
+    """
+    _utf8_encode = codecs.getencoder('utf8')
+    _lstat = os.lstat
+    _directory = _directory_kind
+    _listdir = os.listdir
+    _kind_from_mode = _formats.get
+
+    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
+    while pending:
+        relroot, _, _, _, top = pending.pop()
+        if relroot:
+            relprefix = relroot + '/'
+        else:
+            relprefix = ''
+        top_slash = top + u'/'
+
+        dirblock = []
+        append = dirblock.append
+        for name in sorted(_listdir(top)):
+            name_utf8 = _utf8_encode(name)[0]
+            abspath = top_slash + name
+            statvalue = _lstat(abspath)
+            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
+        yield (relroot, top), dirblock
+
+        # push the user specified dirs from dirblock
+        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -1057,17 +1285,21 @@ def compare_paths_prefix_order(path_a, path_b):
 _cached_user_encoding = None
 
 
-def get_user_encoding():
+def get_user_encoding(use_cache=True):
     """Find out what the preferred user encoding is.
 
     This is generally the encoding that is used for command line parameters
     and file contents. This may be different from the terminal encoding
     or the filesystem encoding.
 
+    :param  use_cache:  Enable cache for detected encoding.
+                        (This parameter is turned on by default,
+                        and required only for selftesting)
+
     :return: A string defining the preferred user encoding
     """
     global _cached_user_encoding
-    if _cached_user_encoding is not None:
+    if _cached_user_encoding is not None and use_cache:
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
@@ -1081,7 +1313,7 @@ def get_user_encoding():
         import locale
 
     try:
-        _cached_user_encoding = locale.getpreferredencoding()
+        user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
                          '  Could not determine what text encoding to use.\n'
@@ -1089,13 +1321,29 @@ def get_user_encoding():
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
+        user_encoding = 'ascii'
 
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if _cached_user_encoding in (None, 'cp0'):
-        _cached_user_encoding = 'ascii'
-    return _cached_user_encoding
+    if user_encoding in (None, 'cp0'):
+        user_encoding = 'ascii'
+    else:
+        # check encoding
+        try:
+            codecs.lookup(user_encoding)
+        except LookupError:
+            sys.stderr.write('bzr: warning:'
+                             ' unknown encoding %s.'
+                             ' Continuing with ascii encoding.\n'
+                             % user_encoding
+                            )
+            user_encoding = 'ascii'
+
+    if use_cache:
+        _cached_user_encoding = user_encoding
+
+    return user_encoding
 
 
 def recv_all(socket, bytes):

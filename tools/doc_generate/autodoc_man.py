@@ -80,7 +80,7 @@ def getcommand_list (params):
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            usage = bzrlib.help.command_usage(cmd_object)
+            usage = cmd_object._usage()
             tmp = '.TP\n.B "%s"\n%s\n' % (usage, firstline)
             output = output + tmp
         else:
@@ -101,7 +101,7 @@ def getcommand_help(params):
 
 def format_command (params, cmd):
     """Provides long help for each public command"""
-    subsection_header = '.SS "%s"\n' % (bzrlib.help.command_usage(cmd))
+    subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
     doc = cmd.help()
 
@@ -117,9 +117,7 @@ def format_command (params, cmd):
                 if short_name:
                     assert len(short_name) == 1
                     l += ', -' + short_name
-                l += (30 - len(l)) * ' ' + help
-                # TODO: Split help over multiple lines with
-                # correct indenting and wrapping.
+                l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
                                         subsequent_indent=30*' ')
                 option_str = option_str + wrapped + '\n'       
@@ -133,7 +131,14 @@ def format_command (params, cmd):
         aliases_str += ', '.join(cmd.aliases)
         aliases_str += '\n'
 
-    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
+    see_also_str = ""
+    see_also = cmd.get_see_also()
+    if see_also:
+        see_also_str += '\nSee also: '
+        see_also_str += ', '.join(see_also)
+        see_also_str += '\n'
+
+    return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
 
 
 man_preamble = """\
@@ -178,13 +183,13 @@ man_foot = """\
 .I "BZRPATH"
 Path where
 .B "%(bzrcmd)s"
-is to look for external command.
+is to look for shell plugin external commands.
 .TP
 .I "BZR_EMAIL"
 E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"
-E-Mail address of the user. Overriddes default user config.
+E-Mail address of the user. Overrides default user config.
 .TP
 .I "BZR_EDITOR"
 Editor for editing commit messages
@@ -200,7 +205,7 @@ Home directory for bzr
 .SH "FILES"
 .TP
 .I "~/.bazaar/bazaar.conf"
-Contains the users default configuration. The section
+Contains the user's default configuration. The section
 .B [DEFAULT]
 is used to define general configuration that will be applied everywhere.
 The section

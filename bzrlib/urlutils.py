@@ -117,11 +117,13 @@ def join(base, *args):
         join('http://foo', 'bar') => 'http://foo/bar'
         join('http://foo', 'bar', '../baz') => 'http://foo/baz'
     """
-    m = _url_scheme_re.match(base)
+    if not args:
+        return base
+    match = _url_scheme_re.match(base)
     scheme = None
-    if m:
-        scheme = m.group('scheme')
-        path = m.group('path').split('/')
+    if match:
+        scheme = match.group('scheme')
+        path = match.group('path').split('/')
         if path[-1:] == ['']:
             # Strip off a trailing slash
             # This helps both when we are at the root, and when
@@ -130,31 +132,87 @@ def join(base, *args):
     else:
         path = base.split('/')
 
+    if scheme is not None and len(path) >= 1:
+        host = path[:1]
+        # the path should be represented as an abs path.
+        # we know this must be absolute because of the presence of a URL scheme.
+        remove_root = True
+        path = [''] + path[1:]
+    else:
+        # create an empty host, but dont alter the path - this might be a
+        # relative url fragment.
+        host = []
+        remove_root = False
+
     for arg in args:
-        m = _url_scheme_re.match(arg)
-        if m:
+        match = _url_scheme_re.match(arg)
+        if match:
             # Absolute URL
-            scheme = m.group('scheme')
+            scheme = match.group('scheme')
             # this skips .. normalisation, making http://host/../../..
             # be rather strange.
-            path = m.group('path').split('/')
+            path = match.group('path').split('/')
+            # set the host and path according to new absolute URL, discarding
+            # any previous values.
+            # XXX: duplicates mess from earlier in this function.  This URL
+            # manipulation code needs some cleaning up.
+            if scheme is not None and len(path) >= 1:
+                host = path[:1]
+                path = path[1:]
+                # url scheme implies absolute path.
+                path = [''] + path
+            else:
+                # no url scheme we take the path as is.
+                host = []
         else:
-            for chunk in arg.split('/'):
-                if chunk == '.':
-                    continue
-                elif chunk == '..':
-                    if len(path) >= 2:
-                        # Don't pop off the host portion
-                        path.pop()
-                    else:
-                        raise errors.InvalidURLJoin('Cannot go above root',
-                                base, args)
-                else:
-                    path.append(chunk)
+            path = '/'.join(path)
+            path = joinpath(path, arg)
+            path = path.split('/')
+    if remove_root and path[0:1] == ['']:
+        del path[0]
+    if host:
+        # Remove the leading slash from the path, so long as it isn't also the
+        # trailing slash, which we want to keep if present.
+        if path and path[0] == '' and len(path) > 1:
+            del path[0]
+        path = host + path
 
     if scheme is None:
         return '/'.join(path)
     return scheme + '://' + '/'.join(path)
+
+
+def joinpath(base, *args):
+    """Join URL path segments to a URL path segment.
+    
+    This is somewhat like osutils.joinpath, but intended for URLs.
+
+    XXX: this duplicates some normalisation logic, and also duplicates a lot of
+    path handling logic that already exists in some Transport implementations.
+    We really should try to have exactly one place in the code base responsible
+    for combining paths of URLs.
+    """
+    path = base.split('/')
+    if len(path) > 1 and path[-1] == '':
+        #If the path ends in a trailing /, remove it.
+        path.pop()
+    for arg in args:
+        if arg.startswith('/'):
+            path = []
+        for chunk in arg.split('/'):
+            if chunk == '.':
+                continue
+            elif chunk == '..':
+                if path == ['']:
+                    raise errors.InvalidURLJoin('Cannot go above root',
+                            base, args)
+                path.pop()
+            else:
+                path.append(chunk)
+    if path == ['']:
+        return '/'
+    else:
+        return '/'.join(path)
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -212,8 +270,7 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
-    win32_path = osutils._nt_normpath(
-        osutils._win32_abspath(path)).replace('\\', '/')
+    win32_path = osutils._win32_abspath(path)
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
         return 'file:' + escape(win32_path)
@@ -425,7 +482,7 @@ def strip_trailing_slash(url):
     if not url.endswith('/'):
         # Nothing to do
         return url
-    if sys.platform == 'win32' and url.startswith('file:///'):
+    if sys.platform == 'win32' and url.startswith('file://'):
         return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)

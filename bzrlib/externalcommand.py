@@ -56,7 +56,7 @@ class ExternalCommand(Command):
     def run(self, *args, **kwargs):
         raise NotImplementedError('should not be called on %r' % self)
 
-    def run_argv(self, argv, alias_argv=None):
+    def run_argv_aliases(self, argv, alias_argv=None):
         return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)
 
     def help(self):

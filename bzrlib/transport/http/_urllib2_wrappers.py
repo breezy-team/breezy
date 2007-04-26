@@ -156,6 +156,8 @@ class Request(urllib2.Request):
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
+        # Unless told otherwise, redirections are not followed
+        self.follow_redirections = False
 
     def extract_auth(self, url):
         """Extracts authentification information from url.
@@ -501,11 +503,11 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # of creating a new one, but the urllib2.Request object
         # has a too complicated creation process to provide a
         # simple enough equivalent update process. Instead, when
-        # redirecting, we only update the original request with a
-        # reference to the following request in the redirect
-        # chain.
+        # redirecting, we only update the following request in
+        # the redirect chain with a reference to the parent
+        # request .
 
-        # Some codes make no sense on out context and are treated
+        # Some codes make no sense in our context and are treated
         # as errors:
 
         # 300: Multiple choices for different representations of
@@ -520,11 +522,10 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
         # 306: Unused (if the RFC says so...)
 
-        # FIXME: If the code is 302 and the request is HEAD, we
-        # MAY avoid following the redirections if the intent is
-        # to check the existence, we have a hint that the file
-        # exist, now if we want to be sure, we must follow the
-        # redirection. Let's do that for now.
+        # If the code is 302 and the request is HEAD, some may
+        # think that it is a sufficent hint that the file exists
+        # and that we MAY avoid following the redirections. But
+        # if we want to be sure, we MUST follow them.
 
         if code in (301, 302, 303, 307):
             return Request(req.get_method(),newurl,
@@ -541,7 +542,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             raise urllib2.HTTPError(req.get_full_url(), code, msg, headers, fp)
 
-    def http_error_30x(self, req, fp, code, msg, headers):
+    def http_error_302(self, req, fp, code, msg, headers):
         """Requests the redirected to URI.
 
         Copied from urllib2 to be able to fake_close the
@@ -561,7 +562,12 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             return
         if self._debuglevel > 0:
-            print 'Redirected to: %s' % newurl
+            print 'Redirected to: %s (followed: %r)' % (newurl,
+                                                        req.follow_redirections)
+        if req.follow_redirections is False:
+            req.redirected_to = newurl
+            return fp
+
         newurl = urlparse.urljoin(req.get_full_url(), newurl)
 
         # This call succeeds or raise an error. urllib2 returns
@@ -590,23 +596,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
         return self.parent.open(redirected_req)
 
-    http_error_302 = http_error_303 = http_error_307 = http_error_30x
-
-    def http_error_301(self, req, fp, code, msg, headers):
-        response = self.http_error_30x(req, fp, code, msg, headers)
-        # If one or several 301 response occur during the
-        # redirection chain, we MUST update the original request
-        # to indicate where the URI where finally found.
-
-        original_req = req
-        while original_req.parent is not None:
-            original_req = original_req.parent
-            if original_req.redirected_to is None:
-                # Only the last occurring 301 should be taken
-                # into account i.e. the first occurring here when
-                # redirected_to has not yet been set.
-                original_req.redirected_to = redirected_url
-        return response
+    http_error_301 = http_error_303 = http_error_307 = http_error_302
 
 
 class ProxyHandler(urllib2.ProxyHandler):
@@ -702,20 +692,28 @@ class ProxyHandler(urllib2.ProxyHandler):
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()
-        type, r_type = urllib.splittype(proxy)
-        host, XXX = urllib.splithost(r_type)
-        if '@' in host:
+        scheme, r_scheme = urllib.splittype(proxy)
+        if self._debuglevel > 0:
+            print 'scheme: %s, r_scheme: %s' % (scheme, r_scheme)
+        host, XXX = urllib.splithost(r_scheme)
+        if host is None:
+            raise errors.InvalidURL(proxy,
+                                    'Invalid syntax in proxy env variable')
+        elif '@' in host:
             user_pass, host = host.split('@', 1)
             if ':' in user_pass:
                 user, password = user_pass.split(':', 1)
-                user_pass = '%s:%s' % (urllib.unquote(user),
-                               urllib.unquote(password))
-                user_pass.encode('base64').strip()
-                req.add_header('Proxy-authorization', 'Basic ' + user_pass)
+            else:
+                user = user_pass
+                password = ''
+            user_pass = '%s:%s' % (urllib.unquote(user),
+                                   urllib.unquote(password))
+            user_pass = user_pass.encode('base64').strip()
+            request.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
         if self._debuglevel > 0:
-            print 'set_proxy: proxy set to %r://%r' % (type, host)
+            print 'set_proxy: proxy set to %s://%s' % (type, host)
         return request
 
 

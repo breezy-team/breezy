@@ -6,7 +6,7 @@ Overview
 ========
 
 This document describes ways of using ``bzr version-info`` as part of a
-build routine to embed version information into a final project.
+build process to embed version information into a final project.
 
 
 Python Project
@@ -23,24 +23,22 @@ information file as simply as::
 
 This generates a file which contains 3 dictionaries:
 
-  `version_info`: A dictionary containing the basic information about the
-                  current state.
+  * `version_info`: A dictionary containing the basic information about the
+    current state.
 
-  revisions: A dictionary listing all of the revisions in the history of
-             the tree, along with the commit times and commit message.
-             This defaults to being empty unless ``--all`` or
-             ``--include-history`` is supplied. This is useful if you
-             want to track what bugfixes, etc, might be included in the
-             released version. But for many projects it is more
-             information than they need.
+  * `revisions`: A dictionary listing all of the revisions in the
+    history of the tree, along with the commit times and commit
+    message.  This defaults to being empty unless ``--all`` or
+    ``--include-history`` is supplied. This is useful if you want to
+    track what bug fixes, etc, might be included in the released
+    version. But for many projects it is more information than needed.
 
-  `file_revisions`: A dictionary listing the last-modified revision for
-                    all files in the project. This can be used similarly
-                    to how ``$Id$`` keywords are used in CVS controlled
-                    files. The last modified date can be determined by
-                    looking in the ``revisions`` map. This is also empty by
-                    default, and enabled only by ``--all`` or
-                    ``--include-file-revisions``.
+  * `file_revisions`: A dictionary listing the last-modified revision
+    for all files in the project. This can be used similarly to how
+    ``$Id$`` keywords are used in CVS-controlled files. The last
+    modified date can be determined by looking in the ``revisions``
+    map. This is also empty by default, and enabled only by ``--all``
+    or ``--include-file-revisions``.
 
 Check Clean
 ===========

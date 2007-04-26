@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,12 @@
 """Blackbox tests for -D debug options"""
 
 import os
+import signal
+import subprocess
+import sys
+import time
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 class TestDebugOption(TestCase):
 
@@ -26,7 +30,7 @@ class TestDebugOption(TestCase):
         """With -Derror, tracebacks are shown even for user errors"""
         out, err = self.run_bzr("-Derror", "branch", "nonexistent-location",
                 retcode=3)
-        # error output should contain a traceback
-        self.assertContainsRe(err, "    raise errors\.NotBranchError")
-
-
+        # error output should contain a traceback; we used to look for code in
+        # here but it may be missing if the source is not in sync with the
+        # pyc file.
+        self.assertContainsRe(err, "Traceback \\(most recent call last\\)")

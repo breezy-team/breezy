@@ -75,7 +75,13 @@ class LocalTransport(Transport):
         if offset is None:
             return LocalTransport(self.base)
         else:
-            return LocalTransport(self.abspath(offset))
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return LocalTransport(abspath)
 
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
@@ -474,12 +480,50 @@ class LocalTransport(Transport):
             return True
 
 
+class EmulatedWin32LocalTransport(LocalTransport):
+    """Special transport for testing Win32 [UNC] paths on non-windows"""
+
+    def __init__(self, base):
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
+        self._local_base = urlutils._win32_local_path_from_url(base)
+
+    def abspath(self, relpath):
+        assert isinstance(relpath, basestring), (type(relpath), relpath)
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
+        return urlutils._win32_local_path_to_url(path)
+
+    def clone(self, offset=None):
+        """Return a new LocalTransport with root at self.base + offset
+        Because the local filesystem does not require a connection, 
+        we can just return a new object.
+        """
+        if offset is None:
+            return EmulatedWin32LocalTransport(self.base)
+        else:
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return EmulatedWin32LocalTransport(abspath)
+
+
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
     
     Of course no actual server is required to access the local filesystem, so
     this just exists to tell the test code how to get to it.
     """
+
+    def setUp(self):
+        """Setup the server to service requests.
+        
+        :param decorated_transport: ignored by this implementation.
+        """
 
     def get_url(self):
         """See Transport.Server.get_url."""

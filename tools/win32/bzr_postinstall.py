@@ -16,16 +16,19 @@
 
 """bzr postinstall helper for win32 installation
 Written by Alexander Belchenko
+
+Dependency: ctypes
 """
 
 import os
+import shutil
 import sys
 
 
 ##
 # CONSTANTS
 
-VERSION = "1.3.20060513"
+VERSION = "1.5.20070131"
 
 USAGE = """Bzr postinstall helper for win32 installation
 Usage: %s [options]
@@ -45,6 +48,30 @@ OPTIONS:
     --check-mfc71               - check if MFC71.DLL present in system
 """ % os.path.basename(sys.argv[0])
 
+# Windows version
+_major,_minor,_build,_platform,_text = sys.getwindowsversion()
+# from MSDN:
+# dwPlatformId
+#   The operating system platform.
+#   This member can be one of the following values.
+#   ==========================  ======================================
+#   Value                       Meaning
+#   --------------------------  --------------------------------------
+#   VER_PLATFORM_WIN32_NT       The operating system is Windows Vista,
+#   2                           Windows Server "Longhorn",
+#                               Windows Server 2003, Windows XP,
+#                               Windows 2000, or Windows NT.
+#
+#   VER_PLATFORM_WIN32_WINDOWS  The operating system is Windows Me,
+#   1                           Windows 98, or Windows 95.
+#   ==========================  ======================================
+if _platform == 2:
+    winver = 'Windows NT'
+else:
+    # don't care about real Windows name, just to force safe operations
+    winver = 'Windows 98'
+
+
 ##
 # INTERNAL VARIABLES
 
@@ -53,6 +80,7 @@ VERSION_FORMAT = "%-50s%s"
 
 
 def main():
+    import ctypes
     import getopt
     import re
     import _winreg
@@ -126,7 +154,7 @@ def main():
     MB_ICONERROR = 16
     MB_ICONEXCLAMATION = 48
 
-    bzr_dir = os.path.dirname(sys.argv[0])
+    bzr_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     if start_bzr:
         fname = os.path.join(bzr_dir, "start_bzr.bat")
@@ -155,7 +183,7 @@ def main():
             f.write(''.join(content))
             f.close()
 
-    if add_path or delete_path:
+    if (add_path or delete_path) and winver == 'Windows NT':
         # find appropriate registry key:
         # 1. HKLM\System\CurrentControlSet\Control\SessionManager\Environment
         # 2. HKCU\Environment
@@ -213,6 +241,60 @@ def main():
         if not hkey is None:
             _winreg.CloseKey(hkey)
 
+    if (add_path or delete_path) and winver == 'Windows 98':
+        # mutating autoexec.bat
+        # adding or delete string:
+        # SET PATH=%PATH%;C:\PROGRA~1\Bazaar
+        abat = 'C:\\autoexec.bat'
+        abak = 'C:\\autoexec.bak'
+
+        def backup_autoexec_bat(name, backupname, dry_run):
+            # backup autoexec.bat
+            if os.path.isfile(name):
+                if not dry_run:
+                    shutil.copyfile(name, backupname)
+                else:
+                    print '*** backup copy of autoexec.bat created'
+
+        GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
+        buf = ctypes.create_string_buffer(260)
+        if GetShortPathName(bzr_dir, buf, 260):
+            bzr_dir_8_3 = buf.value
+        else:
+            bzr_dir_8_3 = bzr_dir
+        pattern = 'SET PATH=%PATH%;' + bzr_dir_8_3
+
+        # search pattern
+        f = file(abat, 'r')
+        lines = f.readlines()
+        f.close()
+        found = False
+        for i in lines:
+            if i.rstrip('\r\n') == pattern:
+                found = True
+                break
+
+        if delete_path and found:
+            backup_autoexec_bat(abat, abak, dry_run)
+            if not dry_run:
+                f = file(abat, 'w')
+                for i in lines:
+                    if i.rstrip('\r\n') != pattern:
+                        f.write(i)
+                f.close()
+            else:
+                print '*** Remove line <%s> from autoexec.bat' % pattern
+                    
+        elif add_path and not found:
+            backup_autoexec_bat(abat, abak, dry_run)
+            if not dry_run:
+                f = file(abat, 'a')
+                f.write(pattern)
+                f.write('\n')
+                f.close()
+            else:
+                print '*** Add line <%s> to autoexec.bat' % pattern
+
     if add_shell_menu and not delete_shell_menu:
         hkey = None
         try:
@@ -229,8 +311,9 @@ def main():
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Bzr Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
-                             'cmd /K "%s"' % os.path.join(bzr_dir,
-                                                          'start_bzr.bat'))
+                             '%s /K "%s"' % (
+                                    os.environ.get('COMSPEC', '%COMSPEC%'),
+                                    os.path.join(bzr_dir, 'start_bzr.bat')))
             _winreg.CloseKey(hkey2)
             _winreg.CloseKey(hkey)
 

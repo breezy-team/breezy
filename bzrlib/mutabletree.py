@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,11 @@ See MutableTree for more details.
 """
 
 
-from bzrlib import tree
+from bzrlib import (
+    errors,
+    osutils,
+    tree,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import splitpath
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER
@@ -58,7 +62,7 @@ class MutableTree(tree.Tree):
     branch and bzrdir attributes.
     """
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
 
@@ -86,10 +90,13 @@ class MutableTree(tree.Tree):
             if kinds is not None:
                 kinds = [kinds]
 
+        files = [path.strip('/') for path in files]
+
         if ids is None:
             ids = [None] * len(files)
         else:
             assert(len(ids) == len(files))
+            ids = [osutils.safe_file_id(file_id) for file_id in ids]
 
         if kinds is None:
             kinds = [None] * len(files)
@@ -106,12 +113,76 @@ class MutableTree(tree.Tree):
         self._gather_kinds(files, kinds)
         self._add(files, ids, kinds)
 
+    def add_reference(self, sub_tree):
+        """Add a TreeReference to the tree, pointing at sub_tree"""
+        raise errors.UnsupportedOperation(self.add_reference, self)
+
+    def _add_reference(self, sub_tree):
+        """Standard add_reference implementation, for use by subclasses"""
+        try:
+            sub_tree_path = self.relpath(sub_tree.basedir)
+        except errors.PathNotChild:
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                            'Target not inside tree.')
+        sub_tree_id = sub_tree.get_root_id()
+        if sub_tree_id == self.get_root_id():
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                     'Trees have the same root id.')
+        if sub_tree_id in self.inventory:
+            raise errors.BadReferenceTarget(self, sub_tree,
+                                            'Root id already present in tree')
+        self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+
     def _add(self, files, ids, kinds):
-        """Helper function for add - updates the inventory."""
+        """Helper function for add - updates the inventory.
+
+        :param files: sequence of pathnames, relative to the tree root
+        :param ids: sequence of suggested ids for the files (may be None)
+        :param kinds: sequence of  inventory kinds of the files (i.e. may
+            contain "tree-reference")
+        """
         raise NotImplementedError(self._add)
 
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """Apply changes to the inventory as an atomic operation.
+
+        The argument is a set of changes to apply.  It must describe a
+        valid result, but the order is not important.  Specifically,
+        intermediate stages *may* be invalid, such as when two files
+        swap names.
+
+        The changes should be structured as a list of tuples, of the form
+        (old_path, new_path, file_id, new_entry).  For creation, old_path
+        must be None.  For deletion, new_path and new_entry must be None.
+        file_id is always non-None.  For renames and other mutations, all
+        values must be non-None.
+
+        If the new_entry is a directory, its children should be an empty
+        dict.  Children are handled by apply_inventory_delta itself.
+
+        :param changes: A list of tuples for the change to apply:
+            [(old_path, new_path, file_id, new_inventory_entry), ...]
+        """
+        self.flush()
+        inv = self.inventory
+        children = {}
+        for old_path, file_id in sorted(((op, f) for op, np, f, e in changes
+                                        if op is not None), reverse=True):
+            if file_id not in inv:
+                continue
+            children[file_id] = getattr(inv[file_id], 'children', {})
+            inv.remove_recursive_id(file_id)
+        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+                                          changes if np is not None):
+            if getattr(new_entry, 'children', None) is not None:
+                new_entry.children = children.get(new_entry.file_id, {})
+            inv.add(new_entry)
+        self._write_inventory(inv)
+
     @needs_write_lock
-    def commit(self, message=None, revprops=None, *args, **kwargs):
+    def commit(self, message=None, revprops=None, *args,
+               **kwargs):
         # avoid circular imports
         from bzrlib import commit
         if revprops is None:
@@ -119,9 +190,7 @@ class MutableTree(tree.Tree):
         if not 'branch-nick' in revprops:
             revprops['branch-nick'] = self.branch.nick
         # args for wt.commit start at message from the Commit.commit method,
-        # but with branch a kwarg now, passing in args as is results in the
-        #message being used for the branch
-        args = (DEPRECATED_PARAMETER, message, ) + args
+        args = (message, ) + args
         committed_id = commit.Commit().commit(working_tree=self,
             revprops=revprops, *args, **kwargs)
         return committed_id
@@ -175,6 +244,13 @@ class MutableTree(tree.Tree):
         :return: the file id of the new directory.
         """
         raise NotImplementedError(self.mkdir)
+
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parents ids of the working tree.
+
+        :param revision_ids: A list of revision_ids.
+        """
+        raise NotImplementedError(self.set_parent_ids)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.

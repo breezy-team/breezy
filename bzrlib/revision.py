@@ -251,11 +251,19 @@ def common_ancestor(revision_a, revision_b, revision_source,
             pb.update('Picking ancestor', 1, 3)
             graph = revision_source.get_revision_graph_with_ghosts(
                 [revision_a, revision_b])
+            # Shortcut the case where one of the tips is already included in
+            # the other graphs ancestry.
+            ancestry_a = graph.get_ancestry(revision_a)
+            if revision_b in ancestry_a:
+                return revision_b
+            ancestry_b = graph.get_ancestry(revision_b)
+            if revision_a in ancestry_b:
+                return revision_a
             # convert to a NULL_REVISION based graph.
             ancestors = graph.get_ancestors()
             descendants = graph.get_descendants()
-            common = set(graph.get_ancestry(revision_a)).intersection(
-                     set(graph.get_ancestry(revision_b)))
+            common = set(ancestry_a)
+            common.intersection_update(ancestry_b)
             descendants[NULL_REVISION] = {}
             ancestors[NULL_REVISION] = []
             for root in graph.roots:
@@ -454,3 +462,17 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
         next = best_ancestor(next)
     path.reverse()
     return path
+
+
+def is_reserved_id(revision_id):
+    """Determine whether a revision id is reserved
+
+    :return: True if the revision is is reserved, False otherwise
+    """
+    return isinstance(revision_id, basestring) and revision_id.endswith(':')
+
+
+def check_not_reserved_id(revision_id):
+    """Raise ReservedId if the supplied revision_id is reserved"""
+    if is_reserved_id(revision_id):
+        raise errors.ReservedId(revision_id)

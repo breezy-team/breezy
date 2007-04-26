@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,11 +19,14 @@
 
 import os
 
-import bzrlib
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
-from bzrlib.repository import RepositoryFormatKnit1
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
@@ -78,12 +80,14 @@ class TestPush(ExternalBase):
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
-        out = self.run_bzr('push')
+        out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
-        self.assertEquals(('Using saved location: %s\n' 
-                           % (local_path_from_url(path),)
-                          , 'All changes applied successfully.\n'
-                            '1 revision(s) pushed.\n'), out)
+        self.assertEquals(out,
+                          'Using saved location: %s\n' 
+                          'Pushed up to revision 2.\n'
+                          % local_path_from_url(path))
+        self.assertEqual(err,
+                         'All changes applied successfully.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
@@ -96,8 +100,8 @@ class TestPush(ExternalBase):
         b = self.make_branch('.')
         out, err = self.run_bzr('push', 'pushed-location')
         self.assertEqual('', out)
-        self.assertEqual('0 revision(s) pushed.\n', err)
-        b2 = bzrlib.branch.Branch.open('pushed-location')
+        self.assertEqual('Created new branch.\n', err)
+        b2 = Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
@@ -112,7 +116,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push', 'pushed-to')
         os.chdir('..')
         self.assertEqual('', out)
-        self.assertEqual('1 revision(s) pushed.\n', err)
+        self.assertEqual('Created new branch.\n', err)
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
@@ -160,3 +164,83 @@ class TestPush(ExternalBase):
         t.add('filename', 'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push', '../new-tree')
+
+    def test_push_dash_d(self):
+        t = self.make_branch_and_tree('from')
+        t.commit(allow_pointless=True,
+                message='first commit')
+        self.runbzr('push -d from to-one')
+        self.failUnlessExists('to-one')
+        self.runbzr('push -d %s %s' 
+            % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
+        self.failUnlessExists('to-two')
+
+    def create_simple_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('one', rev_id='r1')
+        return tree
+
+    def test_push_create_prefix(self):
+        """'bzr push --create-prefix' will create leading directories."""
+        tree = self.create_simple_tree()
+
+        self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
+                           'push', '../new/tree',
+                           working_dir='tree')
+        self.run_bzr('push', '../new/tree', '--create-prefix',
+                     working_dir='tree')
+        new_tree = WorkingTree.open('new/tree')
+        self.assertEqual(tree.last_revision(), new_tree.last_revision())
+        self.failUnlessExists('new/tree/a')
+
+    def test_push_use_existing(self):
+        """'bzr push --use-existing-dir' can push into an existing dir.
+
+        By default, 'bzr push' will not use an existing, non-versioned dir.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/'])
+
+        self.run_bzr_error(['Target directory ../target already exists',
+                            'Supply --use-existing-dir',
+                           ], 'push', '../target',
+                           working_dir='tree')
+
+        self.run_bzr('push', '--use-existing-dir', '../target',
+                     working_dir='tree')
+
+        new_tree = WorkingTree.open('target')
+        self.assertEqual(tree.last_revision(), new_tree.last_revision())
+        # The push should have created target/a
+        self.failUnlessExists('target/a')
+
+    def test_push_onto_repo(self):
+        """We should be able to 'bzr push' into an existing bzrdir."""
+        tree = self.create_simple_tree()
+        repo = self.make_repository('repo', shared=True)
+
+        self.run_bzr('push', '../repo',
+                     working_dir='tree')
+
+        # Pushing onto an existing bzrdir will create a repository and
+        # branch as needed, but will only create a working tree if there was
+        # no BzrDir before.
+        self.assertRaises(errors.NoWorkingTree, WorkingTree.open, 'repo')
+        new_branch = Branch.open('repo')
+        self.assertEqual(tree.last_revision(), new_branch.last_revision())
+
+    def test_push_onto_just_bzrdir(self):
+        """We don't handle when the target is just a bzrdir.
+
+        Because you shouldn't be able to create *just* a bzrdir in the wild.
+        """
+        # TODO: jam 20070109 Maybe it would be better to create the repository
+        #       if at this point
+        tree = self.create_simple_tree()
+        a_bzrdir = self.make_bzrdir('dir')
+
+        self.run_bzr_error(['At ../dir you have a valid .bzr control'],
+                'push', '../dir',
+                working_dir='tree')

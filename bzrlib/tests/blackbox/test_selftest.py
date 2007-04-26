@@ -17,6 +17,7 @@
 """UI tests for the test framework."""
 
 import os
+import re
 import signal
 import sys
 
@@ -30,6 +31,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
+                          TestUIFactory,
                           TestSkipped,
                           )
 from bzrlib.tests.blackbox import ExternalBase
@@ -101,6 +103,7 @@ class TestRunBzr(ExternalBase):
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
+        return '', ''
 
     def test_args(self):
         """Test that run_bzr passes args correctly to run_bzr_captured"""
@@ -211,10 +214,10 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertTrue(self.stdin is self.factory_stdin)
 
     def test_ui_factory(self):
-        # each invocation of self.run_bzr_captured should get its own UI
-        # factory, which is an instance of TestUIFactory, with stdout and
-        # stderr attached to the stdout and stderr of the invoked
-        # run_bzr_captured
+        # each invocation of self.run_bzr_captured should get its
+        # own UI factory, which is an instance of TestUIFactory,
+        # with stdin, stdout and stderr attached to the stdin,
+        # stdout and stderr of the invoked run_bzr_captured
         current_factory = bzrlib.ui.ui_factory
         self.run_bzr_captured(['foo'])
         self.failIf(current_factory is self.factory)
@@ -222,7 +225,7 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertNotEqual(sys.stderr, self.factory.stderr)
         self.assertEqual('foo\n', self.factory.stdout.getvalue())
         self.assertEqual('bar\n', self.factory.stderr.getvalue())
-        self.assertIsInstance(self.factory, bzrlib.tests.blackbox.TestUIFactory)
+        self.assertIsInstance(self.factory, TestUIFactory)
 
     def test_working_dir(self):
         self.build_tree(['one/', 'two/'])
@@ -262,7 +265,8 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertContainsRe(result[1], 'unknown command')
         err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
                                       retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
+        self.assertContainsRe(err, 'Bad value "magic merge" for option'
+                              ' "merge-type"')
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.
@@ -328,7 +332,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess('rocks',
                         env_changes={'NON_EXISTANT_ENV_VAR':None},
                         universal_newlines=True)
-        self.assertEqual('it sure does!\n', out)
+        self.assertEqual('It sure does!\n', out)
         self.assertEqual('', err)
 
     def test_run_bzr_subprocess_working_dir(self):
@@ -448,7 +452,7 @@ class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
-        self.assertEqual(out, 'it sure does!\n')
+        self.assertEqual(out, 'It sure does!\n')
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')
@@ -489,3 +493,85 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
+
+
+class TestSelftestListOnly(TestCase):
+
+    @staticmethod
+    def _parse_test_list(lines, newlines_in_header=1):
+        "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
+
+        in_header = True
+        in_footer = False
+        header = []
+        body = []
+        footer = []
+        header_newlines_found = 0 
+        for line in lines:
+            if in_header:
+                if line == '':
+                    header_newlines_found += 1
+                    if header_newlines_found >= newlines_in_header:
+                        in_header = False
+                        continue
+                header.append(line)
+            elif not in_footer:
+                if line.startswith('-------'):
+                    in_footer = True
+                else:
+                    body.append(line)
+            else:
+                footer.append(line)
+        # If the last body line is blank, drop it off the list
+        if len(body) > 0 and body[-1] == '':
+            body.pop()                
+        return (header,body,footer)
+
+    def test_list_only(self):
+        # check that bzr selftest --list-only works correctly
+        out,err = self.run_bzr_captured(['selftest', 'selftest',
+            '--list-only'])
+        self.assertEndsWith(err, 'tests passed\n')
+        (header,body,footer) = self._parse_test_list(out.splitlines())
+        num_tests = len(body)
+        self.assertContainsRe(footer[0], 'Listed %s tests in' % num_tests)
+
+    def test_list_only_filtered(self):
+        # check that a filtered --list-only works, both include and exclude
+        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only'])
+        tests_all = self._parse_test_list(out_all.splitlines())[1]
+        out_incl,err_incl = self.run_bzr_captured(['selftest', '--list-only',
+          'selftest'])
+        tests_incl = self._parse_test_list(out_incl.splitlines())[1]
+        self.assertSubset(tests_incl, tests_all)
+        out_excl,err_excl = self.run_bzr_captured(['selftest', '--list-only',
+          '--exclude', 'selftest'])
+        tests_excl = self._parse_test_list(out_excl.splitlines())[1]
+        self.assertSubset(tests_excl, tests_all)
+        set_incl = set(tests_incl)
+        set_excl = set(tests_excl)
+        intersection = set_incl.intersection(set_excl)
+        self.assertEquals(0, len(intersection))
+        self.assertEquals(len(tests_all), len(tests_incl) + len(tests_excl))
+
+    def test_list_only_random(self):
+        # check that --randomize works correctly
+        out_all,err_all = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest'])
+        tests_all = self._parse_test_list(out_all.splitlines())[1]
+        out_rand,err_rand = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest', '--randomize', 'now'])
+        (header_rand,tests_rand,dummy) = self._parse_test_list(
+            out_rand.splitlines(), 2)
+        self.assertNotEqual(tests_all, tests_rand)
+        self.assertEqual(sorted(tests_all), sorted(tests_rand))
+        # Check that the seed can be reused to get the exact same order
+        seed_re = re.compile('Randomizing test order using seed (\w+)')
+        match_obj = seed_re.search(header_rand[-1])
+        seed = match_obj.group(1)
+        out_rand2,err_rand2 = self.run_bzr_captured(['selftest', '--list-only',
+            'selftest', '--randomize', seed])
+        (header_rand2,tests_rand2,dummy) = self._parse_test_list(
+            out_rand2.splitlines(), 2)
+        self.assertEqual(tests_rand, tests_rand2)
+

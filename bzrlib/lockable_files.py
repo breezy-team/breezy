@@ -196,11 +196,21 @@ class LockableFiles(object):
         self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
+    def put_bytes(self, path, a_string):
+        """Write a string of bytes.
+
+        :param path: The path to put the bytes, relative to the transport root.
+        :param string: A string object, whose exact bytes are to be copied.
+        """
+        self._transport.put_bytes(self._escape(path), a_string,
+                                  mode=self._file_mode)
+
+    @needs_write_lock
     def put_utf8(self, path, a_string):
         """Write a string, encoding as utf-8.
 
         :param path: The path to put the string, relative to the transport root.
-        :param string: A file-like or string object whose contents should be copied.
+        :param string: A string or unicode object whose contents should be copied.
         """
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25
@@ -210,23 +220,49 @@ class LockableFiles(object):
         # these are valuable files which should have exact contents.
         if not isinstance(a_string, basestring):
             raise errors.BzrBadParameterNotString(a_string)
-        self.put(path, StringIO(a_string.encode('utf-8')))
+        self.put_bytes(path, a_string.encode('utf-8'))
 
-    def lock_write(self):
+    def leave_in_place(self):
+        """Set this LockableFiles to not clear the physical lock on unlock."""
+        self._lock.leave_in_place()
+
+    def dont_leave_in_place(self):
+        """Set this LockableFiles to clear the physical lock on unlock."""
+        self._lock.dont_leave_in_place()
+
+    def lock_write(self, token=None):
+        """Lock this group of files for writing.
+        
+        :param token: if this is already locked, then lock_write will fail
+            unless the token matches the existing lock.
+        :returns: a token if this instance supports tokens, otherwise None.
+        :raises TokenLockingNotSupported: when a token is given but this
+            instance doesn't support using token locks.
+        :raises MismatchedToken: if the specified token doesn't match the token
+            of the existing lock.
+
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+        """
         # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
                 raise errors.ReadOnlyError(self)
+            self._lock.validate_token(token)
             self._lock_count += 1
+            return self._token_from_lock
         else:
-            self._lock.lock_write()
+            token_from_lock = self._lock.lock_write(token=token)
             #note('write locking %s', self)
             #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.WriteTransaction())
+            self._token_from_lock = token_from_lock
+            return token_from_lock
 
     def lock_read(self):
         # mutter("lock read: %s (%s)", self, self._lock_count)
@@ -323,7 +359,15 @@ class TransportLock(object):
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
 
-    def lock_write(self):
+    def leave_in_place(self):
+        raise NotImplementedError(self.leave_in_place)
+
+    def dont_leave_in_place(self):
+        raise NotImplementedError(self.dont_leave_in_place)
+
+    def lock_write(self, token=None):
+        if token is not None:
+            raise errors.TokenLockingNotSupported(self)
         self._lock = self._transport.lock_write(self._escaped_name)
 
     def lock_read(self):
@@ -341,3 +385,8 @@ class TransportLock(object):
         # for old-style locks, create the file now
         self._transport.put_bytes(self._escaped_name, '',
                             mode=self._file_modebits)
+
+    def validate_token(self, token):
+        if token is not None:
+            raise errors.TokenLockingNotSupported(self)
+        

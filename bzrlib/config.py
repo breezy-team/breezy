@@ -1,5 +1,6 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,6 +78,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     urlutils,
+    win32utils,
     )
 import bzrlib.util.configobj.configobj as configobj
 """)
@@ -709,7 +711,7 @@ def config_dir():
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
         if base is None:
-            base = os.environ.get('APPDATA', None)
+            base = win32utils.get_appdata_location_unicode()
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
@@ -755,7 +757,16 @@ def _auto_user_id():
     """
     import socket
 
-    # XXX: Any good way to get real user name on win32?
+    if sys.platform == 'win32':
+        name = win32utils.get_user_name_unicode()
+        if name is None:
+            raise errors.BzrError("Cannot autodetect user name.\n"
+                                  "Please, set your name with command like:\n"
+                                  'bzr whoami "Your Name <name@domain.com>"')
+        host = win32utils.get_host_name_unicode()
+        if host is None:
+            host = socket.gethostname()
+        return name, (name + '@' + host)
 
     try:
         import pwd
@@ -829,7 +840,7 @@ class TreeConfig(IniBasedConfig):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
                             encoding='utf-8')
         except errors.NoSuchFile:
             obj = ConfigObj(encoding='utf=8')

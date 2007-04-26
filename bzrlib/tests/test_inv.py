@@ -14,20 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
-import os
-import time
-
 from bzrlib import errors, inventory, osutils
-from bzrlib.branch import Branch
-from bzrlib.diff import internal_diff
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry)
-from bzrlib.osutils import (has_symlinks, rename, pathjoin, is_inside_any, 
+    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.osutils import (pathjoin, is_inside_any, 
     is_inside_or_parent_of_any)
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.transform import TreeTransform
-from bzrlib.uncommit import uncommit
+from bzrlib.tests import TestCase
 
 
 class TestInventory(TestCase):
@@ -139,11 +131,58 @@ class TestInventory(TestCase):
             ('src/sub/a', 'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir()])
             
-    def test_version(self):
-        """Inventory remembers the text's version."""
+        self.assertEqual([
+            ('', ROOT_ID),
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id', ROOT_ID,
+                'hello-id', 'bye-id', 'zz-id', 'src-id', 'makefile-id', 
+                'sub-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id',
+                'hello-id', 'bye-id', 'zz-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id',))])
+
+    def test_add_recursive(self):
+        parent = InventoryDirectory('src-id', 'src', ROOT_ID)
+        child = InventoryFile('hello-id', 'hello.c', 'src-id')
+        parent.children[child.file_id] = child
         inv = Inventory()
-        ie = inv.add_path('foo.txt', 'file')
-        ## XXX
+        inv.add(parent)
+        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
 
 
 class TestInventoryEntry(TestCase):
@@ -235,264 +274,6 @@ class TestInventoryEntry(TestCase):
             osutils.normalized_filename = orig_normalized_filename
 
 
-class TestEntryDiffing(TestCaseWithTransport):
-
-    def setUp(self):
-        super(TestEntryDiffing, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        print >> open('file', 'wb'), 'foo'
-        print >> open('binfile', 'wb'), 'foo'
-        self.wt.add(['file'], ['fileid'])
-        self.wt.add(['binfile'], ['binfileid'])
-        if has_symlinks():
-            os.symlink('target1', 'symlink')
-            self.wt.add(['symlink'], ['linkid'])
-        self.wt.commit('message_1', rev_id = '1')
-        print >> open('file', 'wb'), 'bar'
-        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
-        if has_symlinks():
-            os.unlink('symlink')
-            os.symlink('target2', 'symlink')
-        self.tree_1 = self.branch.repository.revision_tree('1')
-        self.inv_1 = self.branch.repository.get_inventory('1')
-        self.file_1 = self.inv_1['fileid']
-        self.file_1b = self.inv_1['binfileid']
-        self.tree_2 = self.wt
-        self.inv_2 = self.tree_2.read_working_inventory()
-        self.file_2 = self.inv_2['fileid']
-        self.file_2b = self.inv_2['binfileid']
-        if has_symlinks():
-            self.link_1 = self.inv_1['linkid']
-            self.link_2 = self.inv_2['linkid']
-
-    def test_file_diff_deleted(self):
-        output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "old_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output)
-        self.assertEqual(output.getvalue(), "--- old_label\n"
-                                            "+++ /dev/null\n"
-                                            "@@ -1,1 +0,0 @@\n"
-                                            "-foo\n"
-                                            "\n")
-
-    def test_file_diff_added(self):
-        output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "new_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output, reverse=True)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
-                                            "@@ -0,0 +1,1 @@\n"
-                                            "+foo\n"
-                                            "\n")
-
-    def test_file_diff_changed(self):
-        output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.file_2, self.tree_2,
-                          output)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
-                                            "@@ -1,1 +1,1 @@\n"
-                                            "-foo\n"
-                                            "+bar\n"
-                                            "\n")
-        
-    def test_file_diff_binary(self):
-        output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.file_2b, self.tree_2,
-                          output)
-        self.assertEqual(output.getvalue(), 
-                         "Binary files /dev/null and new_label differ\n")
-    def test_link_diff_deleted(self):
-        if not has_symlinks():
-            return
-        output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "old_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output)
-        self.assertEqual(output.getvalue(),
-                         "=== target was 'target1'\n")
-
-    def test_link_diff_added(self):
-        if not has_symlinks():
-            return
-        output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "new_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output, reverse=True)
-        self.assertEqual(output.getvalue(),
-                         "=== target is 'target1'\n")
-
-    def test_link_diff_changed(self):
-        if not has_symlinks():
-            return
-        output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.link_2, self.tree_2,
-                          output)
-        self.assertEqual(output.getvalue(),
-                         "=== target changed 'target1' => 'target2'\n")
-
-
-class TestSnapshot(TestCaseWithTransport):
-
-    def setUp(self):
-        # for full testing we'll need a branch
-        # with a subdir to test parent changes.
-        # and a file, link and dir under that.
-        # but right now I only need one attribute
-        # to change, and then test merge patterns
-        # with fake parent entries.
-        super(TestSnapshot, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
-        self.wt.add(['subdir', 'subdir/file'],
-                                       ['dirid', 'fileid'])
-        if has_symlinks():
-            pass
-        self.wt.commit('message_1', rev_id = '1')
-        self.tree_1 = self.branch.repository.revision_tree('1')
-        self.inv_1 = self.branch.repository.get_inventory('1')
-        self.file_1 = self.inv_1['fileid']
-        self.file_active = self.wt.inventory['fileid']
-        self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
-
-    def test_snapshot_new_revision(self):
-        # This tests that a simple commit with no parents makes a new
-        # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, self.builder)
-        # expected outcome - file_1 has a revision id of '2', and we can get
-        # its text of 'file contents' out of the weave.
-        self.assertEqual(self.file_1.revision, '1')
-        self.assertEqual(self.file_active.revision, '2')
-        # this should be a separate test probably, but lets check it once..
-        lines = self.branch.repository.weave_store.get_weave(
-            'fileid', 
-            self.branch.get_transaction()).get_lines('2')
-        self.assertEqual(lines, ['contents of subdir/file\n'])
-
-    def test_snapshot_unchanged(self):
-        #This tests that a simple commit does not make a new entry for
-        # an unchanged inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.wt, self.builder)
-        self.assertEqual(self.file_1.revision, '1')
-        self.assertEqual(self.file_active.revision, '1')
-        vf = self.branch.repository.weave_store.get_weave(
-            'fileid', 
-            self.branch.repository.get_transaction())
-        self.assertRaises(errors.RevisionNotPresent,
-                          vf.get_lines,
-                          '2')
-
-    def test_snapshot_merge_identical_different_revid(self):
-        # This tests that a commit with two identical parents, one of which has
-        # a different revision id, results in a new revision id in the entry.
-        # 1->other, commit a merge of other against 1, results in 2.
-        other_ie = inventory.InventoryFile('fileid', 'newname', self.file_1.parent_id)
-        other_ie = inventory.InventoryFile('fileid', 'file', self.file_1.parent_id)
-        other_ie.revision = '1'
-        other_ie.text_sha1 = self.file_1.text_sha1
-        other_ie.text_size = self.file_1.text_size
-        self.assertEqual(self.file_1, other_ie)
-        other_ie.revision = 'other'
-        self.assertNotEqual(self.file_1, other_ie)
-        versionfile = self.branch.repository.weave_store.get_weave(
-            'fileid', self.branch.repository.get_transaction())
-        versionfile.clone_text('other', '1', ['1'])
-        self.file_active.snapshot('2', 'subdir/file', 
-                                  {'1':self.file_1, 'other':other_ie},
-                                  self.wt, self.builder)
-        self.assertEqual(self.file_active.revision, '2')
-
-    def test_snapshot_changed(self):
-        # This tests that a commit with one different parent results in a new
-        # revision id in the entry.
-        self.file_active.name='newname'
-        rename('subdir/file', 'subdir/newname')
-        self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.wt, self.builder)
-        # expected outcome - file_1 has a revision id of '2'
-        self.assertEqual(self.file_active.revision, '2')
-
-
-class TestPreviousHeads(TestCaseWithTransport):
-
-    def setUp(self):
-        # we want several inventories, that respectively
-        # give use the following scenarios:
-        # A) fileid not in any inventory (A),
-        # B) fileid present in one inventory (B) and (A,B)
-        # C) fileid present in two inventories, and they
-        #   are not mutual descendents (B, C)
-        # D) fileid present in two inventories and one is
-        #   a descendent of the other. (B, D)
-        super(TestPreviousHeads, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        self.build_tree(['file'])
-        self.wt.commit('new branch', allow_pointless=True, rev_id='A')
-        self.inv_A = self.branch.repository.get_inventory('A')
-        self.wt.add(['file'], ['fileid'])
-        self.wt.commit('add file', rev_id='B')
-        self.inv_B = self.branch.repository.get_inventory('B')
-        uncommit(self.branch, tree=self.wt)
-        self.assertEqual(self.branch.revision_history(), ['A'])
-        self.wt.commit('another add of file', rev_id='C')
-        self.inv_C = self.branch.repository.get_inventory('C')
-        self.wt.add_parent_tree_id('B')
-        self.wt.commit('merge in B', rev_id='D')
-        self.inv_D = self.branch.repository.get_inventory('D')
-        self.file_active = self.wt.inventory['fileid']
-        self.weave = self.branch.repository.weave_store.get_weave('fileid',
-            self.branch.repository.get_transaction())
-        
-    def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(
-            inventories, 
-            self.branch.repository.weave_store,
-            self.branch.repository.get_transaction())
-        
-    def test_fileid_in_no_inventory(self):
-        self.assertEqual({}, self.get_previous_heads([self.inv_A]))
-
-    def test_fileid_in_one_inventory(self):
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_A, self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_A]))
-
-    def test_fileid_in_two_inventories_gives_both_entries(self):
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_B, self.inv_C]))
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_C, self.inv_B]))
-
-    def test_fileid_in_two_inventories_already_merged_gives_head(self):
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_D]))
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_D, self.inv_B]))
-
-    # TODO: test two inventories with the same file revision 
-
-
 class TestDescribeChanges(TestCase):
 
     def test_describe_change(self):
@@ -551,19 +332,6 @@ class TestDescribeChanges(TestCase):
         self.assertEqual(expected_change, change)
 
 
-class TestRevert(TestCaseWithTransport):
-
-    def test_dangling_id(self):
-        wt = self.make_branch_and_tree('b1')
-        self.assertEqual(len(wt.inventory), 1)
-        open('b1/a', 'wb').write('a test\n')
-        wt.add('a')
-        self.assertEqual(len(wt.inventory), 2)
-        os.unlink('b1/a')
-        wt.revert([])
-        self.assertEqual(len(wt.inventory), 1)
-
-
 class TestIsRoot(TestCase):
     """Ensure our root-checking code is accurate."""
 
@@ -578,3 +346,24 @@ class TestIsRoot(TestCase):
         inv.root = None
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
+
+
+class TestTreeReference(TestCase):
+    
+    def test_create(self):
+        inv = Inventory('tree-root-123')
+        inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
+                              revision='rev', reference_revision='rev2'))
+
+
+class TestEncoding(TestCase):
+
+    def test_error_encoding(self):
+        inv = Inventory('tree-root')
+        inv.add(InventoryFile('a-id', u'\u1234', 'tree-root'))
+        try:
+            inv.add(InventoryFile('b-id', u'\u1234', 'tree-root'))
+        except errors.BzrError, e:
+            self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
+        else:
+            self.fail('BzrError not raised')

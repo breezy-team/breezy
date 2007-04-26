@@ -22,8 +22,6 @@ import os
 from bzrlib import errors
 from bzrlib.bundle.serializer import (BundleSerializer,
                                       BUNDLE_HEADER,
-                                      format_highres_date,
-                                      unpack_highres_date,
                                      )
 from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
@@ -31,9 +29,12 @@ from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
 from bzrlib.testament import StrictTestament
+from bzrlib.timestamp import (
+    format_highres_date,
+    unpack_highres_date,
+)
 from bzrlib.textfile import text_file
 from bzrlib.trace import mutter
 
@@ -53,6 +54,10 @@ class Action(object):
             self.properties = []
         else:
             self.properties = properties
+
+    def add_utf8_property(self, name, value):
+        """Add a property whose value is currently utf8 to the action."""
+        self.properties.append((name, value.decode('utf8')))
 
     def add_property(self, name, value):
         """Add a property to the action"""
@@ -138,7 +143,11 @@ class BundleSerializerV08(BundleSerializer):
         f.write(key.encode('utf-8'))
         if not value:
             f.write(':\n')
-        elif isinstance(value, basestring):
+        elif isinstance(value, str):
+            f.write(': ')
+            f.write(value)
+            f.write('\n')
+        elif isinstance(value, unicode):
             f.write(': ')
             f.write(value.encode('utf-8'))
             f.write('\n')
@@ -146,7 +155,10 @@ class BundleSerializerV08(BundleSerializer):
             f.write(':\n')
             for entry in value:
                 f.write('#' + (' ' * (indent+2)))
-                f.write(entry.encode('utf-8'))
+                if isinstance(entry, str):
+                    f.write(entry)
+                else:
+                    f.write(entry.encode('utf-8'))
                 f.write('\n')
 
     def _write_revisions(self, pb):
@@ -156,7 +168,7 @@ class BundleSerializerV08(BundleSerializer):
         last_rev_id = None
         last_rev_tree = None
 
-        i_max = len(self.revision_ids) 
+        i_max = len(self.revision_ids)
         for i, rev_id in enumerate(self.revision_ids):
             pb.update("Generating revsion data", i, i_max)
             rev = self.source.get_revision(rev_id)
@@ -265,7 +277,7 @@ class BundleSerializerV08(BundleSerializer):
                           old_path, new_path):
             entry = new_tree.inventory[file_id]
             if entry.revision != default_revision_id:
-                action.add_property('last-changed', entry.revision)
+                action.add_utf8_property('last-changed', entry.revision)
             if meta_modified:
                 action.add_bool_property('executable', entry.executable)
             if text_modified and kind == "symlink":
@@ -308,7 +320,7 @@ class BundleSerializerV08(BundleSerializer):
             if new_rev != old_rev:
                 action = Action('modified', [ie.kind, 
                                              new_tree.id2path(ie.file_id)])
-                action.add_property('last-changed', ie.revision)
+                action.add_utf8_property('last-changed', ie.revision)
                 action.write(self.to_file)
 
 
@@ -425,6 +437,10 @@ class BundleReader(object):
         revision_info = self.info.revisions[-1]
         if key in revision_info.__dict__:
             if getattr(revision_info, key) is None:
+                if key in ('file_id', 'revision_id', 'base_id'):
+                    value = value.encode('utf8')
+                elif key in ('parent_ids'):
+                    value = [v.encode('utf8') for v in value]
                 setattr(revision_info, key, value)
             else:
                 raise errors.MalformedHeader('Duplicated Key: %s' % key)
@@ -511,7 +527,6 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
-
 
 class BundleInfo08(BundleInfo):
 
