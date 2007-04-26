@@ -159,6 +159,12 @@ IN DEVELOPMENT
       sense to generate them from a ``Branch`` object.
       (John Arbash Meinel)
 
+    * Fix the 'Unprintable error' message display to use the repr of the 
+      exception that prevented printing the error because the str value
+      for it is often not useful in debugging (e.g. KeyError('foo') has a
+      str() of 'foo' but a repr of 'KeyError('foo')' which is much more
+      useful. (Robert Collins)
+
   BUGFIXES:
 
     * Don't fail bundle selftest if email has 'two' embedded.  
