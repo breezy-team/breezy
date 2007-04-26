@@ -1318,3 +1318,39 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
                                               want_unversioned=False))
+
+    def test_renamed_and_added(self):
+        """Test when we have renamed a file, and put another in its place."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # The final changes are:
+        # bzr add b c
+        # bzr mv b a
+        # bzr mv c d
+        # bzr add b c
+
+        self.build_tree_contents([
+            ('tree1/b', 'b contents\n'),
+            ('tree1/c', 'c contents\n'),
+            ('tree2/a', 'b contents\n'),
+            ('tree2/b', 'new b contents\n'),
+            ('tree2/c', 'new c contents\n'),
+            ('tree2/d', 'c contents\n'),
+            ])
+        tree1.add(['b', 'c'], ['b1-id', 'c1-id'])
+        tree2.add(['a', 'b', 'c', 'd'], ['b1-id', 'b2-id', 'c2-id', 'c1-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.renamed(tree1, tree2, 'b1-id', False),
+            self.renamed(tree1, tree2, 'c1-id', False),
+            self.added(tree2, 'b2-id'),
+            self.added(tree2, 'c2-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True))
