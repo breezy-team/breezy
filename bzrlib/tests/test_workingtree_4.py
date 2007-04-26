@@ -24,6 +24,7 @@ from bzrlib import (
     dirstate,
     errors,
     inventory,
+    osutils,
     workingtree_4,
     )
 from bzrlib.lockdir import LockDir
@@ -523,3 +524,48 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # having checked this is on, the tree interface, and intertree
         # interface tests, will proceed to test the subtree support of
         # workingtree_4.
+
+    def test_iter_changes_ignores_unversioned_dirs(self):
+        """_iter_changes should not descend into unversioned directories."""
+        tree = self.make_branch_and_tree('.', format='dirstate')
+        # We have an unversioned directory at the root, a versioned one with
+        # other versioned files and an unversioned directory, and another
+        # versioned dir with nothing but an unversioned directory.
+        self.build_tree(['unversioned/',
+                         'unversioned/a',
+                         'unversioned/b/',
+                         'versioned/',
+                         'versioned/unversioned/',
+                         'versioned/unversioned/a',
+                         'versioned/unversioned/b/',
+                         'versioned2/',
+                         'versioned2/a',
+                         'versioned2/unversioned/',
+                         'versioned2/unversioned/a',
+                         'versioned2/unversioned/b/',
+                        ])
+        tree.add(['versioned', 'versioned2', 'versioned2/a'])
+        tree.commit('one', rev_id='rev-1')
+        # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
+        returned = []
+        orig_walkdirs = osutils._walkdirs_utf8
+        def reset():
+            osutils._walkdirs_utf8 = orig_walkdirs
+        self.addCleanup(reset)
+        def walkdirs_spy(*args, **kwargs):
+            for val in orig_walkdirs(*args, **kwargs):
+                returned.append(val[0][0])
+                yield val
+        osutils._walkdirs_utf8 = walkdirs_spy
+
+        basis = tree.basis_tree()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual([], list(tree._iter_changes(basis)))
+        self.assertEqual(['', 'versioned', 'versioned2'], returned)
+        self.assertEqual([], list(tree._iter_changes(basis,
+                                            want_unversioned=True,
+                                            )))
+        self.assertEqual([], returned)
