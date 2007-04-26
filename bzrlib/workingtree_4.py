@@ -2132,10 +2132,10 @@ class InterDirStateTree(InterTree):
                         # new unknown files or directories.
                         # if (B) then we should ignore it, because we don't
                         # recurse into unknown directories.
-                        if want_unversioned:
-                            path_index = 0
-                            while path_index < len(current_dir_info[1]):
-                                    current_path_info = current_dir_info[1][path_index]
+                        path_index = 0
+                        while path_index < len(current_dir_info[1]):
+                                current_path_info = current_dir_info[1][path_index]
+                                if want_unversioned:
                                     if current_path_info[2] == 'directory':
                                         if self.target._directory_is_tree_reference(
                                             current_path_info[0].decode('utf8')):
@@ -2152,13 +2152,13 @@ class InterDirStateTree(InterTree):
                                         (None, utf8_decode_or_none(current_path_info[1])),
                                         (None, current_path_info[2]),
                                         (None, new_executable))
-                                    # dont descend into this unversioned path if it is
-                                    # a dir
-                                    if current_path_info[2] in ('directory',
-                                                                'tree-reference'):
-                                        del current_dir_info[1][path_index]
-                                        path_index -= 1
-                                    path_index += 1
+                                # dont descend into this unversioned path if it is
+                                # a dir
+                                if current_path_info[2] in ('directory',
+                                                            'tree-reference'):
+                                    del current_dir_info[1][path_index]
+                                    path_index -= 1
+                                path_index += 1
 
                         # This dir info has been handled, go to the next
                         try:
