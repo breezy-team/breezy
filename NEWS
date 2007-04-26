@@ -205,6 +205,12 @@ IN DEVELOPMENT
     * FTP now works even when the FTP server does not support atomic rename.
       (Aaron Bentley, #89436)
 
+    * Correct handling in bundles and merge directives of timezones with
+      that are not an integer number of hours offset from UTC.  Always 
+      represent the epoch time in UTC to avoid problems with formatting 
+      earlier times on win32.  (Martin Pool, Alexander Belchenko, John
+      Arbash Meinel)
+
     * Typo in the help for ``register-branch`` fixed. (Robert Collins, #96770)
 
     * "dirstate" and "dirstate-tags" formats now produce branches compatible
