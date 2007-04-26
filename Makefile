@@ -23,7 +23,7 @@ all: extensions
 
 extensions:
 	@echo "building extension modules."
-	./setup.py build_ext -i
+	python setup.py build_ext -i
 
 check: extensions
 	python -Werror ./bzr selftest -v $(tests)

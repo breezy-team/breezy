@@ -102,11 +102,11 @@ class BzrError(StandardError):
                     return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
+            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
-                   str(e))
+                   e)
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -154,9 +154,9 @@ class BzrNewError(BzrError):
                 return s.encode('utf8')
             return s
         except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %s' \
+            return 'Unprintable exception %s(%r): %r' \
                 % (self.__class__.__name__,
-                   self.__dict__, str(e))
+                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -1632,6 +1632,18 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
+class BzrRemoveChangedFilesError(BzrError):
+    """Used when user is trying to remove changed files."""
+
+    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+        "Use --keep to not delete them, or --force to delete them regardless.")
+
+    def __init__(self, tree_delta):
+        BzrError.__init__(self)
+        self.changes_as_text = tree_delta.get_changes_as_text()
+        #self.paths_as_string = '\n'.join(changed_files)
+        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):

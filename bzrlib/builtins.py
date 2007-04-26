@@ -1074,10 +1074,10 @@ class cmd_info(Command):
 
 
 class cmd_remove(Command):
-    """Make a file unversioned.
+    """Remove files or directories.
 
-    This makes bzr stop tracking changes to a versioned file.  It does
-    not delete the working copy.
+    This makes bzr stop tracking changes to the specified files and
+    delete them if they can easily be recovered using revert.
 
     You can specify one or more files, and/or --new.  If you specify --new,
     only 'added' files will be removed.  If you specify both, then new files
@@ -1085,23 +1085,38 @@ class cmd_remove(Command):
     also new, they will also be removed.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', Option('new', help='remove newly-added files')]
+    takes_options = ['verbose',
+        Option('new', help='remove newly-added files'),
+        RegistryOption.from_kwargs('file-deletion-strategy',
+            'The file deletion mode to be used',
+            title='Deletion Strategy', value_switches=True, enum_switch=False,
+            safe='Only delete files if they can be'
+                 ' safely recovered (default).',
+            keep="Don't delete any files.",
+            force='Delete all the specified files, even if they can not be '
+                'recovered and even if they are non-empty directories.')]
     aliases = ['rm']
     encoding_type = 'replace'
-    
-    def run(self, file_list, verbose=False, new=False):
+
+    def run(self, file_list, verbose=False, new=False,
+        file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
-        if new is False:
-            if file_list is None:
-                raise errors.BzrCommandError('Specify one or more files to'
-                                             ' remove, or use --new.')
-        else:
+
+        if file_list is not None:
+            file_list = [f for f in file_list if f != '']
+        elif not new:
+            raise errors.BzrCommandError('Specify one or more files to'
+            ' remove, or use --new.')
+
+        if new:
             added = tree.changes_from(tree.basis_tree(),
                 specific_files=file_list).added
             file_list = sorted([f[0] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise errors.BzrCommandError('No matching files.')
-        tree.remove(file_list, verbose=verbose, to_file=self.outf)
+        tree.remove(file_list, verbose=verbose, to_file=self.outf,
+            keep_files=file_deletion_strategy=='keep',
+            force=file_deletion_strategy=='force')
 
 
 class cmd_file_id(Command):
@@ -2157,7 +2172,9 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
 
-        properties['bugs'] = self._get_bug_fix_properties(fixes, tree.branch)
+        bug_property = self._get_bug_fix_properties(fixes, tree.branch)
+        if bug_property:
+            properties['bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -2326,7 +2343,7 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but not
+    This creates temporary test directories in the working directory, but no
     existing data is affected.  These directories are deleted if the tests
     pass, or left behind to help in debugging if they fail and --keep-output
     is specified.
@@ -2338,6 +2355,21 @@ class cmd_selftest(Command):
     Alternatively if --first is given, matching tests are run first and then
     all other tests are run.  This is useful if you have been working in a
     particular area, but want to make sure nothing else was broken.
+
+    If --exclude is given, tests that match that regular expression are
+    excluded, regardless of whether they match --first or not.
+
+    To help catch accidential dependencies between tests, the --randomize
+    option is useful. In most cases, the argument used is the word 'now'.
+    Note that the seed used for the random number generator is displayed
+    when this option is used. The seed can be explicitly passed as the
+    argument to this option if required. This enables reproduction of the
+    actual ordering used if and when an order sensitive problem is encountered.
+
+    If --list-only is given, the tests that would be run are listed. This is
+    useful when combined with --first, --exclude and/or --randomize to
+    understand their impact. The test harness reports "Listed nn tests in ..."
+    instead of "Ran nn tests in ..." when list mode is enabled.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
@@ -2357,8 +2389,6 @@ class cmd_selftest(Command):
     of running tests to create such subdirectories. This is default behavior
     on Windows because of path length limitation.
     """
-    # TODO: --list should give a list of all available tests
-
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
     def get_transport_type(typestring):
@@ -2405,13 +2435,23 @@ class cmd_selftest(Command):
                             ),
                      Option('numbered-dirs',
                             help='use numbered dirs for TestCaseInTempDir'),
+                     Option('list-only',
+                            help='list the tests instead of running them'),
+                     Option('randomize', type=str, argname="SEED",
+                            help='randomize the order of tests using the given'
+                                 ' seed or "now" for the current time'),
+                     Option('exclude', type=str, argname="PATTERN",
+                            short_name='x',
+                            help='exclude tests that match this regular'
+                                 ' expression'),
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None, clean_output=False,
-            first=False, numbered_dirs=None):
+            first=False, numbered_dirs=None, list_only=False,
+            randomize=None, exclude=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2456,6 +2496,9 @@ class cmd_selftest(Command):
                               bench_history=benchfile,
                               matching_tests_first=first,
                               numbered_dirs=numbered_dirs,
+                              list_only=list_only,
+                              random_seed=randomize,
+                              exclude_pattern=exclude
                               )
         finally:
             if benchfile is not None:

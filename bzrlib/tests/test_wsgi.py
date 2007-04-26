@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import tests
+from bzrlib.smart import protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
 
@@ -204,8 +205,8 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('error\x01incomplete request\n', response)
 
     def test_protocol_version_detection_one(self):
-        # SmartWSGIApp detects requests that don't start with '2\n' as version
-        # one.
+        # SmartWSGIApp detects requests that don't start with
+        # REQUEST_VERSION_TWO as version one.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
         fake_input = StringIO('hello\n')
@@ -222,10 +223,11 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('ok\x012\n', response)
 
     def test_protocol_version_detection_two(self):
-        # SmartWSGIApp detects requests that start with '2\n' as version two.
+        # SmartWSGIApp detects requests that start with REQUEST_VERSION_TWO
+        # as version two.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        fake_input = StringIO('2\nhello\n')
+        fake_input = StringIO(protocol.REQUEST_VERSION_TWO + 'hello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -236,7 +238,7 @@ class TestWSGI(tests.TestCase):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 2-encoded response.
-        self.assertEqual('2\nok\x012\n', response)
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'ok\x012\n', response)
 
 
 class FakeRequest(object):

@@ -321,14 +321,10 @@ class RevisionSpec_revno(RevisionSpec):
         if dotted:
             branch.lock_read()
             try:
-                last_rev = branch.last_revision()
-                merge_sorted_revisions = tsort.merge_sort(
-                    branch.repository.get_revision_graph(last_rev),
-                    last_rev,
-                    generate_revno=True)
-                def match(item):
-                    return item[3] == match_revno
-                revisions = filter(match, merge_sorted_revisions)
+                revision_id_to_revno = branch.get_revision_id_to_revno_map()
+                revisions = [revision_id for revision_id, revno
+                             in revision_id_to_revno.iteritems()
+                             if revno == match_revno]
             finally:
                 branch.unlock()
             if len(revisions) != 1:
@@ -336,7 +332,7 @@ class RevisionSpec_revno(RevisionSpec):
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return RevisionInfo(branch, None, revisions[0][1])
+                return RevisionInfo(branch, None, revisions[0])
         else:
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a

@@ -442,10 +442,17 @@ to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
 
-To skip a particular test (or set of tests), you need to use a negative
-match, like so::
+To skip a particular test (or set of tests), use the --exclude option
+(shorthand -x) like so::
 
-  ./bzr selftest '^(?!.*blackbox)'  
+  ./bzr selftest -v -x blackbox  
+
+To list tests without running them, use the --list-only option like so::
+
+  ./bzr selftest --list-only
+
+This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.
 
 
 Errors and exceptions
@@ -483,6 +490,25 @@ format string.
 
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
+
+
+
+Debugging
+=========
+
+Bazaar has a few facilities to help debug problems by going into pdb_, the
+Python debugger.
+
+.. _pdb: http://docs.python.org/lib/debugger-commands.html
+
+If the ``BZR_PDB`` environment variable is set 
+then bzr will go into pdb post-mortem mode when an unhandled exception
+occurs.
+
+If you send a SIGQUIT signal to bzr, which can be done by pressing C-\ on Unix,
+bzr will go into the debugger immediately.  You can continue execution by
+typing ``c``.  This can be disabled if necessary by setting the
+environment variable ``BZR_SIGQUIT_PDB=0``.
 
 
 
@@ -659,6 +685,7 @@ C Extension Modules
 
 We write some extensions in C using pyrex. We design these to work in
 three scenarios:
+
  * User with no C compiler
  * User with C compiler
  * Developers
@@ -683,8 +710,10 @@ changes need to be present in the .pyx file.
 
 Note that pyrex does not support all 2.4 programming idioms, so some
 syntax changes may be required. I.e. 
+
  - 'from foo import (bar, gam)' needs to change to not use the brackets. 
  - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+
 If the changes are too dramatic, consider
 maintaining the python code twice - once in the .pyx, and once in the .py,
 and no longer including the .py file.

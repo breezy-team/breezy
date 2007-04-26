@@ -900,6 +900,7 @@ class RemoteBranch(branch.Branch):
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
+        self._clear_cached_state()
         response = self._client.call('Branch.set_last_revision',
             path, self._lock_token, self._repo_lock_token, rev_id)
         if response[0] == 'NoSuchRevision':
