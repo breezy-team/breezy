@@ -756,7 +756,7 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
         # body should be a tbz2
         body_file = StringIO(response.body)
         body_tar = tarfile.open('body_tar.tbz2', fileobj=body_file,
-            mode='r:bz2')
+            mode='r|bz2')
         # let's make sure there are some key repository components inside it.
         # the tarfile returns directories with trailing slashes...
         names = set([n.rstrip('/') for n in body_tar.getnames()])

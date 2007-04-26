@@ -429,7 +429,8 @@ class RemoteRepository(object):
         return self._real_repository.break_lock()
 
     def _get_tarball(self, compression):
-        """See Repository.tarball()."""
+        """Return a TemporaryFile containing a repository tarball"""
+        import tempfile
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
             'Repository.tarball', path, compression)
@@ -437,8 +438,11 @@ class RemoteRepository(object):
             'unexpected response code %s' % (response,)
         if response[0] == 'ok':
             # Extract the tarball and return it
-            body = protocol.read_body_bytes()
-            return body
+            t = tempfile.NamedTemporaryFile()
+            # TODO: rpc layer should read directly into it...
+            t.write(protocol.read_body_bytes())
+            t.seek(0)
+            return t
         else:
             raise errors.SmartServerError(error_code=response)
 
@@ -597,17 +601,20 @@ class RemoteRepository(object):
         from StringIO import StringIO
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
-        tar_file = StringIO(self._get_tarball('bz2'))
-        tar = tarfile.open('repository', fileobj=tar_file,
-            mode='r:bz2')
-        tmpdir = tempfile.mkdtemp()
+        tar_file = self._get_tarball('bz2')
         try:
-            tar.extractall(tmpdir)
-            tmp_bzrdir = BzrDir.open(tmpdir)
-            tmp_repo = tmp_bzrdir.open_repository()
-            tmp_repo.copy_content_into(destination, revision_id)
+            tar = tarfile.open('repository', fileobj=tar_file,
+                mode='r|bz2')
+            tmpdir = tempfile.mkdtemp()
+            try:
+                _extract_tar(tar, tmpdir)
+                tmp_bzrdir = BzrDir.open(tmpdir)
+                tmp_repo = tmp_bzrdir.open_repository()
+                tmp_repo.copy_content_into(destination, revision_id)
+            finally:
+                osutils.rmtree(tmpdir)
         finally:
-            osutils.rmtree(tmpdir)
+            tar_file.close()
         # TODO: if the server doesn't support this operation, maybe do it the
         # slow way using the _real_repository?
         #
@@ -1032,3 +1039,11 @@ class RemoteBranchConfig(BranchConfig):
             self._branch_data_config = TreeConfig(self.branch._real_branch)
         return self._branch_data_config
 
+
+def _extract_tar(tar, to_dir):
+    """Extract all the contents of a tarfile object.
+
+    A replacement for extractall, which is not present in python2.4
+    """
+    for tarinfo in tar:
+        tar.extract(tarinfo, to_dir)

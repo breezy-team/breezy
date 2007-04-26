@@ -657,9 +657,12 @@ class TestRepositoryTarball(TestRemoteRepository):
         remote_repo, client = self.setup_fake_client_and_repository(
             expected_responses, transport_path)
         # Now actually ask for the tarball
-        tarball_data = remote_repo._get_tarball('bz2')
-        self.assertEqual(expected_calls, client._calls)
-        self.assertEqual(self.tarball_content, tarball_data)
+        tarball_file = remote_repo._get_tarball('bz2')
+        try:
+            self.assertEqual(expected_calls, client._calls)
+            self.assertEqual(self.tarball_content, tarball_file.read())
+        finally:
+            tarball_file.close()
 
     def test_sprout_uses_tarball(self):
         # RemoteRepository.sprout should try to use the
