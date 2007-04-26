@@ -76,9 +76,13 @@ class RevisionInfo(object):
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
-                assert key_end is not None
-                key = property[:key_end].encode('utf-8')
-                value = property[key_end+2:].encode('utf-8')
+                if key_end == -1:
+                    assert property.endswith(':')
+                    key = str(property[:-1])
+                    value = ''
+                else:
+                    key = str(property[:key_end])
+                    value = property[key_end+2:]
                 rev.properties[key] = value
 
         return rev

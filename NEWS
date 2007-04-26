@@ -7,6 +7,10 @@ IN DEVELOPMENT
       status`` should show the removed file and an unknown file in its
       place. (John Arbash Meinel, #109993)
 
+    * Bundles properly read and write revision properties that have an
+      empty value. And when the value is not ASCII.
+      (John Arbash Meinel, #109613)
+
 
 bzr 0.16rc1  2007-04-26
 
