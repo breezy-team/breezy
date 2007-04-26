@@ -219,6 +219,9 @@ IN DEVELOPMENT
     * Handle moving a directory when children have been added, removed,
       and renamed. (John Arbash Meinel, #105479)
 
+    * Let TestUIFactoy encode the password prompt with its own stdout.
+      (Vincent Ladeuil, #110204)
+
   TESTING:
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
