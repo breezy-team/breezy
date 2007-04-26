@@ -35,6 +35,7 @@ lazy_import(globals(), """
 import getpass
 
 from bzrlib import (
+    osutils,
     progress,
     trace,
     )
@@ -131,7 +132,8 @@ class CLIUIFactory(UIFactory):
                 return False
 
     def get_non_echoed_password(self, prompt):
-        return getpass.getpass(prompt.encode(sys.stdout.encoding, 'replace'))
+        encoding = osutils.get_terminal_encoding()
+        return getpass.getpass(prompt.encode(encoding, 'replace'))
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
