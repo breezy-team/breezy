@@ -24,6 +24,7 @@ from cStringIO import StringIO
 import os
 import select
 import socket
+import sys
 import threading
 
 import bzrlib
@@ -1154,10 +1155,13 @@ class TestAuth(object):
         self.build_tree_contents([('a', 'contents of a\n'),
                                   ('b', 'contents of b\n'),])
         self.old_factory = ui.ui_factory
+        self.old_stdout = sys.stdout
+        sys.stdout = StringIOWrapper()
         self.addCleanup(self.restoreUIFactory)
 
     def restoreUIFactory(self):
         ui.ui_factory = self.old_factory
+        sys.stdout = self.old_stdout
 
     def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
@@ -1211,7 +1215,7 @@ class TestAuth(object):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=StringIOWrapper())
+        ui.ui_factory = TestUIFactory(stdin='foo\n')
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
