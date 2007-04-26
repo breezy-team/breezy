@@ -39,6 +39,7 @@ from bzrlib.tests import (
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -53,6 +54,13 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_revision',
         'bzrlib.tests.repository_implementations.test_statistics',
         ]
+
+    from bzrlib.smart.server import (
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        )
+    from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
@@ -64,4 +72,16 @@ def test_suite():
         [(format, format._matchingbzrdir) for format in all_formats])
     loader = TestLoader()
     adapt_modules(test_repository_implementations, adapter, loader, result)
+
+    adapt_to_smart_server = RepositoryTestProviderAdapter(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(RemoteRepositoryFormat(), RemoteBzrDirFormat())],
+        MemoryServer
+        )
+    adapt_modules(test_repository_implementations,
+                  adapt_to_smart_server,
+                  loader,
+                  result)
+
     return result

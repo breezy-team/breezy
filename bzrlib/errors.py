@@ -102,11 +102,11 @@ class BzrError(StandardError):
                     return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
+            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
-                   str(e))
+                   e)
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -154,9 +154,9 @@ class BzrNewError(BzrError):
                 return s.encode('utf8')
             return s
         except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %s' \
+            return 'Unprintable exception %s(%r): %r' \
                 % (self.__class__.__name__,
-                   self.__dict__, str(e))
+                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -222,6 +222,16 @@ class ReservedId(BzrError):
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
+
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
 
 class NoSuchId(BzrError):
 
@@ -1237,7 +1247,7 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current request that is open.")
+            " currently open request.")
 
     internal_error = True
 
@@ -1530,6 +1540,14 @@ class DuplicateKey(BzrError):
     _fmt = "Key %(key)s is already present in map"
 
 
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+
 class MalformedTransform(BzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
@@ -1614,6 +1632,18 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
+class BzrRemoveChangedFilesError(BzrError):
+    """Used when user is trying to remove changed files."""
+
+    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+        "Use --keep to not delete them, or --force to delete them regardless.")
+
+    def __init__(self, tree_delta):
+        BzrError.__init__(self)
+        self.changes_as_text = tree_delta.get_changes_as_text()
+        #self.paths_as_string = '\n'.join(changed_files)
+        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -2067,3 +2097,30 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
+class UnexpectedSmartServerResponse(BzrError):
+
+    _fmt = "Could not understand response from smart server: %(response_tuple)r"
+
+    def __init__(self, response_tuple):
+        self.response_tuple = response_tuple

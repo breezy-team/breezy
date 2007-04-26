@@ -173,7 +173,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
             state.save()
         finally:
             state.unlock()
-        del state # Callers should unlock
+        del state
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
         try:
@@ -648,12 +648,14 @@ class TestDirStateInitialize(TestCaseWithDirState):
         try:
             self.assertIsInstance(state, dirstate.DirState)
             lines = state.get_lines()
-            self.assertFileEqual(''.join(state.get_lines()),
-                'dirstate')
-            self.check_state_with_reopen(expected_result, state)
-        except:
+        finally:
             state.unlock()
-            raise
+        # On win32 you can't read from a locked file, even within the same
+        # process. So we have to unlock and release before we check the file
+        # contents.
+        self.assertFileEqual(''.join(lines), 'dirstate')
+        state.lock_read() # check_state_with_reopen will unlock
+        self.check_state_with_reopen(expected_result, state)
 
 
 class TestDirStateManipulations(TestCaseWithDirState):

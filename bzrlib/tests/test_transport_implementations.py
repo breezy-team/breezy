@@ -31,10 +31,17 @@ from bzrlib import (
     osutils,
     urlutils,
     )
-from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, NoSmartServer, PathError,
-                           TransportNotPossible, ConnectionError,
-                           InvalidURL)
+from bzrlib.errors import (ConnectionError,
+                           DirectoryNotEmpty,
+                           FileExists,
+                           InvalidURL,
+                           LockError,
+                           NoSmartServer,
+                           NoSuchFile,
+                           NotLocalUrl,
+                           PathError,
+                           TransportNotPossible,
+                           )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
@@ -1143,7 +1150,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except TransportNotPossible:
+        except NotLocalUrl:
             pass # This is not a local transport
         else:
             self.assertEqual(getcwd(), p)

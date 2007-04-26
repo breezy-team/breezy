@@ -22,9 +22,6 @@ directories.
 
 # TODO: remove unittest dependency; put that stuff inside the test suite
 
-# TODO: The Format probe_transport seems a bit redundant with just trying to
-# open the bzrdir. -- mbp
-#
 # TODO: Can we move specific formats into separate modules to make this file
 # smaller?
 
@@ -44,6 +41,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     registry,
+    remote,
     revision as _mod_revision,
     symbol_versioning,
     ui,
@@ -58,6 +56,7 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
+from bzrlib.smart.client import _SmartClient
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -94,6 +93,8 @@ class BzrDir(object):
         If there is a tree, the tree is opened and break_lock() called.
         Otherwise, branch is tried, and finally repository.
         """
+        # XXX: This seems more like a UI function than something that really
+        # belongs in this class.
         try:
             thing_to_unlock = self.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree):
@@ -413,12 +414,21 @@ class BzrDir(object):
                     break
                 else:
                     continue
-            if ((found_bzrdir.root_transport.base == 
+            if ((found_bzrdir.root_transport.base ==
                  self.root_transport.base) or repository.is_shared()):
                 return repository
             else:
                 raise errors.NoRepositoryPresent(self)
         raise errors.NoRepositoryPresent(self)
+
+    def get_branch_reference(self):
+        """Return the referenced URL for the branch in this bzrdir.
+
+        :raises NotBranchError: If there is no Branch.
+        :return: The URL the branch in this bzrdir references if it is a
+            reference branch, or None for regular branches.
+        """
+        return None
 
     def get_branch_transport(self, branch_format):
         """Get the transport for use by branch format in this BzrDir.
@@ -517,7 +527,8 @@ class BzrDir(object):
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
-    def open_from_transport(transport, _unsupported=False):
+    def open_from_transport(transport, _unsupported=False,
+                            _server_formats=True):
         """Open a bzrdir within a particular directory.
 
         :param transport: Transport containing the bzrdir.
@@ -526,7 +537,8 @@ class BzrDir(object):
         base = transport.base
 
         def find_format(transport):
-            return transport, BzrDirFormat.find_format(transport)
+            return transport, BzrDirFormat.find_format(
+                transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
             qualified_source = e.get_source_url()
@@ -598,7 +610,11 @@ class BzrDir(object):
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
                 pass
-            new_t = a_transport.clone('..')
+            try:
+                new_t = a_transport.clone('..')
+            except errors.InvalidURLJoin:
+                # reached the root, whatever that may be
+                raise errors.NotBranchError(path=url)
             if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
@@ -636,10 +652,14 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_repository)
 
-    def open_workingtree(self, _unsupported=False):
+    def open_workingtree(self, _unsupported=False,
+            recommend_upgrade=True):
         """Open the workingtree object at this BzrDir if one is present.
-        
-        TODO: static convenience version of this?
+
+        :param recommend_upgrade: Optional keyword parameter, when True (the
+            default), emit through the ui module a recommendation that the user
+            upgrade the working tree when the workingtree being opened is old
+            (but still fully supported).
         """
         raise NotImplementedError(self.open_workingtree)
 
@@ -673,6 +693,7 @@ class BzrDir(object):
             return False
 
     def _cloning_metadir(self):
+        """Produce a metadir suitable for cloning with"""
         result_format = self._format.__class__()
         try:
             try:
@@ -681,9 +702,15 @@ class BzrDir(object):
             except errors.NotBranchError:
                 source_branch = None
                 source_repository = self.open_repository()
-            result_format.repository_format = source_repository._format
         except errors.NoRepositoryPresent:
             source_repository = None
+        else:
+            # XXX TODO: This isinstance is here because we have not implemented
+            # the fix recommended in bug # 103195 - to delegate this choice the
+            # repository itself.
+            repo_format = source_repository._format
+            if not isinstance(repo_format, remote.RemoteRepositoryFormat):
+                result_format.repository_format = repo_format
         try:
             # TODO: Couldn't we just probe for the format in these cases,
             # rather than opening the whole tree?  It would be a little
@@ -1044,11 +1071,25 @@ class BzrDirMeta1(BzrDir):
     def destroy_workingtree_metadata(self):
         self.transport.delete_tree('checkout')
 
+    def find_branch_format(self):
+        """Find the branch 'format' for this bzrdir.
+
+        This might be a synthetic object for e.g. RemoteBranch and SVN.
+        """
+        from bzrlib.branch import BranchFormat
+        return BranchFormat.find_format(self)
+
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
         temp_control = lockable_files.LockableFiles(self.transport, '',
                                      lockable_files.TransportLock)
         return temp_control._dir_mode
+
+    def get_branch_reference(self):
+        """See BzrDir.get_branch_reference()."""
+        from bzrlib.branch import BranchFormat
+        format = BranchFormat.find_format(self)
+        return format.get_reference(self)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -1126,8 +1167,7 @@ class BzrDirMeta1(BzrDir):
 
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self)
+        format = self.find_branch_format()
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
@@ -1178,15 +1218,25 @@ class BzrDirFormat(object):
     This is a list of BzrDirFormat objects.
     """
 
+    _control_server_formats = []
+    """The registered control server formats, e.g. RemoteBzrDirs.
+
+    This is a list of BzrDirFormat objects.
+    """
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
 
     @classmethod
-    def find_format(klass, transport):
+    def find_format(klass, transport, _server_formats=True):
         """Return the format present at transport."""
-        for format in klass._control_formats:
+        if _server_formats:
+            formats = klass._control_server_formats + klass._control_formats
+        else:
+            formats = klass._control_formats
+        for format in formats:
             try:
                 return format.probe_transport(transport)
             except errors.NotBranchError:
@@ -1196,7 +1246,7 @@ class BzrDirFormat(object):
 
     @classmethod
     def probe_transport(klass, transport):
-        """Return the .bzrdir style transport present at URL."""
+        """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
         except errors.NoSuchFile:
@@ -1340,6 +1390,17 @@ class BzrDirFormat(object):
         implementation.
         """
         klass._control_formats.append(format)
+
+    @classmethod
+    def register_control_server_format(klass, format):
+        """Register a control format for client-server environments.
+
+        These formats will be tried before ones registered with
+        register_control_format.  This gives implementations that decide to the
+        chance to grab it before anything looks at the contents of the format
+        file.
+        """
+        klass._control_server_formats.append(format)
 
     @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
@@ -1641,7 +1702,14 @@ class BzrDirTestProviderAdapter(object):
     easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, vfs_factory, transport_server, transport_readonly_server,
+        formats):
+        """Create an object to adapt tests.
+
+        :param vfs_server: A factory to create a Transport Server which has
+            all the VFS methods working, and is writable.
+        """
+        self._vfs_factory = vfs_factory
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
@@ -1650,6 +1718,7 @@ class BzrDirTestProviderAdapter(object):
         result = unittest.TestSuite()
         for format in self._formats:
             new_test = deepcopy(test)
+            new_test.vfs_transport_factory = self._vfs_factory
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
             new_test.bzrdir_format = format
@@ -2147,6 +2216,54 @@ class ConvertMetaToMeta(Converter):
                     workingtree_4.WorkingTreeFormat4)):
                 workingtree_4.Converter3to4().convert(tree)
         return to_convert
+
+
+# This is not in remote.py because it's small, and needs to be registered.
+# Putting it in remote.py creates a circular import problem.
+# we can make it a lazy object if the control formats is turned into something
+# like a registry.
+class RemoteBzrDirFormat(BzrDirMetaFormat1):
+    """Format representing bzrdirs accessed via a smart server"""
+
+    def get_format_description(self):
+        return 'bzr remote bzrdir'
+    
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return a RemoteBzrDirFormat object if it looks possible."""
+        try:
+            transport.get_smart_client()
+        except (NotImplementedError, AttributeError,
+                errors.TransportNotPossible):
+            # no smart server, so not a branch for this format type.
+            raise errors.NotBranchError(path=transport.base)
+        else:
+            return klass()
+
+    def initialize_on_transport(self, transport):
+        try:
+            # hand off the request to the smart server
+            medium = transport.get_smart_medium()
+        except errors.NoSmartMedium:
+            # TODO: lookup the local format from a server hint.
+            local_dir_format = BzrDirMetaFormat1()
+            return local_dir_format.initialize_on_transport(transport)
+        client = _SmartClient(medium)
+        path = client.remote_path_from_transport(transport)
+        response = _SmartClient(medium).call('BzrDirFormat.initialize', path)
+        assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
+        return remote.RemoteBzrDir(transport)
+
+    def _open(self, transport):
+        return remote.RemoteBzrDir(transport)
+
+    def __eq__(self, other):
+        if not isinstance(other, RemoteBzrDirFormat):
+            return False
+        return self.get_format_description() == other.get_format_description()
+
+
+BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
 
 
 class BzrDirFormatInfo(object):

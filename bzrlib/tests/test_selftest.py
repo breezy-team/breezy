@@ -47,9 +47,14 @@ from bzrlib.tests import (
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
+                          TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
                           clean_selftest_output,
+                          iter_suite_tests,
+                          filter_suite_by_re,
+                          sort_suite_by_re,
+                          test_suite
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -193,17 +198,21 @@ class TestBzrDirProviderAdapter(TestCase):
         from bzrlib.bzrdir import BzrDirTestProviderAdapter
         input_test = TestBzrDirProviderAdapter(
             "test_adapted_tests")
+        vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        adapter = BzrDirTestProviderAdapter(vfs_factory,
+            server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
         self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -232,6 +241,19 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].repository_format, formats[1][0])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
+
+    def test_setting_vfs_transport(self):
+        """The vfs_transport_factory can be set optionally."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        formats = [("c", "C")]
+        adapter = RepositoryTestProviderAdapter(None, None, formats,
+            vfs_transport_factory="vfs")
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(1, len(tests))
+        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
 
 
 class TestInterRepositoryProviderAdapter(TestCase):
@@ -739,8 +761,10 @@ class TestTestResult(TestCase):
         result.report_known_failure(test, err)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['XFAIL                   0ms', '    foo'])
-    
+        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        self.assertEqual(lines[1], '    foo')
+        self.assertEqual(2, len(lines))
+
     def test_text_report_known_failure(self):
         # text test output formatting
         pb = MockProgress()
@@ -933,13 +957,12 @@ class TestRunner(TestCase):
         stream = StringIO()
         runner = TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
-        self.assertEqual(
+        self.assertContainsRe(stream.getvalue(),
             '\n'
-            '----------------------------------------------------------------------\n'
-            'Ran 1 test in 0.000s\n'
+            '-*\n'
+            'Ran 1 test in .*\n'
             '\n'
-            'OK (known_failures=1)\n',
-            stream.getvalue())
+            'OK \\(known_failures=1\\)\n')
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -1488,3 +1511,27 @@ class TestUnavailableFeature(TestCase):
         feature = Feature()
         exception = UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+class TestSelftestFiltering(TestCase):
+
+    def setUp(self):
+        self.suite = TestUtil.TestSuite()
+        self.loader = TestUtil.TestLoader()
+        self.suite.addTest(self.loader.loadTestsFromModuleNames([
+            'bzrlib.tests.test_selftest']))
+        self.all_names = [t.id() for t in iter_suite_tests(self.suite)]
+
+    def test_filter_suite_by_re(self):
+        filtered_suite = filter_suite_by_re(self.suite, 'test_filter')
+        filtered_names = [t.id() for t in iter_suite_tests(filtered_suite)]
+        self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
+            'TestSelftestFiltering.test_filter_suite_by_re'])
+            
+    def test_sort_suite_by_re(self):
+        sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
+        sorted_names = [t.id() for t in iter_suite_tests(sorted_suite)]
+        self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
+            'TestSelftestFiltering.test_filter_suite_by_re')
+        self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+

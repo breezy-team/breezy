@@ -267,3 +267,71 @@ def load_from_zip(zip_name):
             warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             log_exception_quietly()
+
+
+class PluginsHelpIndex(object):
+    """A help index that returns help topics for plugins."""
+
+    def __init__(self):
+        self.prefix = 'plugins/'
+
+    def get_topics(self, topic):
+        """Search for topic in the loaded plugins.
+
+        This will not trigger loading of new plugins.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            RegisteredTopic entry.
+        """
+        if not topic:
+            return []
+        if topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
+        plugin_module_name = 'bzrlib.plugins.%s' % topic
+        try:
+            module = sys.modules[plugin_module_name]
+        except KeyError:
+            return []
+        else:
+            return [ModuleHelpTopic(module)]
+
+
+class ModuleHelpTopic(object):
+    """A help topic which returns the docstring for a module."""
+
+    def __init__(self, module):
+        """Constructor.
+
+        :param module: The module for which help should be generated.
+        """
+        self.module = module
+
+    def get_help_text(self, additional_see_also=None):
+        """Return a string with the help for this topic.
+
+        :param additional_see_also: Additional help topics to be
+            cross-referenced.
+        """
+        if not self.module.__doc__:
+            result = "Plugin '%s' has no docstring.\n" % self.module.__name__
+        else:
+            result = self.module.__doc__
+        if result[-1] != '\n':
+            result += '\n'
+        # there is code duplicated here and in bzrlib/help_topic.py's 
+        # matching Topic code. This should probably be factored in
+        # to a helper function and a common base class.
+        if additional_see_also is not None:
+            see_also = sorted(set(additional_see_also))
+        else:
+            see_also = None
+        if see_also:
+            result += 'See also: '
+            result += ', '.join(see_also)
+            result += '\n'
+        return result
+
+    def get_help_topic(self):
+        """Return the modules help topic - its __name__ after bzrlib.plugins.."""
+        return self.module.__name__[len('bzrlib.plugins.'):]

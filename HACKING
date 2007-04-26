@@ -133,8 +133,19 @@ for grammatical correctness)::
 Documentation
 =============
 
-If you change the behaviour of a command, please update its docstring
-in bzrlib/commands.py.  This is displayed by the 'bzr help' command.
+When you change bzrlib, please update the relevant documentation for the
+change you made: Changes to commands should update their help, and
+possibly end user tutorials; changes to the core library should be
+reflected in API documentation.
+
+Commands
+--------
+
+The docstring of a command is used by ``bzr help`` to generate help output
+for the command. The list 'takes_options' attribute on a command is used by
+``bzr help`` to document the options for the command - the command
+docstring does not need to document them. Finally, the '_see_also'
+attribute on a command can be used to reference other related help topics.
 
 NEWS file
 ---------
@@ -431,10 +442,17 @@ to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
 
-To skip a particular test (or set of tests), you need to use a negative
-match, like so::
+To skip a particular test (or set of tests), use the --exclude option
+(shorthand -x) like so::
 
-  ./bzr selftest '^(?!.*blackbox)'  
+  ./bzr selftest -v -x blackbox  
+
+To list tests without running them, use the --list-only option like so::
+
+  ./bzr selftest --list-only
+
+This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.
 
 
 Errors and exceptions
@@ -472,6 +490,25 @@ format string.
 
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
+
+
+
+Debugging
+=========
+
+Bazaar has a few facilities to help debug problems by going into pdb_, the
+Python debugger.
+
+.. _pdb: http://docs.python.org/lib/debugger-commands.html
+
+If the ``BZR_PDB`` environment variable is set 
+then bzr will go into pdb post-mortem mode when an unhandled exception
+occurs.
+
+If you send a SIGQUIT signal to bzr, which can be done by pressing C-\ on Unix,
+bzr will go into the debugger immediately.  You can continue execution by
+typing ``c``.  This can be disabled if necessary by setting the
+environment variable ``BZR_SIGQUIT_PDB=0``.
 
 
 
@@ -642,6 +679,44 @@ vetos, then it's OK to come in.  Any of the core developers can bring it
 into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
 
+
+C Extension Modules
+===================
+
+We write some extensions in C using pyrex. We design these to work in
+three scenarios:
+
+ * User with no C compiler
+ * User with C compiler
+ * Developers
+
+The recommended way to install bzr is to have a C compiler so that the
+extensions can be built, but if no C compiler is present, the pure python
+versions we supply will work, though more slowly.
+
+For developers we recommend that pyrex be installed, so that the C
+extensions can be changed if needed.
+
+For the C extensions, the extension module should always match the
+original python one in all respects (modulo speed). This should be
+maintained over time.
+
+To create an extension, add rules to setup.py for building it with pyrex,
+and with distutils. Now start with an empty .pyx file. At the top add
+"include 'yourmodule.py'". This will import the contents of foo.py into this 
+file at build time - remember that only one module will be loaded at
+runtime. Now you can subclass classes, or replace functions, and only your
+changes need to be present in the .pyx file.
+
+Note that pyrex does not support all 2.4 programming idioms, so some
+syntax changes may be required. I.e. 
+
+ - 'from foo import (bar, gam)' needs to change to not use the brackets. 
+ - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+
+If the changes are too dramatic, consider
+maintaining the python code twice - once in the .pyx, and once in the .py,
+and no longer including the .py file.
 
 Making installers for OS Windows
 ================================
