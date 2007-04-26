@@ -40,38 +40,13 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.branch_implementations import TestCaseWithBranch
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-
-
-class TestCaseWithBranch(TestCaseWithBzrDir):
-
-    def setUp(self):
-        super(TestCaseWithBranch, self).setUp()
-        self.branch = None
-
-    def get_branch(self):
-        if self.branch is None:
-            self.branch = self.make_branch('')
-        return self.branch
-
-    def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=format)
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
-        try:
-            return self.branch_format.initialize(repo.bzrdir)
-        except errors.UninitializableFormat:
-            raise TestSkipped('Uninitializable branch format')
-
-    def make_repository(self, relpath, shared=False, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
 
 
 class TestBranch(TestCaseWithBranch):
@@ -90,6 +65,15 @@ class TestBranch(TestCaseWithBranch):
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
         self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
+
+    def test_create_tree_with_merge(self):
+        tree = self.create_tree_with_merge()
+        ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
+        self.assertEqual({'rev-1':[],
+                          'rev-2':['rev-1'],
+                          'rev-1.1.1':['rev-1'],
+                          'rev-3':['rev-2', 'rev-1.1.1'],
+                         }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')

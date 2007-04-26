@@ -114,10 +114,10 @@ class SmartWSGIApp(object):
         relpath = environ['bzrlib.relpath']
         transport = self.backing_transport.clone(relpath)
         out_buffer = StringIO()
-        smart_protocol_request = self.make_request(transport, out_buffer.write)
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
-        smart_protocol_request.accept_bytes(request_data_bytes)
+        smart_protocol_request = self.make_request(
+            transport, out_buffer.write, request_data_bytes)
         if smart_protocol_request.next_read_size() != 0:
             # The request appears to be incomplete, or perhaps it's just a
             # newer version we don't understand.  Regardless, all we can do
@@ -131,5 +131,14 @@ class SmartWSGIApp(object):
         start_response('200 OK', headers)
         return [response_data]
 
-    def make_request(self, transport, write_func):
-        return protocol.SmartServerRequestProtocolOne(transport, write_func)
+    def make_request(self, transport, write_func, request_bytes):
+        # XXX: This duplicates the logic in
+        # SmartServerStreamMedium._build_protocol.
+        if request_bytes.startswith(protocol.REQUEST_VERSION_TWO):
+            protocol_class = protocol.SmartServerRequestProtocolTwo
+            request_bytes = request_bytes[len(protocol.REQUEST_VERSION_TWO):]
+        else:
+            protocol_class = protocol.SmartServerRequestProtocolOne
+        server_protocol = protocol_class(transport, write_func)
+        server_protocol.accept_bytes(request_bytes)
+        return server_protocol

@@ -68,8 +68,8 @@ booga""".splitlines(True)
 class TestMergeDirective(tests.TestCase):
 
     def test_merge_source(self):
-        time = 500.0
-        timezone = 5
+        time = 500000.0
+        timezone = 5 * 3600
         self.assertRaises(errors.NoMergeSource, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com')
         self.assertRaises(errors.NoMergeSource, merge_directive.MergeDirective,
@@ -87,7 +87,7 @@ class TestMergeDirective(tests.TestCase):
 
     def test_require_patch(self):
         time = 500.0
-        timezone = 5
+        timezone = 120
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
             'example:', 'sha', time, timezone, 'http://example.com',
             patch_type='bundle')
@@ -97,8 +97,8 @@ class TestMergeDirective(tests.TestCase):
         self.assertEqual(md.patch, '')
 
     def test_serialization(self):
-        time = 501
-        timezone = 72
+        time = 453
+        timezone = 120
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
             'http://example.com', patch='booga', patch_type='bundle')
         self.assertEqualDiff(OUTPUT1, ''.join(md.to_lines()))
@@ -108,6 +108,7 @@ class TestMergeDirective(tests.TestCase):
         self.assertEqualDiff(OUTPUT2, ''.join(md.to_lines()))
 
     def test_deserialize_junk(self):
+        time = 501
         self.assertRaises(errors.NotAMergeDirective,
                           merge_directive.MergeDirective.from_lines, 'lala')
 
@@ -121,15 +122,15 @@ class TestMergeDirective(tests.TestCase):
         self.assertEqual('sha', md.testament_sha1)
         self.assertEqual('http://example.com', md.target_branch)
         self.assertEqual('http://example.org', md.source_branch)
-        self.assertEqual(501, md.time)
-        self.assertEqual(72, md.timezone)
+        self.assertEqual(453, md.time)
+        self.assertEqual(120, md.timezone)
         self.assertEqual('booga', md.patch)
         self.assertEqual('diff', md.patch_type)
         self.assertEqual('Hi mom!', md.message)
 
     def test_roundtrip(self):
-        time = 501
-        timezone = 72
+        time = 500000
+        timezone = 7.5 * 3600
         md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
@@ -204,7 +205,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md2 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
             patch_type='diff', public_branch=tree_a.branch.base)
         self.assertNotContainsRe(md2.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md2.patch, '\\+content_c')
@@ -246,7 +247,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
     def test_message(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md3 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
             patch_type=None, public_branch=branch_c.base,
             message='Merge message')
         md3.to_lines()
@@ -256,7 +257,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
     def test_generate_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md1 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
             public_branch=branch_c.base)
         self.assertContainsRe(md1.patch, 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
@@ -265,8 +266,8 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertNotContainsRe(md1.patch, '\\+content_a')
 
     def test_signing(self):
-        time = 501
-        timezone = 72
+        time = 453
+        timezone = 7200
         class FakeBranch(object):
             def get_config(self):
                 return self
@@ -288,7 +289,7 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
     def test_email(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
+            tree_a.branch.repository, 'rev2a', 476, 60, tree_b.branch.base,
             patch_type=None, public_branch=tree_a.branch.base)
         message = md.to_email('pqm@example.com', tree_a.branch)
         self.assertContainsRe(message.as_string(), EMAIL1)

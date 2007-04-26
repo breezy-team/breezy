@@ -167,6 +167,21 @@ class TestMove(TestCaseWithWorkingTree):
                                ('d', 'd-id')], tree.basis_tree())
         tree._validate()
 
+    def test_move_over_deleted(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'b'])
+        tree.add(['a', 'a/b', 'b'], ['a-id', 'ab-id', 'b-id'])
+        tree.commit('initial', rev_id='rev-1')
+
+        root_id = tree.get_root_id()
+        tree.remove(['a/b'], keep_files=False)
+        self.assertEqual([('b', 'a/b')], tree.move(['b'], 'a'))
+        self.assertTreeLayout([('', root_id),
+                               ('a', 'a-id'),
+                               ('a/b', 'b-id'),
+                              ], tree)
+        tree._validate()
+
     def test_move_subdir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
