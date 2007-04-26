@@ -200,10 +200,12 @@ class SmartServerRequestHandler(object):
 
 
 class HelloRequest(SmartServerRequest):
-    """Answer a version request with my version."""
+    """Answer a version request with the highest protocol version this server
+    supports.
+    """
 
     def do(self):
-        return SmartServerResponse(('ok', '1'))
+        return SmartServerResponse(('ok', '2'))
 
 
 class GetBundleRequest(SmartServerRequest):

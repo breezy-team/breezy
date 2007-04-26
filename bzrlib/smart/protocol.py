@@ -25,6 +25,13 @@ from bzrlib import errors
 from bzrlib.smart import request
 
 
+# Protocol version strings.  These are sent as prefixes of bzr requests and
+# responses to identify the protocol version being used. (There are no version
+# one strings because that version doesn't send any).
+REQUEST_VERSION_TWO = 'bzr request 2\n'
+RESPONSE_VERSION_TWO = 'bzr response 2\n'
+
+
 def _recv_tuple(from_file):
     req_line = from_file.readline()
     return _decode_tuple(req_line)
@@ -135,11 +142,18 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         """Send a smart server response down the output stream."""
         assert not self._finished, 'response already sent'
         self._finished = True
+        self._write_protocol_version()
         self._write_func(_encode_tuple(args))
         if body is not None:
             assert isinstance(body, str), 'body must be a str'
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
+
+    def _write_protocol_version(self):
+        """Write any prefixes this protocol requires.
+        
+        Version one doesn't send protocol versions.
+        """
 
     def next_read_size(self):
         if self._finished:
@@ -148,6 +162,20 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             return 1
         else:
             return self._body_decoder.next_read_size()
+
+
+class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
+    r"""Version two of the server side of the smart protocol.
+   
+    This prefixes responses with the value of RESPONSE_VERSION_TWO.
+    """
+
+    def _write_protocol_version(self):
+        r"""Write any prefixes this protocol requires.
+        
+        Version two sends the value of RESPONSE_VERSION_TWO.
+        """
+        self._write_func(RESPONSE_VERSION_TWO)
 
 
 class LengthPrefixedBodyDecoder(object):
@@ -254,8 +282,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._body_buffer = None
 
     def call(self, *args):
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         self._request.finished_writing()
 
     def call_with_body_bytes(self, args, body):
@@ -263,8 +290,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
         After calling this, call read_response_tuple to find the result out.
         """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
@@ -275,8 +301,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \n is emitted.
         """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
@@ -336,7 +361,43 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         resp = self.read_response_tuple()
         if resp == ('ok', '1'):
             return 1
+        elif resp == ('ok', '2'):
+            return 2
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
+    def _write_args(self, args):
+        self._write_protocol_version()
+        bytes = _encode_tuple(args)
+        self._request.accept_bytes(bytes)
+
+    def _write_protocol_version(self):
+        """Write any prefixes this protocol requires.
+        
+        Version one doesn't send protocol versions.
+        """
+
+
+class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
+    """Version two of the client side of the smart protocol.
+    
+    This prefixes the request with the value of REQUEST_VERSION_TWO.
+    """
+
+    def read_response_tuple(self, expect_body=False):
+        """Read a response tuple from the wire.
+
+        This should only be called once.
+        """
+        version = self._request.read_line()
+        if version != RESPONSE_VERSION_TWO:
+            raise errors.SmartProtocolError('bad protocol marker %r' % version)
+        return SmartClientRequestProtocolOne.read_response_tuple(self, expect_body)
+
+    def _write_protocol_version(self):
+        r"""Write any prefixes this protocol requires.
+        
+        Version two sends the value of REQUEST_VERSION_TWO.
+        """
+        self._request.accept_bytes(REQUEST_VERSION_TWO)
 
