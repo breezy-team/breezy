@@ -84,6 +84,11 @@ Future versions should follow this structure, like version two does::
 This is that clients and servers can read bytes up to the first newline byte to
 determine what version a message is.
 
+For compatibility will all versions (past and future) of bzr clients, servers
+that receive a request in an unknown protocol version should respond with a
+single-line error terminated with 0x0a (NEWLINE), rather than structured
+response prefixed with a version string.
+
 Request/Response processing
 ---------------------------
 
