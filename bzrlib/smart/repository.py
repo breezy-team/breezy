@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,14 @@
 
 """Server-side repository related request implmentations."""
 
+import sys
+import tempfile
+import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
+from bzrlib.transport.local import LocalTransport
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -173,3 +177,59 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         repository.unlock()
         return SmartServerResponse(('ok',))
 
+
+class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
+    """Get the raw repository files as a tarball.
+
+    The returned tarball contains a .bzr control directory which in turn
+    contains a repository.
+    
+    This takes one parameter, compression, which currently must be 
+    "", "gz", or "bz2".
+
+    This is used to implement the Repository.copy_content_into operation.
+    """
+
+    def do_repository_request(self, repository, compression):
+        from bzrlib import osutils
+        repo_transport = repository.control_files._transport
+        tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
+        try:
+            controldir_name = tmp_dirname + '/.bzr'
+            return self._tarfile_response(controldir_name, compression)
+        finally:
+            osutils.rmtree(tmp_dirname)
+
+    def _copy_to_tempdir(self, from_repo):
+        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
+        tmp_bzrdir = from_repo.bzrdir._format.initialize(tmp_dirname)
+        tmp_repo = from_repo._format.initialize(tmp_bzrdir)
+        from_repo.copy_content_into(tmp_repo)
+        return tmp_dirname, tmp_repo
+
+    def _tarfile_response(self, tmp_dirname, compression):
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            self._tarball_of_dir(tmp_dirname, compression, temp.name)
+            # all finished; write the tempfile out to the network
+            temp.seek(0)
+            return SmartServerResponse(('ok',), temp.read())
+            # FIXME: Don't read the whole thing into memory here; rather stream it
+            # out from the file onto the network. mbp 20070411
+        finally:
+            temp.close()
+
+    def _tarball_of_dir(self, dirname, compression, tarfile_name):
+        tarball = tarfile.open(tarfile_name, mode='w:' + compression)
+        try:
+            # The tarball module only accepts ascii names, and (i guess)
+            # packs them with their 8bit names.  We know all the files
+            # within the repository have ASCII names so the should be safe
+            # to pack in.
+            dirname = dirname.encode(sys.getfilesystemencoding())
+            # python's tarball module includes the whole path by default so
+            # override it
+            assert dirname.endswith('.bzr')
+            tarball.add(dirname, '.bzr') # recursive by default
+        finally:
+            tarball.close()

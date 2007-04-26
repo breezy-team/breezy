@@ -781,13 +781,13 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            # we don't clone the repo because that preserves attributes
-            # like is_shared(), and we have not yet implemented a 
-            # repository sprout().
-            result_repo = result.create_repository()
-        if result_repo is not None:
+            result_repo = source_repository.sprout(result, revision_id=revision_id)
+        else:
             # fetch needed content into target.
             if source_repository is not None:
+                # would rather do 
+                # source_repository.copy_content_into(result_repo, revision_id=revision_id)
+                # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
