@@ -165,7 +165,8 @@ IN DEVELOPMENT
       and renamed. (John Arbash Meinel, #105479)
 
     * Bundles properly read and write revision properties that have an
-      empty value. And when the value is not ASCII. (John Arbash Meinel)
+      empty value. And when the value is not ASCII.
+      (John Arbash Meinel, #109613)
 
   TESTING:
 
