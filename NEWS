@@ -88,6 +88,11 @@ IN DEVELOPMENT
       and responses with an explicit version identifier so that future protocol
       revisions can be dealt with gracefully.  (Andrew Bennetts, Robert Collins)
 
+    * The smart protocol over HTTP client has been changed to always post to the
+      same .bzr/smart URL under the original location when it can.  This allows
+      HTTP servers to only have to pass URLs ending in .bzr/smart to the smart
+      server handler, and not arbitrary .bzr/*/smart URLs.  (Andrew Bennetts)
+
   INTERNALS:
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
