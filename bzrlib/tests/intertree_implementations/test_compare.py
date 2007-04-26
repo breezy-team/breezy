@@ -1246,3 +1246,75 @@ class TestIterChanges(TestCaseWithTwoTrees):
                          self.do_iter_changes(tree1, tree2,
                                               require_versioned=False,
                                               want_unversioned=True))
+
+    def test_rename_over_deleted(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # The final changes should be:
+        #   touch a b c d
+        #   add a b c d
+        #   commit
+        #   rm a d
+        #   mv b a
+        #   mv c d
+        self.build_tree_contents([
+            ('tree1/a', 'a contents\n'),
+            ('tree1/b', 'b contents\n'),
+            ('tree1/c', 'c contents\n'),
+            ('tree1/d', 'd contents\n'),
+            ('tree2/a', 'b contents\n'),
+            ('tree2/d', 'c contents\n'),
+            ])
+        tree1.add(['a', 'b', 'c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        tree2.add(['a', 'd'], ['b-id', 'c-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.deleted(tree1, 'a-id'),
+            self.deleted(tree1, 'd-id'),
+            self.renamed(tree1, tree2, 'b-id', False),
+            self.renamed(tree1, tree2, 'c-id', False),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2))
+
+    def test_deleted_and_unknown(self):
+        """Test a file marked removed, but still present on disk."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # The final changes should be:
+        # bzr add a b c
+        # bzr rm --keep b
+        self.build_tree_contents([
+            ('tree1/a', 'a contents\n'),
+            ('tree1/b', 'b contents\n'),
+            ('tree1/c', 'c contents\n'),
+            ('tree2/a', 'a contents\n'),
+            ('tree2/b', 'b contents\n'),
+            ('tree2/c', 'c contents\n'),
+            ])
+        tree1.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree2.add(['a', 'c'], ['a-id', 'c-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.deleted(tree1, 'b-id'),
+            self.unversioned(tree2, 'b'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True))
+        expected = sorted([
+            self.deleted(tree1, 'b-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=False))

@@ -2294,7 +2294,11 @@ class InterDirStateTree(InterTree):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
-                            path_handled = True
+                            if current_entry[1][target_index][0] == 'a':
+                                advance_path = False
+                                path_handled = False
+                            else:
+                                path_handled = True
                             if (include_unchanged
                                 or result[2]                    # content change
                                 or result[3][0] != result[3][1] # versioned status

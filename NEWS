@@ -252,6 +252,11 @@ IN DEVELOPMENT
     * Handle moving a directory when children have been added, removed,
       and renamed. (John Arbash Meinel, #105479)
 
+    * Handle the case when you delete a file, and then rename another file
+      on top of it. Also handle the case of ``bzr rm --keep foo``. ``bzr
+      status`` should show the removed file and an unknown file in its
+      place. (John Arbash Meinel, #109993)
+
     * Don't preventively use basic authentication for proxy before receiving a
       407 error. Otherwise people willing to use other authentication schemes
       may expose their password in the clear (or nearly). This add one
