@@ -1658,7 +1658,8 @@ class TestSmartProtocolTwo(TestSmartProtocol):
             None, out_stream.write)
         smart_protocol._send_response(
             request.FailedSmartServerResponse(('x',)))
-        self.assertEqual('2\nfailed\nx\n', out_stream.getvalue())
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'failed\nx\n',
+                         out_stream.getvalue())
 
     def test__send_response_includes_success_marker(self):
         """SuccessfulSmartServerResponse have 'success\n' after the version."""
@@ -1667,7 +1668,8 @@ class TestSmartProtocolTwo(TestSmartProtocol):
             None, out_stream.write)
         smart_protocol._send_response(
             request.SuccessfulSmartServerResponse(('x',)))
-        self.assertEqual('2\nsuccess\nx\n', out_stream.getvalue())
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'success\nx\n',
+                         out_stream.getvalue())
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolTwo should return a number.
@@ -1726,7 +1728,7 @@ class TestSmartProtocolTwo(TestSmartProtocol):
         self.assertEqual(expected_bytes, output.getvalue())
 
     def test_client_read_response_tuple_sets_response_status(self):
-        server_bytes = "2\nsuccess\nok\n"
+        server_bytes = protocol.RESPONSE_VERSION_TWO + "success\nok\n"
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
