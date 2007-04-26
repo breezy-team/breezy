@@ -563,9 +563,14 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertEqual([], list(tree._iter_changes(basis)))
+        changes = [c[1] for c in
+                   tree._iter_changes(basis, want_unversioned=True)]
+        self.assertEqual([(None, 'unversioned'),
+                          (None, 'versioned/unversioned'),
+                          (None, 'versioned2/unversioned'),
+                         ], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
-        self.assertEqual([], list(tree._iter_changes(basis,
-                                            want_unversioned=True,
-                                            )))
-        self.assertEqual([], returned)
+        del returned[:] # reset
+        changes = [c[1] for c in tree._iter_changes(basis)]
+        self.assertEqual([], changes)
+        self.assertEqual(['', 'versioned', 'versioned2'], returned)
