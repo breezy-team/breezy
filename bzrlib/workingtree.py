@@ -2195,7 +2195,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         while not inv_finished or not disk_finished:
             if not disk_finished:
                 # strip out .bzr dirs
-                if current_disk[0][1][top_strip_len:] == '':
+                if (current_disk[0][1][top_strip_len:] == '' and
+                    len(current_disk[1]) > 0):
                     # osutils.walkdirs can be made nicer - 
                     # yield the path-from-prefix rather than the pathjoined
                     # value.

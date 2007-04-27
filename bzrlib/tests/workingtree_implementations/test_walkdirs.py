@@ -28,35 +28,104 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 class TestWalkdirs(TestCaseWithWorkingTree):
 
-    def get_tree_with_unknowns(self):
+    added='added'
+    missing='missing'
+    unknown='unknown'
+
+    class DirBlock:
+
+        def __init__(self, tree, file_path, file_name=None, id=None,
+                     inventory_kind=None, stat=None, disk_kind='unknown'):
+            self.file_path = file_path
+            self.abspath = tree.abspath(file_path)
+            self.relpath = tree.relpath(file_path)
+            if file_name == None:
+               file_name = os.path.split(file_path)[-1]
+               if len(file_name) == 0:
+                   file_name = os.path.split(file_path)[-2]
+            self.file_name = file_name
+            self.id = id
+            self.inventory_kind = inventory_kind
+            self.stat = stat
+            self.disk_kind = disk_kind
+
+        def as_tuple(self):
+             return (self.relpath, self.file_name, self.disk_kind,
+                     self.stat, self.id, self.inventory_kind)
+
+        def as_dir_tuple(self):
+             return (self.relpath, self.id)
+
+        def __str__(self):
+            return """
+file_path      = %r
+abspath        = %r
+relpath        = %r
+file_name      = %r
+id             = %r
+inventory_kind = %r
+stat           = %r
+disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
+            self.file_name, self.id, self.inventory_kind, self.stat,
+            self.disk_kind)
+
+    def get_tree(self, file_status, prefix=None):
         tree = self.make_branch_and_tree('.')
-        self.build_tree([
-            'unknown file',
-            'unknown dir/',
-            'unknown dir/a file',
-            ])
-        u_f_stat = os.lstat('unknown file')
-        u_d_stat = os.lstat('unknown dir')
-        u_d_f_stat = os.lstat('unknown dir/a file')
+        dirblocks = []
+        paths = [
+            file_status + ' file',
+            file_status + ' dir/',
+            file_status + ' dir/a file',
+            file_status + ' empty dir/',
+            ]
+        self.build_tree(paths)
+
+        def add_dirblock(path, kind):
+            dirblock = TestWalkdirs.DirBlock(tree, path)
+            if file_status != self.unknown:
+                dirblock.id = 'a ' + str(path).replace('/','-') + '-id'
+                dirblock.inventory_kind = kind
+            if file_status != self.missing:
+                dirblock.disk_kind = kind
+                dirblock.stat = os.lstat(dirblock.relpath)
+            dirblocks.append(dirblock)
+
+        add_dirblock(paths[0], 'file')
+        add_dirblock(paths[1], 'directory')
+        add_dirblock(paths[2], 'file')
+        add_dirblock(paths[3], 'directory')
+
+        if file_status != self.unknown:
+            tree.add(paths, [db.id for db in dirblocks])
+
+        if file_status == self.missing:
+            # now make the files be missing
+            tree.bzrdir.root_transport.delete(dirblocks[0].relpath)
+            tree.bzrdir.root_transport.delete_tree(dirblocks[1].relpath)
+            tree.bzrdir.root_transport.delete_tree(dirblocks[3].relpath)
+
         expected_dirblocks = [
             (('', tree.path2id('')),
-             [
-              ('unknown dir', 'unknown dir', 'directory', u_d_stat, None, None),
-              ('unknown file', 'unknown file', 'file', u_f_stat, None, None),
-             ]
+             [dirblocks[1].as_tuple(), dirblocks[3].as_tuple(),
+              dirblocks[0].as_tuple()]
             ),
-            (('unknown dir', None),
-             [('unknown dir/a file', 'a file', 'file', u_d_f_stat, None, None),
-             ]
+            (dirblocks[1].as_dir_tuple(),
+             [dirblocks[2].as_tuple()]
+            ),
+            (dirblocks[3].as_dir_tuple(),
+             []
             ),
             ]
+        if prefix:
+            expected_dirblocks = [e for e in expected_dirblocks
+                if len(e) > 0 and len(e[0]) > 0 and e[0][0] == prefix]
         return tree, expected_dirblocks
-    
+
     def test_walkdir_unknowns(self):
         """unknown files and directories should be reported by walkdirs."""
         # test that its iterable by iterating:
         result = []
-        tree, expected_dirblocks = self.get_tree_with_unknowns()
+        tree, expected_dirblocks = self.get_tree(self.unknown)
         tree.lock_read()
         for dirinfo, dirblock in tree.walkdirs():
             result.append((dirinfo, list(dirblock)))
@@ -69,52 +138,22 @@ class TestWalkdirs(TestCaseWithWorkingTree):
     def test_walkdir_from_unknown_dir(self):
         """Doing a walkdir when the requested prefix is unknown but on disk."""
         result = []
-        tree, expected_dirblocks = self.get_tree_with_unknowns()
+        prefix = 'unknown dir'
+        tree, expected_dirblocks = self.get_tree(self.unknown, prefix)
         tree.lock_read()
-        for dirinfo, dirblock in tree.walkdirs('unknown dir'):
+        for dirinfo, dirblock in tree.walkdirs(prefix):
             result.append((dirinfo, list(dirblock)))
         tree.unlock()
         # check each return value for debugging ease.
-        for pos, item in enumerate(expected_dirblocks[1:]):
+        for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
-        self.assertEqual(len(expected_dirblocks) - 1, len(result))
-
-    def get_tree_with_missings(self):
-        tree = self.make_branch_and_tree('.')
-        paths = [
-            'missing file',
-            'missing dir/',
-            'missing dir/a file',
-            ]
-        ids = [
-            'a file',
-            'a dir',
-            'a dir-a file',
-            ]
-        self.build_tree(paths)
-        tree.add(paths, ids)
-        # now make the files be missing
-        tree.bzrdir.root_transport.delete_tree('missing dir')
-        tree.bzrdir.root_transport.delete('missing file')
-        expected_dirblocks = [
-            (('', tree.path2id('')),
-             [
-              ('missing dir', 'missing dir', 'unknown', None, 'a dir', 'directory'),
-              ('missing file', 'missing file', 'unknown', None, 'a file', 'file'),
-             ]
-            ),
-            (('missing dir', 'a dir'),
-             [('missing dir/a file', 'a file', 'unknown', None, 'a dir-a file', 'file'),
-             ]
-            ),
-            ]
-        return tree, expected_dirblocks
+        self.assertEqual(len(expected_dirblocks), len(result))
     
     def test_walkdir_missings(self):
         """missing files and directories should be reported by walkdirs."""
         # test that its iterable by iterating:
         result = []
-        tree, expected_dirblocks = self.get_tree_with_missings()
+        tree, expected_dirblocks = self.get_tree(self.missing)
         tree.lock_read()
         for dirinfo, dirblock in tree.walkdirs():
             result.append((dirinfo, list(dirblock)))
@@ -122,20 +161,59 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
+        self.assertEqual(expected_dirblocks, result)
+        self.assertEqual(len(expected_dirblocks), len(result))
+
+    def test_walkdir_from_dir(self):
+        """Doing a walkdir when the requested prefix is known and on disk."""
+        result = []
+        prefix = 'added dir'
+        tree, expected_dirblocks = self.get_tree(self.added, prefix)
+        tree.lock_read()
+        for dirinfo, dirblock in tree.walkdirs(prefix):
+            result.append((dirinfo, list(dirblock)))
+        tree.unlock()
+
+        # check each return value for debugging ease.
+        for pos, item in enumerate(expected_dirblocks):
+            result_pos = []
+            if len(result) > pos:
+                result_pos = result[pos]
+            self.assertEqual(item, result_pos)
+
+        self.assertEqual(len(expected_dirblocks), len(result))
+
+    def test_walkdir_from_empty_dir(self):
+        """Doing a walkdir when the requested prefix is empty dir."""
+        result = []
+        prefix = 'added empty dir'
+        tree, expected_dirblocks = self.get_tree(self.added, prefix)
+        tree.lock_read()
+        for dirinfo, dirblock in tree.walkdirs(prefix):
+            result.append((dirinfo, list(dirblock)))
+        tree.unlock()
+
+        # check each return value for debugging ease.
+        for pos, item in enumerate(expected_dirblocks):
+            result_pos = []
+            if len(result) > pos:
+                result_pos = result[pos]
+            self.assertEqual(item, result_pos)
         self.assertEqual(len(expected_dirblocks), len(result))
 
     def test_walkdir_from_missing_dir(self):
         """Doing a walkdir when the requested prefix is missing but on disk."""
         result = []
-        tree, expected_dirblocks = self.get_tree_with_missings()
+        prefix = 'missing dir'
+        tree, expected_dirblocks = self.get_tree(self.missing, prefix)
         tree.lock_read()
-        for dirinfo, dirblock in tree.walkdirs('missing dir'):
+        for dirinfo, dirblock in tree.walkdirs(prefix):
             result.append((dirinfo, list(dirblock)))
         tree.unlock()
         # check each return value for debugging ease.
-        for pos, item in enumerate(expected_dirblocks[1:]):
+        for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
-        self.assertEqual(len(expected_dirblocks[1:]), len(result))
+        self.assertEqual(len(expected_dirblocks), len(result))
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
