@@ -1,3 +1,14 @@
+bzr (0.16~rc1-1) unstable; urgency=low
+
+ * This release changes the behaviour of `bzr remove/rm` to remove the working
+   file if it could be recovered again. If you prefer keeping the file
+   instead, issue the --keep option to rm and/or consider using an alias that
+   always sets it (see /usr/share/doc/bzr/txt/using_aliases.txt)
+   If it so happens that a file gets unexpectedly deleted, use 
+   `bzr revert <file>` to get it back. 
+
+ -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Fri, 27 Apr 2007 23:11:12 +0000
+
 bzr (0.8-1) unstable; urgency=low
 
  * Versions of bzr prior to 0.7 had users setting their email address in
