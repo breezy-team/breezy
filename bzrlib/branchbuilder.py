@@ -16,7 +16,7 @@
 
 """Utility for create branches with particular contents."""
 
-from bzrlib import bzrdir, errors
+from bzrlib import bzrdir, errors, memorytree
 
 
 class BranchBuilder(object):
@@ -33,6 +33,14 @@ class BranchBuilder(object):
             transport.mkdir('.')
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
             format=bzrdir.format_registry.make_bzrdir('default'))
+
+    def build_commit(self):
+        """Build a commit on the branch."""
+        tree = memorytree.MemoryTree.create_on_branch(self._branch)
+        tree.lock_write()
+        tree.add('')
+        tree.commit('commit %d' % (self._branch.revno() + 1))
+        tree.unlock()
 
     def get_branch(self):
         """Return the branch created by the builder."""
