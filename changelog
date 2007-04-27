@@ -1,3 +1,10 @@
+bzr (0.16~rc1-1) unstable; urgency=low
+
+  * New upstream release candidate.
+  * Change the maintainer address to the pkg-bazaar-maint alioth list.
+
+ -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Fri, 27 Apr 2007 23:09:46 +0200
+
 bzr (0.15-1) unstable; urgency=low
 
   * New upstream release
