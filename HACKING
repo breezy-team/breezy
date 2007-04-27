@@ -14,7 +14,7 @@ Overall
   test before writing the code.
 
   In general, you can test at either the command-line level or the
-  internal API level.  See Writing Tests below for more detail.
+  internal API level.  See Writing tests below for more detail.
 
 * Try to practice Test-Driven Development.  before fixing a bug, write a
   test case so that it does not regress.  Similarly for adding a new
@@ -419,6 +419,29 @@ When writing blackbox tests please honour the following conventions:
  4. If you have a test which does actually require running bzr in a
     subprocess you can use ``run_bzr_subprocess``. By default the spawned
     process will not load plugins unless ``--allow-plugins`` is supplied.
+
+
+Test support
+------------
+
+We have a rich collection of tools to support writing tests. Please use
+them in preference to ad-hoc solutions as they provide portability and
+performance benefits.
+
+TreeBuilder
+~~~~~~~~~~~
+
+The ``TreeBuilder`` interface allows the construction of arbitrary trees
+with a declarative interface. A sample session might look like::
+
+  tree = self.make_branch_and_tree('path')
+  builder = TreeBuilder()
+  builder.start_tree(tree)
+  builder.build(['foo', "bar/", "bar/file"])
+  tree.commit('commit the tree')
+  builder.finish_tree()
+
+Please see bzrlib.treebuilder for more details.
 
 
 Doctests
