@@ -123,6 +123,12 @@ class RemoteTransport(transport.Transport):
             return True
         elif resp == ('no', ):
             return False
+        elif resp == ('error', "Generic bzr smart protocol error: "
+                               "bad request 'Transport.is_readonly'"):
+            # XXX: nasty hack: pre 0.16 servers don't have a
+            # 'Transport.is_readonly' verb, so we do what pre 0.16 clients did:
+            # assume False.
+            return False
         else:
             self._translate_error(resp)
         assert False, 'weird response %r' % (resp,)
