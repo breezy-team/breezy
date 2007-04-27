@@ -20,7 +20,19 @@ from bzrlib import bzrdir, errors, memorytree
 
 
 class BranchBuilder(object):
-    """A BranchBuilder aids creating Branches with particular shapes."""
+    """A BranchBuilder aids creating Branches with particular shapes.
+    
+    The expected way to use BranchBuilder is to construct a
+    BranchBuilder on the transport you want your branch on, and then call
+    appropriate build_ methods on it to get the shape of history you want.
+
+    For instance:
+      builder = BranchBuilder(self.get_transport().clone('relpath'))
+      builder.build_commit()
+      builder.build_commit()
+      builder.build_commit()
+      branch = builder.get_branch()
+    """
 
     def __init__(self, transport):
         """Construct a BranchBuilder on transport.
