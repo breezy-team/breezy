@@ -42,6 +42,12 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
             (0, _mod_revision.NULL_REVISION),
             branch.last_revision_info())
 
+    def test_format(self):
+        """Making a BranchBuilder with a format option sets the branch type."""
+        builder = BranchBuilder(self.get_transport(), format='dirstate-tags')
+        branch = builder.get_branch()
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+
     def test_build_one_commit(self):
         """doing build_commit causes a commit to happen."""
         builder = BranchBuilder(self.get_transport().clone('foo'))

@@ -34,17 +34,21 @@ class BranchBuilder(object):
       branch = builder.get_branch()
     """
 
-    def __init__(self, transport):
+    def __init__(self, transport, format=None):
         """Construct a BranchBuilder on transport.
         
         :param transport: The transport the branch should be created on.
             If the path of the transport does not exist but its parent does
             it will be created.
+        :param format: The name of a format in the bzrdir format registry
+            for the branch to be built.
         """
         if not transport.has('.'):
             transport.mkdir('.')
+        if format is None:
+            format = 'default'
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
-            format=bzrdir.format_registry.make_bzrdir('default'))
+            format=bzrdir.format_registry.make_bzrdir(format))
 
     def build_commit(self):
         """Build a commit on the branch."""
