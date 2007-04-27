@@ -16,7 +16,7 @@
 
 """Utility for create branches with particular contents."""
 
-from bzrlib import errors
+from bzrlib import bzrdir, errors
 
 
 class BranchBuilder(object):
@@ -24,3 +24,11 @@ class BranchBuilder(object):
 
     def __init__(self, transport):
         """Construct a BranchBuilder on transport."""
+        if not transport.has('.'):
+            transport.mkdir('.')
+        self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
+            format=bzrdir.format_registry.make_bzrdir('default'))
+
+    def get_branch(self):
+        """Return the branch created by the builder."""
+        return self._branch

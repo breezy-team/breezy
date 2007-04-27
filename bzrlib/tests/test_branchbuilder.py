@@ -16,7 +16,11 @@
 
 """Tests for the BranchBuilder class."""
 
-from bzrlib import tests
+from bzrlib import (
+    branch as _mod_branch,
+    revision as _mod_revision,
+    tests,
+    )
 from bzrlib.branchbuilder import BranchBuilder
 
 
@@ -26,3 +30,14 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         """Test the constructor api."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
         # we dont care if the branch has been built or not at this point.
+
+    def test_get_branch(self):
+        """get_branch returns the created branch."""
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        branch = builder.get_branch()
+        self.assertIsInstance(branch, _mod_branch.Branch)
+        self.assertEqual(self.get_transport().clone('foo').base,
+            branch.base)
+        self.assertEqual(
+            (0, _mod_revision.NULL_REVISION),
+            branch.last_revision_info())
