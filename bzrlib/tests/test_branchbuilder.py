@@ -45,10 +45,9 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     def test_build_one_commit(self):
         """doing build_commit causes a commit to happen."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
-        builder.build_commit()
+        rev_id = builder.build_commit()
         branch = builder.get_branch()
-        self.assertEqual(1, branch.last_revision_info()[0])
-        # we dont care what the revision id is.
+        self.assertEqual((1, rev_id), branch.last_revision_info())
         self.assertEqual(
             'commit 1',
             branch.repository.get_revision(branch.last_revision()).message)
@@ -56,14 +55,13 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     def test_build_two_commits(self):
         """The second commit has the right parents and message."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
-        builder.build_commit()
-        builder.build_commit()
+        rev_id1 = builder.build_commit()
+        rev_id2 = builder.build_commit()
         branch = builder.get_branch()
-        self.assertEqual(2, branch.last_revision_info()[0])
-        # we dont care what the revision id is.
+        self.assertEqual((2, rev_id2), branch.last_revision_info())
         self.assertEqual(
             'commit 2',
             branch.repository.get_revision(branch.last_revision()).message)
         self.assertEqual(
-            [branch.revision_history()[0]],
+            [rev_id1],
             branch.repository.get_revision(branch.last_revision()).parent_ids)

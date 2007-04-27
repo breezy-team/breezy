@@ -50,9 +50,11 @@ class BranchBuilder(object):
         """Build a commit on the branch."""
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
-        tree.add('')
-        tree.commit('commit %d' % (self._branch.revno() + 1))
-        tree.unlock()
+        try:
+            tree.add('')
+            return tree.commit('commit %d' % (self._branch.revno() + 1))
+        finally:
+            tree.unlock()
 
     def get_branch(self):
         """Return the branch created by the builder."""
