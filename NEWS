@@ -11,6 +11,11 @@ IN DEVELOPMENT
       empty value. And when the value is not ASCII.
       (John Arbash Meinel, #109613)
 
+  INTERNALS:
+
+    * New ``BranchBuilder`` API which allows the construction of particular
+      histories quickly. Useful for testing and potentially other applications
+      too. (Robert Collins)
 
 bzr 0.16rc1  2007-04-26
 
