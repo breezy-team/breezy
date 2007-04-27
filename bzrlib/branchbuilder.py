@@ -23,7 +23,12 @@ class BranchBuilder(object):
     """A BranchBuilder aids creating Branches with particular shapes."""
 
     def __init__(self, transport):
-        """Construct a BranchBuilder on transport."""
+        """Construct a BranchBuilder on transport.
+        
+        :param transport: The transport the branch should be created on.
+            If the path of the transport does not exist but its parent does
+            it will be created.
+        """
         if not transport.has('.'):
             transport.mkdir('.')
         self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
