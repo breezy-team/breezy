@@ -1,7 +1,7 @@
 Source: bzr
 Section: devel
 Priority: optional
-Maintainer: pkg-bazaar-maint@lists.alioth.debian.org
+Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Rob Weir <rweir@ertius.org>, Jeff Bailey <jbailey@raspberryginger.com>, Andres Salomon <dilinger@debian.org>, Adeodato Simó <dato@net.com.org.es>, Wouter van Heyst <larstiq@larstiq.dyndns.org>
 Build-Depends: debhelper (>= 5.0.38), cdbs (>= 0.4.43), quilt, python (>= 2.4), python-central (>= 0.5.6)
 Build-Depends-Indep: python-docutils (>= 0.4-2), python-celementtree (>= 1.0.5-7), python-medusa, python-paramiko
