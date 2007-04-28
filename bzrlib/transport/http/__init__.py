@@ -143,11 +143,12 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._qualified_proto = apparent_proto
         # range hint is handled dynamically throughout the life
-        # of the object. We start by trying multi-range requests
-        # and if the server returns bougs results, we retry with
-        # single range requests and, finally, we forget about
-        # range if the server really can't understand. Once
-        # aquired, this piece of info is propogated to clones.
+        # of the transport object. We start by trying multi-range
+        # requests and if the server returns bogus results, we
+        # retry with single range requests and, finally, we
+        # forget about range if the server really can't
+        # understand. Once acquired, this piece of info is
+        # propagated to clones.
         if from_transport is not None:
             self._range_hint = from_transport._range_hint
         else:
@@ -508,8 +509,8 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
-    def __init__(self, smart_medium):
-        medium.SmartClientMediumRequest.__init__(self, smart_medium)
+    def __init__(self, client_medium):
+        medium.SmartClientMediumRequest.__init__(self, client_medium)
         self._buffer = ''
 
     def _accept_bytes(self, bytes):

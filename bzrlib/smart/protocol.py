@@ -25,6 +25,13 @@ from bzrlib import errors
 from bzrlib.smart import request
 
 
+# Protocol version strings.  These are sent as prefixes of bzr requests and
+# responses to identify the protocol version being used. (There are no version
+# one strings because that version doesn't send any).
+REQUEST_VERSION_TWO = 'bzr request 2\n'
+RESPONSE_VERSION_TWO = 'bzr response 2\n'
+
+
 def _recv_tuple(from_file):
     req_line = from_file.readline()
     return _decode_tuple(req_line)
@@ -96,13 +103,13 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     # trivial request
                     self.excess_buffer = self.in_buffer
                     self.in_buffer = ''
-                    self._send_response(self.request.response.args,
-                        self.request.response.body)
+                    self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
-                self._send_response(('error', str(exception)))
+                self._send_response(request.FailedSmartServerResponse(
+                    ('error', str(exception))))
                 return
 
         if self.has_dispatched:
@@ -123,23 +130,40 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 assert self.request.finished_reading, \
                     "no more body, request not finished"
             if self.request.response is not None:
-                self._send_response(self.request.response.args,
-                    self.request.response.body)
+                self._send_response(self.request.response)
                 self.excess_buffer = self.in_buffer
                 self.in_buffer = ''
             else:
                 assert not self.request.finished_reading, \
                     "no response and we have finished reading."
 
-    def _send_response(self, args, body=None):
+    def _send_response(self, response):
         """Send a smart server response down the output stream."""
         assert not self._finished, 'response already sent'
+        args = response.args
+        body = response.body
         self._finished = True
+        self._write_protocol_version()
+        self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(args))
         if body is not None:
             assert isinstance(body, str), 'body must be a str'
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
+
+    def _write_protocol_version(self):
+        """Write any prefixes this protocol requires.
+        
+        Version one doesn't send protocol versions.
+        """
+
+    def _write_success_or_failure_prefix(self, response):
+        """Write the protocol specific success/failure prefix.
+
+        For SmartServerRequestProtocolOne this is omitted but we
+        call is_successful to ensure that the response is valid.
+        """
+        response.is_successful()
 
     def next_read_size(self):
         if self._finished:
@@ -148,6 +172,27 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             return 1
         else:
             return self._body_decoder.next_read_size()
+
+
+class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
+    r"""Version two of the server side of the smart protocol.
+   
+    This prefixes responses with the value of RESPONSE_VERSION_TWO.
+    """
+
+    def _write_success_or_failure_prefix(self, response):
+        """Write the protocol specific success/failure prefix."""
+        if response.is_successful():
+            self._write_func('success\n')
+        else:
+            self._write_func('failed\n')
+
+    def _write_protocol_version(self):
+        r"""Write any prefixes this protocol requires.
+        
+        Version two sends the value of RESPONSE_VERSION_TWO.
+        """
+        self._write_func(RESPONSE_VERSION_TWO)
 
 
 class LengthPrefixedBodyDecoder(object):
@@ -254,8 +299,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._body_buffer = None
 
     def call(self, *args):
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         self._request.finished_writing()
 
     def call_with_body_bytes(self, args, body):
@@ -263,8 +307,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
         After calling this, call read_response_tuple to find the result out.
         """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
@@ -275,8 +318,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \n is emitted.
         """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
+        self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
@@ -322,13 +364,17 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
 
     def _recv_tuple(self):
         """Receive a tuple from the medium request."""
+        return _decode_tuple(self._recv_line())
+
+    def _recv_line(self):
+        """Read an entire line from the medium request."""
         line = ''
         while not line or line[-1] != '\n':
             # TODO: this is inefficient - but tuples are short.
             new_char = self._request.read_bytes(1)
             line += new_char
             assert new_char != '', "end of file reading from server."
-        return _decode_tuple(line)
+        return line
 
     def query_version(self):
         """Return protocol version number of the server."""
@@ -336,8 +382,48 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         resp = self.read_response_tuple()
         if resp == ('ok', '1'):
             return 1
+        elif resp == ('ok', '2'):
+            return 2
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
+    def _write_args(self, args):
+        self._write_protocol_version()
+        bytes = _encode_tuple(args)
+        self._request.accept_bytes(bytes)
 
+    def _write_protocol_version(self):
+        """Write any prefixes this protocol requires.
+        
+        Version one doesn't send protocol versions.
+        """
+
+
+class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
+    """Version two of the client side of the smart protocol.
+    
+    This prefixes the request with the value of REQUEST_VERSION_TWO.
+    """
+
+    def read_response_tuple(self, expect_body=False):
+        """Read a response tuple from the wire.
+
+        This should only be called once.
+        """
+        version = self._request.read_line()
+        if version != RESPONSE_VERSION_TWO:
+            raise errors.SmartProtocolError('bad protocol marker %r' % version)
+        response_status = self._recv_line()
+        if response_status not in ('success\n', 'failed\n'):
+            raise errors.SmartProtocolError(
+                'bad protocol status %r' % response_status)
+        self.response_status = response_status == 'success\n'
+        return SmartClientRequestProtocolOne.read_response_tuple(self, expect_body)
+
+    def _write_protocol_version(self):
+        r"""Write any prefixes this protocol requires.
+        
+        Version two sends the value of REQUEST_VERSION_TWO.
+        """
+        self._request.accept_bytes(REQUEST_VERSION_TWO)
 

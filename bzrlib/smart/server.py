@@ -18,21 +18,21 @@
 
 import errno
 import socket
-import os
 import threading
 
 from bzrlib.hooks import Hooks
-from bzrlib.smart import medium
 from bzrlib import (
     trace,
     transport,
-    urlutils,
 )
 from bzrlib.smart.medium import SmartServerSocketStreamMedium
 
 
 class SmartTCPServer(object):
-    """Listens on a TCP socket and accepts connections from smart clients
+    """Listens on a TCP socket and accepts connections from smart clients.
+
+    Each connection will be served by a SmartServerSocketStreamMedium running in
+    a thread.
 
     hooks: An instance of SmartServerHooks.
     """
@@ -180,14 +180,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     """
 
     def __init__(self):
-        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
-        # The server is set up by default like for ssh access: the client
-        # passes filesystem-absolute paths; therefore the server must look
-        # them up relative to the root directory.  it might be better to act
-        # a public server and have the server rewrite paths into the test
-        # directory.
-        SmartTCPServer.__init__(self,
-            transport.get_transport(urlutils.local_path_to_url('/')))
+        SmartTCPServer.__init__(self, None)
         
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
@@ -195,21 +188,31 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def setUp(self, backing_transport_server=None):
         """Set up server for testing"""
-        from bzrlib.transport.chroot import TestingChrootServer
+        from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             from bzrlib.transport.local import LocalURLServer
             backing_transport_server = LocalURLServer()
-        self.chroot_server = TestingChrootServer()
-        self.chroot_server.setUp(backing_transport_server)
+        self.chroot_server = ChrootServer(
+            self.get_backing_transport(backing_transport_server))
+        self.chroot_server.setUp()
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
         self.start_background_thread()
 
     def tearDown(self):
         self.stop_background_thread()
+        self.chroot_server.tearDown()
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
         return 'bzr://127.0.0.1:1/'
 
+
+class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
+    """Get a readonly server for testing."""
+
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        url = 'readonly+' + backing_transport_server.get_url()
+        return transport.get_transport(url)
 

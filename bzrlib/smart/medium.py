@@ -1,4 +1,4 @@
-# Copyright (C) 2006,2007 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,8 +27,13 @@ bzrlib/transport/smart/__init__.py.
 import os
 import socket
 import sys
+
 from bzrlib import errors
-from bzrlib.smart.protocol import SmartServerRequestProtocolOne
+from bzrlib.smart.protocol import (
+    REQUEST_VERSION_TWO,
+    SmartServerRequestProtocolOne,
+    SmartServerRequestProtocolTwo,
+    )
 
 try:
     from bzrlib.transport import ssh
@@ -66,12 +71,31 @@ class SmartServerStreamMedium(object):
         from sys import stderr
         try:
             while not self.finished:
-                protocol = SmartServerRequestProtocolOne(self.backing_transport,
-                                                         self._write_out)
-                self._serve_one_request(protocol)
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+
+    def _build_protocol(self):
+        """Identifies the version of the incoming request, and returns an
+        a protocol object that can interpret it.
+
+        If more bytes than the version prefix of the request are read, they will
+        be fed into the protocol before it is returned.
+
+        :returns: a SmartServerRequestProtocol.
+        """
+        # Identify the protocol version.
+        bytes = self._get_line()
+        if bytes.startswith(REQUEST_VERSION_TWO):
+            protocol_class = SmartServerRequestProtocolTwo
+            bytes = bytes[len(REQUEST_VERSION_TWO):]
+        else:
+            protocol_class = SmartServerRequestProtocolOne
+        protocol = protocol_class(self.backing_transport, self._write_out)
+        protocol.accept_bytes(bytes)
+        return protocol
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -88,6 +112,31 @@ class SmartServerStreamMedium(object):
     def terminate_due_to_error(self):
         """Called when an unhandled exception from the protocol occurs."""
         raise NotImplementedError(self.terminate_due_to_error)
+
+    def _get_bytes(self, desired_count):
+        """Get some bytes from the medium.
+
+        :param desired_count: number of bytes we want to read.
+        """
+        raise NotImplementedError(self._get_bytes)
+
+    def _get_line(self):
+        """Read bytes from this request's response until a newline byte.
+        
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
+        line = ''
+        while not line or line[-1] != '\n':
+            new_char = self._get_bytes(1)
+            line += new_char
+            if new_char == '':
+                # Ran out of bytes before receiving a complete line.
+                break
+        return line
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
@@ -109,13 +158,18 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                 protocol.accept_bytes(self.push_back)
                 self.push_back = ''
             else:
-                bytes = self.socket.recv(4096)
+                bytes = self._get_bytes(4096)
                 if bytes == '':
                     self.finished = True
                     return
                 protocol.accept_bytes(bytes)
         
         self.push_back = protocol.excess_buffer
+
+    def _get_bytes(self, desired_count):
+        # We ignore the desired_count because on sockets it's more efficient to
+        # read 4k at a time.
+        return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
         """Called when an unhandled exception from the protocol occurs."""
@@ -155,13 +209,16 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 # Finished serving this request.
                 self._out.flush()
                 return
-            bytes = self._in.read(bytes_to_read)
+            bytes = self._get_bytes(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def _get_bytes(self, desired_count):
+        return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -270,7 +327,7 @@ class SmartClientMediumRequest(object):
 
         This method will block and wait for count bytes to be read. It may not
         be invoked until finished_writing() has been called - this is to ensure
-        a message-based approach to requests, for compatability with message
+        a message-based approach to requests, for compatibility with message
         based mediums like HTTP.
         """
         if self._state == "writing":
@@ -287,6 +344,24 @@ class SmartClientMediumRequest(object):
         actual read.
         """
         raise NotImplementedError(self._read_bytes)
+
+    def read_line(self):
+        """Read bytes from this request's response until a newline byte.
+        
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
+        line = ''
+        while not line or line[-1] != '\n':
+            new_char = self.read_bytes(1)
+            line += new_char
+            if new_char == '':
+                raise errors.SmartProtocolError(
+                    'unexpected end of file reading from server')
+        return line
 
 
 class SmartClientMedium(object):
@@ -522,5 +597,4 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         on the mediums stream.
         """
         return self._medium._read_bytes(count)
-
 

@@ -35,6 +35,7 @@ from bzrlib import (
         revision as _mod_revision,
         transport,
         tree,
+        tsort,
         ui,
         urlutils,
         )
@@ -100,6 +101,7 @@ class Branch(object):
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._make_tags()
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -194,6 +196,64 @@ class Branch(object):
 
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
+
+    @needs_read_lock
+    def get_revision_id_to_revno_map(self):
+        """Return the revision_id => dotted revno map.
+
+        This will be regenerated on demand, but will be cached.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+            This dictionary should not be modified by the caller.
+        """
+        if self._revision_id_to_revno_cache is not None:
+            mapping = self._revision_id_to_revno_cache
+        else:
+            mapping = self._gen_revno_map()
+            self._cache_revision_id_to_revno(mapping)
+        # TODO: jam 20070417 Since this is being cached, should we be returning
+        #       a copy?
+        # I would rather not, and instead just declare that users should not
+        # modify the return value.
+        return mapping
+
+    def _gen_revno_map(self):
+        """Create a new mapping from revision ids to dotted revnos.
+
+        Dotted revnos are generated based on the current tip in the revision
+        history.
+        This is the worker function for get_revision_id_to_revno_map, which
+        just caches the return value.
+
+        :return: A dictionary mapping revision_id => dotted revno.
+        """
+        last_revision = self.last_revision()
+        revision_graph = self.repository.get_revision_graph(last_revision)
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in merge_sorted_revisions)
+        return revision_id_to_revno
+
+    def leave_lock_in_place(self):
+        """Tell this branch object not to release the physical lock when this
+        object is unlocked.
+        
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.leave_in_place()
+
+    def dont_leave_lock_in_place(self):
+        """Tell this branch object to release the physical lock when this
+        object is unlocked, even if it didn't originally acquire it.
+
+        If lock_write doesn't return a token, then this method is not supported.
+        """
+        self.control_files.dont_leave_in_place()
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -328,6 +388,14 @@ class Branch(object):
         """
         self._revision_history_cache = rev_history
 
+    def _cache_revision_id_to_revno(self, revision_id_to_revno):
+        """Set the cached revision_id => revno map to revision_id_to_revno.
+
+        This API is semi-public; it only for use by subclasses, all other code
+        should consider it to be private.
+        """
+        self._revision_id_to_revno_cache = revision_id_to_revno
+
     def _clear_cached_state(self):
         """Clear any cached data on this branch, e.g. cached revision history.
 
@@ -338,6 +406,7 @@ class Branch(object):
         should consider it to be private.
         """
         self._revision_history_cache = None
+        self._revision_id_to_revno_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -445,7 +514,7 @@ class Branch(object):
         try:
             return history.index(revision_id) + 1
         except ValueError:
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -454,7 +523,7 @@ class Branch(object):
         if history is None:
             history = self.revision_history()
         if revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
+            raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
@@ -563,7 +632,8 @@ class Branch(object):
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
-        raise NotImplementedError(self.get_push_location)
+        push_loc = self.get_config().get_user_option('push_location')
+        return push_loc
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
@@ -691,7 +761,7 @@ class Branch(object):
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repostory uses weaves.
+        Weaves are used if this branch's repository uses weaves.
         """
         if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
             from bzrlib.repofmt import weaverepo
@@ -796,6 +866,18 @@ class BranchFormat(object):
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
+
+    def get_reference(self, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -1033,13 +1115,16 @@ class BzrBranchFormat5(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return BzrBranch5(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                         lockdir.LockDir)
+            return BzrBranch5(_format=self,
+                              _control_files=control_files,
+                              a_bzrdir=a_bzrdir,
+                              _repository=a_bzrdir.find_repository())
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
@@ -1109,6 +1194,11 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
         
+    def get_reference(self, a_bzrdir):
+        """See BranchFormat.get_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        return transport.get('location').read()
+
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
@@ -1136,7 +1226,7 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, _found=False, location=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -1145,8 +1235,9 @@ class BranchReferenceFormat(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        real_bzrdir = bzrdir.BzrDir.open(transport.get('location').read())
+        if location is None:
+            location = self.get_reference(a_bzrdir)
+        real_bzrdir = bzrdir.BzrDir.open(location)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
@@ -1223,13 +1314,14 @@ class BzrBranch(Branch):
     def is_locked(self):
         return self.control_files.is_locked()
 
-    def lock_write(self):
-        self.repository.lock_write()
+    def lock_write(self, token=None):
+        repo_token = self.repository.lock_write()
         try:
-            self.control_files.lock_write()
+            token = self.control_files.lock_write(token=token)
         except:
             self.repository.unlock()
             raise
+        return token
 
     def lock_read(self):
         self.repository.lock_read()
@@ -1286,6 +1378,7 @@ class BzrBranch(Branch):
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         rev_history = [osutils.safe_revision_id(r) for r in rev_history]
+        self._clear_cached_state()
         self._write_revision_history(rev_history)
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
@@ -1484,11 +1577,6 @@ class BzrBranch(Branch):
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
 
-    def get_push_location(self):
-        """See Branch.get_push_location."""
-        push_loc = self.get_config().get_user_option('push_location')
-        return push_loc
-
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
@@ -1508,7 +1596,7 @@ class BzrBranch(Branch):
                 try: 
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
-                    raise bzrlib.errors.InvalidURL(url,
+                    raise errors.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
                         "use bzrlib.urlutils.escape")
             url = urlutils.relative_url(self.base, url)
@@ -1726,6 +1814,19 @@ class BzrBranchExperimental(BzrBranch5):
     def get_format_description(cls):
         """See BranchFormat.get_format_description()."""
         return "Experimental branch format"
+
+    @classmethod
+    def get_reference(cls, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
 
     @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
@@ -1965,7 +2066,8 @@ class BranchTestProviderAdapter(object):
     easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, transport_server, transport_readonly_server, formats,
+        vfs_transport_factory=None):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats

@@ -195,6 +195,12 @@ class TreeDelta(object):
             print >>to_file, 'unknown:'
             show_list(self.unversioned)
 
+    def get_changes_as_text(self, show_ids=False, show_unchanged=False,
+             short_status=False):
+        import StringIO
+        output = StringIO.StringIO()
+        self.show(output, show_ids, show_unchanged, short_status)
+        return output.getvalue()
 
 @deprecated_function(zero_nine)
 def compare_trees(old_tree, new_tree, want_unchanged=False,

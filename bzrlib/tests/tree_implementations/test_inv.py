@@ -212,8 +212,7 @@ class TestPreviousHeads(TestCaseWithTree):
 
 class TestInventory(TestCaseWithTree):
 
-    def setUp(self):
-        super(TestInventory, self).setUp()
+    def _set_up(self):
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
@@ -221,6 +220,9 @@ class TestInventory(TestCaseWithTree):
         self.inv = self.tree.inventory
 
     def test_symlink_target(self):
+        if not has_symlinks():
+            raise TestSkipped('No symlink support')
+        self._set_up()
         if isinstance(self.tree, MutableTree):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees')
@@ -228,6 +230,9 @@ class TestInventory(TestCaseWithTree):
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink(self):
+        if not has_symlinks():
+            raise TestSkipped('No symlink support')
+        self._set_up()
         entry = self.inv[self.inv.path2id('symlink')]
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)

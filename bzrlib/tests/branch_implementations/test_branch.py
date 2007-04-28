@@ -26,6 +26,7 @@ from bzrlib import (
     gpg,
     urlutils,
     transactions,
+    remote,
     repository,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
@@ -39,38 +40,13 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.branch_implementations import TestCaseWithBranch
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-
-
-class TestCaseWithBranch(TestCaseWithBzrDir):
-
-    def setUp(self):
-        super(TestCaseWithBranch, self).setUp()
-        self.branch = None
-
-    def get_branch(self):
-        if self.branch is None:
-            self.branch = self.make_branch('')
-        return self.branch
-
-    def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=format)
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
-        try:
-            return self.branch_format.initialize(repo.bzrdir)
-        except errors.UninitializableFormat:
-            raise TestSkipped('Uninitializable branch format')
-
-    def make_repository(self, relpath, shared=False, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
 
 
 class TestBranch(TestCaseWithBranch):
@@ -89,6 +65,15 @@ class TestBranch(TestCaseWithBranch):
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
         self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
+
+    def test_create_tree_with_merge(self):
+        tree = self.create_tree_with_merge()
+        ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
+        self.assertEqual({'rev-1':[],
+                          'rev-2':['rev-1'],
+                          'rev-1.1.1':['rev-1'],
+                          'rev-3':['rev-2', 'rev-1.1.1'],
+                         }, ancestry_graph)
 
     def test_revision_ids_are_utf8(self):
         wt = self.make_branch_and_tree('tree')
@@ -352,14 +337,9 @@ class TestBranch(TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        try:
+        if not isinstance(branch, remote.RemoteBranch):
             controlfilename = branch.control_files.controlfilename
-        except AttributeError:
-            # remote branches don't have control_files
-            pass
-        else:
-            self.failUnless(
-                t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -598,6 +578,17 @@ class TestBranchPushLocations(TestCaseWithBranch):
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
 
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
@@ -630,7 +621,7 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         opened_control.find_branch_format())
 
 
 class TestBound(TestCaseWithBranch):

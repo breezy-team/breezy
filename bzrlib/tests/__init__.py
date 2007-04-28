@@ -34,8 +34,8 @@ import errno
 import logging
 import os
 from pprint import pformat
+import random
 import re
-import shlex
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -53,6 +53,7 @@ from bzrlib import (
     progress,
     ui,
     urlutils,
+    workingtree,
     )
 import bzrlib.branch
 import bzrlib.commands
@@ -88,6 +89,11 @@ from bzrlib.tests.TestUtil import (
                           )
 from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
+
+# Mark this python module as being part of the implementation
+# of unittest: this gives us better tracebacks where the last
+# shown frame is the test code, not our assertXYZ.
+__unittest = 1
 
 default_transport = LocalURLServer
 
@@ -496,6 +502,7 @@ class TextTestRunner(object):
                  keep_output=False,
                  bench_history=None,
                  use_numbered_dirs=False,
+                 list_only=False
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
@@ -503,6 +510,7 @@ class TextTestRunner(object):
         self.keep_output = keep_output
         self._bench_history = bench_history
         self.use_numbered_dirs = use_numbered_dirs
+        self.list_only = list_only
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -520,14 +528,24 @@ class TextTestRunner(object):
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
-        test.run(result)
+        if self.list_only:
+            if self.verbosity >= 2:
+                self.stream.writeln("Listing tests only ...\n")
+            run = 0
+            for t in iter_suite_tests(test):
+                self.stream.writeln("%s" % (t.id()))
+                run += 1
+            actionTaken = "Listed"
+        else: 
+            test.run(result)
+            run = result.testsRun
+            actionTaken = "Ran"
         stopTime = time.time()
         timeTaken = stopTime - startTime
         result.printErrors()
         self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+                            run, run != 1 and "s" or "", timeTaken))
         self.stream.writeln()
         if not result.wasSuccessful():
             self.stream.write("FAILED (")
@@ -751,15 +769,23 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        self._clear_hooks()
+
+    def _clear_hooks(self):
         # prevent hooks affecting tests
+        import bzrlib.branch
+        import bzrlib.smart.server
         self._preserved_hooks = {
-            bzrlib.branch.Branch:bzrlib.branch.Branch.hooks,
-            bzrlib.smart.server.SmartTCPServer:bzrlib.smart.server.SmartTCPServer.hooks,
+            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
-        # this list of hooks must be kept in sync with the defaults
-        # in branch.py
+        # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
+        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        # FIXME: Rather than constructing new objects like this, how about
+        # having save() and clear() methods on the base Hook class? mbp
+        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1272,7 +1298,8 @@ class TestCase(unittest.TestCase):
         if err:
             self.log('errors:\n%r', err)
         if retcode is not None:
-            self.assertEquals(retcode, result)
+            self.assertEquals(retcode, result,
+                              message='Unexpected return code')
         return out, err
 
     def run_bzr(self, *args, **kwargs):
@@ -1293,8 +1320,15 @@ class TestCase(unittest.TestCase):
         encoding = kwargs.pop('encoding', None)
         stdin = kwargs.pop('stdin', None)
         working_dir = kwargs.pop('working_dir', None)
-        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding,
-                                     stdin=stdin, working_dir=working_dir)
+        error_regexes = kwargs.pop('error_regexes', [])
+
+        out, err = self.run_bzr_captured(args, retcode=retcode,
+            encoding=encoding, stdin=stdin, working_dir=working_dir)
+
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
+
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:
@@ -1328,9 +1362,7 @@ class TestCase(unittest.TestCase):
                                'commit', '--strict', '-m', 'my commit comment')
         """
         kwargs.setdefault('retcode', 3)
-        out, err = self.run_bzr(*args, **kwargs)
-        for regex in error_regexes:
-            self.assertContainsRe(err, regex)
+        out, err = self.run_bzr(error_regexes=error_regexes, *args, **kwargs)
         return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
@@ -1718,7 +1750,12 @@ class TestCaseWithMemoryTransport(TestCase):
     def get_vfs_only_url(self, relpath=None):
         """Get a URL (or maybe a path for the plain old vfs transport.
 
-        This will never be a smart protocol.
+        This will never be a smart protocol.  It always has all the
+        capabilities of the local filesystem, but it might actually be a
+        MemoryTransport or some other similar virtual filesystem.
+
+        This is the backing transport (if any) of the server returned by
+        get_url and get_readonly_url.
 
         :param relpath: provides for clients to get a path relative to the base
             url.  These should only be downwards relative, not upwards.
@@ -1786,7 +1823,14 @@ class TestCaseWithMemoryTransport(TestCase):
             raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
-        """Create a repository on our default transport at relpath."""
+        """Create a repository on our default transport at relpath.
+        
+        Note that relpath must be a relative path, not a full url.
+        """
+        # FIXME: If you create a remoterepository this returns the underlying
+        # real format, which is incorrect.  Actually we should make sure that 
+        # RemoteBzrDir returns a RemoteRepository.
+        # maybe  mbp 20070410
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
@@ -1933,12 +1977,41 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path),path+" does not exist")
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path),path+" exists")
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
+    def assertInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertInWorkingTree(p,tree=tree)
+        else:
+            self.assertIsNot(tree.path2id(path), None,
+                path+' not in working tree.')
+
+    def assertNotInWorkingTree(self,path,root_path='.',tree=None):
+        """Assert whether path or paths are not in the WorkingTree"""
+        if tree is None:
+            tree = workingtree.WorkingTree.open(root_path)
+        if not isinstance(path, basestring):
+            for p in path:
+                self.assertNotInWorkingTree(p,tree=tree)
+        else:
+            self.assertIs(tree.path2id(path), None, path+' in working tree.')
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -2046,24 +2119,50 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern):
-    result = TestUtil.TestSuite()
-    filter_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            result.addTest(test)
-    return result
+def filter_suite_by_re(suite, pattern, exclude_pattern=None,
+                       random_order=False):
+    """Create a test suite by filtering another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :returns: the newly created suite
+    """ 
+    return sort_suite_by_re(suite, pattern, exclude_pattern,
+        random_order, False)
 
 
-def sort_suite_by_re(suite, pattern):
+def sort_suite_by_re(suite, pattern, exclude_pattern=None,
+                     random_order=False, append_rest=True):
+    """Create a test suite by sorting another one.
+    
+    :param suite:           the source suite
+    :param pattern:         pattern that names must match in order to go
+                            first in the new suite
+    :param exclude_pattern: pattern that names must not match, if any
+    :param random_order:    if True, tests in the new suite will be put in
+                            random order
+    :param append_rest:     if False, pattern is a strict filter and not
+                            just an ordering directive
+    :returns: the newly created suite
+    """ 
     first = []
     second = []
     filter_re = re.compile(pattern)
+    if exclude_pattern is not None:
+        exclude_re = re.compile(exclude_pattern)
     for test in iter_suite_tests(suite):
-        if filter_re.search(test.id()):
-            first.append(test)
-        else:
-            second.append(test)
+        test_id = test.id()
+        if exclude_pattern is None or not exclude_re.search(test_id):
+            if filter_re.search(test_id):
+                first.append(test)
+            elif append_rest:
+                second.append(test)
+    if random_order:
+        random.shuffle(first)
+        random.shuffle(second)
     return TestUtil.TestSuite(first + second)
 
 
@@ -2071,7 +2170,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
-              numbered_dirs=None):
+              numbered_dirs=None,
+              list_only=False,
+              random_seed=None,
+              exclude_pattern=None,
+              ):
     use_numbered_dirs = bool(numbered_dirs)
 
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
@@ -2087,13 +2190,33 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             keep_output=keep_output,
                             bench_history=bench_history,
                             use_numbered_dirs=use_numbered_dirs,
+                            list_only=list_only,
                             )
     runner.stop_on_failure=stop_on_failure
-    if pattern != '.*':
-        if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern)
+    # Initialise the random number generator and display the seed used.
+    # We convert the seed to a long to make it reuseable across invocations.
+    random_order = False
+    if random_seed is not None:
+        random_order = True
+        if random_seed == "now":
+            random_seed = long(time.time())
         else:
-            suite = filter_suite_by_re(suite, pattern)
+            # Convert the seed to a long if we can
+            try:
+                random_seed = long(random_seed)
+            except:
+                pass
+        runner.stream.writeln("Randomizing test order using seed %s\n" %
+            (random_seed))
+        random.seed(random_seed)
+    # Customise the list of tests if requested
+    if pattern != '.*' or exclude_pattern is not None or random_order:
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
+        else:
+            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
+                random_order)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -2105,7 +2228,10 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None,
              matching_tests_first=None,
-             numbered_dirs=None):
+             numbered_dirs=None,
+             list_only=False,
+             random_seed=None,
+             exclude_pattern=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -2129,7 +2255,10 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
                      matching_tests_first=matching_tests_first,
-                     numbered_dirs=numbered_dirs)
+                     numbered_dirs=numbered_dirs,
+                     list_only=list_only,
+                     random_seed=random_seed,
+                     exclude_pattern=exclude_pattern)
     finally:
         default_transport = old_transport
 
@@ -2147,6 +2276,7 @@ def test_suite():
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
@@ -2159,7 +2289,6 @@ def test_suite():
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
-                   'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_extract',
@@ -2171,6 +2300,7 @@ def test_suite():
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
+                   'bzrlib.tests.test_help',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
@@ -2201,6 +2331,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
+                   'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
@@ -2211,6 +2342,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_source',
@@ -2298,7 +2430,7 @@ def _rmtree_temp_dir(dirname):
         if sys.platform == 'win32' and e.errno == errno.EACCES:
             print >>sys.stderr, ('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(test_root))
+                                 '%s' % os.path.basename(dirname))
         else:
             raise
 
@@ -2311,8 +2443,6 @@ def clean_selftest_output(root=None, quiet=False):
     :param  quiet:  suppress report about deleting directories
     """
     import re
-    import shutil
-
     re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
     if root is None:
         root = u'.'

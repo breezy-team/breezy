@@ -24,14 +24,21 @@ import sys
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.progress import DotsProgressBar, TTYProgressBar, ProgressBarStack
+from bzrlib.progress import (
+    DotsProgressBar,
+    ProgressBarStack,
+    TTYProgressBar,
+    )
 from bzrlib.tests import (
+    TestCase,
     TestUIFactory,
     StringIOWrapper,
-    TestCase,
     )
 from bzrlib.tests.test_progress import _TTYStringIO
-from bzrlib.ui import SilentUIFactory
+from bzrlib.ui import (
+    CLIUIFactory,
+    SilentUIFactory,
+    )
 from bzrlib.ui.text import TextUIFactory
 
 
@@ -61,6 +68,8 @@ class UITests(TestCase):
                                                    ui.get_password))
             # ': ' is appended to prompt
             self.assertEqual(': ', ui.stdout.getvalue())
+            # stdin should be empty
+            self.assertEqual('', ui.stdin.readline())
         finally:
             pb.finished()
 
@@ -84,6 +93,8 @@ class UITests(TestCase):
             self.assertEqual(u'baz\u1234', password.decode('utf8'))
             self.assertEqual(u'Hello \u1234 some\u1234: ',
                              ui.stdout.getvalue().decode('utf8'))
+            # stdin should be empty
+            self.assertEqual('', ui.stdin.readline())
         finally:
             pb.finished()
 
@@ -99,7 +110,8 @@ class UITests(TestCase):
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
             # Since there was no update() call, there should be no clear() call
-            self.failIf(re.search(r'^\r {10,}\r$', stderr.getvalue()) is not None,
+            self.failIf(re.search(r'^\r {10,}\r$',
+                                  stderr.getvalue()) is not None,
                         'We cleared the stderr without anything to put there')
         finally:
             pb.finished()
@@ -161,18 +173,19 @@ class UITests(TestCase):
 
     def test_text_factory_setting_progress_bar(self):
         # we should be able to choose the progress bar type used.
-        factory = bzrlib.ui.text.TextUIFactory(
-            bar_type=DotsProgressBar)
+        factory = TextUIFactory(bar_type=DotsProgressBar)
         bar = factory.nested_progress_bar()
         bar.finished()
         self.assertIsInstance(bar, DotsProgressBar)
 
     def test_cli_stdin_is_default_stdin(self):
-        factory = bzrlib.ui.CLIUIFactory()
+        factory = CLIUIFactory()
         self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
-        factory.stdin = StringIO("y\nyes with garbage\nyes\nn\nnot an answer\nno\nfoo\n")
+        factory.stdin = StringIO("y\nyes with garbage\n"
+                                 "yes\nn\nnot an answer\n"
+                                 "no\nfoo\n")
         factory.stdout = StringIO()
         # there is no output from the base factory
         self.assertEqual(True, factory.get_boolean(""))
@@ -180,42 +193,47 @@ class UITests(TestCase):
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
 
     def test_silent_ui_getbool(self):
-        factory = bzrlib.ui.SilentUIFactory()
+        factory = SilentUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_silent_factory_prompts_silently(self):
-        factory = bzrlib.ui.SilentUIFactory()
+        factory = SilentUIFactory()
         stdout = StringIO()
         factory.stdin = StringIO("y\n")
-        self.assertEqual(
-            True,
-            self.apply_redirected(
-                None, stdout, stdout, factory.get_boolean, "foo")
-            )
+        self.assertEqual(True,
+                         self.apply_redirected(None, stdout, stdout,
+                                               factory.get_boolean, "foo"))
         self.assertEqual("", stdout.getvalue())
-        
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+
     def test_text_ui_getbool(self):
-        factory = bzrlib.ui.text.TextUIFactory()
+        factory = TextUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = bzrlib.ui.text.TextUIFactory(bar_type=DotsProgressBar)
+        factory = TextUIFactory(bar_type=DotsProgressBar)
         factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
-        pb = self.apply_redirected(
-            factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
+        pb = self.apply_redirected(factory.stdin, factory.stdout,
+                                   factory.stdout, factory.nested_progress_bar)
         pb.start_time = None
-        self.apply_redirected(
-            factory.stdin, factory.stdout, factory.stdout, pb.update, "foo", 0, 1)
-        self.assertEqual(
-            True,
-            self.apply_redirected(
-                None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
-            )
+        self.apply_redirected(factory.stdin, factory.stdout,
+                              factory.stdout, pb.update, "foo", 0, 1)
+        self.assertEqual(True,
+                         self.apply_redirected(None, factory.stdout,
+                                               factory.stdout,
+                                               factory.get_boolean,
+                                               "what do you want"))
         output = factory.stdout.getvalue()
         self.assertEqual("foo: .\n"
                          "what do you want? [y/n]: what do you want? [y/n]: ",
                          factory.stdout.getvalue())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+

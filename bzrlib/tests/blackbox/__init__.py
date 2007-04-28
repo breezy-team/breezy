@@ -44,6 +44,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_annotate',
                      'bzrlib.tests.blackbox.test_branch',
                      'bzrlib.tests.blackbox.test_break_lock',
+                     'bzrlib.tests.blackbox.test_breakin',
                      'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_bundle',
                      'bzrlib.tests.blackbox.test_cat',
