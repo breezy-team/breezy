@@ -21,17 +21,13 @@ from bzrlib import log
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
 from bzrlib.log import (show_log, 
                         get_view_revisions, 
+                        LogRevision,
                         LogFormatter, 
                         LongLogFormatter, 
                         ShortLogFormatter, 
                         LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
-
-
-class _LogEntry(object):
-    # should probably move into bzrlib.log?
-    pass
 
 
 class LogCatcher(LogFormatter):
@@ -43,16 +39,15 @@ class LogCatcher(LogFormatter):
 
     We should also test the LogFormatter.
     """
+
+    supports_delta = True 
+
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
         self.logs = []
 
-    def show(self, revno, rev, delta):
-        le = _LogEntry()
-        le.revno = revno
-        le.rev = rev
-        le.delta = delta
-        self.logs.append(le)
+    def log_revision(self, revision):
+        self.logs.append(revision)
 
 
 class SimpleLogTest(TestCaseWithTransport):

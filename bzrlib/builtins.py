@@ -2972,7 +2972,7 @@ class cmd_missing(Command):
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
-        from bzrlib.missing import find_unmerged, iter_log_data
+        from bzrlib.missing import find_unmerged, iter_log_revisions
         from bzrlib.log import log_formatter
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
@@ -3003,9 +3003,10 @@ class cmd_missing(Command):
                     remote_extra.reverse()
                 if local_extra and not theirs_only:
                     print "You have %d extra revision(s):" % len(local_extra)
-                    for data in iter_log_data(local_extra, local_branch.repository,
-                                              verbose):
-                        lf.show(*data)
+                    for revision in iter_log_revisions(local_extra, 
+                                        local_branch.repository,
+                                        verbose):
+                        lf.log_revision(revision)
                     printed_local = True
                 else:
                     printed_local = False
@@ -3013,9 +3014,10 @@ class cmd_missing(Command):
                     if printed_local is True:
                         print "\n\n"
                     print "You are missing %d revision(s):" % len(remote_extra)
-                    for data in iter_log_data(remote_extra, remote_branch.repository, 
-                                              verbose):
-                        lf.show(*data)
+                    for revision in iter_log_revisions(remote_extra, 
+                                        remote_branch.repository, 
+                                        verbose):
+                        lf.log_revision(revision)
                 if not remote_extra and not local_extra:
                     status_code = 0
                     print "Branches are up to date."
