@@ -1,6 +1,8 @@
-bzr-svn 0.3.3	UNRELEASED
+bzr-svn 0.3.3	2007-04-29
 
   IMPROVEMENTS
+
+  * Fix compatibility with 0.16 (#110164)
 
   * Don't do extra checkout before push if possible. (#91885)
 
