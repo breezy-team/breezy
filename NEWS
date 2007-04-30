@@ -11,6 +11,8 @@ IN DEVELOPMENT
       empty value. And when the value is not ASCII.
       (John Arbash Meinel, #109613)
 
+    * Fix the bzr commit message to be in text mode.
+      (Alexander Belchenko, #110901)
 
 bzr 0.16rc1  2007-04-26
 
