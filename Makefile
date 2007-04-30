@@ -112,8 +112,8 @@ docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) \
-	doc/default.css doc/HACKING.htm NEWS README \
-	win32_bzr.exe/doc
+		doc/default.css doc/HACKING.htm NEWS README \
+		win32_bzr.exe/doc
 
 # clean produced docs
 clean-docs:
