@@ -893,6 +893,17 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         self.assertEqual([], self.do_iter_changes(tree1, tree2,
                                                   want_unversioned=True))
+        expected = sorted([
+            self.unchanged(tree2, tree2.get_root_id()),
+            self.unchanged(tree2, 'a-id'),
+            self.unchanged(tree2, 'b-id'),
+            self.unchanged(tree2, 'a-c-id'),
+            self.unchanged(tree2, 'd-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True,
+                                              include_unchanged=True))
 
 
     def test_unversioned_subtree_only_emits_root(self):
