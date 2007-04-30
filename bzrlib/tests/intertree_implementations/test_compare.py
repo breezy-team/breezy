@@ -867,6 +867,34 @@ class TestIterChanges(TestCaseWithTwoTrees):
             specific_files=specific_files, require_versioned=False,
             want_unversioned=True))
 
+    def test_similar_filenames(self):
+        """Test when we have a few files with similar names."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
+
+        # The trees are actually identical, but they happen to contain
+        # similarly named files.
+        self.build_tree(['tree1/a/',
+                         'tree1/a/b/',
+                         'tree1/a-c/',
+                         'tree1/a-c/d/',
+                         'tree2/a/',
+                         'tree2/a/b/',
+                         'tree2/a-c/',
+                         'tree2/a-c/d/',
+                        ])
+        tree1.add(['a', 'a/b', 'a-c', 'a-c/d'],
+                  ['a-id', 'b-id', 'a-c-id', 'd-id'])
+        tree2.add(['a', 'a/b', 'a-c', 'a-c/d'],
+                  ['a-id', 'b-id', 'a-c-id', 'd-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([], self.do_iter_changes(tree1, tree2,
+                                                  want_unversioned=True))
+
+
     def test_unversioned_subtree_only_emits_root(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
