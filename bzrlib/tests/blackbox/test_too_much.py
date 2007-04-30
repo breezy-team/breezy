@@ -434,7 +434,7 @@ class OldTests(ExternalBase):
         runbzr("help slartibartfast", 3)
 
         out = capture("help ci")
-        out.index('aliases:\n')
+        out.index('aliases: ci, checkin\n')
 
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
