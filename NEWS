@@ -14,6 +14,9 @@ IN DEVELOPMENT
     * Fix the bzr commit message to be in text mode.
       (Alexander Belchenko, #110901)
 
+    * Also handle when you rename a file and create a file where it used
+      to be. (John Arbash Meinel, #110256)
+
 bzr 0.16rc1  2007-04-26
 
   NOTES WHEN UPGRADING:
