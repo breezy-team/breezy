@@ -99,20 +99,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertIsInstance(d, BzrDir)
 
 
-class ReadonlyRemoteTransportTests(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        self.transport_server = server.ReadonlySmartTCPServer_for_testing
-        super(ReadonlyRemoteTransportTests, self).setUp()
-
-    def test_is_readonly_yes(self):
-        # XXX: this is a poor way to test RemoteTransport, but currently there's
-        # no easy way to substitute in a fake client on a transport like we can
-        # with RemoteBzrDir/Branch/Repository.
-        transport = self.get_readonly_transport()
-        self.assertEqual(transport.is_readonly(), True)
-
-
 class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
 
