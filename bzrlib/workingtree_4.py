@@ -2122,7 +2122,7 @@ class InterDirStateTree(InterTree):
                    current_block is not None):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
-                    if current_dir_info[0][0] < current_block[0] :
+                    if current_dir_info[0][0].split('/') < current_block[0].split('/'):
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
@@ -2257,7 +2257,7 @@ class InterDirStateTree(InterTree):
                                        result[7],
                                       )
                     elif current_entry[0][1] != current_path_info[1]:
-                        if current_path_info[1] < current_entry[0][1]:
+                        if current_path_info[1].split('/') < current_entry[0][1].split('/'):
                             # extra file on disk: pass for now, but only
                             # increment the path, not the entry
                             advance_entry = False

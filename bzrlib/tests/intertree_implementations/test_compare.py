@@ -877,17 +877,21 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # similarly named files.
         self.build_tree(['tree1/a/',
                          'tree1/a/b/',
+                         'tree1/a/b/c/',
+                         'tree1/a/b/c/d/',
                          'tree1/a-c/',
-                         'tree1/a-c/d/',
+                         'tree1/a-c/e/',
                          'tree2/a/',
                          'tree2/a/b/',
+                         'tree2/a/b/c/',
+                         'tree2/a/b/c/d/',
                          'tree2/a-c/',
-                         'tree2/a-c/d/',
+                         'tree2/a-c/e/',
                         ])
-        tree1.add(['a', 'a/b', 'a-c', 'a-c/d'],
-                  ['a-id', 'b-id', 'a-c-id', 'd-id'])
-        tree2.add(['a', 'a/b', 'a-c', 'a-c/d'],
-                  ['a-id', 'b-id', 'a-c-id', 'd-id'])
+        tree1.add(['a', 'a/b', 'a/b/c', 'a/b/c/d', 'a-c', 'a-c/e'],
+                  ['a-id', 'b-id', 'c-id', 'd-id', 'a-c-id', 'e-id'])
+        tree2.add(['a', 'a/b', 'a/b/c', 'a/b/c/d', 'a-c', 'a-c/e'],
+                  ['a-id', 'b-id', 'c-id', 'd-id', 'a-c-id', 'e-id'])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
@@ -897,8 +901,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.unchanged(tree2, tree2.get_root_id()),
             self.unchanged(tree2, 'a-id'),
             self.unchanged(tree2, 'b-id'),
-            self.unchanged(tree2, 'a-c-id'),
+            self.unchanged(tree2, 'c-id'),
             self.unchanged(tree2, 'd-id'),
+            self.unchanged(tree2, 'a-c-id'),
+            self.unchanged(tree2, 'e-id'),
             ])
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
