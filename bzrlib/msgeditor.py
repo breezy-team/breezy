@@ -103,7 +103,9 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
     msgfilename = None
     try:
-        tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
+        tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
+                                                   dir=u'.',
+                                                   text=True)
         msgfile = os.fdopen(tmp_fileno, 'w')
         try:
             if start_message is not None:

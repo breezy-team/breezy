@@ -11,9 +11,14 @@ IN DEVELOPMENT
       empty value. And when the value is not ASCII.
       (John Arbash Meinel, #109613)
 
+    * Fix the bzr commit message to be in text mode.
+      (Alexander Belchenko, #110901)
+
+    * Also handle when you rename a file and create a file where it used
+      to be. (John Arbash Meinel, #110256)
+
     * ``WorkingTree4._iter_changes`` should not descend into unversioned
       directories. (John Arbash Meinel, #110399)
-
 
 bzr 0.16rc1  2007-04-26
 
