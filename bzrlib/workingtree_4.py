@@ -2132,10 +2132,10 @@ class InterDirStateTree(InterTree):
                         # new unknown files or directories.
                         # if (B) then we should ignore it, because we don't
                         # recurse into unknown directories.
-                        if want_unversioned:
-                            path_index = 0
-                            while path_index < len(current_dir_info[1]):
-                                    current_path_info = current_dir_info[1][path_index]
+                        path_index = 0
+                        while path_index < len(current_dir_info[1]):
+                                current_path_info = current_dir_info[1][path_index]
+                                if want_unversioned:
                                     if current_path_info[2] == 'directory':
                                         if self.target._directory_is_tree_reference(
                                             current_path_info[0].decode('utf8')):
@@ -2152,13 +2152,13 @@ class InterDirStateTree(InterTree):
                                         (None, utf8_decode_or_none(current_path_info[1])),
                                         (None, current_path_info[2]),
                                         (None, new_executable))
-                                    # dont descend into this unversioned path if it is
-                                    # a dir
-                                    if current_path_info[2] in ('directory',
-                                                                'tree-reference'):
-                                        del current_dir_info[1][path_index]
-                                        path_index -= 1
-                                    path_index += 1
+                                # dont descend into this unversioned path if it is
+                                # a dir
+                                if current_path_info[2] in ('directory',
+                                                            'tree-reference'):
+                                    del current_dir_info[1][path_index]
+                                    path_index -= 1
+                                path_index += 1
 
                         # This dir info has been handled, go to the next
                         try:
@@ -2289,16 +2289,39 @@ class InterDirStateTree(InterTree):
                                            result[7],
                                           )
                             advance_path = False
+                    elif current_entry[1][target_index][0] in 'ar':
+                        # The path matches, but the current entry is marked as
+                        # not being here. So we don't want to consider this
+                        # as a match. We still need to process the current
+                        # entry, though.
+                        advance_path = False
+                        path_handled = False
+                        for result in _process_entry(current_entry, None):
+                            if (include_unchanged
+                                or result[2]                    # content change
+                                or result[3][0] != result[3][1] # versioned status
+                                or result[4][0] != result[4][1] # parent id
+                                or result[5][0] != result[5][1] # name
+                                or result[6][0] != result[6][1] # kind
+                                or result[7][0] != result[7][1] # executable
+                                ):
+                                yield (result[0],
+                                       (utf8_decode_or_none(result[1][0]),
+                                        utf8_decode_or_none(result[1][1])),
+                                       result[2],
+                                       result[3],
+                                       result[4],
+                                       (utf8_decode_or_none(result[5][0]),
+                                        utf8_decode_or_none(result[5][1])),
+                                       result[6],
+                                       result[7],
+                                      )
                     else:
                         for result in _process_entry(current_entry, current_path_info):
                             # this check should probably be outside the loop: one
                             # 'iterate two trees' api, and then _iter_changes filters
                             # unchanged pairs. - RBC 20070226
-                            if current_entry[1][target_index][0] == 'a':
-                                advance_path = False
-                                path_handled = False
-                            else:
-                                path_handled = True
+                            path_handled = True
                             if (include_unchanged
                                 or result[2]                    # content change
                                 or result[3][0] != result[3][1] # versioned status
