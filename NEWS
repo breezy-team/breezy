@@ -1,5 +1,7 @@
 IN DEVELOPMENT
 
+bzr 0.16rc2  2007-04-30
+
   BUGFIXES:
 
     * Handle the case when you delete a file, and then rename another file
