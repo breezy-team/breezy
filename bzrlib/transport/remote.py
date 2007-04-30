@@ -74,7 +74,7 @@ class RemoteTransport(transport.Transport):
     # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
-    def __init__(self, url, clone_from=None, medium=None):
+    def __init__(self, url, clone_from=None, medium=None, _client=None):
         """Constructor.
 
         :param medium: The medium to use for this RemoteTransport. This must be
@@ -97,6 +97,10 @@ class RemoteTransport(transport.Transport):
             # reuse same connection
             self._medium = clone_from._medium
         assert self._medium is not None
+        if _client is None:
+            self._client = client._SmartClient(self._medium)
+        else:
+            self._client = _client
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -166,12 +170,11 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return client._SmartClient(self._medium).call(method, *args)
+        return self._client.call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        smart_client = client._SmartClient(self._medium)
-        return smart_client.call_with_body_bytes(method, args, body)
+        return self._client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
