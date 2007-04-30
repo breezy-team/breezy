@@ -74,11 +74,17 @@ class RemoteTransport(transport.Transport):
     # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
-    def __init__(self, url, clone_from=None, medium=None):
+    def __init__(self, url, clone_from=None, medium=None, _client=None):
         """Constructor.
 
+        :param clone_from: Another RemoteTransport instance that this one is
+            being cloned from.  Attributes such as credentials and the medium
+            will be reused.
         :param medium: The medium to use for this RemoteTransport. This must be
             supplied if clone_from is None.
+        :param _client: Override the _SmartClient used by this transport.  This
+            should only be used for testing purposes; normally this is
+            determined from the medium.
         """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
@@ -97,6 +103,10 @@ class RemoteTransport(transport.Transport):
             # reuse same connection
             self._medium = clone_from._medium
         assert self._medium is not None
+        if _client is None:
+            self._client = client._SmartClient(self._medium)
+        else:
+            self._client = _client
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -122,6 +132,12 @@ class RemoteTransport(transport.Transport):
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
+            return False
+        elif resp == ('error', "Generic bzr smart protocol error: "
+                               "bad request 'Transport.is_readonly'"):
+            # XXX: nasty hack: servers before 0.16 don't have a
+            # 'Transport.is_readonly' verb, so we do what clients before 0.16
+            # did: assume False.
             return False
         else:
             self._translate_error(resp)
@@ -160,12 +176,11 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return client._SmartClient(self._medium).call(method, *args)
+        return self._client.call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        smart_client = client._SmartClient(self._medium)
-        return smart_client.call_with_body_bytes(method, args, body)
+        return self._client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.

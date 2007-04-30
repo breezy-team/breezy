@@ -905,6 +905,116 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertTrue(branch2.repository.has_revision('rev2a'))
         self.assertEqual('rev2a', target_revision)
 
+    def test_bundle_empty_property(self):
+        """Test serializing revision properties with an empty value."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   branch-nick: tree\n'
+                              '#   empty: \n'
+                              '#   one: two\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
+                         rev.properties)
+
+    def test_bundle_empty_property_alt(self):
+        """Test serializing revision properties with an empty value.
+
+        Older readers had a bug when reading an empty property.
+        They assumed that all keys ended in ': \n'. However they would write an
+        empty value as ':\n'. This tests make sure that all newer bzr versions
+        can handle th second form.
+        """
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', revprops={'one':'two', 'empty':''}, rev_id='rev1')
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        txt = bundle_sio.getvalue()
+        loc = txt.find('#   empty: ') + len('#   empty:')
+        # Create a new bundle, which strips the trailing space after empty
+        bundle_sio = StringIO(txt[:loc] + txt[loc+1:])
+
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   branch-nick: tree\n'
+                              '#   empty:\n'
+                              '#   one: two\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
+                         rev.properties)
+
+    def test_bundle_sorted_properties(self):
+        """For stability the writer should write properties in sorted order."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        tree.add([''], ['TREE_ROOT'])
+        tree.commit('One', rev_id='rev1',
+                    revprops={'a':'4', 'b':'3', 'c':'2', 'd':'1'})
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   a: 4\n'
+                              '#   b: 3\n'
+                              '#   branch-nick: tree\n'
+                              '#   c: 2\n'
+                              '#   d: 1\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'a':'4', 'b':'3', 'c':'2',
+                          'd':'1'}, rev.properties)
+
+    def test_bundle_unicode_properties(self):
+        """We should be able to round trip a non-ascii property."""
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        tree.add([''], ['TREE_ROOT'])
+        # Revisions themselves do not require anything about revision property
+        # keys, other than that they are a basestring, and do not contain
+        # whitespace.
+        # However, Testaments assert than they are str(), and thus should not
+        # be Unicode.
+        tree.commit('One', rev_id='rev1',
+                    revprops={'omega':u'\u03a9', 'alpha':u'\u03b1'})
+        self.b1 = tree.branch
+        bundle_sio, revision_ids = self.create_bundle_text(None, 'rev1')
+        self.assertContainsRe(bundle_sio.getvalue(),
+                              '# properties:\n'
+                              '#   alpha: \xce\xb1\n'
+                              '#   branch-nick: tree\n'
+                              '#   omega: \xce\xa9\n'
+                             )
+        bundle = read_bundle(bundle_sio)
+        revision_info = bundle.revisions[0]
+        self.assertEqual('rev1', revision_info.revision_id)
+        rev = revision_info.as_revision()
+        self.assertEqual({'branch-nick':'tree', 'omega':u'\u03a9',
+                          'alpha':u'\u03b1'}, rev.properties)
+
 
 class V09BundleKnit2Tester(V08BundleTester):
 

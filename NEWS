@@ -7,9 +7,15 @@ IN DEVELOPMENT
       status`` should show the removed file and an unknown file in its
       place. (John Arbash Meinel, #109993)
 
+    * Bundles properly read and write revision properties that have an
+      empty value. And when the value is not ASCII.
+      (John Arbash Meinel, #109613)
+
+    * Fix the bzr commit message to be in text mode.
+      (Alexander Belchenko, #110901)
+
     * Also handle when you rename a file and create a file where it used
       to be. (John Arbash Meinel, #110256)
-
 
 bzr 0.16rc1  2007-04-26
 
