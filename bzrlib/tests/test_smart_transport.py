@@ -2087,6 +2087,19 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         new_transport = base_transport.clone('abc/../..')
         self.assertEqual('foo', new_transport._remote_path('foo'))
 
+    def test_remote_path_unnormal_base(self):
+        # If the transport's base isn't normalised, the _remote_path should
+        # still be calculated correctly.
+        base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
+        self.assertEqual('c', base_transport._remote_path('c'))
+
+    def test_clone_unnormal_base(self):
+        # If the transport's base isn't normalised, cloned transports should
+        # still work correctly.
+        base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
+        new_transport = base_transport.clone('c')
+        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+
         
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when

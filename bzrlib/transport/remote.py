@@ -503,7 +503,7 @@ class RemoteHTTPTransport(RemoteTransport):
         """After connecting HTTP Transport only deals in relative URLs."""
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
-        base = self._http_transport.base
+        base = urlutils.normalize_url(self._http_transport.base)
         url = urlutils.join(self.base[len('bzr+'):], relpath)
         url = urlutils.normalize_url(url)
         return urlutils.relative_url(base, url)
@@ -538,7 +538,9 @@ class RemoteHTTPTransport(RemoteTransport):
         # We either use the exact same http_transport (for child locations), or
         # a clone of the underlying http_transport (for parent locations).  This
         # means we share the connection.
-        normalized_rel_url = urlutils.relative_url(self.base, abs_url)
+        norm_base = urlutils.normalize_url(self.base)
+        norm_abs_url = urlutils.normalize_url(abs_url)
+        normalized_rel_url = urlutils.relative_url(norm_base, norm_abs_url)
         if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
             http_transport = self._http_transport.clone(normalized_rel_url)
         else:
