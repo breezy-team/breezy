@@ -77,8 +77,14 @@ class RemoteTransport(transport.Transport):
     def __init__(self, url, clone_from=None, medium=None, _client=None):
         """Constructor.
 
+        :param clone_from: Another RemoteTransport instance that this one is
+            being cloned from.  Attributes such as credentials and the medium
+            will be reused.
         :param medium: The medium to use for this RemoteTransport. This must be
             supplied if clone_from is None.
+        :param _client: Override the _SmartClient used by this transport.  This
+            should only be used for testing purposes; normally this is
+            determined from the medium.
         """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
@@ -129,9 +135,9 @@ class RemoteTransport(transport.Transport):
             return False
         elif resp == ('error', "Generic bzr smart protocol error: "
                                "bad request 'Transport.is_readonly'"):
-            # XXX: nasty hack: pre 0.16 servers don't have a
-            # 'Transport.is_readonly' verb, so we do what pre 0.16 clients did:
-            # assume False.
+            # XXX: nasty hack: servers before 0.16 don't have a
+            # 'Transport.is_readonly' verb, so we do what clients before 0.16
+            # did: assume False.
             return False
         else:
             self._translate_error(resp)
