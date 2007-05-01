@@ -155,8 +155,23 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
-        self._make_tail(url)
-        result = self._format.initialize(url)
+        return self.clone_on_transport(get_transport(url),
+                                       revision_id=revision_id,
+                                       force_new_repo=force_new_repo)
+
+    def clone_on_transport(self, transport, revision_id=None,
+                           force_new_repo=False):
+        """Clone this bzrdir and its contents to transport verbatim.
+
+        If the target directory does not exist, it will be created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target 
+                               even if one is available.
+        """
+        self._make_tail_on_transport(transport)
+        result = self._format.initialize_on_transport(transport)
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -202,6 +217,17 @@ class BzrDir(object):
                 t.mkdir(tail)
             except errors.FileExists:
                 pass
+
+    def _make_tail_on_transport(self, transport):
+        """Create the final directory in transport if it doesn't exist.
+
+        We use "Easier to ask for Permission". And just create it, and ignore
+        if the directory already exists.
+        """
+        try:
+            transport.mkdir('.')
+        except errors.FileExists:
+            pass
 
     # TODO: Should take a Transport
     @classmethod
@@ -756,9 +782,10 @@ class BzrDir(object):
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
         """
-        self._make_tail(url)
+        target_transport = get_transport(url)
+        self._make_tail_on_transport(target_transport)
         cloning_format = self.cloning_metadir()
-        result = cloning_format.initialize(url)
+        result = cloning_format.initialize_on_transport(target_transport)
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository

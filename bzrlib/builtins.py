@@ -709,7 +709,6 @@ class cmd_push(Command):
                 location = stored_loc
 
         to_transport = transport.get_transport(location)
-        location_url = to_transport.base
 
         br_to = repository_to = dir_to = None
         try:
@@ -777,7 +776,7 @@ class cmd_push(Command):
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
             # all of the dependent branches, etc.
-            dir_to = br_from.bzrdir.clone(location_url,
+            dir_to = br_from.bzrdir.clone_on_transport(to_transport,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             # TODO: Some more useful message about what was copied
