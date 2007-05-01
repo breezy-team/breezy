@@ -19,6 +19,8 @@
 import os
 
 from bzrlib import transform
+from bzrlib.osutils import has_symlinks
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 # tests to write:
@@ -137,6 +139,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
+        if not has_symlinks():
+            raise TestSkipped('No symlink support')
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         ids = ['file1', 'file2', 'dir1', 'dir2']
@@ -188,6 +192,43 @@ class TestWalkdirs(TestCaseWithWorkingTree):
               ]
              ),
              (('link2', None),
+              [
+              ]
+             ),
+            ]
+        tree.lock_read()
+        result = list(tree.walkdirs())
+        tree.unlock()
+        # check each return value for debugging ease.
+        for pos, item in enumerate(expected_dirblocks):
+            self.assertEqual(item, result[pos])
+        self.assertEqual(len(expected_dirblocks), len(result))
+
+    def test_walkdirs_type_changes_wo_symlinks(self):
+        # similar to test_walkdirs_type_changes
+        # but don't use symlinks for safe testing on win32
+        tree = self.make_branch_and_tree('.')
+        paths = ['file1', 'dir1/']
+        ids = ['file1', 'dir1']
+        self.build_tree(paths)
+        tree.add(paths, ids)
+        tree.bzrdir.root_transport.delete_tree('dir1')
+        tree.bzrdir.root_transport.delete('file1')
+        changed_paths = ['dir1', 'file1/']
+        self.build_tree(changed_paths)
+        dir1_stat = os.lstat('dir1')
+        file1_stat = os.lstat('file1')
+        expected_dirblocks = [
+             (('', tree.path2id('')),
+              [('dir1', 'dir1', 'file', dir1_stat, 'dir1', 'directory'),
+               ('file1', 'file1', 'directory', file1_stat, 'file1', 'file'),
+              ]
+             ),
+             (('dir1', 'dir1'),
+              [
+              ]
+             ),
+             (('file1', None),
               [
               ]
              ),

@@ -50,6 +50,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    local,
     register_urlparse_netloc_protocol,
     Server,
     split_url,
@@ -1068,7 +1069,13 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
     
-    def setUp(self):
+    def setUp(self, backing_server=None):
+        # XXX: TODO: make sftpserver back onto backing_server rather than local
+        # disk.
+        assert (backing_server is None or
+                isinstance(backing_server, local.LocalURLServer)), (
+            "backing_server should not be %r, because this can only serve the "
+            "local current working directory." % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
@@ -1148,7 +1155,13 @@ class SFTPServerWithoutSSH(SFTPServer):
             else:
                 raise
         except Exception, e:
-            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
+            # This typically seems to happen during interpreter shutdown, so
+            # most of the useful ways to report this error are won't work.
+            # Writing the exception type, and then the text of the exception,
+            # seems to be the best we can do.
+            import sys
+            sys.stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
+            sys.stderr.write('%s\n\n' % (e,))
         server.finish_subsystem()
 
 
@@ -1173,11 +1186,14 @@ class SFTPHomeDirServer(SFTPServerWithoutSSH):
 
 
 class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
-    """A test servere for sftp transports, using absolute urls to non-home."""
+    """A test server for sftp transports where only absolute paths will work.
 
-    def setUp(self):
+    It does this by serving from a deeply-nested directory that doesn't exist.
+    """
+
+    def setUp(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
-        super(SFTPSiblingAbsoluteServer, self).setUp()
+        super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
 
 
 def _sftp_connect(host, port, username, password):

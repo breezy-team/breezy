@@ -17,8 +17,12 @@
 """Blackbox tests for -D debug options"""
 
 import os
+import signal
+import subprocess
+import sys
+import time
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 class TestDebugOption(TestCase):
 

@@ -73,7 +73,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % branch1.bzrdir.root_transport.base, out)
@@ -118,7 +118,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch2.bzrdir.root_transport.base,
@@ -172,7 +172,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch3.bzrdir.root_transport.base,
@@ -224,7 +224,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch4.bzrdir.root_transport.base,
@@ -270,7 +270,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          0 KiB
 """ % (tree5.bzrdir.root_transport.base,
@@ -319,7 +319,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          0 KiB
 """ % (branch2.bzrdir.root_transport.base,
@@ -364,7 +364,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch3.bzrdir.root_transport.base,
@@ -411,7 +411,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (branch4.bzrdir.root_transport.base,
@@ -458,7 +458,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          0 KiB
 """ % (tree5.bzrdir.root_transport.base,
@@ -486,7 +486,7 @@ Format:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (branch.bzrdir.root_transport.base,
@@ -512,7 +512,7 @@ Format:
        control: Meta directory format 1
     repository: %s
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -539,7 +539,7 @@ Format:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -599,7 +599,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
@@ -642,7 +642,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
@@ -686,7 +686,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
@@ -736,7 +736,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
@@ -770,7 +770,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -794,7 +794,7 @@ Format:
        control: Meta directory format 1
     repository: %s
 
-Revision store:
+Repository:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -824,7 +824,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -866,7 +866,7 @@ Branch history:
          0 revisions
          0 committers
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -911,7 +911,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -955,7 +955,7 @@ Branch history:
          0 revisions
          0 committers
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1003,7 +1003,7 @@ Branch history:
    first revision: %s
   latest revision: %s
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1030,7 +1030,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1061,7 +1061,7 @@ Format:
 
 Create working tree for new branches inside the repository.
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1099,7 +1099,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
@@ -1134,6 +1134,13 @@ Revision store:
         :param repo_locked: If true, expect the repository to be locked.
         :param verbose: If true, expect verbose output
         """
+        if tree_locked and sys.platform == 'win32':
+            # We expect this to fail because of locking errors. (A write-locked
+            # file cannot be read-locked in the same process).
+            # This should be removed when the locking errors are fixed.
+            args = command_string.split(' ')
+            self.run_bzr_error([], 'info', *args)
+            return
         out, err = self.runbzr('info %s' % command_string)
         description = {
             (True, True): 'Lightweight checkout',
@@ -1208,7 +1215,7 @@ In the working tree:
 Branch history:
          0 revisions
 %s
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ %  (description,
@@ -1322,6 +1329,10 @@ Revision store:
             lco_tree.branch.repository.lock_write()
             lco_tree.branch.unlock()
 
+        if sys.platform == 'win32':
+            self.knownFailure('Win32 cannot run "bzr info"'
+                              ' when the tree is locked.')
+
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
             raise TestSkipped("don't use oslocks on win32 in unix manner")
@@ -1361,7 +1372,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree.bzrdir.root_transport.base,
@@ -1395,7 +1406,7 @@ In the working tree:
 Branch history:
          0 revisions
 
-Revision store:
+Repository:
          0 revisions
          0 KiB
 """ % (tree.bzrdir.root_transport.base,

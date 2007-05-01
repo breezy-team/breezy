@@ -102,11 +102,11 @@ class BzrError(StandardError):
                     return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
+            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
-                   str(e))
+                   e)
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -154,9 +154,9 @@ class BzrNewError(BzrError):
                 return s.encode('utf8')
             return s
         except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %s' \
+            return 'Unprintable exception %s(%r): %r' \
                 % (self.__class__.__name__,
-                   self.__dict__, str(e))
+                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -173,6 +173,17 @@ class BzrCheckError(BzrError):
     def __init__(self, message):
         BzrError.__init__(self)
         self.message = message
+
+
+class DisabledMethod(BzrError):
+
+    _fmt = "The smart server method '%(class_name)s' is disabled."
+
+    internal_error = True
+
+    def __init__(self, class_name):
+        BzrError.__init__(self)
+        self.class_name = class_name
 
 
 class InvalidEntryName(BzrError):
@@ -211,6 +222,16 @@ class ReservedId(BzrError):
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
+
+
+class NoHelpTopic(BzrError):
+
+    _fmt = ("No help could be found for '%(topic)s'. "
+        "Please use 'bzr help topics' to obtain a list of topics.")
+
+    def __init__(self, topic):
+        self.topic = topic
+
 
 class NoSuchId(BzrError):
 
@@ -531,8 +552,8 @@ class FileInWrongBranch(BzrError):
 
 
 class UnsupportedFormatError(BzrError):
-    
-    _fmt = "Unsupported branch format: %(format)s"
+
+    _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
 
 
 class UnknownFormatError(BzrError):
@@ -548,6 +569,15 @@ class IncompatibleFormat(BzrError):
         BzrError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class IncompatibleRepositories(BzrError):
+
+    _fmt = "Repository %(target)s is not compatible with repository"\
+        " %(source)s"
+
+    def __init__(self, source, target):
+        BzrError.__init__(self, target=target, source=source)
 
 
 class IncompatibleRevision(BzrError):
@@ -787,6 +817,27 @@ class LockNotHeld(LockError):
 
     def __init__(self, lock):
         self.lock = lock
+
+
+class TokenLockingNotSupported(LockError):
+
+    _fmt = "The object %(obj)s does not support token specifying a token when locking."
+
+    internal_error = True
+
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class TokenMismatch(LockBroken):
+
+    _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
+
+    internal_error = True
+
+    def __init__(self, given_token, lock_token):
+        self.given_token = given_token
+        self.lock_token = lock_token
 
 
 class PointlessCommit(BzrError):
@@ -1196,7 +1247,7 @@ class TooManyConcurrentRequests(BzrError):
 
     _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
             " Be sure to finish_writing and finish_reading on the"
-            " current request that is open.")
+            " currently open request.")
 
     internal_error = True
 
@@ -1284,6 +1335,59 @@ class InvalidHttpContentType(InvalidHttpResponse):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
 
+
+class RedirectRequested(TransportError):
+
+    _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
+
+    def __init__(self, source, target, is_permament=False, qual_proto=None):
+        self.source = source
+        self.target = target
+        if is_permament:
+            self.permanently = ' permanently'
+        else:
+            self.permanently = ''
+        self.is_permament = is_permament
+        self._qualified_proto = qual_proto
+        TransportError.__init__(self)
+
+    def _requalify_url(self, url):
+        """Restore the qualified proto in front of the url"""
+        # When this exception is raised, source and target are in
+        # user readable format. But some transports may use a
+        # different proto (http+urllib:// will present http:// to
+        # the user. If a qualified proto is specified, the code
+        # trapping the exception can get the qualified urls to
+        # properly handle the redirection themself (creating a
+        # new transport object from the target url for example).
+        # But checking that the scheme of the original and
+        # redirected urls are the same can be tricky. (see the
+        # FIXME in BzrDir.open_from_transport for the unique use
+        # case so far).
+        if self._qualified_proto is None:
+            return url
+
+        # The TODO related to NotBranchError mention that doing
+        # that kind of manipulation on the urls may not be the
+        # exception object job. On the other hand, this object is
+        # the interface between the code and the user so
+        # presenting the urls in different ways is indeed its
+        # job...
+        import urlparse
+        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
+        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
+                                   query, fragment))
+
+    def get_source_url(self):
+        return self._requalify_url(self.source)
+
+    def get_target_url(self):
+        return self._requalify_url(self.target)
+
+
+class TooManyRedirections(TransportError):
+
+    _fmt = "Too many redirections"
 
 class ConflictsInTree(BzrError):
 
@@ -1436,6 +1540,14 @@ class DuplicateKey(BzrError):
     _fmt = "Key %(key)s is already present in map"
 
 
+class DuplicateHelpPrefix(BzrError):
+
+    _fmt = "The prefix %(prefix)s is in the help search path twice."
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+
 class MalformedTransform(BzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
@@ -1520,6 +1632,18 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
+class BzrRemoveChangedFilesError(BzrError):
+    """Used when user is trying to remove changed files."""
+
+    _fmt = ("Can't remove changed or unknown files:\n%(changes_as_text)s"
+        "Use --keep to not delete them, or --force to delete them regardless.")
+
+    def __init__(self, tree_delta):
+        BzrError.__init__(self)
+        self.changes_as_text = tree_delta.get_changes_as_text()
+        #self.paths_as_string = '\n'.join(changed_files)
+        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -1961,7 +2085,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use bzr upgrade --dirstate-tags.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -1973,3 +2097,30 @@ class TagAlreadyExists(BzrError):
 
     def __init__(self, tag_name):
         self.tag_name = tag_name
+
+
+class MalformedBugIdentifier(BzrError):
+
+    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+
+    def __init__(self, bug_id, reason):
+        self.bug_id = bug_id
+        self.reason = reason
+
+
+class UnknownBugTrackerAbbreviation(BzrError):
+
+    _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
+            "on %(branch)s")
+
+    def __init__(self, abbreviation, branch):
+        self.abbreviation = abbreviation
+        self.branch = branch
+
+
+class UnexpectedSmartServerResponse(BzrError):
+
+    _fmt = "Could not understand response from smart server: %(response_tuple)r"
+
+    def __init__(self, response_tuple):
+        self.response_tuple = response_tuple

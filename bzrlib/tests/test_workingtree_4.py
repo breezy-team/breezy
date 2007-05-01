@@ -23,6 +23,8 @@ from bzrlib import (
     bzrdir,
     dirstate,
     errors,
+    inventory,
+    osutils,
     workingtree_4,
     )
 from bzrlib.lockdir import LockDir
@@ -464,6 +466,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         wt.commit('again')
         validate()
 
+    def test_default_root_id(self):
+        tree = self.make_branch_and_tree('tag', format='dirstate-tags')
+        self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
+        tree = self.make_branch_and_tree('subtree',
+                                         format='dirstate-with-subtree')
+        self.assertNotEqual(inventory.ROOT_ID, tree.get_root_id())
+
     def test_non_subtree_with_nested_trees(self):
         # prior to dirstate, st/diff/commit ignored nested trees.
         # dirstate, as opposed to dirstate-with-subtree, should
@@ -515,3 +524,53 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # having checked this is on, the tree interface, and intertree
         # interface tests, will proceed to test the subtree support of
         # workingtree_4.
+
+    def test_iter_changes_ignores_unversioned_dirs(self):
+        """_iter_changes should not descend into unversioned directories."""
+        tree = self.make_branch_and_tree('.', format='dirstate')
+        # We have an unversioned directory at the root, a versioned one with
+        # other versioned files and an unversioned directory, and another
+        # versioned dir with nothing but an unversioned directory.
+        self.build_tree(['unversioned/',
+                         'unversioned/a',
+                         'unversioned/b/',
+                         'versioned/',
+                         'versioned/unversioned/',
+                         'versioned/unversioned/a',
+                         'versioned/unversioned/b/',
+                         'versioned2/',
+                         'versioned2/a',
+                         'versioned2/unversioned/',
+                         'versioned2/unversioned/a',
+                         'versioned2/unversioned/b/',
+                        ])
+        tree.add(['versioned', 'versioned2', 'versioned2/a'])
+        tree.commit('one', rev_id='rev-1')
+        # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
+        returned = []
+        orig_walkdirs = osutils._walkdirs_utf8
+        def reset():
+            osutils._walkdirs_utf8 = orig_walkdirs
+        self.addCleanup(reset)
+        def walkdirs_spy(*args, **kwargs):
+            for val in orig_walkdirs(*args, **kwargs):
+                returned.append(val[0][0])
+                yield val
+        osutils._walkdirs_utf8 = walkdirs_spy
+
+        basis = tree.basis_tree()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        changes = [c[1] for c in
+                   tree._iter_changes(basis, want_unversioned=True)]
+        self.assertEqual([(None, 'unversioned'),
+                          (None, 'versioned/unversioned'),
+                          (None, 'versioned2/unversioned'),
+                         ], changes)
+        self.assertEqual(['', 'versioned', 'versioned2'], returned)
+        del returned[:] # reset
+        changes = [c[1] for c in tree._iter_changes(basis)]
+        self.assertEqual([], changes)
+        self.assertEqual(['', 'versioned', 'versioned2'], returned)

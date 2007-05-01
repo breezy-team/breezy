@@ -33,3 +33,4 @@ build
 ./.perf_history
 ./html_docs
 ./pretty_docs
+./api

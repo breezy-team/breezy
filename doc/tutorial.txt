@@ -122,12 +122,12 @@ guess that Bazaar makes, then three options exist:
 
     To set a global identity, use::
  
-    % bzr whoami 'Your Name <email@example.com>'
+    % bzr whoami "Your Name <email@example.com>"
  
     If you'd like to use a different address for a specific branch, enter
     the branch folder and use::
  
-    % bzr whoami --branch 'Your Name <email@example.com>'
+    % bzr whoami --branch "Your Name <email@example.com>"
  
  #. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by adding the following lines.
     Please note that  ``[DEFAULT]`` is case sensitive::

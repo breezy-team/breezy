@@ -606,12 +606,18 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
     
-def format_date(t, offset=0, timezone='original', date_fmt=None, 
+def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
-    ## TODO: Perhaps a global option to use either universal or local time?
-    ## Or perhaps just let people set $TZ?
-    assert isinstance(t, float)
-    
+    """Return a formatted date string.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    :param timezone: How to display the time: 'utc', 'original' for the
+         timezone specified by offset, or 'local' for the process's current
+         timezone.
+    :param show_offset: Whether to append the timezone.
+    :param date_fmt: strftime format.
+    """
     if timezone == 'utc':
         tt = time.gmtime(t)
         offset = 0

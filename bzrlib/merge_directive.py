@@ -28,7 +28,9 @@ from bzrlib import (
     testament,
     timestamp,
     )
-from bzrlib.bundle import serializer as bundle_serializer
+from bzrlib.bundle import (
+    serializer as bundle_serializer,
+    )
 
 
 class MergeDirective(object):
@@ -93,7 +95,10 @@ class MergeDirective(object):
             if line.startswith('# ' + klass._format_string):
                 break
         else:
-            raise errors.NotAMergeDirective(lines[0])
+            if len(lines) > 0:
+                raise errors.NotAMergeDirective(lines[0])
+            else:
+                raise errors.NotAMergeDirective('')
         stanza = rio.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
@@ -247,3 +252,16 @@ class MergeDirective(object):
         bundle_serializer.write_bundle(repository, revision_id,
                                        ancestor_id, s)
         return s.getvalue()
+
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
+        if not target_repo.has_revision(self.revision_id):
+            if self.patch_type == 'bundle':
+                info = bundle_serializer.read_bundle(StringIO(self.patch))
+                # We don't use the bundle's target revision, because
+                # MergeDirective.revision_id is authoritative.
+                info.install_revisions(target_repo)
+            else:
+                source_branch = _mod_branch.Branch.open(self.source_branch)
+                target_repo.fetch(source_branch.repository, self.revision_id)
+        return self.revision_id

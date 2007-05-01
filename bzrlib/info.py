@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -257,7 +257,7 @@ def _show_repository_stats(stats):
     """Show statistics about a repository."""
     if 'revisions' in stats or 'size' in stats:
         print
-        print 'Revision store:'
+        print 'Repository:'
     if 'revisions' in stats:
         revisions = stats['revisions']
         print '  %8d revision%s' % (revisions, plural(revisions))
@@ -268,7 +268,8 @@ def _show_repository_stats(stats):
 def show_bzrdir_info(a_bzrdir, verbose=False):
     """Output to stdout the 'info' for a_bzrdir."""
     try:
-        tree = a_bzrdir.open_workingtree()
+        tree = a_bzrdir.open_workingtree(
+            recommend_upgrade=False)
     except (NoWorkingTree, NotLocalUrl):
         tree = None
         try:

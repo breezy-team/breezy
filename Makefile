@@ -1,6 +1,31 @@
-all:
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-check:
+# A relatively simple Makefile to assist in building parts of bzr. Mostly for
+# building documentation, etc.
+
+.PHONY: all clean extensions pyflakes api-docs
+
+all: extensions
+
+extensions:
+	@echo "building extension modules."
+	python setup.py build_ext -i
+
+check: extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
@@ -19,11 +44,17 @@ pyflakes-nounused:
 	pyflakes bzrlib | grep -v ' imported but unused'
 
 clean:
-	./setup.py clean
+	python setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp
 
-.PHONY: all
+docfiles = bzr bzrlib
+api-docs:
+	mkdir -p api/html
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --html -o api/html --docformat 'restructuredtext en' $(docfiles)
+
+check-api-docs:
+	PYTHONPATH=$(PWD) python tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
 
 
 # build emacs cross-reference
@@ -52,31 +83,42 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
-doc/%.htm: doc/%.txt
+doc/HACKING.htm: HACKING
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css HACKING doc/HACKING.htm
+
+doc/%.htm: doc/%.txt 
 	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
 
 $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
 	$(PRETTYDIR)/$*.htm
 
-doc/bzr_man.txt: bzrlib/builtins.py \
+MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
 		 bzrlib/sign_my_commits.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
 		 tools/doc_generate/autodoc_rstx.py
-	python generate_docs.py -o doc/bzr_man.txt rstx
 
-docs: $(htm_files)
+doc/bzr_man.txt: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ rstx
+
+MAN_PAGES = man1/bzr.1
+man1/bzr.1: $(MAN_DEPENDENCIES)
+	python generate_docs.py -o $@ man
+
+docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
 
 copy-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir $(htm_files) \
+		doc/default.css doc/HACKING.htm NEWS README \
+		win32_bzr.exe/doc
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove doc/bzr_man.txt $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR)
+	python tools/win32/ostools.py remove $(htm_files) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt $(MAN_PAGES)
 
 
 # make bzr.exe for win32 with py2exe

@@ -33,7 +33,7 @@ from bzrlib.errors import (
         LockContention, LockError, UnlockableTransport,
         LockNotHeld, LockBroken
         )
-from bzrlib.lockdir import LockDir, _DEFAULT_TIMEOUT_SECONDS
+from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import note
 
@@ -286,6 +286,9 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_34_lock_write_waits(self):
         """LockDir.lock_write() will wait for the lock.""" 
+        # the test suite sets the default to 0 to make deadlocks fail fast.
+        # change it for this test, as we want to try a manual deadlock.
+        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 300
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()

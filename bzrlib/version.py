@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,12 @@ import os
 import sys
 
 import bzrlib
-from bzrlib import config, errors, osutils
+from bzrlib import (
+    bzrdir,
+    config,
+    errors,
+    osutils,
+    )
 from bzrlib.branch import Branch
 
 
@@ -61,8 +66,8 @@ def _get_bzr_source_tree():
     If bzr is not being run from its working tree, returns None.
     """
     try:
-        from bzrlib.workingtree import WorkingTree
-        return WorkingTree.open_containing(__file__)[0]
+        control = bzrdir.BzrDir.open_containing(__file__)[0]
+        return control.open_workingtree(recommend_upgrade=False)
     except (errors.NotBranchError, errors.UnknownFormatError,
             errors.NoWorkingTree):
         return None

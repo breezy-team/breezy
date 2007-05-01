@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,30 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.branch import Branch
+"""Monkey patch to make epydoc work with bzrlib's lazy imports."""
 
-# TODO: perhaps doc_generate should be moved into bzrlib instead?
+import epydoc.uid
 
-class TestDocGenerate(TestCaseInTempDir):
+import bzrlib.lazy_import
 
-    def test_generate_manpage(self):
-        """Simple smoke test for doc_generate"""
-        try:
-            import tools.doc_generate
-        except ImportError, e:
-            raise TestSkipped("can't load doc_generate: %s" % e)
-        infogen_mod = tools.doc_generate.get_module("man")
+
+_ObjectUID = epydoc.uid.ObjectUID
+_ScopeReplacer = bzrlib.lazy_import.ScopeReplacer
+
+
+class ObjectUID(_ObjectUID):
+
+    def __init__(self, obj):
+        if isinstance(obj, _ScopeReplacer):
+            # The isinstance will trigger a replacement if it is a real
+            # _BzrScopeReplacer, but the local object won't know about it, so
+            # replace it locally.
+            obj = object.__getattribute__(obj, '_real_obj')
+        _ObjectUID.__init__(self, obj)
+
+
+epydoc.uid.ObjectUID = ObjectUID
+
+
+_ScopeReplacer._should_proxy = True
+

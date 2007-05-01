@@ -29,7 +29,6 @@ from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
@@ -136,14 +135,24 @@ class BundleSerializerV08(BundleSerializer):
         f.write('0.8\n')
         f.write('#\n')
 
-    def _write(self, key, value, indent=1):
-        """Write out meta information, with proper indenting, etc"""
+    def _write(self, key, value, indent=1, trailing_space_when_empty=False):
+        """Write out meta information, with proper indenting, etc.
+
+        :param trailing_space_when_empty: To work around a bug in earlier
+            bundle readers, when writing an empty property, we use "prop: \n"
+            rather than writing "prop:\n".
+            If this parameter is True, and value is the empty string, we will
+            write an extra space.
+        """
         assert indent > 0, 'indentation must be greater than 0'
         f = self.to_file
         f.write('#' + (' ' * indent))
         f.write(key.encode('utf-8'))
         if not value:
-            f.write(':\n')
+            if trailing_space_when_empty and value == '':
+                f.write(': \n')
+            else:
+                f.write(':\n')
         elif isinstance(value, str):
             f.write(': ')
             f.write(value)
@@ -226,8 +235,9 @@ class BundleSerializerV08(BundleSerializer):
             w('base id', base_rev)
         if rev.properties:
             self._write('properties', None, indent=1)
-            for name, value in rev.properties.items():
-                self._write(name, value, indent=3)
+            for name, value in sorted(rev.properties.items()):
+                self._write(name, value, indent=3,
+                            trailing_space_when_empty=True)
         
         # Add an extra blank space at the end
         self.to_file.write('\n')
@@ -528,7 +538,6 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
-
 
 class BundleInfo08(BundleInfo):
 

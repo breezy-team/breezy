@@ -25,6 +25,7 @@ from StringIO import StringIO
 import sys
 import zipfile
 
+from bzrlib import plugin, tests
 import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
@@ -160,17 +161,15 @@ class TestPluginHelp(TestCaseInTempDir):
         for cmd_name in bzrlib.commands.builtin_command_names():
             if cmd_name in bzrlib.commands.plugin_command_names():
                 continue
-            help = StringIO()
             try:
-                bzrlib.help.help_on_command(cmd_name, help)
+                help = bzrlib.commands.get_cmd_object(cmd_name).get_help_text()
             except NotImplementedError:
                 # some commands have no help
                 pass
             else:
-                help.seek(0)
-                self.assertNotContainsRe(help.read(), 'From plugin "[^"]*"')
+                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
 
-            if help in help_commands.keys():
+            if cmd_name in help_commands.keys():
                 # some commands are hidden
                 help = help_commands[cmd_name]
                 self.assertNotContainsRe(help, 'From plugin "[^"]*"')
@@ -238,3 +237,109 @@ class TestSetPluginsPath(TestCase):
             self.assertEqual(expected_path, bzrlib.plugins.__path__)
         finally:
             bzrlib.plugins.__path__ = old_path
+
+
+class TestHelpIndex(tests.TestCase):
+    """Tests for the PluginsHelpIndex class."""
+
+    def test_default_constructable(self):
+        index = plugin.PluginsHelpIndex()
+
+    def test_get_topics_None(self):
+        """Searching for None returns an empty list."""
+        index = plugin.PluginsHelpIndex()
+        self.assertEqual([], index.get_topics(None))
+
+    def test_get_topics_launchpad(self):
+        """Searching for 'launchpad' returns the launchpad plugin docstring."""
+        index = plugin.PluginsHelpIndex()
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
+        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
+        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        try:
+            topics = index.get_topics('get_topics')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.get_topics']
+
+    def test_get_topics_no_topic(self):
+        """Searching for something that is not a plugin returns []."""
+        # test this by using a name that cannot be a plugin - its not
+        # a valid python identifier.
+        index = plugin.PluginsHelpIndex()
+        self.assertEqual([], index.get_topics('nothing by this name'))
+
+    def test_prefix(self):
+        """PluginsHelpIndex has a prefix of 'plugins/'."""
+        index = plugin.PluginsHelpIndex()
+        self.assertEqual('plugins/', index.prefix)
+
+    def test_get_topic_with_prefix(self):
+        """Searching for plugins/launchpad returns launchpad module help."""
+        index = plugin.PluginsHelpIndex()
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
+        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
+        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        try:
+            topics = index.get_topics('plugins/get_topics')
+            self.assertEqual(1, len(topics))
+            self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
+            self.assertEqual(demo_module, topics[0].module)
+        finally:
+            del sys.modules['bzrlib.plugins.get_topics']
+
+
+class FakeModule(object):
+    """A fake module to test with."""
+
+    def __init__(self, doc, name):
+        self.__doc__ = doc
+        self.__name__ = name
+
+
+class TestModuleHelpTopic(tests.TestCase):
+    """Tests for the ModuleHelpTopic class."""
+
+    def test_contruct(self):
+        """Construction takes the module to document."""
+        mod = FakeModule('foo', 'foo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual(mod, topic.module)
+
+    def test_get_help_text_None(self):
+        """A ModuleHelpTopic returns the docstring for get_help_text."""
+        mod = FakeModule(None, 'demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual("Plugin 'demo' has no docstring.\n",
+            topic.get_help_text())
+
+    def test_get_help_text_no_carriage_return(self):
+        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        mod = FakeModule('one line of help', 'demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual("one line of help\n",
+            topic.get_help_text())
+
+    def test_get_help_text_carriage_return(self):
+        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        mod = FakeModule('two lines of help\nand more\n', 'demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual("two lines of help\nand more\n",
+            topic.get_help_text())
+
+    def test_get_help_text_with_additional_see_also(self):
+        mod = FakeModule('two lines of help\nand more', 'demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual("two lines of help\nand more\nSee also: bar, foo\n",
+            topic.get_help_text(['foo', 'bar']))
+
+    def test_get_help_topic(self):
+        """The help topic for a plugin is its module name."""
+        mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.demo')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual('demo', topic.get_help_topic())
+        mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.foo_bar')
+        topic = plugin.ModuleHelpTopic(mod)
+        self.assertEqual('foo_bar', topic.get_help_topic())

@@ -434,7 +434,7 @@ class OldTests(ExternalBase):
         runbzr("help slartibartfast", 3)
 
         out = capture("help ci")
-        out.index('aliases: ')
+        out.index('aliases: ci, checkin\n')
 
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
@@ -522,13 +522,13 @@ class OldTests(ExternalBase):
             self.assertEquals(self.capture("relpath d2/link1"), "d2/link1\n")
             runbzr(['commit', '-m', '4: retarget of two links'])
     
-            runbzr('remove d2/link1')
+            runbzr('remove --keep d2/link1')
             self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
             runbzr(['commit', '-m', '5: remove d2/link1'])
             # try with the rm alias
             runbzr('add d2/link1')
             runbzr(['commit', '-m', '6: add d2/link1'])
-            runbzr('rm d2/link1')
+            runbzr('rm --keep d2/link1')
             self.assertEquals(self.capture('unknowns'), 'd2/link1\n')
             runbzr(['commit', '-m', '7: remove d2/link1'])
     

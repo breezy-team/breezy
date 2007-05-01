@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import tests
+from bzrlib.smart import protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
 
@@ -71,7 +72,7 @@ class TestWSGI(tests.TestCase):
     def test_construct(self):
         app = wsgi.SmartWSGIApp(FakeTransport())
         self.assertIsInstance(
-            app.backing_transport, chroot.ChrootTransportDecorator)
+            app.backing_transport, chroot.ChrootTransport)
 
     def test_http_get_rejected(self):
         # GET requests are rejected.
@@ -82,17 +83,20 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('405 Method not allowed', self.status)
         self.assertTrue(('Allow', 'POST') in self.headers)
         
+    def _fake_make_request(self, transport, write_func, bytes):
+        request = FakeRequest(transport, write_func)
+        request.accept_bytes(bytes)
+        self.request = request
+        return request
+    
     def test_smart_wsgi_app_uses_given_relpath(self):
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
-        # WSGI environ to construct the transport for this request, by cloning
-        # its base transport with the given relpath.
+        # WSGI environ to clone from its backing transport to get a specific
+        # transport for this request.
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        def make_request(transport, write_func):
-            request = FakeRequest(transport, write_func)
-            self.request = request
-            return request
-        wsgi_app.make_request = make_request
+        wsgi_app.backing_transport = transport
+        wsgi_app.make_request = self._fake_make_request
         fake_input = StringIO('fake request')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
@@ -111,11 +115,7 @@ class TestWSGI(tests.TestCase):
         transport = memory.MemoryTransport()
         transport.put_bytes('foo', 'some bytes')
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        def make_request(transport, write_func):
-            request = FakeRequest(transport, write_func)
-            self.request = request
-            return request
-        wsgi_app.make_request = make_request
+        wsgi_app.make_request = self._fake_make_request
         fake_input = StringIO('fake request')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
@@ -175,15 +175,19 @@ class TestWSGI(tests.TestCase):
             path_var='a path_var')
         self.assertIsInstance(app, wsgi.RelpathSetter)
         self.assertIsInstance(app.app, wsgi.SmartWSGIApp)
-        self.assertEndsWith(app.app.backing_transport.base, 'a%20root/')
+        self.assertStartsWith(app.app.backing_transport.base, 'chroot-')
+        backing_transport = app.app.backing_transport
+        chroot_backing_transport = backing_transport.server.backing_transport
+        self.assertEndsWith(chroot_backing_transport.base, 'a%20root/')
         self.assertEqual(app.prefix, 'a prefix')
         self.assertEqual(app.path_var, 'a path_var')
 
     def test_incomplete_request(self):
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        def make_request(transport, write_func):
+        def make_request(transport, write_func, bytes):
             request = IncompleteRequest(transport, write_func)
+            request.accept_bytes(bytes)
             self.request = request
             return request
         wsgi_app.make_request = make_request
@@ -200,28 +204,42 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('200 OK', self.status)
         self.assertEqual('error\x01incomplete request\n', response)
 
-    def test_chrooting(self):
-        # Show that requests that try to access things outside of the base
-        # really will get intercepted by the ChrootTransportDecorator.
+    def test_protocol_version_detection_one(self):
+        # SmartWSGIApp detects requests that don't start with
+        # REQUEST_VERSION_TWO as version one.
         transport = memory.MemoryTransport()
-        transport.mkdir('foo')
-        transport.put_bytes('foo/bar', 'this is foo/bar')
-        wsgi_app = wsgi.SmartWSGIApp(transport.clone('foo'))
-
-        smart_request = StringIO('mkdir\x01/bad file\x01\n0\ndone\n')
+        wsgi_app = wsgi.SmartWSGIApp(transport)
+        fake_input = StringIO('hello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
-            'CONTENT_LENGTH': len(smart_request.getvalue()),
-            'wsgi.input': smart_request,
-            'bzrlib.relpath': '.',
+            'CONTENT_LENGTH': len(fake_input.getvalue()),
+            'wsgi.input': fake_input,
+            'bzrlib.relpath': 'foo',
         })
         iterable = wsgi_app(environ, self.start_response)
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
+        # Expect a version 1-encoded response.
+        self.assertEqual('ok\x012\n', response)
+
+    def test_protocol_version_detection_two(self):
+        # SmartWSGIApp detects requests that start with REQUEST_VERSION_TWO
+        # as version two.
+        transport = memory.MemoryTransport()
+        wsgi_app = wsgi.SmartWSGIApp(transport)
+        fake_input = StringIO(protocol.REQUEST_VERSION_TWO + 'hello\n')
+        environ = self.build_environ({
+            'REQUEST_METHOD': 'POST',
+            'CONTENT_LENGTH': len(fake_input.getvalue()),
+            'wsgi.input': fake_input,
+            'bzrlib.relpath': 'foo',
+        })
+        iterable = wsgi_app(environ, self.start_response)
+        response = self.read_response(iterable)
+        self.assertEqual('200 OK', self.status)
+        # Expect a version 2-encoded response.
         self.assertEqual(
-            "error\x01Path '/bad file' is not a child of "
-            "path 'memory:///foo/'\n",
-            response)
+            protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n', response)
 
 
 class FakeRequest(object):
