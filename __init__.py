@@ -107,7 +107,7 @@ class GitDir(bzrlib.bzrdir.BzrDir):
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
-        return GitRepository(self._gitrepo, self, self._lockfiles)
+        return GitRepository(self, self._lockfiles)
 
     def open_workingtree(self):
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
@@ -130,9 +130,7 @@ class GitBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        if url.startswith('file://'):
-            url = url[len('file://'):]
-        url = url.encode('utf8')
+        path = urlutils.local_path_from_url(url)
         if not transport.has('.git'):
             raise errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
@@ -142,10 +140,7 @@ class GitBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in '.not/'."""
         # little ugly, but works
-        format = klass() 
-        # try a manual probe first, its a little faster perhaps ?
-        if transport.has('.git'):
-            return format
+        format = klass()
         # delegate to the main opening code. This pays a double rtt cost at the
         # moment, so perhaps we want probe_transport to return the opened thing
         # rather than an openener ? or we could return a curried thing with the
