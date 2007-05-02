@@ -434,6 +434,50 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
   __ http://docs.python.org/lib/module-doctest.html
 
 
+
+Skipping tests and test requirements
+------------------------------------
+
+In our enhancements to unittest we allow for some addition results beyond
+just success or failure.
+
+If a test can't be run, it can say that it's skipped.  This is typically
+used in parameterized tests - for example if a transport doesn't support
+setting permissions, we'll skip the tests that relating to that.  Skipped
+tests are appropriate when there's just no possibility that the test will
+ever run in this situation, and nothing either developers or users can do
+about it.  ::
+
+    try:
+        return self.branch_format.initialize(repo.bzrdir)
+    except errors.UninitializableFormat:
+        raise tests.TestSkipped('Uninitializable branch format')
+
+A subtly different case is a test that should run, but can't run in the
+current environment.  This covers tests that can only run in particular
+operating systems or locales, or that depend on external libraries.  Here
+we want to inform the user that they didn't get full test coverage, but
+they possibly could if they installed more libraries.  These are expressed
+as a dependency on a feature so we can summarise them, and so that the
+test for the feature is done only once.  (For historical reasons, as of
+May 2007 many cases that should depend on features currently raise
+TestSkipped.)  The typical use is::
+
+    class TestStrace(TestCaseWithTransport):
+
+        _test_needs_features = [StraceFeature]
+
+which means all tests in this class need the feature.  The feature itself
+should provide a ``_probe`` method which is called once to determine if
+it's available.
+
+Known failures are when a test exists but we know it currently doesn't
+work, allowing the test suite to still pass.  These should be used with
+care, we don't want a proliferation of quietly broken tests.  It might be
+appropriate to use them if you've committed a test for a bug but not the
+fix for it, or if something works on Unix but not on Windows.
+
+
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
