@@ -336,10 +336,24 @@ class TestBzrDirFormat(TestCaseWithTransport):
             format=format)
         tree.bzrdir.open_repository()
 
+    def test_create_branch_convenience_mising_parameter(self):
+        # at least one of base or transport should be provided
+        self.assertRaises(AssertionError,
+                          bzrdir.BzrDir.create_branch_convenience)
+
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('.', format=format)
+        branch.bzrdir.open_workingtree()
+        branch.bzrdir.open_repository()
+
+    def test_create_branch_convenience_with_transport(self):
+        t = get_transport(self.get_url())
+        # outside a repo the default convenience output is a repo+branch_tree
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        branch = bzrdir.BzrDir.create_branch_convenience(transport=t,
+                                                         format=format)
         branch.bzrdir.open_workingtree()
         branch.bzrdir.open_repository()
 
