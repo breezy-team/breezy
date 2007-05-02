@@ -1,0 +1,368 @@
+=======================
+SharedRepositoryLayouts
+=======================
+
+.. sectnum::
+
+Bazaar is designed to give you flexibility in how you layout branches inside a shared repository. 
+This flexibility allows users to tailor Bazaar to their workflow,
+but it also leads to questions about what is a "good" layout.
+We present some alternatives and give some discussion about the benefits of each.
+
+One key point which should be mentioned is that any good layout should somehow highlight
+what branch a "general" user should grab. In SVN this is deemed the "``trunk/``" branch,
+and in most of the layouts this naming convention is preserved. Some would call this
+"``mainline``" or "``dev``", and people from CVS often refer to this as "``HEAD``".
+
+.. contents::
+
+
+"SVN-Style" (``trunk/``, ``branches/``)
+=======================================
+
+Most people coming from SVN will be familiar with their "standard" project layout. 
+Which is to layout the repository as::
+
+  repository/       # Overall repository
+   +- trunk/        # The mainline of development
+   +- branches/     # A container directory
+   |   +- foo/      # Branch for developing feature foo
+   |     ...
+   +- tags/         # Container directory
+       +- release-X # A branch specific to mark a given release version
+          ...
+
+With Bazaar, that is a perfectly reasonable layout. 
+It has the benefit of being familiar to people coming from SVN, 
+and making it clear where the development focus is.
+
+When you have multiple projects in the same repository, 
+the SVN layout is a little unclear what to do.
+
+
+``project/trunk``
+~~~~~~~~~~~~~~~~~
+
+The preferred method for SVN seems to be to give each project a top level directory for a layout like::
+
+  repository/            # Overall repository
+   +- project1/          # A container directory
+   |   +- trunk/         # The mainline of development of project1
+   |   +- branches/      # A container directory
+   |       +- foo/       # Branch for developing feature foo of project1
+   |         ...
+   |
+   +- project2/          # Container for project2
+       +- trunk/         # Mainline for project2
+       +- branches/      # Container for project2 branches
+
+
+This also works with Bazaar. 
+However, with Bazaar repositories are cheap to create 
+(a simple ``bzr init-repo`` away), and their primary benefit is when the
+branches share a common ancestry.
+
+So the preferred way for Bazaar would be::
+
+    project1/          # A repository for project1
+     +- trunk/         # The mainline of development of project1
+     +- branches/      # A container directory
+         +- foo/       # Branch for developing feature foo of project1
+           ...
+    
+    project2/          # A repository for project2
+     +- trunk/         # Mainline for project2
+     +- branches/      # Container for project2 branches
+
+
+``trunk/project``
+~~~~~~~~~~~~~~~~~
+
+There are also a few projects who use this layout in SVN::
+
+  repository/             # Overall repository
+    +- trunk/             # A container directory
+    |   +- project1       # Mainline for project 1
+    |   +- project2       # Mainline for project 2
+    |         ...
+    |
+    +- branches/          # Container
+        +- project1/      # Container (?)
+        |   +- foo        # Branch 'foo' of project1
+        +- project2/
+            +- bar        # Branch 'bar' of project2
+
+
+A slight variant is::
+
+  repository/             # Overall repository
+    +- trunk/             # A container directory
+    |   +- project1       # Mainline for project 1
+    |   +- project2       # Mainline for project 2
+    |         ...
+    |
+    +- branches/          # Container
+        +- project1-foo/  # Branch 'foo' of project1
+        +- project2-bar/  # Branch 'bar' of project2
+
+I believe the reason for this in SVN, is so that someone 
+can checkout all of "``trunk/``" and get the all the mainlines for all projects.
+
+This layout can be used for Bazaar, but it is not generally recommended.
+
+ 1) ``bzr branch/checkout/get`` is a single branch at a time. 
+    So you don't get the benefit of getting all mainlines with a single command. [1]_
+
+ 2) It is less obvious of whether ``repository/trunk/foo`` is the ``trunk`` of project 
+    ``foo`` or it is just the ``foo`` directory in the ``trunk`` branch.
+    Some of this confusion is due to SVN, because it uses the same "namespace" 
+    for files in a project that it uses for branches of a project.
+    In Bazaar, there is a clear distinction of what files make up a project, versus
+    the location of the Branch. (After all, there is only one ``.bzr/`` directory per branch,
+    versus many ``.svn/`` directories in the checkout).
+
+.. [1] Note: `NestedTreeSupport`_ can provide a way to create "meta-projects" which
+    aggregate multiple projects regardless of the repository layout.
+    Letting you ``bzr checkout`` one project, and have it grab all the necessary
+    sub-projects.
+
+
+
+Nested Style (``project/branch/sub-branch/``)
+=============================================
+
+Another style with Bazaar, which is not generally possible in SVN
+is to have branches nested within each-other.
+This is possible because Bazaar supports (and recommends) creating repositories
+with no working trees (``--no-trees``).
+With a ``--no-trees`` repository, because the working files are not intermixed with
+your branch locations, you are free to put a branch in whatever namespace you want.
+
+One possibility is::
+
+  project/             # The overall repository, *and* the project's mainline branch
+   + joe/              # Developer Joe's primary branch of development
+   |  +- feature1/     # Developer Joe's feature1 development branch
+   |  |   +- broken/   # A staging branch for Joe to develop feature1
+   |  +- feature2/     # Joe's feature2 development branch
+   |    ...
+   + barry/            # Barry's development branch
+   |  ...
+   + releases/
+      +- 1.0/
+          +- 1.1.1/
+
+The idea with this layout is that you are creating a hierarchical layout for branches. 
+Where changes generally flow upwards in the namespace. It also gives people a little
+corner of the namespace to work on their stuff.
+One nice feature of this layout, is it makes branching "cheaper" because it gives you
+a place to put all the mini branches without cluttering up the global ``branches/`` namespace.
+
+The other power of this is that you don't have to repeat yourself when specifying more detail in the
+branch name.
+
+For example compare::
+
+  bzr branch http://host/repository/project/branches/joe-feature-foo-bugfix-10/
+
+Versus::
+  
+  bzr branch http://host/project/joe/foo/bugfix-10
+
+
+Also, if you list the ``repository/project/branches/`` directory you might see something like::
+
+  barry-feature-bar/
+  barry-bugfix-10/
+  barry-bugfix-12/
+  joe-bugfix-10/
+  joe-bugfix-13/
+  joe-frizban/
+
+Versus having these broken out by developer. 
+If the number of branches are small, ``branches/`` has the nice advantage
+of being able to see all branches in a single view.
+If the number of branches is large, ``branches/`` has the distinct disadvantage
+of seeing all the branches in a single view (it becomes difficult to find the
+branch you are interested in, when there are 100 branches to look through).
+
+Nested branching seems to scale better to larger number of branches.
+However, each individual branch is less discoverable. 
+(eg. "Is Joe working on bugfix 10 in his feature foo branch, or his feature bar branch?")
+
+One other small advantage is that you can do something like::
+
+   bzr branch http://host/project/release/1/1/1
+  or
+   bzr branch http://host/project/release/1/1/2
+
+To indicate release 1.1.1 and 1.1.2. This again depends on how many releases you have 
+and whether the gain of splitting things up outweighs the ability to see more at a glance.
+
+
+Sorted by Status (``dev/``, ``merged/``, ``experimental/``)
+===========================================================
+
+One other way to break up branches is to sort them by their current status.
+So you would end up with a layout something like::
+
+  project/               # Overall layout
+   +- trunk/             # The development focus branch
+   +- dev/               # Container directory for in-progress work
+   |   +- joe-feature1   # Joe's current feature-1 branch
+   |   +- barry-bugfix10 # Barry's work for bugfix 10
+   |    ...
+   +- merged/            # Container indicating these branches have been merged
+   |   +- bugfix-12      # Bugfix which has already been merged.
+   +- abandonded/        # Branches which are considered 'dead-end'
+
+
+This has a couple benefits and drawbacks.
+It lets you see what branches are actively being developed on, which is usually
+only a small number, versus the total number of branches ever created.
+Old branches are not lost (versus deleting them), but they are "filed away",
+such that the more likely you are to want a branch the easier it is to find. 
+(Conversely, older branches are likely to be harder to find).
+
+The biggest disadvantage with this layout, is that branches move around.
+Which means that if someone is following the ``project/dev/new-feature`` branch,
+when it gets merged into ``trunk/`` suddenly ``bzr pull`` doesn't mirror the branch
+for them anymore because the branch is now at ``project/merged/new-feature``.
+There are a couple ways around this. One is to use HTTP redirects to point people
+requesting the old branch to the new branch. ``bzr`` >= 0.15 will let users know
+that ``http://old/path redirects to http://new/path``. However, this doesn't help
+if people are accessing a branch through methods other than HTTP (SFTP, local filesystem, etc).
+
+It would also be possible to use a symlink for temporary redirecting (as long as the symlink
+is within the repository it should cause little trouble). However eventually you want to
+remove the symlink, or you don't get the clutter reduction benefit.
+Another possibility instead of a symlink is to use a ``BranchReference``. It is currently
+difficult to create these through the ``bzr`` command line, but if people find them useful
+that could be changed.
+This is actually how `Launchpad`_ allows you to ``bzr checkout https://launchpad.net/bzr``.
+Effectively a ``BranchReference`` is a symlink, but it allows you to reference any other URL.
+If it is extended to support relative references, it would even work over http, sftp, 
+and local paths.
+
+.. _Launchpad: https://launchpad.net
+
+
+Sorted by date/release/etc (``2006-06/``, ``2006-07/``, ``0.8/``, ``0.9``)
+==========================================================================
+
+Another method of allowing some scalability while also allowing the
+browsing of "current" branches. Basically, this works on the assumption 
+that actively developed branches will be "new" branches, and older branches
+are either merged or abandoned.
+
+Basically the date layout looks something like::
+
+  project/                # Overall project repository
+   +- trunk/              # General mainline
+   +- 2006-06/            # containing directory for branches created in this month
+   |   +- feature1/       # Branch of "project" for "feature1"
+   |   +- feature2/       # Branch of "project" for "feature2"
+   +- 2005-05/            # Containing directory for branches create in a different month
+       +- feature3/
+       ...
+
+This answers the question "Where should I put my new branch?" very quickly.
+If a feature is developed for a long time, it is even reasonable to copy a
+branch into the newest date, and continue working on it there.
+Finding an active branch generally means going to the newest date, and
+going backwards from there. (A small disadvantage is that most directory
+listings sort oldest to the top, which may mean more scrolling).
+If you don't copy old branches to newer locations, it also has the disadvantage
+that searching for a branch may take a while.
+
+Another variant is by release target::
+
+  project/          # Overall repository
+   +- trunk/        # Mainline development branch
+   +- releases/     # Container for release branches
+   |   +- 0.8/      # The branch for release 0.8
+   |   +- 0.9/      # The branch for release 0.9
+   +- 0.8/          # Container for branches targeting release 0.8
+   |   +- feature1/ # Branch for "feature1" which is intended to be merged into 0.8
+   |   +- feature2/ # Branch for "feature2" which is targeted for 0.8
+   +- 0.9/
+       +- feature3/ # Branch for "feature3", targeted for release 0.9
+
+
+Some possible variants include having the ``0.9`` directory imply
+that it is branched *from* 0.9 rather than *for* 0.9, or having the ``0.8/release``
+as the official release 0.8 branch.
+
+The general idea is that by targeting a release, you can look at what branches are
+waiting to be merged. It doesn't necessarily give you a good idea of what the
+state of the branch (is it in development or finished awaiting review).
+It also has a history-hiding effect, and otherwise has the same benefits 
+and deficits as a date-based sorting. 
+
+
+Simple developer naming (``project/joe/foo``, ``project/barry/bar``)
+====================================================================
+
+Another possibly layout is to give each developer a directory, and then
+have a single sub-directory for branches. Something like::
+
+  project/      # Overall repository
+   +- trunk/    # Mainline branch
+   +- joe/      # A container for Joe's branches
+   |   +- foo/  # Joe's "foo" branch of "project"
+   +- barry/
+       +- bar/  # Barry's "bar" branch of "project"
+
+The idea is that no branch is "nested" underneath another one, just that each developer
+has his/her branches grouped together.
+
+A variant which is used by `Launchpad`_ is::
+
+  repository/
+   +- joe/             # Joe's branches
+   |   +- project1/    # Container for Joe's branches of "project1"
+   |   |   +- foo/     # Joe's "foo" branch of "project1"
+   |   +- project2/    # Container for Joe's "project2" branches
+   |       +- bar/     # Joe's "bar" branch of "project2"
+   |        ...
+   |
+   +- barry/
+   |   +- project1/    # Container for Barry's branches of "project1"
+   |       +- bug-10/  # Barry's "bug-10" branch of "project1"
+   |   ...
+   +- group/
+       +- project1/
+           +- trunk/   # The main development focus for "project1"
+
+
+This lets you easily browse what each developer is working on. Focus branches
+are kept in a "group" directory, which lets you see what branches the "group"
+is working on.
+
+This keeps different people's work separated from each-other, but also makes it
+hard to find "all branches for project X". `Launchpad`_ compensates for this
+by providing a nice web interface with a database back end, which allows a
+"view" to be put on top of this layout.
+This is closer to the model of people's home pages, where each person has a
+"``~/public_html``" directory where they can publish their own web-pages.
+In general, though, when you are creating a shared repository for centralization
+of a project, you don't want to split it up by person and then project.
+Usually you would want to split it up by project and then by person.
+
+
+Summary
+=======
+
+In the end, no single naming scheme will work for everyone. It depends a lot on
+the number of developers, how often you create a new branch, what sort of
+lifecycles your branches go through. Some questions to ask yourself:
+
+  1) Do you create a few long-lived branches, or do you create lots of "mini" feature branches
+     (Along with this is: Would you *like* to create lots of mini feature branches, but can't
+     because they are a pain in your current VCS?)
+
+  2) Are you a single developer, or a large team?
+
+  3) If a team, do you plan on generally having everyone working on the same branch at the same
+     time? Or will you have a "stable" branch that people are expected to track.
+
