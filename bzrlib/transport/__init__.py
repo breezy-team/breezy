@@ -276,6 +276,22 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def ensure_base(self):
+        """Ensure that the directory this transport references exists.
+
+        This will create a directory if it doesn't exist.
+        :return: True if the directory was created, False otherwise.
+        """
+        # The default implementation just uses "Easier to ask for forgiveness
+        # than permission". We attempt to create the directory, and just
+        # suppress a FileExists exception.
+        try:
+            self.mkdir('.')
+        except errors.FileExists:
+            return False
+        else:
+            return True
+
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
         """
