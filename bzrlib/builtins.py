@@ -1277,20 +1277,15 @@ class cmd_init(Command):
 
         to_transport = transport.get_transport(location)
 
-        # The path has to exist to initialize a
-        # branch inside of it.
-        # Just using os.mkdir, since I don't
-        # believe that we want to create a bunch of
-        # locations if the user supplies an extended path
         # TODO: create-prefix
         to_transport.ensure_base()
 
         try:
-            existing_bzrdir = bzrdir.BzrDir.open(location)
+            existing_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
-                                                             format=format)
+            create_branch= bzrdir.BzrDir.create_branch_convenience
+            branch = create_branch(transport=to_transport, format=format)
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
