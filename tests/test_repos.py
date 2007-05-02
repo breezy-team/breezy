@@ -2031,7 +2031,7 @@ Node-copyfrom-path: x
         self.assertEquals(repos.generate_revision_id(1, "trunk"), \
                 repos._mainline_revision_parent("trunk", 2))
 
-    def test_mainline_revision_parent_moved(self):
+    def test_mainline_revision_parent_copied(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/py/trunk/adir/afile': "data", 
                          'dc/py/trunk/adir/stationary': None})
@@ -2043,6 +2043,21 @@ Node-copyfrom-path: x
         repos.set_branching_scheme(TrunkBranchingScheme())
         self.assertEquals(repos.generate_revision_id(1, "py/trunk"), \
                 repos._mainline_revision_parent("de/trunk", 2))
+
+    def test_mainline_revision_nested_deleted(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/py/trunk/adir/afile': "data", 
+                         'dc/py/trunk/adir/stationary': None})
+        self.client_add("dc/py")
+        self.client_commit("dc", "Initial commit")
+        self.client_copy("dc/py", "dc/de")
+        self.client_commit("dc", "Incremental commit")
+        self.client_delete("dc/de/trunk/adir")
+        self.client_commit("dc", "Another incremental commit")
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme(1))
+        self.assertEquals(repos.generate_revision_id(2, "de/trunk"), \
+                repos._mainline_revision_parent("de/trunk", 3))
 
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')
