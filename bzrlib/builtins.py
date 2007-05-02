@@ -771,8 +771,8 @@ class cmd_push(Command):
                 # Now we only need to create child directories
                 while needed:
                     cur_transport = needed.pop()
-                    cur_transport.mkdir('.')
-            
+                    cur_transport.ensure_base()
+
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
             # all of the dependent branches, etc.
@@ -1283,11 +1283,8 @@ class cmd_init(Command):
         # believe that we want to create a bunch of
         # locations if the user supplies an extended path
         # TODO: create-prefix
-        try:
-            to_transport.mkdir('.')
-        except errors.FileExists:
-            pass
-                    
+        to_transport.ensure_base()
+
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
@@ -1348,10 +1345,7 @@ class cmd_init_repository(Command):
             location = '.'
 
         to_transport = transport.get_transport(location)
-        try:
-            to_transport.mkdir('.')
-        except errors.FileExists:
-            pass
+        to_transport.ensure_base()
 
         newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)

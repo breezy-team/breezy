@@ -932,20 +932,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             transport = self.branch.bzrdir.root_transport
             for name in segments:
                 transport = transport.clone(name)
-                try:
-                    transport.mkdir('.')
-                except errors.FileExists:
-                    pass
+                transport.ensure_base()
             return transport
             
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        try:
-            branch_transport.mkdir('.')
-        except errors.FileExists:
-            pass
+        branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:
             repo = branch_bzrdir.find_repository()
