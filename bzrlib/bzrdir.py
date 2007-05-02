@@ -170,7 +170,7 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
-        self._make_tail_on_transport(transport)
+        transport.ensure_base()
         result = self._format.initialize_on_transport(transport)
         try:
             local_repo = self.find_repository()
@@ -210,24 +210,8 @@ class BzrDir(object):
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
     def _make_tail(self, url):
-        head, tail = urlutils.split(url)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
-
-    def _make_tail_on_transport(self, transport):
-        """Create the final directory in transport if it doesn't exist.
-
-        We use "Easier to ask for Permission". And just create it, and ignore
-        if the directory already exists.
-        """
-        try:
-            transport.mkdir('.')
-        except errors.FileExists:
-            pass
+        t = get_transport(url)
+        t.ensure_base()
 
     # TODO: Should take a Transport
     @classmethod
@@ -243,13 +227,8 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default"
                 " format, not one of %r" % cls)
-        head, tail = urlutils.split(base)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
+        t = get_transport(base)
+        t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
         return format.initialize(safe_unicode(base))
@@ -783,7 +762,7 @@ class BzrDir(object):
             itself to download less data.
         """
         target_transport = get_transport(url)
-        self._make_tail_on_transport(target_transport)
+        target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
         try:
