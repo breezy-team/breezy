@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * Long log format reports deltas on merge revisions. 
+      (John Arbash Meinel, Kent Gibson)
+
   INTERNALS:
     * Rework of LogFormatter API to provide beginning/end of log hooks and to
       encapsulate the details of the revision to be logged in a LogRevision

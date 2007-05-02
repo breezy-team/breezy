@@ -255,22 +255,16 @@ def _show_log(branch,
     def iter_revisions():
         # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
-        zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
         repository = branch.repository
         while revision_ids:
             cur_deltas = {}
             revisions = repository.get_revisions(revision_ids[:num])
             if generate_delta:
-                delta_revisions = [r for r in revisions if
-                                   r.revision_id in zeros]
-                deltas = repository.get_deltas_for_revisions(delta_revisions)
-                cur_deltas = dict(izip((r.revision_id for r in 
-                                        delta_revisions), deltas))
+                deltas = repository.get_deltas_for_revisions(revisions)
+                cur_deltas = dict(izip((r.revision_id for r in revisions),
+                                       deltas))
             for revision in revisions:
-                # The delta value will be None unless
-                # 1. verbose is specified, and
-                # 2. the revision is a mainline revision
                 yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = min(int(num * 1.5), 200)
@@ -536,7 +530,7 @@ class LongLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids)
+            revision.delta.show(to_file, self.show_ids, indent=indent)
 
 
 class ShortLogFormatter(LogFormatter):
