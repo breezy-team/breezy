@@ -443,15 +443,16 @@ just success or failure.
 
 If a test can't be run, it can say that it's skipped.  This is typically
 used in parameterized tests - for example if a transport doesn't support
-setting permissions, we'll skip the tests that relating to that.  Skipped
-tests are appropriate when there's just no possibility that the test will
-ever run in this situation, and nothing either developers or users can do
-about it.  ::
+setting permissions, we'll skip the tests that relating to that.  ::
 
     try:
         return self.branch_format.initialize(repo.bzrdir)
     except errors.UninitializableFormat:
         raise tests.TestSkipped('Uninitializable branch format')
+
+Raising TestSkipped is a good idea when you want to make it clear that the
+test was not run, rather than just returning which makes it look as if it
+was run and passed.
 
 A subtly different case is a test that should run, but can't run in the
 current environment.  This covers tests that can only run in particular
