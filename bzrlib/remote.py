@@ -764,6 +764,11 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
+
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
 
