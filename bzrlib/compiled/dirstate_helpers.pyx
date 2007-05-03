@@ -22,6 +22,69 @@ This is the python implementation for DirState functions.
 from bzrlib.dirstate import DirState
 
 
+cdef extern from "Python.h":
+    # GetItem returns a borrowed reference
+    void *PyDict_GetItem(object p, object key)
+    int PyDict_SetItem(object p, object key, object val) except -1
+    object PyList_GetItem(object lst, int index)
+    object PyTuple_GetItem(object tpl, int index)
+
+
+cdef object _split_from_path(object cache, object path):
+    """get the dirblock tuple for a given path.
+
+    :param cache: A Dictionary mapping string paths to tuples
+    :param path: The path we care about.
+    :return: A borrowed reference to a tuple stored in cache.
+        You do not need to Py_DECREF() when you are done, unless you plan on
+        using it for a while.
+    """
+    cdef void* value_ptr
+    cdef object value
+
+    value_ptr = PyDict_GetItem(cache, path)
+    if value_ptr == NULL:
+        value = path.split('/')
+        PyDict_SetItem(cache, path, value)
+    else:
+        value = <object>value_ptr
+
+    return value
+
+
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+    """Return the index where to insert dirname into the dirblocks.
+
+    The return value idx is such that all directories blocks in dirblock[:idx]
+    have names < dirname, and all blocks in dirblock[idx:] have names >=
+    dirname.
+
+    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
+    slice of a to be searched.
+    """
+    cdef int _lo
+    cdef int _hi
+    cdef int _mid
+    cdef object dirname_split
+    cdef object cur_split
+
+    if hi is None:
+        _hi = len(dirblocks)
+    else:
+        _hi = hi
+
+    _lo = lo
+    dirname_split = _split_from_path(cache, dirname)
+    while _lo < _hi:
+        _mid = (_lo+_hi)/2
+        # Grab the dirname for the current dirblock
+        cur = PyTuple_GetItem(PyList_GetItem(dirblocks, _mid), 0)
+        cur_split = _split_from_path(cache, cur)
+        if cur_split < dirname_split: _lo = _mid+1
+        else: _hi = _mid
+    return _lo
+
+
 def _read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
