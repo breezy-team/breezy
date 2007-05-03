@@ -5,8 +5,9 @@ bzr-builddeb (0.16) UNRELEASED; urgency=low
   * Add the start of a test suite to help avoid bugs like that.
   * Update the dependency on bzr to reflect the compatibility of this release.
     (Closes: #421041)
+  * Take the package under the wing of pkg-bazaar. 
 
- -- James Westby <jw+debian@jameswestby.net>  Thu,  3 May 2007 19:18:40 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Thu,  3 May 2007 19:56:31 +0100
 
 bzr-builddeb (0.15~rc1) UNRELEASED; urgency=low
 
