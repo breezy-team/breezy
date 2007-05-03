@@ -158,12 +158,20 @@ except ImportError:
            "you cannot modify the C extensions.")
     from distutils.command.build_ext import build_ext
     from distutils.extension import Extension
-    #ext_modules.append(
-    #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
+    ext_modules.extend([
+        Extension("bzrlib.compiled.dirstate_helpers",
+                  ["bzrlib/compiled/dirstate_helpers.c"],
+                  libraries=[],
+                  ),
+    ])
 else:
     from distutils.extension import Extension
-    #ext_modules.append(
-    #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+    ext_modules.extend([
+        Extension("bzrlib.compiled.dirstate_helpers",
+                  ["bzrlib/compiled/dirstate_helpers.pyx"],
+                  libraries=[],
+                  ),
+    ])
 command_classes['build_ext'] = build_ext
 
 if 'bdist_wininst' in sys.argv:
