@@ -12,6 +12,12 @@ IN DEVELOPMENT
       Previously we would report the first file as missing, but not show
       the new unknown file. (John Arbash Meinel, #111288)
 
+    * ``bzr push`` should only connect to the remote location one time.
+      We have been connecting 3 times because we forget to pass around
+      the Transport object. This adds ``BzrDir.clone_on_transport()``, so
+      that we can pass in the Transport that we already have.
+      (John Arbash Meinel, #75721)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:
