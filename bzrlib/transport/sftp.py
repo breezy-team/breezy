@@ -824,6 +824,7 @@ class SFTPTransport(SFTPUrlHandling):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
+    # test mutiple connections
     def _sftp_connect(self):
         """Connect to the remote sftp server.
         After this, self._sftp should have a valid connection (or

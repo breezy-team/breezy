@@ -598,10 +598,10 @@ class TestReusedTransports(TestCase):
 
     def test_reuse_same_transport(self):
         t = get_transport('http://foo/')
-        t2 = get_transport('http://foo/', transports=[t])
+        t2 = get_transport('http://foo/', possible_transports=[t])
         self.assertIs(t, t2)
 
     def test_don_t_reuse_different_transport(self):
         t = get_transport('http://foo/')
-        t2 = get_transport('http://bar/', transports=[t])
+        t2 = get_transport('http://bar/', possible_transports=[t])
         self.assertIsNot(t, t2)

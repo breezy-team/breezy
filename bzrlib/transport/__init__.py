@@ -1038,7 +1038,7 @@ urlescape = urlutils.escape
 urlunescape = urlutils.unescape
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
 
-def get_transport(base, transports=None):
+def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
@@ -1068,8 +1068,8 @@ def get_transport(base, transports=None):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    if transports:
-        for t in transports:
+    if possible_transports:
+        for t in possible_transports:
             if t.base == base:
                 transport = t
                 break

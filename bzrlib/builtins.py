@@ -1286,7 +1286,7 @@ class cmd_init(Command):
             # really a NotBzrDir error...
             create_branch= bzrdir.BzrDir.create_branch_convenience
             branch = create_branch(to_transport.base, format=format,
-                                   transports=[to_transport])
+                                   possible_transports=[to_transport])
         else:
             from bzrlib.transport.local import LocalTransport
             if existing_bzrdir.has_branch():
