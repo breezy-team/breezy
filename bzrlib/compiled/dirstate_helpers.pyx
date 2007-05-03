@@ -52,7 +52,25 @@ cdef object _split_from_path(object cache, object path):
     return value
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+cdef int _bisect_dirblock_nocache(object dirblocks, object dirname, int _lo, int _hi):
+    cdef int _mid
+    cdef object cur
+    cdef object cur_split
+    cdef object dirname_split
+
+    dirname_split = dirname.split('/')
+
+    while _lo < _hi:
+        _mid = (_lo+_hi)/2
+        # Grab the dirname for the current dirblock
+        cur = PyTuple_GetItem(PyList_GetItem(dirblocks, _mid), 0)
+        cur_split = cur.split('/')
+        if cur_split < dirname_split: _lo = _mid+1
+        else: _hi = _mid
+    return _lo
+
+
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -74,6 +92,9 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         _hi = hi
 
     _lo = lo
+    if cache is None:
+        return _bisect_dirblock_nocache(dirblocks, dirname, _lo, _hi)
+
     dirname_split = _split_from_path(cache, dirname)
     while _lo < _hi:
         _mid = (_lo+_hi)/2
