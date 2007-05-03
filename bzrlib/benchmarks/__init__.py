@@ -177,6 +177,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_cache_utf8',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_dirstate',
                    'bzrlib.benchmarks.bench_info',
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_log',
