@@ -1964,8 +1964,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnlessExists(path)
-        # TODO: jam 20060427 Shouldn't this be 'rb'?
-        f = file(path, 'r')
+        f = file(path, 'rb')
         try:
             s = f.read()
         finally:

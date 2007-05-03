@@ -187,3 +187,26 @@ if len(sys.argv) == 2:
                 del os.environ['EDITOR']
             else:
                 os.environ['EDITOR'] = editor
+
+    def test__create_temp_file_with_commit_template(self):
+        # check that commit template written properly
+        # and has platform native line-endings (CRLF on win32)
+        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        msgfilename, hasinfo = create_file('infotext','----','start message')
+        self.assertNotEqual(None, msgfilename)
+        self.assertTrue(hasinfo)
+        expected = os.linesep.join(['start message',
+                                    '',
+                                    '',
+                                    '----',
+                                    '',
+                                    'infotext'])
+        self.assertFileEqual(expected, msgfilename)
+
+    def test__create_temp_file_with_empty_commit_template(self):
+        # empty file
+        create_file = bzrlib.msgeditor._create_temp_file_with_commit_template
+        msgfilename, hasinfo = create_file('')
+        self.assertNotEqual(None, msgfilename)
+        self.assertFalse(hasinfo)
+        self.assertFileEqual('', msgfilename)
