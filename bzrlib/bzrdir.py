@@ -213,9 +213,8 @@ class BzrDir(object):
         t = get_transport(url)
         t.ensure_base()
 
-    # TODO: Should take a Transport
     @classmethod
-    def create(cls, base, format=None):
+    def create(cls, base, format=None, transports=None):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
@@ -227,11 +226,11 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default"
                 " format, not one of %r" % cls)
-        t = get_transport(base)
+        t = get_transport(base, transports)
         t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return format.initialize(safe_unicode(base))
+        return format.initialize(safe_unicode(base), transports)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -267,11 +266,11 @@ class BzrDir(object):
             return self.find_repository()
         except errors.NoRepositoryPresent:
             return self.create_repository()
-
+        
     @staticmethod
-    def create_branch_convenience(base=None, transport=None,
-                                  force_new_repo=False, force_new_tree=None,
-                                  format=None):
+    def create_branch_convenience(base, force_new_repo=False,
+                                  force_new_tree=None, format=None,
+                                  transports=None,):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This is a convenience function - it will use an existing repository
@@ -290,28 +289,18 @@ class BzrDir(object):
         data is created on disk and NotLocalUrl is raised.
 
         :param base: The URL to create the branch at.
-        :param transport: An alternate way to specify the URL.
-                         'format' must also be specified.
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
-        :param format: Override for the for the bzrdir format to create
+        :param format: Override for the for the bzrdir format to create.
+        :param transports: An optional reusable transports list.
         """
-        if base is None and transport is None:
-            raise AssertionError('You should specify one of '
-                                 'base or transport parameter')
         if force_new_tree:
-            if base:
-                transport = get_transport(base)
             # check for non local urls
-            if not isinstance(transport, LocalTransport):
-                raise errors.NotLocalUrl(transport.base)
-        if format is None:
-            format = BzrDirFormat.get_default_format()
-        if base:
-            bzrdir = BzrDir.create(base, format)
-        else:
-            bzrdir = format.initialize_on_transport(transport)
+            t = get_transport(safe_unicode(base), transports)
+            if not isinstance(t, LocalTransport):
+                raise errors.NotLocalUrl(base)
+        bzrdir = BzrDir.create(base, format, transports)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and
@@ -1303,13 +1292,13 @@ class BzrDirFormat(object):
         """
         raise NotImplementedError(self.get_converter)
 
-    def initialize(self, url):
+    def initialize(self, url, transports=None):
         """Create a bzr control dir at this url and return an opened copy.
         
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
-        return self.initialize_on_transport(get_transport(url))
+        return self.initialize_on_transport(get_transport(url, transports))
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""

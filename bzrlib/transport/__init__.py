@@ -1038,11 +1038,11 @@ urlescape = urlutils.escape
 urlunescape = urlutils.unescape
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
 
-def get_transport(base, transports=[]):
+def get_transport(base, transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
-    :param transports: optional reusable transport list.
+    :param transports: optional reusable transports list.
     """
     if base is None:
         base = '.'
@@ -1068,11 +1068,11 @@ def get_transport(base, transports=[]):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    for t in transports:
-        if t.base == base:
-            transport = t
-            break
-
+    if transports:
+        for t in transports:
+            if t.base == base:
+                transport = t
+                break
     if transport is None:
         for proto, factory_list in transport_list_registry.iteritems():
             if proto is not None and base.startswith(proto):
@@ -1080,7 +1080,6 @@ def get_transport(base, transports=[]):
                                                                factory_list)
                 if transport:
                     break
-
     if transport is None:
         # We tried all the different protocols, now try one last
         # time as a local protocol
@@ -1090,7 +1089,6 @@ def get_transport(base, transports=[]):
         # as protocol None
         factory_list = transport_list_registry.get(None)
         transport, last_err = _try_transport_factories(base, factory_list)
-
     return transport
 
 
