@@ -106,14 +106,14 @@ Remember to update the NEWS file as part of your change if it makes any
 changes visible to users or plugin developers. Please include a diff
 against mainline if you're giving a link to a branch.
 
-You can generate a bundle like this:
+You can generate a bundle like this::
 
   bzr bundle > mybundle.patch
   
 A .patch extension is recommended instead of .bundle as many mail clients
 will send the latter as a binary file. If a bundle would be too long or your
 mailer mangles whitespace (e.g. implicitly converts Unix newlines to DOS
-newlines), use the merge-directive command instead like this:
+newlines), use the merge-directive command instead like this::
 
   bzr merge-directive http://bazaar-vcs.org http://example.org/my_branch > my_directive.patch
 
@@ -183,7 +183,9 @@ the number of changes you may be making, the complexity of the changes, etc.
 As a starting suggestion though:
 
 * create a local copy of the main development branch (bzr.dev) by using
-  this command: bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+  this command::
+  
+    bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
    
 * keep your copy of bzr.dev prestine (by not developing in it) and keep
   it up to date (by using bzr pull)
@@ -702,16 +704,16 @@ Recommended values are:
 
     0. OK.
     1. Conflicts in merge-like operations, or changes are present in
-        diff-like operations. 
+       diff-like operations. 
     2. Unrepresentable diff changes (i.e. binary files that we cannot show 
-        a diff of).
+       a diff of).
     3. An error or exception has occurred.
 
 Errors are handled through Python exceptions. Exceptions should be defined
 inside bzrlib.errors, so that we can see the whole tree at a glance.
 
 We broadly classify errors as either being either internal or not,
-depending on whether ``user_error`` is set or not.  If we think it's our
+depending on whether ``internal_error`` is set or not.  If we think it's our
 fault, we show a backtrace, an invitation to report the bug, and possibly
 other details.  This is the default for errors that aren't specifically
 recognized as being caused by a user error.  Otherwise we show a briefer
@@ -993,4 +995,5 @@ To build a win32 installer, see the instructions on the wiki page:
 http://bazaar-vcs.org/BzrWin32Installer
 
 
-:: vim: ft=rst tw=74 ai
+..
+   vim: ft=rst tw=74 ai
