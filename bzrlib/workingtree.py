@@ -1817,7 +1817,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 tree_delta.unversioned.extend((unknown_file,))
             if bool(tree_delta.modified
                     or tree_delta.added
-                    or tree_delta.renamed
                     or tree_delta.kind_changed
                     or tree_delta.unversioned):
                 raise errors.BzrRemoveChangedFilesError(tree_delta)

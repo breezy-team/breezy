@@ -24,6 +24,7 @@ class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""
 
     files=['a', 'b/', 'b/c', 'd/']
+    rfiles=['b/c', 'b', 'a', 'd']
     a = ['a']
     b = ['b']
     b_c = ['b', 'b/c']
@@ -95,7 +96,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.getTree()
         tree.add(TestRemove.files)
         tree.commit("make sure files are versioned")
-        for f in ['b/c', 'b', 'a', 'd']:
+        for f in TestRemove.rfiles:
             osutils.delete_any(f)
         self.assertInWorkingTree(TestRemove.files)
         self.failIfExists(TestRemove.files)
@@ -104,6 +105,23 @@ class TestRemove(TestCaseWithWorkingTree):
 
         self.assertNotInWorkingTree(TestRemove.files)
         self.failIfExists(TestRemove.files)
+
+    def test_remove_renamed_files(self):
+        """Check that files are removed if they are renamed."""
+        tree = self.getTree()
+        tree.add(TestRemove.files)
+        tree.commit("make sure files are versioned")
+
+        for f in TestRemove.rfiles:
+            tree.rename_one(f,f+'x')
+        rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
+        self.assertInWorkingTree(rfilesx)
+        self.failUnlessExists(rfilesx)
+
+        tree.remove(rfilesx, keep_files=False)
+
+        self.assertNotInWorkingTree(rfilesx)
+        self.failIfExists(rfilesx)
 
     def test_force_remove_changed_files(self):
         """Check that changed files are removed and deleted when forced."""
