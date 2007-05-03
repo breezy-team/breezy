@@ -3,6 +3,8 @@ bzr-builddeb (0.16) UNRELEASED; urgency=low
   * Lock the working trees to fix compatibility with 0.15+ dirstate trees.
     (Closes: #421900)
   * Add the start of a test suite to help avoid bugs like that.
+  * Update the dependency on bzr to reflect the compatibility of this release.
+    (Closes: #421041)
 
  -- James Westby <jw+debian@jameswestby.net>  Thu,  3 May 2007 19:18:40 +0100
 
