@@ -134,7 +134,12 @@ class DebBuild(object):
       shutil.copyfile(tarball, os.path.join(build_dir, self._tarball_name()))
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,source_dir,None,None)
+    finally:
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
   def build(self, builder):
@@ -235,7 +240,12 @@ class DebMergeBuild(DebBuild):
       export_dir = os.path.join(tempdir,'debian')
     else:
       export_dir = tempdir
-    export(self._tree,export_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,export_dir,None,None)
+    finally:
+      tree.unlock()
     recursive_copy(tempdir, source_dir)
     shutil.rmtree(basetempdir)
     remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
@@ -248,7 +258,12 @@ class DebNativeBuild(DebBuild):
     # as there is no tarball.
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,source_dir,None,None)
+    finally:
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
 class DebSplitBuild(DebBuild):
@@ -261,19 +276,24 @@ class DebSplitBuild(DebBuild):
     source_dir = self._properties.source_dir()
     build_dir = self._properties.build_dir()
     tarball = os.path.join(build_dir, self._tarball_name())
-    export(self._tree,source_dir,None,None)
-    info("Creating .orig.tar.gz: %s", tarball)
-    remove_bzrbuilddeb_dir(source_dir)
-    remove_debian_dir(source_dir)
-    source_dir_rel = self._properties.source_dir(False)
-    tar = tarfile.open(tarball, "w:gz")
+    tree = self._tree
+    tree.lock_read()
     try:
-      tar.add(source_dir, source_dir_rel)
+      export(tree,source_dir,None,None)
+      info("Creating .orig.tar.gz: %s", tarball)
+      remove_bzrbuilddeb_dir(source_dir)
+      remove_debian_dir(source_dir)
+      source_dir_rel = self._properties.source_dir(False)
+      tar = tarfile.open(tarball, "w:gz")
+      try:
+        tar.add(source_dir, source_dir_rel)
+      finally:
+        tar.close()
+      shutil.rmtree(source_dir)
+      info("Exporting to %s", source_dir)
+      export(tree,source_dir,None,None)
     finally:
-      tar.close()
-    shutil.rmtree(source_dir)
-    info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
 class DebMergeExportUpstreamBuild(DebMergeBuild):
