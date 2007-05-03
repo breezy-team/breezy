@@ -1,6 +1,6 @@
 #    __init__.py -- The plugin for bzr
 #    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
-#                  2006 James Westby <jw+debian@jameswestby.net>
+#                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -269,3 +269,21 @@ class cmd_builddeb(Command):
     return retcode
 
 register_command(cmd_builddeb)
+
+def test_suite():
+    from unittest import TestSuite
+    import tests
+    result = TestSuite()
+    result.addTest(tests.test_suite())
+    return result
+
+if __name__ == '__main__':
+  print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
+          "to use it.\n")
+  import unittest
+  runner = unittest.TextTestRunner()
+  runner.run(test_suite())
+else:
+  import sys
+  sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+

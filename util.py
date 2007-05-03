@@ -98,18 +98,22 @@ def goto_branch(branch):
 def find_changelog(t, merge):
     changelog_file = 'debian/changelog'
     larstiq = False
-    if not t.has_filename(changelog_file):
-      if merge:
-        #Assume LartstiQ's layout (.bzr in debian/)
-        changelog_file = 'changelog'
-        larstiq = True
-        if not t.has_filename(changelog_file):
-          raise DebianError("Could not open debian/changelog or changelog")
-      else:
-        raise DebianError("Could not open debian/changelog")
-    mutter("Using '%s' to get package information", changelog_file)
-    changelog_id = t.inventory.path2id(changelog_file)
-    contents = t.get_file_text(changelog_id)
+    t.lock_read()
+    try:
+      if not t.has_filename(changelog_file):
+        if merge:
+          #Assume LartstiQ's layout (.bzr in debian/)
+          changelog_file = 'changelog'
+          larstiq = True
+          if not t.has_filename(changelog_file):
+            raise DebianError("Could not open debian/changelog or changelog")
+        else:
+          raise DebianError("Could not open debian/changelog")
+      mutter("Using '%s' to get package information", changelog_file)
+      changelog_id = t.inventory.path2id(changelog_file)
+      contents = t.get_file_text(changelog_id)
+    finally:
+      t.unlock()
     changelog = Changelog(contents)
     return changelog, larstiq 
 

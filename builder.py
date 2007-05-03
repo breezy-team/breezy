@@ -1,5 +1,5 @@
 #    builder.py -- Classes for building packages
-#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006, 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -134,7 +134,12 @@ class DebBuild(object):
       shutil.copyfile(tarball, os.path.join(build_dir, self._tarball_name()))
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,source_dir,None,None)
+    finally:
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
   def build(self, builder):
@@ -170,9 +175,15 @@ class DebBuild(object):
     shutil.move(changes.filename(), result)
     mutter("Moving all files given in %s", changes.filename())
     for file in files:
-      mutter("Moving %s to %s", file['name'], result)
-      shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
-                  result)
+      filename = os.path.join(self._properties.build_dir(), file['name'])
+      mutter("Moving %s to %s", filename, result)
+      try:
+        shutil.move(filename, result)
+      except IOError, e:
+        if e.errno <> 2:
+          raise
+        raise DebianError("The file " + filename + " is described in the " +
+                          ".changes file, but is not present on disk")
 
   def tag_release(self):
     #TODO decide what command should be able to remove a tag notice
@@ -198,17 +209,19 @@ class DebMergeBuild(DebBuild):
       mutter("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
       tar = tarfile.open(tarball)
-      if getattr(tar, 'extractall', None) is not None:
-        tar.extractall(tempdir)
-      else:
-        #Dammit, that's new in 2.5
-        for tarinfo in tar.getmembers():
-          if tarinfo.isdir():
-            tar.extract(tarinfo, tempdir)
-        for tarinfo in tar.getmembers():
-          if not tarinfo.isdir():
-            tar.extract(tarinfo, tempdir)
-      tar.close
+      try:
+        if getattr(tar, 'extractall', None) is not None:
+          tar.extractall(tempdir)
+        else:
+          #Dammit, that's new in 2.5
+          for tarinfo in tar.getmembers():
+            if tarinfo.isdir():
+              tar.extract(tarinfo, tempdir)
+          for tarinfo in tar.getmembers():
+            if not tarinfo.isdir():
+              tar.extract(tarinfo, tempdir)
+      finally:
+        tar.close()
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       for file in files:
@@ -227,7 +240,12 @@ class DebMergeBuild(DebBuild):
       export_dir = os.path.join(tempdir,'debian')
     else:
       export_dir = tempdir
-    export(self._tree,export_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,export_dir,None,None)
+    finally:
+      tree.unlock()
     recursive_copy(tempdir, source_dir)
     shutil.rmtree(basetempdir)
     remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
@@ -240,7 +258,12 @@ class DebNativeBuild(DebBuild):
     # as there is no tarball.
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,source_dir,None,None)
+    finally:
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
 class DebSplitBuild(DebBuild):
@@ -253,16 +276,24 @@ class DebSplitBuild(DebBuild):
     source_dir = self._properties.source_dir()
     build_dir = self._properties.build_dir()
     tarball = os.path.join(build_dir, self._tarball_name())
-    export(self._tree,source_dir,None,None)
-    info("Creating .orig.tar.gz: %s", tarball)
-    remove_bzrbuilddeb_dir(source_dir)
-    remove_debian_dir(source_dir)
-    tar = tarfile.open(tarball, "w:gz")
-    source_dir_rel = self._properties.source_dir(False)
-    tar.add(source_dir, source_dir_rel)
-    shutil.rmtree(source_dir)
-    info("Exporting to %s", source_dir)
-    export(self._tree,source_dir,None,None)
+    tree = self._tree
+    tree.lock_read()
+    try:
+      export(tree,source_dir,None,None)
+      info("Creating .orig.tar.gz: %s", tarball)
+      remove_bzrbuilddeb_dir(source_dir)
+      remove_debian_dir(source_dir)
+      source_dir_rel = self._properties.source_dir(False)
+      tar = tarfile.open(tarball, "w:gz")
+      try:
+        tar.add(source_dir, source_dir_rel)
+      finally:
+        tar.close()
+      shutil.rmtree(source_dir)
+      info("Exporting to %s", source_dir)
+      export(tree,source_dir,None,None)
+    finally:
+      tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
 
 class DebMergeExportUpstreamBuild(DebMergeBuild):
@@ -296,18 +327,21 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
         branch_to = Branch.open(export_upstream)
       location = branch_to.get_parent()
       if location is None:
-        raise DebianError('No default pull location for %s, run "bzr '
-                          +'pull location" in that branch to set one up',
-                          export_upstream)
+        raise DebianError('No default pull location for '+export_upstream+ \
+                          ', run "bzr pull location" in that branch to set ' \
+                          'one up')
       branch_from = Branch.open(location)
       info('Pulling the upstream branch.')
-      if tree_to is not None:
-        count = tree_to.pull(branch_from)
+      if branch_from.last_revision() == branch_to.last_revision():
+        if self._stop_on_no_change:
+          raise StopBuild('No changes to upstream branch')
+        info('Nothing to pull')
       else:
-        count = branch_to.pull(branch_from)
-      info('Pulled %d revision(s).', count)
-      if self._stop_on_no_change:
-        raise StopBuild('No changes to upstream branch')
+        if tree_to is not None:
+          count = tree_to.pull(branch_from)
+        else:
+          count = branch_to.pull(branch_from)
+        info('Pulled %d revision(s).', count)
       b = branch_to
     else:
       b = Branch.open(export_upstream)
