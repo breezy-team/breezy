@@ -82,9 +82,9 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
         return state
 
-    def build_1k_dirstate_dirs(self):
-        """Build a DirState file with 1k directories"""
-        return self.build_helper([(10, 0), (10, 0), (10, 1)])
+    def build_10k_dirstate_dirs(self):
+        """Build a DirState file with 10k directories"""
+        return self.build_helper([(10, 0), (10, 0), (10, 0), (10, 1)])
 
     def build_20k_dirstate(self):
         """Build a DirState file with 20k records.
@@ -162,7 +162,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
         self.assertEqualDiff(expected_str, offset_str)
 
     def test_bisect_dirblock(self):
-        state = self.build_1k_dirstate_dirs()
+        state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
@@ -172,7 +172,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test_bisect_dirblock_cached(self):
-        state = self.build_1k_dirstate_dirs()
+        state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
@@ -184,7 +184,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test_bisect_dirblock_compiled(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        state = self.build_1k_dirstate_dirs()
+        state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
@@ -195,7 +195,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test_bisect_dirblock_compiled_cached(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        state = self.build_1k_dirstate_dirs()
+        state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
