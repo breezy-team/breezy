@@ -592,3 +592,16 @@ class TestWin32LocalTransport(TestCase):
         # make sure we reach the root
         t = t.clone('..')
         self.assertEquals(t.base, 'file://HOST/')
+
+
+class TestReusedTransports(TestCase):
+
+    def test_reuse_same_transport(self):
+        t = get_transport('http://foo/')
+        t2 = get_transport('http://foo/', transports=[t])
+        self.assertIs(t, t2)
+
+    def test_don_t_reuse_different_transport(self):
+        t = get_transport('http://foo/')
+        t2 = get_transport('http://bar/', transports=[t])
+        self.assertIsNot(t, t2)
