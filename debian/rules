@@ -12,6 +12,7 @@ build: $(PYVERS:%=build-python%)
 
 build-python%:
 	python$* setup.py build
+	python$* __init__.py
 	touch $@
 
 clean:
