@@ -248,7 +248,7 @@ cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
         )])
 
 
-cdef void _parse_dirblocks_0_parents(object state, object fields,
+cdef void _parse_dirblocks_0_parents(object state, object reader,
                                      int entry_size):
     cdef object current_block
     cdef object entry
@@ -257,10 +257,12 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     cdef int field_count
     cdef int pos
 
+    # Ignore the first record
+    fields = reader.get_all_fields()
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
 
-    pos = 1
+    pos = 0
     field_count = len(fields)
 
     state._dirblocks = [('', []), ('', [])]
@@ -315,6 +317,15 @@ cdef class Reader:
         """Get the next field as a Python string."""
         return PyString_FromString(self.get_next())
 
+    def get_n_fields(self, count):
+        cdef int i
+
+        fields = []
+        for i from 0 <= i < count:
+            PyList_Append(fields, self.get_next_str())
+        assert len(fields) == count
+        return fields
+
     def get_all_fields(self):
         """Get a list of all fields"""
         cdef char *first
@@ -352,17 +363,20 @@ def _c_read_dirblocks(state):
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    # reader = Reader(text)
+    reader = Reader(text)
 
     num_present_parents = state._num_present_parents()
     entry_size = state._fields_per_entry()
 
-    # fields = reader.get_all_fields()
-    fields = text.split('\0')
-    fields.pop()
+    if num_present_parents == 0:
+        # Move the iterator to the current position
+        _parse_dirblocks_0_parents(state, reader, entry_size)
+        state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+        return
+    fields = reader.get_all_fields()
 
     # skip the first field which is the trailing null from the header.
-    cur = 1
+    cur = 0
 
     # Each line now has an extra '\n' field which is not used
     # so we just skip over it
@@ -373,20 +387,14 @@ def _c_read_dirblocks(state):
     num_entries = state._num_entries
     expected_field_count = entry_size * num_entries
     field_count = len(fields)
-    if (field_count - cur) != expected_field_count:
+    if field_count - cur != expected_field_count:
         # this checks our adjustment, and also catches file too short.
         raise AssertionError(
             'field count incorrect %s != %s, entry_size=%s, '
             'num_entries=%s fields=%r' % (
-                (field_count - cur), expected_field_count, entry_size,
+                field_count - cur, expected_field_count, entry_size,
                 state._num_entries, fields))
 
-    if num_present_parents == 0:
-        # Move the iterator to the current position
-        #fields = reader.get_all_fields()
-        _parse_dirblocks_0_parents(state, fields, entry_size)
-        state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
-        return
     if num_present_parents == 1:
         # Bind external functions to local names
         _int = int
