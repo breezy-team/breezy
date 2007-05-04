@@ -25,6 +25,15 @@ from bzrlib.dirstate import DirState
 cdef extern from *:
     ctypedef int size_t
 
+
+cdef extern from "stdlib.h":
+    struct _FILE:
+        pass
+    ctypedef _FILE FILE
+    size_t fread(void *ptr, size_t size, size_t count, FILE *stream)
+    unsigned long int strtoul(char *nptr, char **endptr, int base)
+
+
 cdef extern from "Python.h":
     # GetItem returns a borrowed reference
     struct _PyObject:
@@ -53,6 +62,7 @@ cdef extern from "Python.h":
 
     char *PyString_AsString(object p)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
+    object PyString_FromString(char *)
     int PyString_Size(object p)
     int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
@@ -61,9 +71,8 @@ cdef extern from "Python.h":
     void Py_INCREF_PyObject "Py_INCREF" (PyObject *)
     void Py_DECREF(object)
 
+    FILE *PyFile_AsFile(object p)
 
-cdef extern from "stdlib.h":
-    unsigned long int strtoul(char *nptr, char **endptr, int base)
 
 cdef extern from "string.h":
     char *strchr(char *s1, char c)
@@ -270,6 +279,46 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     state._split_root_dirblock_into_contents()
 
 
+cdef class Reader:
+    """Maintain the current location, and return fields as you parse them."""
+
+    cdef object text # The overall string object
+    cdef char *text_str # Pointer to the beginning of text
+    cdef int text_size # Length of text
+
+    cdef char *end_str # End of text
+    cdef char *cur # Pointer to the current record
+    cdef char *next # Pointer to the end of this record
+
+    def __new__(self, text):
+        self.text = text
+        self.text_str = PyString_AsString(text)
+        self.text_size = PyString_Size(text)
+        self.end_str = self.text_str + self.text_size
+        self.cur = self.text_str
+
+    cdef int done(self):
+        return self.cur >= self.end_str
+
+    cdef char *get_next(self):
+        """Return a pointer to the start of the next field."""
+        cdef char *next
+        next = self.cur
+        self.cur = strchr(next, c'\0') + 1
+        return next
+
+    def get_next_str(self):
+        """Get the next field as a Python string."""
+        return PyString_FromString(self.get_next())
+
+    def get_all_fields(self):
+        """Get a list of all fields"""
+        fields = []
+        while not self.done():
+            PyList_Append(fields, self.get_next_str())
+        return fields
+
+
 def _c_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
@@ -285,19 +334,19 @@ def _c_read_dirblocks(state):
     cdef int entry_size
     cdef int field_count
     cdef int num_present_parents
+    cdef char *next_field
 
     state._state_file.seek(state._end_of_header)
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    fields = text.split('\0')
-    # Remove the last blank entry
-    trailing = fields.pop()
-    assert trailing == ''
-    # consider turning fields into a tuple.
+    reader = Reader(text)
+
+    fields = reader.get_all_fields()
 
     # skip the first field which is the trailing null from the header.
     cur = 1
+
     # Each line now has an extra '\n' field which is not used
     # so we just skip over it
     # entry size:
