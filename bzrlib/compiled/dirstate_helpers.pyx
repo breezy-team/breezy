@@ -260,7 +260,7 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
 
-    pos = 0
+    pos = 1
     field_count = len(fields)
 
     state._dirblocks = [('', []), ('', [])]
@@ -352,15 +352,17 @@ def _c_read_dirblocks(state):
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    reader = Reader(text)
+    # reader = Reader(text)
 
     num_present_parents = state._num_present_parents()
     entry_size = state._fields_per_entry()
 
-    fields = reader.get_all_fields()
+    # fields = reader.get_all_fields()
+    fields = text.split('\0')
+    fields.pop()
 
     # skip the first field which is the trailing null from the header.
-    cur = 0
+    cur = 1
 
     # Each line now has an extra '\n' field which is not used
     # so we just skip over it
@@ -371,12 +373,12 @@ def _c_read_dirblocks(state):
     num_entries = state._num_entries
     expected_field_count = entry_size * num_entries
     field_count = len(fields)
-    if field_count - cur != expected_field_count:
+    if (field_count - cur) != expected_field_count:
         # this checks our adjustment, and also catches file too short.
         raise AssertionError(
             'field count incorrect %s != %s, entry_size=%s, '
             'num_entries=%s fields=%r' % (
-                field_count - cur, expected_field_count, entry_size,
+                (field_count - cur), expected_field_count, entry_size,
                 state._num_entries, fields))
 
     if num_present_parents == 0:
