@@ -1526,7 +1526,6 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        run_hooks=True,
         _override_hook_source_branch=None):
         """See Branch.push.
 
