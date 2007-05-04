@@ -36,7 +36,10 @@ cdef extern from "Python.h":
     int PyTuple_CheckExact(object)
 
     char *PyString_AsString(object p)
+    char *PyString_AsString_void "PyString_AsString" (void *p)
     int PyString_Size(object p)
+    int PyString_Size_void "PyString_Size" (void *p)
+    int PyString_CheckExact(object p)
 
     void Py_INCREF(object)
     void Py_DECREF(object)
@@ -145,7 +148,7 @@ def cmp_dirblock_strings(path1, path2):
                                  PyString_Size(path2))
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -158,8 +161,10 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     cdef int _lo
     cdef int _hi
     cdef int _mid
-    cdef object dirname_split
-    cdef object cur_split
+    cdef char *dirname_str
+    cdef int dirname_size
+    cdef char *cur_str
+    cdef int cur_size
     cdef void *cur
 
     if hi is None:
@@ -170,16 +175,24 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     if not PyList_CheckExact(dirblocks):
         raise TypeError('you must pass a python list for dirblocks')
     _lo = lo
-    dirname_split = dirname.split('/')
+    if not PyString_CheckExact(dirname):
+        raise TypeError('you must pass a string for dirname')
+    dirname_str = PyString_AsString(dirname)
+    dirname_size = PyString_Size(dirname)
+
     while _lo < _hi:
         _mid = (_lo+_hi)/2
         # Grab the dirname for the current dirblock
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
                 PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_split = (<object>cur).split('/')
-        if cur_split < dirname_split: _lo = _mid+1
-        else: _hi = _mid
+        cur_str = PyString_AsString_void(cur)
+        cur_size = PyString_Size_void(cur)
+        if _cmp_dirblock_strings(cur_str, cur_size,
+                                 dirname_str, dirname_size) < 0:
+            _lo = _mid+1
+        else:
+            _hi = _mid
     return _lo
 
 
