@@ -36,9 +36,9 @@ cdef extern from "Python.h":
     int PyTuple_CheckExact(object)
 
     char *PyString_AsString(object p)
-    char *PyString_AsString_void "PyString_AsString" (void *p)
+    char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
     int PyString_Size(object p)
-    int PyString_Size_void "PyString_Size" (void *p)
+    int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
 
     void Py_INCREF(object)
@@ -186,8 +186,8 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
                 PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_str = PyString_AsString_void(cur)
-        cur_size = PyString_Size_void(cur)
+        cur_str = PyString_AS_STRING_void(cur)
+        cur_size = PyString_GET_SIZE_void(cur)
         if _cmp_dirblock_strings(cur_str, cur_size,
                                  dirname_str, dirname_size) < 0:
             _lo = _mid+1
