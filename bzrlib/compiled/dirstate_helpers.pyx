@@ -145,11 +145,29 @@ cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size
     cdef char *cur2
     cdef char *end1
     cdef char *end2
+    cdef int *cur_int1
+    cdef int *cur_int2
+    cdef int *end_int1
+    cdef int *end_int2
 
-    cur1 = path1
-    cur2 = path2
+    cur_int1 = <int*>path1
+    cur_int2 = <int*>path2
+    end_int1 = <int*>(path1 + size1 - (size1%4))
+    end_int2 = <int*>(path2 + size2 - (size2%4))
     end1 = path1+size1
     end2 = path2+size2
+
+    # Use 32-bit comparisons for the matching portion of the string.
+    # Almost all CPU's are faster at loading and comparing 32-bit integers,
+    # than they are at 8-bit integers.
+    while cur_int1 < end_int1 and cur_int2 < end_int2:
+        if cur_int1[0] != cur_int2[0]:
+            break
+        cur_int1 = cur_int1 + 1
+        cur_int2 = cur_int2 + 1
+
+    cur1 = <char*>cur_int1
+    cur2 = <char*>cur_int2
 
     while cur1 < end1 and cur2 < end2:
         if cur1[0] == cur2[0]:
@@ -176,7 +194,7 @@ cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size
     if cur1 < end1:
         # Must have reached path2 first, so it comes first
         return 1
-    if cur2 < end1:
+    if cur2 < end2:
         # Must have reached path1 first, it comes first
         return -1
     # We reached the end of both strings
@@ -185,7 +203,7 @@ cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size
 
 def cmp_dirblock_strings(path1, path2):
     """Compare to python strings in dirblock fashion."""
-    return _cmp_dirblock_strings(PyString_AsString(path1),
+    return _cmp_dirblock_strings_alt(PyString_AsString(path1),
                                  PyString_Size(path1),
                                  PyString_AsString(path2),
                                  PyString_Size(path2))
