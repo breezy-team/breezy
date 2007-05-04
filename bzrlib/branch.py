@@ -1000,7 +1000,7 @@ class BranchHooks(Hooks):
         # (push_result)
         # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target 
+        # where local is the local target branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
         # is read locked and the target branches write locked. Source will
         # be the local low-latency branch.
@@ -1476,13 +1476,14 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+        _hook_master=None, run_hooks=True):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
             be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         result = PullResult()
         result.source_branch = source
@@ -1507,7 +1508,7 @@ class BzrBranch(Branch):
             else:
                 result.master_branch = self
                 result.local_branch = None
-            if _run_hooks:
+            if run_hooks:
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
         finally:
@@ -1525,14 +1526,50 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+        _hook_master=None, run_hooks=True):
         """See Branch.push.
+
+        This is the basic concrete implementation of push()
         
         :param _hook_master: Private parameter - set the branch to 
             be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
+        return self._push_with_bound_branches(target, overwrite,
+                stop_revision, _hook_master, run_hooks)
+
+    def _push_with_bound_branches(self, target, overwrite,
+            stop_revision, _hook_master, run_hooks):
+        """Updates branch.push to be bound branch aware
+        
+        This is on the base BzrBranch class even though it doesn't support 
+        bound branches because the *target* might be bound.
+        """
+        bound_location = target.get_bound_location()
+        master_branch = None
+        if bound_location and target.base != bound_location:
+            # not pushing to master, so we need to update master.
+            master_branch = target.get_master_branch()
+            master_branch.lock_write()
+        try:
+            if master_branch:
+                # push into the master from this branch.
+                self._basic_push(master_branch, overwrite, stop_revision,
+                    stop_revision, run_hooks=False)
+            # and push into the target branch from this. Note that we push from
+            # this branch again, because its considered the highest bandwidth
+            # repository.
+            return self._basic_push(target, overwrite, stop_revision,
+                    _hook_master=master_branch, run_hooks=run_hooks)
+        finally:
+            if master_branch:
+                master_branch.unlock()
+
+    def _basic_push(self, target, overwrite, stop_revision, _hook_master,
+            run_hooks):
+        """Basic implementation of push without considering bound branches."""
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
@@ -1554,7 +1591,7 @@ class BzrBranch(Branch):
             else:
                 result.master_branch = target
                 result.local_branch = None
-            if _run_hooks:
+            if run_hooks:
                 for hook in Branch.hooks['post_push']:
                     hook(result)
         finally:
@@ -1634,11 +1671,12 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _run_hooks=True):
+        run_hooks=True):
         """Extends branch.pull to be bound branch aware.
         
-        :param _run_hooks: Private parameter used to force hook running
-            off during bound branch double-pushing.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         bound_location = self.get_bound_location()
         master_branch = None
@@ -1650,33 +1688,10 @@ class BzrBranch5(BzrBranch):
             if master_branch:
                 # pull from source into master.
                 master_branch.pull(source, overwrite, stop_revision,
-                    _run_hooks=False)
+                    run_hooks=False)
             return super(BzrBranch5, self).pull(source, overwrite,
                 stop_revision, _hook_master=master_branch,
-                _run_hooks=_run_hooks)
-        finally:
-            if master_branch:
-                master_branch.unlock()
-
-    @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
-        """Updates branch.push to be bound branch aware."""
-        bound_location = target.get_bound_location()
-        master_branch = None
-        if bound_location and target.base != bound_location:
-            # not pushing to master, so we need to update master.
-            master_branch = target.get_master_branch()
-            master_branch.lock_write()
-        try:
-            if master_branch:
-                # push into the master from this branch.
-                super(BzrBranch5, self).push(master_branch, overwrite,
-                    stop_revision, _run_hooks=False)
-            # and push into the target branch from this. Note that we push from
-            # this branch again, because its considered the highest bandwidth
-            # repository.
-            return super(BzrBranch5, self).push(target, overwrite,
-                stop_revision, _hook_master=master_branch)
+                run_hooks=run_hooks)
         finally:
             if master_branch:
                 master_branch.unlock()

@@ -996,13 +996,19 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+            **kwargs):
+        # FIXME: This lets the real branch run the hooks, so they'll be called
+        # with the wrong branch parameters -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision)
+            source, overwrite=overwrite, stop_revision=stop_revision,
+            **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
+        # FIXME: This lets the real branch run the hooks, so they'll be called
+        # with the wrong branch parameters -- mbp 20070405
         self._ensure_real()
         return self._real_branch.push(
             target, overwrite=overwrite, stop_revision=stop_revision)
