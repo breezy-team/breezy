@@ -57,28 +57,8 @@ cdef extern from "stdlib.h":
 
 cdef extern from "string.h":
     char *strchr(char *s1, char c)
-
-
-cdef object _split_from_path(object cache, object path):
-    """get the dirblock tuple for a given path.
-
-    :param cache: A Dictionary mapping string paths to tuples
-    :param path: The path we care about.
-    :return: A borrowed reference to a tuple stored in cache.
-        You do not need to Py_DECREF() when you are done, unless you plan on
-        using it for a while.
-    """
-    cdef void* value_ptr
-    cdef object value
-
-    value_ptr = PyDict_GetItem(cache, path)
-    if value_ptr == NULL:
-        value = path.split('/')
-        cache[path] = value
-    else:
-        value = <object>value_ptr
-
-    return value
+    int strncmp(char *s1, char *s2, int len)
+    int strcmp(char *s1, char *s2)
 
 
 cdef int _cmp_dirblock_strings(char *path1, int size1, char *path2, int size2):
@@ -234,6 +214,40 @@ cdef object _fields_to_entry_0_parents(object fields):
         )])
 
 
+cdef void _parse_dirblocks_0_parents(object state, object fields,
+                                     int entry_size, int pos,
+                                     int field_count):
+    cdef object current_block
+    cdef object entry
+    cdef void* dirname
+    cdef char* dirname_str
+    cdef int dirname_size
+    cdef char* current_dirname_str
+    cdef int current_dirname_size
+
+    state._dirblocks = [('', []), ('', [])]
+    current_block = state._dirblocks[0][1]
+    current_dirname_str = ''
+    current_dirname_size = 0
+
+    while pos < field_count:
+        entry = _fields_to_entry_0_parents(fields[pos:pos+entry_size])
+        pos = pos + entry_size
+        dirname = PyTuple_GetItem_void_void(
+                    PyTuple_GetItem_void_void(<void*>entry, 0), 0)
+        dirname_str = PyString_AS_STRING_void(dirname)
+        dirname_size = PyString_GET_SIZE_void(dirname)
+        if (strcmp(dirname_str, current_dirname_str) != 0):
+            # new block - different dirname
+            current_block = []
+            current_dirname_str = dirname_str
+            current_dirname_size = dirname_size
+            PyList_Append(state._dirblocks,
+                          (<object>dirname, current_block))
+        PyList_Append(current_block, entry)
+    state._split_root_dirblock_into_contents()
+
+
 def _c_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
@@ -282,23 +296,8 @@ def _c_read_dirblocks(state):
 
     if num_present_parents == 0:
         # Move the iterator to the current position
-        state._dirblocks = [('', []), ('', [])]
-        current_block = state._dirblocks[0][1]
-        current_dirname = ''
-        append_entry = current_block.append
-        pos = cur
-        while pos < field_count:
-            entry = _fields_to_entry_0_parents(fields[pos:pos+entry_size])
-            pos = pos + entry_size
-            dirname = entry[0][0]
-            if dirname != current_dirname:
-                # new block - different dirname
-                current_block = []
-                current_dirname = dirname
-                state._dirblocks.append((current_dirname, current_block))
-                append_entry = current_block.append
-            append_entry(entry)
-        state._split_root_dirblock_into_contents()
+        _parse_dirblocks_0_parents(state, fields, entry_size, cur,
+                                   field_count)
     elif num_present_parents == 1:
         # Bind external functions to local names
         _int = int
