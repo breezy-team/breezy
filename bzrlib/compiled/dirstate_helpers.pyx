@@ -26,8 +26,8 @@ cdef extern from "Python.h":
     # GetItem returns a borrowed reference
     void *PyDict_GetItem(object p, object key)
     int PyDict_SetItem(object p, object key, object val) except -1
-    object PyList_GetItem(object lst, int index)
-    object PyTuple_GetItem(object tpl, int index)
+    void *PyList_GetItem_void "PyList_GET_ITEM" (object lst, int index)
+    object PyTuple_GetItem_object "PyTuple_GET_ITEM" (void* tpl, int index)
     int PyList_CheckExact(object)
     int PyTuple_CheckExact(object)
 
@@ -72,7 +72,8 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     cdef int _mid
     cdef object dirname_split
     cdef object cur_split
-    cdef object block
+    cdef void *block
+    cdef object cur
 
     if hi is None:
         _hi = len(dirblocks)
@@ -87,15 +88,11 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         _mid = (_lo+_hi)/2
         # Grab the dirname for the current dirblock
         # block = dirblocks[_mid]
-        block = PyList_GetItem(dirblocks, _mid)
-        Py_INCREF(block) # PyList_GetItem doesn't increment the ref counter,
-                         # but pyrex assumes objects have proper reference
-                         # counts. We were trying to have block not care
-                         # but that doesn't seem possible
-        if not PyTuple_CheckExact(block):
+        block = PyList_GetItem_void(dirblocks, _mid)
+        if not PyTuple_CheckExact(<object>block):
             raise TypeError('We expect to have a list of tuples')
         # cur = block[0]
-        cur = PyTuple_GetItem(block, 0)
+        cur = PyTuple_GetItem_object(block, 0)
         Py_INCREF(cur)
         cur_split = cur.split('/')
         if cur_split < dirname_split: _lo = _mid+1
