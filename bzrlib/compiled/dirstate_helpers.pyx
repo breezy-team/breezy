@@ -58,6 +58,7 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object p)
 
     void Py_INCREF(object)
+    void Py_INCREF_PyObject "Py_INCREF" (PyObject *)
     void Py_DECREF(object)
 
 
@@ -192,17 +193,31 @@ cdef object _List_GetItem_Incref(object lst, int offset):
 
 
 cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
-                                       void **dirname, char **dirname_str):
+                                       void **p_current_dirname,
+                                       int *new_block):
     cdef object path_name_file_id_key
     cdef char *size_str
     cdef unsigned long int size
     cdef char* executable_str
     cdef int is_executable
     cdef PyObject **base
+    cdef void* dirname
+    cdef char* dirname_str
+
+    # Is this too abusive?
     base = fields.ob_item + offset
-    dirname[0] = base[0]
-    dirname_str[0] = PyString_AS_STRING_void(base[0])
-    path_name_file_id_key = (<object>(base[0]),
+
+    dirname = base[0]
+    dirname_str = PyString_AS_STRING_void(dirname)
+
+    if strcmp(dirname_str,
+              PyString_AS_STRING_void(p_current_dirname[0])) != 0:
+        Py_INCREF_PyObject(<PyObject *>dirname)
+        p_current_dirname[0] = dirname
+        new_block[0] = 1
+    else:
+        new_block[0] = 0
+    path_name_file_id_key = (<object>p_current_dirname[0],
                              <object>(base[1]),
                              <object>(base[2]),
                             )
@@ -229,27 +244,28 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
                                      int field_count):
     cdef object current_block
     cdef object entry
-    cdef void* dirname
-    cdef char* dirname_str
-    cdef char* current_dirname_str
+    cdef void * current_dirname
+    cdef int new_block
 
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
 
     state._dirblocks = [('', []), ('', [])]
     current_block = state._dirblocks[0][1]
-    current_dirname_str = ''
+    obj = ''
+    current_dirname= <void*>obj
+    new_block = 0
 
     while pos < field_count:
         entry = _fields_to_entry_0_parents(<PyListObject *>fields, pos,
-                                           &dirname, &dirname_str)
+                                           &current_dirname,
+                                           &new_block)
         pos = pos + entry_size
-        if (strcmp(dirname_str, current_dirname_str) != 0):
+        if new_block:
             # new block - different dirname
             current_block = []
-            current_dirname_str = dirname_str
             PyList_Append(state._dirblocks,
-                          (<object>dirname, current_block))
+                          (<object>current_dirname, current_block))
         PyList_Append(current_block, entry)
     state._split_root_dirblock_into_contents()
 
