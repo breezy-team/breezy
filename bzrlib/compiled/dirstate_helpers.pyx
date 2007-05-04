@@ -280,7 +280,26 @@ def _c_read_dirblocks(state):
             field_count - cur, expected_field_count, entry_size,
             state._num_entries, fields)
 
-    if num_present_parents == 1:
+    if num_present_parents == 0:
+        # Move the iterator to the current position
+        state._dirblocks = [('', []), ('', [])]
+        current_block = state._dirblocks[0][1]
+        current_dirname = ''
+        append_entry = current_block.append
+        pos = cur
+        while pos < field_count:
+            entry = _fields_to_entry_0_parents(fields[pos:pos+entry_size])
+            pos = pos + entry_size
+            dirname = entry[0][0]
+            if dirname != current_dirname:
+                # new block - different dirname
+                current_block = []
+                current_dirname = dirname
+                state._dirblocks.append((current_dirname, current_block))
+                append_entry = current_block.append
+            append_entry(entry)
+        state._split_root_dirblock_into_contents()
+    elif num_present_parents == 1:
         # Bind external functions to local names
         _int = int
         # We access all fields in order, so we can just iterate over
@@ -330,14 +349,6 @@ def _c_read_dirblocks(state):
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()
-    elif num_present_parents == 0:
-        entries = []
-        pos = cur
-        while pos < field_count:
-            PyList_Append(entries,
-                _fields_to_entry_0_parents(fields[pos:pos+entry_size]))
-            pos = pos + entry_size
-        state._entries_to_current_state(entries)
     else:
         fields_to_entry = state._get_fields_to_entry()
         entries = []
