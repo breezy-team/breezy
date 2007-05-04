@@ -182,15 +182,3 @@ class BenchmarkDirState(benchmarks.Benchmark):
             self.checkOffsets(offsets)
         finally:
             state.unlock()
-
-    def test_bisect_dirblock_compiled_cached(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import bisect_dirblock
-        state = self.build_10k_dirstate_dirs()
-        state.lock_read()
-        try:
-            self.setup_paths_and_offsets(state)
-            offsets = self.time(self.do_bisect_list_cached, bisect_dirblock)
-            self.checkOffsets(offsets)
-        finally:
-            state.unlock()
