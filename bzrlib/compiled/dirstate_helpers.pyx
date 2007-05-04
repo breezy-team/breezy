@@ -140,6 +140,49 @@ cdef int _cmp_dirblock_strings(char *path1, int size1, char *path2, int size2):
     return 0
 
 
+cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size2):
+    cdef char *cur1
+    cdef char *cur2
+    cdef char *end1
+    cdef char *end2
+
+    cur1 = path1
+    cur2 = path2
+    end1 = path1+size1
+    end2 = path2+size2
+
+    while cur1 < end1 and cur2 < end2:
+        if cur1[0] == cur2[0]:
+            # This character matches, just go to the next one
+            cur1 = cur1 + 1
+            cur2 = cur2 + 1
+            continue
+        # The current characters do not match
+        if cur1[0] == c'/':
+            # We are at the end of a path segment in path1, but not in path2
+            # Everything has matched so far, which means path1 comes first
+            return -1
+        elif cur2[0] == c'/':
+            # We reached the end of a path segment for path2, but not for path1
+            # So path2 is obviously shorter and comes first
+            return 1
+        elif cur1[0] < cur2[0]:
+            # path1 comes first
+            return -1
+        else:
+            # path2 comes first
+            return 1
+    # We reached the end of one of the strings
+    if cur1 < end1:
+        # Must have reached path2 first, so it comes first
+        return 1
+    if cur2 < end1:
+        # Must have reached path1 first, it comes first
+        return -1
+    # We reached the end of both strings
+    return 0
+
+
 def cmp_dirblock_strings(path1, path2):
     """Compare to python strings in dirblock fashion."""
     return _cmp_dirblock_strings(PyString_AsString(path1),
