@@ -1740,7 +1740,6 @@ class TestPackStat(TestCaseWithTransport):
 class TestBisect(TestCaseWithDirState):
     """Test the ability to bisect into the disk format."""
 
-
     def assertBisect(self, expected_map, map_keys, state, paths):
         """Assert that bisecting for paths returns the right result.
 

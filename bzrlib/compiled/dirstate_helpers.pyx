@@ -29,11 +29,18 @@ cdef extern from "Python.h":
     # GetItem returns a borrowed reference
     void *PyDict_GetItem(object p, object key)
     int PyDict_SetItem(object p, object key, object val) except -1
+
+    int PyList_Append(object lst, object item) except -1
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
-    void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
-    object PyUnicode_Split_void_object "PyUnicode_Split" (void* str, )
+    object PyList_GET_ITEM (object lst, int index)
     int PyList_CheckExact(object)
+
     int PyTuple_CheckExact(object)
+    void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
+    object PyTuple_New(int)
+    int PyTuple_SetItem(object tpl, int offset, object val)
+    void PyTuple_SET_ITEM(object tpl, int offset, object val)
+    object PyTuple_Pack(int n, ...)
 
     char *PyString_AsString(object p)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
@@ -44,9 +51,11 @@ cdef extern from "Python.h":
     void Py_INCREF(object)
     void Py_DECREF(object)
 
+
+cdef extern from "stdlib.h":
+    unsigned long int strtoul(char *nptr, char **endptr, int base)
+
 cdef extern from "string.h":
-    int strncmp(char *s1, char *s2, size_t len)
-    int strcmp(char *s1, char *s2)
     char *strchr(char *s1, char c)
 
 
@@ -182,6 +191,49 @@ def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     return _lo
 
 
+cdef object _List_GetItem_Incref(object lst, int offset):
+    """Get an item, and increment a reference to it.
+
+    The caller must have checked that the object really is a list.
+    """
+    cdef object cur
+    cur = PyList_GET_ITEM(lst, offset)
+    Py_INCREF(cur)
+    return cur
+
+
+cdef object _fields_to_entry_0_parents(object fields):
+    cdef object path_name_file_id_key
+    cdef char *size_str
+    cdef unsigned long int size
+    cdef char* executable_str
+    cdef object is_executable
+    if not PyList_CheckExact(fields):
+        raise TypeError('fields must be a list')
+    path_name_file_id_key = (_List_GetItem_Incref(fields, 0),
+                             _List_GetItem_Incref(fields, 1),
+                             _List_GetItem_Incref(fields, 2),
+                            )
+
+    size_str = PyString_AS_STRING_void(
+                PyList_GetItem_object_void(fields, 5))
+    size = strtoul(size_str, NULL, 10)
+    executable_str = PyString_AS_STRING_void(
+                        PyList_GetItem_object_void(fields, 6))
+    if executable_str[0] == c'y':
+        is_executable = True
+    else:
+        is_executable = False
+    return (path_name_file_id_key, [
+        ( # Current tree
+            _List_GetItem_Incref(fields, 3),# minikind
+            _List_GetItem_Incref(fields, 4),# fingerprint
+            size,                           # size
+            is_executable,                  # executable
+            _List_GetItem_Incref(fields, 7),# packed_stat or revision_id
+        )])
+
+
 def _c_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
@@ -192,9 +244,11 @@ def _c_read_dirblocks(state):
     :param state: A DirState object.
     :return: None
     """
+    cdef int cur
     cdef int pos
     cdef int entry_size
     cdef int field_count
+    cdef int num_present_parents
 
     state._state_file.seek(state._end_of_header)
     text = state._state_file.read()
@@ -276,13 +330,19 @@ def _c_read_dirblocks(state):
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()
+    elif num_present_parents == 0:
+        entries = []
+        pos = cur
+        while pos < field_count:
+            PyList_Append(entries,
+                _fields_to_entry_0_parents(fields[pos:pos+entry_size]))
+            pos = pos + entry_size
+        state._entries_to_current_state(entries)
     else:
-
         fields_to_entry = state._get_fields_to_entry()
         entries = []
         entries_append = entries.append
         pos = cur
-        entry_size = entry_size
         while pos < field_count:
             entries_append(fields_to_entry(fields[pos:pos+entry_size]))
             pos = pos + entry_size
