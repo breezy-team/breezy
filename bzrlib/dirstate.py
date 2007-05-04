@@ -2305,7 +2305,7 @@ def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
 
 
 
-def _read_dirblocks(state):
+def _py_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be
@@ -2407,16 +2407,18 @@ def _read_dirblocks(state):
     # state._dirblocks = sorted(state._dirblocks)
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
+_read_dirblocks = _py_read_dirblocks
 
 # Try to load the compiled form if possible
 # TODO: jam 20070503 We should have a way to run tests with and without the
 #       compiled extensions.
 try:
     from bzrlib.compiled.dirstate_helpers import (
-        _read_dirblocks,
+        _c_read_dirblocks,
         c_bisect_dirblock,
         )
 except ImportError:
     pass
 else:
+    _read_dirblocks = _c_read_dirblocks
     bisect_dirblock = c_bisect_dirblock

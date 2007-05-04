@@ -182,7 +182,7 @@ def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     return _lo
 
 
-def _read_dirblocks(state):
+def _c_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be
