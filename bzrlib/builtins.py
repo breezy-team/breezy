@@ -1284,7 +1284,7 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            create_branch= bzrdir.BzrDir.create_branch_convenience
+            create_branch = bzrdir.BzrDir.create_branch_convenience
             branch = create_branch(to_transport.base, format=format,
                                    possible_transports=[to_transport])
         else:

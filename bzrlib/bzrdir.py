@@ -272,7 +272,7 @@ class BzrDir(object):
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
-                                  possible_transports=None,):
+                                  possible_transports=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This is a convenience function - it will use an existing repository
