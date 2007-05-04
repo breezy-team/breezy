@@ -823,7 +823,7 @@ class TestCase(unittest.TestCase):
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"
             % (message,
-               pformat(a, indent=4), pformat(b, indent=4)))
+               pformat(a), pformat(b)))
 
     assertEquals = assertEqual
 
