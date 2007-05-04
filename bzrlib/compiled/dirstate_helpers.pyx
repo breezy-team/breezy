@@ -28,6 +28,11 @@ cdef extern from "Python.h":
     int PyDict_SetItem(object p, object key, object val) except -1
     object PyList_GetItem(object lst, int index)
     object PyTuple_GetItem(object tpl, int index)
+    int PyList_CheckExact(object)
+    int PyTuple_CheckExact(object)
+
+    void Py_INCREF(object)
+    void Py_DECREF(object)
 
 
 cdef object _split_from_path(object cache, object path):
@@ -67,19 +72,31 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     cdef int _mid
     cdef object dirname_split
     cdef object cur_split
+    cdef object block
 
     if hi is None:
         _hi = len(dirblocks)
     else:
         _hi = hi
 
+    if not PyList_CheckExact(dirblocks):
+        raise TypeError('you must pass a python list for dirblocks')
     _lo = lo
     dirname_split = dirname.split('/')
     while _lo < _hi:
         _mid = (_lo+_hi)/2
         # Grab the dirname for the current dirblock
-        #cur = PyTuple_GetItem(PyList_GetItem(dirblocks, _mid), 0)
-        cur = dirblocks[_mid][0]
+        # block = dirblocks[_mid]
+        block = PyList_GetItem(dirblocks, _mid)
+        Py_INCREF(block) # PyList_GetItem doesn't increment the ref counter,
+                         # but pyrex assumes objects have proper reference
+                         # counts. We were trying to have block not care
+                         # but that doesn't seem possible
+        if not PyTuple_CheckExact(block):
+            raise TypeError('We expect to have a list of tuples')
+        # cur = block[0]
+        cur = PyTuple_GetItem(block, 0)
+        Py_INCREF(cur)
         cur_split = cur.split('/')
         if cur_split < dirname_split: _lo = _mid+1
         else: _hi = _mid
