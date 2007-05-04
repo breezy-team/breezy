@@ -27,6 +27,15 @@ cdef extern from *:
 
 cdef extern from "Python.h":
     # GetItem returns a borrowed reference
+    struct _PyObject:
+        pass
+    ctypedef _PyObject PyObject
+
+    struct _PyListObject:
+        int ob_size
+        PyObject **ob_item
+    ctypedef _PyListObject PyListObject
+
     void *PyDict_GetItem(object p, object key)
     int PyDict_SetItem(object p, object key, object val) except -1
 
@@ -182,35 +191,33 @@ cdef object _List_GetItem_Incref(object lst, int offset):
     return cur
 
 
-cdef object _fields_to_entry_0_parents(object fields, int offset):
+cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset):
     cdef object path_name_file_id_key
     cdef char *size_str
     cdef unsigned long int size
     cdef char* executable_str
-    cdef object is_executable
-    if not PyList_CheckExact(fields):
-        raise TypeError('fields must be a list')
-    path_name_file_id_key = (_List_GetItem_Incref(fields, offset+0),
-                             _List_GetItem_Incref(fields, offset+1),
-                             _List_GetItem_Incref(fields, offset+2),
+    cdef int is_executable
+    cdef PyObject **base
+    base = fields.ob_item + offset
+    path_name_file_id_key = (<object>(base[0]),
+                             <object>(base[1]),
+                             <object>(base[2]),
                             )
 
-    size_str = PyString_AS_STRING_void(
-                PyList_GetItem_object_void(fields, offset+5))
+    size_str = PyString_AS_STRING_void(<void*>(base[5]))
     size = strtoul(size_str, NULL, 10)
-    executable_str = PyString_AS_STRING_void(
-                        PyList_GetItem_object_void(fields, offset+6))
+    executable_str = PyString_AS_STRING_void(<void*>(base[6]))
     if executable_str[0] == c'y':
-        is_executable = True
+        is_executable = 0
     else:
-        is_executable = False
+        is_executable = 0
     return (path_name_file_id_key, [
         ( # Current tree
-            _List_GetItem_Incref(fields, offset+3),# minikind
-            _List_GetItem_Incref(fields, offset+4),# fingerprint
-            size,                                  # size
-            is_executable,                         # executable
-            _List_GetItem_Incref(fields, offset+7),# packed_stat or revision_id
+            <object>(base[3]),# minikind
+            <object>(base[4]),# fingerprint
+            size,             # size
+            is_executable,    # executable
+            <object>(base[7]),# packed_stat or revision_id
         )])
 
 
@@ -225,13 +232,16 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     cdef char* current_dirname_str
     cdef int current_dirname_size
 
+    if not PyList_CheckExact(fields):
+        raise TypeError('fields must be a list')
+
     state._dirblocks = [('', []), ('', [])]
     current_block = state._dirblocks[0][1]
     current_dirname_str = ''
     current_dirname_size = 0
 
     while pos < field_count:
-        entry = _fields_to_entry_0_parents(fields, pos)
+        entry = _fields_to_entry_0_parents(<PyListObject *>fields, pos)
         pos = pos + entry_size
         dirname = PyTuple_GetItem_void_void(
                     PyTuple_GetItem_void_void(<void*>entry, 0), 0)
