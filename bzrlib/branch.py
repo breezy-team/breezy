@@ -1526,28 +1526,26 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        run_hooks=True):
+        run_hooks=True,
+        _override_hook_source_branch=None):
         """See Branch.push.
 
         This is the basic concrete implementation of push()
         """
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        def _run_hooks(result):
-            for hook in Branch.hooks['post_push']:
-                hook(result)
-
         target.lock_write()
         try:
             result = self._push_with_bound_branches(target, overwrite,
                     stop_revision,
-                    run_hooks_cb=_run_hooks)
+                    _override_hook_source_branch=_override_hook_source_branch)
             return result
         finally:
             target.unlock()
 
     def _push_with_bound_branches(self, target, overwrite,
-            stop_revision, run_hooks_cb):
+            stop_revision,
+            _override_hook_source_branch=None):
         """Updates branch.push to be bound branch aware
         
         This is on the base BzrBranch class even though it doesn't support 
@@ -1558,6 +1556,12 @@ class BzrBranch(Branch):
             first.  May be a do-nothing function to disable running hooks.
             Called with all branches locked, including the master if any.
         """
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
+
         bound_location = target.get_bound_location()
         if bound_location and target.base != bound_location:
             # there is a master branch and we're not pushing to it, so we need
@@ -1576,18 +1580,19 @@ class BzrBranch(Branch):
                 result = self._basic_push(target, overwrite, stop_revision)
                 result.master_branch = master_branch
                 result.local_branch = target
-                run_hooks_cb(result)
+                _run_hooks()
                 return result
             finally:
                 master_branch.unlock()
         else:
             # no master branch
             result = self._basic_push(target, overwrite, stop_revision)
-            # TODO: Why set these if there's no binding?  Maybe cleaner to
-            # just leave them unset? -- mbp 20070504
+            # TODO: Why set master_branch and local_branch if there's no
+            # binding?  Maybe cleaner to just leave them unset? -- mbp
+            # 20070504
             result.master_branch = target
             result.local_branch = None
-            run_hooks_cb(result)
+            _run_hooks()
             return result
 
     def _basic_push(self, target, overwrite, stop_revision):

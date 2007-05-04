@@ -187,12 +187,6 @@ class TestPushHook(TestCaseWithBranch):
         source.push(target)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
-        if isinstance(source, RemoteBranch):
-            # XXX: at the moment, push on remote branches is just delegated to
-            # the file-level branch object, so we adjust the expected result
-            # accordingly.  In the future, when RemoteBranch implements push
-            # directly, this should be unnecessary.
-            source = source._real_branch
         self.assertEqual([
             ('post_push', source, None, target.base, 0, NULL_REVISION,
              0, NULL_REVISION, True, None, True)
@@ -214,10 +208,12 @@ class TestPushHook(TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = BzrDir.create_branch_convenience('local2')
-            local.bind(target)
-            #raise TestSkipped("Can't bind %s to %s" %
-            #    (local, target))
+            if 1:
+                local = BzrDir.create_branch_convenience('local2')
+                local.bind(target)
+            else:
+                raise TestSkipped("Can't bind %s to %s" %
+                    (local, target))
         source = self.make_branch('source')
         Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
         source.push(local)

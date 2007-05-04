@@ -20,7 +20,7 @@
 from cStringIO import StringIO
 
 from bzrlib import branch, errors, lockdir, repository
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -1011,7 +1011,8 @@ class RemoteBranch(branch.Branch):
         # with the wrong branch parameters -- mbp 20070405
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision)
+            target, overwrite=overwrite, stop_revision=stop_revision,
+            _override_hook_source_branch=self)
 
     def is_locked(self):
         return self._lock_count >= 1
