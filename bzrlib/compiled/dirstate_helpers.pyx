@@ -254,16 +254,9 @@ cdef void _parse_dirblocks_0_parents(object state, object reader,
     cdef object entry
     cdef void * current_dirname
     cdef int new_block
-    cdef int field_count
-    cdef int pos
 
     # Ignore the first record
-    fields = reader.get_all_fields()
-    if not PyList_CheckExact(fields):
-        raise TypeError('fields must be a list')
-
-    pos = 0
-    field_count = len(fields)
+    reader.init()
 
     state._dirblocks = [('', []), ('', [])]
     current_block = state._dirblocks[0][1]
@@ -271,11 +264,11 @@ cdef void _parse_dirblocks_0_parents(object state, object reader,
     current_dirname= <void*>obj
     new_block = 0
 
-    while pos < field_count:
-        entry = _fields_to_entry_0_parents(<PyListObject *>fields, pos,
+    while not reader.isdone():
+        fields = reader.get_entry(entry_size)
+        entry = _fields_to_entry_0_parents(<PyListObject *>fields, 0,
                                            &current_dirname,
                                            &new_block)
-        pos = pos + entry_size
         if new_block:
             # new block - different dirname
             current_block = []
@@ -306,6 +299,9 @@ cdef class Reader:
     cdef int done(self):
         return self.cur >= self.end_str
 
+    def isdone(self):
+        return self.done()
+
     cdef char *get_next(self):
         """Return a pointer to the start of the next field."""
         cdef char *next
@@ -317,23 +313,28 @@ cdef class Reader:
         """Get the next field as a Python string."""
         return PyString_FromString(self.get_next())
 
-    def get_n_fields(self, count):
-        cdef int i
-
-        fields = []
-        for i from 0 <= i < count:
-            PyList_Append(fields, self.get_next_str())
-        assert len(fields) == count
-        return fields
-
-    def get_all_fields(self):
-        """Get a list of all fields"""
+    def init(self):
+        """Get the pointer ready"""
         cdef char *first
         # The first field should be an empty string left over from the Header
         first = self.get_next()
         if first[0] != c'\0':
             raise AssertionError('First character should be null not: %s'
                                  % (first,))
+
+    def get_entry(self, entry_size):
+        cdef int i
+
+        fields = []
+        for i from 0 <= i < entry_size-1:
+            PyList_Append(fields, self.get_next_str())
+        # Ignore the trailing newline
+        self.get_next()
+        return fields
+
+    def get_all_fields(self):
+        """Get a list of all fields"""
+        self.init()
         fields = []
         while not self.done():
             PyList_Append(fields, self.get_next_str())
