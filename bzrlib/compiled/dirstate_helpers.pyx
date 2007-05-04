@@ -73,74 +73,6 @@ cdef object _split_from_path(object cache, object path):
 
 
 cdef int _cmp_dirblock_strings(char *path1, int size1, char *path2, int size2):
-    """This compares 2 strings separating on path sections.
-
-    This is equivalent to "cmp(path1.split('/'), path2.split('/'))"
-    However, we don't want to create an extra object for doing the split.
-
-    :param path1: The first path to compare
-    :param size1: The length of the first path
-    :param path2: The second path
-    :param size1: The length of the second path
-    :return: 0 if they are equal, -1 if path1 comes first, 1 if path2 comes
-        first
-    """
-    cdef char *base1
-    cdef char *base2
-    cdef char *tip1
-    cdef char *tip2
-    cdef char *end1
-    cdef char *end2
-    cdef int cur_len1
-    cdef int cur_len2
-    cdef int cmp_len
-    cdef int diff
-
-    base1 = path1
-    base2 = path2
-    end1 = base1 + size1
-    end2 = base2 + size2
-
-    # Ensure that we are pointing to the final NULL terminator on both ends
-    assert end1[0] == c'\x00'
-    assert end2[0] == c'\x00'
-
-    while base1 < end1 and base2 < end2:
-        # Find the next path separator
-        # (This is where you would like strchrnul)
-        tip1 = strchr(base1, c'/')
-        tip2 = strchr(base2, c'/')
-
-        if tip1 == NULL:
-            tip1 = end1
-        if tip2 == NULL:
-            tip2 = end2
-
-        cur_len1 = tip1 - base1
-        cur_len2 = tip2 - base2
-        cmp_len = cur_len1
-        if cur_len2 < cur_len1:
-            cmp_len = cur_len2
-
-        diff = strncmp(base1, base2, cmp_len)
-        # print 'comparing "%s", "%s", %d = %d' % (base1, base2, cmp_len, diff)
-        if diff != 0:
-            return diff
-        if cur_len1 < cur_len2:
-            return -1
-        elif cur_len1 > cur_len2:
-            return 1
-        base1 = tip1+1
-        base2 = tip2+1
-    # Do we still have uncompared characters?
-    if base1 < end1:
-        return 1
-    if base2 < end2:
-        return -1
-    return 0
-
-
-cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size2):
     cdef char *cur1
     cdef char *cur2
     cdef char *end1
@@ -177,33 +109,26 @@ cdef int _cmp_dirblock_strings_alt(char *path1, int size1, char *path2, int size
             continue
         # The current characters do not match
         if cur1[0] == c'/':
-            # We are at the end of a path segment in path1, but not in path2
-            # Everything has matched so far, which means path1 comes first
-            return -1
+            return -1 # Reached the end of path1 segment first
         elif cur2[0] == c'/':
-            # We reached the end of a path segment for path2, but not for path1
-            # So path2 is obviously shorter and comes first
-            return 1
+            return 1 # Reached the end of path2 segment first
         elif cur1[0] < cur2[0]:
-            # path1 comes first
             return -1
         else:
-            # path2 comes first
             return 1
-    # We reached the end of one of the strings
+
+    # We reached the end of at least one of the strings
     if cur1 < end1:
-        # Must have reached path2 first, so it comes first
-        return 1
+        return 1 # Not at the end of cur1, must be at the end of cur2
     if cur2 < end2:
-        # Must have reached path1 first, it comes first
-        return -1
+        return -1 # At the end of cur1, but not at cur2
     # We reached the end of both strings
     return 0
 
 
 def cmp_dirblock_strings(path1, path2):
     """Compare to python strings in dirblock fashion."""
-    return _cmp_dirblock_strings_alt(PyString_AsString(path1),
+    return _cmp_dirblock_strings(PyString_AsString(path1),
                                  PyString_Size(path1),
                                  PyString_AsString(path2),
                                  PyString_Size(path2))
