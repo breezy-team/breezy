@@ -134,7 +134,7 @@ def cmp_dirblock_strings(path1, path2):
                                  PyString_Size(path2))
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
+def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]

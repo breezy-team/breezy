@@ -149,8 +149,11 @@ class TestCompiledBisectDirblock(test_dirstate.TestBisectDirblock):
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
-    if have_dirstate_helpers:
-        bisect_dirblock_func = dirstate_helpers.bisect_dirblock
-    else:
-        bisect_dirblock_func = None
-
+    def setUp(self):
+        super(TestCompiledBisectDirblock, self).setUp()
+        if have_dirstate_helpers:
+            self.bisect_dirblock_func = dirstate_helpers.c_bisect_dirblock
+        else:
+            # We shouldn't be running these tests because of the
+            # _test_needs_features, so make sure they would fail otherwise
+            self.bisect_dirblock_func = None

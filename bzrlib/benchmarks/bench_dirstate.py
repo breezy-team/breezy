@@ -150,35 +150,35 @@ class BenchmarkDirState(benchmarks.Benchmark):
         offset_str = '\n'.join(str(x) for x in offsets)
         self.assertEqualDiff(expected_str, offset_str)
 
-    def test_bisect_dirblock(self):
+    def test_py_bisect_dirblock(self):
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
-            offsets = self.time(self.do_bisect_list, dirstate.bisect_dirblock)
+            offsets = self.time(self.do_bisect_list, dirstate.py_bisect_dirblock)
             self.checkOffsets(offsets)
         finally:
             state.unlock()
 
-    def test_bisect_dirblock_cached(self):
+    def test_py_bisect_dirblock_cached(self):
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
             offsets = self.time(self.do_bisect_list_cached,
-                                dirstate.bisect_dirblock)
+                                dirstate.py_bisect_dirblock)
             self.checkOffsets(offsets)
         finally:
             state.unlock()
 
-    def test_bisect_dirblock_compiled(self):
+    def test_c_bisect_dirblock(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib.compiled.dirstate_helpers import bisect_dirblock
+        from bzrlib.compiled.dirstate_helpers import c_bisect_dirblock
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
             self.setup_paths_and_offsets(state)
-            offsets = self.time(self.do_bisect_list, bisect_dirblock)
+            offsets = self.time(self.do_bisect_list, c_bisect_dirblock)
             self.checkOffsets(offsets)
         finally:
             state.unlock()

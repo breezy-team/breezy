@@ -1977,7 +1977,12 @@ class TestBisectDirblock(TestCase):
     'to', 'foo') chunks rather than by raw 'path/to/foo'.
     """
 
-    bisect_dirblock_func = dirstate.bisect_dirblock
+    def setUp(self):
+        super(TestBisectDirblock, self).setUp()
+        # We have to set this here, because if we set it at the class variable
+        # level, Python interprets it as a member function, and passes 'self'
+        # as the first argument.
+        self.bisect_dirblock_func = dirstate.py_bisect_dirblock
 
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
@@ -1988,6 +1993,7 @@ class TestBisectDirblock(TestCase):
 
         All other arguments will be passed along.
         """
+        self.assertIsInstance(dirblocks, list)
         bisect_split_idx = self.bisect_dirblock_func(dirblocks, path,
                                                      *args, **kwargs)
         split_dirblock = (path.split('/'), [])

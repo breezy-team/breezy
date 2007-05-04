@@ -2254,7 +2254,7 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+def py_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -2283,6 +2283,10 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         if cur_split < dirname_split: lo = mid+1
         else: hi = mid
     return lo
+
+# This is the function that will be used
+# But it may be overridden by the compiled version
+bisect_dirblock = py_bisect_dirblock
 
 
 
@@ -2408,6 +2412,11 @@ def _read_dirblocks(state):
 # TODO: jam 20070503 We should have a way to run tests with and without the
 #       compiled extensions.
 try:
-    from bzrlib.compiled.dirstate_helpers import _read_dirblocks
+    from bzrlib.compiled.dirstate_helpers import (
+        _read_dirblocks,
+        c_bisect_dirblock,
+        )
 except ImportError:
     pass
+else:
+    bisect_dirblock = c_bisect_dirblock
