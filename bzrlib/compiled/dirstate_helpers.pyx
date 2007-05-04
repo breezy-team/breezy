@@ -191,7 +191,8 @@ cdef object _List_GetItem_Incref(object lst, int offset):
     return cur
 
 
-cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset):
+cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
+                                       void **dirname, char **dirname_str):
     cdef object path_name_file_id_key
     cdef char *size_str
     cdef unsigned long int size
@@ -199,6 +200,8 @@ cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset):
     cdef int is_executable
     cdef PyObject **base
     base = fields.ob_item + offset
+    dirname[0] = base[0]
+    dirname_str[0] = PyString_AS_STRING_void(base[0])
     path_name_file_id_key = (<object>(base[0]),
                              <object>(base[1]),
                              <object>(base[2]),
@@ -228,9 +231,7 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     cdef object entry
     cdef void* dirname
     cdef char* dirname_str
-    cdef int dirname_size
     cdef char* current_dirname_str
-    cdef int current_dirname_size
 
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
@@ -238,20 +239,15 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     state._dirblocks = [('', []), ('', [])]
     current_block = state._dirblocks[0][1]
     current_dirname_str = ''
-    current_dirname_size = 0
 
     while pos < field_count:
-        entry = _fields_to_entry_0_parents(<PyListObject *>fields, pos)
+        entry = _fields_to_entry_0_parents(<PyListObject *>fields, pos,
+                                           &dirname, &dirname_str)
         pos = pos + entry_size
-        dirname = PyTuple_GetItem_void_void(
-                    PyTuple_GetItem_void_void(<void*>entry, 0), 0)
-        dirname_str = PyString_AS_STRING_void(dirname)
-        dirname_size = PyString_GET_SIZE_void(dirname)
         if (strcmp(dirname_str, current_dirname_str) != 0):
             # new block - different dirname
             current_block = []
             current_dirname_str = dirname_str
-            current_dirname_size = dirname_size
             PyList_Append(state._dirblocks,
                           (<object>dirname, current_block))
         PyList_Append(current_block, entry)
