@@ -182,7 +182,7 @@ cdef object _List_GetItem_Incref(object lst, int offset):
     return cur
 
 
-cdef object _fields_to_entry_0_parents(object fields):
+cdef object _fields_to_entry_0_parents(object fields, int offset):
     cdef object path_name_file_id_key
     cdef char *size_str
     cdef unsigned long int size
@@ -190,27 +190,27 @@ cdef object _fields_to_entry_0_parents(object fields):
     cdef object is_executable
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
-    path_name_file_id_key = (_List_GetItem_Incref(fields, 0),
-                             _List_GetItem_Incref(fields, 1),
-                             _List_GetItem_Incref(fields, 2),
+    path_name_file_id_key = (_List_GetItem_Incref(fields, offset+0),
+                             _List_GetItem_Incref(fields, offset+1),
+                             _List_GetItem_Incref(fields, offset+2),
                             )
 
     size_str = PyString_AS_STRING_void(
-                PyList_GetItem_object_void(fields, 5))
+                PyList_GetItem_object_void(fields, offset+5))
     size = strtoul(size_str, NULL, 10)
     executable_str = PyString_AS_STRING_void(
-                        PyList_GetItem_object_void(fields, 6))
+                        PyList_GetItem_object_void(fields, offset+6))
     if executable_str[0] == c'y':
         is_executable = True
     else:
         is_executable = False
     return (path_name_file_id_key, [
         ( # Current tree
-            _List_GetItem_Incref(fields, 3),# minikind
-            _List_GetItem_Incref(fields, 4),# fingerprint
-            size,                           # size
-            is_executable,                  # executable
-            _List_GetItem_Incref(fields, 7),# packed_stat or revision_id
+            _List_GetItem_Incref(fields, offset+3),# minikind
+            _List_GetItem_Incref(fields, offset+4),# fingerprint
+            size,                                  # size
+            is_executable,                         # executable
+            _List_GetItem_Incref(fields, offset+7),# packed_stat or revision_id
         )])
 
 
@@ -231,7 +231,7 @@ cdef void _parse_dirblocks_0_parents(object state, object fields,
     current_dirname_size = 0
 
     while pos < field_count:
-        entry = _fields_to_entry_0_parents(fields[pos:pos+entry_size])
+        entry = _fields_to_entry_0_parents(fields, pos)
         pos = pos + entry_size
         dirname = PyTuple_GetItem_void_void(
                     PyTuple_GetItem_void_void(<void*>entry, 0), 0)
