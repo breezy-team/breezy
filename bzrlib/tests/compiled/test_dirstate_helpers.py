@@ -16,7 +16,6 @@
 
 """Tests for the compiled dirstate helpers."""
 
-
 from bzrlib import (
     tests,
     )
@@ -26,6 +25,7 @@ except ImportError:
     have_dirstate_helpers = False
 else:
     have_dirstate_helpers = True
+from bzrlib.tests import test_dirstate
 
 
 class _CompiledDirstateHelpersFeature(tests.Feature):
@@ -134,3 +134,23 @@ class TestCMPDirblockStrings(tests.TestCase):
         self.assertStrCmp(-1, 'ab/cd/ef', 'ab/cd-ef')
         self.assertStrCmp(-1, 'ab/cd', 'ab/cd-')
         self.assertStrCmp(-1, 'ab/cd', 'ab-cd')
+
+
+class TestCompiledBisectDirblock(test_dirstate.TestBisectDirblock):
+    """Test that bisect_dirblock() returns the expected values.
+
+    bisect_dirblock is intended to work like bisect.bisect_left() except it
+    knows it is working on dirblocks and that dirblocks are sorted by ('path',
+    'to', 'foo') chunks rather than by raw 'path/to/foo'.
+
+    This runs all the normal tests that TestBisectDirblock did, but uses the
+    compiled version.
+    """
+
+    _test_needs_features = [CompiledDirstateHelpersFeature]
+
+    if have_dirstate_helpers:
+        bisect_dirblock_func = dirstate_helpers.bisect_dirblock
+    else:
+        bisect_dirblock_func = None
+

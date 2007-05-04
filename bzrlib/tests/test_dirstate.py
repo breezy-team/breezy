@@ -1977,6 +1977,8 @@ class TestBisectDirblock(TestCase):
     'to', 'foo') chunks rather than by raw 'path/to/foo'.
     """
 
+    bisect_dirblock_func = dirstate.bisect_dirblock
+
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
 
@@ -1986,8 +1988,8 @@ class TestBisectDirblock(TestCase):
 
         All other arguments will be passed along.
         """
-        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path,
-                                                 *args, **kwargs)
+        bisect_split_idx = self.bisect_dirblock_func(dirblocks, path,
+                                                     *args, **kwargs)
         split_dirblock = (path.split('/'), [])
         bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
                                              *args)
