@@ -25,20 +25,9 @@ from bzrlib import (
     osutils,
     tests,
     )
-
-
-class _CompiledDirstateHelpersFeature(tests.Feature):
-    def _probe(self):
-        try:
-            import bzrlib.compiled.dirstate_helpers
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'compiled dirstate helpers'
-
-CompiledDirstateHelpersFeature =_CompiledDirstateHelpersFeature()
+from bzrlib.tests.compiled.test_dirstate_helpers import (
+    CompiledDirstateHelpersFeature,
+    )
 
 
 class BenchmarkDirState(benchmarks.Benchmark):
