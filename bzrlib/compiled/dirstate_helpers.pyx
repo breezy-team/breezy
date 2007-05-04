@@ -249,16 +249,18 @@ cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
 
 
 cdef void _parse_dirblocks_0_parents(object state, object fields,
-                                     int entry_size, int pos):
+                                     int entry_size):
     cdef object current_block
     cdef object entry
     cdef void * current_dirname
     cdef int new_block
     cdef int field_count
+    cdef int pos
 
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
 
+    pos = 0
     field_count = len(fields)
 
     state._dirblocks = [('', []), ('', [])]
@@ -315,6 +317,12 @@ cdef class Reader:
 
     def get_all_fields(self):
         """Get a list of all fields"""
+        cdef char *first
+        # The first field should be an empty string left over from the Header
+        first = self.get_next()
+        if first[0] != c'\0':
+            raise AssertionError('First character should be null not: %s'
+                                 % (first,))
         fields = []
         while not self.done():
             PyList_Append(fields, self.get_next_str())
@@ -352,7 +360,7 @@ def _c_read_dirblocks(state):
     fields = reader.get_all_fields()
 
     # skip the first field which is the trailing null from the header.
-    cur = 1
+    cur = 0
 
     # Each line now has an extra '\n' field which is not used
     # so we just skip over it
@@ -374,7 +382,7 @@ def _c_read_dirblocks(state):
     if num_present_parents == 0:
         # Move the iterator to the current position
         #fields = reader.get_all_fields()
-        _parse_dirblocks_0_parents(state, fields, entry_size, 1)
+        _parse_dirblocks_0_parents(state, fields, entry_size)
         state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
         return
     if num_present_parents == 1:
