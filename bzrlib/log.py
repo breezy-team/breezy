@@ -59,6 +59,9 @@ from bzrlib import(
     symbol_versioning,
     )
 import bzrlib.errors as errors
+from bzrlib.revisionspec import(
+    RevisionInfo
+    )
 from bzrlib.symbol_versioning import(
     deprecated_method,
     zero_eleven,
@@ -115,7 +118,6 @@ def find_touching_revisions(branch, file_id):
         revno += 1
 
 
-
 def _enumerate_history(branch):
     rh = []
     revno = 1
@@ -161,6 +163,7 @@ def show_log(branch,
                   start_revision, end_revision, search)
     finally:
         branch.unlock()
+
     
 def _show_log(branch,
              lf,
@@ -188,32 +191,14 @@ def _show_log(branch,
     else:
         searchRE = None
 
-    which_revs = _enumerate_history(branch)
-    
-    if start_revision is None:
-        start_revision = 1
-    else:
-        branch.check_real_revno(start_revision)
-    
-    if end_revision is None:
-        end_revision = len(which_revs)
-    else:
-        branch.check_real_revno(end_revision)
-
-    # list indexes are 0-based; revisions are 1-based
-    cut_revs = which_revs[(start_revision-1):(end_revision)]
-    if not cut_revs:
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
+        _get_mainline_revs(branch, start_revision, end_revision)
+    if not mainline_revs:
         return
 
-    # convert the revision history to a dictionary:
-    rev_nos = dict((k, v) for v, k in cut_revs)
-
-    # override the mainline to look like the revision history.
-    mainline_revs = [revision_id for index, revision_id in cut_revs]
-    if cut_revs[0][0] == 1:
-        mainline_revs.insert(0, None)
-    else:
-        mainline_revs.insert(0, which_revs[start_revision-2][1])
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
+        
     legacy_lf = not getattr(lf,'log_revision',None)
     if legacy_lf:
         # pre-0.17 formatters use show for mainline revisions.
@@ -236,13 +221,14 @@ def _show_log(branch,
                                            False)
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
+    view_revisions = _filter_revision_range(list(view_revs_iter),
+                                            start_rev_id,
+                                            end_rev_id)
     if specific_fileid:
-        view_revisions = _get_revisions_touching_file_id(branch,
+        view_revisions = _filter_revisions_touching_file_id(branch,
                                                          specific_fileid,
                                                          mainline_revs,
-                                                         view_revs_iter)
-    else:
-        view_revisions = list(view_revs_iter)
+                                                         view_revisions)
 
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
@@ -310,10 +296,125 @@ def _show_log(branch,
         lf.end_log()
 
 
-def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                    view_revs_iter):
+def _get_mainline_revs(branch, start_revision, end_revision):
+    """Get the mainline revisions from the branch.
+    
+    Generates the list of mainline revisions for the branch.
+    
+    :param  branch: The branch containing the revisions. 
+
+    :param  start_revision: The first revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :param  end_revision: The last revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
+    """
+    which_revs = _enumerate_history(branch)
+    if not which_revs:
+        return None, None, None, None
+
+    # For mainline generation, map start_revision and end_revision to 
+    # mainline revnos. If the revision is not on the mainline choose the 
+    # appropriate extreme of the mainline instead - the extra will be 
+    # filtered later.
+    # Also map the revisions to rev_ids, to be used in the later filtering
+    # stage.
+    start_rev_id = None 
+    if start_revision is None:
+        start_revno = 1
+    else:
+        if isinstance(start_revision,RevisionInfo):
+            start_rev_id = start_revision.rev_id
+            start_revno = start_revision.revno or 1
+        else:
+            branch.check_real_revno(start_revision)
+            start_revno = start_revision
+    
+    end_rev_id = None
+    if end_revision is None:
+        end_revno = len(which_revs)
+    else:
+        if isinstance(end_revision,RevisionInfo):
+            end_rev_id = end_revision.rev_id
+            end_revno = end_revision.revno or len(which_revs)
+        else:
+            branch.check_real_revno(end_revision)
+            end_revno = end_revision
+
+    if start_revno > end_revno:
+        from bzrlib.errors import BzrCommandError
+        raise BzrCommandError("Start revision must be older than "
+                              "the end revision.")
+
+    # list indexes are 0-based; revisions are 1-based
+    cut_revs = which_revs[(start_revno-1):(end_revno)]
+    if not cut_revs:
+        return None, None, None, None
+
+    # convert the revision history to a dictionary:
+    rev_nos = dict((k, v) for v, k in cut_revs)
+
+    # override the mainline to look like the revision history.
+    mainline_revs = [revision_id for index, revision_id in cut_revs]
+    if cut_revs[0][0] == 1:
+        mainline_revs.insert(0, None)
+    else:
+        mainline_revs.insert(0, which_revs[start_revno-2][1])
+    return mainline_revs, rev_nos, start_rev_id, end_rev_id
+
+
+def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
+    """Filter view_revisions based on revision ranges.
+
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth) 
+            tuples to be filtered.
+
+    :param start_rev_id: If not NONE specifies the first revision to be logged.
+            If NONE then all revisions up to the end_rev_id are logged.
+
+    :param end_rev_id: If not NONE specifies the last revision to be logged.
+            If NONE then all revisions up to the end of the log are logged.
+
+    :return: The filtered view_revisions.
+    """
+    if start_rev_id or end_rev_id: 
+        revision_ids = [r for r, n, d in view_revisions]
+        if start_rev_id:
+            start_index = revision_ids.index(start_rev_id)
+        else:
+            start_index = 0
+        if start_rev_id == end_rev_id:
+            end_index = start_index
+        else:
+            if end_rev_id:
+                end_index = revision_ids.index(end_rev_id)
+            else:
+                end_index = len(view_revisions) - 1
+        # To include the revisions merged into the last revision, 
+        # extend end_rev_id down to, but not including, the next rev
+        # with the same or lesser merge_depth
+        end_merge_depth = view_revisions[end_index][2]
+        try:
+            for index in xrange(end_index+1, len(view_revisions)+1):
+                if view_revisions[index][2] <= end_merge_depth:
+                    end_index = index - 1
+                    break
+        except IndexError:
+            # if the search falls off the end then log to the end as well
+            end_index = len(view_revisions) - 1
+        view_revisions = view_revisions[start_index:end_index+1]
+    return view_revisions
+
+
+def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
+                                       view_revs_iter):
     """Return the list of revision ids which touch a given file id.
 
+    The function filters view_revisions and returns a subset.
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::

@@ -19,6 +19,10 @@ IN DEVELOPMENT
       empty value. And when the value is not ASCII.
       (John Arbash Meinel, #109613)
 
+    * Fix ``bzr log -r`` to support selecting merge revisions, both 
+      individually and as part of revision ranges.
+      (Kent Gibson, #4663)
+
 
 bzr 0.16rc1  2007-04-26
 
