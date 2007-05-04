@@ -249,15 +249,17 @@ cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
 
 
 cdef void _parse_dirblocks_0_parents(object state, object fields,
-                                     int entry_size, int pos,
-                                     int field_count):
+                                     int entry_size, int pos):
     cdef object current_block
     cdef object entry
     cdef void * current_dirname
     cdef int new_block
+    cdef int field_count
 
     if not PyList_CheckExact(fields):
         raise TypeError('fields must be a list')
+
+    field_count = len(fields)
 
     state._dirblocks = [('', []), ('', [])]
     current_block = state._dirblocks[0][1]
@@ -334,6 +336,8 @@ def _c_read_dirblocks(state):
     cdef int entry_size
     cdef int field_count
     cdef int num_present_parents
+    cdef int expected_field_count
+    cdef int num_entries
     cdef char *next_field
 
     state._state_file.seek(state._end_of_header)
@@ -341,6 +345,9 @@ def _c_read_dirblocks(state):
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
     reader = Reader(text)
+
+    num_present_parents = state._num_present_parents()
+    entry_size = state._fields_per_entry()
 
     fields = reader.get_all_fields()
 
@@ -353,23 +360,24 @@ def _c_read_dirblocks(state):
     #  3 fields for the key
     #  + number of fields per tree_data (5) * tree count
     #  + newline
-    num_present_parents = state._num_present_parents()
-    tree_count = 1 + num_present_parents
-    entry_size = state._fields_per_entry()
-    expected_field_count = entry_size * state._num_entries
+    num_entries = state._num_entries
+    expected_field_count = entry_size * num_entries
     field_count = len(fields)
-    # this checks our adjustment, and also catches file too short.
-    assert field_count - cur == expected_field_count, \
-        'field count incorrect %s != %s, entry_size=%s, '\
-        'num_entries=%s fields=%r' % (
-            field_count - cur, expected_field_count, entry_size,
-            state._num_entries, fields)
+    if field_count - cur != expected_field_count:
+        # this checks our adjustment, and also catches file too short.
+        raise AssertionError(
+            'field count incorrect %s != %s, entry_size=%s, '
+            'num_entries=%s fields=%r' % (
+                field_count - cur, expected_field_count, entry_size,
+                state._num_entries, fields))
 
     if num_present_parents == 0:
         # Move the iterator to the current position
-        _parse_dirblocks_0_parents(state, fields, entry_size, cur,
-                                   field_count)
-    elif num_present_parents == 1:
+        #fields = reader.get_all_fields()
+        _parse_dirblocks_0_parents(state, fields, entry_size, 1)
+        state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+        return
+    if num_present_parents == 1:
         # Bind external functions to local names
         _int = int
         # We access all fields in order, so we can just iterate over
