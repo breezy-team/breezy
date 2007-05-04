@@ -79,7 +79,8 @@ bzrlib.breakin.hook_sigquit()
 import bzrlib.decorators
 if ('--lsprof' in sys.argv
     or '--lsprof-file' in sys.argv
-    or '--profile' in sys.argv):
+    or '--profile' in sys.argv
+    or '--lsprof-timed' in sys.argv):
     bzrlib.decorators.use_pretty_decorators()
 else:
     bzrlib.decorators.use_fast_decorators()
