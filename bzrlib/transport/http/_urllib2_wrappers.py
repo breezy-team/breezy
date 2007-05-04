@@ -235,7 +235,7 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
 
-    # test mutiple connections
+    # FIXME: instrument or refactor to allow testing for mutiple connections
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
         if not host:
