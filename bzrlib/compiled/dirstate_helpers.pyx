@@ -26,8 +26,9 @@ cdef extern from "Python.h":
     # GetItem returns a borrowed reference
     void *PyDict_GetItem(object p, object key)
     int PyDict_SetItem(object p, object key, object val) except -1
-    void *PyList_GetItem_void "PyList_GET_ITEM" (object lst, int index)
-    object PyTuple_GetItem_object "PyTuple_GET_ITEM" (void* tpl, int index)
+    void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
+    void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
+    object PyUnicode_Split_void_object "PyUnicode_Split" (void* str, )
     int PyList_CheckExact(object)
     int PyTuple_CheckExact(object)
 
@@ -72,8 +73,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     cdef int _mid
     cdef object dirname_split
     cdef object cur_split
-    cdef void *block
-    cdef object cur
+    cdef void *cur
 
     if hi is None:
         _hi = len(dirblocks)
@@ -87,14 +87,10 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     while _lo < _hi:
         _mid = (_lo+_hi)/2
         # Grab the dirname for the current dirblock
-        # block = dirblocks[_mid]
-        block = PyList_GetItem_void(dirblocks, _mid)
-        if not PyTuple_CheckExact(<object>block):
-            raise TypeError('We expect to have a list of tuples')
-        # cur = block[0]
-        cur = PyTuple_GetItem_object(block, 0)
-        Py_INCREF(cur)
-        cur_split = cur.split('/')
+        # cur = dirblocks[_mid][0]
+        cur = PyTuple_GetItem_void_void(
+                PyList_GetItem_object_void(dirblocks, _mid), 0)
+        cur_split = (<object>cur).split('/')
         if cur_split < dirname_split: _lo = _mid+1
         else: _hi = _mid
     return _lo
