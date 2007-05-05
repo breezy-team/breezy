@@ -222,12 +222,6 @@ cdef class Reader:
         self.end_str = self.text_str + self.text_size
         self.cur = self.text_str
 
-    cdef int done(self):
-        return self.cur >= self.end_str
-
-    def isdone(self):
-        return self.done()
-
     cdef char *get_next(self, int *size):
         """Return a pointer to the start of the next field."""
         cdef char *next
@@ -254,21 +248,11 @@ cdef class Reader:
             raise AssertionError('First character should be null not: %s'
                                  % (first,))
 
-    def get_entry(self, entry_size):
-        cdef int i
-
-        fields = []
-        for i from 0 <= i < entry_size-1:
-            PyList_Append(fields, self.get_next_str())
-        # Ignore the trailing newline
-        self.get_next(&i)
-        return fields
-
     def get_all_fields(self):
         """Get a list of all fields"""
         self.init()
         fields = []
-        while not self.done():
+        while self.cur < self.end_str:
             PyList_Append(fields, self.get_next_str())
         return fields
 
@@ -340,7 +324,7 @@ cdef class Reader:
         current_dirname = <void*>obj
         new_block = 0
 
-        while not self.done():
+        while self.cur < self.end_str:
             entry = self._get_entry_0_parents(&current_dirname, &new_block)
             if new_block:
                 # new block - different dirname
