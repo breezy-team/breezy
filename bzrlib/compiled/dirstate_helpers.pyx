@@ -201,81 +201,6 @@ cdef object _List_GetItem_Incref(object lst, int offset):
     return cur
 
 
-cdef object _fields_to_entry_0_parents(PyListObject *fields, int offset,
-                                       void **p_current_dirname,
-                                       int *new_block):
-    cdef object path_name_file_id_key
-    cdef char *size_str
-    cdef unsigned long int size
-    cdef char* executable_str
-    cdef int is_executable
-    cdef PyObject **base
-    cdef void* dirname
-    cdef char* dirname_str
-
-    # Is this too abusive?
-    base = fields.ob_item + offset
-
-    dirname = base[0]
-    dirname_str = PyString_AS_STRING_void(dirname)
-
-    if strcmp(dirname_str,
-              PyString_AS_STRING_void(p_current_dirname[0])) != 0:
-        Py_INCREF_PyObject(<PyObject *>dirname)
-        p_current_dirname[0] = dirname
-        new_block[0] = 1
-    else:
-        new_block[0] = 0
-    path_name_file_id_key = (<object>p_current_dirname[0],
-                             <object>(base[1]),
-                             <object>(base[2]),
-                            )
-
-    size_str = PyString_AS_STRING_void(<void*>(base[5]))
-    size = strtoul(size_str, NULL, 10)
-    executable_str = PyString_AS_STRING_void(<void*>(base[6]))
-    if executable_str[0] == c'y':
-        is_executable = 0
-    else:
-        is_executable = 0
-    return (path_name_file_id_key, [
-        ( # Current tree
-            <object>(base[3]),# minikind
-            <object>(base[4]),# fingerprint
-            size,             # size
-            is_executable,    # executable
-            <object>(base[7]),# packed_stat or revision_id
-        )])
-
-
-cdef void _parse_dirblocks_0_parents(object state, object reader,
-                                     int entry_size):
-    cdef object current_block
-    cdef object entry
-    cdef void * current_dirname
-    cdef int new_block
-
-    # Ignore the first record
-    reader.init()
-
-    state._dirblocks = [('', []), ('', [])]
-    current_block = state._dirblocks[0][1]
-    obj = ''
-    current_dirname= <void*>obj
-    new_block = 0
-
-    while not reader.isdone():
-        fields = reader.get_entry(entry_size)
-        entry = _fields_to_entry_0_parents(<PyListObject *>fields, 0,
-                                           &current_dirname,
-                                           &new_block)
-        if new_block:
-            # new block - different dirname
-            current_block = []
-            PyList_Append(state._dirblocks,
-                          (<object>current_dirname, current_block))
-        PyList_Append(current_block, entry)
-    state._split_root_dirblock_into_contents()
 
 
 cdef class Reader:
@@ -340,6 +265,83 @@ cdef class Reader:
             PyList_Append(fields, self.get_next_str())
         return fields
 
+    cdef object _fields_to_entry_0_parents(self,
+                                           PyListObject *fields, int offset,
+                                           void **p_current_dirname,
+                                           int *new_block):
+        cdef object path_name_file_id_key
+        cdef char *size_str
+        cdef unsigned long int size
+        cdef char* executable_str
+        cdef int is_executable
+        cdef PyObject **base
+        cdef void* dirname
+        cdef char* dirname_str
+
+        # Is this too abusive?
+        base = fields.ob_item + offset
+
+        dirname = base[0]
+        dirname_str = PyString_AS_STRING_void(dirname)
+
+        if strcmp(dirname_str,
+                  PyString_AS_STRING_void(p_current_dirname[0])) != 0:
+            Py_INCREF_PyObject(<PyObject *>dirname)
+            p_current_dirname[0] = dirname
+            new_block[0] = 1
+        else:
+            new_block[0] = 0
+        path_name_file_id_key = (<object>p_current_dirname[0],
+                                 <object>(base[1]),
+                                 <object>(base[2]),
+                                )
+
+        size_str = PyString_AS_STRING_void(<void*>(base[5]))
+        size = strtoul(size_str, NULL, 10)
+        executable_str = PyString_AS_STRING_void(<void*>(base[6]))
+        if executable_str[0] == c'y':
+            is_executable = 0
+        else:
+            is_executable = 0
+        return (path_name_file_id_key, [
+            ( # Current tree
+                <object>(base[3]),# minikind
+                <object>(base[4]),# fingerprint
+                size,             # size
+                is_executable,    # executable
+                <object>(base[7]),# packed_stat or revision_id
+            )])
+
+
+    def _parse_dirblocks_0_parents(self, state, entry_size):
+        cdef object current_block
+        cdef object entry
+        cdef void * current_dirname
+        cdef int new_block
+
+        # Ignore the first record
+        self.init()
+
+        state._dirblocks = [('', []), ('', [])]
+        current_block = state._dirblocks[0][1]
+        obj = ''
+        current_dirname= <void*>obj
+        new_block = 0
+
+        while not self.done():
+            fields = self.get_entry(entry_size)
+            entry = self._fields_to_entry_0_parents(<PyListObject *>fields,
+                                                    0,
+                                                    &current_dirname,
+                                                    &new_block)
+            if new_block:
+                # new block - different dirname
+                current_block = []
+                PyList_Append(state._dirblocks,
+                              (<object>current_dirname, current_block))
+            PyList_Append(current_block, entry)
+        state._split_root_dirblock_into_contents()
+
 
 def _c_read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
@@ -371,7 +373,7 @@ def _c_read_dirblocks(state):
 
     if num_present_parents == 0:
         # Move the iterator to the current position
-        _parse_dirblocks_0_parents(state, reader, entry_size)
+        reader._parse_dirblocks_0_parents(state, entry_size)
         state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
         return
     fields = reader.get_all_fields()
