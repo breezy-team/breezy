@@ -272,53 +272,58 @@ cdef class Reader:
             PyList_Append(fields, self.get_next_str())
         return fields
 
-    cdef object _fields_to_entry_0_parents(self,
-                                           PyListObject *fields, int offset,
-                                           void **p_current_dirname,
-                                           int *new_block):
+    cdef object _get_entry_0_parents(self, void **p_current_dirname,
+                                     int *new_block):
         cdef object path_name_file_id_key
-        cdef char *size_str
-        cdef unsigned long int size
+        cdef char *entry_size_str
+        cdef unsigned long int entry_size
         cdef char* executable_str
         cdef int is_executable
-        cdef PyObject **base
-        cdef void* dirname
         cdef char* dirname_str
+        cdef char* trailing
+        cdef int cur_size
+        cdef object minikind
+        cdef object fingerprint
+        cdef object info
 
-        # Is this too abusive?
-        base = fields.ob_item + offset
-
-        dirname = base[0]
-        dirname_str = PyString_AS_STRING_void(dirname)
-
-        if strcmp(dirname_str,
-                  PyString_AS_STRING_void(p_current_dirname[0])) != 0:
-            Py_INCREF_PyObject(<PyObject *>dirname)
-            p_current_dirname[0] = dirname
+        dirname_str = self.get_next(&cur_size)
+        if strncmp(dirname_str,
+                  PyString_AS_STRING_void(p_current_dirname[0]),
+                  cur_size+1) != 0:
+            dirname = PyString_FromStringAndSize(dirname_str, cur_size)
+            p_current_dirname[0] = <void*>dirname
             new_block[0] = 1
         else:
             new_block[0] = 0
         path_name_file_id_key = (<object>p_current_dirname[0],
-                                 <object>(base[1]),
-                                 <object>(base[2]),
+                                 self.get_next_str(),
+                                 self.get_next_str(),
                                 )
 
-        size_str = PyString_AS_STRING_void(<void*>(base[5]))
-        size = strtoul(size_str, NULL, 10)
-        executable_str = PyString_AS_STRING_void(<void*>(base[6]))
-        if executable_str[0] == c'y':
-            is_executable = 0
-        else:
-            is_executable = 0
-        return (path_name_file_id_key, [
+        minikind = self.get_next_str()
+        fingerprint = self.get_next_str()
+        entry_size_str = self.get_next(&cur_size)
+        entry_size = strtoul(entry_size_str, NULL, 10)
+        executable_str = self.get_next(&cur_size)
+        is_executable = (executable_str[0] == c'y')
+        info = self.get_next_str()
+
+        ret = (path_name_file_id_key, [
             ( # Current tree
-                <object>(base[3]),# minikind
-                <object>(base[4]),# fingerprint
-                size,             # size
-                is_executable,    # executable
-                <object>(base[7]),# packed_stat or revision_id
+                minikind,     # minikind
+                fingerprint,  # fingerprint
+                entry_size,   # size
+                is_executable,# executable
+                info,         # packed_stat or revision_id
             )])
 
+        # Ignore the trailing newline
+        trailing = self.get_next(&cur_size)
+        if cur_size != 1 or trailing[0] != c'\n':
+            raise AssertionError(
+                'Bad parse, we expected to end on \\n, not: %d %s: %s'
+                % (cur_size, PyString_FromString(trailing), ret))
+        return ret
 
     def _parse_dirblocks_0_parents(self, state, entry_size):
         cdef object current_block
@@ -336,12 +341,7 @@ cdef class Reader:
         new_block = 0
 
         while not self.done():
-            fields = self.get_entry(entry_size)
-            # entry = self._get_entry_0_parents(&current_dirname, &new_block)
-            entry = self._fields_to_entry_0_parents(<PyListObject *>fields,
-                                                    0,
-                                                    &current_dirname,
-                                                    &new_block)
+            entry = self._get_entry_0_parents(&current_dirname, &new_block)
             if new_block:
                 # new block - different dirname
                 current_block = []
