@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import BzrError, ConnectionReset
+from bzrlib.errors import BzrError, ConnectionReset, LockError
 
 import svn.core
 
@@ -32,6 +32,8 @@ def convert_error(err):
 
     if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
         return ConnectionReset(msg=msg)
+    elif num == svn.core.SVN_ERR_WC_LOCKED:
+        return LockError(message=msg)
     else:
         return err
 
