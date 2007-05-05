@@ -63,6 +63,7 @@ cdef extern from "Python.h":
     char *PyString_AsString(object p)
     char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
     object PyString_FromString(char *)
+    object PyString_FromStringAndSize(char *, int)
     int PyString_Size(object p)
     int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
     int PyString_CheckExact(object p)
@@ -227,23 +228,29 @@ cdef class Reader:
     def isdone(self):
         return self.done()
 
-    cdef char *get_next(self):
+    cdef char *get_next(self, int *size):
         """Return a pointer to the start of the next field."""
         cdef char *next
         next = self.cur
-        self.cur = strchr(next, c'\0') + 1
+        self.cur = strchr(next, c'\0')
+        size[0] = self.cur - next
+        self.cur = self.cur + 1
         return next
 
     def get_next_str(self):
         """Get the next field as a Python string."""
-        return PyString_FromString(self.get_next())
+        cdef int size
+        cdef char *next
+        next = self.get_next(&size)
+        return PyString_FromStringAndSize(next, size)
 
     def init(self):
         """Get the pointer ready"""
         cdef char *first
+        cdef int size
         # The first field should be an empty string left over from the Header
-        first = self.get_next()
-        if first[0] != c'\0':
+        first = self.get_next(&size)
+        if first[0] != c'\0' and size == 0:
             raise AssertionError('First character should be null not: %s'
                                  % (first,))
 
@@ -254,7 +261,7 @@ cdef class Reader:
         for i from 0 <= i < entry_size-1:
             PyList_Append(fields, self.get_next_str())
         # Ignore the trailing newline
-        self.get_next()
+        self.get_next(&i)
         return fields
 
     def get_all_fields(self):
@@ -322,14 +329,15 @@ cdef class Reader:
         # Ignore the first record
         self.init()
 
-        state._dirblocks = [('', []), ('', [])]
-        current_block = state._dirblocks[0][1]
+        current_block = []
+        state._dirblocks = [('', current_block), ('', [])]
         obj = ''
-        current_dirname= <void*>obj
+        current_dirname = <void*>obj
         new_block = 0
 
         while not self.done():
             fields = self.get_entry(entry_size)
+            # entry = self._get_entry_0_parents(&current_dirname, &new_block)
             entry = self._fields_to_entry_0_parents(<PyListObject *>fields,
                                                     0,
                                                     &current_dirname,
