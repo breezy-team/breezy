@@ -1564,6 +1564,14 @@ class cmd_root(Command):
         self.outf.write(tree.basedir + '\n')
 
 
+def _parse_limit(limitstring):
+    try:
+        return int(limitstring)
+    except ValueError:
+        msg = "The limit argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
+
 class cmd_log(Command):
     """Show log of a branch, file, or directory.
 
@@ -1594,6 +1602,9 @@ class cmd_log(Command):
                             short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
+                     Option('limit', 
+                            help='limit the output to the first N revisions',
+                            type=_parse_limit),
                      ]
     encoding_type = 'replace'
 
@@ -1604,7 +1615,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None):
+            message=None,
+            limit=None):
         from bzrlib.log import show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
@@ -1685,7 +1697,8 @@ class cmd_log(Command):
                      direction=direction,
                      start_revision=rev1,
                      end_revision=rev2,
-                     search=message)
+                     search=message,
+                     limit=limit)
         finally:
             b.unlock()
 

@@ -19,6 +19,9 @@ IN DEVELOPMENT
       empty value. And when the value is not ASCII.
       (John Arbash Meinel, #109613)
 
+    * Added ``bzr log --limit`` to report a limited number of revisions.
+      (Kent Gibson, #3659)
+
 
 bzr 0.16rc1  2007-04-26
 

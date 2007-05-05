@@ -132,7 +132,8 @@ def show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Write out human-readable log of commits to this branch.
 
     lf
@@ -154,11 +155,17 @@ def show_log(branch,
 
     end_revision
         If not None, only show revisions <= end_revision
+
+    search
+        If not None, only show revisions with matching commit messages
+
+    limit
+        If not None or 0, only show limit revisions
     """
     branch.lock_read()
     try:
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search)
+                  start_revision, end_revision, search, limit)
     finally:
         branch.unlock()
     
@@ -169,7 +176,8 @@ def _show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
@@ -279,6 +287,7 @@ def _show_log(branch,
         lf.begin_log()
 
     # now we just print all the revisions
+    log_count = 0
     for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
 
@@ -305,6 +314,10 @@ def _show_log(branch,
                                             rev_tag_dict.get(rev_id))
                     else:
                         lf.show_merge_revno(rev, merge_depth, revno)
+        if limit:
+            log_count += 1
+            if log_count >= limit:
+                break
 
     if getattr(lf, 'end_log', None):
         lf.end_log()
