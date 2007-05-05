@@ -200,7 +200,7 @@ desired.
 """
 
 
-import base64
+import binascii
 import bisect
 import errno
 import os
@@ -2290,7 +2290,7 @@ bisect_dirblock = py_bisect_dirblock
 
 
 
-def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
+def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
     """Convert stat values into a packed representation."""
     # jam 20060614 it isn't really worth removing more entries if we
     # are going to leave it in packed form.
