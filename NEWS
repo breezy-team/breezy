@@ -18,6 +18,10 @@ IN DEVELOPMENT
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
 
+    * pycurl should take use the range header that takes the range hint
+      into account.
+      (Vincent Ladeuil, #112719)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:
