@@ -116,8 +116,7 @@ class TestRemove(ExternalBase):
     def test_remove_invalid_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr_remove_changed_files(['unknown:[.\s]*xyz[.\s]*abc/def'],
-            ['.', 'xyz', 'abc/def'])
+        self.run_bzr('remove . xyz abc/def')
 
     def test_remove_unversioned_files(self):
         self.build_tree(files)
@@ -173,7 +172,7 @@ class TestRemove(ExternalBase):
 
     def test_remove_non_existing_files(self):
         tree = self._make_add_and_assert_tree([])
-        self.run_bzr_remove_changed_files(['unknown:[.\s]*b'], ['b'])
+        self.run_bzr('remove b')
 
     def test_remove_keep_non_existing_files(self):
         tree = self._make_add_and_assert_tree([])
