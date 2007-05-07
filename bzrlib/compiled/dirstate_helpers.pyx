@@ -211,19 +211,6 @@ def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
     return _lo
 
 
-cdef object _List_GetItem_Incref(object lst, int offset):
-    """Get an item, and increment a reference to it.
-
-    The caller must have checked that the object really is a list.
-    """
-    cdef object cur
-    cur = PyList_GET_ITEM(lst, offset)
-    Py_INCREF(cur)
-    return cur
-
-
-
-
 cdef class Reader:
     """Maintain the current location, and return fields as you parse them."""
 
