@@ -81,7 +81,7 @@ cdef extern from "string.h":
     int strcmp(char *s1, char *s2)
 
 
-cdef int _cmp_dirblock_strings(char *path1, int size1, char *path2, int size2):
+cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     cdef char *cur1
     cdef char *cur2
     cdef char *end1
@@ -135,12 +135,27 @@ cdef int _cmp_dirblock_strings(char *path1, int size1, char *path2, int size2):
     return 0
 
 
-def cmp_dirblock_strings(path1, path2):
-    """Compare to python strings in dirblock fashion."""
-    return _cmp_dirblock_strings(PyString_AsString(path1),
-                                 PyString_Size(path1),
-                                 PyString_AsString(path2),
-                                 PyString_Size(path2))
+def c_cmp_by_dirs(path1, path2):
+    """Compare two paths directory by directory.
+
+    This is equivalent to doing::
+
+       cmp(path1.split('/'), path2.split('/'))
+
+    The idea is that you should compare path components separately. This
+    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
+    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+
+    :param path1: first path
+    :param path2: second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal,
+        and negative number if ``path2`` sorts first
+    """
+    return _cmp_by_dirs(PyString_AsString(path1),
+                        PyString_Size(path1),
+                        PyString_AsString(path2),
+                        PyString_Size(path2))
 
 
 def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
@@ -183,8 +198,7 @@ def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
                 PyList_GetItem_object_void(dirblocks, _mid), 0)
         cur_str = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_dirblock_strings(cur_str, cur_size,
-                                 dirname_str, dirname_size) < 0:
+        if _cmp_by_dirs(cur_str, cur_size, dirname_str, dirname_size) < 0:
             _lo = _mid+1
         else:
             _hi = _mid

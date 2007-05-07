@@ -338,15 +338,11 @@ class DirState(object):
         # add it.
         #------- copied from inventory.make_entry
         # --- normalized_filename wants a unicode basename only, so get one.
-        dirname, basename = osutils.split(path)
-        # we dont import normalized_filename directly because we want to be
-        # able to change the implementation at runtime for tests.
-        norm_name, can_access = osutils.normalized_filename(basename)
-        if norm_name != basename:
-            if can_access:
-                basename = norm_name
-            else:
-                raise errors.InvalidNormalization(path)
+        if path.__class__ == unicode:
+            utf8path = path.encode('utf8')
+        else:
+            utf8path = path
+        dirname, basename = osutils.split(utf8path)
         # you should never have files called . or ..; just add the directory
         # in the parent, or according to the special treatment for the root
         if basename == '.' or basename == '..':
@@ -354,8 +350,6 @@ class DirState(object):
         # now that we've normalised, we need the correct utf8 path and 
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
-        utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
-        dirname, basename = osutils.split(utf8path)
         assert file_id.__class__ == str, \
             "must be a utf8 file_id not %s" % (type(file_id))
         # Make sure the file_id does not exist in this tree
@@ -2409,6 +2403,29 @@ def _py_read_dirblocks(state):
 
 _read_dirblocks = _py_read_dirblocks
 
+
+def py_cmp_by_dirs(path1, path2):
+    """Compare two paths directory by directory.
+
+    This is equivalent to doing::
+
+       cmp(path1.split('/'), path2.split('/'))
+
+    The idea is that you should compare path components separately. This
+    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
+    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+
+    :param path1: first path
+    :param path2: second path
+    :return: positive number if ``path1`` comes first,
+        0 if paths are equal,
+        and negative number if ``path2`` sorts first
+    """
+    return cmp(path1.split('/'), path2.split('/'))
+
+cmp_by_dirs = py_cmp_by_dirs
+
+
 # Try to load the compiled form if possible
 # TODO: jam 20070503 We should have a way to run tests with and without the
 #       compiled extensions.
@@ -2416,9 +2433,11 @@ try:
     from bzrlib.compiled.dirstate_helpers import (
         _c_read_dirblocks,
         c_bisect_dirblock,
+        c_cmp_by_dirs,
         )
 except ImportError:
     pass
 else:
     _read_dirblocks = _c_read_dirblocks
     bisect_dirblock = c_bisect_dirblock
+    cmp_by_dirs = c_cmp_by_dirs

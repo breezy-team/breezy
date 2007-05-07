@@ -182,3 +182,77 @@ class BenchmarkDirState(benchmarks.Benchmark):
             self.checkOffsets(offsets)
         finally:
             state.unlock()
+
+    def create_path_names(self, layout, base=''):
+        """Create a list of paths with auto-generated names.
+
+        :param layout: A list of [(num_dirs, num_files)] tuples. For each
+            level, the given number of directories will be created, each
+            containing that many files.
+            So [(2, 5), (3, 4)] will create 2 top level directories, containing
+            5 files, and each top level directory will contain 3 subdirs with 4
+            files.
+        :param base: The base path to prepend to all entries, most callers will
+            pass ''
+        :return: A list of path names.
+        """
+        if not layout:
+            return []
+
+        paths = []
+        num_dirs, num_files = layout[0]
+        for dnum in xrange(num_dirs):
+            if base:
+                path = '%s/%02d_directory' % (base, dnum)
+            else:
+                path = '%02d_directory' % (dnum,)
+            paths.append(path)
+            for fnum in xrange(num_files):
+                fname = '%s/%02d_filename' % (path, fnum)
+                paths.append(fname)
+            paths.extend(self.create_path_names(layout[1:], base=path))
+        return paths
+
+    def test_create_path_names(self):
+        names = self.create_path_names([(2, 3), (1, 2)])
+        self.assertEqual(['00_directory',
+                          '00_directory/00_filename',
+                          '00_directory/01_filename',
+                          '00_directory/02_filename',
+                          '00_directory/00_directory',
+                          '00_directory/00_directory/00_filename',
+                          '00_directory/00_directory/01_filename',
+                          '01_directory',
+                          '01_directory/00_filename',
+                          '01_directory/01_filename',
+                          '01_directory/02_filename',
+                          '01_directory/00_directory',
+                          '01_directory/00_directory/00_filename',
+                          '01_directory/00_directory/01_filename',
+                         ], names)
+        names = self.time(self.create_path_names, [(10, 2), (10, 2), (10, 20)])
+        # 20 files + 1 directory name, 10 times, plus 2 filenames and 1 dir, 10
+        # times, and another 2 files + 1 dir, 10 times
+        self.assertEqual(21330, 10*(3 + 10*(3 + 10*(1 + 20))))
+        self.assertEqual(21330, len(names))
+
+    def compareAllPaths(self, cmp_func, layout):
+        """Compare N^2 paths.
+
+        Basically, compare every path in the list against every other path.
+        """
+        paths = self.create_path_names(layout)
+        for path1 in paths:
+            for path2 in paths:
+                cmp_func(path1, path2)
+
+    def test_py_cmp_dirblock_strings(self):
+        """Benchmark 103041 comparisons."""
+        self.time(self.compareAllPaths, dirstate.py_cmp_by_dirs,
+                                        [(3, 1), (3, 1), (3, 1), (3, 2)])
+
+    def test_c_cmp_dirblock_strings(self):
+        self.requireFeature(CompiledDirstateHelpersFeature)
+        from bzrlib.compiled.dirstate_helpers import c_cmp_by_dirs
+        self.time(self.compareAllPaths, c_cmp_by_dirs,
+                                        [(3, 1), (3, 1), (3, 1), (3, 2)])

@@ -1976,12 +1976,9 @@ class TestBisectDirblock(TestCase):
     'to', 'foo') chunks rather than by raw 'path/to/foo'.
     """
 
-    def setUp(self):
-        super(TestBisectDirblock, self).setUp()
-        # We have to set this here, because if we set it at the class variable
-        # level, Python interprets it as a member function, and passes 'self'
-        # as the first argument.
-        self.bisect_dirblock_func = dirstate.py_bisect_dirblock
+    def get_bisect_dirblock(self):
+        """Return an implementation of bisect_dirblock"""
+        return dirstate.py_bisect_dirblock
 
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
@@ -1992,9 +1989,9 @@ class TestBisectDirblock(TestCase):
 
         All other arguments will be passed along.
         """
+        bisect_dirblock = self.get_bisect_dirblock()
         self.assertIsInstance(dirblocks, list)
-        bisect_split_idx = self.bisect_dirblock_func(dirblocks, path,
-                                                     *args, **kwargs)
+        bisect_split_idx = bisect_dirblock(dirblocks, path, *args, **kwargs)
         split_dirblock = (path.split('/'), [])
         bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
                                              *args)
@@ -2115,3 +2112,103 @@ class TestDirstateValidation(TestCaseWithDirState):
             state._validate)
         self.assertContainsRe(str(e),
             'file a-id is absent in row')
+
+
+class TestCmpByDirs(TestCase):
+
+    def get_cmp_by_dirs(self):
+        """Get a specific implementation of cmp_by_dirs."""
+        return dirstate.py_cmp_by_dirs
+
+    def assertPositive(self, val):
+        """Assert that val is greater than 0."""
+        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+
+    def assertNegative(self, val):
+        """Assert that val is less than 0."""
+        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+
+    def assertCmpByDirs(self, expected, str1, str2):
+        """Compare the two strings, in both directions.
+
+        :param expected: The expected comparison value. -1 means str1 comes
+            first, 0 means they are equal, 1 means str2 comes first
+        :param str1: string to compare
+        :param str2: string to compare
+        """
+        cmp_by_dirs = self.get_cmp_by_dirs()
+        if expected == 0:
+            self.assertEqual(str1, str2)
+            self.assertEqual(0, cmp_by_dirs(str1, str2))
+            self.assertEqual(0, cmp_by_dirs(str2, str1))
+        elif expected > 0:
+            self.assertPositive(cmp_by_dirs(str1, str2))
+            self.assertNegative(cmp_by_dirs(str2, str1))
+        else:
+            self.assertNegative(cmp_by_dirs(str1, str2))
+            self.assertPositive(cmp_by_dirs(str2, str1))
+
+    def test_cmp_empty(self):
+        """Compare against the empty string."""
+        self.assertCmpByDirs(0, '', '')
+        self.assertCmpByDirs(1, 'a', '')
+        self.assertCmpByDirs(1, 'ab', '')
+        self.assertCmpByDirs(1, 'abc', '')
+        self.assertCmpByDirs(1, 'abcd', '')
+        self.assertCmpByDirs(1, 'abcde', '')
+        self.assertCmpByDirs(1, 'abcdef', '')
+        self.assertCmpByDirs(1, 'abcdefg', '')
+        self.assertCmpByDirs(1, 'abcdefgh', '')
+        self.assertCmpByDirs(1, 'abcdefghi', '')
+        self.assertCmpByDirs(1, 'test/ing/a/path/', '')
+
+    def test_cmp_same_str(self):
+        """Compare the same string"""
+        self.assertCmpByDirs(0, 'a', 'a')
+        self.assertCmpByDirs(0, 'ab', 'ab')
+        self.assertCmpByDirs(0, 'abc', 'abc')
+        self.assertCmpByDirs(0, 'abcd', 'abcd')
+        self.assertCmpByDirs(0, 'abcde', 'abcde')
+        self.assertCmpByDirs(0, 'abcdef', 'abcdef')
+        self.assertCmpByDirs(0, 'abcdefg', 'abcdefg')
+        self.assertCmpByDirs(0, 'abcdefgh', 'abcdefgh')
+        self.assertCmpByDirs(0, 'abcdefghi', 'abcdefghi')
+        self.assertCmpByDirs(0, 'testing a long string', 'testing a long string')
+        self.assertCmpByDirs(0, 'x'*10000, 'x'*10000)
+        self.assertCmpByDirs(0, 'a/b', 'a/b')
+        self.assertCmpByDirs(0, 'a/b/c', 'a/b/c')
+        self.assertCmpByDirs(0, 'a/b/c/d', 'a/b/c/d')
+        self.assertCmpByDirs(0, 'a/b/c/d/e', 'a/b/c/d/e')
+
+    def test_simple_paths(self):
+        """Compare strings that act like normal string comparison"""
+        self.assertCmpByDirs(-1, 'a', 'b')
+        self.assertCmpByDirs(-1, 'aa', 'ab')
+        self.assertCmpByDirs(-1, 'ab', 'bb')
+        self.assertCmpByDirs(-1, 'aaa', 'aab')
+        self.assertCmpByDirs(-1, 'aab', 'abb')
+        self.assertCmpByDirs(-1, 'abb', 'bbb')
+        self.assertCmpByDirs(-1, 'aaaa', 'aaab')
+        self.assertCmpByDirs(-1, 'aaab', 'aabb')
+        self.assertCmpByDirs(-1, 'aabb', 'abbb')
+        self.assertCmpByDirs(-1, 'abbb', 'bbbb')
+        self.assertCmpByDirs(-1, 'aaaaa', 'aaaab')
+        self.assertCmpByDirs(-1, 'a/a', 'a/b')
+        self.assertCmpByDirs(-1, 'a/b', 'b/b')
+        self.assertCmpByDirs(-1, 'a/a/a', 'a/a/b')
+        self.assertCmpByDirs(-1, 'a/a/b', 'a/b/b')
+        self.assertCmpByDirs(-1, 'a/b/b', 'b/b/b')
+        self.assertCmpByDirs(-1, 'a/a/a/a', 'a/a/a/b')
+        self.assertCmpByDirs(-1, 'a/a/a/b', 'a/a/b/b')
+        self.assertCmpByDirs(-1, 'a/a/b/b', 'a/b/b/b')
+        self.assertCmpByDirs(-1, 'a/b/b/b', 'b/b/b/b')
+        self.assertCmpByDirs(-1, 'a/a/a/a/a', 'a/a/a/a/b')
+
+    def test_tricky_paths(self):
+        self.assertCmpByDirs(1, 'ab/cd/ef', 'ab/cc/ef')
+        self.assertCmpByDirs(1, 'ab/cd/ef', 'ab/c/ef')
+        self.assertCmpByDirs(-1, 'ab/cd/ef', 'ab/cd-ef')
+        self.assertCmpByDirs(-1, 'ab/cd', 'ab/cd-')
+        self.assertCmpByDirs(-1, 'ab/cd', 'ab-cd')
+
+
