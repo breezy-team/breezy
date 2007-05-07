@@ -31,6 +31,7 @@ from bzrlib.tests.compiled.test_dirstate_helpers import (
 
 
 class BenchmarkDirState(benchmarks.Benchmark):
+    """Benchmarks for DirState functions."""
 
     def build_helper(self, layout):
         """This is a helper with the common build_??_dirstate funcs.
@@ -87,7 +88,41 @@ class BenchmarkDirState(benchmarks.Benchmark):
         """
         return self.build_helper([(10, 0), (10, 0), (10, 20)])
 
-    def test_build_20k_dirblocks(self):
+    def build_20k_dirstate_with_parents(self, num_parents):
+        """Build a DirState file with 20k records and N parents.
+
+        With 1 parent, this is equivalent to after a simple commit. With 2 it
+        is equivalent to after a merge.
+        """
+        # All files are marked as changed in the same revision, and this occurs
+        # supposedly in the history of the current trees.
+        last_changed_id = generate_ids.gen_revision_id('joe@foo.com')
+        parent_revision_ids = [generate_ids.gen_revision_id('joe@foo.com')
+                               for i in xrange(num_parents)]
+        # Start with a dirstate file with 0 parents
+        state = self.build_20k_dirstate()
+        state.lock_write()
+        try:
+            # This invasively updates the internals of DirState to be fast,
+            # since we don't have an api other than passing in Revision Tree
+            # objects, but that requires having a real inventory, etc.
+            for entry in state._iter_entries():
+                minikind, fingerprint, size, is_exec, packed_stat = entry[1][0]
+                for parent_id in parent_revision_ids:
+                    # Add a parent record for this record
+                    entry[1].append((minikind, fingerprint, size, is_exec,
+                                     last_changed_id))
+            state._parents = parent_revision_ids
+            state._ghosts = []
+            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._header_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._validate()
+            state.save()
+        finally:
+            state.unlock()
+        return state
+
+    def test_build_20k_dirstate(self):
         state = self.time(self.build_20k_dirstate)
         state.lock_read()
         try:
@@ -96,7 +131,27 @@ class BenchmarkDirState(benchmarks.Benchmark):
         finally:
             state.unlock()
 
-    def test__py_read_dirblocks_20k_tree_no_parents(self):
+    def test_build_20k_dirstate_1_parent(self):
+        state = self.time(self.build_20k_dirstate_with_parents, 1)
+        state.lock_read()
+        try:
+            state._validate()
+            entries = list(state._iter_entries())
+            self.assertEqual(21111, len(entries))
+        finally:
+            state.unlock()
+
+    def test_build_20k_dirstate_2_parents(self):
+        state = self.time(self.build_20k_dirstate_with_parents, 2)
+        state.lock_read()
+        try:
+            state._validate()
+            entries = list(state._iter_entries())
+            self.assertEqual(21111, len(entries))
+        finally:
+            state.unlock()
+
+    def test__py_read_dirblocks_20k_tree_0_parents(self):
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
@@ -107,10 +162,58 @@ class BenchmarkDirState(benchmarks.Benchmark):
         finally:
             state.unlock()
 
-    def test__c_read_dirblocks_20k_tree_no_parents(self):
+    def test__c_read_dirblocks_20k_tree_0_parents(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
         from bzrlib.compiled.dirstate_helpers import _c_read_dirblocks
         state = self.build_20k_dirstate()
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            self.time(_c_read_dirblocks, state)
+        finally:
+            state.unlock()
+
+    def test__py_read_dirblocks_20k_tree_1_parent(self):
+        state = self.build_20k_dirstate_with_parents(1)
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            self.time(dirstate._py_read_dirblocks, state)
+        finally:
+            state.unlock()
+
+    def test__c_read_dirblocks_20k_tree_1_parent(self):
+        self.requireFeature(CompiledDirstateHelpersFeature)
+        from bzrlib.compiled.dirstate_helpers import _c_read_dirblocks
+        state = self.build_20k_dirstate_with_parents(1)
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            self.time(_c_read_dirblocks, state)
+        finally:
+            state.unlock()
+
+    def test__py_read_dirblocks_20k_tree_2_parents(self):
+        state = self.build_20k_dirstate_with_parents(2)
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            self.time(dirstate._py_read_dirblocks, state)
+        finally:
+            state.unlock()
+
+    def test__c_read_dirblocks_20k_tree_2_parents(self):
+        self.requireFeature(CompiledDirstateHelpersFeature)
+        from bzrlib.compiled.dirstate_helpers import _c_read_dirblocks
+        state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
