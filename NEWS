@@ -12,6 +12,9 @@ IN DEVELOPMENT
       Previously we would report the first file as missing, but not show
       the new unknown file. (John Arbash Meinel, #111288)
 
+    * Avoid error when running hooks after pulling into or pushing from
+      a branch bound to a smartserver branch.  (Martin Pool, #111968)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:
