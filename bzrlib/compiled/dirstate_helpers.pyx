@@ -91,6 +91,9 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     cdef int *end_int1
     cdef int *end_int2
 
+    if path1 == path2:
+        return 0
+
     cur_int1 = <int*>path1
     cur_int2 = <int*>path2
     end_int1 = <int*>(path1 + size1 - (size1%4))
@@ -101,6 +104,9 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     # Use 32-bit comparisons for the matching portion of the string.
     # Almost all CPU's are faster at loading and comparing 32-bit integers,
     # than they are at 8-bit integers.
+    # TODO: jam 2007-05-07 Do we need to change this so we always start at an
+    #       integer offset in memory? I seem to remember that being done in
+    #       some C libraries for strcmp()
     while cur_int1 < end_int1 and cur_int2 < end_int2:
         if cur_int1[0] != cur_int2[0]:
             break
@@ -348,6 +354,13 @@ cdef class Reader:
         new_block = 0
         entry_count = 0
 
+        # TODO: jam 2007-05-07 Consider pre-allocating some space for the
+        #       members, and then growing and shrinking from there. If most
+        #       directories have close to 10 entries in them, it would save a
+        #       few mallocs if we default our list size to something
+        #       reasonable. Or we could malloc it to something large (100 or
+        #       so), and then truncate. That would give us a malloc + realloc,
+        #       rather than lots of reallocs.
         while self.cur < self.end_str:
             entry = self._get_entry(num_trees, &current_dirname, &new_block)
             if new_block:
