@@ -1978,7 +1978,7 @@ class TestBisectDirblock(TestCase):
 
     def get_bisect_dirblock(self):
         """Return an implementation of bisect_dirblock"""
-        return dirstate.py_bisect_dirblock
+        return dirstate.bisect_dirblock_py
 
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
@@ -2118,7 +2118,7 @@ class TestCmpByDirs(TestCase):
 
     def get_cmp_by_dirs(self):
         """Get a specific implementation of cmp_by_dirs."""
-        return dirstate.py_cmp_by_dirs
+        return dirstate.cmp_by_dirs_py
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""

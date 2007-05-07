@@ -44,7 +44,7 @@ class TestCCmpByDirs(test_dirstate.TestCmpByDirs):
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
     def get_cmp_by_dirs(self):
-        return dirstate_helpers.c_cmp_by_dirs
+        return dirstate_helpers.cmp_by_dirs_c
 
 
 class TestCompiledBisectDirblock(test_dirstate.TestBisectDirblock):
@@ -61,4 +61,4 @@ class TestCompiledBisectDirblock(test_dirstate.TestBisectDirblock):
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
     def get_bisect_dirblock(self):
-        return dirstate_helpers.c_bisect_dirblock
+        return dirstate_helpers.bisect_dirblock_c

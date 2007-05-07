@@ -2248,7 +2248,7 @@ class DirState(object):
             raise errors.ObjectNotLocked(self)
 
 
-def py_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
+def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -2280,7 +2280,7 @@ def py_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
 
 # This is the function that will be used
 # But it may be overridden by the compiled version
-bisect_dirblock = py_bisect_dirblock
+bisect_dirblock = bisect_dirblock_py
 
 
 
@@ -2299,7 +2299,7 @@ def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
 
 
 
-def _py_read_dirblocks(state):
+def _read_dirblocks_py(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be
@@ -2401,10 +2401,10 @@ def _py_read_dirblocks(state):
     # state._dirblocks = sorted(state._dirblocks)
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
-_read_dirblocks = _py_read_dirblocks
+_read_dirblocks = _read_dirblocks_py
 
 
-def py_cmp_by_dirs(path1, path2):
+def cmp_by_dirs_py(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
@@ -2423,7 +2423,7 @@ def py_cmp_by_dirs(path1, path2):
     """
     return cmp(path1.split('/'), path2.split('/'))
 
-cmp_by_dirs = py_cmp_by_dirs
+cmp_by_dirs = cmp_by_dirs_py
 
 
 # Try to load the compiled form if possible
@@ -2431,13 +2431,13 @@ cmp_by_dirs = py_cmp_by_dirs
 #       compiled extensions.
 try:
     from bzrlib.compiled.dirstate_helpers import (
-        _c_read_dirblocks,
-        c_bisect_dirblock,
-        c_cmp_by_dirs,
+        _read_dirblocks_c,
+        bisect_dirblock_c,
+        cmp_by_dirs_c,
         )
 except ImportError:
     pass
 else:
-    _read_dirblocks = _c_read_dirblocks
-    bisect_dirblock = c_bisect_dirblock
-    cmp_by_dirs = c_cmp_by_dirs
+    _read_dirblocks = _read_dirblocks_c
+    bisect_dirblock = bisect_dirblock_c
+    cmp_by_dirs = cmp_by_dirs_c

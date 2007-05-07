@@ -135,7 +135,7 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     return 0
 
 
-def c_cmp_by_dirs(path1, path2):
+def cmp_by_dirs_c(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
@@ -158,7 +158,7 @@ def c_cmp_by_dirs(path1, path2):
                         PyString_Size(path2))
 
 
-def c_bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
+def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -364,7 +364,7 @@ cdef class Reader:
         state._split_root_dirblock_into_contents()
 
 
-def _c_read_dirblocks(state):
+def _read_dirblocks_c(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be
