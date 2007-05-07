@@ -42,7 +42,7 @@ calling in here.
 
 In verbose mode we show a summary of what changed in each particular
 revision.  Note that this is the delta for changes in that revision
-relative to its mainline parent, not the delta relative to the last
+relative to its left-most parent, not the delta relative to the last
 logged revision.  So for example if you ask for a verbose log of
 changes touching hello.c you will get a list of those revisions also
 listing other things that were changed in the same revision, but not
@@ -230,6 +230,15 @@ def _show_log(branch,
                                                          mainline_revs,
                                                          view_revisions)
 
+    # rebase merge_depth - unless there are no revisions or 
+    # either the first or last revision have merge_depth = 0.
+    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
+        depths = list(set([d for r,n,d in view_revisions]))
+        depths.sort()
+        min_depth = depths[0]
+        if min_depth:
+            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+        
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags:
@@ -552,7 +561,7 @@ class LogFormatter(object):
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.
     - supports_merge_revisions must be True if this log formatter supports 
-        merge revisions.  If not, only revisions mainline revisions (those 
+        merge revisions.  If not, only mainline revisions (those 
         with merge_depth == 0) will be passed to the formatter.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
