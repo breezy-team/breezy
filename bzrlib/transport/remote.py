@@ -133,8 +133,10 @@ class RemoteTransport(transport.Transport):
             return True
         elif resp == ('no', ):
             return False
-        elif resp == ('error', "Generic bzr smart protocol error: "
-                               "bad request 'Transport.is_readonly'"):
+        elif (resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request 'Transport.is_readonly'") or
+              resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request u'Transport.is_readonly'")):
             # XXX: nasty hack: servers before 0.16 don't have a
             # 'Transport.is_readonly' verb, so we do what clients before 0.16
             # did: assume False.
