@@ -245,6 +245,9 @@ class HttpDavTransport(HttpTransport_urllib):
         raise InvalidHttpResponse(url,
                                   'Unable to handle http code %d%s'
                                   % (response.code, msg))
+    def _handle_common_errors(self, code, abspath):
+        if code == 404:
+            raise NoSuchFile(abspath)
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
@@ -554,12 +557,24 @@ class HttpDavTransport(HttpTransport_urllib):
         response = self._head(relpath)
         code = response.code
         if code == 404:
-            self.put_bytes(relpath, bytes)
             relpath_size = 0
         else:
             mutter('response.headers [%r]' % response.headers)
-            relpath_size = int(response.headers['Content-Length'])
+            # Consider the absence of Content-Length header as
+            # indicating an existing but empty file (Apache 2.0
+            # does this, and there is even a comment in
+            # modules/http/http_protocol.c calling that a *hack*,
+            # I agree, it's a hack. On the other hand if the file
+            # do not exist we get a 404, if the file does exist,
+            # is not empty and we get no Content-Length header,
+            # then the server is buggy :-/ )
+            relpath_size = int(response.headers.get('Content-Length', 0))
+            if relpath_size == 0:
+                mutter('if %s is not empty, the server is buggy' % relpath)
+        if relpath_size:
             self._put_bytes_ranged(relpath, bytes, relpath_size)
+        else:
+            self.put_bytes(relpath, bytes)
 
         return relpath_size
 
