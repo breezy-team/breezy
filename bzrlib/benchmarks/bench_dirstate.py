@@ -96,13 +96,27 @@ class BenchmarkDirState(benchmarks.Benchmark):
         finally:
             state.unlock()
 
-    def test__read_dirblocks_20k_tree_no_parents(self):
+    def test__py_read_dirblocks_20k_tree_no_parents(self):
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
-            self.time(state._read_dirblocks_if_needed)
+            state._read_header_if_needed()
+            self.time(dirstate._py_read_dirblocks, state)
+        finally:
+            state.unlock()
+
+    def test__c_read_dirblocks_20k_tree_no_parents(self):
+        self.requireFeature(CompiledDirstateHelpersFeature)
+        from bzrlib.compiled.dirstate_helpers import _c_read_dirblocks
+        state = self.build_20k_dirstate()
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            self.time(_c_read_dirblocks, state)
         finally:
             state.unlock()
 
@@ -242,17 +256,19 @@ class BenchmarkDirState(benchmarks.Benchmark):
         Basically, compare every path in the list against every other path.
         """
         paths = self.create_path_names(layout)
-        for path1 in paths:
-            for path2 in paths:
-                cmp_func(path1, path2)
+        def compare_all():
+            for path1 in paths:
+                for path2 in paths:
+                    cmp_func(path1, path2)
+        self.time(compare_all)
 
-    def test_py_cmp_dirblock_strings(self):
+    def test_py_cmp_by_dirs(self):
         """Benchmark 103041 comparisons."""
-        self.time(self.compareAllPaths, dirstate.py_cmp_by_dirs,
-                                        [(3, 1), (3, 1), (3, 1), (3, 2)])
+        self.compareAllPaths(dirstate.py_cmp_by_dirs,
+                             [(3, 1), (3, 1), (3, 1), (3, 2)])
 
-    def test_c_cmp_dirblock_strings(self):
+    def test_c_cmp_by_dirs(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
         from bzrlib.compiled.dirstate_helpers import c_cmp_by_dirs
-        self.time(self.compareAllPaths, c_cmp_by_dirs,
-                                        [(3, 1), (3, 1), (3, 1), (3, 2)])
+        self.compareAllPaths(c_cmp_by_dirs,
+                             [(3, 1), (3, 1), (3, 1), (3, 2)])
