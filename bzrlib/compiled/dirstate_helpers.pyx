@@ -245,7 +245,7 @@ cdef class Reader:
         self.cur = self.cur + 1
         return next
 
-    def get_next_str(self):
+    cdef object get_next_str(self):
         """Get the next field as a Python string."""
         cdef int size
         cdef char *next
