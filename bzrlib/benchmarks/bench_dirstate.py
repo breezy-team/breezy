@@ -39,7 +39,9 @@ class BenchmarkDirState(benchmarks.Benchmark):
         :param layout: [(num_dirs, files_per_dir)]
             The number of directories per level, and the number of files to put
             in it.
-        :return: A DirState object with the given layout.
+        :return: A DirState object with the given layout. The blocks will be
+            modified in memory, and the object will be write locked. (Callers
+            must save and unlock the object).
         """
         self.build_tree(['dir/'])
         contents = 'x'*10000
@@ -49,32 +51,31 @@ class BenchmarkDirState(benchmarks.Benchmark):
         file_sha1 = osutils.sha_string(contents)
 
         state = dirstate.DirState.initialize('state')
-        try:
-            def create_entries(base, layout):
-                if not layout:
-                    return
-                num_dirs, num_files = layout[0]
-                for dnum in xrange(num_dirs):
-                    if base:
-                        path = '%s/%02d_directory' % (base, dnum)
-                    else:
-                        path = '%02d_directory' % (dnum,)
-                    dir_id = generate_ids.gen_file_id(path)
-                    state.add(path, dir_id, 'directory', dir_stat, '')
-                    for fnum in xrange(num_files):
-                        fname = '%s/%02d_filename' % (path, fnum)
-                        file_id = generate_ids.gen_file_id(fname)
-                        state.add(fname, file_id, 'file', file_stat, file_sha1)
-                    create_entries(path, layout[1:])
-            create_entries(None, layout)
-            state.save()
-        finally:
-            state.unlock()
+        def create_entries(base, layout):
+            if not layout:
+                return
+            num_dirs, num_files = layout[0]
+            for dnum in xrange(num_dirs):
+                if base:
+                    path = '%s/%02d_directory' % (base, dnum)
+                else:
+                    path = '%02d_directory' % (dnum,)
+                dir_id = generate_ids.gen_file_id(path)
+                state.add(path, dir_id, 'directory', dir_stat, '')
+                for fnum in xrange(num_files):
+                    fname = '%s/%02d_filename' % (path, fnum)
+                    file_id = generate_ids.gen_file_id(fname)
+                    state.add(fname, file_id, 'file', file_stat, file_sha1)
+                create_entries(path, layout[1:])
+        create_entries(None, layout)
         return state
 
     def build_10k_dirstate_dirs(self):
         """Build a DirState file with 10k directories"""
-        return self.build_helper([(10, 0), (10, 0), (10, 0), (10, 1)])
+        state = self.build_helper([(10, 0), (10, 0), (10, 0), (10, 1)])
+        state.save()
+        state.unlock()
+        return state
 
     def build_20k_dirstate(self):
         """Build a DirState file with 20k records.
@@ -86,7 +87,10 @@ class BenchmarkDirState(benchmarks.Benchmark):
         We try to have reasonable filename lengths, as well as a reasonable
         stat value, etc.
         """
-        return self.build_helper([(10, 0), (10, 0), (10, 20)])
+        state = self.build_helper([(10, 0), (10, 0), (10, 20)])
+        state.save()
+        state.unlock()
+        return state
 
     def build_20k_dirstate_with_parents(self, num_parents):
         """Build a DirState file with 20k records and N parents.
@@ -100,23 +104,20 @@ class BenchmarkDirState(benchmarks.Benchmark):
         parent_revision_ids = [generate_ids.gen_revision_id('joe@foo.com')
                                for i in xrange(num_parents)]
         # Start with a dirstate file with 0 parents
-        state = self.build_20k_dirstate()
-        state.lock_write()
+        state = self.build_helper([(10, 0), (10, 0), (10, 20)])
         try:
             # This invasively updates the internals of DirState to be fast,
             # since we don't have an api other than passing in Revision Tree
             # objects, but that requires having a real inventory, etc.
-            for entry in state._iter_entries():
-                minikind, fingerprint, size, is_exec, packed_stat = entry[1][0]
-                for parent_id in parent_revision_ids:
-                    # Add a parent record for this record
-                    entry[1].append((minikind, fingerprint, size, is_exec,
-                                     last_changed_id))
+            if num_parents > 0:
+                for entry in state._iter_entries():
+                    minikind, fingerprint, size, is_exec, packed_stat = entry[1][0]
+                    for parent_id in parent_revision_ids:
+                        # Add a parent record for this record
+                        entry[1].append((minikind, fingerprint, size, is_exec,
+                                         last_changed_id))
             state._parents = parent_revision_ids
             state._ghosts = []
-            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
-            state._header_state = dirstate.DirState.IN_MEMORY_MODIFIED
-            state._validate()
             state.save()
         finally:
             state.unlock()
