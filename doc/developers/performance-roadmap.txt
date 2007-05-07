@@ -1,0 +1,10 @@
+==========================
+Bazaar Performance Roadmap
+==========================
+
+About the performance roadmap
+#############################
+
+.. include:: performance-roadmap-rationale.txt
+
+
