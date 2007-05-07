@@ -158,7 +158,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
-            state._read_header_if_needed()
+            state._read_dirblocks_if_needed()
             state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
             self.time(state.save)
         finally:
