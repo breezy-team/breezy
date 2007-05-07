@@ -1185,8 +1185,10 @@ class TransportTestProviderAdapter(object):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            warning("transport module %s doesn't provide get_test_permutations()"
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
             return []
         return module.get_test_permutations()
 

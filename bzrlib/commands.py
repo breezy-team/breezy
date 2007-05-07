@@ -274,7 +274,7 @@ class Command(object):
         result += 'usage: %s\n' % self._usage()
 
         if self.aliases:
-            result += 'aliases:\n'
+            result += 'aliases: '
             result += ', '.join(self.aliases) + '\n'
 
         result += '\n'

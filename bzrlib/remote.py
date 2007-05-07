@@ -20,7 +20,7 @@
 from cStringIO import StringIO
 
 from bzrlib import branch, errors, lockdir, repository
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -764,6 +764,11 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
+
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
 
@@ -991,16 +996,24 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             **kwargs):
+        # FIXME: This asks the real branch to run the hooks, which means
+        # they're called with the wrong target branch parameter. 
+        # The test suite specifically allows this at present but it should be
+        # fixed.  It should get a _override_hook_target branch,
+        # as push does.  -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision)
+            source, overwrite=overwrite, stop_revision=stop_revision,
+            **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision)
+            target, overwrite=overwrite, stop_revision=stop_revision,
+            _override_hook_source_branch=self)
 
     def is_locked(self):
         return self._lock_count >= 1

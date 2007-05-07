@@ -1,3 +1,20 @@
+IN DEVELOPMENT
+  
+  BUGFIXES:
+
+    * Handle when you have 2 directories with similar names, but one has a
+      hyphen. (``'abc'`` versus ``'abc-2'``). The WT4._iter_changes
+      iterator was using direct comparison and ``'abc/a'`` sorts after
+      ``'abc-2'``, but ``('abc', 'a')`` sorts before ``('abc-2',)``.
+      (John Arbash Meinel, #111227)
+
+    * Handle when someone renames a file on disk without telling bzr.
+      Previously we would report the first file as missing, but not show
+      the new unknown file. (John Arbash Meinel, #111288)
+
+    * Avoid error when running hooks after pulling into or pushing from
+      a branch bound to a smartserver branch.  (Martin Pool, #111968)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:

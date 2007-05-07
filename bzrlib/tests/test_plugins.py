@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -250,19 +250,21 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         self.assertEqual([], index.get_topics(None))
 
-    def test_get_topics_launchpad(self):
-        """Searching for 'launchpad' returns the launchpad plugin docstring."""
+    def test_get_topics_for_plugin(self):
+        """Searching for plugin name gets its docstring."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
-        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
-        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        # make a new plugin here for this test, even if we're run with
+        # --no-plugins
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
+        sys.modules['bzrlib.plugins.demo_module'] = demo_module
         try:
-            topics = index.get_topics('get_topics')
+            topics = index.get_topics('demo_module')
             self.assertEqual(1, len(topics))
             self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
             self.assertEqual(demo_module, topics[0].module)
         finally:
-            del sys.modules['bzrlib.plugins.get_topics']
+            del sys.modules['bzrlib.plugins.demo_module']
 
     def test_get_topics_no_topic(self):
         """Searching for something that is not a plugin returns []."""
@@ -276,19 +278,19 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         self.assertEqual('plugins/', index.prefix)
 
-    def test_get_topic_with_prefix(self):
-        """Searching for plugins/launchpad returns launchpad module help."""
+    def test_get_plugin_topic_with_prefix(self):
+        """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse(sys.modules.has_key('bzrlib.plugins.get_topics'))
-        demo_module = FakeModule('', 'bzrlib.plugins.get_topics')
-        sys.modules['bzrlib.plugins.get_topics'] = demo_module
+        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
+        sys.modules['bzrlib.plugins.demo_module'] = demo_module
         try:
-            topics = index.get_topics('plugins/get_topics')
+            topics = index.get_topics('plugins/demo_module')
             self.assertEqual(1, len(topics))
             self.assertIsInstance(topics[0], plugin.ModuleHelpTopic)
             self.assertEqual(demo_module, topics[0].module)
         finally:
-            del sys.modules['bzrlib.plugins.get_topics']
+            del sys.modules['bzrlib.plugins.demo_module']
 
 
 class FakeModule(object):

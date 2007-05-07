@@ -98,6 +98,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
 
+    def test_remote_branch_repr(self):
+        b = BzrDir.open_from_transport(self.transport).open_branch()
+        self.assertStartsWith(str(b), 'RemoteBranch(')
+
 
 class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""

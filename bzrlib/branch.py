@@ -1000,7 +1000,7 @@ class BranchHooks(Hooks):
         # (push_result)
         # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target 
+        # where local is the local target branch or None, master is the target 
         # master branch, and the rest should be self explanatory. The source
         # is read locked and the target branches write locked. Source will
         # be the local low-latency branch.
@@ -1476,13 +1476,14 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+             _hook_master=None, run_hooks=True):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
             be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         result = PullResult()
         result.source_branch = source
@@ -1507,7 +1508,7 @@ class BzrBranch(Branch):
             else:
                 result.master_branch = self
                 result.local_branch = None
-            if _run_hooks:
+            if run_hooks:
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
         finally:
@@ -1525,40 +1526,91 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        _hook_master=None, _run_hooks=True):
+             _override_hook_source_branch=None):
         """See Branch.push.
+
+        This is the basic concrete implementation of push()
+
+        :param _override_hook_source_branch: If specified, run
+        the hooks passing this Branch as the source, rather than self.  
+        This is for use of RemoteBranch, where push is delegated to the
+        underlying vfs-based Branch. 
+        """
+        # TODO: Public option to disable running hooks - should be trivial but
+        # needs tests.
+        target.lock_write()
+        try:
+            result = self._push_with_bound_branches(target, overwrite,
+                    stop_revision,
+                    _override_hook_source_branch=_override_hook_source_branch)
+            return result
+        finally:
+            target.unlock()
+
+    def _push_with_bound_branches(self, target, overwrite,
+            stop_revision,
+            _override_hook_source_branch=None):
+        """Push from self into target, and into target's master if any.
         
-        :param _hook_master: Private parameter - set the branch to 
-            be supplied as the master to push hooks.
-        :param _run_hooks: Private parameter - allow disabling of
-            hooks, used when pushing to a master branch.
+        This is on the base BzrBranch class even though it doesn't support 
+        bound branches because the *target* might be bound.
+        """
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
+
+        bound_location = target.get_bound_location()
+        if bound_location and target.base != bound_location:
+            # there is a master branch.
+            #
+            # XXX: Why the second check?  Is it even supported for a branch to
+            # be bound to itself? -- mbp 20070507
+            master_branch = target.get_master_branch()
+            master_branch.lock_write()
+            try:
+                # push into the master from this branch.
+                self._basic_push(master_branch, overwrite, stop_revision)
+                # and push into the target branch from this. Note that we push from
+                # this branch again, because its considered the highest bandwidth
+                # repository.
+                result = self._basic_push(target, overwrite, stop_revision)
+                result.master_branch = master_branch
+                result.local_branch = target
+                _run_hooks()
+                return result
+            finally:
+                master_branch.unlock()
+        else:
+            # no master branch
+            result = self._basic_push(target, overwrite, stop_revision)
+            # TODO: Why set master_branch and local_branch if there's no
+            # binding?  Maybe cleaner to just leave them unset? -- mbp
+            # 20070504
+            result.master_branch = target
+            result.local_branch = None
+            _run_hooks()
+            return result
+
+    def _basic_push(self, target, overwrite, stop_revision):
+        """Basic implementation of push without bound branches or hooks.
+
+        Must be called with self read locked and target write locked.
         """
         result = PushResult()
         result.source_branch = self
         result.target_branch = target
-        target.lock_write()
+        result.old_revno, result.old_revid = target.last_revision_info()
         try:
-            result.old_revno, result.old_revid = target.last_revision_info()
-            try:
-                target.update_revisions(self, stop_revision)
-            except DivergedBranches:
-                if not overwrite:
-                    raise
-            if overwrite:
-                target.set_revision_history(self.revision_history())
-            result.tag_conflicts = self.tags.merge_to(target.tags)
-            result.new_revno, result.new_revid = target.last_revision_info()
-            if _hook_master:
-                result.master_branch = _hook_master
-                result.local_branch = target
-            else:
-                result.master_branch = target
-                result.local_branch = None
-            if _run_hooks:
-                for hook in Branch.hooks['post_push']:
-                    hook(result)
-        finally:
-            target.unlock()
+            target.update_revisions(self, stop_revision)
+        except DivergedBranches:
+            if not overwrite:
+                raise
+        if overwrite:
+            target.set_revision_history(self.revision_history())
+        result.tag_conflicts = self.tags.merge_to(target.tags)
+        result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
     def get_parent(self):
@@ -1634,11 +1686,12 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _run_hooks=True):
-        """Extends branch.pull to be bound branch aware.
+             run_hooks=True):
+        """Pull from source into self, updating my master if any.
         
-        :param _run_hooks: Private parameter used to force hook running
-            off during bound branch double-pushing.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
         """
         bound_location = self.get_bound_location()
         master_branch = None
@@ -1650,33 +1703,10 @@ class BzrBranch5(BzrBranch):
             if master_branch:
                 # pull from source into master.
                 master_branch.pull(source, overwrite, stop_revision,
-                    _run_hooks=False)
+                    run_hooks=False)
             return super(BzrBranch5, self).pull(source, overwrite,
                 stop_revision, _hook_master=master_branch,
-                _run_hooks=_run_hooks)
-        finally:
-            if master_branch:
-                master_branch.unlock()
-
-    @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
-        """Updates branch.push to be bound branch aware."""
-        bound_location = target.get_bound_location()
-        master_branch = None
-        if bound_location and target.base != bound_location:
-            # not pushing to master, so we need to update master.
-            master_branch = target.get_master_branch()
-            master_branch.lock_write()
-        try:
-            if master_branch:
-                # push into the master from this branch.
-                super(BzrBranch5, self).push(master_branch, overwrite,
-                    stop_revision, _run_hooks=False)
-            # and push into the target branch from this. Note that we push from
-            # this branch again, because its considered the highest bandwidth
-            # repository.
-            return super(BzrBranch5, self).push(target, overwrite,
-                stop_revision, _hook_master=master_branch)
+                run_hooks=run_hooks)
         finally:
             if master_branch:
                 master_branch.unlock()
