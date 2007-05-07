@@ -422,6 +422,20 @@ class TestTransportIsReadonly(tests.TestCase):
             [('call', 'Transport.is_readonly', ())],
             client._calls)
 
+    def test_error_from_old_0_11_server(self):
+        """Same as test_error_from_old_server, but with the slightly different
+        error message from bzr 0.11 servers.
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request u'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
 
 class TestRemoteRepository(tests.TestCase):
     """Base for testing RemoteRepository protocol usage.

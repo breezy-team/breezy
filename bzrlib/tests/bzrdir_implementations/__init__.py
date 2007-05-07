@@ -28,10 +28,27 @@ from bzrlib.bzrdir import BzrDirTestProviderAdapter, BzrDirFormat
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
+                          TestCaseWithTransport,
                           TestLoader,
                           TestSuite,
                           )
 from bzrlib.transport.memory import MemoryServer
+
+
+class TestCaseWithBzrDir(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithBzrDir, self).setUp()
+        self.bzrdir = None
+
+    def get_bzrdir(self):
+        if self.bzrdir is None:
+            self.bzrdir = self.make_bzrdir(None)
+        return self.bzrdir
+
+    def make_bzrdir(self, relpath, format=None):
+        return super(TestCaseWithBzrDir, self).make_bzrdir(
+            relpath, format=self.bzrdir_format)
 
 
 def test_suite():

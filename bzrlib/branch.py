@@ -783,10 +783,7 @@ class Branch(object):
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
-        try:
-            t.mkdir('.')
-        except errors.FileExists:
-            pass
+        t.ensure_base()
         if lightweight:
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)

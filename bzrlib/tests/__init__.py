@@ -1807,10 +1807,7 @@ class TestCaseWithMemoryTransport(TestCase):
             segments = maybe_a_url.rsplit('/', 1)
             t = get_transport(maybe_a_url)
             if len(segments) > 1 and segments[-1] not in ('', '.'):
-                try:
-                    t.mkdir('.')
-                except errors.FileExists:
-                    pass
+                t.ensure_base()
             if format is None:
                 format = 'default'
             if isinstance(format, basestring):
@@ -1966,8 +1963,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnlessExists(path)
-        # TODO: jam 20060427 Shouldn't this be 'rb'?
-        f = file(path, 'r')
+        f = file(path, 'rb')
         try:
             s = f.read()
         finally:
