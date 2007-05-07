@@ -151,6 +151,42 @@ class BenchmarkDirState(benchmarks.Benchmark):
         finally:
             state.unlock()
 
+    def test_save_20k_tree_0_parents(self):
+        state = self.build_20k_dirstate()
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_header_if_needed()
+            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            self.time(state.save)
+        finally:
+            state.unlock()
+
+    def test_save_20k_tree_1_parent(self):
+        state = self.build_20k_dirstate_with_parents(1)
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_dirblocks_if_needed()
+            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            self.time(state.save)
+        finally:
+            state.unlock()
+
+    def test_save_20k_tree_2_parents(self):
+        state = self.build_20k_dirstate_with_parents(2)
+        state.lock_read()
+        try:
+            self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
+                             state._dirblock_state)
+            state._read_dirblocks_if_needed()
+            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            self.time(state.save)
+        finally:
+            state.unlock()
+
     def test__read_dirblocks_20k_tree_0_parents_py(self):
         state = self.build_20k_dirstate()
         state.lock_read()
