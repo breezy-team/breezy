@@ -157,8 +157,14 @@ def show_log(branch,
     """
     branch.lock_read()
     try:
+        if getattr(lf, 'begin_log', None):
+            lf.begin_log()
+
         _show_log(branch, lf, specific_fileid, verbose, direction,
                   start_revision, end_revision, search)
+
+        if getattr(lf, 'end_log', None):
+            lf.end_log()
     finally:
         branch.unlock()
     
@@ -275,9 +281,6 @@ def _show_log(branch,
             revision_ids  = revision_ids[num:]
             num = min(int(num * 1.5), 200)
 
-    if getattr(lf, 'begin_log', None):
-        lf.begin_log()
-
     # now we just print all the revisions
     for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
@@ -287,7 +290,8 @@ def _show_log(branch,
                 continue
 
         if not legacy_lf:
-            lr = LogRevision(rev,revno,merge_depth,delta,rev_tag_dict.get(rev_id))
+            lr = LogRevision(rev,revno,merge_depth,delta,
+                             rev_tag_dict.get(rev_id))
             lf.log_revision(lr)
         else:
             # support for legacy (pre-0.17) LogFormatters
@@ -305,9 +309,6 @@ def _show_log(branch,
                                             rev_tag_dict.get(rev_id))
                     else:
                         lf.show_merge_revno(rev, merge_depth, revno)
-
-    if getattr(lf, 'end_log', None):
-        lf.end_log()
 
 
 def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
