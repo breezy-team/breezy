@@ -1476,7 +1476,7 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        _hook_master=None, run_hooks=True):
+             _hook_master=None, run_hooks=True):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
@@ -1526,10 +1526,15 @@ class BzrBranch(Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None,
-        _override_hook_source_branch=None):
+             _override_hook_source_branch=None):
         """See Branch.push.
 
         This is the basic concrete implementation of push()
+
+        :param _override_hook_source_branch: If specified, run
+        the hooks passing this Branch as the source, rather than self.  
+        This is for use of RemoteBranch, where push is delegated to the
+        underlying vfs-based Branch. 
         """
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
@@ -1545,15 +1550,10 @@ class BzrBranch(Branch):
     def _push_with_bound_branches(self, target, overwrite,
             stop_revision,
             _override_hook_source_branch=None):
-        """Updates branch.push to be bound branch aware
+        """Push from self into target, and into target's master if any.
         
         This is on the base BzrBranch class even though it doesn't support 
         bound branches because the *target* might be bound.
-        
-        :param run_hooks_cb: Callback taking the Result object which should run
-            any applicable hooks.  It can make adjustments to the Result object 
-            first.  May be a do-nothing function to disable running hooks.
-            Called with all branches locked, including the master if any.
         """
         def _run_hooks():
             if _override_hook_source_branch:
@@ -1563,11 +1563,10 @@ class BzrBranch(Branch):
 
         bound_location = target.get_bound_location()
         if bound_location and target.base != bound_location:
-            # there is a master branch and we're not pushing to it, so we need
-            # to update the master.
+            # there is a master branch.
             #
-            # TODO: don't just compare the locations, instead look at the lock
-            # tokens to see if they're the same object -- mbp 20070504
+            # XXX: Why the second check?  Is it even supported for a branch to
+            # be bound to itself? -- mbp 20070507
             master_branch = target.get_master_branch()
             master_branch.lock_write()
             try:
@@ -1687,8 +1686,8 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-        run_hooks=True):
-        """Extends branch.pull to be bound branch aware.
+             run_hooks=True):
+        """Pull from source into self, updating my master if any.
         
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,

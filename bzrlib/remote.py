@@ -997,9 +997,12 @@ class RemoteBranch(branch.Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-            **kwargs):
-        # FIXME: This lets the real branch run the hooks, so they'll be called
-        # with the wrong branch parameters -- mbp 20070405
+             **kwargs):
+        # FIXME: This asks the real branch to run the hooks, which means
+        # they're called with the wrong target branch parameter. 
+        # The test suite specifically allows this at present but it should be
+        # fixed.  It should get a _override_hook_target branch,
+        # as push does.  -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
             source, overwrite=overwrite, stop_revision=stop_revision,
@@ -1007,8 +1010,6 @@ class RemoteBranch(branch.Branch):
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
-        # FIXME: This lets the real branch run the hooks, so they'll be called
-        # with the wrong branch parameters -- mbp 20070405
         self._ensure_real()
         return self._real_branch.push(
             target, overwrite=overwrite, stop_revision=stop_revision,

@@ -208,12 +208,8 @@ class TestPushHook(TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            if 1:
-                local = BzrDir.create_branch_convenience('local2')
-                local.bind(target)
-            else:
-                raise TestSkipped("Can't bind %s to %s" %
-                    (local, target))
+            local = BzrDir.create_branch_convenience('local2')
+            local.bind(target)
         source = self.make_branch('source')
         Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
         source.push(local)
