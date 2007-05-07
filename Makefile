@@ -83,8 +83,8 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
-doc/HACKING.htm: HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css HACKING doc/HACKING.htm
+doc/developers/HACKING.htm: doc/developers/HACKING
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $< $@
 
 doc/%.htm: doc/%.txt 
 	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
@@ -108,7 +108,8 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
+ALL_DOCS = $(htm_files) $(MAN_PAGES) doc/developers/HACKING.htm
+docs: $(ALL_DOCS)
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) \
@@ -117,8 +118,8 @@ copy-docs: docs
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt $(MAN_PAGES)
+	python tools/win32/ostools.py remove $(ALL_DOCS) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt
 
 
 # make bzr.exe for win32 with py2exe
