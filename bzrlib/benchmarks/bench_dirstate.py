@@ -123,6 +123,11 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
         return state
 
+    def test_add_20k_entries(self):
+        """Time how long it takes to add lots of entries."""
+        state = self.time(self.build_helper, [(10, 0), (10, 0), (10, 20)])
+        state.unlock()
+
     def test_build_20k_dirstate(self):
         state = self.time(self.build_20k_dirstate)
         state.lock_read()
