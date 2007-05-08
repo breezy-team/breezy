@@ -22,7 +22,7 @@ IN DEVELOPMENT
 
     * Move developer documentation to doc/developers/. This reduces clutter in
       the root of the source tree and allows HACKING to be split into multiple
-      files. (Robert Collins)
+      files. (Robert Collins, Alexander Belchenko)
 
 bzr 0.16rc2  2007-04-30
 

@@ -85,8 +85,11 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
+doc/developers/%.htm: doc/developers/%.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
+
 doc/developers/HACKING.htm: doc/developers/HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $< $@
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
 
 %.htm: %.txt
 	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $< $@
@@ -115,8 +118,10 @@ docs: $(ALL_DOCS)
 
 copy-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) \
-		doc/default.css doc/HACKING.htm NEWS README \
+		doc/default.css NEWS README \
 		win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir doc/developers/HACKING.htm \
+		win32_bzr.exe/doc/developers
 
 # clean produced docs
 clean-docs:
