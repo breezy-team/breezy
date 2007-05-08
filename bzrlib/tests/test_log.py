@@ -306,7 +306,7 @@ added:
             show_log(wt.branch, formatter)
             logfile.flush()
             self.assertEqualDiff("""\
-    2 Joe Foo\t2005-11-22
+    2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
     1 Joe Foo\t2005-11-22

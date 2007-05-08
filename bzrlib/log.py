@@ -480,10 +480,14 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         date_str = format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone)
-        print >>to_file, "%5s %s\t%s" % (revno, self.short_committer(rev),
+        is_merge = ''
+        if len(rev.parent_ids) > 1:
+            is_merge = ' [merge]'
+        print >>to_file, "%5s %s\t%s%s" % (revno, self.short_committer(rev),
                 format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
-                           show_offset=False))
+                           show_offset=False),
+                           is_merge)
         if self.show_ids:
             print >>to_file,  '      revision-id:', rev.revision_id
         if not rev.message:
