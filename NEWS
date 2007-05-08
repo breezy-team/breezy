@@ -8,6 +8,13 @@ IN DEVELOPMENT
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
 
+  IMPROVEMENTS:
+
+    * ``bzr log --short`` now includes ``[merge]`` for revisions which
+      have more than one parent. This is a small improvement to help
+      understanding what changes have occurred
+      (John Arbash Meinel, #83887)
+
 
 bzr 0.16  2007-05-07
   
