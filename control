@@ -15,7 +15,7 @@ Recommends: python-paramiko, python-pycurl
 Suggests: libxml2-utils
 Conflicts: bzr-doc
 XB-Python-Version: ${python:Versions}
-Description: bazaar-ng, the next-generation distributed version control system
+Description: Bazaar, the next-generation distributed version control system
  Open source distributed version control system that is powerful, friendly,
  and scalable.
  .

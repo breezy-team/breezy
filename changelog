@@ -7,6 +7,7 @@ bzr (0.16-1) unstable; urgency=low
   * merge ubuntu changes:
     - add lintian overrides
     - install doc/README.1st and doc/default.css
+    - debian/control: The upstream name is 'Bazaar', not bazaar-ng anymore
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue,  8 May 2007 18:23:31 +0200
 
