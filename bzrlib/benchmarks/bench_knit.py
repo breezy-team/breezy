@@ -30,8 +30,8 @@ from bzrlib.tests.test_knit import CompiledKnitFeature
 class BenchKnitIndex(Benchmark):
     """Benchmark Knit index performance."""
 
-    def create_10k_index(self):
-        """Create an knit index file with 10,000 entries.
+    def create_50k_index(self):
+        """Create an knit index file with 50,000 entries.
 
         This isn't super realistic, but it *is* big :)
 
@@ -40,8 +40,17 @@ class BenchKnitIndex(Benchmark):
         rev_id = generate_ids.gen_revision_id('long.name@this.example.com')
         versions = [(rev_id, ('fulltext',), 0, 200, [])]
         pos = 200
-        for i in xrange(9999):
-            parent_ids = [rev_id]
+        alt_parent = None
+        for i in xrange(49999):
+            if alt_parent is not None:
+                parent_ids = [rev_id, alt_parent]
+            else:
+                parent_ids = [rev_id]
+            if i % 8 == 0:
+                # The *next* entry will be a merge
+                alt_parent = rev_id
+            else:
+                alt_parent = None
             rev_id = generate_ids.gen_revision_id('long.name@this.example.com')
             versions.append((rev_id, ('line-delta',), pos, 200, parent_ids))
             pos += 200
@@ -65,26 +74,26 @@ class BenchKnitIndex(Benchmark):
         self.addCleanup(reset)
         knit._load_data = knit._load_data_py
 
-    def test_read_10k_index_c(self):
-        self.create_10k_index()
+    def test_read_50k_index_c(self):
+        self.create_50k_index()
         self.setup_load_data_c()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
 
-    def test_read_10k_index_c_again(self):
-        self.create_10k_index()
+    def test_read_50k_index_c_again(self):
+        self.create_50k_index()
         self.setup_load_data_c()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
 
-    def test_read_10k_index_py(self):
-        self.create_10k_index()
+    def test_read_50k_index_py(self):
+        self.create_50k_index()
         self.setup_load_data_py()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
 
-    def test_read_10k_index_py_again(self):
-        self.create_10k_index()
+    def test_read_50k_index_py_again(self):
+        self.create_50k_index()
         self.setup_load_data_py()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
