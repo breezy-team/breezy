@@ -16,6 +16,7 @@
 
 """Pyrex extensions to knit parsing."""
 
+import sys
 
 cdef extern from "stdlib.h":
     long int strtol(char *nptr, char **endptr, int base)
@@ -94,12 +95,94 @@ cdef class KnitIndexReader:
         if not PyList_CheckExact(self.history):
             raise TypeError('kndx._history must be a python list')
 
-    cdef void process_one_record(self, char *start, char *end):
+    cdef char * _end_of_option(self, char *option_str, char *end):
+        """Find the end of this option string.
+
+        This is similar to doing ``strchr(option_str, ',')``, except
+        it knows to stop if it hits 'end' first.
+        """
+        cdef char * cur
+
+        cur = option_str
+        while cur < end:
+            if cur[0] == c',' or cur[0] == c' ':
+                return cur
+            cur = cur + 1
+        return end
+
+    cdef object process_options(self, char *option_str, char *end):
+        """Process the options string into a list."""
+        cdef char *next
+        cdef char *orig
+
+        # options = PyString_FromStringAndSize(option_str, <int>(end-option_str))
+        # return options.split(',')
+
+        final_options = []
+
+        orig = option_str
+        while option_str < end:
+            # Using strchr here actually hurts performance dramatically.
+            # Because you aren't guaranteed to have a ',' any time soon,
+            # so it may have to search for a long time.
+            # The closest function is memchr, but that seems to be a
+            # GNU extension.
+            next = self._end_of_option(option_str, end)
+            next_option = PyString_FromStringAndSize(option_str,
+                                                     <int>(next - option_str))
+            PyList_Append(final_options, next_option)
+                          
+            # Move past the ','
+            option_str = next+1
+
+        return final_options
+
+    cdef object process_parents(self, char *parent_str, char *end):
+        cdef char *next
+        cdef int int_parent
+        cdef int parent_len
+
+        # parents = PyString_FromStringAndSize(parent_str,
+        #                                      <int>(end - parent_str))
+        # real_parents = []
+        # for parent in parents.split():
+        #     if parent[0].startswith('.'):
+        #         real_parents.append(parent[1:])
+        #     else:
+        #         real_parents.append(self.history[int(parent)])
+        # return real_parents
+
+        parents = []
+        while parent_str <= end and parent_str != NULL:
+            next = strchr(parent_str, c' ')
+            if next == NULL or next >= end or next == parent_str:
+                break
+            parent_len = next - parent_str
+
+            if parent_str[0] == c'.':
+                # This is an explicit revision id
+                parent_str = parent_str + 1
+                parent_len = parent_len - 1
+                parent = PyString_FromStringAndSize(parent_str, parent_len)
+            else:
+                # This in an integer mapping to original
+                # TODO: ensure that we are actually parsing the string
+                int_parent = strtol(parent_str, NULL, 10)
+                if int_parent >= self.history_len:
+                    raise IndexError('Parent index refers to a revision which'
+                        ' does not exist yet.'
+                        ' %d > %d' % (int_parent, self.history_len))
+                parent = self.history[int_parent]
+            parents.append(parent)
+            parent_str = next + 1
+        return parents
+
+    cdef int process_one_record(self, char *start, char *end) except -1:
         """Take a simple string and split it into an index record."""
         cdef char *version_id_str
         cdef int version_id_size
         cdef char *option_str
-        cdef int option_size
+        cdef char *option_end
         cdef char *pos_str
         cdef int pos
         cdef char *size_str
@@ -111,7 +194,7 @@ cdef class KnitIndexReader:
         option_str = strchr(version_id_str, c' ')
         if option_str == NULL or option_str >= end:
             # Short entry
-            return
+            return 0
         version_id_size = <int>(option_str - version_id_str)
         # Move past the space character
         option_str = option_str + 1
@@ -119,41 +202,32 @@ cdef class KnitIndexReader:
         pos_str = strchr(option_str, c' ')
         if pos_str == NULL or pos_str >= end:
             # Short entry
-            return
-        option_size = <int>(pos_str - option_str)
+            return 0
+        option_end = pos_str
         pos_str = pos_str + 1
 
         size_str = strchr(pos_str, c' ')
         if size_str == NULL or size_str >= end:
             # Short entry
-            return
+            return 0
         size_str = size_str + 1
 
         # TODO: Make sure this works when there are no parents
         parent_str = strchr(size_str, c' ')
         if parent_str == NULL or parent_str >= end:
             # Missing parents
-            return
+            return 0
         parent_str = parent_str + 1
 
         version_id = PyString_FromStringAndSize(version_id_str,
                                                 version_id_size)
-        options = PyString_FromStringAndSize(option_str, option_size)
-        options = options.split(',')
+        options = self.process_options(option_str, option_end)
 
+        # TODO: Check that we are actually reading integers
         pos = strtol(pos_str, NULL, 10)
         size = strtol(size_str, NULL, 10)
 
-        # TODO: Check that we are actually reading integers
-        parents = PyString_FromStringAndSize(parent_str,
-                                             <int>(end - parent_str))
-        parents = parents.split()
-        real_parents = []
-        for parent in parents:
-            if parent[0].startswith('.'):
-                real_parents.append(parent[1:])
-            else:
-                real_parents.append(self.history[int(parent)])
+        parents = self.process_parents(parent_str, end)
 
         if version_id not in self.cache:
             self.history.append(version_id)
@@ -166,11 +240,12 @@ cdef class KnitIndexReader:
                                   options,
                                   pos,
                                   size,
-                                  real_parents,
+                                  parents,
                                   index,
                                  )
+        return 1
 
-    cdef void process_next_record(self):
+    cdef int process_next_record(self) except -1:
         """Process the next record in the file."""
         cdef char *last
         cdef char *start
@@ -194,9 +269,9 @@ cdef class KnitIndexReader:
 
         if last <= start or last[0] != c':':
             # Incomplete record
-            return
+            return 0
 
-        self.process_one_record(start, last)
+        return self.process_one_record(start, last)
 
     def read(self):
         self.validate()

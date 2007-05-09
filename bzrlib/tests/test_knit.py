@@ -23,6 +23,7 @@ import sha
 
 from bzrlib import (
     errors,
+    generate_ids,
     knit,
     )
 from bzrlib.errors import (
