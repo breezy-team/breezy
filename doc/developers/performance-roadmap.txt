@@ -7,4 +7,9 @@ About the performance roadmap
 
 .. include:: performance-roadmap-rationale.txt
 
+Analysis of use cases
+#####################
 
+.. include:: performance-use-case-analysis.txt
+
+.. include:: incremental-push-pull.txt
