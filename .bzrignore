@@ -34,3 +34,4 @@ build
 ./html_docs
 ./pretty_docs
 ./api
+bzrlib/knit_c.c

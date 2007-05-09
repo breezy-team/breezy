@@ -164,6 +164,8 @@ else:
     from distutils.extension import Extension
     #ext_modules.append(
     #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+    ext_modules.append(
+        Extension("bzrlib.knit_c", ["bzrlib/knit_c.pyx"]))
 command_classes['build_ext'] = build_ext
 
 if 'bdist_wininst' in sys.argv:
