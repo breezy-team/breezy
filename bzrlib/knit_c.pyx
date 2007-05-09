@@ -16,7 +16,7 @@
 
 """Pyrex extensions to knit parsing."""
 
-from bzrlib import errors
+import sys
 
 cdef extern from "stdlib.h":
     long int strtol(char *nptr, char **endptr, int base)
@@ -269,44 +269,12 @@ cdef class KnitIndexReader:
 
         return self.process_one_record(start, last)
 
-    cdef int check_header(self) except -1:
-        """Check the header string is valid."""
-        cdef char *end
-        cdef char *header_str
-        cdef int header_len
-        cdef int disk_header_len
-        cdef int invalid
-
-        header = self.kndx.HEADER
-        header_str = PyString_AsString(header)
-        header_len = PyString_Size(header)
-
-        invalid = 1
-        end = strchr(self.cur_str, c'\n')
-        if end != NULL:
-            disk_header_len = end - self.cur_str + 1
-            if (disk_header_len == header_len
-                and strncmp(self.cur_str, header_str, header_len) == 0):
-                invalid = 0
-        if invalid == 1:
-            line = PyString_FromStringAndSize(self.cur_str, disk_header_len)
-            raise errors.KnitHeaderError(badline=line,
-                              filename=self.kndx._transport.abspath(
-                                                    self.kndx._filename))
-        # If the header is correct, we move past it.
-        self.cur_str = end
-        return 0
-
     def read(self):
         cdef int text_size
 
         self.validate()
 
-        text = self.fp.read()
-        if PyString_Size(text) == 0:
-            # An empty file can actually be treated as though the file doesn't
-            # exist yet.
-            raise errors.NoSuchFile(self.kndx._full_path())
+        self.kndx.check_header(self.fp)
 
         # We read the whole thing at once
         # TODO: jam 2007-05-09 Consider reading incrementally rather than
@@ -316,11 +284,11 @@ cdef class KnitIndexReader:
         #       The other possibility is to avoid a Python String here
         #       completely. However self.fp may be a 'file-like' object
         #       it is not guaranteed to be a real file.
+        text = self.fp.read()
         text_size = PyString_Size(text)
         self.cur_str = PyString_AsString(text)
         # This points to the last character in the string
         self.end_str = self.cur_str + text_size
-        self.check_header()
 
         while self.cur_str < self.end_str:
             self.process_next_record()
