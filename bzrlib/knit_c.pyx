@@ -139,7 +139,6 @@ cdef class KnitIndexReader:
     cdef object process_parents(self, char *parent_str, char *end):
         cdef char *next
         cdef int int_parent
-        cdef int parent_len
 
         # parents = PyString_FromStringAndSize(parent_str,
         #                                      end - parent_str)
@@ -158,13 +157,11 @@ cdef class KnitIndexReader:
             next = strchr(parent_str, c' ')
             if next == NULL or next >= end or next == parent_str:
                 break
-            parent_len = next - parent_str
 
             if parent_str[0] == c'.':
                 # This is an explicit revision id
                 parent_str = parent_str + 1
-                parent_len = parent_len - 1
-                parent = PyString_FromStringAndSize(parent_str, parent_len)
+                parent = PyString_FromStringAndSize(parent_str, next-parent_str)
             else:
                 # This in an integer mapping to original
                 # TODO: ensure that we are actually parsing the string
