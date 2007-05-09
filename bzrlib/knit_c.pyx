@@ -66,10 +66,6 @@ cdef class KnitIndexReader:
     cdef object cache
     cdef object history
 
-    cdef object text
-    cdef char * text_str
-    cdef int text_size
-
     cdef char * cur_str
     cdef char * end_str
 
@@ -81,10 +77,7 @@ cdef class KnitIndexReader:
 
         self.cache = kndx._cache
         self.history = kndx._history
-        self.text = None
 
-        self.text_str = NULL
-        self.text_size = 0
         self.cur_str = NULL
         self.end_str = NULL
         self.history_len = 0
@@ -277,26 +270,25 @@ cdef class KnitIndexReader:
         return self.process_one_record(start, last)
 
     def read(self):
+        cdef int text_size
+
         self.validate()
 
-        kndx = self.kndx
-        fp = self.fp
-        cache = self.cache
-        history = self.history
-
-        kndx.check_header(fp)
+        self.kndx.check_header(self.fp)
 
         # We read the whole thing at once
         # TODO: jam 2007-05-09 Consider reading incrementally rather than
         #       having to have the whole thing read up front.
         #       we already know that calling f.readlines() versus lots of
         #       f.readline() calls is faster.
-        self.text = fp.read()
-        self.text_str = PyString_AsString(self.text)
-        self.text_size = PyString_Size(self.text)
-        self.cur_str = self.text_str
+        #       The other possibility is to avoid a Python String here
+        #       completely. However self.fp may be a 'file-like' object
+        #       it is not guaranteed to be a real file.
+        text = self.fp.read()
+        text_size = PyString_Size(text)
+        self.cur_str = PyString_AsString(text)
         # This points to the last character in the string
-        self.end_str = self.text_str + self.text_size
+        self.end_str = self.cur_str + text_size
 
         while self.cur_str < self.end_str:
             self.process_next_record()
