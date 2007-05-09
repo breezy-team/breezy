@@ -4,6 +4,9 @@ bzr (0.16-1) unstable; urgency=low
   * add a note about this package being maintained by pkg-bazaar
   * add myself to uploaders
   * generate docs via make docs, upstream has the html links right now
+  * merge ubuntu changes:
+    - add lintian overrides
+    - install doc/README.1st and doc/default.css
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue,  8 May 2007 18:23:31 +0200
 

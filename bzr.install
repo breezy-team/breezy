@@ -1,3 +1,6 @@
+debian/overrides/bzr		usr/share/lintian/overrides/
 contrib/bash/*			etc/bash_completion.d/
 doc/*.txt			usr/share/doc/bzr/txt
+doc/README.1st			usr/share/doc/bzr/txt
 doc/*.htm			usr/share/doc/bzr/html
+doc/default.css			usr/share/doc/bzr/html

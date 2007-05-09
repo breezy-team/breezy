@@ -1,0 +1,3 @@
+bzr: script-not-executable ./usr/share/pycentral/bzr/site-packages/bzrlib/weave.py
+bzr: script-not-executable ./usr/share/pycentral/bzr/site-packages/bzrlib/tests/test_weave.py
+bzr: script-not-executable ./usr/share/pycentral/bzr/site-packages/bzrlib/patiencediff.py

@@ -13,9 +13,10 @@ clean::
 	find . -name "*.pyc" -print0 | xargs -0 rm -f
 	rm -f bzr.1
 	rm -f debian/stamp-doc
+	rm -f .bzr.log
 
 ifneq (,$(findstring test,$(DEB_BUILD_OPTIONS)))
-common-post-build-indep::	
+common-post-build-indep::
 	./bzr selftest --no-plugins --one
 endif
 
