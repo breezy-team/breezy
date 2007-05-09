@@ -25,7 +25,7 @@ cdef extern from "stdlib.h":
 
 cdef extern from "Python.h":
     int PyDict_CheckExact(object)
-    void *PyDict_GetItem(object p, object key)
+    void *PyDict_GetItem_void "PyDict_GetItem" (object p, object key)
     int PyDict_SetItem(object p, object key, object val) except -1
 
     int PyList_Append(object lst, object item) except -1
@@ -113,14 +113,13 @@ cdef class KnitIndexReader:
     cdef object process_options(self, char *option_str, char *end):
         """Process the options string into a list."""
         cdef char *next
-        cdef char *orig
 
-        # options = PyString_FromStringAndSize(option_str, <int>(end-option_str))
+        # options = PyString_FromStringAndSize(option_str,
+        #                                      end-option_str)
         # return options.split(',')
 
         final_options = []
 
-        orig = option_str
         while option_str < end:
             # Using strchr here actually hurts performance dramatically.
             # Because you aren't guaranteed to have a ',' any time soon,
@@ -129,7 +128,7 @@ cdef class KnitIndexReader:
             # GNU extension.
             next = self._end_of_option(option_str, end)
             next_option = PyString_FromStringAndSize(option_str,
-                                                     <int>(next - option_str))
+                                                     next - option_str)
             PyList_Append(final_options, next_option)
                           
             # Move past the ','
@@ -143,7 +142,7 @@ cdef class KnitIndexReader:
         cdef int parent_len
 
         # parents = PyString_FromStringAndSize(parent_str,
-        #                                      <int>(end - parent_str))
+        #                                      end - parent_str)
         # real_parents = []
         # for parent in parents.split():
         #     if parent[0].startswith('.'):
@@ -154,6 +153,8 @@ cdef class KnitIndexReader:
 
         parents = []
         while parent_str <= end and parent_str != NULL:
+            # strchr is safe here, because our lines always end
+            # with ' :'
             next = strchr(parent_str, c' ')
             if next == NULL or next >= end or next == parent_str:
                 break
@@ -172,8 +173,10 @@ cdef class KnitIndexReader:
                     raise IndexError('Parent index refers to a revision which'
                         ' does not exist yet.'
                         ' %d > %d' % (int_parent, self.history_len))
-                parent = self.history[int_parent]
-            parents.append(parent)
+                parent = PyList_GET_ITEM(self.history, int_parent)
+                # PyList_GET_ITEM steals a reference
+                Py_INCREF(parent)
+            PyList_Append(parents, parent)
             parent_str = next + 1
         return parents
 
@@ -189,6 +192,7 @@ cdef class KnitIndexReader:
         cdef int size
         cdef char *parent_str
         cdef int parent_size
+        cdef void *cache_entry
 
         version_id_str = start
         option_str = strchr(version_id_str, c' ')
@@ -229,20 +233,22 @@ cdef class KnitIndexReader:
 
         parents = self.process_parents(parent_str, end)
 
-        if version_id not in self.cache:
-            self.history.append(version_id)
+        cache_entry = PyDict_GetItem_void(self.cache, version_id)
+        if cache_entry == NULL:
+            PyList_Append(self.history, version_id)
             index = self.history_len
             self.history_len = self.history_len + 1
         else:
-            index = self.cache[version_id][5]
+            index = <object>PyTuple_GetItem_void_void(cache_entry, 5)
 
-        self.cache[version_id] = (version_id,
-                                  options,
-                                  pos,
-                                  size,
-                                  parents,
-                                  index,
-                                 )
+        PyDict_SetItem(self.cache, version_id,
+                       (version_id,
+                        options,
+                        pos,
+                        size,
+                        parents,
+                        index,
+                       ))
         return 1
 
     cdef int process_next_record(self) except -1:
@@ -257,12 +263,12 @@ cdef class KnitIndexReader:
             # Process until the end of the file
             last = self.end_str-1
             self.cur_str = self.end_str
-            line = PyString_FromStringAndSize(start, <int>(last - start))
+            line = PyString_FromStringAndSize(start, last - start)
             ending = PyString_FromStringAndSize(last, 1)
         else:
             # The last character is right before the '\n'
             # And the next string is right after it
-            line = PyString_FromStringAndSize(start, <int>(last - start))
+            line = PyString_FromStringAndSize(start, last - start)
             self.cur_str = last + 1
             last = last - 1
             ending = PyString_FromStringAndSize(last, 3)

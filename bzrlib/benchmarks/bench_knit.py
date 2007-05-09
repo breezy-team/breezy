@@ -75,14 +75,14 @@ class BenchKnitIndex(Benchmark):
         knit._load_data = knit._load_data_py
 
     def test_read_50k_index_c(self):
-        self.create_50k_index()
         self.setup_load_data_c()
+        self.create_50k_index()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
 
     def test_read_50k_index_c_again(self):
-        self.create_50k_index()
         self.setup_load_data_c()
+        self.create_50k_index()
         t = self.get_transport()
         kndx = self.time(knit._KnitIndex, t, 'test.kndx', 'r')
 
