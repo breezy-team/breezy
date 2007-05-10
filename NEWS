@@ -26,6 +26,12 @@ bzr 0.16  2007-05-07
     * Avoid error when running hooks after pulling into or pushing from
       a branch bound to a smartserver branch.  (Martin Pool, #111968)
 
+  IMPROVEMENTS:
+
+    * Move developer documentation to doc/developers/. This reduces clutter in
+      the root of the source tree and allows HACKING to be split into multiple
+      files. (Robert Collins, Alexander Belchenko)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:
