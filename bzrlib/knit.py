@@ -1468,7 +1468,7 @@ class _KnitData(_KnitComponentFile):
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             rec = self._check_header(version_id, df.readline())
-        except Exception, e:
+        except (IOException, ), e:
             raise KnitCorrupt(self._filename,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
@@ -1494,7 +1494,7 @@ class _KnitData(_KnitComponentFile):
 
         try:
             record_contents = df.readlines()
-        except Exception, e:
+        except IOError, e:
             raise KnitCorrupt(self._filename,
                               "While reading {%s} got %s(%s)"
                               % (version_id, e.__class__.__name__, str(e)))
