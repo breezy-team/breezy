@@ -1885,39 +1885,37 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                                              int(self.number/1000),
                                              self.number)
             os.makedirs(candidate_dir)
-            self.test_home_dir = candidate_dir + '/home'
-            os.mkdir(self.test_home_dir)
-            self.test_dir = candidate_dir + '/work'
-            os.mkdir(self.test_dir)
-            os.chdir(self.test_dir)
-            # put name of test inside
-            f = file(candidate_dir + '/name', 'w')
+        else:
+            # Else NAMED DIRS
+            # shorten the name, to avoid test failures due to path length
+            short_id = self.id().replace('bzrlib.tests.', '') \
+                       .replace('__main__.', '')[-100:]
+            # it's possible the same test class is run several times for
+            # parameterized tests, so make sure the names don't collide.  
+            i = 0
+            while True:
+                if i > 0:
+                    candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
+                else:
+                    candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
+                if os.path.exists(candidate_dir):
+                    i = i + 1
+                    continue
+                else:
+                    os.mkdir(candidate_dir)
+                    break
+        # now create test and home directories within this dir
+        self.test_home_dir = candidate_dir + '/home'
+        os.mkdir(self.test_home_dir)
+        self.test_dir = candidate_dir + '/work'
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        # put name of test inside
+        f = file(candidate_dir + '/name', 'w')
+        try:
             f.write(self.id())
+        finally:
             f.close()
-            return
-        # Else NAMED DIRS
-        # shorten the name, to avoid test failures due to path length
-        short_id = self.id().replace('bzrlib.tests.', '') \
-                   .replace('__main__.', '')[-100:]
-        # it's possible the same test class is run several times for
-        # parameterized tests, so make sure the names don't collide.  
-        i = 0
-        while True:
-            if i > 0:
-                candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
-            else:
-                candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
-            if os.path.exists(candidate_dir):
-                i = i + 1
-                continue
-            else:
-                os.mkdir(candidate_dir)
-                self.test_home_dir = candidate_dir + '/home'
-                os.mkdir(self.test_home_dir)
-                self.test_dir = candidate_dir + '/work'
-                os.mkdir(self.test_dir)
-                os.chdir(self.test_dir)
-                break
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
