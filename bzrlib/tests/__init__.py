@@ -42,6 +42,7 @@ import sys
 import tempfile
 import unittest
 import time
+import warnings
 
 
 from bzrlib import (
@@ -499,7 +500,6 @@ class TextTestRunner(object):
                  stream=sys.stderr,
                  descriptions=0,
                  verbosity=1,
-                 keep_output=False,
                  bench_history=None,
                  use_numbered_dirs=False,
                  list_only=False
@@ -507,7 +507,6 @@ class TextTestRunner(object):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
-        self.keep_output = keep_output
         self._bench_history = bench_history
         self.use_numbered_dirs = use_numbered_dirs
         self.list_only = list_only
@@ -574,17 +573,6 @@ class TextTestRunner(object):
             for feature, count in sorted(result.unsupported.items()):
                 self.stream.writeln("Missing feature '%s' skipped %d tests." %
                     (feature, count))
-        result.report_cleaning_up()
-        # This is still a little bogus, 
-        # but only a little. Folk not using our testrunner will
-        # have to delete their temp directories themselves.
-        test_root = TestCaseWithMemoryTransport.TEST_ROOT
-        if result.wasSuccessful() or not self.keep_output:
-            if test_root is not None:
-                _rmtree_temp_dir(test_root)
-        else:
-            note("Failed tests working directories are in '%s'\n", test_root)
-        TestCaseWithMemoryTransport.TEST_ROOT = None
         result.finished()
         return result
 
@@ -2175,10 +2163,12 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         verbosity = 2
     else:
         verbosity = 1
+    if keep_output:
+        warnings.warn("test case keep_output option is no longer supported",
+                stacklevel=2)
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
-                            keep_output=keep_output,
                             bench_history=bench_history,
                             use_numbered_dirs=use_numbered_dirs,
                             list_only=list_only,

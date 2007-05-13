@@ -8,6 +8,12 @@ IN DEVELOPMENT
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
 
+  TESTING:
+
+    * Removed the ``--keep-output`` option from selftest and clean up test
+      directories as they're used.  This reduces the IO load from 
+      running the test suite and cuts the time by about half.
+      (Andrew Bennetts, Martin Pool)
 
 bzr 0.16  2007-05-07
   

@@ -971,7 +971,7 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -990,7 +990,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1010,7 +1010,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
