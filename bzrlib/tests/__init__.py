@@ -1859,7 +1859,14 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     All test cases create their own directory within that.  If the
     tests complete successfully, the directory is removed.
 
-    InTempDir is an old alias for FunctionalTestCase.
+    :ivar test_base_dir: The path of the top-level directory for this 
+    test, which contains a home directory and a work directory.
+
+    :ivar test_home_dir: An initially empty directory under test_base_dir
+    which is used as $HOME for this test.
+
+    :ivar test_dir: A directory under test_base_dir used as the current
+    directory when the test proper is run.
     """
 
     OVERRIDE_PYTHON = 'python'
@@ -1905,17 +1912,23 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                     os.mkdir(candidate_dir)
                     break
         # now create test and home directories within this dir
-        self.test_home_dir = candidate_dir + '/home'
+        self.test_base_dir = candidate_dir
+        self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
-        self.test_dir = candidate_dir + '/work'
+        self.test_dir = self.test_base_dir + '/work'
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         # put name of test inside
-        f = file(candidate_dir + '/name', 'w')
+        f = file(self.test_base_dir + '/name', 'w')
         try:
             f.write(self.id())
         finally:
             f.close()
+        self.addCleanup(self.deleteTestDir)
+
+    def deleteTestDir(self):
+        mutter("delete %s" % self.test_base_dir)
+        _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
