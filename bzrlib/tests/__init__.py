@@ -581,18 +581,6 @@ class TextTestRunner(object):
         test_root = TestCaseWithMemoryTransport.TEST_ROOT
         if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
-                # If LANG=C we probably have created some bogus paths
-                # which rmtree(unicode) will fail to delete
-                # so make sure we are using rmtree(str) to delete everything
-                # except on win32, where rmtree(str) will fail
-                # since it doesn't have the property of byte-stream paths
-                # (they are either ascii or mbcs)
-                if sys.platform == 'win32':
-                    # make sure we are using the unicode win32 api
-                    test_root = unicode(test_root)
-                else:
-                    test_root = test_root.encode(
-                        sys.getfilesystemencoding())
                 _rmtree_temp_dir(test_root)
         else:
             note("Failed tests working directories are in '%s'\n", test_root)
@@ -2427,6 +2415,17 @@ def adapt_modules(mods_list, adapter, loader, suite):
 
 
 def _rmtree_temp_dir(dirname):
+    # If LANG=C we probably have created some bogus paths
+    # which rmtree(unicode) will fail to delete
+    # so make sure we are using rmtree(str) to delete everything
+    # except on win32, where rmtree(str) will fail
+    # since it doesn't have the property of byte-stream paths
+    # (they are either ascii or mbcs)
+    if sys.platform == 'win32':
+        # make sure we are using the unicode win32 api
+        dirname = unicode(dirname)
+    else:
+        dirname = dirname.encode(sys.getfilesystemencoding())
     try:
         osutils.rmtree(dirname)
     except OSError, e:
