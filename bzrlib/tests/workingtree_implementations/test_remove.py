@@ -29,7 +29,6 @@ class TestRemove(TestCaseWithWorkingTree):
     b_c = ['b', 'b/c']
 
     def getTree(self):
-        self.makeAndChdirToTestDir()
         tree = self.make_branch_and_tree('.')
         self.build_tree(TestRemove.files)
         return tree
