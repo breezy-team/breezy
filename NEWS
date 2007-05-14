@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+  
+    * There are two new help topics, working-trees and repositories that
+      attempt to explain these concepts. (James Westby, John Arbash Meinel,
+      Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
