@@ -276,6 +276,80 @@ Related commands:
               commits are only made locally
 """
 
+_repositories = \
+"""Repositories
+
+Repositories in Bazaar are a way of sharing storage between different branches.
+If a branch is created within a shared repository then it will place the
+revisions within it. Then when any other branches are created within the same
+repository they will use the same revisions where they are common to both
+branches. This has little effect for distinct projects, but where the branches
+share some history there will be a large space saving. The space savings can
+also become large time savings as well, for instance when branching within
+a shared repositories.
+
+To create a shared repository use the init-repository command (or the alias
+init-repo). This command takes as an argument the location of the repository
+to create. This means that 'bzr init-repository repo' will create a directory
+named 'repo', which contains a shared repository. Any new branches that are
+created in this directory will then be 'in' the repository, and use it for
+storage.
+
+It is a good idea to create a repository whenever you might create more
+than one branch of a project. This is true for both working areas where you
+are doing the development, and any server areas that you use for hosting
+projects. In the latter case, if you do not want to do work directly there
+you may wish to not have the branches have working trees. If the working trees
+are not present then there will be less disk space used, and a lot of
+operations will be sped up. To create a repository in which the branches will
+not have working trees pass the '--no-trees' option to 'init-repository'.
+
+Related commands:
+
+  init-repository   Create a shared repository. Use --no-trees to create one
+                    in which new branches wont get a working tree.
+"""
+
+_working_trees = \
+"""Working Trees
+
+A working tree is the contents of a branch checked out on disk so that you can
+see the files and edit them. The working tree is where you make changes to a
+branch, and when you commit the current state of the working tree is the
+snapshot that is recorded in the commit.
+
+When you push a branch to a remote system then a working tree will not be
+created, or if there is already one there it will not be updated. This is
+because an update to the working tree can cause conflicts, and that is
+hard to deal with remotely.
+
+If you have a branch with no working tree you can use the 'checkout' command
+to create a working tree. If you run 'bzr checkout .' from the branch it will
+create the working tree. If a subsequent push from a remote system updates the
+branch you can update the working tree to match the branch by running 'bzr
+update' in the branch.
+
+If you have a branch with a working tree that you do not want the 'remove-tree'
+command will remove the tree if it is safe. This can be done to avoid the
+warning about the remote working tree not being updated when pushing to the
+branch. It can also be useful when working with a '--no-trees' repository
+(see 'bzr help repositories').
+
+If you want to have a working tree on a remote machine that you push to you
+can either run 'bzr update' in the remote branch after each push, or use some
+other method to update the tree during the push. There is an 'rspush' plugin
+that will update the working tree using rsync as well as doing a push. There
+is also a 'push-and-update' plugin that automates running 'bzr update' via SSH
+after each push.
+
+Useful commands:
+
+  checkout     Create a working tree when a branch does not have one.
+  remove-tree  Removes the working tree from a branch when it is safe to do so.
+  update       When a working tree is out of sync with it's associated branch
+               this will update the tree to match the branch.
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
@@ -295,6 +369,10 @@ def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return bugtracker.tracker_registry.help_topic(topic)
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
+topic_registry.register('repositories', _repositories,
+                        'Basic information on shared repositories.')
+topic_registry.register('working-trees', _working_trees,
+                        'Information on working trees')
 
 
 class HelpTopicIndex(object):
@@ -355,3 +433,4 @@ class RegisteredTopic(object):
     def get_help_topic(self):
         """Return the help topic this can be found under."""
         return self.topic
+
