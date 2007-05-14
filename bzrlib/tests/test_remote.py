@@ -98,6 +98,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
 
+    def test_remote_branch_repr(self):
+        b = BzrDir.open_from_transport(self.transport).open_branch()
+        self.assertStartsWith(str(b), 'RemoteBranch(')
+
 
 class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
@@ -415,6 +419,20 @@ class TestTransportIsReadonly(tests.TestCase):
         client = FakeClient([(
             ('error', "Generic bzr smart protocol error: "
                       "bad request 'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_error_from_old_0_11_server(self):
+        """Same as test_error_from_old_server, but with the slightly different
+        error message from bzr 0.11 servers.
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request u'Transport.is_readonly'"), '')])
         transport = RemoteTransport('bzr://example.com/', medium=False,
                                     _client=client)
         self.assertEqual(False, transport.is_readonly())

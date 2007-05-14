@@ -18,10 +18,12 @@
 
 import os
 
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, BzrBranchFormat5
+from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -142,8 +144,13 @@ class TestPullHook(TestCaseWithBranch):
         try:
             local.bind(target)
         except errors.UpgradeRequired:
-            # cant bind this format, the test is irrelevant.
-            return
+            # We can't bind this format to itself- typically it is the local
+            # branch that doesn't support binding.  As of May 2007
+            # remotebranches can't be bound.  Let's instead make a new local
+            # branch of the default type, which does allow binding.
+            # See https://bugs.launchpad.net/bzr/+bug/112020
+            local = BzrDir.create_branch_convenience('local2')
+            local.bind(target)
         source = self.make_branch('source')
         Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
         local.pull(source)

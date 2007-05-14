@@ -559,6 +559,10 @@ class TestSelftestListOnly(TestCase):
         out_all,err_all = self.run_bzr_captured(['selftest', '--list-only',
             'selftest'])
         tests_all = self._parse_test_list(out_all.splitlines())[1]
+        # XXX: It looks like there are some orders for generating tests that
+        # fail as of 20070504 - maybe because of import order dependencies.
+        # So unfortunately this will rarely intermittently fail at the moment.
+        # -- mbp 20070504
         out_rand,err_rand = self.run_bzr_captured(['selftest', '--list-only',
             'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(

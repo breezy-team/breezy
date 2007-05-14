@@ -79,7 +79,8 @@ bzrlib.breakin.hook_sigquit()
 import bzrlib.decorators
 if ('--lsprof' in sys.argv
     or '--lsprof-file' in sys.argv
-    or '--profile' in sys.argv):
+    or '--profile' in sys.argv
+    or '--lsprof-timed' in sys.argv):
     bzrlib.decorators.use_pretty_decorators()
 else:
     bzrlib.decorators.use_fast_decorators()
@@ -87,7 +88,7 @@ else:
 import bzrlib.commands
 import bzrlib.trace
 
-if bzrlib.version_info[:3] != (0, 16, 0):
+if bzrlib.version_info[:3] != (0, 17, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"
