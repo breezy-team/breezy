@@ -6,7 +6,8 @@
 
 _bzr_commands() 
 {
-     bzr help commands | grep -v '^   '
+     #bzr help commands | grep -v '^   '
+     bzr help commands | sed -r 's/^([-[:alnum:]]*).*/\1/' |grep '^[[:alnum:]]' 
 }
 
 _bzr() 
