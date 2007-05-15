@@ -1095,21 +1095,21 @@ class DirState(object):
          saved_executable, saved_packed_stat) = entry[1][0]
 
         if (minikind == saved_minikind
-            and packed_stat == saved_packed_stat
-            # size should also be in packed_stat
-            and saved_file_size == stat_value.st_size):
+            and packed_stat == saved_packed_stat):
             # The stat hasn't changed since we saved, so we can potentially
             # re-use the saved sha hash.
             if minikind == 'd':
                 return None
 
-            if self._cutoff_time is None:
-                self._sha_cutoff_time()
+            # size should also be in packed_stat
+            if saved_file_size == stat_value.st_size :
+                if self._cutoff_time is None:
+                    self._sha_cutoff_time()
 
-            if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
-                # Return the existing fingerprint
-                return saved_link_or_sha1
+                if (stat_value.st_mtime < self._cutoff_time
+                    and stat_value.st_ctime < self._cutoff_time):
+                    # Return the existing fingerprint
+                    return saved_link_or_sha1
 
         # If we have gotten this far, that means that we need to actually
         # process this entry.

@@ -1521,6 +1521,39 @@ class TestUpdateEntry(TestCaseWithDirState):
         self.build_tree(['a/'])
         self.assertIs(None, state.update_entry(entry, 'a'))
 
+    def test_update_entry_dir_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a/'])
+        # make sure the last modified time is in the future
+        state._sha_cutoff_time()
+        state._cutoff_time += 20
+        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
+    def test_update_entry_file_unchanged(self):
+        state, entry = self.get_state_with_a()
+        self.build_tree(['a'])
+        sha1sum = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
+        # make sure the last modified time is in the future
+        state._sha_cutoff_time()
+        state._cutoff_time += 20
+        self.assertEqual(sha1sum, state.update_entry(entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(sha1sum, state.update_entry(entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+
     def create_and_test_file(self, state, entry):
         """Create a file at 'a' and verify the state finds it.
 
