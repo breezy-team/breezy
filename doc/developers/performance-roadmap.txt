@@ -17,3 +17,5 @@ Analysis of use cases
 .. include:: add.txt
 
 .. include:: gc.txt
+
+.. include:: revert.txt
