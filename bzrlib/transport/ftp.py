@@ -108,7 +108,10 @@ class FtpTransport(Transport):
 
         self.is_active = base.startswith('aftp://')
         if self.is_active:
-            # urlparse won't handle aftp://
+            # urlparse won't handle aftp://, delete the leading 'a'
+
+            # FIXME: This breaks even hopes of connection sharing
+            # by modifying the the url coming from the user.
             base = base[1:]
         if not base.endswith('/'):
             base += '/'

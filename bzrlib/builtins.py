@@ -1286,9 +1286,12 @@ class cmd_init(Command):
         to_transport.ensure_base()
 
         try:
+            # FIXME: Reuse to_transport instead of location
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except errors.NotBranchError:
             # really a NotBzrDir error...
+            # FIXME: Reuse to_transport instead of
+            # to_transport.base (nastier than above)
             branch = bzrdir.BzrDir.create_branch_convenience(to_transport.base,
                                                              format=format)
         else:
