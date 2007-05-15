@@ -200,11 +200,12 @@ desired.
 """
 
 
-import base64
+import binascii
 import bisect
 import errno
 import os
 from stat import S_IEXEC
+import stat
 import struct
 import sys
 import time
@@ -221,6 +222,20 @@ from bzrlib import (
 
 class _Bisector(object):
     """This just keeps track of information as we are bisecting."""
+
+
+def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
+    """Convert stat values into a packed representation."""
+    # jam 20060614 it isn't really worth removing more entries if we
+    # are going to leave it in packed form.
+    # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
+    # With all entries filesize is 5.9M and read time is mabye 280ms
+    # well within the noise margin
+
+    # base64.encode always adds a final newline, so strip it off
+    return _encode(_pack('>LLLLLL'
+        , st.st_size, int(st.st_mtime), int(st.st_ctime)
+        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
 
 
 class DirState(object):
@@ -255,6 +270,11 @@ class DirState(object):
             'r': 'relocated',
             't': 'tree-reference',
         }
+    _stat_to_minikind = {
+        stat.S_IFDIR:'d',
+        stat.S_IFREG:'f',
+        stat.S_IFLNK:'l',
+    }
     _to_yesno = {True:'y', False: 'n'} # TODO profile the performance gain
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
@@ -1059,7 +1079,9 @@ class DirState(object):
             raise
         return result
 
-    def update_entry(self, entry, abspath, stat_value=None):
+    def update_entry(self, entry, abspath, stat_value,
+                     _stat_to_minikind=_stat_to_minikind,
+                     _pack_stat=pack_stat):
         """Update the entry based on what is actually on disk.
 
         :param entry: This is the dirblock entry for the file in question.
@@ -1072,25 +1094,13 @@ class DirState(object):
         # This code assumes that the entry passed in is directly held in one of
         # the internal _dirblocks. So the dirblock state must have already been
         # read.
-        assert self._dirblock_state != DirState.NOT_IN_MEMORY
-        if stat_value is None:
-            try:
-                # We could inline os.lstat but the common case is that
-                # stat_value will be passed in, not read here.
-                stat_value = self._lstat(abspath, entry)
-            except (OSError, IOError), e:
-                if e.errno in (errno.ENOENT, errno.EACCES,
-                               errno.EPERM):
-                    # The entry is missing, consider it gone
-                    return None
-                raise
-
-        kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
+        #kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
         try:
-            minikind = DirState._kind_to_minikind[kind]
-        except KeyError: # Unknown kind
+            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        except KeyError:
+            # Unhandled kind
             return None
-        packed_stat = pack_stat(stat_value)
+        packed_stat = _pack_stat(stat_value)
         (saved_minikind, saved_link_or_sha1, saved_file_size,
          saved_executable, saved_packed_stat) = entry[1][0]
 
@@ -1102,7 +1112,7 @@ class DirState(object):
                 return None
 
             # size should also be in packed_stat
-            if saved_file_size == stat_value.st_size :
+            if saved_file_size == stat_value.st_size:
                 if self._cutoff_time is None:
                     self._sha_cutoff_time()
 
@@ -2379,18 +2389,3 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         if cur_split < dirname_split: lo = mid+1
         else: hi = mid
     return lo
-
-
-
-def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
-    """Convert stat values into a packed representation."""
-    # jam 20060614 it isn't really worth removing more entries if we
-    # are going to leave it in packed form.
-    # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
-    # With all entries filesize is 5.9M and read time is mabye 280ms
-    # well within the noise margin
-
-    # base64.encode always adds a final newline, so strip it off
-    return _encode(_pack('>LLLLLL'
-        , st.st_size, int(st.st_mtime), int(st.st_ctime)
-        , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]

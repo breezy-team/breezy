@@ -1460,20 +1460,6 @@ class TestUpdateEntry(TestCaseWithDirState):
                           ('sha1', 'a'), ('is_exec', mode, False),
                          ], state._log)
 
-    def test_update_entry_no_stat_value(self):
-        """Passing the stat_value is optional."""
-        state, entry = self.get_state_with_a()
-        state.adjust_time(-10) # Make sure the file looks new
-        self.build_tree(['a'])
-        # Add one where we don't provide the stat or sha already
-        link_or_sha1 = state.update_entry(entry, abspath='a')
-        self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
-                         link_or_sha1)
-        stat_value = os.lstat('a')
-        self.assertEqual([('lstat', 'a'), ('sha1', 'a'),
-                          ('is_exec', stat_value.st_mode, False),
-                         ], state._log)
-
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
         if not osutils.has_symlinks():
@@ -1516,10 +1502,14 @@ class TestUpdateEntry(TestCaseWithDirState):
                           ('read_link', 'a', 'target'),
                          ], state._log)
 
+    def do_update_entry(self, state, entry, abspath):
+        stat_value = os.lstat(abspath)
+        return state.update_entry(entry, abspath, stat_value)
+
     def test_update_entry_dir(self):
         state, entry = self.get_state_with_a()
         self.build_tree(['a/'])
-        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
 
     def test_update_entry_dir_unchanged(self):
         state, entry = self.get_state_with_a()
@@ -1527,13 +1517,13 @@ class TestUpdateEntry(TestCaseWithDirState):
         # make sure the last modified time is in the future
         state._sha_cutoff_time()
         state._cutoff_time += 20
-        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
-        self.assertIs(None, state.update_entry(entry, 'a'))
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
@@ -1544,13 +1534,13 @@ class TestUpdateEntry(TestCaseWithDirState):
         # make sure the last modified time is in the future
         state._sha_cutoff_time()
         state._cutoff_time += 20
-        self.assertEqual(sha1sum, state.update_entry(entry, 'a'))
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
-        self.assertEqual(sha1sum, state.update_entry(entry, 'a'))
+        self.assertEqual(sha1sum, self.do_update_entry(state, entry, 'a'))
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
@@ -1564,7 +1554,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('f', link_or_sha1, 14, False, packed_stat)],
@@ -1581,7 +1571,7 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertIs(None, link_or_sha1)
         self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
 
@@ -1602,44 +1592,11 @@ class TestUpdateEntry(TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        link_or_sha1 = state.update_entry(entry, abspath='a')
+        link_or_sha1 = self.do_update_entry(state, entry, abspath='a')
         self.assertEqual('path/to/foo', link_or_sha1)
         self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
                          entry[1])
         return packed_stat
-
-    def test_update_missing_file(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_file(state, entry)
-        # Now if we delete the file, update_entry should recover and
-        # return None.
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
-        self.assertEqual([('f', digest, 14, False, packed_stat)],
-                         entry[1])
-
-    def test_update_missing_dir(self):
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_dir(state, entry)
-        # Now if we delete the directory, update_entry should recover and
-        # return None.
-        os.rmdir('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        self.assertEqual([('d', '', 0, False, packed_stat)], entry[1])
-
-    def test_update_missing_symlink(self):
-        if not osutils.has_symlinks():
-            # PlatformDeficiency / TestSkipped
-            raise TestSkipped("No symlink support")
-        state, entry = self.get_state_with_a()
-        packed_stat = self.create_and_test_symlink(state, entry)
-        os.remove('a')
-        self.assertIs(None, state.update_entry(entry, abspath='a'))
-        # And the record shouldn't be changed.
-        self.assertEqual([('l', 'path/to/foo', 11, False, packed_stat)],
-                         entry[1])
 
     def test_update_file_to_dir(self):
         """If a file changes to a directory we return None for the sha.

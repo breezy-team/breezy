@@ -413,6 +413,8 @@ class WorkingTree4(WorkingTree3):
 
         file_abspath = self.abspath(path)
         state = self.current_dirstate()
+        if stat_value is None:
+            stat_value = os.lstat(file_abspath)
         link_or_sha1 = state.update_entry(entry, file_abspath,
                                           stat_value=stat_value)
         if entry[1][0][0] == 'f':
