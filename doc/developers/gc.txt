@@ -22,3 +22,5 @@ A possibility to reduce this would be to have a set of grouped 'known garbage
 free' data - 'ancient history' which can be preserved in total should its HEADS
 be fully referenced - and where the HEADS list is deliberate cheap (e.g. at the
 top of some index).
+
+possibly - null data in place without saving size.

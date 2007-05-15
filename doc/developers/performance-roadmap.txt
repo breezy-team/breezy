@@ -19,3 +19,5 @@ Analysis of use cases
 .. include:: gc.txt
 
 .. include:: revert.txt
+
+.. include:: annotate.txt
