@@ -2006,7 +2006,7 @@ Node-copyfrom-path: x
         repos.set_branching_scheme(NoBranchingScheme())
         self.assertEquals(None, repos._mainline_revision_parent("", 0))
 
-    def test_mainline_revision_parent_null(self):
+    def test_mainline_revision_parent_first(self):
         repos_url = self.make_client('d', 'dc')
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(NoBranchingScheme())
@@ -2039,8 +2039,25 @@ Node-copyfrom-path: x
         self.client_commit("dc", "Initial commit")
         self.client_copy("dc/py", "dc/de")
         self.client_commit("dc", "Incremental commit")
+        self.build_tree({'dc/de/trunk/adir/afile': "bla"})
+        self.client_commit("dc", "Change de")
         repos = Repository.open(repos_url)
-        repos.set_branching_scheme(TrunkBranchingScheme())
+        repos.set_branching_scheme(TrunkBranchingScheme(1))
+        self.assertEquals(repos.generate_revision_id(1, "py/trunk"), \
+                repos._mainline_revision_parent("de/trunk", 3))
+
+    def test_mainline_revision_copied(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/py/trunk/adir/afile': "data", 
+                         'dc/py/trunk/adir/stationary': None})
+        self.client_add("dc/py")
+        self.client_commit("dc", "Initial commit")
+        self.build_tree({'dc/de':None})
+        self.client_add("dc/de")
+        self.client_copy("dc/py/trunk", "dc/de/trunk")
+        self.client_commit("dc", "Copy trunk")
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme(1))
         self.assertEquals(repos.generate_revision_id(1, "py/trunk"), \
                 repos._mainline_revision_parent("de/trunk", 2))
 
@@ -2056,8 +2073,18 @@ Node-copyfrom-path: x
         self.client_commit("dc", "Another incremental commit")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme(1))
-        self.assertEquals(repos.generate_revision_id(2, "de/trunk"), \
+        self.assertEquals(repos.generate_revision_id(1, "py/trunk"), \
                 repos._mainline_revision_parent("de/trunk", 3))
+
+    def test_mainline_revision_missing(self):
+        repos_url = self.make_client('d', 'dc')
+        repos = Repository.open(repos_url)
+        self.build_tree({'dc/py/trunk/adir/afile': "data", 
+                         'dc/py/trunk/adir/stationary': None})
+        self.client_add("dc/py")
+        self.client_commit("dc", "Initial commit")
+        self.assertRaises(NoSuchRevision, 
+                lambda: repos._mainline_revision_parent("trunk", 1))
 
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')

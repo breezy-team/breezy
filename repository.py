@@ -310,10 +310,23 @@ class SvnRepository(Repository):
     def _mainline_revision_parent(self, path, revnum):
         assert isinstance(path, basestring)
         assert isinstance(revnum, int)
-        for (branch, rev) in self.follow_branch(path, revnum):
-            if rev < revnum:
-                return self.generate_revision_id(rev, branch)
-        return None
+
+        if not self.scheme.is_branch(path) and \
+           not self.scheme.is_tag(path):
+            raise NoSuchRevision(self, self.generate_revision_id(revnum, path))
+
+        it = self.follow_branch(path, revnum)
+        # the first tuple returned should match the one specified. 
+        # if it's not, then the branch, revnum didn't change in the specified 
+        # revision and so it is invalid
+        if (path, revnum) != it.next():
+            raise NoSuchRevision(self, self.generate_revision_id(revnum, path))
+        try:
+            (branch, rev) = it.next()
+            return self.generate_revision_id(rev, branch)
+        except StopIteration:
+            # The specified revision was the first one in the branch
+            return None
 
     def revision_parents(self, revision_id, merged_data=None):
         parent_ids = []
@@ -441,13 +454,30 @@ class SvnRepository(Repository):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
             self.get_inventory(revision_id))
 
+    """Get the sha1 for the XML representation of an inventory.
+
+    :param revision_id: Revision id of the inventory for which to return the 
+        SHA1.
+    :return: XML string
+    """
     def get_inventory_sha1(self, revision_id):
         return osutils.sha_string(self.get_inventory_xml(revision_id))
 
+    """Return the XML representation of a revision.
+
+    :param revision_id: Revision for which to return the XML.
+    :return: XML string
+    """
     def get_revision_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
+    """Yield all the branches found between the start of history 
+    and a specified revision number.
+
+    :param revnum: Revision number up to which to search.
+    :return: iterator over branches in the range 0..revnum
+    """
     def follow_history(self, revnum):
         while revnum >= 0:
             yielded_paths = []
@@ -457,12 +487,20 @@ class SvnRepository(Repository):
                     bp = self.scheme.unprefix(p)[0]
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
+                            assert revnum > 0 or bp == ""
                             yield (bp, revnum)
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
             revnum -= 1
 
+    """Follow the history of a branch. Will yield all the 
+    left-hand side ancestors of a specified revision.
+    
+    :param branch_path: Subversion path to search.
+    :param revnum: Revision number in Subversion to start.
+    :return: iterator over the ancestors
+    """
     def follow_branch(self, branch_path, revnum):
         assert branch_path is not None
         assert isinstance(revnum, int) and revnum >= 0
@@ -472,14 +510,27 @@ class SvnRepository(Repository):
         branch_path = branch_path.strip("/")
 
         while revnum >= 0:
-            paths = self._log.get_revision_paths(revnum, branch_path)
-            if paths == {}:
-                revnum -= 1
-                continue
-            yield (branch_path, revnum)
-            # FIXME: what if one of the parents of branch_path was moved?
+            paths = self._log.get_revision_paths(revnum)
+
+            yielded = False
+            # If something underneath branch_path changed, there is a 
+            # revision there, so yield it.
+            for p in paths:
+                if p.startswith(branch_path+"/") or branch_path == "":
+                    yield (branch_path, revnum)
+                    yielded = True
+                    break
+            
+            # If there are no special cases, just go try the 
+            # next revnum in history
+            revnum -= 1
+
+            # Make sure we get the right location for next time, if 
+            # the branch itself was copied
             if (paths.has_key(branch_path) and 
                 paths[branch_path][0] in ('R', 'A')):
+                if not yielded:
+                    yield (branch_path, revnum+1)
                 if paths[branch_path][1] is None:
                     return
                 if not self.scheme.is_branch(paths[branch_path][1]) and \
@@ -491,8 +542,27 @@ class SvnRepository(Repository):
                 revnum = paths[branch_path][2]
                 branch_path = paths[branch_path][1]
                 continue
-            revnum -= 1
+            
+            # Make sure we get the right location for the next time if 
+            # one of the parents changed
 
+            # Path names need to be sorted so the longer paths 
+            # override the shorter ones
+            path_names = paths.keys()
+            path_names.sort()
+            for p in path_names:
+                if branch_path.startswith(p+"/"):
+                    assert paths[p][1] is not None and paths[p][0] in ('A', 'R'), "Parent didn't exist yet, but child wasn't added !?"
+
+                    revnum = paths[p][2]
+                    branch_path = paths[p][1] + branch_path[len(p):]
+
+    """Return all the changes that happened in a branch 
+    between branch_path and revnum. 
+
+    :return: iterator that returns tuples with branch path, 
+    changed paths and revision number.
+    """
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
         if not self.scheme.is_branch(branch_path) and \
@@ -500,7 +570,6 @@ class SvnRepository(Repository):
             raise errors.NotSvnBranchPath(branch_path, revnum)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
-            # FIXME: what if one of the parents of branch_path was moved?
             if (paths.has_key(bp) and 
                 paths[bp][1] is not None and 
                 not self.scheme.is_branch(paths[bp][1]) and
@@ -518,11 +587,22 @@ class SvnRepository(Repository):
                      
             yield (bp, paths, revnum)
 
+    """Check whether a signature exists for a particular revision id.
+
+    :param revision_id: Revision id for which the signatures should be looked up.
+    :return: False, as no signatures are stored for revisions in Subversion 
+        at the moment.
+    """
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         return False # SVN doesn't store GPG signatures. Perhaps 
                      # store in SVN revision property?
 
+    """Return the signature text for a particular revision.
+
+    :param revision_id: Id of the revision for which to return the signature.
+    :raises NoSuchRevision: Always
+    """
     def get_signature_text(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         # SVN doesn't store GPG signatures
