@@ -372,7 +372,7 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.fileid_involved_by_set)
 
     def generate_revision_id(self, revnum, path):
-        """Generate a unambiguous revision id. 
+        """Generate an unambiguous revision id. 
         
         :param revnum: Subversion revision number.
         :param path: Branch path.

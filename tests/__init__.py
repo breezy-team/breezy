@@ -264,6 +264,7 @@ def test_suite():
             'test_push',
             'test_radir',
             'test_repos', 
+            'test_revids',
             'test_scheme', 
             'test_transport',
             'test_tree',

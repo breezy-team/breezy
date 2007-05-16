@@ -22,6 +22,11 @@ REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 
 import urllib
 
+try:
+    import sqlite3
+except ImportError:
+    from pysqlite2 import dbapi2 as sqlite3
+
 def escape_svn_path(x):
     if isinstance(x, unicode):
         x = x.encode("utf-8")
@@ -71,3 +76,28 @@ def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
                    escape_svn_path(path.strip("/")), revnum)
 
+
+class RevidMap(object):
+    """Revision id mapping store. 
+
+    Stores mapping from revid -> (path, revnum, scheme)
+    """
+    def __init__(self, repos, cache_db=None):
+        self.repos = repos
+        if cache_db is None:
+            self.cachedb = sqlite3.connect(":memory:")
+        else:
+            self.cachedb = cache_db
+        self.cachedb.executescript("""
+        create table if not exists revmap (revid text, path text, revnum integer, scheme text);
+        create index if not exists revid on revmap (revid);
+        """)
+        self.cachedb.commit()
+    
+    def lookup_revid(self, revid):
+        for branch, revnum, scheme in self.cachedb.execute("select path, revnum, scheme from revmap where revid='%s'" % revid):
+            return branch, revnum, scheme
+
+        # FIXME: Find revid in the branch
+
+        raise NoSuchRevision(self.repos, revid)
