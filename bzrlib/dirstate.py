@@ -233,10 +233,18 @@ def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
     # well within the noise margin
 
     # base64 encoding always adds a final newline, so strip it off
-    # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
+    # The current version
     return _encode(_pack('>LLLLLL'
         , st.st_size, int(st.st_mtime), int(st.st_ctime)
         , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
+    # This is 0.060s / 1.520s faster by not encoding as much information
+    # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
+    # This is not strictly faster than _encode(_pack())[:-1]
+    # return '%X.%X.%X.%X.%X.%X' % (
+    #      st.st_size, int(st.st_mtime), int(st.st_ctime),
+    #      st.st_dev, st.st_ino, st.st_mode)
+    # Similar to the _encode(_pack('>LL'))
+    # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
 class DirState(object):
