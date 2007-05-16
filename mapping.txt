@@ -66,6 +66,11 @@ are all urlencoded. Example revision id for branches/foobranch:
 svn-v3-trunk-1:0c0555d6-39d7-0310-84fc-f1cc0bd64818:branches%2Ffoobranch:14323
 }}}
 
+A (path,revnum) tuple is valid if:
+* path is valid according to the branching scheme
+* either path,revnum or one of its children was touched in the particular 
+  revision
+
 == File ids ==
 
 Subversion does not use file ids. It is not possible to know whether a file in 
