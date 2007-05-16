@@ -24,13 +24,19 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
-bzr-svn 0.3.3	UNRELEASED
+bzr-svn 0.3.4	UNRELEASED
+
+bzr-svn 0.3.3	2007-04-29
 
   IMPROVEMENTS
+
+  * Fix compatibility with 0.16 (#110164)
 
   * Don't do extra checkout before push if possible. (#91885)
 
   * Set parent URLs in svn-import. (#94406)
+
+  * Don't show "not updating working tree" warnings when pushing.
 
 bzr-svn 0.3.2	2007-03-13
 
