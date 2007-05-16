@@ -1816,6 +1816,10 @@ class InterDirStateTree(InterTree):
                 Basename is returned as a utf8 string because we expect this
                 tuple will be ignored, and don't want to take the time to
                 decode.
+            :return: An empty tuple if these don't match
+                    A tuple of (None,) if this matches exactly, and we know
+                    we don't care about unchanged.
+                    A tuple of information about the change otherwise.
             """
             if source_index is None:
                 source_details = NULL_PARENT_DETAILS
@@ -1938,12 +1942,22 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                return ((entry[0][2], (old_path, path), content_change,
-                        (True, True),
-                        (source_parent_id, target_parent_id),
-                        (old_basename, entry[0][1]),
-                        (_minikind_to_kind[source_minikind], target_kind),
-                        (source_exec, target_exec)),)
+                source_kind = _minikind_to_kind[source_minikind]
+                if (include_unchanged
+                    or content_change
+                    or source_parent_id != target_parent_id
+                    or old_basename != entry[0][1]
+                    or source_kind != target_kind
+                    or source_exec != target_exec
+                    ):
+                    return ((entry[0][2], (old_path, path), content_change,
+                            (True, True),
+                            (source_parent_id, target_parent_id),
+                            (old_basename, entry[0][1]),
+                            (source_kind, target_kind),
+                            (source_exec, target_exec)),)
+                else:
+                    return (None,)
             elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
                 if path_info is not None:
@@ -2042,18 +2056,8 @@ class InterDirStateTree(InterTree):
             path_handled = False
             for entry in root_entries:
                 for result in _process_entry(entry, root_dir_info):
-                    # this check should probably be outside the loop: one
-                    # 'iterate two trees' api, and then _iter_changes filters
-                    # unchanged pairs. - RBC 20070226
                     path_handled = True
-                    if (include_unchanged
-                        or result[2]                    # content change
-                        or result[3][0] != result[3][1] # versioned status
-                        or result[4][0] != result[4][1] # parent id
-                        or result[5][0] != result[5][1] # name
-                        or result[6][0] != result[6][1] # kind
-                        or result[7][0] != result[7][1] # executable
-                        ):
+                    if result is not None:
                         yield (result[0],
                                (utf8_decode_or_none(result[1][0]),
                                 utf8_decode_or_none(result[1][1])),
@@ -2179,17 +2183,7 @@ class InterDirStateTree(InterTree):
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
                             for result in _process_entry(current_entry, None):
-                                # this check should probably be outside the loop: one
-                                # 'iterate two trees' api, and then _iter_changes filters
-                                # unchanged pairs. - RBC 20070226
-                                if (include_unchanged
-                                    or result[2]                    # content change
-                                    or result[3][0] != result[3][1] # versioned status
-                                    or result[4][0] != result[4][1] # parent id
-                                    or result[5][0] != result[5][1] # name
-                                    or result[6][0] != result[6][1] # kind
-                                    or result[7][0] != result[7][1] # executable
-                                    ):
+                                if result is not None:
                                     yield (result[0],
                                            (utf8_decode_or_none(result[1][0]),
                                             utf8_decode_or_none(result[1][1])),
@@ -2236,17 +2230,7 @@ class InterDirStateTree(InterTree):
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
                         for result in _process_entry(current_entry, current_path_info):
-                            # this check should probably be outside the loop: one
-                            # 'iterate two trees' api, and then _iter_changes filters
-                            # unchanged pairs. - RBC 20070226
-                            if (include_unchanged
-                                or result[2]                    # content change
-                                or result[3][0] != result[3][1] # versioned status
-                                or result[4][0] != result[4][1] # parent id
-                                or result[5][0] != result[5][1] # name
-                                or result[6][0] != result[6][1] # kind
-                                or result[7][0] != result[7][1] # executable
-                                ):
+                            if result is not None:
                                 yield (result[0],
                                        (utf8_decode_or_none(result[1][0]),
                                         utf8_decode_or_none(result[1][1])),
@@ -2273,17 +2257,7 @@ class InterDirStateTree(InterTree):
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
                             for result in _process_entry(current_entry, None):
-                                # this check should probably be outside the loop: one
-                                # 'iterate two trees' api, and then _iter_changes filters
-                                # unchanged pairs. - RBC 20070226
-                                if (include_unchanged
-                                    or result[2]                    # content change
-                                    or result[3][0] != result[3][1] # versioned status
-                                    or result[4][0] != result[4][1] # parent id
-                                    or result[5][0] != result[5][1] # name
-                                    or result[6][0] != result[6][1] # kind
-                                    or result[7][0] != result[7][1] # executable
-                                    ):
+                                if result is not None:
                                     yield (result[0],
                                            (utf8_decode_or_none(result[1][0]),
                                             utf8_decode_or_none(result[1][1])),
@@ -2298,18 +2272,8 @@ class InterDirStateTree(InterTree):
                             advance_path = False
                     else:
                         for result in _process_entry(current_entry, current_path_info):
-                            # this check should probably be outside the loop: one
-                            # 'iterate two trees' api, and then _iter_changes filters
-                            # unchanged pairs. - RBC 20070226
                             path_handled = True
-                            if (include_unchanged
-                                or result[2]                    # content change
-                                or result[3][0] != result[3][1] # versioned status
-                                or result[4][0] != result[4][1] # parent id
-                                or result[5][0] != result[5][1] # name
-                                or result[6][0] != result[6][1] # kind
-                                or result[7][0] != result[7][1] # executable
-                                ):
+                            if result is not None:
                                 yield (result[0],
                                        (utf8_decode_or_none(result[1][0]),
                                         utf8_decode_or_none(result[1][1])),
