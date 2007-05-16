@@ -232,7 +232,8 @@ def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
     # With all entries filesize is 5.9M and read time is mabye 280ms
     # well within the noise margin
 
-    # base64.encode always adds a final newline, so strip it off
+    # base64 encoding always adds a final newline, so strip it off
+    # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
     return _encode(_pack('>LLLLLL'
         , st.st_size, int(st.st_mtime), int(st.st_ctime)
         , st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]

@@ -1867,7 +1867,9 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    old_path = path = pathjoin(old_dirname, old_basename)
+                    # We will work this out later if we need to
+                    old_path = None
+                    path = None
                 if path_info is None:
                     # the file is missing on disk, show as removed.
                     content_change = True
@@ -1946,14 +1948,17 @@ class InterDirStateTree(InterTree):
                         last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
-                source_kind = _minikind_to_kind[source_minikind]
                 if (include_unchanged
                     or content_change
                     or source_parent_id != target_parent_id
                     or old_basename != entry[0][1]
-                    or source_kind != target_kind
+                    # This should be handled in the content_change check
+                    # or source_minikind != target_minikind
                     or source_exec != target_exec
                     ):
+                    if old_path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                    source_kind = _minikind_to_kind[source_minikind]
                     return (entry[0][2], (old_path, path), content_change,
                            (True, True),
                            (source_parent_id, target_parent_id),
