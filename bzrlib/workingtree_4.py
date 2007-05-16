@@ -1807,6 +1807,10 @@ class InterDirStateTree(InterTree):
 
         use_filesystem_for_exec = (sys.platform != 'win32')
 
+        # Just a singleton, so that _process_entry can say that this
+        # record is handled, but isn't interesting to process (unchanged)
+        uninteresting = object()
+
         def _process_entry(entry, path_info):
             """Compare an entry and real disk to generate delta information.
 
@@ -1816,10 +1820,10 @@ class InterDirStateTree(InterTree):
                 Basename is returned as a utf8 string because we expect this
                 tuple will be ignored, and don't want to take the time to
                 decode.
-            :return: An empty tuple if these don't match
-                    A tuple of (None,) if this matches exactly, and we know
-                    we don't care about unchanged.
-                    A tuple of information about the change otherwise.
+            :return: None if these don't match
+                     A tuple of information about the change, or
+                     the object 'uninteresting' if these match, but are
+                     basically identical.
             """
             if source_index is None:
                 source_details = NULL_PARENT_DETAILS
@@ -1950,14 +1954,14 @@ class InterDirStateTree(InterTree):
                     or source_kind != target_kind
                     or source_exec != target_exec
                     ):
-                    return ((entry[0][2], (old_path, path), content_change,
-                            (True, True),
-                            (source_parent_id, target_parent_id),
-                            (old_basename, entry[0][1]),
-                            (source_kind, target_kind),
-                            (source_exec, target_exec)),)
+                    return (entry[0][2], (old_path, path), content_change,
+                           (True, True),
+                           (source_parent_id, target_parent_id),
+                           (old_basename, entry[0][1]),
+                           (source_kind, target_kind),
+                           (source_exec, target_exec))
                 else:
-                    return (None,)
+                    return uninteresting
             elif source_minikind in 'a' and target_minikind in 'fdlt':
                 # looks like a new file
                 if path_info is not None:
@@ -1976,12 +1980,12 @@ class InterDirStateTree(InterTree):
                             and stat.S_IEXEC & path_info[3].st_mode)
                     else:
                         target_exec = target_details[3]
-                    return ((entry[0][2], (None, path), True,
-                            (False, True),
-                            (None, parent_id),
-                            (None, entry[0][1]),
-                            (None, path_info[2]),
-                            (None, target_exec)),)
+                    return (entry[0][2], (None, path), True,
+                           (False, True),
+                           (None, parent_id),
+                           (None, entry[0][1]),
+                           (None, path_info[2]),
+                           (None, target_exec))
                 else:
                     # but its not on disk: we deliberately treat this as just
                     # never-present. (Why ?! - RBC 20070224)
@@ -1996,12 +2000,12 @@ class InterDirStateTree(InterTree):
                 parent_id = state._get_entry(source_index, path_utf8=entry[0][0])[0][2]
                 if parent_id == entry[0][2]:
                     parent_id = None
-                return ((entry[0][2], (old_path, None), True,
-                        (True, False),
-                        (parent_id, None),
-                        (entry[0][1], None),
-                        (_minikind_to_kind[source_minikind], None),
-                        (source_details[3], None)),)
+                return (entry[0][2], (old_path, None), True,
+                       (True, False),
+                       (parent_id, None),
+                       (entry[0][1], None),
+                       (_minikind_to_kind[source_minikind], None),
+                       (source_details[3], None))
             elif source_minikind in 'fdlt' and target_minikind in 'r':
                 # a rename; could be a true rename, or a rename inherited from
                 # a renamed parent. TODO: handle this efficiently. Its not
@@ -2019,7 +2023,7 @@ class InterDirStateTree(InterTree):
                     "source_minikind=%r, target_minikind=%r"
                     % (source_minikind, target_minikind))
                 ## import pdb;pdb.set_trace()
-            return ()
+            return None
 
         while search_specific_files:
             # TODO: the pending list should be lexically sorted?  the
@@ -2055,9 +2059,10 @@ class InterDirStateTree(InterTree):
                 continue
             path_handled = False
             for entry in root_entries:
-                for result in _process_entry(entry, root_dir_info):
+                result = _process_entry(entry, root_dir_info)
+                if result is not None:
                     path_handled = True
-                    if result is not None:
+                    if result is not uninteresting:
                         yield (result[0],
                                (utf8_decode_or_none(result[1][0]),
                                 utf8_decode_or_none(result[1][1])),
@@ -2182,8 +2187,9 @@ class InterDirStateTree(InterTree):
                         for current_entry in current_block[1]:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            for result in _process_entry(current_entry, None):
-                                if result is not None:
+                            result = _process_entry(current_entry, None)
+                            if result is not None:
+                                if result is not uninteresting:
                                     yield (result[0],
                                            (utf8_decode_or_none(result[1][0]),
                                             utf8_decode_or_none(result[1][1])),
@@ -2229,8 +2235,9 @@ class InterDirStateTree(InterTree):
                         pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
-                        for result in _process_entry(current_entry, current_path_info):
-                            if result is not None:
+                        result = _process_entry(current_entry, current_path_info)
+                        if result is not None:
+                            if result is not uninteresting:
                                 yield (result[0],
                                        (utf8_decode_or_none(result[1][0]),
                                         utf8_decode_or_none(result[1][1])),
@@ -2256,8 +2263,9 @@ class InterDirStateTree(InterTree):
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            for result in _process_entry(current_entry, None):
-                                if result is not None:
+                            result = _process_entry(current_entry, None)
+                            if result is not None:
+                                if result is not uninteresting:
                                     yield (result[0],
                                            (utf8_decode_or_none(result[1][0]),
                                             utf8_decode_or_none(result[1][1])),
@@ -2271,9 +2279,10 @@ class InterDirStateTree(InterTree):
                                           )
                             advance_path = False
                     else:
-                        for result in _process_entry(current_entry, current_path_info):
+                        result = _process_entry(current_entry, current_path_info)
+                        if result is not None:
                             path_handled = True
-                            if result is not None:
+                            if result is not uninteresting:
                                 yield (result[0],
                                        (utf8_decode_or_none(result[1][0]),
                                         utf8_decode_or_none(result[1][1])),
