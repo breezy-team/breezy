@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import ConnectionReset
+from bzrlib.errors import ConnectionReset, LockError
 from bzrlib.tests import TestCase
 
 from errors import convert_svn_error, convert_error
@@ -43,6 +43,9 @@ class TestConvertError(TestCase):
 
     def test_convert_error_reset(self):
         self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")), ConnectionReset)
+
+    def test_convert_error_lock(self):
+        self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_WC_LOCKED, "Working copy locked")), LockError)
 
     def test_decorator_nothrow(self):
         @convert_svn_error

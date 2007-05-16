@@ -80,6 +80,11 @@ to the revision id. This property should only be honored for the revision
 in which it was set, as subversion will not erase the property 
 for subsequent commits.
 
+A (path,revnum) tuple is valid if:
+* path is valid according to the branching scheme
+* either path,revnum or one of its children was touched in the particular 
+  revision
+
 == File ids ==
 
 Subversion does not use file ids. It is not possible to know whether a file in 

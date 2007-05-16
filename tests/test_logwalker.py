@@ -56,6 +56,11 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(SvnRaTransport(repos_url))
         self.assertEqual({'': ('A', None, -1)}, walker.get_revision_paths(0))
 
+    def test_get_revision_paths_invalid(self):
+        repos_url = self.make_client("a", "dc")
+        walker = logwalker.LogWalker(SvnRaTransport(repos_url))
+        self.assertRaises(NoSuchRevision, lambda: walker.get_revision_paths(42))
+
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))

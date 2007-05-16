@@ -123,31 +123,31 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
             self.client_update('sc')
         self.build_tree({'sc/de/foo':'data', 'sc/de/bar':'DATA'})
         self.client_add('sc/de')
-        self.client_commit('sc', 'blah')
+        self.client_commit('sc', 'blah') #1
         self.client_update('sc')
         os.mkdir('sc/de/trunk')
         self.client_add('sc/de/trunk')
-        mv(('sc/de/foo', 'sc/de/trunk'), ('sc/de/bar', 'sc/de/trunk'))
-        mv(('sc/de', 'sc/pyd')) 
+        mv(('sc/de/foo', 'sc/de/trunk'), ('sc/de/bar', 'sc/de/trunk')) #2
+        mv(('sc/de', 'sc/pyd'))  #3
         self.client_delete('sc/pyd/trunk/foo')
-        self.client_commit('sc', '.')
+        self.client_commit('sc', '.') #4
         self.client_update('sc')
 
         self.make_checkout(repo + '/pyd/trunk', 'pyd')
-        assert open('pyd/bar').read() == 'DATA'
+        self.assertEqual("DATA", open('pyd/bar').read())
 
         olddir = BzrDir.open("pyd")
         os.mkdir('bc')
         newdir = olddir.sprout("bc")
         newdir.open_branch().pull(olddir.open_branch())
         wt = newdir.open_workingtree()
-        assert open('bc/bar').read() == 'DATA'
+        self.assertEqual("DATA", open('bc/bar').read())
         open('bc/bar', 'w').write('data')
         wt.commit(message="Commit from Bzr")
         olddir.open_branch().pull(newdir.open_branch())
 
         self.client_update('pyd')
-        assert open('pyd/bar').read() == 'data'
+        self.assertEqual("data", open('pyd/bar').read())
         
 
 class TestPush(TestCaseWithSubversionRepository):

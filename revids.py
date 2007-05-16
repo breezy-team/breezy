@@ -66,7 +66,8 @@ def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     assert isinstance(revnum, int)
     assert isinstance(path, basestring)
     assert revnum >= 0
-    assert revnum > 0 or path == ""
+    assert revnum > 0 or path == "", \
+            "Trying to generate revid for (%r,%r)" % (path, revnum)
     return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
                    escape_svn_path(path.strip("/")), revnum)
 

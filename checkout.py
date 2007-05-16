@@ -635,7 +635,7 @@ class SvnCheckout(BzrDir):
     def clone(self, path, revision_id=None, force_new_repo=False):
         raise NotImplementedError(self.clone)
 
-    def open_workingtree(self, _unsupported=False):
+    def open_workingtree(self, _unsupported=False, recommend_upgrade=False):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
     def sprout(self, url, revision_id=None, force_new_repo=False, 

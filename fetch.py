@@ -321,6 +321,7 @@ class InterSvnRepository(InterRepository):
         parents = {}
         for (branch, revnum) in self.source.follow_history(
                                                 self.source._latest_revnum):
+            mutter('br, revnum: %r, %r' % (branch, revnum))
             revid = self.source.generate_revision_id(revnum, branch)
             parents[revid] = self.source._mainline_revision_parent(branch, 
                                                                    revnum)
