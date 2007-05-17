@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
+"""Upgrading revisions made with older versions of the mapping."""
 
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
@@ -32,6 +32,7 @@ from revids import (generate_svn_revision_id, parse_svn_revision_id,
 # Usage: svn-upgrade [--allow-change] PATH REPOSITORY
 
 class UpgradeChangesContent(BzrError):
+    """Inconsistency was found upgrading the mapping of a revision."""
     _fmt = """Upgrade will change contents in revision %(revid)s."""
 
     def __init__(self, revid):

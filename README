@@ -1,10 +1,14 @@
-== Introduction ==
+============
+Introduction
+============
 
 This directory contains a simple plugin that adds 
 Subversion (http://subversion.tigris.org/) branch support to 
 Bazaar (http://www.bazaar-vcs.org/)
 
-== Dependencies == 
+============
+Dependencies
+============
 
 You will need at least version 0.15 of Bazaar or higher.
 
@@ -16,133 +20,142 @@ and Debian Etch and Sid also contain the required changes.
 If you are running an older version of Python (under 2.5), you will also 
 need to have the pysqlite package installed.
 
-== Features ==
+========
+Features
+========
 
 The following features are currently present:
 
- * Connecting to remote Subversion repositories over all 
-   protocols supported by Subversion itself (at present: 
-	svn://, svn+ssh://, http:// (webdav), file://) 
-   as well as dump files. 
+- Connecting to remote Subversion repositories over all 
+  protocols supported by Subversion itself (at present: 
+  svn://, svn+ssh://, http:// (webdav), file://) 
+  as well as dump files. 
 
-   Checkouts, lightweight checkouts and branching works.
+  Checkouts, lightweight checkouts and branching works.
 
- * Track Bazaar merges in Subversion. Merged revisions show up 
-   as ghosts.
+- Track Bazaar merges in Subversion. Merged revisions show up 
+  as ghosts.
 
- * Subversion working copies. Can be modified, queried 
-   (`bzr status' on a vanilla working copied created with 
-	`svn co' works) and committed from.
+- Subversion working copies. Can be modified, queried 
+  ('bzr status' on a vanilla working copied created with 
+  'svn co' works) and committed from.
 
- * Committing to Subversion from Bazaar.
+- Committing to Subversion from Bazaar.
 
- * Push Bazaar revisions to Subversion. These revisions will 
-   show up in Subversion as a commit with the pushed revision 
-   as one of the parents.
+- Push Bazaar revisions to Subversion. These revisions will 
+  show up in Subversion as a commit with the pushed revision 
+  as one of the parents.
 
- * Follow branch copies. Revision history is not 
-   truncated when a branch was copied in Subversion.
+- Follow branch copies. Revision history is not 
+  truncated when a branch was copied in Subversion.
 
- * Efficiently uses network bandwidth. 
+- Efficiently uses network bandwidth. 
 
- * Recognizes file metadata (executable bits, symlinks).
+- Recognizes file metadata (executable bits, symlinks).
  
- * 'svn-import' command with functionality similar to svn2bzr.
+- 'svn-import' command with functionality similar to svn2bzr.
 
- * Ability to track merges done with SVK (http://svk.elixus.org/) 
-   and write merges.
+- Ability to track merges done with SVK (http://svk.elixus.org/) 
+  and write merges.
 
- * Generates consistent file ids and revision ids. Two branches made using 
-   this plugin of the same Subversion branch will result in *exactly* the same 
-   Bazaar branch.
+- Generates consistent file ids and revision ids. Two branches made using 
+  this plugin of the same Subversion branch will result in *exactly* the same 
+  Bazaar branch.
 
- * Handles complex operations in Subversion: committing to two branches at 
-   once, upgrading directories to branches, copies from early revisions, ...
+- Handles complex operations in Subversion: committing to two branches at 
+  once, upgrading directories to branches, copies from early revisions, ...
 
-== Future Enhancements ==
+===================
+Future Enhancements
+===================
 
 In the future, I also hope to support:
 
- * Renames. Initial work has been done to support this, 
-   but the number of corner cases is wide, so support for this 
-   has not been enabled by default yet.
+- Renames. Initial work has been done to support this, 
+  but the number of corner cases is wide, so support for this 
+  has not been enabled by default yet.
 
- * "True" push. This requires storing the Bazaar 
-   inventory and revision in Subversion revision properties.
+- "True" push. This requires storing the Bazaar 
+  inventory and revision in Subversion revision properties.
 
-   Ideally, revision id aliases would have to be used so the 
-   revision id that is being 'overriden' can still exist.
+  Ideally, revision id aliases would have to be used so the 
+  revision id that is being 'overriden' can still exist.
 
-   Once this is implemented, it would also be possible and 
-   make sense to store GPG signatures for commits in 
-   Subversion branches.
+  Once this is implemented, it would also be possible and 
+  make sense to store GPG signatures for commits in 
+  Subversion branches.
 
-   This might require also storing 'bzr:inventory' and 'bzr:revision' 
-   properties in order to make sure the sha1's for a revision keep matching.
+  This might require also storing 'bzr:inventory' and 'bzr:revision' 
+  properties in order to make sure the sha1's for a revision keep matching.
 
- * Proper read locking, which has basically been ignored for now. 
+- Proper read locking, which has basically been ignored for now. 
 
- * Performance. Network-wise (both bandwidth and roundtrips), the plugin is in
-   good shape. However, it is currently quite CPU-intensive for no good reason 
-   and I hope to make a couple of improvements in that area.
+- Performance. Network-wise (both bandwidth and roundtrips), the plugin is in
+  good shape. However, it is currently quite CPU-intensive for no good reason 
+  and I hope to make a couple of improvements in that area.
 
-	 * Override implementation of get_revision_delta(). Will speed up 'bzr log -v'
+- Override implementation of get_revision_delta(). Will speed up 'bzr log -v'
 	
-	 * use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of roundtrips when fetching history.
+- use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of roundtrips when fetching history.
 
-	 * implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on a specific directory all at once.
+- implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on 
+  a specific directory all at once.
 
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
 
- * `svn:ignore' is not imported. There should be a 
-   `Repository.get_ignores(revid)' call in Bazaar rather than a magic 
-   '.bzrignore' file. 
+- 'svn:ignore' is not imported. There should be a 
+  'Repository.get_ignores(revid)' call in Bazaar rather than a magic 
+  '.bzrignore' file. 
    
- * `svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
-   nested branches and the other way around. This can't be implemented 
-   this until Bazaars nested branch support lands. AaronBentley's work 
-   in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
-   This has been delayed until after 0.9 because of required repository
-   format changes.
+- 'svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
+  nested branches and the other way around. This can't be implemented 
+  this until Bazaars nested branch support lands. AaronBentley's work 
+  in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
+  This has been delayed until after 0.9 because of required repository
+  format changes.
 
- * `svn:mime-type'
+- 'svn:mime-type'
 
- * `svn:eol-style'
+- 'svn:eol-style'
 
- * `svn:keywords'. Requires keywords support in Bazaar. Spec at 
-   https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion
+- 'svn:keywords'. Requires keywords support in Bazaar. Spec at 
+  https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion
 
 Other features currently held back by Bazaars feature set:
 
- * Horizon revision history. Most of the existing Subversion repositories 
-   are quite large and it would therefore be nice to be able to limit 
-   the amount of history that needs to be retrieved during checkouts.
+- Horizon revision history. Most of the existing Subversion repositories 
+  are quite large and it would therefore be nice to be able to limit 
+  the amount of history that needs to be retrieved during checkouts.
 
-   Spec at https://launchpad.net/products/bzr/+spec/shallow-checkouts
+  Spec at https://launchpad.net/products/bzr/+spec/shallow-checkouts
 
- * Tracking copies. 
+- Tracking copies. 
  
-   Spec at https://launchpad.net/products/bzr/+spec/filecopies
+  Spec at https://launchpad.net/products/bzr/+spec/filecopies
 
 Features held back by Subversion:
 
- * Showing SVN merges as merges in Bazaar. This requires full merge tracking 
-   information in Subversion, something which the Subversion folks are working 
-   on at the moment (see https://svn.collab.net/repos/svn/branches/merge-tracking).
+- Showing SVN merges as merges in Bazaar. This requires full merge tracking 
+  information in Subversion, something which the Subversion folks are working 
+  on at the moment (see https://svn.collab.net/repos/svn/branches/merge-tracking).
 
-   Might require cherry-picking support in Bazaar (or at least the ability 
-   to know about cherry picks). 
+  Might require cherry-picking support in Bazaar (or at least the ability 
+  to know about cherry picks). 
    
-   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
+  Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
-== Bugs ==
+====
+Bugs
+====
  
 Please file bug reports in launchpad. The product URL for bzr-svn is
 https://launchpad.net/products/bzr-svn/. The wiki for this 
 plugin is at http://bazaar-vcs.org/BzrSvn.
 
-== Installation ==
+============
+Installation
+============
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr.

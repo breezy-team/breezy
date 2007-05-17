@@ -13,8 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Access to stored Subversion basis trees."""
 
 from bzrlib.inventory import Inventory
+
 import bzrlib.osutils as osutils
 from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
@@ -43,6 +45,7 @@ def apply_txdelta_handler(src_stream, target_stream, pool):
     return wrapper
 
 class SvnRevisionTree(RevisionTree):
+    """A tree that existed in a historical Subversion revision."""
     def __init__(self, repository, revision_id):
         self._repository = repository
         self._revision_id = revision_id
@@ -66,6 +69,7 @@ class SvnRevisionTree(RevisionTree):
 
 
 class TreeBuildEditor(svn.delta.Editor):
+    """Builds a tree given Subversion tree transform calls."""
     def __init__(self, tree, pool):
         self.tree = tree
         self.repository = tree._repository

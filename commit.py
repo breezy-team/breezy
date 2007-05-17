@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Committing and pushing to Subversion repositories."""
 
 import svn.delta
 from svn.core import Pool, SubversionException
@@ -382,6 +383,19 @@ class SvnCommitBuilder(RootCommitBuilder):
 
 
 def push_as_merged(target, source, revision_id):
+    """Push a revision as merged revision.
+
+    This will create a new revision in the target repository that 
+    merges the specified revision but does not contain any other differences. 
+    This is done so that the revision that is being pushed does not need 
+    to completely match the target revision and so it can not have the 
+    same revision id.
+
+    :param target: Repository to push to
+    :param source: Repository to pull the revision from
+    :param revision_id: Revision id of the revision to push
+    :return: The revision id of the created revision
+    """
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
