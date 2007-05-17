@@ -1874,7 +1874,7 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    old_path = path = pathjoin(old_dirname, old_basename)
+                    old_path = path = None
                 if path_info is None:
                     # the file is missing on disk, show as removed.
                     content_change = True
@@ -1884,6 +1884,8 @@ class InterDirStateTree(InterTree):
                     # source and target are both versioned and disk file is present.
                     target_kind = path_info[2]
                     if target_kind == 'directory':
+                        if path is None:
+                            old_path = path = pathjoin(old_dirname, old_basename)
                         new_dirname_to_file_id[path] = file_id
                         if source_minikind != 'd':
                             content_change = True
@@ -1920,7 +1922,9 @@ class InterDirStateTree(InterTree):
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
                 if source_minikind == 'd':
-                    old_dirname_to_file_id[path] = file_id
+                    if path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                    old_dirname_to_file_id[old_path] = file_id
                 # parent id is the entry for the path in the target tree
                 if old_dirname == last_source_parent[0]:
                     source_parent_id = last_source_parent[1]
@@ -1966,11 +1970,16 @@ class InterDirStateTree(InterTree):
                     or old_basename != entry[0][1]
                     or source_exec != target_exec
                     ):
-                    old_path_u = utf8_decode(old_path)[0]
-                    if old_path == path:
+                    if old_path is None:
+                        old_path = path = pathjoin(old_dirname, old_basename)
+                        old_path_u = utf8_decode(old_path)[0]
                         path_u = old_path_u
                     else:
-                        path_u = utf8_decode(path)[0]
+                        old_path_u = utf8_decode(old_path)[0]
+                        if old_path == path:
+                            path_u = old_path_u
+                        else:
+                            path_u = utf8_decode(path)[0]
                     source_kind = _minikind_to_kind[source_minikind]
                     return (entry[0][2],
                            (old_path_u, path_u),
