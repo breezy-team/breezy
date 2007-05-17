@@ -1100,10 +1100,6 @@ class DirState(object):
         :return: The sha1 hexdigest of the file (40 bytes) or link target of a
                 symlink.
         """
-        # This code assumes that the entry passed in is directly held in one of
-        # the internal _dirblocks. So the dirblock state must have already been
-        # read.
-        #kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
         try:
             minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
         except KeyError:
