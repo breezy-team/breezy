@@ -6,37 +6,41 @@ Updated October 2006.
 Updated December 2006.
 Updated January 2007.
 
-== Branch paths ==
+============
+Branch paths
+============
 
 It is hard to know, given a SVN URL, to figure out what branch a particular 
 file is in. Other then the convention that branches are named 'trunk' and 
-'branches/*', there is no way to automatically find out what a branch is.
+'branches/\*', there is no way to automatically find out what a branch is.
 Finding out what a branch is and what is not is done by a BranchingScheme 
 implementation. At the moment, the following branching schemes are available:
 
- * NoBranchingScheme: The top-level directory in the repository is a branch.
-                    (consequence of this is that there is only one branch total)
+- NoBranchingScheme: The top-level directory in the repository is a branch.
+  (consequence of this is that there is only one branch total)
 
- * TrunkBranchingScheme: There is a directory structure with 'trunk', 
-   'branches', and 'tags' directories as common in Subversion-based projects.
-   These directories can be nested (e.g. subproject1/trunk) inside the 
-   repository. The level of nesting is stored.
+- TrunkBranchingScheme: There is a directory structure with 'trunk', 
+  'branches', and 'tags' directories as common in Subversion-based projects.
+  These directories can be nested (e.g. subproject1/trunk) inside the 
+  repository. The level of nesting is stored.
 
- * ListBranchingScheme: There is a list of branches. This branching 
-   scheme is present in the code, but is never used automatically (yet).
+- ListBranchingScheme: There is a list of branches. This branching 
+  scheme is present in the code, but is never used automatically (yet).
 
 The branching scheme can be explicitly specified or automatically guessed. 
 The guessing algorithm currently works as follows and is based on paths 
 relative to the repository root:
 
- * Look for 'trunk', 'branches' or 'tags' inside the path - if found, 
-   create a TrunkBranchingScheme with the found level of nesting.
+- Look for 'trunk', 'branches' or 'tags' inside the path - if found, 
+  create a TrunkBranchingScheme with the found level of nesting.
 
- * Assume NoBranchingScheme
+- Assume NoBranchingScheme
 
 Branching scheme names can not contain colons.
 
-== Revision ids ==
+============
+Revision ids
+============
 
 An easy way to generate globally unique and reproducible revision ids is to 
 simply combine the repositories UUID and commit revision number. 
@@ -46,9 +50,7 @@ then one branch (something that is possible in SVN). This can be fixed by
 including the branch path (trunk, branches/SAMBA_4_0, etc) in the 
 revision-id. Example revision id:
 
-{{{
-svn-v3-trunk:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323
-}}}
+``svn-v3-trunk:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323``
 
 The version number is used to distinguish between versions of the mapping 
 between Bazaar and Subversion. The mapping will change when previously 
@@ -62,16 +64,16 @@ a parent path is a branch according but not according to another).
 Since '/' and whitespace are forbidden in revision ids, the branch paths
 are all urlencoded. Example revision id for branches/foobranch:
 
-{{{
-svn-v3-trunk-1:0c0555d6-39d7-0310-84fc-f1cc0bd64818:branches%2Ffoobranch:14323
-}}}
+``svn-v3-trunk-1:0c0555d6-39d7-0310-84fc-f1cc0bd64818:branches%2Ffoobranch:14323``
 
 A (path,revnum) tuple is valid if:
 * path is valid according to the branching scheme
 * either path,revnum or one of its children was touched in the particular 
   revision
 
-== File ids ==
+========
+File ids
+========
 
 Subversion does not use file ids. It is not possible to know whether a file in 
 revision X and a file in revision Y are the same without traversing over all 
@@ -79,7 +81,7 @@ the revisions between X and Y.
 
 File ids use the following syntax:
 
-<REVNO>@<UUID>:<BRANCHPATH>:<PATH>
+``<REVNO>@<UUID>:<BRANCHPATH>:<PATH>``
 
 Since / is forbidden in file ids, all characters are urlencoded.
 
@@ -87,7 +89,7 @@ The same rules apply to the roots of branches. This means there is no
 predefined file id for tree roots.
 
 Alternatively, these file ids can be mapped to more specific file ids. Such 
-a map should be stored in the `bzr:file-ids' property that is set on the 
+a map should be stored in the 'bzr:file-ids' property that is set on the 
 branch path.
 
 The bzr:file-ids property should contain a list of mappings. Entries are 
@@ -120,7 +122,9 @@ where <SHA1> is the sha1 of the file's path.
 
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
-== Properties ==
+==========
+Properties
+==========
 
 SVN allows setting properties on versioned files and also interprets several 
 of these properties. 
@@ -135,7 +139,9 @@ of these properties.
 
 "svk:merge" is understood and set where possible.
 
-== Ancestry Information ==
+====================
+Ancestry Information
+====================
 
 Ancestry in Subversion is linear. Most revisions have just one parent. Files 
 can be copied, moved or merged from other branches, which can result in partial merges 
@@ -161,19 +167,25 @@ Subversion branch and not on the mainline. If 'svk:merge' is changed and
 'bzr:merge' didn't, the diff in 'svk:merge' is also used to obtain the 
 parents of a commit.
 
-This means svk and bzr _should be_ interoperable. However, there are no tests 
+This means svk and bzr *should be* interoperable. However, there are no tests 
 for this yet. 
 
-== Revision properties ==
+===================
+Revision properties
+===================
 
 Bazaar revision properties are stored in the file properties of the 
 branch path in Subversion. Their names are prefixed with "bzr:revprop:"
 
-== Signatures ==
+==========
+Signatures
+==========
 
 NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision property 'bzr:gpg-signature'. 
 
-= Revisions =
+=========
+Revisions
+=========
 
 Revision 1 was the original version of this document.
 
@@ -186,3 +198,8 @@ revision id from "-" to ":" and added the branching scheme to the revision id.
 
 Revision 3 uses real file ids for the tree root rather than the hardcoded 
 "TREE_ROOT" and adds the file id map.
+
+=======
+Authors
+=======
+Jelmer Vernooij <jelmer@samba.org>

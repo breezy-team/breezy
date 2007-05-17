@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Checkouts and working trees (working copies)."""
 
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
@@ -56,8 +57,7 @@ class WorkingTreeInconsistent(BzrError):
 
 
 class SvnWorkingTree(WorkingTree):
-    """Implementation of WorkingTree that uses a Subversion 
-    Working Copy for storage."""
+    """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
         self._format = SvnWorkingTreeFormat()
         self.basedir = local_path
@@ -598,6 +598,7 @@ class SvnWorkingTree(WorkingTree):
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
+    """Subversion working copy format."""
     def get_format_description(self):
         return "Subversion Working Copy"
 
