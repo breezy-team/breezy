@@ -252,7 +252,6 @@ def test_suite():
     suite = TestSuite()
 
     testmod_names = [
-            'test_blackbox',
             'test_branch', 
             'test_branchprops', 
             'test_checkout',
@@ -269,7 +268,8 @@ def test_suite():
             'test_transport',
             'test_tree',
             'test_upgrade',
-            'test_workingtree']
+            'test_workingtree',
+            'test_blackbox']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
 
     return suite

@@ -225,6 +225,7 @@ class SvnWorkingTree(WorkingTree):
         (_, rp) = self.branch.repository.scheme.unprefix(path)
         entry = self.base_tree.id_map[rp]
         assert entry[0] is not None
+        assert isinstance(entry[0], str), "fileid %r for %r is not a string" % (entry[0], path)
         return entry
 
     def read_working_inventory(self):
@@ -304,6 +305,7 @@ class SvnWorkingTree(WorkingTree):
             if id is None:
                 mutter('no id for %r' % entry.url)
                 return
+            assert revid is None or isinstance(revid, str), "%r is not a string" % revid
             assert isinstance(id, str), "%r is not a string" % id
 
             # First handle directory itself
@@ -510,6 +512,7 @@ class SvnWorkingTree(WorkingTree):
             if new_entries.has_key(path):
                 del new_entries[path]
         else:
+            assert isinstance(id, str)
             new_entries[path] = id
         committed = self.branch.repository.branchprop_list.get_property(
                 self.branch.branch_path, 
@@ -523,25 +526,23 @@ class SvnWorkingTree(WorkingTree):
 
     def _get_new_file_ids(self, wc):
         committed = self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, 
-                self.base_revnum, 
+                self.branch.branch_path, self.base_revnum, 
                 SVN_PROP_BZR_FILEIDS, "")
         existing = svn.wc.prop_get(SVN_PROP_BZR_FILEIDS, self.basedir, wc)
         if existing is None:
             return {}
         else:
-            return dict(map(lambda x: x.split("\t"), existing[len(committed):].splitlines()))
+            return dict(map(lambda x: str(x).split("\t"), 
+                existing[len(committed):].splitlines()))
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, 
-                self.base_revnum, 
+                self.branch.branch_path, self.base_revnum, 
                 SVN_PROP_BZR_MERGE, "")
 
     def _get_svk_merges(self):
         return self.branch.repository.branchprop_list.get_property(
-                self.branch.branch_path, 
-                self.base_revnum, 
+                self.branch.branch_path, self.base_revnum, 
                 SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):

@@ -614,6 +614,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_generate_revision_id(self):
         repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla/bloe': None})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "bla")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(
                u"svn-v%d-undefined:%s:bla%%2Fbloe:1" % (MAPPING_VERSION, repository.uuid), 
@@ -627,6 +630,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_lookup_revision_id(self):
         repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, repository.lookup_revision_id, 
             "nonexisting")
@@ -672,7 +678,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(repository.has_revision(
             repository.generate_revision_id(1, "")))
         self.assertFalse(repository.has_revision(
-            repository.generate_revision_id(4, "")))
+            generate_svn_revision_id(repository.uuid, 4, "")))
 
     def test_is_shared(self):
         repos_url = self.make_client('d', 'dc')

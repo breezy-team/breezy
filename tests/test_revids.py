@@ -31,9 +31,26 @@ class TestRevidMap(TestCase):
 
     def test_lookup_revid(self):
         revidmap = RevidMap()
-        revidmap.insert_revid("bla", "mypath", 42, "brainslug")
-        self.assertEquals(("mypath", 42, "brainslug"), 
+        revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug")
+        self.assertEquals(("mypath", 42, 42, "brainslug"), 
                 revidmap.lookup_revid("bla"))
+
+    def test_lookup_branch(self):
+        revidmap = RevidMap()
+        revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug")
+        self.assertEquals("bla", 
+                revidmap.lookup_branch_revnum(42, "mypath"))
+
+    def test_lookup_branch_nonexistant(self):
+        revidmap = RevidMap()
+        self.assertIs(None,
+                revidmap.lookup_branch_revnum(42, "mypath"))
+
+    def test_lookup_branch_incomplete(self):
+        revidmap = RevidMap()
+        revidmap.insert_revid("bla", "mypath", 200, 42, "brainslug")
+        self.assertEquals(None, 
+                revidmap.lookup_branch_revnum(42, "mypath"))
 
 
 class TestParseRevisionId(TestCase):

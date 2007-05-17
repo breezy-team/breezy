@@ -378,7 +378,18 @@ class SvnRepository(Repository):
 
         :return: New revision id.
         """
-        return generate_svn_revision_id(self.uuid, revnum, path)
+        # Look in the cache to see if it already has a revision id
+        revid = self.revmap.lookup_branch_revnum(revnum, path)
+        if revid is not None:
+            return revid
+
+        revid = self.branchprop_list.get_property_diff(path, revnum, SVN_PROP_BZR_REVISION_ID).strip("\n")
+        if revid == "":
+            revid = generate_svn_revision_id(self.uuid, revnum, path)
+
+        self.revmap.insert_revid(revid, path, revnum, revnum, "undefined")
+
+        return revid
 
     def lookup_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.

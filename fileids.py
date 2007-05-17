@@ -37,6 +37,7 @@ def generate_svn_file_id(uuid, revnum, branch, path):
         ret = "%d@%s:%s;%s" % (revnum, uuid, 
                             escape_svn_path(branch),
                             sha.new(path).hexdigest())
+    assert isinstance(ret, str)
     return ret
 
 
@@ -101,6 +102,7 @@ class FileIdMap(object):
         map = {}
         for filename, create_revid, id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
             map[filename] = (id.encode("utf-8"), create_revid.encode("utf-8"))
+            assert isinstance(map[filename][0], str)
 
         return map
 
@@ -192,7 +194,7 @@ class FileIdMap(object):
                     if changes[p][0] == 'M' and not revmap.has_key(p):
                         revmap[p] = map[p][0]
 
-                map.update(dict([(x, (revmap[x], revid)) for x in revmap]))
+                map.update(dict([(x, (str(revmap[x]), revid)) for x in revmap]))
 
                 # Mark all parent paths as changed
                 for p in revmap:

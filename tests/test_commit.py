@@ -30,8 +30,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
-        self.assertEqual(wt.branch.generate_revision_id(1), 
-                wt.commit(message="data"))
+        revid = wt.commit(message="data")
+        self.assertEqual(wt.branch.generate_revision_id(1), revid)
         self.client_update("dc")
         self.assertEqual(wt.branch.generate_revision_id(1), 
                 wt.branch.last_revision())
@@ -46,8 +46,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
-        self.assertEqual(
-            wt.branch.generate_revision_id(1), wt.commit(message="data"))
+        revid = wt.commit(message="data")
+        self.assertEqual(wt.branch.generate_revision_id(1), revid)
         self.assertEqual(
                 wt.branch.generate_revision_id(1), wt.branch.last_revision())
         new_revision = wt.branch.repository.get_revision(
@@ -60,8 +60,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = self.open_checkout("dc")
-        self.assertEqual(
-            wt.branch.generate_revision_id(1), wt.commit(message=u"\xe6\xf8\xe5"))
+        revid = wt.commit(message=u"\xe6\xf8\xe5")
+        self.assertEqual(revid, wt.branch.generate_revision_id(1))
         self.assertEqual(
                 wt.branch.generate_revision_id(1), wt.branch.last_revision())
         new_revision = wt.branch.repository.get_revision(

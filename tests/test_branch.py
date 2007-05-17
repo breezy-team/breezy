@@ -493,6 +493,9 @@ foohosts""")
  
     def test_generate_revision_id(self):
         self.make_client('d', 'dc')
+        self.build_tree({'dc/bla/bloe': None})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "bla")
         branch = Branch.open('d')
         self.assertEqual("svn-v%d-undefined:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
 
