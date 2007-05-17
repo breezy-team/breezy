@@ -117,7 +117,7 @@ class FileIdMap(object):
                                         uuid, find_children)
         if find_children is not None:
             def get_children(path, revid):
-                (bp, revnum) = self.repos.parse_revision_id(revid)
+                (bp, revnum) = self.repos.lookup_revision_id(revid)
                 for p in find_children(bp+"/"+path, revnum):
                     yield self.repos.scheme.unprefix(p)[1]
         else:
@@ -174,7 +174,7 @@ class FileIdMap(object):
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
-                    (bp, revnum) = self.repos.parse_revision_id(revid)
+                    (bp, revnum) = self.repos.lookup_revision_id(revid)
                     for p in self.repos._log.find_children(bp+"/"+path, revnum):
                         yield self.repos.scheme.unprefix(p)[1]
 

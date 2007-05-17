@@ -47,7 +47,7 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
-        (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
+        (self.branch_path, self.revnum) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
         self.editor = TreeBuildEditor(self, pool)

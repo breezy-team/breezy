@@ -82,8 +82,7 @@ class RevidMap(object):
 
     Stores mapping from revid -> (path, revnum, scheme)
     """
-    def __init__(self, repos, cache_db=None):
-        self.repos = repos
+    def __init__(self, cache_db=None):
         if cache_db is None:
             self.cachedb = sqlite3.connect(":memory:")
         else:
@@ -95,9 +94,10 @@ class RevidMap(object):
         self.cachedb.commit()
     
     def lookup_revid(self, revid):
-        for branch, revnum, scheme in self.cachedb.execute("select path, revnum, scheme from revmap where revid='%s'" % revid):
+        for branch, revnum, scheme in self.cachedb.execute(
+                "select path, revnum, scheme from revmap where revid='%s'" % revid):
             return branch, revnum, scheme
+        raise NoSuchRevision(self, revid)
 
-        # FIXME: Find revid in the branch
-
-        raise NoSuchRevision(self.repos, revid)
+    def insert_revid(self, revid, branch, revnum, scheme):
+        self.cachedb.execute("insert into revmap (revid, path, revnum, scheme) VALUES (?, ?, ?, ?)", (revid, branch, revnum, scheme))

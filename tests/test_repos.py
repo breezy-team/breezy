@@ -625,20 +625,20 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("svn-v%d-undefined:%s::0" % (MAPPING_VERSION, repository.uuid), 
                 repository.generate_revision_id(0, ""))
 
-    def test_parse_revision_id(self):
+    def test_lookup_revision_id(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertRaises(NoSuchRevision, repository.parse_revision_id, 
+        self.assertRaises(NoSuchRevision, repository.lookup_revision_id, 
             "nonexisting")
         self.assertEqual(("bloe", 1), 
-            repository.parse_revision_id(
+            repository.lookup_revision_id(
                 repository.generate_revision_id(1, "bloe")))
 
-    def test_parse_revision_id_invalid_uuid(self):
+    def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, 
-            repository.parse_revision_id, 
+            repository.lookup_revision_id, 
                 generate_svn_revision_id("invaliduuid", 0, ""))
         
     def test_check(self):

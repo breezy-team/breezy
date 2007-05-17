@@ -333,7 +333,7 @@ class InterSvnRepository(InterRepository):
     def _find_until(self, revision_id):
         needed = []
         parents = {}
-        (path, until_revnum) = self.source.parse_revision_id(revision_id)
+        (path, until_revnum) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
         for (branch, revnum) in self.source.follow_branch(path, 
@@ -389,7 +389,7 @@ class InterSvnRepository(InterRepository):
         prev_inv = None
         try:
             for revid in needed:
-                (branch, revnum) = self.source.parse_revision_id(revid)
+                (branch, revnum) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
                 parent_revid = parents[revid]
@@ -424,7 +424,7 @@ class InterSvnRepository(InterRepository):
                     reporter.set_path("", revnum, True, None, pool)
                 else:
                     (parent_branch, parent_revnum) = \
-                            self.source.parse_revision_id(parent_revid)
+                            self.source.lookup_revision_id(parent_revid)
                     transport.reparent("%s/%s" % (repos_root, parent_branch))
 
                     if parent_branch != branch:

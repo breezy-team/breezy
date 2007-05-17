@@ -14,21 +14,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
+from bzrlib.tests import TestCase
 
-from revids import RevidMap
+from revids import RevidMap, parse_svn_revision_id, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
-class TestRevidMap(TestCaseWithSubversionRepository):
+class TestRevidMap(TestCase):
     def test_create(self):
-        repos_url = self.make_client("a", "dc")
-        repos = Repository.open(repos_url)
-        revidmap = RevidMap(repos)
+        revidmap = RevidMap()
 
     def test_lookup_revid_nonexistant(self):
-        repos_url = self.make_client("a", "dc")
-        repos = Repository.open(repos_url)
-        revidmap = RevidMap(repos)
+        revidmap = RevidMap()
         self.assertRaises(NoSuchRevision, lambda: revidmap.lookup_revid("bla"))
 
+    def test_lookup_revid(self):
+        revidmap = RevidMap()
+        revidmap.insert_revid("bla", "mypath", 42, "brainslug")
+        self.assertEquals(("mypath", 42, "brainslug"), 
+                revidmap.lookup_revid("bla"))
+
+
+class TestParseRevisionId(TestCase):
+    def test_parse_revision_id_unknown(self):
+        self.assertRaises(InvalidRevisionId, 
+                lambda: parse_svn_revision_id("bla"))
+
+    def test_parse_revision_id(self):
+        self.assertEquals(("myuuid", "bla", 5), 
+            parse_svn_revision_id(generate_svn_revision_id("myuuid", 5, "bla")))

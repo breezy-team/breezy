@@ -351,7 +351,7 @@ class SvnWorkingTree(WorkingTree):
             self.base_tree = RevisionTree(self, Inventory(), revid)
             return
 
-        rev = self.branch.parse_revision_id(revid)
+        rev = self.branch.lookup_revision_id(revid)
         self.base_revnum = rev
         self.base_revid = revid
         self.base_tree = SvnBasisTree(self)
@@ -363,7 +363,7 @@ class SvnWorkingTree(WorkingTree):
         def update_settings(wc, path):
             id = newrevtree.inventory.path2id(path)
             mutter("Updating settings for %r" % id)
-            revnum = self.branch.parse_revision_id(
+            revnum = self.branch.lookup_revision_id(
                     newrevtree.inventory[id].revision)
 
             svn.wc.process_committed2(self.abspath(path).rstrip("/"), wc, 
@@ -488,7 +488,7 @@ class SvnWorkingTree(WorkingTree):
             stop_revision = self.branch.last_revision()
         rev = svn.core.svn_opt_revision_t()
         rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = self.branch.parse_revision_id(stop_revision)
+        rev.value.number = self.branch.lookup_revision_id(stop_revision)
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
         self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
         result.new_revid = self.branch.generate_revision_id(fetched)

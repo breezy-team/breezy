@@ -201,7 +201,7 @@ class SvnRepository(Repository):
         if revision_id is None: 
             return [None]
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
 
         ancestry = []
 
@@ -224,7 +224,7 @@ class SvnRepository(Repository):
             return True
 
         try:
-            (path, revnum) = self.parse_revision_id(revision_id)
+            (path, revnum) = self.lookup_revision_id(revision_id)
         except NoSuchRevision:
             return False
 
@@ -251,7 +251,7 @@ class SvnRepository(Repository):
         return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
-        (path, revnum) = self.parse_revision_id(revid)
+        (path, revnum) = self.lookup_revision_id(revid)
         items = self.branchprop_list.get_property_diff(path, revnum, 
                                   SVN_PROP_BZR_FILEIDS).splitlines()
         return dict(map(lambda x: x.split("\t"), items))
@@ -279,11 +279,11 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id, merged_data=None):
         parent_ids = []
-        (branch, revnum) = self.parse_revision_id(revision_id)
+        (branch, revnum) = self.lookup_revision_id(revision_id)
         mainline_parent = self._mainline_revision_parent(branch, revnum)
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
-            (parent_path, parent_revnum) = self.parse_revision_id(mainline_parent)
+            (parent_path, parent_revnum) = self.lookup_revision_id(mainline_parent)
         else:
             parent_path = None
 
@@ -323,7 +323,7 @@ class SvnRepository(Repository):
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
         
         parent_ids = self.revision_parents(revision_id)
 
@@ -381,7 +381,7 @@ class SvnRepository(Repository):
         """
         return generate_svn_revision_id(self.uuid, revnum, path)
 
-    def parse_revision_id(self, revid):
+    def lookup_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
@@ -391,13 +391,13 @@ class SvnRepository(Repository):
 
         try:
             (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
+            if uuid == self.uuid:
+                return (branch_path, revnum)
         except InvalidRevisionId:
-            raise NoSuchRevision(self, revid)
+            pass
 
-        if uuid != self.uuid:
-            raise NoSuchRevision(self, revid)
-
-        return (branch_path, revnum)
+        # FIXME: Look up in revision id map
+        return self.revmap.lookup_revid(revid)
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
@@ -572,7 +572,7 @@ class SvnRepository(Repository):
         if revision_id is None:
             return self._full_revision_graph()
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
 
         _previous = revision_id
         self._ancestry = {}

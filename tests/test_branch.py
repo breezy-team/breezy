@@ -36,17 +36,17 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
-    def test_parse_revision_id_unknown(self):
+    def test_lookup_revision_id_unknown(self):
         repos_url = self.make_client("a", "dc")
         branch = Branch.open(repos_url)
         self.assertRaises(NoSuchRevision, 
-                lambda: branch.parse_revision_id("bla"))
+                lambda: branch.lookup_revision_id("bla"))
 
-    def test_parse_revision_id(self):
+    def test_lookup_revision_id(self):
         repos_url = self.make_client("a", "dc")
         branch = Branch.open(repos_url)
         self.assertEquals(0, 
-                branch.parse_revision_id(branch.last_revision()))
+                branch.lookup_revision_id(branch.last_revision()))
 
     def test_set_parent(self):
         repos_url = self.make_client('a', 'dc')

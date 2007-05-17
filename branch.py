@@ -78,8 +78,15 @@ class SvnBranch(Branch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
-    def parse_revision_id(self, revid):
-        (bp, revnum) = self.repository.parse_revision_id(revid)
+    """Look up the matching revision number on the mainline of the 
+    branch.
+
+    :param revid: Revision id to look up.
+    :return: Revision number on the branch. 
+    :raises NoSuchRevision: If the revision id was not found.
+    """
+    def lookup_revision_id(self, revid):
+        (bp, revnum) = self.repository.lookup_revision_id(revid)
         assert bp.strip("/") == self.branch_path.strip("/"), \
                 "Got %r, expected %r" % (bp, self.branch_path)
         return revnum
@@ -92,7 +99,7 @@ class SvnBranch(Branch):
         if revision_id is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
-            revnum = self.parse_revision_id(revision_id)
+            revnum = self.lookup_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
             mutter('hist: %r' % self.revision_history())
