@@ -88,16 +88,16 @@ class RevidMap(object):
         else:
             self.cachedb = cache_db
         self.cachedb.executescript("""
-        create table if not exists revmap (revid text, path text, revnum integer, scheme text);
+        create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
         """)
         self.cachedb.commit()
     
     def lookup_revid(self, revid):
         for branch, revnum, scheme in self.cachedb.execute(
-                "select path, revnum, scheme from revmap where revid='%s'" % revid):
-            return branch, revnum, scheme
+                "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid):
+            return branch, min_revnum, max_revnum, scheme
         raise NoSuchRevision(self, revid)
 
-    def insert_revid(self, revid, branch, revnum, scheme):
-        self.cachedb.execute("insert into revmap (revid, path, revnum, scheme) VALUES (?, ?, ?, ?)", (revid, branch, revnum, scheme))
+    def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme):
+        self.cachedb.execute("insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", (revid, branch, min_revnum, max_revnum, scheme))

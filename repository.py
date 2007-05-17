@@ -41,7 +41,7 @@ from branchprops import BranchPropertyList
 import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
-                    MAPPING_VERSION)
+                    MAPPING_VERSION, RevidMap)
 from tree import SvnRevisionTree
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
@@ -145,6 +145,7 @@ class SvnRepository(Repository):
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
+        self.revmap = RevidMap(self.cachedb)
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
@@ -214,9 +215,7 @@ class SvnRepository(Repository):
                 ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
-
         ancestry.reverse()
-
         return ancestry
 
     def has_revision(self, revision_id):
@@ -389,6 +388,7 @@ class SvnRepository(Repository):
         :return: Tuple with branch path and revision number.
         """
 
+        # Try a simple parse
         try:
             (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
             if uuid == self.uuid:
@@ -396,8 +396,22 @@ class SvnRepository(Repository):
         except InvalidRevisionId:
             pass
 
-        # FIXME: Look up in revision id map
-        return self.revmap.lookup_revid(revid)
+        # Check the record out of the revmap, if it exists
+        try:
+            (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
+            # Entry already complete?
+            if min_revnum == max_revnum:
+                return (branch_path, min_revnum)
+        except NoSuchRevision:
+            pass
+            # FIXME: If there is no entry in the map, walk over all branches:
+                # - FIXME: Look at their bzr:revision-id-vX
+                # - FIXME If there are any new entries that are not yet in the cache, add them
+            # Still not found? 
+            raise NoSuchRevision(self, revid)
+     
+        # FIXME Complete the entry 
+        return (branch_path, min_revnum)
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
