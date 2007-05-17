@@ -1802,14 +1802,20 @@ class InterDirStateTree(InterTree):
         NULL_PARENT_DETAILS = dirstate.DirState.NULL_PARENT_DETAILS
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
-        last_source_parent = [None, None, None]
-        last_target_parent = [None, None, None]
+        last_source_parent = [None, None]
+        last_target_parent = [None, None]
 
         use_filesystem_for_exec = (sys.platform != 'win32')
 
         # Just a singleton, so that _process_entry can say that this
         # record is handled, but isn't interesting to process (unchanged)
         uninteresting = object()
+
+
+        old_dirname_to_file_id = {}
+        new_dirname_to_file_id = {}
+        # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
+        #       keeping a cache of directories that we have seen.
 
         def _process_entry(entry, path_info):
             """Compare an entry and real disk to generate delta information.
@@ -1840,6 +1846,7 @@ class InterDirStateTree(InterTree):
                 target_minikind = target_details[0]
             else:
                 link_or_sha1 = None
+            file_id = entry[0][2]
             source_minikind = source_details[0]
             if source_minikind in 'fdltr' and target_minikind in 'fdlt':
                 # claimed content in both: diff
@@ -1867,9 +1874,7 @@ class InterDirStateTree(InterTree):
                 else:
                     old_dirname = entry[0][0]
                     old_basename = entry[0][1]
-                    # We will work this out later if we need to
-                    old_path = None
-                    path = None
+                    old_path = path = pathjoin(old_dirname, old_basename)
                 if path_info is None:
                     # the file is missing on disk, show as removed.
                     content_change = True
@@ -1879,6 +1884,7 @@ class InterDirStateTree(InterTree):
                     # source and target are both versioned and disk file is present.
                     target_kind = path_info[2]
                     if target_kind == 'directory':
+                        new_dirname_to_file_id[path] = file_id
                         if source_minikind != 'd':
                             content_change = True
                         else:
@@ -1913,39 +1919,45 @@ class InterDirStateTree(InterTree):
                         target_exec = False
                     else:
                         raise Exception, "unknown kind %s" % path_info[2]
+                if source_minikind == 'd':
+                    old_dirname_to_file_id[path] = file_id
                 # parent id is the entry for the path in the target tree
                 if old_dirname == last_source_parent[0]:
                     source_parent_id = last_source_parent[1]
                 else:
-                    source_parent_entry = state._get_entry(source_index,
-                                                           path_utf8=old_dirname)
-                    source_parent_id = source_parent_entry[0][2]
+                    try:
+                        source_parent_id = old_dirname_to_file_id[old_dirname]
+                    except KeyError:
+                        source_parent_entry = state._get_entry(source_index,
+                                                               path_utf8=old_dirname)
+                        source_parent_id = source_parent_entry[0][2]
                     if source_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         source_parent_id = None
                     else:
                         last_source_parent[0] = old_dirname
                         last_source_parent[1] = source_parent_id
-                        last_source_parent[2] = source_parent_entry
                 new_dirname = entry[0][0]
                 if new_dirname == last_target_parent[0]:
                     target_parent_id = last_target_parent[1]
                 else:
-                    # TODO: We don't always need to do the lookup, because the
-                    #       parent entry will be the same as the source entry.
-                    target_parent_entry = state._get_entry(target_index,
-                                                           path_utf8=new_dirname)
-                    assert target_parent_entry != (None, None), (
-                        "Could not find target parent in wt: %s\nparent of: %s"
-                        % (new_dirname, entry))
-                    target_parent_id = target_parent_entry[0][2]
+                    try:
+                        target_parent_id = new_dirname_to_file_id[new_dirname]
+                    except KeyError:
+                        # TODO: We don't always need to do the lookup, because the
+                        #       parent entry will be the same as the source entry.
+                        target_parent_entry = state._get_entry(target_index,
+                                                               path_utf8=new_dirname)
+                        assert target_parent_entry != (None, None), (
+                            "Could not find target parent in wt: %s\nparent of: %s"
+                            % (new_dirname, entry))
+                        target_parent_id = target_parent_entry[0][2]
                     if target_parent_id == entry[0][2]:
                         # This is the root, so the parent is None
                         target_parent_id = None
                     else:
                         last_target_parent[0] = new_dirname
                         last_target_parent[1] = target_parent_id
-                        last_target_parent[2] = target_parent_entry
 
                 source_exec = source_details[3]
                 if (include_unchanged
@@ -1956,8 +1968,6 @@ class InterDirStateTree(InterTree):
                     # or source_minikind != target_minikind
                     or source_exec != target_exec
                     ):
-                    if old_path is None:
-                        old_path = path = pathjoin(old_dirname, old_basename)
                     source_kind = _minikind_to_kind[source_minikind]
                     return (entry[0][2], (old_path, path), content_change,
                            (True, True),
