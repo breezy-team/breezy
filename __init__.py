@@ -1,3 +1,9 @@
+"""Implementation of multiparent diffs for versionedfile-like storage
+
+Provides mp-regen and mp-extract commands.
+Focus is on comparing size/performance to knits.
+"""
+
 from bzrlib.lazy_import import lazy_import
 
 lazy_import(globals(), """
