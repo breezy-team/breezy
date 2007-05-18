@@ -16,6 +16,10 @@ bzr-svn 0.4	UNRELEASED
    * Remove branches when they are being replaced. Fixes DivergedBranches 
      error when using svn-import (#81908).
 
+   * Support true push (#80612).
+
+   * Support commits in heavy checkouts (#79330).
+
   IMPROVEMENTS
 
   PERFORMANCE

@@ -383,4 +383,6 @@ class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
         local_dir.open_branch().bind(master_branch)
         self.build_tree({'b/file': 'data'})
         wt.add('file')
-        wt.commit(message="Commit from Bzr")
+        revid = wt.commit(message="Commit from Bzr")
+        master_branch = Branch.open(repos_url)
+        self.assertEquals(revid, master_branch.last_revision())

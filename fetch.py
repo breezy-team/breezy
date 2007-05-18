@@ -314,7 +314,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                                      self.file_stream, self.pool)
 
 
-class InterSvnRepository(InterRepository):
+class InterFromSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
     _matching_repo_format = SvnRepositoryFormat()
@@ -467,6 +467,7 @@ class InterSvnRepository(InterRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
+        mutter("Checking from %r %r" % (source, target))
         # FIXME: Also check target uses VersionedFile
         return isinstance(source, SvnRepository)
 

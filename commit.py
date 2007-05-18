@@ -22,13 +22,15 @@ from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.repository import RootCommitBuilder
+from bzrlib.repository import RootCommitBuilder, InterRepository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
-                        generate_revision_metadata)
+                        generate_revision_metadata, SvnRepositoryFormat, 
+                        SvnRepository)
 from revids import escape_svn_path
 
 import os
@@ -505,3 +507,63 @@ def push(target, source, revision_id):
             raise DivergedBranches(source, target)
         raise
 
+class InterToSvnRepository(InterRepository):
+    """Any to Subversion repository actions."""
+
+    _matching_repo_format = SvnRepositoryFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
+    def copy_content(self, revision_id=None, basis=None, pb=None):
+        """See InterRepository.copy_content."""
+        assert revision_id is not None, "fetching all revisions not supported"
+        # Go back over the LHS parent until we reach a revid we know
+        todo = []
+        while not self.target.has_revision(revision_id):
+            todo.append(revision_id)
+            revision_id = self.source.revision_parents(revision_id)[0]
+            if revision_id == NULL_REVISION:
+                raise "Unrelated repositories."
+        todo.reverse()
+        mutter("pushing %r into svn" % todo)
+        while len(todo) > 0:
+            revision_id = todo.pop()
+
+            rev = self.source.get_revision(revision_id)
+            inv = self.source.get_inventory(revision_id)
+
+            mutter('pushing %r' % (revision_id))
+
+            old_tree = self.source.revision_tree(revision_id)
+            parent_revid = self.source.revision_parents(revision_id)[0]
+            new_tree = self.source.revision_tree(parent_revid)
+
+            (bp, _) = self.target.lookup_revision_id(parent_revid)
+            target_branch = Branch.open("%s/%s" % (self.target.base, bp))
+
+            builder = SvnCommitBuilder(self.target, target_branch, 
+                               rev.parent_ids,
+                               target_branch.get_config(),
+                               rev.timestamp,
+                               rev.timezone,
+                               rev.committer,
+                               rev.properties, 
+                               revision_id,
+                               new_tree.inventory)
+                         
+            delta = new_tree.changes_from(old_tree)
+            builder.new_inventory = inv
+            replay_delta(builder, delta, old_tree)
+            builder.commit(rev.message)
+ 
+
+    def fetch(self, revision_id=None, pb=None):
+        """Fetch revisions. """
+        self.copy_content(revision_id=revision_id, pb=pb)
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with SvnRepository."""
+        return isinstance(target, SvnRepository)
