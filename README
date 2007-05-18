@@ -75,21 +75,6 @@ In the future, I also hope to support:
   but the number of corner cases is wide, so support for this 
   has not been enabled by default yet.
 
-- "True" push. This requires storing the Bazaar 
-  inventory and revision in Subversion revision properties.
-
-  Ideally, revision id aliases would have to be used so the 
-  revision id that is being 'overriden' can still exist.
-
-  Once this is implemented, it would also be possible and 
-  make sense to store GPG signatures for commits in 
-  Subversion branches.
-
-  This might require also storing 'bzr:inventory' and 'bzr:revision' 
-  properties in order to make sure the sha1's for a revision keep matching.
-
-- Proper read locking, which has basically been ignored for now. 
-
 - Performance. Network-wise (both bandwidth and roundtrips), the plugin is in
   good shape. However, it is currently quite CPU-intensive for no good reason 
   and I hope to make a couple of improvements in that area.
