@@ -86,6 +86,7 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
             text += "\t%s: %s\n" % (k, v)
     return text
 
+
 def svk_feature_to_revision_id(feature):
     """Create a revision id from a svk feature identifier.
 
@@ -159,6 +160,7 @@ class SvnRepository(Repository):
         self.transport = transport
         self.uuid = transport.get_uuid()
         self.base = transport.base
+        self._serializer = None
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
         self.pool = Pool()
