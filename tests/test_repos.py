@@ -456,19 +456,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
             repository.generate_revision_id(1, ""),
-            repository.generate_revision_id(2, "")],
+            repository.generate_revision_id(2, ""),
+            repository.generate_revision_id(3, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(3, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
-            repository.generate_revision_id(1, "")],
+            repository.generate_revision_id(1, ""),
+            repository.generate_revision_id(2, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
         self.assertEqual([None,
-                    repository.generate_revision_id(0, "")],
+                    repository.generate_revision_id(0, ""),
+                    repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
         self.assertEqual([None], repository.get_ancestry(None))
@@ -558,15 +561,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
-        self.assertEqual([None, repository.generate_revision_id(0, "")],
+        self.assertEqual([None, repository.generate_revision_id(0, ""),
+            repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
-            repository.generate_revision_id(1, "")], 
+            repository.generate_revision_id(1, ""),
+            repository.generate_revision_id(2, "")], 
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
 
@@ -579,16 +584,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
-        self.assertEqual([None, repository.generate_revision_id(0, "")],
+        self.assertEqual([None, repository.generate_revision_id(0, ""),
+            repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
             repository.generate_revision_id(1, ""), 
-                          "a-parent"], 
+                          "a-parent", repository.generate_revision_id(2, "")], 
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
 

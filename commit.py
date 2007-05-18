@@ -84,10 +84,15 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self._svnprops[SVN_PROP_SVK_MERGE] = old + new
 
         if revision_id is not None:
-            extra = "%s\n" % revision_id
-            if not self._svnprops.has_key(SVN_PROP_BZR_REVISION_ID):
-                self._svnprops[SVN_PROP_BZR_REVISION_ID] = ""
-            self._svnprops[SVN_PROP_BZR_REVISION_ID] += extra
+            if branch.last_revision():
+                (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
+                old = repository.branchprop_list.get_property(bp, revnum, 
+                            SVN_PROP_BZR_REVISION_ID, "")
+            else:
+                old = ""
+
+            self._svnprops[SVN_PROP_BZR_REVISION_ID] = old + \
+                    "%s\n" % revision_id
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -384,6 +389,28 @@ class SvnCommitBuilder(RootCommitBuilder):
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
+def replay_delta(builder, delta, old_tree):
+    for (_, ie) in builder.new_inventory.entries():
+        if not delta.touches_file_id(ie.file_id):
+            continue
+
+        id = ie.file_id
+        while builder.new_inventory[id].parent_id is not None:
+            if builder.new_inventory[id].revision is None:
+                break
+            builder.new_inventory[id].revision = None
+            if builder.new_inventory[id].kind == 'directory':
+                builder.modified_directory(id, [])
+            id = builder.new_inventory[id].parent_id
+
+        if ie.kind == 'link':
+            builder.modified_link(ie.file_id, [], ie.symlink_target)
+        elif ie.kind == 'file':
+            def get_text():
+                return old_tree.get_file_text(ie.file_id)
+            builder.modified_file_text(ie.file_id, [], get_text)
+
+
 def push_as_merged(target, source, revision_id):
     """Push a revision as merged revision.
 
@@ -422,27 +449,46 @@ def push_as_merged(target, source, revision_id):
                          
     delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
+    replay_delta(builder, delta, old_tree)
 
-    for (_, ie) in inv.entries():
-        if not delta.touches_file_id(ie.file_id):
-            continue
+    try:
+        return builder.commit(rev.message)
+    except SubversionException, (_, num):
+        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+            raise DivergedBranches(source, target)
+        raise
 
-        id = ie.file_id
-        while inv[id].parent_id is not None:
-            if inv[id].revision is None:
-                break
-            inv[id].revision = None
-            if inv[id].kind == 'directory':
-                builder.modified_directory(id, [])
-            id = inv[id].parent_id
+def push(target, source, revision_id):
+    """Push a revision into Subversion.
 
-        if ie.kind == 'link':
-            builder.modified_link(ie.file_id, [], ie.symlink_target)
-        elif ie.kind == 'file':
-            def get_text():
-                return old_tree.get_file_text(ie.file_id)
-            builder.modified_file_text(ie.file_id, [], get_text)
+    This will do a new commit in the target branch.
 
+    :param target: Repository to push to
+    :param source: Repository to pull the revision from
+    :param revision_id: Revision id of the revision to push
+    """
+    assert isinstance(source, Branch)
+    rev = source.repository.get_revision(revision_id)
+    inv = source.repository.get_inventory(revision_id)
+
+    # revision on top of which to commit
+    assert target.last_revision() in rev.parent_ids
+
+    mutter('pushing %r' % (revision_id))
+
+    old_tree = source.repository.revision_tree(revision_id)
+    new_tree = source.repository.revision_tree(target.last_revision())
+
+    builder = SvnCommitBuilder(target.repository, target, 
+                               rev.parent_ids,
+                               target.get_config(),
+                               rev.properties, 
+                               revision_id,
+                               new_tree.inventory)
+                         
+    delta = new_tree.changes_from(old_tree)
+    builder.new_inventory = inv
+    replay_delta(builder, delta, old_tree)
     try:
         return builder.commit(rev.message)
     except SubversionException, (_, num):

@@ -205,7 +205,7 @@ class SvnRepository(Repository):
 
         (path, revnum) = self.lookup_revision_id(revision_id)
 
-        ancestry = []
+        ancestry = [revision_id]
 
         for l in self.branchprop_list.get_property(path, revnum, 
                                     SVN_PROP_BZR_MERGE, "").splitlines():

@@ -24,7 +24,7 @@ from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
 
-from commit import push_as_merged
+from commit import push
 from repository import SvnRepository
 from transport import bzr_to_svn_url, svn_config
 
@@ -226,7 +226,7 @@ class SvnBranch(Branch):
         else:
             for rev_id in self.missing_revisions(other, stop_revision):
                 mutter('pushing %r to Svn branch' % rev_id)
-                push_as_merged(self, other, rev_id)
+                push(self, other, rev_id)
 
     # The remote server handles all this for us
     def lock_write(self):

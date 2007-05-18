@@ -211,6 +211,10 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.assertEqual(self.svndir.open_branch().revision_history(),
                          self.bzrdir.open_branch().revision_history())
-        self.assertTrue(wt.branch.last_revision() in 
-             repos.get_ancestry(repos.generate_revision_id(3, "")))
+
+        self.assertEqual(wt.branch.last_revision(), 
+                repos.generate_revision_id(3, ""))
+        self.assertEqual(
+                wt.branch.repository.get_ancestry(wt.branch.last_revision()), 
+                repos.get_ancestry(wt.branch.last_revision()))
 
