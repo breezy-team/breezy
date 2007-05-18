@@ -1,14 +1,3 @@
-- keep revision id cache:
-(revid, path, revnum, scheme)
-
-- Repository.generate_revision_id() should return
-- Branch.generate_revision_id()
-- Repository.parse_revision_id() looks up custom revision ids
-- Branch.parse_revision_id() looks up custom revision ids
- - Try to parse revision id. If:
-  - UUID matches
-  - path,revnum combination is in the branches' history
-    return path,revnum combination
- - Check the bzr:revision-id-vX property in the 
-   the latest revision in which this branch existed. If it 
-   contains the revision, return it
+- keep revision ids when doing true pushes
+- add tests to make sure a revision is still 100% the same after being pushed 
+  to subversion

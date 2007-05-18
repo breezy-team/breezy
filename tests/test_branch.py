@@ -28,7 +28,7 @@ from unittest import TestCase
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 from fileids import generate_svn_file_id
-from repository import MAPPING_VERSION, generate_svn_revision_id
+from repository import MAPPING_VERSION, generate_svn_revision_id, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -143,6 +143,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "mycommit\n")
         self.client_commit("dc", "My Message")
         
         branch = Branch.open("svn+"+repos_url)
@@ -160,7 +161,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.assertEqual([
             repos.generate_revision_id(0, ""),
-            repos.generate_revision_id(1, ""),
+            "mycommit",
             repos.generate_revision_id(2, "")],
             branch.revision_history())
 

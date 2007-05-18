@@ -412,7 +412,8 @@ class SvnRepository(Repository):
 
         # Check the record out of the revmap, if it exists
         try:
-            (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
+            (branch_path, min_revnum, max_revnum, \
+                    scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)
             # Entry already complete?
             if min_revnum == max_revnum:
@@ -439,11 +440,10 @@ class SvnRepository(Repository):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
         i = min_revnum
-        while i <= max_revnum:
-            if self.branchprop_list.get_property_diff(branch_path, i, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
-                self.revmap.insert_revid(revid, branch_path, i, i, "undefined")
-                return (branch_path, i)
-            i+=1
+        for (bp, rev) in self.follow_branch(branch_path, max_revnum):
+            if self.branchprop_list.get_property_diff(bp, rev, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
+                self.revmap.insert_revid(revid, bp, rev, rev, "undefined")
+                return (bp, rev)
 
         raise AssertionError("Revision id was added incorrectly")
 

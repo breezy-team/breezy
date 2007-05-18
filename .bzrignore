@@ -2,3 +2,4 @@ build
 *.pyc
 test????.tmp
 tags
+apidocs
