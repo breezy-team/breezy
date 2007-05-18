@@ -89,13 +89,16 @@ class TestInfo(tests.TestCaseWithTransport):
         branch.create_checkout('%s_co' % format,
             lightweight=True).bzrdir.destroy_workingtree()
         control = bzrdir.BzrDir.open('%s_co' % format)
-        control._format.workingtree_format = \
-            bzrdir.format_registry.make_bzrdir(format).workingtree_format
-        control.create_workingtree()
-        tree = workingtree.WorkingTree.open('%s_co' % format)
-        self.assertEqual(expected, info.describe_format(tree.bzrdir,
-            tree.branch.repository, tree.branch, tree))
-
+        old_format = control._format.workingtree_format
+        try:
+            control._format.workingtree_format = \
+                bzrdir.format_registry.make_bzrdir(format).workingtree_format
+            control.create_workingtree()
+            tree = workingtree.WorkingTree.open('%s_co' % format)
+            self.assertEqual(expected, info.describe_format(tree.bzrdir,
+                tree.branch.repository, tree.branch, tree))
+        finally:
+            control._format.workingtree_format = old_format
 
     def assertBranchDescription(self, format, expected=None):
         if expected is None:
