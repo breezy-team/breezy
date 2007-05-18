@@ -35,7 +35,7 @@ from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        SvnRepositoryFormat)
+                        SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID)
 from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
                     parse_svn_revision_id, generate_svn_revision_id)
 
@@ -76,6 +76,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(0, "")
         self.assertEqual({"": (generate_file_id(revid, ""), revid)}, repos.get_fileid_map(0, ""))
+
+    def test_generate_revision_id_forced_revid(self):
+        repos_url = self.make_client("a", "dc")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "someid\n")
+        self.client_commit("dc", "set id")
+        repos = Repository.open(repos_url)
+        revid = repos.generate_revision_id(1, "")
+        self.assertEquals("someid", revid)
 
     def test_add_revision(self):
         repos_url = self.make_client("a", "dc")
@@ -2212,49 +2220,6 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def test_not_executable(self):
         self.assertFalse(self.inventory[
             self.inventory.path2id("foo/bla")].executable)
-
-class RevisionIdMappingTest(TestCase):
-    def test_generate_revid(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch"))
-
-    def test_generate_revid_nested(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2Fpath:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch/path"))
-
-    def test_generate_revid_special_char(self):
-        self.assertEqual(u"svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, u"branch\x2c"))
-
-    def test_generate_revid_special_char_ascii(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch\x2c"))
-
-    def test_generate_revid_nordic(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%C3%%A6:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, u"branch\xe6"))
-
-    def test_parse_revid_simple(self):
-        self.assertEqual(("uuid", "", 4),
-                         parse_svn_revision_id(
-                             "svn-v%d-undefined:uuid::4" % MAPPING_VERSION))
-
-    def test_parse_revid_nested(self):
-        self.assertEqual(("uuid", "bp/data", 4),
-                         parse_svn_revision_id(
-                             "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
-
-    def test_svk_revid_map_root(self):
-        self.assertEqual("svn-v%d-undefined:auuid::6" % MAPPING_VERSION,
-                         svk_feature_to_revision_id("auuid:/:6"))
-
-    def test_svk_revid_map_nested(self):
-        self.assertEqual("svn-v%d-undefined:auuid:bp:6" % MAPPING_VERSION,
-                         svk_feature_to_revision_id("auuid:/bp:6"))
-
-    def test_revid_svk_map(self):
-        self.assertEqual("auuid:/:6", 
-              revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
 
 class EscapeTest(TestCase):

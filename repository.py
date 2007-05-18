@@ -384,7 +384,8 @@ class SvnRepository(Repository):
         if revid is not None:
             return revid
 
-        revid = self.branchprop_list.get_property_diff(path, revnum, SVN_PROP_BZR_REVISION_ID).strip("\n")
+        revid = self.branchprop_list.get_property_diff(path, revnum, 
+                SVN_PROP_BZR_REVISION_ID).strip("\n")
         if revid == "":
             revid = generate_svn_revision_id(self.uuid, revnum, path)
 
@@ -403,6 +404,7 @@ class SvnRepository(Repository):
         # Try a simple parse
         try:
             (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
+            assert isinstance(branch_path, str)
             if uuid == self.uuid:
                 return (branch_path, revnum)
         except InvalidRevisionId:
@@ -411,19 +413,38 @@ class SvnRepository(Repository):
         # Check the record out of the revmap, if it exists
         try:
             (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
+            assert isinstance(branch_path, str)
             # Entry already complete?
             if min_revnum == max_revnum:
                 return (branch_path, min_revnum)
         except NoSuchRevision:
-            pass
-            # FIXME: If there is no entry in the map, walk over all branches:
-                # - FIXME: Look at their bzr:revision-id-vX
-                # - FIXME If there are any new entries that are not yet in the cache, add them
-            # Still not found? 
-            raise NoSuchRevision(self, revid)
-     
-        # FIXME Complete the entry 
-        return (branch_path, min_revnum)
+            # If there is no entry in the map, walk over all branches:
+            for (branch, revno, exists) in self.find_branches():
+                # Look at their bzr:revision-id-vX
+                revids = self.branchprop_list.get_property(branch, revno, 
+                        SVN_PROP_BZR_REVISION_ID, "")
+
+                # If there are any new entries that are not yet in the cache, 
+                # add them
+                for r in revids:
+                    self.revmap.insert_revid(revid, branch, 0, revno, 
+                            "undefined")
+
+                if revid in revids:
+                    break
+                
+            (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
+            assert isinstance(branch_path, str)
+
+        # Find the branch property between min_revnum and max_revnum that 
+        # added revid
+        i = min_revnum
+        while i <= max_revnum:
+            if self.branchprop_list.get_property_diff(branch_path, i, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
+                self.revmap.insert_revid(revid, branch_path, i, i, "undefined")
+                return (branch_path, i)
+
+        raise AssertionError("Revision id was added incorrectly")
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
@@ -617,6 +638,7 @@ class SvnRepository(Repository):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
+        :return: iterator that returns tuples with (path, revision number, still exists)
         """
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
