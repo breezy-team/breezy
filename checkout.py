@@ -34,8 +34,8 @@ from convert import SvnConverter
 from errors import LocalCommitsUnsupported
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
-                        SVN_PROP_BZR_REVISION_ID,
-                        revision_id_to_svk_feature) 
+                        SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
+                        revision_id_to_svk_feature, generate_revision_metadata) 
 from revids import escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, bzr_to_svn_url, 
@@ -402,9 +402,9 @@ class SvnWorkingTree(WorkingTree):
                allow_pointless=True, strict=False, verbose=False, local=False, 
                reporter=None, config=None, specific_files=None):
         # FIXME: Use allow_pointless
-        # FIXME: Use committer
         # FIXME: Use verbose
         # FIXME: Use reporter
+        # FIXME: Use committer
         # FIXME: Use revprops
         # FIXME: Use strict
         assert timestamp is None
@@ -436,6 +436,12 @@ class SvnWorkingTree(WorkingTree):
         try:
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
                              self._get_bzr_revids() + extra,
+                             self.basedir, wc)
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
+                             generate_revision_metadata(timestamp, 
+                                                        timezone, 
+                                                        committer,
+                                                        revprops),
                              self.basedir, wc)
         finally:
             svn.wc.adm_close(wc)

@@ -446,6 +446,9 @@ def push_as_merged(target, source, revision_id):
     builder = SvnCommitBuilder(target.repository, target, 
                                [revision_id, prev_revid],
                                target.get_config(),
+                               None,
+                               None,
+                               None,
                                rev.properties, 
                                None,
                                new_tree.inventory)
@@ -485,6 +488,9 @@ def push(target, source, revision_id):
     builder = SvnCommitBuilder(target.repository, target, 
                                rev.parent_ids,
                                target.get_config(),
+                               rev.timestamp,
+                               rev.timezone,
+                               rev.committer,
                                rev.properties, 
                                revision_id,
                                new_tree.inventory)

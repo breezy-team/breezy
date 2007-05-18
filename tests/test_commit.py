@@ -19,6 +19,7 @@
 from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches, BzrError
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 from copy import copy
@@ -78,6 +79,15 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt = self.open_checkout("dc")
         self.assertRaises(BzrError, wt.commit, 
                 message="data", local=True)
+
+    def test_commit_committer(self):
+        self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = self.open_checkout("dc")
+        revid = wt.commit(message="data", committer="john doe")
+        rev = wt.branch.repository.get_revision(revid)
+        self.assertEquals("john doe", rev.committer)
 
     def test_commit_message_nordic(self):
         self.make_client('d', 'dc')
@@ -147,7 +157,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
         branch = Branch.open(repos_url)
         builder = branch.get_commit_builder([branch.last_revision()], 
-                timestamp=4534, timezone=2, committer="fry",
+                timestamp=4534.0, timezone=2, committer="fry",
                 revision_id="my-revision-id")
         tree = branch.repository.revision_tree(branch.last_revision())
         new_tree = copy(tree)
@@ -160,12 +170,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
 
-        self.assertEqual("fry", 
-                self.client_get_prop("dc", "bzr:committer", 2))
-
-        self.assertEqual("4534T2", 
-                self.client_get_prop("dc", "bzr:timestamp", 2))
-
+        self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 
+                self.client_get_prop("dc", "bzr:revision-info", 2))
 
     def test_mwh(self):
         repo = self.make_client('d', 'sc')
@@ -357,3 +363,25 @@ class TestPushNested(TestCaseWithSubversionRepository):
         self.client_update("sc")
         self.assertTrue(os.path.exists("sc/foo/trunk/file"))
         self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
+
+class HeavyWeightCheckoutTests(TestCaseWithSubversionRepository):
+    def test_bind(self):
+        repos_url = self.make_client("d", "sc")
+        master_branch = Branch.open(repos_url)
+        local_bzrdir = BzrDir.create(".")
+        local_bzrdir.create_repository()
+        local_branch = master_branch.sprout(local_bzrdir)
+        wt = local_bzrdir.create_workingtree()
+        local_branch.bind(master_branch)
+
+    def test_commit(self):
+        repos_url = self.make_client("d", "sc")
+        master_branch = Branch.open(repos_url)
+        local_bzrdir = BzrDir.create(".")
+        local_bzrdir.create_repository()
+        local_branch = master_branch.sprout(local_bzrdir)
+        wt = local_bzrdir.create_workingtree()
+        local_branch.bind(master_branch)
+        self.build_tree({'b/file': 'data'})
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")

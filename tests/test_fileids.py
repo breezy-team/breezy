@@ -30,7 +30,9 @@ from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository, RENAMES
 
 class MockRepo:
-    uuid = "uuid"
+    def __init__(self, uuid="uuid"):
+        self.uuid = uuid
+
     def lookup_revision_id(self, revid):
         ret = parse_svn_revision_id(revid)
         return ret[1], ret[2]

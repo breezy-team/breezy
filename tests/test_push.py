@@ -105,9 +105,8 @@ class TestPush(TestCaseWithSubversionRepository):
         repos = self.svndir.find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, ""))
         self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(wt.branch.last_revision() in 
-            repos.revision_parents(
-                repos.generate_revision_id(2, "")))
+        self.assertEquals(wt.branch.last_revision(),
+                repos.generate_revision_id(2, ""))
         self.assertEqual(repos.generate_revision_id(2, ""),
                         self.svndir.open_branch().last_revision())
 
@@ -122,8 +121,8 @@ class TestPush(TestCaseWithSubversionRepository):
         repos = self.svndir.find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, ""))
         self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(wt.branch.last_revision() in 
-                         repos.revision_parents(repos.generate_revision_id(2, "")))
+        self.assertEquals(wt.branch.last_revision(),
+                         repos.generate_revision_id(2, ""))
         self.assertEqual(repos.generate_revision_id(2, ""),
                         self.svndir.open_branch().last_revision())
 
@@ -167,7 +166,12 @@ class TestPush(TestCaseWithSubversionRepository):
         rev1 = self.svndir.find_repository().get_revision(wt.branch.last_revision())
         rev2 = self.bzrdir.find_repository().get_revision(wt.branch.last_revision())
 
-        self.assertEqual(rev1, rev2)
+        self.assertEqual(rev1.committer, rev2.committer)
+        self.assertEqual(rev1.timestamp, rev2.timestamp)
+        self.assertEqual(rev1.timezone, rev2.timezone)
+        self.assertEqual(rev1.properties, rev2.properties)
+        self.assertEqual(rev1.message, rev2.message)
+        self.assertEqual(rev1.revision_id, rev2.revision_id)
 
     def test_multiple_merged(self):
         self.build_tree({'dc/file': 'data'})

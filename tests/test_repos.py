@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, UninitializableFormat
+from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION, Revision
@@ -34,6 +34,7 @@ import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
+from tests.test_fileids import MockRepo
 from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
                         SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
                         generate_revision_metadata, parse_revision_metadata)
@@ -76,7 +77,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(0, "")
-        self.assertEqual({"": (generate_file_id(revid, ""), revid)}, repos.get_fileid_map(0, ""))
+        self.assertEqual({"": (generate_file_id(MockRepo(repos.uuid), revid, ""), revid)}, repos.get_fileid_map(0, ""))
 
     def test_generate_revision_id_forced_revid(self):
         repos_url = self.make_client("a", "dc")
@@ -2294,42 +2295,42 @@ class MetadataMarshallerTests(TestCase):
                 generate_revision_metadata(None, None, "bla", None))
 
     def test_generate_revision_metadata_timestamp(self):
-        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52 +0000\n", 
-                generate_revision_metadata('1120153132.350850105', 0, 
+        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52.350850105 +0000\n", 
+                generate_revision_metadata(1120153132.350850105, 0, 
                     None, None))
             
     def test_generate_revision_metadata_properties(self):
-        self.assertEquals("properties:\n" + 
-                "\tpropfoo: bla\n" + 
-                "\tpropbla: bloe\n",
+        self.assertEquals("properties: \n" + 
+                "\tpropbla: bloe\n" +
+                "\tpropfoo: bla\n",
                 generate_revision_metadata(None, None,
-                    None, {"propfoo": "bla", "propbla": "bloe"}))
+                    None, {"propbla": "bloe", "propfoo": "bla"}))
 
     def test_parse_revision_metadata_empty(self):
         parse_revision_metadata("", None)
 
     def test_parse_revision_metadata_committer(self):
-        rev = Revision()
+        rev = Revision('someid')
         parse_revision_metadata("committer: somebody\n", rev)
         self.assertEquals("somebody", rev.committer)
 
     def test_parse_revision_metadata_timestamp(self):
-        rev = Revision()
+        rev = Revision('someid')
         parse_revision_metadata("timestamp: Thu 2005-06-30 12:38:52.350850105 -0500\n", rev)
         self.assertEquals(1120153132.3508501, rev.timestamp)
         self.assertEquals(-18000, rev.timezone)
 
     def test_parse_revision_metadata_properties(self):
-        rev = Revision()
+        rev = Revision('someid')
         parse_revision_metadata("properties: \n" + 
                                 "\tfoo: bar\n" + 
                                 "\tha: ha\n", rev)
-        self.assertEquals({"foo": "bar", "ha": "ha"}, rev.revprops)
+        self.assertEquals({"foo": "bar", "ha": "ha"}, rev.properties)
 
     def test_parse_revision_metadata_no_colon(self):
-        rev = Revision()
+        rev = Revision('someid')
         self.assertRaises(BzrError, lambda: parse_revision_metadata("bla", rev))
 
     def test_parse_revision_metadata_invalid_name(self):
-        rev = Revision()
+        rev = Revision('someid')
         self.assertRaises(BzrError, lambda: parse_revision_metadata("bla: b", rev))

@@ -63,17 +63,18 @@ def parse_revision_metadata(text, rev):
         except ValueError:
             raise BzrError("Missing : in revision metadata")
         if key == "committer":
-            rev.committer = value
+            rev.committer = str(value)
         elif key == "timestamp":
             (rev.timestamp, rev.timezone) = unpack_highres_date(value)
         elif key == "properties":
             in_properties = True
         elif key[0] == "\t" and in_properties:
-            rev.properties[key[1:]] = value
+            rev.properties[str(key[1:])] = str(value)
         else:
             raise BzrError("Invalid key %r" % key)
 
 def generate_revision_metadata(timestamp, timezone, committer, revprops):
+    assert timestamp is None or isinstance(timestamp, float)
     text = ""
     if timestamp is not None:
         text += "timestamp: %s\n" % format_highres_date(timestamp, timezone) 
@@ -81,7 +82,7 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
         text += "committer: %s\n" % committer
     if revprops is not None and revprops != {}:
         text += "properties: \n"
-        for k, v in revprops.items():
+        for k, v in sorted(revprops.items()):
             text += "\t%s: %s\n" % (k, v)
     return text
 

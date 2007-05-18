@@ -1,6 +1,1 @@
-- add tests to make sure a revision is still 100% the same after being pushed 
-  to subversion
- still not kept:
- - timestamp
- - timezone
- - committer
+- test commits in heavyweight bound branches
