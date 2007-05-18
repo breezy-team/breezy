@@ -25,8 +25,18 @@ import sha
 
 from fileids import SimpleFileIdMap, generate_file_id, generate_svn_file_id
 from repository import generate_svn_revision_id
+from revids import parse_svn_revision_id
 from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository, RENAMES
+
+class MockRepo:
+    def __init__(self, uuid="uuid"):
+        self.uuid = uuid
+
+    def lookup_revision_id(self, revid):
+        ret = parse_svn_revision_id(revid)
+        return ret[1], ret[2]
+
 
 class TestComplexFileids(TestCaseWithSubversionRepository):
     # branchtagcopy.dump
@@ -151,25 +161,29 @@ def sha1(text):
     return sha.new(text).hexdigest()
 
 class TestFileIdGenerator(TestCase):
+    def setUp(self):
+        super(TestCase, self).setUp()
+        self.repos = MockRepo()
+
     def test_generate_file_id_root(self):
-        self.assertEqual("2@uuid:bp:", generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), ""))
+        self.assertEqual("2@uuid:bp:", generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), ""))
 
     def test_generate_file_id_path(self):
         self.assertEqual("2@uuid:bp:mypath", 
-                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), "mypath"))
 
     def test_generate_file_id_long(self):
         dir = "this/is/a" + ("/very"*40) + "/long/path/"
         self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
-                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), dir+"filename"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), dir+"filename"))
 
     def test_generate_revid_special_char_ascii(self):
         self.assertEqual("2@uuid:bp:mypath%2C%8A", 
-                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))
 
     def test_generate_file_id_special_char(self):
         self.assertEqual("2@uuid:bp:mypath%2C%C2%8A",
-                         generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
+                         generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
 
     def test_generate_svn_file_id(self):
         self.assertEqual("2@uuid:bp:path", 
@@ -193,7 +207,7 @@ class TestFileMapping(TestCase):
             def new_file_id(x):
                 if renames.has_key(r) and renames[r].has_key(x):
                     return renames[r][x]
-                return generate_file_id(r, x)
+                return generate_file_id(MockRepo(), r, x)
             revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
             map.update(dict([(x, (revmap[x],r)) for x in revmap]))
         return map

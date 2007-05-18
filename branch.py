@@ -24,7 +24,7 @@ from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
 
-from commit import push_as_merged
+from commit import push
 from repository import SvnRepository
 from transport import bzr_to_svn_url, svn_config
 
@@ -79,6 +79,19 @@ class SvnBranch(Branch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
+    """Look up the matching revision number on the mainline of the 
+    branch.
+
+    :param revid: Revision id to look up.
+    :return: Revision number on the branch. 
+    :raises NoSuchRevision: If the revision id was not found.
+    """
+    def lookup_revision_id(self, revid):
+        (bp, revnum) = self.repository.lookup_revision_id(revid)
+        assert bp.strip("/") == self.branch_path.strip("/"), \
+                "Got %r, expected %r" % (bp, self.branch_path)
+        return revnum
+
     def _create_lightweight_checkout(self, to_location, revision_id=None):
         peg_rev = svn.core.svn_opt_revision_t()
         peg_rev.kind = svn.core.svn_opt_revision_head
@@ -87,8 +100,7 @@ class SvnBranch(Branch):
         if revision_id is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
-            assert revision_id in self.revision_history()
-            (_, revnum) = self.repository.parse_revision_id(revision_id)
+            revnum = self.lookup_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
             mutter('hist: %r' % self.revision_history())
@@ -214,7 +226,7 @@ class SvnBranch(Branch):
         else:
             for rev_id in self.missing_revisions(other, stop_revision):
                 mutter('pushing %r to Svn branch' % rev_id)
-                push_as_merged(self, other, rev_id)
+                push(self, other, rev_id)
 
     # The remote server handles all this for us
     def lock_write(self):

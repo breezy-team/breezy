@@ -20,8 +20,8 @@ from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
 
-from repository import (MAPPING_VERSION, parse_svn_revision_id, 
-                        unescape_svn_path, generate_svn_revision_id)
+from revids import (generate_svn_revision_id, parse_svn_revision_id, 
+                    MAPPING_VERSION,  unescape_svn_path)
 
 # Takes an existing Bazaar branch and replaces all old-version mapped revisions 
 # with new-style revisions mappings. 

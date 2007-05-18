@@ -33,7 +33,7 @@ import svn.core
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
-                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVPROP_PREFIX, 
+                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SvnRepositoryFormat)
 from tree import apply_txdelta_handler
 
@@ -61,7 +61,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.weave_store = target.weave_store
         self.dir_baserev = {}
         self._parent_ids = None
-        self._revprops = {}
+        self._revinfo = None
         self._svn_revprops = svn_revprops
         self.pool = Pool()
 
@@ -90,13 +90,15 @@ class RevisionBuildEditor(svn.delta.Editor):
             rev.committer = ""
         rev.message = self._svn_revprops[1] # message
 
-        rev.properties = self._revprops
+        if self._revinfo:
+            parse_revision_metadata(rev, self._revinfo)
+
         return rev
 
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
             # First time the root is set
-            file_id = generate_file_id(self.revid, "")
+            file_id = generate_file_id(self.source, self.revid, "")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -125,7 +127,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def _get_new_id(self, parent_id, new_path):
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
-        return generate_file_id(self.revid, new_path)
+        return generate_file_id(self.source, self.revid, new_path)
 
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")
@@ -183,8 +185,12 @@ class RevisionBuildEditor(svn.delta.Editor):
                 # Only set parents using svk:merge if no 
                 # bzr:merge set.
                 pass # FIXME 
-        elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
-            self._revprops[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = value
+        elif name == SVN_PROP_BZR_REVISION_INFO:
+            if id != self.inventory.root.file_id:
+                mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)
+                return
+ 
+            self._revinfo = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
@@ -308,7 +314,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                                      self.file_stream, self.pool)
 
 
-class InterSvnRepository(InterRepository):
+class InterFromSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
     _matching_repo_format = SvnRepositoryFormat()
@@ -334,7 +340,7 @@ class InterSvnRepository(InterRepository):
     def _find_until(self, revision_id):
         needed = []
         parents = {}
-        (path, until_revnum) = self.source.parse_revision_id(revision_id)
+        (path, until_revnum) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
         for (branch, revnum) in self.source.follow_branch(path, 
@@ -390,7 +396,7 @@ class InterSvnRepository(InterRepository):
         prev_inv = None
         try:
             for revid in needed:
-                (branch, revnum) = self.source.parse_revision_id(revid)
+                (branch, revnum) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
                 parent_revid = parents[revid]
@@ -425,7 +431,7 @@ class InterSvnRepository(InterRepository):
                     reporter.set_path("", revnum, True, None, pool)
                 else:
                     (parent_branch, parent_revnum) = \
-                            self.source.parse_revision_id(parent_revid)
+                            self.source.lookup_revision_id(parent_revid)
                     transport.reparent("%s/%s" % (repos_root, parent_branch))
 
                     if parent_branch != branch:
@@ -461,6 +467,7 @@ class InterSvnRepository(InterRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
+        mutter("Checking from %r %r" % (source, target))
         # FIXME: Also check target uses VersionedFile
         return isinstance(source, SvnRepository)
 

@@ -19,7 +19,7 @@ import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
-                           NotBranchError, UninitializableFormat)
+                           NotBranchError, UninitializableFormat, BzrError)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
@@ -27,6 +27,7 @@ from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
+from bzrlib.timestamp import unpack_highres_date, format_highres_date
 from bzrlib.trace import mutter
 
 from svn.core import SubversionException, Pool
@@ -41,68 +42,49 @@ except ImportError:
 from branchprops import BranchPropertyList
 import errors
 import logwalker
+from revids import (generate_svn_revision_id, parse_svn_revision_id, 
+                    MAPPING_VERSION, RevidMap)
 from tree import SvnRevisionTree
 
-MAPPING_VERSION = 3
-REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 SVN_PROP_BZR_PREFIX = 'bzr:'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
-SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
+SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
 
-import urllib
+def parse_revision_metadata(text, rev):
+    in_properties = False
+    for l in text.splitlines():
+        try:
+            key, value = l.split(": ", 2)
+        except ValueError:
+            raise BzrError("Missing : in revision metadata")
+        if key == "committer":
+            rev.committer = str(value)
+        elif key == "timestamp":
+            (rev.timestamp, rev.timezone) = unpack_highres_date(value)
+        elif key == "properties":
+            in_properties = True
+        elif key[0] == "\t" and in_properties:
+            rev.properties[str(key[1:])] = str(value)
+        else:
+            raise BzrError("Invalid key %r" % key)
 
-def escape_svn_path(x):
-    if isinstance(x, unicode):
-        x = x.encode("utf-8")
-    return urllib.quote(x, "")
-unescape_svn_path = urllib.unquote
-
-
-def parse_svn_revision_id(revid):
-    """Parse an existing Subversion-based revision id.
-
-    :param revid: The revision id.
-    :raises: InvalidRevisionId
-    :return: Tuple with uuid, branch path and revision number.
-    """
-
-    assert revid
-    assert isinstance(revid, basestring)
-
-    if not revid.startswith(REVISION_ID_PREFIX):
-        raise InvalidRevisionId(revid, "")
-
-    try:
-        (version, uuid, branch_path, srevnum)= revid.split(":")
-    except ValueError:
-        raise InvalidRevisionId(revid, "")
-
-    revid = revid[len(REVISION_ID_PREFIX):]
-
-    return (uuid, unescape_svn_path(branch_path), int(srevnum))
-
-
-def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
-    """Generate a unambiguous revision id. 
-    
-    :param uuid: UUID of the repository.
-    :param revnum: Subversion revision number.
-    :param path: Branch path.
-    :param scheme: Name of the branching scheme in use
-
-    :return: New revision id.
-    """
-    assert isinstance(revnum, int)
-    assert isinstance(path, basestring)
-    assert revnum >= 0
-    assert revnum > 0 or path == "", \
-            "Trying to generate revid for (%r,%r)" % (path, revnum)
-    return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
-                   escape_svn_path(path.strip("/")), revnum)
+def generate_revision_metadata(timestamp, timezone, committer, revprops):
+    assert timestamp is None or isinstance(timestamp, float)
+    text = ""
+    if timestamp is not None:
+        text += "timestamp: %s\n" % format_highres_date(timestamp, timezone) 
+    if committer is not None:
+        text += "committer: %s\n" % committer
+    if revprops is not None and revprops != {}:
+        text += "properties: \n"
+        for k, v in sorted(revprops.items()):
+            text += "\t%s: %s\n" % (k, v)
+    return text
 
 
 def svk_feature_to_revision_id(feature):
@@ -178,6 +160,7 @@ class SvnRepository(Repository):
         self.transport = transport
         self.uuid = transport.get_uuid()
         self.base = transport.base
+        self._serializer = None
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
         self.pool = Pool()
@@ -197,6 +180,7 @@ class SvnRepository(Repository):
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
+        self.revmap = RevidMap(self.cachedb)
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
@@ -253,9 +237,9 @@ class SvnRepository(Repository):
         if revision_id is None: 
             return [None]
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
 
-        ancestry = []
+        ancestry = [revision_id]
 
         for l in self.branchprop_list.get_property(path, revnum, 
                                     SVN_PROP_BZR_MERGE, "").splitlines():
@@ -266,9 +250,7 @@ class SvnRepository(Repository):
                 ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
-
         ancestry.reverse()
-
         return ancestry
 
     def has_revision(self, revision_id):
@@ -276,7 +258,7 @@ class SvnRepository(Repository):
             return True
 
         try:
-            (path, revnum) = self.parse_revision_id(revision_id)
+            (path, revnum) = self.lookup_revision_id(revision_id)
         except NoSuchRevision:
             return False
 
@@ -303,7 +285,7 @@ class SvnRepository(Repository):
         return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
-        (path, revnum) = self.parse_revision_id(revid)
+        (path, revnum) = self.lookup_revision_id(revid)
         items = self.branchprop_list.get_property_diff(path, revnum, 
                                   SVN_PROP_BZR_FILEIDS).splitlines()
         return dict(map(lambda x: x.split("\t"), items))
@@ -331,11 +313,11 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id, merged_data=None):
         parent_ids = []
-        (branch, revnum) = self.parse_revision_id(revision_id)
+        (branch, revnum) = self.lookup_revision_id(revision_id)
         mainline_parent = self._mainline_revision_parent(branch, revnum)
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
-            (parent_path, parent_revnum) = self.parse_revision_id(mainline_parent)
+            (parent_path, parent_revnum) = self.lookup_revision_id(mainline_parent)
         else:
             parent_path = None
 
@@ -375,20 +357,12 @@ class SvnRepository(Repository):
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
         
         parent_ids = self.revision_parents(revision_id)
 
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
-
-        svn_props = self.branchprop_list.get_properties(path, revnum)
-        bzr_props = {}
-        for name in svn_props:
-            if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
-                continue
-
-            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
         (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
         if rev.committer is None:
@@ -399,7 +373,11 @@ class SvnRepository(Repository):
         else:
             rev.timestamp = 0.0 # FIXME: Obtain repository creation time
         rev.timezone = None
-        rev.properties = bzr_props
+        rev.properties = {}
+        parse_revision_metadata(
+                self.branchprop_list.get_property(path, revnum, 
+                     SVN_PROP_BZR_REVISION_INFO, ""), rev)
+
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
 
         return rev
@@ -424,16 +402,28 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.fileid_involved_by_set)
 
     def generate_revision_id(self, revnum, path):
-        """Generate a unambiguous revision id. 
+        """Generate an unambiguous revision id. 
         
         :param revnum: Subversion revision number.
         :param path: Branch path.
 
         :return: New revision id.
         """
-        return generate_svn_revision_id(self.uuid, revnum, path)
+        # Look in the cache to see if it already has a revision id
+        revid = self.revmap.lookup_branch_revnum(revnum, path)
+        if revid is not None:
+            return revid
 
-    def parse_revision_id(self, revid):
+        revid = self.branchprop_list.get_property_diff(path, revnum, 
+                SVN_PROP_BZR_REVISION_ID).strip("\n")
+        if revid == "":
+            revid = generate_svn_revision_id(self.uuid, revnum, path)
+
+        self.revmap.insert_revid(revid, path, revnum, revnum, "undefined")
+
+        return revid
+
+    def lookup_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
@@ -441,15 +431,51 @@ class SvnRepository(Repository):
         :return: Tuple with branch path and revision number.
         """
 
+        # Try a simple parse
         try:
             (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
+            assert isinstance(branch_path, str)
+            if uuid == self.uuid:
+                return (branch_path, revnum)
         except InvalidRevisionId:
-            raise NoSuchRevision(self, revid)
+            pass
 
-        if uuid != self.uuid:
-            raise NoSuchRevision(self, revid)
+        # Check the record out of the revmap, if it exists
+        try:
+            (branch_path, min_revnum, max_revnum, \
+                    scheme) = self.revmap.lookup_revid(revid)
+            assert isinstance(branch_path, str)
+            # Entry already complete?
+            if min_revnum == max_revnum:
+                return (branch_path, min_revnum)
+        except NoSuchRevision:
+            # If there is no entry in the map, walk over all branches:
+            for (branch, revno, exists) in self.find_branches():
+                # Look at their bzr:revision-id-vX
+                revids = self.branchprop_list.get_property(branch, revno, 
+                        SVN_PROP_BZR_REVISION_ID, "")
 
-        return (branch_path, revnum)
+                # If there are any new entries that are not yet in the cache, 
+                # add them
+                for r in revids:
+                    self.revmap.insert_revid(revid, branch, 0, revno, 
+                            "undefined")
+
+                if revid in revids:
+                    break
+                
+            (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
+            assert isinstance(branch_path, str)
+
+        # Find the branch property between min_revnum and max_revnum that 
+        # added revid
+        i = min_revnum
+        for (bp, rev) in self.follow_branch(branch_path, max_revnum):
+            if self.branchprop_list.get_property_diff(bp, rev, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
+                self.revmap.insert_revid(revid, bp, rev, rev, "undefined")
+                return (bp, rev)
+
+        raise AssertionError("Revision id was added incorrectly")
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
@@ -624,7 +650,7 @@ class SvnRepository(Repository):
         if revision_id is None:
             return self._full_revision_graph()
 
-        (path, revnum) = self.parse_revision_id(revision_id)
+        (path, revnum) = self.lookup_revision_id(revision_id)
 
         _previous = revision_id
         self._ancestry = {}
@@ -643,6 +669,7 @@ class SvnRepository(Repository):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
+        :return: iterator that returns tuples with (path, revision number, still exists)
         """
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
@@ -697,23 +724,8 @@ class SvnRepository(Repository):
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
                            revision_id=None):
-        if timestamp != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "timestamp can not be user-specified for Subversion repositories")
-
-        if timezone != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "timezone can not be user-specified for Subversion repositories")
-
-        if committer != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "committer can not be user-specified for Subversion repositories")
-
-        if revision_id != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "revision_id can not be user-specified for Subversion repositories")
-
         from commit import SvnCommitBuilder
-        return SvnCommitBuilder(self, branch, parents, config, revprops)
+        return SvnCommitBuilder(self, branch, parents, config, timestamp, 
+                timezone, committer, revprops, revision_id)
 
 

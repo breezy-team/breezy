@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, NoSuchRevision
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
@@ -28,7 +28,7 @@ from unittest import TestCase
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 from fileids import generate_svn_file_id
-from repository import MAPPING_VERSION, generate_svn_revision_id
+from repository import MAPPING_VERSION, generate_svn_revision_id, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -37,6 +37,18 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
+
+    def test_lookup_revision_id_unknown(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertRaises(NoSuchRevision, 
+                lambda: branch.lookup_revision_id("bla"))
+
+    def test_lookup_revision_id(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertEquals(0, 
+                branch.lookup_revision_id(branch.last_revision()))
 
     def test_set_parent(self):
         repos_url = self.make_client('a', 'dc')
@@ -131,6 +143,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "mycommit\n")
         self.client_commit("dc", "My Message")
         
         branch = Branch.open("svn+"+repos_url)
@@ -148,7 +161,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.assertEqual([
             repos.generate_revision_id(0, ""),
-            repos.generate_revision_id(1, ""),
+            "mycommit",
             repos.generate_revision_id(2, "")],
             branch.revision_history())
 
@@ -179,7 +192,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revprop:branch-nick", "mybranch")
+        self.client_set_prop("dc", "bzr:revision-info", 
+                "properties: \n\tbranch-nick: mybranch\n")
         self.client_commit("dc", "My Message")
 
         branch = Branch.open("svn+"+repos_url)
@@ -483,6 +497,9 @@ foohosts""")
  
     def test_generate_revision_id(self):
         self.make_client('d', 'dc')
+        self.build_tree({'dc/bla/bloe': None})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "bla")
         branch = Branch.open('d')
         self.assertEqual("svn-v%d-undefined:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
 

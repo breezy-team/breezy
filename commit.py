@@ -18,40 +18,47 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
+from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.repository import RootCommitBuilder
+from bzrlib.repository import RootCommitBuilder, InterRepository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
-                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
-                        revision_id_to_svk_feature, escape_svn_path)
+from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
+                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
+                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
+                        generate_revision_metadata, SvnRepositoryFormat, 
+                        SvnRepository)
+from revids import escape_svn_path
 
 import os
 
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
-    def __init__(self, repository, branch, parents, config, revprops, 
-                 old_inv=None):
+    def __init__(self, repository, branch, parents, config, timestamp, 
+                 timezone, committer, revprops, revision_id, old_inv=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
         :param branch: SvnBranch to commit to.
         :param parents: List of parent revision ids.
         :param config: Branch configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
         :param revprops: Revision properties to set.
+        :param revision_id: Revision id for the new revision.
         """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
-            config, None, None, None, revprops, None)
-        assert isinstance(repository, SvnRepository)
+            config, timestamp, timezone, committer, revprops, revision_id)
         self.branch = branch
         self.pool = Pool()
 
         self._svnprops = {}
-        for prop in self._revprops:
-            self._svnprops[SVN_PROP_BZR_REVPROP_PREFIX+prop] = self._revprops[prop]
+        self._svnprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(timestamp, timezone, committer, revprops)
 
         self.merges = filter(lambda x: x != self.branch.last_revision(),
                              parents)
@@ -59,7 +66,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if len(self.merges) > 0:
             # Bazaar Parents
             if branch.last_revision():
-                (bp, revnum) = repository.parse_revision_id(branch.last_revision())
+                (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
                 old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_BZR_MERGE, "")
             else:
                 old = ""
@@ -80,6 +87,17 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             if new != "":
                 self._svnprops[SVN_PROP_SVK_MERGE] = old + new
+
+        if revision_id is not None:
+            if branch.last_revision():
+                (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
+                old = repository.branchprop_list.get_property(bp, revnum, 
+                            SVN_PROP_BZR_REVISION_ID, "")
+            else:
+                old = ""
+
+            self._svnprops[SVN_PROP_BZR_REVISION_ID] = old + \
+                    "%s\n" % revision_id
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -293,7 +311,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.revnum = revision
             self.date = date
             self.author = author
-            mutter('committed %r, author: %r, date: %r' % (revision, author, date))
         
         mutter('obtaining commit editor')
         self.revnum = None
@@ -303,8 +320,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.branch.last_revision() is None:
             self.base_revnum = 0
         else:
-            self.base_revnum = self.repository.parse_revision_id(
-                          self.branch.last_revision())[1]
+            self.base_revnum = self.branch.lookup_revision_id(
+                          self.branch.last_revision())
 
         root = svn.delta.editor_invoke_open_root(self.editor, editor_baton, 
                                                  self.base_revnum)
@@ -329,8 +346,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         self.branch.revision_history()
         self.branch._revision_history.append(revid)
 
-        mutter('commit finished. author: %r, date: %r' % 
-               (self.author, self.date))
+        mutter('commit %d finished. author: %r, date: %r' % 
+               (self.revnum, self.author, self.date))
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
@@ -377,6 +394,28 @@ class SvnCommitBuilder(RootCommitBuilder):
         ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
+def replay_delta(builder, delta, old_tree):
+    for (_, ie) in builder.new_inventory.entries():
+        if not delta.touches_file_id(ie.file_id):
+            continue
+
+        id = ie.file_id
+        while builder.new_inventory[id].parent_id is not None:
+            if builder.new_inventory[id].revision is None:
+                break
+            builder.new_inventory[id].revision = None
+            if builder.new_inventory[id].kind == 'directory':
+                builder.modified_directory(id, [])
+            id = builder.new_inventory[id].parent_id
+
+        if ie.kind == 'link':
+            builder.modified_link(ie.file_id, [], ie.symlink_target)
+        elif ie.kind == 'file':
+            def get_text():
+                return old_tree.get_file_text(ie.file_id)
+            builder.modified_file_text(ie.file_id, [], get_text)
+
+
 def push_as_merged(target, source, revision_id):
     """Push a revision as merged revision.
 
@@ -391,6 +430,7 @@ def push_as_merged(target, source, revision_id):
     :param revision_id: Revision id of the revision to push
     :return: The revision id of the created revision
     """
+    assert isinstance(source, Branch)
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
@@ -408,31 +448,16 @@ def push_as_merged(target, source, revision_id):
     builder = SvnCommitBuilder(target.repository, target, 
                                [revision_id, prev_revid],
                                target.get_config(),
+                               None,
+                               None,
+                               None,
                                rev.properties, 
+                               None,
                                new_tree.inventory)
                          
     delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
-
-    for (_, ie) in inv.entries():
-        if not delta.touches_file_id(ie.file_id):
-            continue
-
-        id = ie.file_id
-        while inv[id].parent_id is not None:
-            if inv[id].revision is None:
-                break
-            inv[id].revision = None
-            if inv[id].kind == 'directory':
-                builder.modified_directory(id, [])
-            id = inv[id].parent_id
-
-        if ie.kind == 'link':
-            builder.modified_link(ie.file_id, [], ie.symlink_target)
-        elif ie.kind == 'file':
-            def get_text():
-                return old_tree.get_file_text(ie.file_id)
-            builder.modified_file_text(ie.file_id, [], get_text)
+    replay_delta(builder, delta, old_tree)
 
     try:
         return builder.commit(rev.message)
@@ -441,3 +466,104 @@ def push_as_merged(target, source, revision_id):
             raise DivergedBranches(source, target)
         raise
 
+def push(target, source, revision_id):
+    """Push a revision into Subversion.
+
+    This will do a new commit in the target branch.
+
+    :param target: Repository to push to
+    :param source: Repository to pull the revision from
+    :param revision_id: Revision id of the revision to push
+    """
+    assert isinstance(source, Branch)
+    rev = source.repository.get_revision(revision_id)
+    inv = source.repository.get_inventory(revision_id)
+
+    # revision on top of which to commit
+    assert target.last_revision() in rev.parent_ids
+
+    mutter('pushing %r' % (revision_id))
+
+    old_tree = source.repository.revision_tree(revision_id)
+    new_tree = source.repository.revision_tree(target.last_revision())
+
+    builder = SvnCommitBuilder(target.repository, target, 
+                               rev.parent_ids,
+                               target.get_config(),
+                               rev.timestamp,
+                               rev.timezone,
+                               rev.committer,
+                               rev.properties, 
+                               revision_id,
+                               new_tree.inventory)
+                         
+    delta = new_tree.changes_from(old_tree)
+    builder.new_inventory = inv
+    replay_delta(builder, delta, old_tree)
+    try:
+        return builder.commit(rev.message)
+    except SubversionException, (_, num):
+        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+            raise DivergedBranches(source, target)
+        raise
+
+class InterToSvnRepository(InterRepository):
+    """Any to Subversion repository actions."""
+
+    _matching_repo_format = SvnRepositoryFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
+    def copy_content(self, revision_id=None, basis=None, pb=None):
+        """See InterRepository.copy_content."""
+        assert revision_id is not None, "fetching all revisions not supported"
+        # Go back over the LHS parent until we reach a revid we know
+        todo = []
+        while not self.target.has_revision(revision_id):
+            todo.append(revision_id)
+            revision_id = self.source.revision_parents(revision_id)[0]
+            if revision_id == NULL_REVISION:
+                raise "Unrelated repositories."
+        todo.reverse()
+        mutter("pushing %r into svn" % todo)
+        while len(todo) > 0:
+            revision_id = todo.pop()
+
+            rev = self.source.get_revision(revision_id)
+            inv = self.source.get_inventory(revision_id)
+
+            mutter('pushing %r' % (revision_id))
+
+            old_tree = self.source.revision_tree(revision_id)
+            parent_revid = self.source.revision_parents(revision_id)[0]
+            new_tree = self.source.revision_tree(parent_revid)
+
+            (bp, _) = self.target.lookup_revision_id(parent_revid)
+            target_branch = Branch.open("%s/%s" % (self.target.base, bp))
+
+            builder = SvnCommitBuilder(self.target, target_branch, 
+                               rev.parent_ids,
+                               target_branch.get_config(),
+                               rev.timestamp,
+                               rev.timezone,
+                               rev.committer,
+                               rev.properties, 
+                               revision_id,
+                               new_tree.inventory)
+                         
+            delta = new_tree.changes_from(old_tree)
+            builder.new_inventory = inv
+            replay_delta(builder, delta, old_tree)
+            builder.commit(rev.message)
+ 
+
+    def fetch(self, revision_id=None, pb=None):
+        """Fetch revisions. """
+        self.copy_content(revision_id=revision_id, pb=pb)
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with SvnRepository."""
+        return isinstance(target, SvnRepository)

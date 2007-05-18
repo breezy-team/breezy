@@ -24,7 +24,6 @@ from bzrlib.transport.local import LocalTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
-from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
 from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
@@ -124,6 +123,7 @@ class SvnRemoteAccess(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch()."""
+        from branch import SvnBranch
         repos = self.open_repository()
         # TODO: Check if there are any revisions in this repository 
         # yet if it is the top-level one
@@ -133,6 +133,7 @@ class SvnRemoteAccess(BzrDir):
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
+        from branch import SvnBranch
 
         if not self.scheme.is_branch(self.branch_path) and \
            not self.scheme.is_tag(self.branch_path):

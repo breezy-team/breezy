@@ -18,10 +18,10 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, UninitializableFormat
+from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase
 
 import os
@@ -34,10 +34,12 @@ import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-from repository import (parse_svn_revision_id, generate_svn_revision_id, 
-                        svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        MAPPING_VERSION, escape_svn_path, unescape_svn_path,
-                        SvnRepositoryFormat)
+from tests.test_fileids import MockRepo
+from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
+                        SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
+                        generate_revision_metadata, parse_revision_metadata)
+from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
+                    parse_svn_revision_id, generate_svn_revision_id)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
@@ -75,7 +77,15 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(0, "")
-        self.assertEqual({"": (generate_file_id(revid, ""), revid)}, repos.get_fileid_map(0, ""))
+        self.assertEqual({"": (generate_file_id(MockRepo(repos.uuid), revid, ""), revid)}, repos.get_fileid_map(0, ""))
+
+    def test_generate_revision_id_forced_revid(self):
+        repos_url = self.make_client("a", "dc")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "someid\n")
+        self.client_commit("dc", "set id")
+        repos = Repository.open(repos_url)
+        revid = repos.generate_revision_id(1, "")
+        self.assertEquals("someid", revid)
 
     def test_add_revision(self):
         repos_url = self.make_client("a", "dc")
@@ -402,6 +412,26 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(author, rev.committer)
         self.assertIsInstance(rev.properties, dict)
 
+    def test_get_revision_id_overriden(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision, repository.get_revision, "nonexisting")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+                            "myrevid")
+        (num, date, author) = self.client_commit("dc", "Second Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        revid = generate_svn_revision_id(repository.uuid, 2, "")
+        rev = repository.get_revision("myrevid")
+        self.assertEqual([repository.generate_revision_id(1, "")],
+                rev.parent_ids)
+        self.assertEqual(rev.revision_id, repository.generate_revision_id(2, ""))
+        self.assertEqual(author, rev.committer)
+        self.assertIsInstance(rev.properties, dict)
+
     def test_get_revision_zero(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
@@ -428,19 +458,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
             repository.generate_revision_id(1, ""),
-            repository.generate_revision_id(2, "")],
+            repository.generate_revision_id(2, ""),
+            repository.generate_revision_id(3, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(3, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
-            repository.generate_revision_id(1, "")],
+            repository.generate_revision_id(1, ""),
+            repository.generate_revision_id(2, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
         self.assertEqual([None,
-                    repository.generate_revision_id(0, "")],
+                    repository.generate_revision_id(0, ""),
+                    repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
         self.assertEqual([None], repository.get_ancestry(None))
@@ -530,15 +563,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
-        self.assertEqual([None, repository.generate_revision_id(0, "")],
+        self.assertEqual([None, repository.generate_revision_id(0, ""),
+            repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
-            repository.generate_revision_id(1, "")], 
+            repository.generate_revision_id(1, ""),
+            repository.generate_revision_id(2, "")], 
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
 
@@ -551,16 +586,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None],
+        self.assertEqual([None, repository.generate_revision_id(0, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "")))
-        self.assertEqual([None, repository.generate_revision_id(0, "")],
+        self.assertEqual([None, repository.generate_revision_id(0, ""),
+            repository.generate_revision_id(1, "")],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "")))
         self.assertEqual([None, 
             repository.generate_revision_id(0, ""),
             repository.generate_revision_id(1, ""), 
-                          "a-parent"], 
+                          "a-parent", repository.generate_revision_id(2, "")], 
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "")))
 
@@ -595,6 +631,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_generate_revision_id(self):
         repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla/bloe': None})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "bla")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(
                u"svn-v%d-undefined:%s:bla%%2Fbloe:1" % (MAPPING_VERSION, repository.uuid), 
@@ -606,20 +645,35 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual("svn-v%d-undefined:%s::0" % (MAPPING_VERSION, repository.uuid), 
                 repository.generate_revision_id(0, ""))
 
-    def test_parse_revision_id(self):
+    def test_lookup_revision_id(self):
         repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertRaises(NoSuchRevision, repository.parse_revision_id, 
+        self.assertRaises(NoSuchRevision, repository.lookup_revision_id, 
             "nonexisting")
         self.assertEqual(("bloe", 1), 
-            repository.parse_revision_id(
+            repository.lookup_revision_id(
                 repository.generate_revision_id(1, "bloe")))
 
-    def test_parse_revision_id_invalid_uuid(self):
+    def test_lookup_revision_id_overridden(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "myid\n")
+        self.client_commit("dc", "foobar")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual(("", 1), repository.lookup_revision_id( 
+            generate_svn_revision_id(repository.uuid, 1, "")))
+        self.assertEqual(("", 1), 
+            repository.lookup_revision_id("myid"))
+
+    def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, 
-            repository.parse_revision_id, 
+            repository.lookup_revision_id, 
                 generate_svn_revision_id("invaliduuid", 0, ""))
         
     def test_check(self):
@@ -653,7 +707,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(repository.has_revision(
             repository.generate_revision_id(1, "")))
         self.assertFalse(repository.has_revision(
-            repository.generate_revision_id(4, "")))
+            generate_svn_revision_id(repository.uuid, 4, "")))
 
     def test_is_shared(self):
         repos_url = self.make_client('d', 'dc')
@@ -2180,54 +2234,12 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
                 self.repos.generate_revision_id(2, ""))
 
         self.assertEqual('symlink', inventory[inventory.path2id("bar")].kind)
-        self.assertEqual('foo/bla', inventory[inventory.path2id("bar")].symlink_target)
+        self.assertEqual('foo/bla', 
+                inventory[inventory.path2id("bar")].symlink_target)
 
     def test_not_executable(self):
         self.assertFalse(self.inventory[
             self.inventory.path2id("foo/bla")].executable)
-
-class RevisionIdMappingTest(TestCase):
-    def test_generate_revid(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch"))
-
-    def test_generate_revid_nested(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2Fpath:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch/path"))
-
-    def test_generate_revid_special_char(self):
-        self.assertEqual(u"svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, u"branch\x2c"))
-
-    def test_generate_revid_special_char_ascii(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, "branch\x2c"))
-
-    def test_generate_revid_nordic(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%C3%%A6:5" % MAPPING_VERSION, 
-                         generate_svn_revision_id("myuuid", 5, u"branch\xe6"))
-
-    def test_parse_revid_simple(self):
-        self.assertEqual(("uuid", "", 4),
-                         parse_svn_revision_id(
-                             "svn-v%d-undefined:uuid::4" % MAPPING_VERSION))
-
-    def test_parse_revid_nested(self):
-        self.assertEqual(("uuid", "bp/data", 4),
-                         parse_svn_revision_id(
-                             "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
-
-    def test_svk_revid_map_root(self):
-        self.assertEqual("svn-v%d-undefined:auuid::6" % MAPPING_VERSION,
-                         svk_feature_to_revision_id("auuid:/:6"))
-
-    def test_svk_revid_map_nested(self):
-        self.assertEqual("svn-v%d-undefined:auuid:bp:6" % MAPPING_VERSION,
-                         svk_feature_to_revision_id("auuid:/bp:6"))
-
-    def test_revid_svk_map(self):
-        self.assertEqual("auuid:/:6", 
-              revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
 
 class EscapeTest(TestCase):
@@ -2272,3 +2284,53 @@ class SvnRepositoryFormatTests(TestCase):
     def test_get_format_description(self):
         self.assertEqual("Subversion Repository", 
                          self.format.get_format_description())
+
+class MetadataMarshallerTests(TestCase):
+    def test_generate_revision_metadata_none(self):
+        self.assertEquals("", 
+                generate_revision_metadata(None, None, None, None))
+
+    def test_generate_revision_metadata_committer(self):
+        self.assertEquals("committer: bla\n", 
+                generate_revision_metadata(None, None, "bla", None))
+
+    def test_generate_revision_metadata_timestamp(self):
+        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52.350850105 +0000\n", 
+                generate_revision_metadata(1120153132.350850105, 0, 
+                    None, None))
+            
+    def test_generate_revision_metadata_properties(self):
+        self.assertEquals("properties: \n" + 
+                "\tpropbla: bloe\n" +
+                "\tpropfoo: bla\n",
+                generate_revision_metadata(None, None,
+                    None, {"propbla": "bloe", "propfoo": "bla"}))
+
+    def test_parse_revision_metadata_empty(self):
+        parse_revision_metadata("", None)
+
+    def test_parse_revision_metadata_committer(self):
+        rev = Revision('someid')
+        parse_revision_metadata("committer: somebody\n", rev)
+        self.assertEquals("somebody", rev.committer)
+
+    def test_parse_revision_metadata_timestamp(self):
+        rev = Revision('someid')
+        parse_revision_metadata("timestamp: Thu 2005-06-30 12:38:52.350850105 -0500\n", rev)
+        self.assertEquals(1120153132.3508501, rev.timestamp)
+        self.assertEquals(-18000, rev.timezone)
+
+    def test_parse_revision_metadata_properties(self):
+        rev = Revision('someid')
+        parse_revision_metadata("properties: \n" + 
+                                "\tfoo: bar\n" + 
+                                "\tha: ha\n", rev)
+        self.assertEquals({"foo": "bar", "ha": "ha"}, rev.properties)
+
+    def test_parse_revision_metadata_no_colon(self):
+        rev = Revision('someid')
+        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla", rev))
+
+    def test_parse_revision_metadata_invalid_name(self):
+        rev = Revision('someid')
+        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla: b", rev))

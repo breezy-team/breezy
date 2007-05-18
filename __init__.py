@@ -97,7 +97,8 @@ from bzrlib.bzrdir import BzrDirFormat
 
 from bzrlib.repository import InterRepository
 
-from fetch import InterSvnRepository
+from fetch import InterFromSvnRepository
+from commit import InterToSvnRepository
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
@@ -106,7 +107,8 @@ _subr_version = svn.core.svn_subr_version()
 
 BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
-InterRepository.register_optimiser(InterSvnRepository)
+InterRepository.register_optimiser(InterFromSvnRepository)
+InterRepository.register_optimiser(InterToSvnRepository)
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command, display_command, Option
