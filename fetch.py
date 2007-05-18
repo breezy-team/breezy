@@ -96,7 +96,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
             # First time the root is set
-            file_id = generate_file_id(self.revid, "")
+            file_id = generate_file_id(self.source, self.revid, "")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -125,7 +125,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def _get_new_id(self, parent_id, new_path):
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
-        return generate_file_id(self.revid, new_path)
+        return generate_file_id(self.source, self.revid, new_path)
 
     def delete_entry(self, path, revnum, parent_id, pool):
         path = path.decode("utf-8")

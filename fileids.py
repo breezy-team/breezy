@@ -22,8 +22,7 @@ import bzrlib.ui as ui
 
 import sha
 
-from revids import (generate_svn_revision_id, parse_svn_revision_id, 
-                    escape_svn_path)
+from revids import escape_svn_path
 
 def generate_svn_file_id(uuid, revnum, branch, path):
     """Create a file id identifying a Subversion file.
@@ -42,12 +41,12 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     return ret
 
 
-def generate_file_id(revid, path):
-    (uuid, branch, revnum) = parse_svn_revision_id(revid)
-    return generate_svn_file_id(uuid, revnum, branch, path)
+def generate_file_id(repos, revid, path):
+    (branch, revnum) = repos.lookup_revision_id(revid)
+    return generate_svn_file_id(repos.uuid, revnum, branch, path)
 
 
-def get_local_changes(paths, scheme, uuid, get_children=None):
+def get_local_changes(paths, scheme, generate_revid, get_children=None):
     new_paths = {}
     names = paths.keys()
     names.sort()
@@ -62,8 +61,7 @@ def get_local_changes(paths, scheme, uuid, get_children=None):
                 if (crp == "" and new_p == ""):
                     data = ('M', None, None)
                 else:
-                    data = (data[0], crp, generate_svn_revision_id(
-                        uuid, data[2], cbp))
+                    data = (data[0], crp, generate_revid(data[2], cbp))
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
@@ -117,7 +115,7 @@ class FileIdMap(object):
         :param global_changes: Dict with global changes that happened
         """
         changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid, find_children)
+                    self.repos.generate_revision_id, find_children)
         if find_children is not None:
             def get_children(path, revid):
                 (bp, revnum) = self.repos.lookup_revision_id(revid)
@@ -126,12 +124,12 @@ class FileIdMap(object):
         else:
             get_children = None
 
-        revid = generate_svn_revision_id(uuid, revnum, branch)
+        revid = self.repos.generate_revision_id(revnum, branch)
 
         def new_file_id(x):
             if renames.has_key(x):
                 return renames[x]
-            return generate_file_id(revid, x)
+            return generate_file_id(self.repos, revid, x)
          
         return self._apply_changes(new_file_id, changes, get_children)
 
@@ -147,7 +145,7 @@ class FileIdMap(object):
 
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
-            revid = generate_svn_revision_id(uuid, rev, bp)
+            revid = self.repos.generate_revision_id(rev, bp)
             map = self.load(revid)
             if map != {}:
                 # found the nearest cached map
@@ -188,7 +186,7 @@ class FileIdMap(object):
                 def new_file_id(x):
                     if renames.has_key(x):
                         return renames[x]
-                    return generate_file_id(revid, x)
+                    return generate_file_id(self.repos, revid, x)
                 
                 revmap = self._apply_changes(new_file_id, changes, find_children)
                 for p in changes:

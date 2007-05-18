@@ -224,12 +224,10 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.olddir.find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        import pdb
-        pdb.set_trace()
         self.assertEqual(repos.generate_revision_id(2, ""),
                          inv[inv.path2id('foo/bla')].revision)
-        self.assertTrue(wt.branch.last_revision() in 
-          repos.revision_parents(repos.generate_revision_id(2, "")))
+        self.assertEqual(wt.branch.last_revision(),
+          repos.generate_revision_id(2, ""))
         self.assertEqual(wt.branch.last_revision(),
                         self.olddir.open_branch().last_revision())
         self.assertEqual("other data", 
