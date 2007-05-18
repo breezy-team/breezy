@@ -427,13 +427,16 @@ class SvnWorkingTree(WorkingTree):
 
         self.client_ctx.log_msg_baton2 = log_message_func
         if rev_id is not None:
-            wc = self._get_wc(write_lock=True)
-            try:
-                svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
-                                 self._get_bzr_revids() + rev_id + "\n",
-                                 self.basedir, wc)
-            finally:
-                svn.wc.adm_close(wc)
+            extra = rev_id + "\n"
+        else:
+            extra = ""
+        wc = self._get_wc(write_lock=True)
+        try:
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
+                             self._get_bzr_revids() + extra,
+                             self.basedir, wc)
+        finally:
+            svn.wc.adm_close(wc)
 
         commit_info = svn.client.commit3(specific_files, True, False, 
                                          self.client_ctx)

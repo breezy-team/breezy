@@ -443,6 +443,7 @@ class SvnRepository(Repository):
             if self.branchprop_list.get_property_diff(branch_path, i, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
                 self.revmap.insert_revid(revid, branch_path, i, i, "undefined")
                 return (branch_path, i)
+            i+=1
 
         raise AssertionError("Revision id was added incorrectly")
 

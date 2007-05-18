@@ -126,7 +126,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.finish_inventory()
         builder.commit("foo")
 
-        self.assertEqual("my-revision-id", 
+        self.assertEqual("my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
 
     def test_mwh(self):

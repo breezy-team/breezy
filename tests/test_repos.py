@@ -422,8 +422,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                             "myrevid")
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertRaises(NoSuchRevision,
-                repository.get_revision, repository.generate_revision_id(2, ""))
+        revid = generate_svn_revision_id(repository.uuid, 2, "")
         rev = repository.get_revision("myrevid")
         self.assertEqual([repository.generate_revision_id(1, "")],
                 rev.parent_ids)
@@ -649,6 +648,18 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(("bloe", 1), 
             repository.lookup_revision_id(
                 repository.generate_revision_id(1, "bloe")))
+
+    def test_lookup_revision_id_overridden(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "myid\n")
+        self.client_commit("dc", "foobar")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual(("", 1), repository.lookup_revision_id( 
+            generate_svn_revision_id(repository.uuid, 1, "")))
+        self.assertEqual(("", 1), 
+            repository.lookup_revision_id("myid"))
 
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
