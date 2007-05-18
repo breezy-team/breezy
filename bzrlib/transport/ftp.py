@@ -111,7 +111,8 @@ class FtpTransport(Transport):
             # urlparse won't handle aftp://, delete the leading 'a'
 
             # FIXME: This breaks even hopes of connection sharing
-            # by modifying the the url coming from the user.
+            # (by reusing the url instead of true cloning) by
+            # modifying the the url coming from the user.
             base = base[1:]
         if not base.endswith('/'):
             base += '/'

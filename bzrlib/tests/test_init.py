@@ -27,21 +27,6 @@ from bzrlib.transport import (
 from bzrlib.transport.ftp import FtpTransport
 
 
-class InstrumentedTransport(FtpTransport):
-    """Instrumented transport class to test use by init command"""
-
-    def _get_FTP(self):
-        """See FtpTransport._get_FTP.
-
-        This is where we can detect if the connection is reused
-        or if a new one is created. This a bit ugly, but it's the
-        easiest until transport classes are refactored.
-        """
-        instance = super(InstrumentedTransport, self)._get_FTP()
-        self.hooks.run_hook('get_FTP', self, instance)
-        return instance
-
-
 class TransportHooks(Hooks):
     """Dict-mapping hook name to a list of callables for transport hooks"""
 
@@ -51,26 +36,23 @@ class TransportHooks(Hooks):
         # an ftp connection. The api signature is (transport, ftp_instance)
         self['get_FTP'] = []
 
-    # FIXME: Why don't we have Hooks.run_hooks ?
-    def run_hook(self, hook_name, *args, **kwargs):
-        try:
-            hooks = self[hook_name]
-        except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
-        for hook in hooks:
-            hook(*args, **kwargs)
 
-    # FIXME: Why don't we have Hooks.uninstall_hook ?
-    def uninstall_hook(self, hook_name, a_callable):
-        try:
-            self[hook_name].remove(a_callable)
-        except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
-        # FIXME: catch ValueError and raise errors.UnknownHookValue ?
+class InstrumentedTransport(FtpTransport):
+    """Instrumented transport class to test use by init command"""
 
+    hooks = TransportHooks()
 
-# install the default hooks into the Branch class.
-InstrumentedTransport.hooks = TransportHooks()
+    def _get_FTP(self):
+        """See FtpTransport._get_FTP.
+
+        This is where we can detect if the connection is reused
+        or if a new one is created. This a bit ugly, but it's the
+        easiest until transport classes are refactored.
+        """
+        instance = super(InstrumentedTransport, self)._get_FTP()
+        for hook in self.hooks['get_FTP']:
+            hook(self, instance)
+        return instance
 
 
 class TestInit(TestCaseWithFTPServer):
@@ -83,8 +65,7 @@ class TestInit(TestCaseWithFTPServer):
         register_transport('ftp://', InstrumentedTransport)
 
         def cleanup():
-            InstrumentedTransport.hooks.uninstall_hook('get_FTP',
-                                                       self.get_connection_hook)
+            InstrumentedTransport.hooks = TransportHooks()
             unregister_transport('ftp://', InstrumentedTransport)
 
         self.addCleanup(cleanup)
@@ -100,5 +81,3 @@ class TestInit(TestCaseWithFTPServer):
         cmd.run(self.get_url())
         self.assertEquals(1, len(self.connections))
 
-    def test_branch(self):
-        
