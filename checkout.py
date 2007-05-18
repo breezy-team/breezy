@@ -31,6 +31,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from convert import SvnConverter
+from errors import LocalCommitsUnsupported
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
                         SVN_PROP_BZR_REVISION_ID,
@@ -405,10 +406,11 @@ class SvnWorkingTree(WorkingTree):
         # FIXME: Use verbose
         # FIXME: Use reporter
         # FIXME: Use revprops
-        # FIXME: Raise exception when local is True
-        # FIXME: Use strct
+        # FIXME: Use strict
         assert timestamp is None
         assert timezone is None
+        if local:
+            raise LocalCommitsUnsupported()
 
         if specific_files:
             specific_files = [self.abspath(x).encode('utf8') for x in specific_files]

@@ -171,7 +171,8 @@ class FileIdMap(object):
             i = 1
             for (revid, global_changes) in todo:
                 changes = get_local_changes(global_changes, self.repos.scheme,
-                                            uuid, self.repos._log.find_children)
+                                            self.repos.generate_revision_id, 
+                                            self.repos._log.find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):

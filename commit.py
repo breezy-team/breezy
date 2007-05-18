@@ -26,8 +26,9 @@ from bzrlib.repository import RootCommitBuilder
 from bzrlib.trace import mutter
 
 from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
-                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
-                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature)
+                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
+                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
+                        generate_revision_metadata)
 from revids import escape_svn_path
 
 import os
@@ -35,25 +36,27 @@ import os
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
-    def __init__(self, repository, branch, parents, config, revprops, 
-                 revision_id, old_inv=None):
+    def __init__(self, repository, branch, parents, config, timestamp, 
+                 timezone, committer, revprops, revision_id, old_inv=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
         :param branch: SvnBranch to commit to.
         :param parents: List of parent revision ids.
         :param config: Branch configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
         :param revprops: Revision properties to set.
         :param revision_id: Revision id for the new revision.
         """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
-            config, None, None, None, revprops, None)
+            config, timestamp, timezone, committer, revprops, revision_id)
         self.branch = branch
         self.pool = Pool()
 
         self._svnprops = {}
-        for prop in self._revprops:
-            self._svnprops[SVN_PROP_BZR_REVPROP_PREFIX+prop] = self._revprops[prop]
+        self._svnprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(timestamp, timezone, committer, revprops)
 
         self.merges = filter(lambda x: x != self.branch.last_revision(),
                              parents)

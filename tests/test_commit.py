@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import DivergedBranches
+from bzrlib.errors import DivergedBranches, BzrError
 from bzrlib.workingtree import WorkingTree
 
 from copy import copy
@@ -71,6 +71,14 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
                             wt.branch.last_revision())
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
 
+    def test_commit_local(self):
+        self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = self.open_checkout("dc")
+        self.assertRaises(BzrError, wt.commit, 
+                message="data", local=True)
+
     def test_commit_message_nordic(self):
         self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -117,7 +125,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.commit(message="data")
 
         branch = Branch.open(repos_url)
-        builder = branch.get_commit_builder([branch.last_revision()], revision_id="my-revision-id")
+        builder = branch.get_commit_builder([branch.last_revision()], 
+                revision_id="my-revision-id")
         tree = branch.repository.revision_tree(branch.last_revision())
         new_tree = copy(tree)
         ie = new_tree.inventory.root
@@ -128,6 +137,35 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
         self.assertEqual("my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
+
+    def test_commit_metadata(self):
+        repos_url = self.make_client('d', 'dc')
+        wt = self.open_checkout("dc")
+        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
+        wt.add('bla')
+        wt.commit(message="data")
+
+        branch = Branch.open(repos_url)
+        builder = branch.get_commit_builder([branch.last_revision()], 
+                timestamp=4534, timezone=2, committer="fry",
+                revision_id="my-revision-id")
+        tree = branch.repository.revision_tree(branch.last_revision())
+        new_tree = copy(tree)
+        ie = new_tree.inventory.root
+        ie.revision = None
+        builder.record_entry_contents(ie, [tree.inventory], '', new_tree)
+        builder.finish_inventory()
+        builder.commit("foo")
+
+        self.assertEqual("my-revision-id\n", 
+                self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
+
+        self.assertEqual("fry", 
+                self.client_get_prop("dc", "bzr:committer", 2))
+
+        self.assertEqual("4534T2", 
+                self.client_get_prop("dc", "bzr:timestamp", 2))
+
 
     def test_mwh(self):
         repo = self.make_client('d', 'sc')

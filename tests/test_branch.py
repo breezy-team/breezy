@@ -192,7 +192,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revprop:branch-nick", "mybranch")
+        self.client_set_prop("dc", "bzr:revision-info", 
+                "properties: \n\tbranch-nick: mybranch\n")
         self.client_commit("dc", "My Message")
 
         branch = Branch.open("svn+"+repos_url)

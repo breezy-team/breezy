@@ -156,6 +156,19 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual("some-rid\n", 
                 self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID))
 
+    def test_commit_check_rev_equal(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
+        rev1 = self.svndir.find_repository().get_revision(wt.branch.last_revision())
+        rev2 = self.bzrdir.find_repository().get_revision(wt.branch.last_revision())
+
+        self.assertEqual(rev1, rev2)
+
     def test_multiple_merged(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()

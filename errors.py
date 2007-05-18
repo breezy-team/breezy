@@ -58,3 +58,8 @@ def convert_svn_error(unbound):
 class NoCheckoutSupport(BzrError):
 
     _fmt = 'Subversion version too old for working tree support.'
+
+
+class LocalCommitsUnsupported(BzrError):
+
+    _fmt = 'Local commits are not supported for lightweight Subversion checkouts.'

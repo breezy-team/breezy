@@ -19,7 +19,7 @@ import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
-                           NotBranchError, UninitializableFormat)
+                           NotBranchError, UninitializableFormat, BzrError)
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
@@ -27,6 +27,7 @@ from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
+from bzrlib.timestamp import unpack_highres_date, format_highres_date
 from bzrlib.trace import mutter
 
 from svn.core import SubversionException, Pool
@@ -50,9 +51,39 @@ SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
-SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
+SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
+
+def parse_revision_metadata(text, rev):
+    in_properties = False
+    for l in text.splitlines():
+        try:
+            key, value = l.split(": ", 2)
+        except ValueError:
+            raise BzrError("Missing : in revision metadata")
+        if key == "committer":
+            rev.committer = value
+        elif key == "timestamp":
+            (rev.timestamp, rev.timezone) = unpack_highres_date(value)
+        elif key == "properties":
+            in_properties = True
+        elif key[0] == "\t" and in_properties:
+            rev.properties[key[1:]] = value
+        else:
+            raise BzrError("Invalid key %r" % key)
+
+def generate_revision_metadata(timestamp, timezone, committer, revprops):
+    text = ""
+    if timestamp is not None:
+        text += "timestamp: %s\n" % format_highres_date(timestamp, timezone) 
+    if committer is not None:
+        text += "committer: %s\n" % committer
+    if revprops is not None and revprops != {}:
+        text += "properties: \n"
+        for k, v in revprops.items():
+            text += "\t%s: %s\n" % (k, v)
+    return text
 
 def svk_feature_to_revision_id(feature):
     """Create a revision id from a svk feature identifier.
@@ -330,14 +361,6 @@ class SvnRepository(Repository):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
-        svn_props = self.branchprop_list.get_properties(path, revnum)
-        bzr_props = {}
-        for name in svn_props:
-            if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
-                continue
-
-            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
-
         (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
         if rev.committer is None:
             rev.committer = ""
@@ -347,7 +370,11 @@ class SvnRepository(Repository):
         else:
             rev.timestamp = 0.0 # FIXME: Obtain repository creation time
         rev.timezone = None
-        rev.properties = bzr_props
+        rev.properties = {}
+        parse_revision_metadata(
+                self.branchprop_list.get_property(path, revnum, 
+                     SVN_PROP_BZR_REVISION_INFO, ""), rev)
+
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
 
         return rev
@@ -694,20 +721,8 @@ class SvnRepository(Repository):
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
                            revision_id=None):
-        if timestamp != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "timestamp can not be user-specified for Subversion repositories")
-
-        if timezone != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "timezone can not be user-specified for Subversion repositories")
-
-        if committer != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "committer can not be user-specified for Subversion repositories")
-
         from commit import SvnCommitBuilder
-        return SvnCommitBuilder(self, branch, parents, config, revprops,
-                                revision_id)
+        return SvnCommitBuilder(self, branch, parents, config, timestamp, 
+                timezone, committer, revprops, revision_id)
 
 

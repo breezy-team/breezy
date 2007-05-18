@@ -21,7 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision, UninitializableFormat
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase
 
 import os
@@ -35,7 +35,8 @@ from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID)
+                        SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
+                        generate_revision_metadata, parse_revision_metadata)
 from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
                     parse_svn_revision_id, generate_svn_revision_id)
 
@@ -2232,7 +2233,8 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
                 self.repos.generate_revision_id(2, ""))
 
         self.assertEqual('symlink', inventory[inventory.path2id("bar")].kind)
-        self.assertEqual('foo/bla', inventory[inventory.path2id("bar")].symlink_target)
+        self.assertEqual('foo/bla', 
+                inventory[inventory.path2id("bar")].symlink_target)
 
     def test_not_executable(self):
         self.assertFalse(self.inventory[
@@ -2281,3 +2283,53 @@ class SvnRepositoryFormatTests(TestCase):
     def test_get_format_description(self):
         self.assertEqual("Subversion Repository", 
                          self.format.get_format_description())
+
+class MetadataMarshallerTests(TestCase):
+    def test_generate_revision_metadata_none(self):
+        self.assertEquals("", 
+                generate_revision_metadata(None, None, None, None))
+
+    def test_generate_revision_metadata_committer(self):
+        self.assertEquals("committer: bla\n", 
+                generate_revision_metadata(None, None, "bla", None))
+
+    def test_generate_revision_metadata_timestamp(self):
+        self.assertEquals("timestamp: Thu 2005-06-30 17:38:52 +0000\n", 
+                generate_revision_metadata('1120153132.350850105', 0, 
+                    None, None))
+            
+    def test_generate_revision_metadata_properties(self):
+        self.assertEquals("properties:\n" + 
+                "\tpropfoo: bla\n" + 
+                "\tpropbla: bloe\n",
+                generate_revision_metadata(None, None,
+                    None, {"propfoo": "bla", "propbla": "bloe"}))
+
+    def test_parse_revision_metadata_empty(self):
+        parse_revision_metadata("", None)
+
+    def test_parse_revision_metadata_committer(self):
+        rev = Revision()
+        parse_revision_metadata("committer: somebody\n", rev)
+        self.assertEquals("somebody", rev.committer)
+
+    def test_parse_revision_metadata_timestamp(self):
+        rev = Revision()
+        parse_revision_metadata("timestamp: Thu 2005-06-30 12:38:52.350850105 -0500\n", rev)
+        self.assertEquals(1120153132.3508501, rev.timestamp)
+        self.assertEquals(-18000, rev.timezone)
+
+    def test_parse_revision_metadata_properties(self):
+        rev = Revision()
+        parse_revision_metadata("properties: \n" + 
+                                "\tfoo: bar\n" + 
+                                "\tha: ha\n", rev)
+        self.assertEquals({"foo": "bar", "ha": "ha"}, rev.revprops)
+
+    def test_parse_revision_metadata_no_colon(self):
+        rev = Revision()
+        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla", rev))
+
+    def test_parse_revision_metadata_invalid_name(self):
+        rev = Revision()
+        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla: b", rev))

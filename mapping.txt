@@ -188,8 +188,9 @@ for this yet.
 Revision properties
 ===================
 
-Bazaar revision properties are stored in the file properties of the 
-branch path in Subversion. Their names are prefixed with "bzr:revprop:"
+Bazaar revision metadata is stored in a Subversion revision property 
+``bzr:revision-info``. The format of this property is the same as used 
+by version 0.9 of the bundle format.
 
 ==========
 Signatures

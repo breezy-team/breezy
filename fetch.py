@@ -33,7 +33,7 @@ import svn.core
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
-                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVPROP_PREFIX, 
+                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SvnRepositoryFormat)
 from tree import apply_txdelta_handler
 
@@ -61,7 +61,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.weave_store = target.weave_store
         self.dir_baserev = {}
         self._parent_ids = None
-        self._revprops = {}
+        self._revinfo = None
         self._svn_revprops = svn_revprops
         self.pool = Pool()
 
@@ -90,7 +90,9 @@ class RevisionBuildEditor(svn.delta.Editor):
             rev.committer = ""
         rev.message = self._svn_revprops[1] # message
 
-        rev.properties = self._revprops
+        if self._revinfo:
+            parse_revision_metadata(rev, self._revinfo)
+
         return rev
 
     def open_root(self, base_revnum, baton):
@@ -183,8 +185,12 @@ class RevisionBuildEditor(svn.delta.Editor):
                 # Only set parents using svk:merge if no 
                 # bzr:merge set.
                 pass # FIXME 
-        elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
-            self._revprops[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = value
+        elif name == SVN_PROP_BZR_REVISION_INFO:
+            if id != self.inventory.root.file_id:
+                mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)
+                return
+ 
+            self._revinfo = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
