@@ -24,7 +24,7 @@ import os
 import format
 import checkout
 import svn.core
-from repository import MAPPING_VERSION
+from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository
 
 class TestPush(TestCaseWithSubversionRepository):
@@ -141,6 +141,16 @@ class TestPush(TestCaseWithSubversionRepository):
         repos = self.svndir.find_repository()
         self.assertEqual("Commit from Bzr",
             repos.get_revision(repos.generate_revision_id(2, "")).message)
+
+    def test_commit_set_revid(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr", rev_id="some-rid")
+
+        self.client_update("sc")
+        self.assertEqual("some-rid\n", 
+                self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID))
 
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})

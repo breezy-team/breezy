@@ -33,6 +33,7 @@ from branch import SvnBranch
 from convert import SvnConverter
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
+                        SVN_PROP_BZR_REVISION_ID,
                         revision_id_to_svk_feature) 
 from revids import escape_svn_path
 from scheme import BranchingScheme
@@ -408,7 +409,6 @@ class SvnWorkingTree(WorkingTree):
         # FIXME: Use strct
         assert timestamp is None
         assert timezone is None
-        assert rev_id is None
 
         if specific_files:
             specific_files = [self.abspath(x).encode('utf8') for x in specific_files]
@@ -426,6 +426,15 @@ class SvnWorkingTree(WorkingTree):
                 return message.encode("utf-8")
 
         self.client_ctx.log_msg_baton2 = log_message_func
+        if rev_id is not None:
+            wc = self._get_wc(write_lock=True)
+            try:
+                svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
+                                 self._get_bzr_revids() + rev_id + "\n",
+                                 self.basedir, wc)
+            finally:
+                svn.wc.adm_close(wc)
+
         commit_info = svn.client.commit3(specific_files, True, False, 
                                          self.client_ctx)
         self.client_ctx.log_msg_baton2 = None
@@ -534,6 +543,11 @@ class SvnWorkingTree(WorkingTree):
         else:
             return dict(map(lambda x: str(x).split("\t"), 
                 existing[len(committed):].splitlines()))
+
+    def _get_bzr_revids(self):
+        return self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, self.base_revnum, 
+                SVN_PROP_BZR_REVISION_ID, "")
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(

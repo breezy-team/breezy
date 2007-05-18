@@ -84,7 +84,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self._svnprops[SVN_PROP_SVK_MERGE] = old + new
 
         if revision_id is not None:
-            self._svnprops[SVN_PROP_BZR_REVISION_ID] = revision_id
+            self._svnprops[SVN_PROP_BZR_REVISION_ID] += "%s\n" % revision_id
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
