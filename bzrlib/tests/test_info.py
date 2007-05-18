@@ -126,9 +126,9 @@ class TestInfo(tests.TestCaseWithTransport):
                 continue
             expected = None
             if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
-                expected = 'dirstate / dirstate-tags'
+                expected = 'dirstate or dirstate-tags'
             if key in ('knit', 'metaweave'):
-                expected = 'knit / metaweave'
+                expected = 'knit or metaweave'
             self.assertCheckoutDescription(key, expected)
 
         for key in bzrdir.format_registry.keys():
@@ -136,7 +136,7 @@ class TestInfo(tests.TestCaseWithTransport):
                 continue
             expected = None
             if key in ('dirstate', 'knit'):
-                expected = 'dirstate / knit'
+                expected = 'dirstate or knit'
             self.assertBranchDescription(key, expected)
 
         for key in bzrdir.format_registry.keys():
@@ -144,7 +144,7 @@ class TestInfo(tests.TestCaseWithTransport):
                 continue
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
-                expected = 'dirstate / dirstate-tags / knit'
+                expected = 'dirstate or dirstate-tags or knit'
             self.assertRepoDescription(key, expected)
 
         format = bzrdir.format_registry.make_bzrdir('metaweave')

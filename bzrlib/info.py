@@ -380,7 +380,7 @@ def describe_format(control, repository, branch, tree):
     """Determine the format of an existing control directory
 
     Several candidates may be found.  If so, the names are returned as a
-    single string, separated by slashes.
+    single string, separated by ' or '.
 
     If no matching candidate is found, "unnamed" is returned.
     """
@@ -414,7 +414,7 @@ def describe_format(control, repository, branch, tree):
         bzrdir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
         candidates = new_candidates
-    return ' / '.join(candidates)
+    return ' or '.join(candidates)
 
 @deprecated_function(zero_eight)
 def show_info(b):

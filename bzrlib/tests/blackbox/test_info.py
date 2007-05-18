@@ -245,7 +245,7 @@ Repository:
         branch5 = tree5.branch
         out, err = self.runbzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate / dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
  light checkout root: %s
   checkout of branch: %s
@@ -434,7 +434,7 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.runbzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate / dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
  light checkout root: %s
   checkout of branch: %s
@@ -480,7 +480,7 @@ Repository:
         repo = branch.repository
         out, err = self.runbzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate / knit)
+"""Standalone branch (format: dirstate or knit)
 Location:
   branch root: %s
 
@@ -511,7 +511,7 @@ Repository:
         repo.set_make_working_trees(False)
         out, err = self.runbzr('info -v repo')
         self.assertEqualDiff(
-"""Shared repository (format: dirstate / dirstate-tags / knit)
+"""Shared repository (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: %s
 
@@ -533,7 +533,7 @@ Repository:
             format=format)
         out, err = self.runbzr('info -v repo/branch')
         self.assertEqualDiff(
-"""Repository branch (format: dirstate / knit)
+"""Repository branch (format: dirstate or knit)
 Location:
   shared repository: %s
   repository branch: branch
@@ -578,7 +578,7 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate / dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
  light checkout root: %s
    shared repository: %s
@@ -714,7 +714,7 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate / dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
  light checkout root: %s
    shared repository: %s
@@ -762,7 +762,7 @@ Repository:
         # Show info about shared branch
         out, err = self.runbzr('info repo/branch --verbose')
         self.assertEqualDiff(
-"""Repository branch (format: dirstate / knit)
+"""Repository branch (format: dirstate or knit)
 Location:
   shared repository: %s
   repository branch: branch
@@ -795,7 +795,7 @@ Repository:
         # Show info about repository with revisions
         out, err = self.runbzr('info -v repo')
         self.assertEqualDiff(
-"""Shared repository (format: dirstate / dirstate-tags / knit)
+"""Shared repository (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: %s
 
@@ -823,7 +823,7 @@ Repository:
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info -v repo')
         self.assertEqualDiff(
-"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: %s
 
@@ -1031,7 +1031,7 @@ Repository:
         # Show info about repository with revisions
         out, err = self.runbzr('info -v repo')
         self.assertEqualDiff(
-"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: %s
 
@@ -1062,7 +1062,7 @@ Repository:
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info -v repo')
         self.assertEqualDiff(
-"""Shared repository with trees (format: dirstate / dirstate-tags / knit)
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: %s
 
@@ -1160,7 +1160,7 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: 'dirstate / dirstate-tags',
+        format = {True: 'dirstate or dirstate-tags',
                   False: 'dirstate'}[light_checkout]
         if repo_locked or branch_locked or tree_locked:
             def locked_message(a_bool):
