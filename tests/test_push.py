@@ -24,7 +24,9 @@ import os
 import format
 import checkout
 import svn.core
+from commit import push_as_merged
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
+from revids import generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
 class TestPush(TestCaseWithSubversionRepository):
@@ -148,9 +150,39 @@ class TestPush(TestCaseWithSubversionRepository):
         wt.add('file')
         wt.commit(message="Commit from Bzr", rev_id="some-rid")
 
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
         self.client_update("sc")
         self.assertEqual("some-rid\n", 
                 self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID))
+
+    def test_multiple_merged(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.build_tree({'dc/file': 'data2', 'dc/adir': None})
+        wt.add('adir')
+        wt.commit(message="Another commit from Bzr")
+
+        push_as_merged(self.svndir.open_branch(),
+                       self.bzrdir.open_branch(),
+                       self.bzrdir.open_branch().last_revision())
+                       
+        repos = self.svndir.find_repository()
+
+        self.assertEqual(
+           generate_svn_revision_id(self.svndir.find_repository().uuid, 2, ""), 
+                        self.svndir.open_branch().last_revision())
+
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        self.assertTrue(inv.has_filename('file'))
+        self.assertTrue(inv.has_filename('adir'))
+
+        self.assertEqual([repos.generate_revision_id(1, ""), 
+            self.bzrdir.open_branch().last_revision()],
+                repos.revision_parents(repos.generate_revision_id(2, "")))
 
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})

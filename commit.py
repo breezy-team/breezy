@@ -18,13 +18,14 @@
 import svn.delta
 from svn.core import Pool, SubversionException
 
+from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId, DivergedBranches
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import RootCommitBuilder
 from bzrlib.trace import mutter
 
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
+from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature)
 from revids import escape_svn_path
@@ -47,7 +48,6 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, None, None, None, revprops, None)
-        assert isinstance(repository, SvnRepository)
         self.branch = branch
         self.pool = Pool()
 
@@ -85,10 +85,9 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if revision_id is not None:
             extra = "%s\n" % revision_id
-            if self._svnprops.has_key(SVN_PROP_BZR_REVISION_ID):
-                self._svnprops[SVN_PROP_BZR_REVISION_ID] += extra
-            else:
-                self._svnprops[SVN_PROP_BZR_REVISION_ID] = extra
+            if not self._svnprops.has_key(SVN_PROP_BZR_REVISION_ID):
+                self._svnprops[SVN_PROP_BZR_REVISION_ID] = ""
+            self._svnprops[SVN_PROP_BZR_REVISION_ID] += extra
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -302,7 +301,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.revnum = revision
             self.date = date
             self.author = author
-            mutter('committed %r, author: %r, date: %r' % (revision, author, date))
         
         mutter('obtaining commit editor')
         self.revnum = None
@@ -338,8 +336,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         self.branch.revision_history()
         self.branch._revision_history.append(revid)
 
-        mutter('commit finished. author: %r, date: %r' % 
-               (self.author, self.date))
+        mutter('commit %d finished. author: %r, date: %r' % 
+               (self.revnum, self.author, self.date))
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
@@ -400,6 +398,7 @@ def push_as_merged(target, source, revision_id):
     :param revision_id: Revision id of the revision to push
     :return: The revision id of the created revision
     """
+    assert isinstance(source, Branch)
     rev = source.repository.get_revision(revision_id)
     inv = source.repository.get_inventory(revision_id)
 
