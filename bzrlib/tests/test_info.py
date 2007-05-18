@@ -51,7 +51,6 @@ class TestInfo(tests.TestCaseWithTransport):
             info.describe_layout(checkout.branch.repository, checkout.branch,
                                  checkout))
 
-
     def test_describe_repository_layout(self):
         repository = self.make_repository('.', shared=True)
         tree = bzrdir.BzrDir.create_branch_convenience('tree',
