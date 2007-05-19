@@ -26,6 +26,7 @@
 # general style of bzrlib.  Please continue that consistency when adding e.g.
 # new assertFoo() methods.
 
+import atexit
 import codecs
 from cStringIO import StringIO
 import difflib
@@ -1576,11 +1577,13 @@ class TestCaseWithMemoryTransport(TestCase):
     file defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
+
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus
+    a .bzr directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
     _TEST_NAME = 'test'
-
 
     def __init__(self, methodName='runTest'):
         # allow test parameterisation after test construction and before test
@@ -1738,24 +1741,16 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
-        i = 0
-        while True:
-            root = u'test%04d.tmp' % i
-            try:
-                os.mkdir(root)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    i += 1
-                    continue
-                else:
-                    raise
-            # successfully created
-            TestCaseWithMemoryTransport.TEST_ROOT = osutils.abspath(root)
-            break
+        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+        TestCaseWithMemoryTransport.TEST_ROOT = root
+        
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        bzrdir.BzrDir.create_standalone_workingtree(
-            TestCaseWithMemoryTransport.TEST_ROOT)
+        bzrdir.BzrDir.create_standalone_workingtree(root)
+
+        # The same directory is used by all tests, and we're not specifically
+        # told when all tests are finished.  This will do.
+        atexit.register(_rmtree_temp_dir, root)
 
     def makeAndChdirToTestDir(self):
         """Create a temporary directories for this one test.
@@ -1862,31 +1857,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        if self.use_numbered_dirs:  # strongly recommended on Windows
-                                    # due the path length limitation (260 ch.)
-            candidate_dir = '%s/%dK/%05d' % (self.TEST_ROOT,
-                                             int(self.number/1000),
-                                             self.number)
-            os.makedirs(candidate_dir)
-        else:
-            # Else NAMED DIRS
-            # shorten the name, to avoid test failures due to path length
-            short_id = self.id().replace('bzrlib.tests.', '') \
-                       .replace('__main__.', '')[-100:]
-            # it's possible the same test class is run several times for
-            # parameterized tests, so make sure the names don't collide.  
-            i = 0
-            while True:
-                if i > 0:
-                    candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
-                else:
-                    candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
-                if os.path.exists(candidate_dir):
-                    i = i + 1
-                    continue
-                else:
-                    os.mkdir(candidate_dir)
-                    break
+        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
         self.test_home_dir = self.test_base_dir + '/home'
@@ -1903,7 +1874,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
-        mutter("delete %s" % self.test_base_dir)
         _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
@@ -2146,7 +2116,7 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False, keep_output=False,
+              stop_on_failure=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
               numbered_dirs=None,
@@ -2163,9 +2133,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         verbosity = 2
     else:
         verbosity = 1
-    if keep_output:
-        warnings.warn("test case keep_output option is no longer supported",
-                stacklevel=2)
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
@@ -2203,7 +2170,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
-             keep_output=False,
              transport=None,
              test_suite_factory=None,
              lsprof_timed=None,
@@ -2231,7 +2197,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure, keep_output=keep_output,
+                     stop_on_failure=stop_on_failure,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
