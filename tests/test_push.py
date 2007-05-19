@@ -131,6 +131,20 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual(repos.generate_revision_id(2, ""),
                         self.bzrdir.open_branch().last_revision())
 
+    def test_branch_after_push(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
+        os.mkdir("b")
+        repos = self.svndir.sprout("b")
+
+        self.assertEqual(Branch.open("dc").revision_history(), 
+                         Branch.open("b").revision_history())
+
     def test_message(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()

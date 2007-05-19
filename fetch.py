@@ -34,7 +34,7 @@ import svn.core
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                SvnRepositoryFormat)
+                SvnRepositoryFormat, parse_revision_metadata)
 from tree import apply_txdelta_handler
 
 
@@ -91,7 +91,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev.message = self._svn_revprops[1] # message
 
         if self._revinfo:
-            parse_revision_metadata(rev, self._revinfo)
+            parse_revision_metadata(self._revinfo, rev)
 
         return rev
 
