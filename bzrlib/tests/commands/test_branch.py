@@ -17,7 +17,7 @@
 
 import os
 
-from bzrlib.builtins import cmd_init
+from bzrlib.builtins import cmd_branch
 from bzrlib.hooks import Hooks
 from bzrlib.tests.test_ftp_transport import TestCaseWithFTPServer
 from bzrlib.transport import (
@@ -55,10 +55,10 @@ class InstrumentedTransport(FtpTransport):
         return instance
 
 
-class TestInit(TestCaseWithFTPServer):
+class TestBranch(TestCaseWithFTPServer):
 
     def setUp(self):
-        super(TestInit, self).setUp()
+        super(TestBranch, self).setUp()
         InstrumentedTransport.hooks.install_hook('get_FTP',
                                                  self.get_connection_hook)
         # Make our instrumented transport the default ftp transport
@@ -76,8 +76,20 @@ class TestInit(TestCaseWithFTPServer):
         if connection is not None and connection not in self.connections:
             self.connections.append(connection)
 
-    def test_init(self):
-        cmd = cmd_init()
-        cmd.run(self.get_url())
+    def test_branch_locally(self):
+        self.make_branch_and_tree('branch')
+        cmd = cmd_branch()
+        cmd.run(self.get_url() + '/branch', 'local')
         self.assertEquals(1, len(self.connections))
+
+# FIXME: Bug in ftp transport suspected, neither of the two
+# cmd.run() variants can finish, we get stucked somewhere in a
+# rename....
+
+#    def test_branch_remotely(self):
+#        self.make_branch_and_tree('branch')
+#        cmd = cmd_branch()
+#        cmd.run(self.get_url() + '/branch', self.get_url() + '/remote')
+#        cmd.run('branch', self.get_url() + '/remote')
+#        self.assertEquals(2, len(self.connections))
 

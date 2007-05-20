@@ -28,6 +28,7 @@ from bzrlib.tests import (
 
 def test_suite():
     testmod_names = [
+        'bzrlib.tests.commands.test_branch',
         'bzrlib.tests.commands.test_init',
         ]
     loader = TestLoader()
