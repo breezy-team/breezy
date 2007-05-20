@@ -4,7 +4,11 @@ Introduction
 
 This directory contains a simple plugin that adds 
 Subversion (http://subversion.tigris.org/) branch support to 
-Bazaar (http://www.bazaar-vcs.org/)
+Bazaar (http://www.bazaar-vcs.org/). This allows ``bzr branch``, ``bzr push``, 
+``bzr pull``, and ``bzr co`` to work directly against Subversion repositories.
+
+The plugin can at the moment be used to commit to, pull from, merge from, push 
+to and view logs of Subversion branches from Bazaar.
 
 ============
 Dependencies

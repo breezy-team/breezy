@@ -22,11 +22,6 @@ REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 
 import urllib
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
-
 def escape_svn_path(x):
     if isinstance(x, unicode):
         x = x.encode("utf-8")
@@ -84,6 +79,7 @@ class RevidMap(object):
     """
     def __init__(self, cache_db=None):
         if cache_db is None:
+            from cache import sqlite3
             self.cachedb = sqlite3.connect(":memory:")
         else:
             self.cachedb = cache_db

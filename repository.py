@@ -17,7 +17,6 @@
 
 import bzrlib
 from bzrlib.branch import BranchCheckResult
-from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, 
                            NotBranchError, UninitializableFormat, BzrError)
 from bzrlib.inventory import Inventory
@@ -34,12 +33,9 @@ from svn.core import SubversionException, Pool
 import svn.core
 
 import os
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
 
 from branchprops import BranchPropertyList
+from cache import create_cache_dir, sqlite3
 import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
@@ -105,24 +101,6 @@ def revision_id_to_svk_feature(revid):
     """
     (uuid, branch, revnum) = parse_svn_revision_id(revid)
     return "%s:/%s:%d" % (uuid, branch, revnum)
-
-
-def create_cache_dir():
-    ensure_config_dir_exists()
-    cache_dir = os.path.join(config_dir(), 'svn-cache')
-
-    if not os.path.exists(cache_dir):
-        os.mkdir(cache_dir)
-
-        open(os.path.join(cache_dir, "README"), 'w').write(
-"""This directory contains information cached by the bzr-svn plugin.
-
-It is used for performance reasons only and can be removed 
-without losing data.
-
-See http://bazaar-vcs.org/BzrSvn for details.
-""")
-    return cache_dir
 
 
 class SvnRepositoryFormat(RepositoryFormat):
