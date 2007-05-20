@@ -1,5 +1,10 @@
 bzr-svn 0.3.4	UNRELEASED
 
+  BUG FIXES
+
+  * Check for a working pysqlite, rather than checking that the 
+    first one found works. (#115026)
+
 bzr-svn 0.3.3	2007-04-29
 
   IMPROVEMENTS

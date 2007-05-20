@@ -26,10 +26,7 @@ import svn.core
 
 import base64
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
+from cache import sqlite3
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
