@@ -121,6 +121,7 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.commands
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.intertree_implementations
@@ -134,6 +135,7 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.commands,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.intertree_implementations,
@@ -2299,7 +2301,6 @@ def test_suite():
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
-                   'bzrlib.tests.test_init',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
