@@ -63,64 +63,12 @@ from bzrlib.trace import (
     mutter,
     warning,
     )
-
-# {prefix: [transport_classes]}
-# Transports are inserted onto the list LIFO and tried in order; as a result
-# transports provided by plugins are tried first, which is usually what we
-# want.
-_protocol_handlers = {
-}
-
-def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
-    """Register a transport that can be used to open URLs
-
-    Normally you should use register_lazy_transport, which defers loading the
-    implementation until it's actually used, and so avoids pulling in possibly
-    large implementation libraries.
-    """
-    # Note that this code runs very early in library setup -- trace may not be
-    # working, etc.
-    global _protocol_handlers
-    if deprecated_passed(override):
-        warnings.warn("register_transport(override) is deprecated")
-    _protocol_handlers.setdefault(prefix, []).insert(0, klass)
-
-
-def register_lazy_transport(scheme, module, classname):
-    """Register lazy-loaded transport class.
-
-    When opening a URL with the given scheme, load the module and then
-    instantiate the particular class.  
-
-    If the module raises DependencyNotPresent when it's imported, it is
-    skipped and another implementation of the protocol is tried.  This is
-    intended to be used when the implementation depends on an external
-    implementation that may not be present.  If any other error is raised, it
-    propagates up and the attempt to open the url fails.
-
-    :param scheme: The url scheme part, eg "ftp://"
-    """
-    # TODO: If no implementation of a protocol is available because of missing
-    # dependencies, we should perhaps show the message about what dependency
-    # was missing.
-    def _loader(base):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
-        return klass(base)
-    _loader.module = module
-    register_transport(scheme, _loader)
-
-
-def unregister_transport(scheme, factory):
-    """Unregister a transport."""
-    _protocol_handlers[scheme].remove(factory)
-    if _protocol_handlers[scheme] == []:
-        del _protocol_handlers[scheme]
+from bzrlib import registry
 
 
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
-    return _protocol_handlers
+    return transport_list_registry
 
 
 def _set_protocol_handlers(new_handlers):
@@ -128,26 +76,24 @@ def _set_protocol_handlers(new_handlers):
 
     WARNING this will remove all build in protocols. Use with care.
     """
-    global _protocol_handlers
-    _protocol_handlers = new_handlers
+    global transport_list_registry
+    transport_list_registry = new_handlers
 
 
 def _clear_protocol_handlers():
-    global _protocol_handlers
-    _protocol_handlers = {}
+    global transport_list_registry
+    transport_list_registry = TransportListRegistry()
 
 
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in _protocol_handlers.items():
+    for prefix, factory_list in transport_list_registry.iteritems():
         for factory in factory_list:
-            if factory.__module__ == "bzrlib.transport":
-                # this is a lazy load transport, because no real ones
-                # are directly in bzrlib.transport
-                modules.add(factory.module)
+            if hasattr(factory, "_module_name"):
+                modules.add(factory._module_name)
             else:
-                modules.add(factory.__module__)
+                modules.add(factory._obj.__module__)
     # Add chroot directly, because there is not handler registered for it.
     modules.add('bzrlib.transport.chroot')
     result = list(modules)
@@ -155,10 +101,72 @@ def _get_transport_modules():
     return result
 
 
+class TransportListRegistry(registry.Registry):
+    """A registry which simplifies tracking available Transports.
+
+    A registration of a new protocol requires two step:
+    1) register the prefix with the function register_transport( )
+    2) register the protocol provider with the function
+    register_transport_provider( ) ( and the "lazy" variant )
+
+    This in needed because:
+    a) a single provider can support multple protcol ( like the ftp
+    privider which supports both the ftp:// and the aftp:// protocols )
+    b) a single protocol can have multiple providers ( like the http://
+    protocol which is supported by both the urllib and pycurl privider )
+    """
+
+    def register_transport_provider(self, key, obj):
+        self.get(key).insert(0, registry._ObjectGetter(obj))
+
+    def register_lazy_transport_provider(self, key, module_name, member_name):
+        self.get(key).insert(0, 
+                registry._LazyObjectGetter(module_name, member_name))
+
+    def register_transport(self, key, help=None, info=None):
+        self.register(key, [], help, info)
+
+    def set_default_transport(self, key=None):
+        """Return either 'key' or the default key if key is None"""
+        self._default_key = key
+
+
+transport_list_registry = TransportListRegistry( )
+
+
+def register_transport_proto(prefix, help=None, info=None):
+    transport_list_registry.register_transport(prefix, help, info)
+
+
+def register_lazy_transport(prefix, module, classname):
+    if not prefix in transport_list_registry:
+        register_transport_proto(prefix)
+    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
+
+
+def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+    if not prefix in transport_list_registry:
+        register_transport_proto(prefix)
+    transport_list_registry.register_transport_provider(prefix, klass)
+
+
 def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
+
+
+def unregister_transport(scheme, factory):
+    """Unregister a transport."""
+    l = transport_list_registry.get(scheme)
+    for i in l:
+        o = i.get_obj( )
+        if o == factory:
+            transport_list_registry.get(scheme).remove(i)
+            break
+    if len(l) == 0:
+        transport_list_registry.remove(scheme)
+
 
 
 def split_url(url):
@@ -267,6 +275,22 @@ class Transport(object):
         to be pooled, rather than a new one needed for each subdir.
         """
         raise NotImplementedError(self.clone)
+
+    def ensure_base(self):
+        """Ensure that the directory this transport references exists.
+
+        This will create a directory if it doesn't exist.
+        :return: True if the directory was created, False otherwise.
+        """
+        # The default implementation just uses "Easier to ask for forgiveness
+        # than permission". We attempt to create the directory, and just
+        # suppress a FileExists exception.
+        try:
+            self.mkdir('.')
+        except errors.FileExists:
+            return False
+        else:
+            return True
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -404,6 +428,7 @@ class Transport(object):
         physical local filesystem representation.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
+
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -1019,7 +1044,7 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
-    global _protocol_handlers
+
     if base is None:
         base = '.'
     last_err = None
@@ -1043,7 +1068,7 @@ def get_transport(base):
         base = convert_path_to_url(base,
             'URLs must be properly escaped (protocol: %s)')
     
-    for proto, factory_list in _protocol_handlers.iteritems():
+    for proto, factory_list in transport_list_registry.iteritems():
         if proto is not None and base.startswith(proto):
             t, last_err = _try_transport_factories(base, factory_list)
             if t:
@@ -1054,9 +1079,9 @@ def get_transport(base):
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])[0]
-
-
+    return _try_transport_factories(base,
+                    transport_list_registry.get(None))[0]
+                                                   
 def do_catching_redirections(action, transport, redirected):
     """Execute an action with given transport catching redirections.
 
@@ -1103,7 +1128,7 @@ def _try_transport_factories(base, factory_list):
     last_err = None
     for factory in factory_list:
         try:
-            return factory(base), None
+            return factory.get_obj()(base), None
         except errors.DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
@@ -1176,8 +1201,10 @@ class TransportTestProviderAdapter(object):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            warning("transport module %s doesn't provide get_test_permutations()"
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
             return []
         return module.get_test_permutations()
 
@@ -1218,42 +1245,85 @@ class TransportLogger(object):
     def readv(self, name, offsets):
         self._calls.append((name, offsets))
         return self._adapted.readv(name, offsets)
-        
+
 
 # None is the default transport, for things with no url scheme
-register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
+register_transport_proto('file://',
+            help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
+transport_list_registry.set_default_transport("file://")
+
+register_transport_proto('sftp://',
+            help="Access using SFTP (most SSH servers provide SFTP).")
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
+register_transport_proto('http+urllib://',
+#                help="Read-only access of branches exported on the web."
+            )
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
+register_transport_proto('https+urllib://',
+#                help="Read-only access of branches exported on the web using SSL."
+            )
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
+register_transport_proto('http+pycurl://',
+#                help="Read-only access of branches exported on the web."
+            )
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+register_transport_proto('https+pycurl://',
+#                help="Read-only access of branches exported on the web using SSL."
+            )
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
+register_transport_proto('http://',
+            help="Read-only access of branches exported on the web.")
+register_transport_proto('https://',
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+
+register_transport_proto('ftp://',
+            help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_transport_proto('aftp://',
+            help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+
+register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_transport_proto('chroot+')
+
+register_transport_proto('readonly+',
+#              help="This modifier converts any transport to be readonly."
+            )
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_transport_proto('bzr://',
+            help="Fast access using the Bazaar smart server.")
+
 register_lazy_transport('bzr://',
                         'bzrlib.transport.remote',
                         'RemoteTCPTransport')
+register_transport_proto('bzr+http://',
+#                help="Fast access using the Bazaar smart server over HTTP."
+             )
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
+register_transport_proto('bzr+ssh://',
+            help="Fast access using the Bazaar smart server over SSH.")
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'RemoteSSHTransport')

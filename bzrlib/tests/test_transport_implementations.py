@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,38 @@ class TransportTests(TestTransportImplementation):
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqualDiff(content, transport.get(relpath).read())
+
+    def test_ensure_base_missing(self):
+        """.ensure_base() should create the directory if it doesn't exist"""
+        t = self.get_transport()
+        t_a = t.clone('a')
+        if t_a.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                              t_a.ensure_base)
+            return
+        self.assertTrue(t_a.ensure_base())
+        self.assertTrue(t.has('a'))
+
+    def test_ensure_base_exists(self):
+        """.ensure_base() should just be happy if it already exists"""
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+
+        t.mkdir('a')
+        t_a = t.clone('a')
+        # ensure_base returns False if it didn't create the base
+        self.assertFalse(t_a.ensure_base())
+
+    def test_ensure_base_missing_parent(self):
+        """.ensure_base() will fail if the parent dir doesn't exist"""
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+
+        t_a = t.clone('a')
+        t_b = t_a.clone('b')
+        self.assertRaises(NoSuchFile, t_b.ensure_base)
 
     def test_has(self):
         t = self.get_transport()
@@ -1150,8 +1182,9 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except NotLocalUrl:
-            pass # This is not a local transport
+        except (errors.NotLocalUrl, TransportNotPossible), e:
+            # should be formattable
+            s = str(e)
         else:
             self.assertEqual(getcwd(), p)
 

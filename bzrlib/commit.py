@@ -233,7 +233,6 @@ class Commit(object):
         self.timestamp = timestamp
         self.timezone = timezone
         self.committer = committer
-        self.specific_files = specific_files
         self.strict = strict
         self.verbose = verbose
         self.local = local

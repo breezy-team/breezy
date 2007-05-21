@@ -1,6 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
-# vim: encoding=utf-8
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +17,7 @@
 import os
 from cStringIO import StringIO
 
+from bzrlib import log
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
 from bzrlib.log import (show_log, 
                         get_view_revisions, 
@@ -400,3 +399,135 @@ added:
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
             ('4b', '4', 0)],
             revisions)
+
+
+class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
+
+    def create_tree_with_single_merge(self):
+        """Create a branch with a moderate layout.
+
+        The revision graph looks like:
+
+           A
+           |\
+           B C
+           |/
+           D
+
+        In this graph, A introduced files f1 and f2 and f3.
+        B modifies f1 and f3, and C modifies f2 and f3.
+        D merges the changes from B and C and resolves the conflict for f3.
+        """
+        # TODO: jam 20070218 This seems like it could really be done
+        #       with make_branch_and_memory_tree() if we could just
+        #       create the content of those files.
+        # TODO: jam 20070218 Another alternative is that we would really
+        #       like to only create this tree 1 time for all tests that
+        #       use it. Since 'log' only uses the tree in a readonly
+        #       fashion, it seems a shame to regenerate an identical
+        #       tree for each test.
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        self.build_tree_contents([('tree/f1', 'A\n'),
+                                  ('tree/f2', 'A\n'),
+                                  ('tree/f3', 'A\n'),
+                                 ])
+        tree.add(['f1', 'f2', 'f3'], ['f1-id', 'f2-id', 'f3-id'])
+        tree.commit('A', rev_id='A')
+
+        self.build_tree_contents([('tree/f2', 'A\nC\n'),
+                                  ('tree/f3', 'A\nC\n'),
+                                 ])
+        tree.commit('C', rev_id='C')
+        # Revert back to A to build the other history.
+        tree.set_last_revision('A')
+        tree.branch.set_last_revision_info(1, 'A')
+        self.build_tree_contents([('tree/f1', 'A\nB\n'),
+                                  ('tree/f2', 'A\n'),
+                                  ('tree/f3', 'A\nB\n'),
+                                 ])
+        tree.commit('B', rev_id='B')
+        tree.set_parent_ids(['B', 'C'])
+        self.build_tree_contents([('tree/f1', 'A\nB\n'),
+                                  ('tree/f2', 'A\nC\n'),
+                                  ('tree/f3', 'A\nB\nC\n'),
+                                 ])
+        tree.commit('D', rev_id='D')
+
+        # Switch to a read lock for this tree.
+        # We still have addCleanup(unlock)
+        tree.unlock()
+        tree.lock_read()
+        return tree
+
+    def test_tree_with_single_merge(self):
+        """Make sure the tree layout is correct."""
+        tree = self.create_tree_with_single_merge()
+        rev_A_tree = tree.branch.repository.revision_tree('A')
+        rev_B_tree = tree.branch.repository.revision_tree('B')
+
+        f1_changed = (u'f1', 'f1-id', 'file', True, False)
+        f2_changed = (u'f2', 'f2-id', 'file', True, False)
+        f3_changed = (u'f3', 'f3-id', 'file', True, False)
+
+        delta = rev_B_tree.changes_from(rev_A_tree)
+        self.assertEqual([f1_changed, f3_changed], delta.modified)
+        self.assertEqual([], delta.renamed)
+        self.assertEqual([], delta.added)
+        self.assertEqual([], delta.removed)
+
+        rev_C_tree = tree.branch.repository.revision_tree('C')
+        delta = rev_C_tree.changes_from(rev_A_tree)
+        self.assertEqual([f2_changed, f3_changed], delta.modified)
+        self.assertEqual([], delta.renamed)
+        self.assertEqual([], delta.added)
+        self.assertEqual([], delta.removed)
+
+        rev_D_tree = tree.branch.repository.revision_tree('D')
+        delta = rev_D_tree.changes_from(rev_B_tree)
+        self.assertEqual([f2_changed, f3_changed], delta.modified)
+        self.assertEqual([], delta.renamed)
+        self.assertEqual([], delta.added)
+        self.assertEqual([], delta.removed)
+
+        delta = rev_D_tree.changes_from(rev_C_tree)
+        self.assertEqual([f1_changed, f3_changed], delta.modified)
+        self.assertEqual([], delta.renamed)
+        self.assertEqual([], delta.added)
+        self.assertEqual([], delta.removed)
+
+    def assertAllRevisionsForFileID(self, tree, file_id, revisions):
+        """Make sure _get_revisions_touching_file_id returns the right values.
+
+        Get the return value from _get_revisions_touching_file_id and make
+        sure they are correct.
+        """
+        # The api for _get_revisions_touching_file_id is a little crazy,
+        # So we do the setup here.
+        mainline = tree.branch.revision_history()
+        mainline.insert(0, None)
+        revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
+        view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
+                                                'reverse', True)
+        actual_revs = log._get_revisions_touching_file_id(tree.branch, file_id,
+                                                          mainline,
+                                                          view_revs_iter)
+        self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
+
+    def test_file_id_f1(self):
+        tree = self.create_tree_with_single_merge()
+        # f1 should be marked as modified by revisions A and B
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['B', 'A'])
+
+    def test_file_id_f2(self):
+        tree = self.create_tree_with_single_merge()
+        # f2 should be marked as modified by revisions A, C, and D
+        # because D merged the changes from C.
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_file_id_f3(self):
+        tree = self.create_tree_with_single_merge()
+        # f3 should be marked as modified by revisions A, B, C, and D
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])

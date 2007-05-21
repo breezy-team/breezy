@@ -29,6 +29,7 @@ import urlparse
 from bzrlib import (
     errors,
     transport,
+    urlutils,
     )
 from bzrlib.smart import client, medium, protocol
 
@@ -39,6 +40,7 @@ del scheme
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_INTERFACE = '0.0.0.0'
 BZR_DEFAULT_PORT = 4155
 
 
@@ -72,11 +74,17 @@ class RemoteTransport(transport.Transport):
     # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
-    def __init__(self, url, clone_from=None, medium=None):
+    def __init__(self, url, clone_from=None, medium=None, _client=None):
         """Constructor.
 
+        :param clone_from: Another RemoteTransport instance that this one is
+            being cloned from.  Attributes such as credentials and the medium
+            will be reused.
         :param medium: The medium to use for this RemoteTransport. This must be
             supplied if clone_from is None.
+        :param _client: Override the _SmartClient used by this transport.  This
+            should only be used for testing purposes; normally this is
+            determined from the medium.
         """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
@@ -95,6 +103,10 @@ class RemoteTransport(transport.Transport):
             # reuse same connection
             self._medium = clone_from._medium
         assert self._medium is not None
+        if _client is None:
+            self._client = client._SmartClient(self._medium)
+        else:
+            self._client = _client
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -120,6 +132,14 @@ class RemoteTransport(transport.Transport):
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
+            return False
+        elif (resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request 'Transport.is_readonly'") or
+              resp == ('error', "Generic bzr smart protocol error: "
+                                "bad request u'Transport.is_readonly'")):
+            # XXX: nasty hack: servers before 0.16 don't have a
+            # 'Transport.is_readonly' verb, so we do what clients before 0.16
+            # did: assume False.
             return False
         else:
             self._translate_error(resp)
@@ -158,12 +178,11 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return client._SmartClient(self._medium).call(method, *args)
+        return self._client.call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        smart_client = client._SmartClient(self._medium)
-        return smart_client.call_with_body_bytes(method, args, body)
+        return self._client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -484,10 +503,12 @@ class RemoteHTTPTransport(RemoteTransport):
 
     def _remote_path(self, relpath):
         """After connecting HTTP Transport only deals in relative URLs."""
-        if relpath == '.':
-            return ''
-        else:
-            return relpath
+        # Adjust the relpath based on which URL this smart transport is
+        # connected to.
+        base = urlutils.normalize_url(self._http_transport.base)
+        url = urlutils.join(self.base[len('bzr+'):], relpath)
+        url = urlutils.normalize_url(url)
+        return urlutils.relative_url(base, url)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -503,15 +524,30 @@ class RemoteHTTPTransport(RemoteTransport):
         This is re-implemented rather than using the default
         RemoteTransport.clone() because we must be careful about the underlying
         http transport.
+
+        Also, the cloned smart transport will POST to the same .bzr/smart
+        location as this transport (although obviously the relative paths in the
+        smart requests may be different).  This is so that the server doesn't
+        have to handle .bzr/smart requests at arbitrary places inside .bzr
+        directories, just at the initial URL the user uses.
+
+        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # By cloning the underlying http_transport, we are able to share the
-        # connection.
-        new_transport = self._http_transport.clone(relative_url)
-        return RemoteHTTPTransport(abs_url, http_transport=new_transport)
+        # We either use the exact same http_transport (for child locations), or
+        # a clone of the underlying http_transport (for parent locations).  This
+        # means we share the connection.
+        norm_base = urlutils.normalize_url(self.base)
+        norm_abs_url = urlutils.normalize_url(abs_url)
+        normalized_rel_url = urlutils.relative_url(norm_base, norm_abs_url)
+        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
+            http_transport = self._http_transport.clone(normalized_rel_url)
+        else:
+            http_transport = self._http_transport
+        return RemoteHTTPTransport(abs_url, http_transport=http_transport)
 
 
 def get_test_permutations():

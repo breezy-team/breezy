@@ -27,8 +27,11 @@ from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 
 class TestLog(ExternalBase):
 
-    def _prepare(self):
-        self.runbzr("init")
+    def _prepare(self, format=None):
+        if format:
+            self.runbzr("init --format="+format)
+        else:
+            self.runbzr("init")
         self.build_tree(['hello.txt', 'goodbye.txt', 'meep.txt'])
         self.runbzr("add hello.txt")
         self.runbzr("commit -m message1 hello.txt")
@@ -115,6 +118,36 @@ class TestLog(ExternalBase):
         out, err = self.run_bzr('log', 'does-not-exist', retcode=3)
         self.assertContainsRe(
             err, 'Path does not have any revision history: does-not-exist')
+
+    def test_log_with_tags(self):
+        self._prepare(format='dirstate-tags')
+        self.runbzr('tag -r1 tag1')
+        self.runbzr('tag -r1 tag1.1')
+        self.runbzr('tag tag3')
+        
+        log = self.runbzr("log -r-1")[0]
+        self.assertTrue('tags: tag3' in log)
+
+        log = self.runbzr("log -r1")[0]
+        # I guess that we can't know the order of tags in the output
+        # since dicts are unordered, need to check both possibilities
+        self.assertContainsRe(log, r'tags: (tag1, tag1\.1|tag1\.1, tag1)')
+
+    def test_merged_log_with_tags(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self._prepare(format='dirstate-tags')
+        os.chdir('..')
+        self.runbzr('branch branch1 branch2')
+        os.chdir('branch1')
+        self.runbzr('commit -m foobar --unchanged')
+        self.runbzr('tag tag1')
+        os.chdir('../branch2')
+        self.runbzr('merge ../branch1')
+        self.runbzr('commit -m merge_branch_1')
+        log = self.runbzr("log -r-1")[0]
+        self.assertContainsRe(log, r'    tags: tag1')
+
 
 class TestLogMerges(ExternalBase):
 
@@ -301,3 +334,39 @@ class TestLogFile(TestCaseWithTransport):
         tree.commit('revision 1')
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log', 'tree/file')
+
+    def test_log_file(self):
+        """The log for a particular file should only list revs for that file"""
+        tree = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
+        tree.add('file1')
+        tree.commit('add file1')
+        tree.add('file2')
+        tree.commit('add file2')
+        tree.add('file3')
+        tree.commit('add file3')
+        self.run_bzr('branch', 'parent', 'child')
+        print >> file('child/file2', 'wb'), 'hello'
+        self.run_bzr('commit', '-m', 'branch 1', 'child')
+        os.chdir('parent')
+        self.run_bzr('merge', '../child')
+        self.run_bzr('commit', '-m', 'merge child branch')
+        
+        log = self.run_bzr('log', 'file1')[0]
+        self.assertContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')
+        log = self.run_bzr('log', 'file2')[0]
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertContainsRe(log, 'revno: 3.1.1\n')
+        self.assertContainsRe(log, 'revno: 4\n')
+        log = self.run_bzr('log', 'file3')[0]
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')

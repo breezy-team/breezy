@@ -71,6 +71,17 @@ class TestBranchTags(TestCaseWithBranch):
         self.assertTrue(b.tags.has_tag('tag-name'))
         self.assertFalse(b.tags.has_tag('imaginary'))
 
+    def test_reverse_tag_dict(self):
+        b = self.make_branch('b')
+        b.tags.set_tag('tag-name', 'target-revid-1')
+        b.tags.set_tag('other-name', 'target-revid-2')
+        # then reopen the branch and check reverse map id->tags list
+        b = Branch.open('b')
+        self.assertEqual(b.tags.get_reverse_tag_dict(),
+            {'target-revid-1': ['tag-name'],
+             'target-revid-2': ['other-name'],
+            })
+
     def test_no_such_tag(self):
         b = self.make_branch('b')
         try:

@@ -89,16 +89,7 @@ def _annotate_file(branch, rev_id, file_id):
     This includes detailed information, such as the committer name, and
     date string for the commit, rather than just the revision id.
     """
-    branch_last_revision = branch.last_revision()
-    revision_graph = branch.repository.get_revision_graph(branch_last_revision)
-    merge_sorted_revisions = tsort.merge_sort(
-        revision_graph,
-        branch_last_revision,
-        None,
-        generate_revno=True)
-    revision_id_to_revno = dict((rev_id, revno)
-                                for seq_num, rev_id, depth, revno, end_of_merge
-                                 in merge_sorted_revisions)
+    revision_id_to_revno = branch.get_revision_id_to_revno_map()
     w = branch.repository.weave_store.get_weave(file_id,
         branch.repository.get_transaction())
     last_origin = None

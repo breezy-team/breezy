@@ -367,7 +367,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
-    
+
     def basis_tree(self):
         """Return RevisionTree for the current last revision.
         
@@ -932,20 +932,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             transport = self.branch.bzrdir.root_transport
             for name in segments:
                 transport = transport.clone(name)
-                try:
-                    transport.mkdir('.')
-                except errors.FileExists:
-                    pass
+                transport.ensure_base()
             return transport
             
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        try:
-            branch_transport.mkdir('.')
-        except errors.FileExists:
-            pass
+        branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:
             repo = branch_bzrdir.find_repository()
@@ -1767,43 +1761,97 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return result
 
     @needs_tree_write_lock
-    def remove(self, files, verbose=False, to_file=None):
-        """Remove nominated files from the working inventory..
+    def remove(self, files, verbose=False, to_file=None, keep_files=True,
+        force=False):
+        """Remove nominated files from the working inventor.
 
-        This does not remove their text.  This does not run on XXX on what? RBC
-
-        TODO: Refuse to remove modified files unless --force is given?
-
-        TODO: Do something useful with directories.
-
-        TODO: Should this remove the text or not?  Tough call; not
-        removing may be useful and the user can just use use rm, and
-        is the opposite of add.  Removing it is consistent with most
-        other tools.  Maybe an option.
+        :files: File paths relative to the basedir.
+        :keep_files: If true, the files will also be kept.
+        :force: Delete files and directories, even if they are changed and
+            even if the directories are not empty.
         """
         ## TODO: Normalize names
-        ## TODO: Remove nested loops; better scalability
+
         if isinstance(files, basestring):
             files = [files]
 
         inv = self.inventory
 
+        new_files=set()
+        unknown_files_in_directory=set()
+
+        def recurse_directory_to_add_files(directory):
+            # recurse directory and add all files
+            # so we can check if they have changed.
+            for contained_dir_info in self.walkdirs(directory):
+                for file_info in contained_dir_info[1]:
+                    if file_info[2] == 'file':
+                        relpath = self.relpath(file_info[0])
+                        if file_info[4]: #is it versioned?
+                            new_files.add(relpath)
+                        else:
+                            unknown_files_in_directory.add(
+                                (relpath, None, file_info[2]))
+
+        for filename in files:
+            # Get file name into canonical form.
+            filename = self.relpath(self.abspath(filename))
+            if len(filename) > 0:
+                new_files.add(filename)
+                if osutils.isdir(filename) and len(os.listdir(filename)) > 0:
+                    recurse_directory_to_add_files(filename)
+        files = [f for f in new_files]
+
+        # Sort needed to first handle directory content before the directory
+        files.sort(reverse=True)
+        if not keep_files and not force:
+            tree_delta = self.changes_from(self.basis_tree(),
+                specific_files=files)
+            for unknown_file in unknown_files_in_directory:
+                tree_delta.unversioned.extend((unknown_file,))
+            if bool(tree_delta.modified
+                    or tree_delta.added
+                    or tree_delta.renamed
+                    or tree_delta.kind_changed
+                    or tree_delta.unversioned):
+                raise errors.BzrRemoveChangedFilesError(tree_delta)
+
         # do this before any modifications
         for f in files:
             fid = inv.path2id(f)
+            message=None
             if not fid:
-                note("%s is not versioned."%f)
+                message="%s is not versioned." % (f,)
             else:
                 if verbose:
-                    # having remove it, it must be either ignored or unknown
+                    # having removed it, it must be either ignored or unknown
                     if self.is_ignored(f):
                         new_status = 'I'
                     else:
                         new_status = '?'
                     textui.show_status(new_status, inv[fid].kind, f,
                                        to_file=to_file)
+                # unversion file
                 del inv[fid]
+                message="removed %s" % (f,)
 
+            if not keep_files:
+                abs_path = self.abspath(f)
+                if osutils.lexists(abs_path):
+                    if (osutils.isdir(abs_path) and
+                        len(os.listdir(abs_path)) > 0):
+                        message="%s is not empty directory "\
+                            "and won't be deleted." % (f,)
+                    else:
+                        osutils.delete_any(abs_path)
+                        message="deleted %s" % (f,)
+                elif message is not None:
+                    # only care if we haven't done anything yet.
+                    message="%s does not exist." % (f,)
+
+            # print only one message (if any) per file.
+            if message is not None:
+                note(message)
         self._write_inventory(inv)
 
     @needs_tree_write_lock
@@ -2106,11 +2154,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
+        returns a generator which yields items in the form:
+                ((curren_directory_path, fileid),
+                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                   file1_kind), ... ])
+
         This API returns a generator, which is only valid during the current
         tree transaction - within a single lock_read or lock_write duration.
 
-        If the tree is not locked, it may cause an error to be raised, depending
-        on the tree implementation.
+        If the tree is not locked, it may cause an error to be raised,
+        depending on the tree implementation.
         """
         disk_top = self.abspath(prefix)
         if disk_top.endswith('/'):
@@ -2208,6 +2261,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     disk_finished = True
 
     def _walkdirs(self, prefix=""):
+        """Walk the directories of this tree.
+
+           :prefix: is used as the directrory to start with.
+           returns a generator which yields items in the form:
+                ((curren_directory_path, fileid),
+                 [(file1_path, file1_name, file1_kind, None, file1_id,
+                   file1_kind), ... ])
+        """
         _directory = 'directory'
         # get the root in the inventory
         inv = self.inventory

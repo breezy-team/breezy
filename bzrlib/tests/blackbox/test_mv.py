@@ -31,15 +31,6 @@ from bzrlib.tests import (
 
 class TestMove(TestCaseWithTransport):
 
-    def assertInWorkingTree(self,path):
-        tree = workingtree.WorkingTree.open('.')
-        self.assertIsNot(tree.path2id(path), None,
-            path+' not in working tree.')
-
-    def assertNotInWorkingTree(self,path):
-        tree = workingtree.WorkingTree.open('.')
-        self.assertIs(tree.path2id(path), None, path+' in working tree.')
-
     def assertMoved(self,from_path,to_path):
         """Assert that to_path is existing and versioned but from_path not. """
         self.failIfExists(from_path)

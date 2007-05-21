@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,17 @@
 
 """Server-side repository related request implmentations."""
 
+import sys
+import tempfile
+import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+    )
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -61,12 +68,12 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.
-            return SmartServerResponse(('nosuchrevision', revision_id), '')
+            return FailedSmartServerResponse(('nosuchrevision', revision_id), '')
 
         for revision, parents in revision_graph.items():
             lines.append(' '.join([revision,] + parents))
 
-        return SmartServerResponse(('ok', ), '\n'.join(lines))
+        return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
@@ -80,9 +87,9 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             present.
         """
         if repository.has_revision(revision_id):
-            return SmartServerResponse(('yes', ))
+            return SuccessfulSmartServerResponse(('yes', ))
         else:
-            return SmartServerResponse(('no', ))
+            return SuccessfulSmartServerResponse(('no', ))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
@@ -125,7 +132,7 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
         if stats.has_key('size'):
             body += 'size: %d\n' % stats['size']
 
-        return SmartServerResponse(('ok', ), body)
+        return SuccessfulSmartServerResponse(('ok', ), body)
 
 
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
@@ -138,9 +145,9 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
-            return SmartServerResponse(('yes', ))
+            return SuccessfulSmartServerResponse(('yes', ))
         else:
-            return SmartServerResponse(('no', ))
+            return SuccessfulSmartServerResponse(('no', ))
 
 
 class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
@@ -152,14 +159,14 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         try:
             token = repository.lock_write(token=token)
         except errors.LockContention, e:
-            return SmartServerResponse(('LockContention',))
+            return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
-            return SmartServerResponse(('UnlockableTransport',))
+            return FailedSmartServerResponse(('UnlockableTransport',))
         repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
             token = ''
-        return SmartServerResponse(('ok', token))
+        return SuccessfulSmartServerResponse(('ok', token))
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
@@ -168,8 +175,64 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         try:
             repository.lock_write(token=token)
         except errors.TokenMismatch, e:
-            return SmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse(('TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
-        return SmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse(('ok',))
 
+
+class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
+    """Get the raw repository files as a tarball.
+
+    The returned tarball contains a .bzr control directory which in turn
+    contains a repository.
+    
+    This takes one parameter, compression, which currently must be 
+    "", "gz", or "bz2".
+
+    This is used to implement the Repository.copy_content_into operation.
+    """
+
+    def do_repository_request(self, repository, compression):
+        from bzrlib import osutils
+        repo_transport = repository.control_files._transport
+        tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
+        try:
+            controldir_name = tmp_dirname + '/.bzr'
+            return self._tarfile_response(controldir_name, compression)
+        finally:
+            osutils.rmtree(tmp_dirname)
+
+    def _copy_to_tempdir(self, from_repo):
+        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
+        tmp_bzrdir = from_repo.bzrdir._format.initialize(tmp_dirname)
+        tmp_repo = from_repo._format.initialize(tmp_bzrdir)
+        from_repo.copy_content_into(tmp_repo)
+        return tmp_dirname, tmp_repo
+
+    def _tarfile_response(self, tmp_dirname, compression):
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            self._tarball_of_dir(tmp_dirname, compression, temp.name)
+            # all finished; write the tempfile out to the network
+            temp.seek(0)
+            return SuccessfulSmartServerResponse(('ok',), temp.read())
+            # FIXME: Don't read the whole thing into memory here; rather stream it
+            # out from the file onto the network. mbp 20070411
+        finally:
+            temp.close()
+
+    def _tarball_of_dir(self, dirname, compression, tarfile_name):
+        tarball = tarfile.open(tarfile_name, mode='w:' + compression)
+        try:
+            # The tarball module only accepts ascii names, and (i guess)
+            # packs them with their 8bit names.  We know all the files
+            # within the repository have ASCII names so the should be safe
+            # to pack in.
+            dirname = dirname.encode(sys.getfilesystemencoding())
+            # python's tarball module includes the whole path by default so
+            # override it
+            assert dirname.endswith('.bzr')
+            tarball.add(dirname, '.bzr') # recursive by default
+        finally:
+            tarball.close()

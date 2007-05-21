@@ -20,7 +20,7 @@
 from cStringIO import StringIO
 
 from bzrlib import branch, errors, lockdir, repository
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -28,6 +28,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
+from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -53,7 +54,6 @@ class RemoteBzrDir(BzrDir):
             self._medium = None
             return
 
-        self._ensure_real()
         path = self._path_for_remote_call(self._client)
         response = self._client.call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:
@@ -135,7 +135,11 @@ class RemoteBzrDir(BzrDir):
             raise errors.NoRepositoryPresent(self)
 
     def open_workingtree(self, recommend_upgrade=True):
-        raise errors.NotLocalUrl(self.root_transport)
+        self._ensure_real()
+        if self._real_bzrdir.has_workingtree():
+            raise errors.NotLocalUrl(self.root_transport)
+        else:
+            raise errors.NoWorkingTree(self.root_transport.base)
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
@@ -427,6 +431,30 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.break_lock()
 
+    def _get_tarball(self, compression):
+        """Return a TemporaryFile containing a repository tarball"""
+        import tempfile
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, protocol = self._client.call_expecting_body(
+            'Repository.tarball', path, compression)
+        assert response[0] in ('ok', 'failure'), \
+            'unexpected response code %s' % (response,)
+        if response[0] == 'ok':
+            # Extract the tarball and return it
+            t = tempfile.NamedTemporaryFile()
+            # TODO: rpc layer should read directly into it...
+            t.write(protocol.read_body_bytes())
+            t.seek(0)
+            return t
+        else:
+            raise errors.SmartServerError(error_code=response)
+
+    def sprout(self, to_bzrdir, revision_id=None):
+        # TODO: Option to control what format is created?
+        to_repo = to_bzrdir.create_repository()
+        self._copy_repository_tarball(to_repo, revision_id)
+        return to_repo
+
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
@@ -567,6 +595,35 @@ class RemoteRepository(object):
         return self._real_repository.copy_content_into(
             destination, revision_id=revision_id)
 
+    def _copy_repository_tarball(self, destination, revision_id=None):
+        # get a tarball of the remote repository, and copy from that into the
+        # destination
+        from bzrlib import osutils
+        import tarfile
+        import tempfile
+        from StringIO import StringIO
+        # TODO: Maybe a progress bar while streaming the tarball?
+        note("Copying repository content as tarball...")
+        tar_file = self._get_tarball('bz2')
+        try:
+            tar = tarfile.open('repository', fileobj=tar_file,
+                mode='r|bz2')
+            tmpdir = tempfile.mkdtemp()
+            try:
+                _extract_tar(tar, tmpdir)
+                tmp_bzrdir = BzrDir.open(tmpdir)
+                tmp_repo = tmp_bzrdir.open_repository()
+                tmp_repo.copy_content_into(destination, revision_id)
+            finally:
+                osutils.rmtree(tmpdir)
+        finally:
+            tar_file.close()
+        # TODO: if the server doesn't support this operation, maybe do it the
+        # slow way using the _real_repository?
+        #
+        # TODO: Suggestion from john: using external tar is much faster than
+        # python's tarfile library, but it may not work on windows.
+
     def set_make_working_trees(self, new_value):
         raise NotImplementedError(self.set_make_working_trees)
 
@@ -706,6 +763,11 @@ class RemoteBranch(branch.Branch):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
 
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
@@ -897,6 +959,7 @@ class RemoteBranch(branch.Branch):
             rev_id = 'null:'
         else:
             rev_id = rev_history[-1]
+        self._clear_cached_state()
         response = self._client.call('Branch.set_last_revision',
             path, self._lock_token, self._repo_lock_token, rev_id)
         if response[0] == 'NoSuchRevision':
@@ -922,9 +985,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        self._ensure_real()
         result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
-        self._real_branch.copy_content_into(result, revision_id=revision_id)
+        self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
@@ -934,16 +996,24 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             **kwargs):
+        # FIXME: This asks the real branch to run the hooks, which means
+        # they're called with the wrong target branch parameter. 
+        # The test suite specifically allows this at present but it should be
+        # fixed.  It should get a _override_hook_target branch,
+        # as push does.  -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision)
+            source, overwrite=overwrite, stop_revision=stop_revision,
+            **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision)
+            target, overwrite=overwrite, stop_revision=stop_revision,
+            _override_hook_source_branch=self)
 
     def is_locked(self):
         return self._lock_count >= 1
@@ -986,3 +1056,11 @@ class RemoteBranchConfig(BranchConfig):
             self._branch_data_config = TreeConfig(self.branch._real_branch)
         return self._branch_data_config
 
+
+def _extract_tar(tar, to_dir):
+    """Extract all the contents of a tarfile object.
+
+    A replacement for extractall, which is not present in python2.4
+    """
+    for tarinfo in tar:
+        tar.extract(tarinfo, to_dir)

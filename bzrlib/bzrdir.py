@@ -57,6 +57,7 @@ from bzrlib.osutils import (
     sha_string,
     )
 from bzrlib.smart.client import _SmartClient
+from bzrlib.smart import protocol
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -154,8 +155,23 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
-        self._make_tail(url)
-        result = self._format.initialize(url)
+        return self.clone_on_transport(get_transport(url),
+                                       revision_id=revision_id,
+                                       force_new_repo=force_new_repo)
+
+    def clone_on_transport(self, transport, revision_id=None,
+                           force_new_repo=False):
+        """Clone this bzrdir and its contents to transport verbatim.
+
+        If the target directory does not exist, it will be created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target 
+                               even if one is available.
+        """
+        transport.ensure_base()
+        result = self._format.initialize_on_transport(transport)
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -194,13 +210,8 @@ class BzrDir(object):
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
     def _make_tail(self, url):
-        head, tail = urlutils.split(url)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
+        t = get_transport(url)
+        t.ensure_base()
 
     # TODO: Should take a Transport
     @classmethod
@@ -216,13 +227,8 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default"
                 " format, not one of %r" % cls)
-        head, tail = urlutils.split(base)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
+        t = get_transport(base)
+        t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
         return format.initialize(safe_unicode(base))
@@ -755,9 +761,10 @@ class BzrDir(object):
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
         """
-        self._make_tail(url)
+        target_transport = get_transport(url)
+        target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
-        result = cloning_format.initialize(url)
+        result = cloning_format.initialize_on_transport(target_transport)
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
@@ -781,13 +788,13 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            # we don't clone the repo because that preserves attributes
-            # like is_shared(), and we have not yet implemented a 
-            # repository sprout().
-            result_repo = result.create_repository()
-        if result_repo is not None:
+            result_repo = source_repository.sprout(result, revision_id=revision_id)
+        else:
             # fetch needed content into target.
             if source_repository is not None:
+                # would rather do 
+                # source_repository.copy_content_into(result_repo, revision_id=revision_id)
+                # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
@@ -2232,12 +2239,20 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
-            transport.get_smart_client()
+            client = transport.get_smart_client()
         except (NotImplementedError, AttributeError,
                 errors.TransportNotPossible):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
+            # Send a 'hello' request in protocol version one, and decline to
+            # open it if the server doesn't support our required version (2) so
+            # that the VFS-based transport will do it.
+            request = client.get_request()
+            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+            server_version = smart_protocol.query_version()
+            if server_version != 2:
+                raise errors.NotBranchError(path=transport.base)
             return klass()
 
     def initialize_on_transport(self, transport):

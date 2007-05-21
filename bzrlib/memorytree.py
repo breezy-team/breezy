@@ -222,18 +222,29 @@ class MemoryTree(mutabletree.MutableTree):
             else:
                 raise errors.NoSuchId(self, file_id)
 
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """See MutableTree.set_parent_trees()."""
+        if len(revision_ids) == 0:
+            self._parent_ids = []
+            self._basis_tree = self.branch.repository.revision_tree(None)
+        else:
+            self._parent_ids = revision_ids
+            self._basis_tree = self.branch.repository.revision_tree(
+                                    revision_ids[0])
+            self._branch_revision_id = revision_ids[0]
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revisiontree(None)
+            self._basis_tree = self.branch.repository.revision_tree(None)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None:
-                self._basis_tree = self.branch.repository.revisiontree(None)
+                self._basis_tree = self.branch.repository.revision_tree(None)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

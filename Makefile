@@ -17,12 +17,15 @@
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
 
-.PHONY: all clean pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs
 
+all: extensions
 
-all:
+extensions:
+	@echo "building extension modules."
+	python setup.py build_ext -i
 
-check:
+check: extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
@@ -72,6 +75,8 @@ html-docs: docs
 doc_dir := doc 
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
 htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
+dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_htm_files := $(patsubst %.txt, %.htm, $(dev_txt_files)) 
 
 pretty-html-docs: pretty_files
 
@@ -80,11 +85,14 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
-doc/HACKING.htm: HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css HACKING doc/HACKING.htm
+doc/developers/%.htm: doc/developers/%.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
 
-doc/%.htm: doc/%.txt 
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
+doc/developers/HACKING.htm: doc/developers/HACKING
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
+
+%.htm: %.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $< $@
 
 $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
@@ -105,15 +113,20 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
+ALL_DOCS = $(htm_files) $(MAN_PAGES) doc/developers/HACKING.htm $(dev_htm_files)
+docs: $(ALL_DOCS)
 
 copy-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir $(htm_files) \
+		doc/default.css NEWS README \
+		win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir doc/developers/HACKING.htm \
+		win32_bzr.exe/doc/developers
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt $(MAN_PAGES)
+	python tools/win32/ostools.py remove $(ALL_DOCS) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt
 
 
 # make bzr.exe for win32 with py2exe
