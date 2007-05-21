@@ -299,8 +299,7 @@ class Commit(object):
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
-                raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
-                        self.specific_files)
+                raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
