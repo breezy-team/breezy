@@ -16,7 +16,10 @@
 
 """Tests for Branch.sprout()"""
 
-from bzrlib import tests
+from bzrlib import (
+    remote,
+    tests,
+    )
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -30,6 +33,18 @@ class TestSprout(TestCaseWithBranch):
         source = self.make_branch('source')
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
+
+    def test_sprout_preserves_kind(self):
+        branch1 = self.make_branch('branch1')
+        target_repo = self.make_repository('branch2')
+        target_repo.fetch(branch1.repository)
+        branch2 = branch1.sprout(target_repo.bzrdir)
+        if isinstance(branch1, remote.RemoteBranch):
+            branch1._ensure_real()
+            target_class = branch1._real_branch.__class__
+        else:
+            target_class = branch1.__class__
+        self.assertIsInstance(branch2, target_class)
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.
