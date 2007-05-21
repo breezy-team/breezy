@@ -1986,7 +1986,8 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif new_entry_key < current_old[0]:
+            elif (new_entry_key[0].split('/') < current_old[0][0].split('/')
+                  and new_entry_key[1:] < current_old[0][1:]):
                 # new comes before:
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
