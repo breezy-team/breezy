@@ -61,3 +61,22 @@ class TestSprout(TestCaseWithBranch):
         repo_a.copy_content_into(repo_b)
         br_b = wt_a.branch.sprout(repo_b.bzrdir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
+
+    def test_sprout_partial_not_in_revision_history(self):
+        """We should be able to sprout from any revision in ancestry."""
+        wt = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        wt.add('a')
+        wt.commit('rev1', rev_id='rev1')
+        wt.commit('rev2-alt', rev_id='rev2-alt')
+        wt.set_parent_ids(['rev1'])
+        wt.branch.set_last_revision_info(1, 'rev1')
+        wt.commit('rev2', rev_id='rev2')
+        wt.set_parent_ids(['rev2', 'rev2-alt'])
+        wt.commit('rev3', rev_id='rev3')
+
+        repo = self.make_repository('target')
+        repo.fetch(wt.branch.repository)
+        branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
+        self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
+        self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
