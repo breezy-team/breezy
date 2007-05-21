@@ -20,8 +20,6 @@ bzr-svn 0.4	UNRELEASED
 
    * Support commits in heavy checkouts (#79330).
 
-  IMPROVEMENTS
-
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

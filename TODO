@@ -1,22 +1,19 @@
-- rename 'main' to 0.4
 - simplify find_branches by using Transport.list_dir() ?
 - replace 'undefined' by scheme name in revision ids
-- fix commits in heavyweight checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
 - faster "bzr status" in lightweight checkouts
 - when committing specific files in a lightweight checkout, make sure to 
   commit the right file id changes for "."
-- custom implementation of WorkingTree.revert()
+- custom implementation of WorkingTree.revert() / WorkingTree.merge()
 - don't update all entries to the same revnum when opening working tree
 - avoid extra connect in logwalker?
 - make ListBranchingScheme() support wildcards
  - rewrite TrunkBranchingScheme() and ListBranchingScheme() as subclasses of 
    ListBranchingScheme()
-- more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
 - free memory!
 - implement BzrDirFormat.get_converter()
 - report changes to delta editor in Branch.pull()
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
-- blackbox tests
+- more blackbox tests
 - split fetch tests out of test_repos

@@ -52,6 +52,11 @@ SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
 
 def parse_revision_metadata(text, rev):
+    """Parse a revision info text (as set in bzr:revision-info).
+
+    :param text: text to parse
+    :param rev: Revision object to apply read parameters to
+    """
     in_properties = False
     for l in text.splitlines():
         try:
@@ -70,6 +75,15 @@ def parse_revision_metadata(text, rev):
             raise BzrError("Invalid key %r" % key)
 
 def generate_revision_metadata(timestamp, timezone, committer, revprops):
+    """Generate revision metadata text for the specified revision 
+    properties.
+
+    :param timestamp: timestamp of the revision, in seconds since epoch
+    :param timezone: timezone, specified by offset from GMT in seconds
+    :param committer: name/email of the committer
+    :param revprops: dictionary with custom revision properties
+    :return: text with data to set bzr:revision-info to.
+    """
     assert timestamp is None or isinstance(timestamp, float)
     text = ""
     if timestamp is not None:
@@ -104,6 +118,8 @@ def revision_id_to_svk_feature(revid):
 
 
 class SvnRepositoryFormat(RepositoryFormat):
+    """Repository format for Subversion repositories (accessed using svn_ra).
+    """
     rich_root_data = False
 
     def __init__(self):
@@ -115,7 +131,7 @@ class SvnRepositoryFormat(RepositoryFormat):
         return "Subversion Repository"
 
     def initialize(self, url, shared=False, _internal=False):
-        """Svn repositories cannot be created."""
+        """Svn repositories cannot be created (yet)."""
         raise UninitializableFormat(self)
 
 cachedbs = {}
@@ -205,6 +221,11 @@ class SvnRepository(Repository):
         pass # FIXME: ignored, nowhere to store it... 
 
     def make_working_trees(self):
+        """See Repository.make_working_trees().
+
+        Always returns False, as working trees are never created inside 
+        Subversion repositories.
+        """
         return False
 
     def get_ancestry(self, revision_id):
@@ -232,6 +253,7 @@ class SvnRepository(Repository):
         return ancestry
 
     def has_revision(self, revision_id):
+        """See Repository.has_revision()."""
         if revision_id is None:
             return True
 
@@ -248,10 +270,12 @@ class SvnRepository(Repository):
             raise
 
     def revision_trees(self, revids):
+        """See Repository.revision_trees()."""
         for revid in revids:
             yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id):
+        """See Repository.revision_tree()."""
         if revision_id is None:
             revision_id = NULL_REVISION
 
@@ -263,6 +287,7 @@ class SvnRepository(Repository):
         return SvnRevisionTree(self, revision_id)
 
     def revision_fileid_renames(self, revid):
+        """Check which files were renamed in a particular revision."""
         (path, revnum) = self.lookup_revision_id(revid)
         items = self.branchprop_list.get_property_diff(path, revnum, 
                                   SVN_PROP_BZR_FILEIDS).splitlines()
