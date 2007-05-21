@@ -249,3 +249,19 @@ class TestPush(TestCaseWithSubversionRepository):
                 wt.branch.repository.get_ancestry(wt.branch.last_revision()), 
                 repos.get_ancestry(wt.branch.last_revision()))
 
+    def test_multiple_diverged(self):
+        oc_url = self.make_client("o", "oc")
+
+        self.build_tree({'dc/file': 'data'})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.build_tree({'oc/file': 'data2', 'oc/adir': None})
+        self.client_add("oc/file")
+        self.client_add("oc/adir")
+        self.client_commit("oc", "Another commit from Bzr")
+
+        self.assertRaises(DivergedBranches, 
+                lambda: Branch.open(oc_url).pull(self.bzrdir.open_branch()))
+
