@@ -8,6 +8,9 @@ IN DEVELOPMENT
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
 
+    * Let TestUIFactoy encode the password prompt with its own stdout.
+      (Vincent Ladeuil, #110204)
+
 
 bzr 0.16  2007-05-07
   
