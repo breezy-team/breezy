@@ -721,7 +721,7 @@ class TestUIFactory(ui.CLIUIFactory):
     def get_non_echoed_password(self, prompt):
         """Get password from stdin without trying to handle the echo mode"""
         if prompt:
-            self.stdout.write(prompt)
+            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
