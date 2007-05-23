@@ -17,7 +17,7 @@
 
 """Tests for the TreeBuilder helper class."""
 
-from bzrlib import errors
+from bzrlib import errors, tests
 from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.treebuilder import TreeBuilder
@@ -48,7 +48,7 @@ class TestFakeTree(TestCaseWithTransport):
         self.assertEqual(["lock_tree_write", "unlock"], tree._calls)
 
 
-class TestTreeBuilder(TestCaseWithTransport):
+class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
     
     def test_create(self):
         builder = TreeBuilder()
@@ -92,3 +92,4 @@ class TestTreeBuilder(TestCaseWithTransport):
         self.assertEqual('contents of bar/file\n',
             tree.get_file(tree.path2id('bar/file')).read())
         builder.finish_tree()
+
