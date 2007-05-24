@@ -8,6 +8,12 @@ IN DEVELOPMENT
       is specified, and are labelled "revision-id:", as per mainline
       revisions, instead of "merged:". (Kent Gibson)
 
+  IMPROVEMENTS:
+  
+    * There are two new help topics, working-trees and repositories that
+      attempt to explain these concepts. (James Westby, John Arbash Meinel,
+      Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
