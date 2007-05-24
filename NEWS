@@ -19,6 +19,9 @@ IN DEVELOPMENT
     * Let TestUIFactoy encode the password prompt with its own stdout.
       (Vincent Ladeuil, #110204)
 
+    * WorkingTree.remove works correctly with tree references, and when pwd is
+      not the tree root. (Aaron Bentley)
+
 
 bzr 0.16  2007-05-07
   
