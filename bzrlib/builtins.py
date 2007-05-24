@@ -249,7 +249,7 @@ class cmd_remove_tree(Command):
 
     To re-create the working tree, use "bzr checkout".
     """
-    _see_also = ['checkout']
+    _see_also = ['checkout', 'working-trees']
 
     takes_args = ['location?']
 
@@ -669,7 +669,7 @@ class cmd_push(Command):
     location can be accessed.
     """
 
-    _see_also = ['pull', 'update']
+    _see_also = ['pull', 'update', 'working-trees']
     takes_options = ['remember', 'overwrite', 'verbose',
         Option('create-prefix',
                help='Create the path leading up to the branch '
@@ -812,8 +812,9 @@ class cmd_push(Command):
                 try:
                     tree_to = dir_to.open_workingtree()
                 except errors.NotLocalUrl:
-                    warning('This transport does not update the working '
-                            'tree of: %s' % (br_to.base,))
+                    warning("This transport does not update the working " 
+                            "tree of: %s. See 'bzr help working-trees' for "
+                            "more information." % br_to.base)
                     push_result = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
                     push_result = br_from.push(br_to, overwrite)
@@ -1017,7 +1018,7 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
 
-    _see_also = ['pull']
+    _see_also = ['pull', 'working-trees']
     takes_args = ['dir?']
     aliases = ['up']
 
@@ -1061,7 +1062,7 @@ class cmd_info(Command):
 
     Branches and working trees will also report any missing revisions.
     """
-    _see_also = ['revno']
+    _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
     takes_options = ['verbose']
 
@@ -1312,8 +1313,11 @@ class cmd_init(Command):
 class cmd_init_repository(Command):
     """Create a shared repository to hold branches.
 
-    New branches created under the repository directory will store their revisions
-    in the repository, not in the branch directory.
+    New branches created under the repository directory will store their
+    revisions in the repository, not in the branch directory.
+
+    If the --no-trees option is used then the branches in the repository
+    will not have working trees by default.
 
     example:
         bzr init-repo --no-trees repo
@@ -1321,6 +1325,8 @@ class cmd_init_repository(Command):
         bzr checkout --lightweight repo/trunk trunk-checkout
         cd trunk-checkout
         (add files here)
+
+    See 'bzr help repositories' for more information.
     """
 
     _see_also = ['init', 'branch', 'checkout']
