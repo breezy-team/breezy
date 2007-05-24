@@ -1,5 +1,13 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+    * Rework of LogFormatter API to provide beginning/end of log hooks and to
+      encapsulate the details of the revision to be logged in a LogRevision
+      object.
+      In long log formats, merge revision ids are only shown when --show-ids
+      is specified, and are labelled "revision-id:", as per mainline
+      revisions, instead of "merged:". (Kent Gibson)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.

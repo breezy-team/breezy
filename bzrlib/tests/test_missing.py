@@ -18,7 +18,10 @@ import os
 
 
 from bzrlib.builtins import merge
-from bzrlib.missing import find_unmerged, iter_log_data
+from bzrlib.missing import(
+    find_unmerged,
+    iter_log_revisions,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
@@ -53,7 +56,7 @@ class TestMissing(TestCaseWithTransport):
         merger_tree.commit('d', rev_id='d')
         self.assertEqual(find_unmerged(original, merger), ([], [(2, 'd')]))
 
-    def test_iter_log_data(self):
+    def test_iter_log_revisions(self):
         base_tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a'])
         base_tree.add(['a'], ['a-id'])
@@ -76,43 +79,45 @@ class TestMissing(TestCaseWithTransport):
 
         base_extra, child_extra = find_unmerged(base_tree.branch,
                                                 child_tree.branch)
-        results = list(iter_log_data(base_extra, base_tree.branch.repository,
-                                     verbose=True))
+        results = list(iter_log_revisions(base_extra, 
+                            base_tree.branch.repository,
+                            verbose=True))
         self.assertEqual([], results)
 
-        results = list(iter_log_data(child_extra, child_tree.branch.repository,
-                                     verbose=True))
+        results = list(iter_log_revisions(child_extra,
+                            child_tree.branch.repository,
+                            verbose=True))
         self.assertEqual(4, len(results))
 
         r0,r1,r2,r3 = results
 
-        self.assertEqual((2, 'c-2'), (r0[0], r0[1].revision_id))
-        self.assertEqual((3, 'c-3'), (r1[0], r1[1].revision_id))
-        self.assertEqual((4, 'c-4'), (r2[0], r2[1].revision_id))
-        self.assertEqual((5, 'c-5'), (r3[0], r3[1].revision_id))
+        self.assertEqual((2, 'c-2'), (r0.revno, r0.rev.revision_id))
+        self.assertEqual((3, 'c-3'), (r1.revno, r1.rev.revision_id))
+        self.assertEqual((4, 'c-4'), (r2.revno, r2.rev.revision_id))
+        self.assertEqual((5, 'c-5'), (r3.revno, r3.rev.revision_id))
 
-        delta0 = r0[2]
+        delta0 = r0.delta
         self.assertNotEqual(None, delta0)
         self.assertEqual([('b', 'b-id', 'file')], delta0.added)
         self.assertEqual([], delta0.removed)
         self.assertEqual([], delta0.renamed)
         self.assertEqual([], delta0.modified)
 
-        delta1 = r1[2]
+        delta1 = r1.delta
         self.assertNotEqual(None, delta1)
         self.assertEqual([], delta1.added)
         self.assertEqual([('a', 'a-id', 'file')], delta1.removed)
         self.assertEqual([], delta1.renamed)
         self.assertEqual([], delta1.modified)
 
-        delta2 = r2[2]
+        delta2 = r2.delta
         self.assertNotEqual(None, delta2)
         self.assertEqual([], delta2.added)
         self.assertEqual([], delta2.removed)
         self.assertEqual([], delta2.renamed)
         self.assertEqual([('b', 'b-id', 'file', True, False)], delta2.modified)
 
-        delta3 = r3[2]
+        delta3 = r3.delta
         self.assertNotEqual(None, delta3)
         self.assertEqual([], delta3.added)
         self.assertEqual([], delta3.removed)
