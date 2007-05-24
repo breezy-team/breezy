@@ -1800,7 +1800,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             filename = self.relpath(abspath)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(abspath) and len(os.listdir(abspath)) > 0:
+                if osutils.isdir(abspath):
                     recurse_directory_to_add_files(filename)
         files = [f for f in new_files]
 
