@@ -683,6 +683,7 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 
+
 def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
     """Show the change in revision history comparing the old revision history to the new one.
 
@@ -723,7 +724,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         to_file.write('\nRemoved Revisions:\n')
         for i in range(base_idx, len(old_rh)):
             rev = branch.repository.get_revision(old_rh[i])
-            lf.show(i+1, rev, None)
+            lr = LogRevision(rev, i+1, 0, None)
+            lf.log_revision(lr)
         to_file.write('*'*60)
         to_file.write('\n\n')
     if base_idx < len(new_rh):
