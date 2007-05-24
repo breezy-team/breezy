@@ -18,7 +18,7 @@ import os
 
 
 from bzrlib.builtins import merge
-from bzrlib.missing import(
+from bzrlib.missing import (
     find_unmerged,
     iter_log_revisions,
     )

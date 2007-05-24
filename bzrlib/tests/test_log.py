@@ -19,12 +19,12 @@ from cStringIO import StringIO
 
 from bzrlib import log
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
-from bzrlib.log import (show_log, 
-                        get_view_revisions, 
+from bzrlib.log import (show_log,
+                        get_view_revisions,
                         LogRevision,
-                        LogFormatter, 
-                        LongLogFormatter, 
-                        ShortLogFormatter, 
+                        LogFormatter,
+                        LongLogFormatter,
+                        ShortLogFormatter,
                         LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
@@ -40,7 +40,7 @@ class LogCatcher(LogFormatter):
     We should also test the LogFormatter.
     """
 
-    supports_delta = True 
+    supports_delta = True
 
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)

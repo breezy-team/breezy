@@ -54,18 +54,18 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib import(
+from bzrlib import (
     registry,
     symbol_versioning,
     )
 import bzrlib.errors as errors
-from bzrlib.symbol_versioning import(
+from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_eleven,
     zero_seventeen,
     )
 from bzrlib.trace import mutter
-from bzrlib.tsort import(
+from bzrlib.tsort import (
     merge_sort,
     topo_sort,
     )
@@ -167,7 +167,7 @@ def show_log(branch,
             lf.end_log()
     finally:
         branch.unlock()
-    
+
 def _show_log(branch,
              lf,
              specific_fileid=None,
@@ -220,7 +220,7 @@ def _show_log(branch,
         mainline_revs.insert(0, None)
     else:
         mainline_revs.insert(0, which_revs[start_revision-2][1])
-    legacy_lf = not getattr(lf,'log_revision',None)
+    legacy_lf = getattr(lf, 'log_revision', None) is None
     if legacy_lf:
         # pre-0.17 formatters use show for mainline revisions.
         # how should we show merged revisions ?
@@ -290,7 +290,7 @@ def _show_log(branch,
                 continue
 
         if not legacy_lf:
-            lr = LogRevision(rev,revno,merge_depth,delta,
+            lr = LogRevision(rev, revno, merge_depth, delta,
                              rev_tag_dict.get(rev_id))
             lf.log_revision(lr)
         else:
@@ -430,7 +430,8 @@ class LogRevision(object):
     logging options and the log formatter capabilities.
     """
 
-    def __init__(self,rev=None,revno=None,merge_depth=0,delta=None,tags=None):
+    def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
+                 tags=None):
         self.rev = rev
         self.revno = revno
         self.merge_depth = merge_depth
@@ -489,18 +490,18 @@ class LongLogFormatter(LogFormatter):
 
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta, tags=None):
-        lr = LogRevision(rev,revno,0,delta,tags)
+        lr = LogRevision(rev, revno, 0, delta, tags)
         return self.log_revision(lr)
 
     @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
-        lr = LogRevision(rev,merge_depth=merge_depth)
+        lr = LogRevision(rev, merge_depth=merge_depth)
         return self.log_revision(lr)
 
     @deprecated_method(zero_seventeen)
     def show_merge_revno(self, rev, merge_depth, revno, tags=None):
         """Show a merged revision rev, with merge_depth and a revno."""
-        lr = LogRevision(rev,revno,merge_depth,tags=tags)
+        lr = LogRevision(rev, revno, merge_depth, tags=tags)
         return self.log_revision(lr)
 
     def log_revision(self, revision):
@@ -514,10 +515,10 @@ class LongLogFormatter(LogFormatter):
         if revision.tags:
             print >>to_file, indent+'tags: %s' % (', '.join(revision.tags))
         if self.show_ids:
-            print >>to_file,  indent+'revision-id:', revision.rev.revision_id
+            print >>to_file, indent+'revision-id:', revision.rev.revision_id
             for parent_id in revision.rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
-        print >>to_file,  indent+'committer:', revision.rev.committer
+        print >>to_file, indent+'committer:', revision.rev.committer
 
         try:
             print >>to_file, indent+'branch nick: %s' % \
@@ -546,7 +547,7 @@ class ShortLogFormatter(LogFormatter):
 
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
-        lr = LogRevision(rev,revno,0,delta)
+        lr = LogRevision(rev, revno, 0, delta)
         return self.log_revision(lr)
 
     def log_revision(self, revision):
@@ -608,8 +609,8 @@ class LineLogFormatter(LogFormatter):
         print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
 
     def log_revision(self, revision):
-        print >> self.to_file, self.log_string(revision.revno, revision.rev, 
-                                               self._max_chars)
+        print >>self.to_file, self.log_string(revision.revno, revision.rev,
+                                              self._max_chars)
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string

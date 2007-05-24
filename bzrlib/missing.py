@@ -16,14 +16,14 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
-from bzrlib.log import(
+from bzrlib import ui
+from bzrlib.log import (
     LogRevision,
     )
-from bzrlib.symbol_versioning import(
+from bzrlib.symbol_versioning import (
     deprecated_function,
     zero_seventeen,
     )
-import bzrlib.ui as ui
 
 
 @deprecated_function(zero_seventeen)
@@ -50,7 +50,7 @@ def iter_log_revisions(revisions, revision_source, verbose):
             delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
-        yield LogRevision(rev,revno,delta=delta)
+        yield LogRevision(rev, revno, delta=delta)
 
 
 def find_unmerged(local_branch, remote_branch):
