@@ -162,4 +162,5 @@ Installation
 ============
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
-to check out branches from Subversion using bzr.
+to check out branches from Subversion using bzr. Make sure the directory 
+name is 'svn'.
