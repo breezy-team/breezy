@@ -1783,22 +1783,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         def recurse_directory_to_add_files(directory):
             # recurse directory and add all files
             # so we can check if they have changed.
-            for contained_dir_info in self.walkdirs(directory):
-                for file_info in contained_dir_info[1]:
-                    if file_info[2] == 'file':
-                        relpath = self.relpath(file_info[0])
-                        if file_info[4]: #is it versioned?
+            for parent_info, file_infos in\
+                osutils.walkdirs(self.abspath(directory),
+                    directory):
+                for relpath, basename, kind, lstat, abspath in file_infos:
+                    if kind == 'file':
+                        if self.path2id(relpath): #is it versioned?
                             new_files.add(relpath)
                         else:
                             unknown_files_in_directory.add(
-                                (relpath, None, file_info[2]))
+                                (relpath, None, kind))
 
         for filename in files:
             # Get file name into canonical form.
-            filename = self.relpath(self.abspath(filename))
+            abspath = self.abspath(filename)
+            filename = self.relpath(abspath)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(filename) and len(os.listdir(filename)) > 0:
+                if osutils.isdir(abspath) and len(os.listdir(abspath)) > 0:
                     recurse_directory_to_add_files(filename)
         files = [f for f in new_files]
 
