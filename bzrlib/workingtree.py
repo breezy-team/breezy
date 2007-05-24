@@ -1775,7 +1775,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if isinstance(files, basestring):
             files = [files]
 
-        inv = self.inventory
+        inv_delta = []
 
         new_files=set()
         unknown_files_in_directory=set()
@@ -1820,7 +1820,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # do this before any modifications
         for f in files:
-            fid = inv.path2id(f)
+            fid = self.path2id(f)
             message=None
             if not fid:
                 message="%s is not versioned." % (f,)
@@ -1831,10 +1831,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, inv[fid].kind, f,
+                    textui.show_status(new_status, self.kind(fid), f,
                                        to_file=to_file)
                 # unversion file
-                del inv[fid]
+                inv_delta.append((f, None, fid, None))
                 message="removed %s" % (f,)
 
             if not keep_files:
@@ -1854,7 +1854,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # print only one message (if any) per file.
             if message is not None:
                 note(message)
-        self._write_inventory(inv)
+        self.apply_inventory_delta(inv_delta)
 
     @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
