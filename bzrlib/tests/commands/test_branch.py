@@ -15,66 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os
-
 from bzrlib.builtins import cmd_branch
-from bzrlib.hooks import Hooks
-from bzrlib.tests.test_ftp_transport import TestCaseWithFTPServer
-from bzrlib.transport import (
-    register_transport,
-    unregister_transport,
-    )
-from bzrlib.transport.ftp import FtpTransport
+from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
 
-class TransportHooks(Hooks):
-    """Dict-mapping hook name to a list of callables for transport hooks"""
-
-    def __init__(self):
-        Hooks.__init__(self)
-        # invoked when the transport is about to create or reuse
-        # an ftp connection. The api signature is (transport, ftp_instance)
-        self['get_FTP'] = []
-
-
-class InstrumentedTransport(FtpTransport):
-    """Instrumented transport class to test use by init command"""
-
-    hooks = TransportHooks()
-
-    def _get_FTP(self):
-        """See FtpTransport._get_FTP.
-
-        This is where we can detect if the connection is reused
-        or if a new one is created. This a bit ugly, but it's the
-        easiest until transport classes are refactored.
-        """
-        instance = super(InstrumentedTransport, self)._get_FTP()
-        for hook in self.hooks['get_FTP']:
-            hook(self, instance)
-        return instance
-
-
-class TestBranch(TestCaseWithFTPServer):
-
-    def setUp(self):
-        super(TestBranch, self).setUp()
-        InstrumentedTransport.hooks.install_hook('get_FTP',
-                                                 self.get_connection_hook)
-        # Make our instrumented transport the default ftp transport
-        register_transport('ftp://', InstrumentedTransport)
-
-        def cleanup():
-            InstrumentedTransport.hooks = TransportHooks()
-            unregister_transport('ftp://', InstrumentedTransport)
-
-        self.addCleanup(cleanup)
-        self.connections = []
-
-
-    def get_connection_hook(self, transport, connection):
-        if connection is not None and connection not in self.connections:
-            self.connections.append(connection)
+class TestBranch(TestCaseWithConnectionHookedTransport):
 
     def test_branch_locally(self):
         self.make_branch_and_tree('branch')
@@ -84,7 +29,11 @@ class TestBranch(TestCaseWithFTPServer):
 
 # FIXME: Bug in ftp transport suspected, neither of the two
 # cmd.run() variants can finish, we get stucked somewhere in a
-# rename....
+# rename.... Have a look at changes introduced in revno 2423 ?
+# Done, reverting the -r 2422.2423 patch makes things better but
+# BzrDir.sprout still try to create a working tree without
+# checking that the path is local and the test still hangs
+# (server shutdown missing ?). Needs more investigation.
 
 #    def test_branch_remotely(self):
 #        self.make_branch_and_tree('branch')
