@@ -21,24 +21,22 @@ from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
 class TestBranch(TestCaseWithConnectionHookedTransport):
 
-    def test_branch_locally(self):
+    def test_branch_remote_local(self):
         self.make_branch_and_tree('branch')
         cmd = cmd_branch()
         cmd.run(self.get_url() + '/branch', 'local')
         self.assertEquals(1, len(self.connections))
 
-# FIXME: Bug in ftp transport suspected, neither of the two
-# cmd.run() variants can finish, we get stucked somewhere in a
-# rename.... Have a look at changes introduced in revno 2423 ?
-# Done, reverting the -r 2422.2423 patch makes things better but
-# BzrDir.sprout still try to create a working tree without
-# checking that the path is local and the test still hangs
-# (server shutdown missing ?). Needs more investigation.
+    # This is bug 112173
+    def test_branch_local_remote(self):
+        self.make_branch_and_tree('branch')
+        cmd = cmd_branch()
+        cmd.run('branch', self.get_url() + '/remote')
+        self.assertEquals(1, len(self.connections))
 
-#    def test_branch_remotely(self):
-#        self.make_branch_and_tree('branch')
-#        cmd = cmd_branch()
-#        cmd.run(self.get_url() + '/branch', self.get_url() + '/remote')
-#        cmd.run('branch', self.get_url() + '/remote')
-#        self.assertEquals(2, len(self.connections))
+    def test_branch_remote_remote(self):
+        self.make_branch_and_tree('branch')
+        cmd = cmd_branch()
+        cmd.run(self.get_url() + '/branch', self.get_url() + '/remote')
+        self.assertEquals(2, len(self.connections))
 

@@ -15,24 +15,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Commands behaviour tests for bzr.
+from bzrlib.builtins import cmd_push
+from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
-These test the behaviour of the commands.
-The API is tested in the tests/blackbox files.
-"""
+class TestPush(TestCaseWithConnectionHookedTransport):
 
-from bzrlib.tests import (
-                          TestLoader,
-                          )
+    def test_push(self):
+        self.make_branch_and_tree('branch')
+        cmd = cmd_push()
+        cmd.run(self.get_url() + '/remote', directory='branch')
+        self.assertEquals(1, len(self.connections))
 
-
-def test_suite():
-    testmod_names = [
-        'bzrlib.tests.commands.test_branch',
-        'bzrlib.tests.commands.test_init',
-        'bzrlib.tests.commands.test_push',
-        ]
-    loader = TestLoader()
-    suite = loader.loadTestsFromModuleNames(testmod_names)
-
-    return suite

@@ -109,7 +109,6 @@ class FtpTransport(Transport):
         self.is_active = base.startswith('aftp://')
         if self.is_active:
             # urlparse won't handle aftp://, delete the leading 'a'
-
             # FIXME: This breaks even hopes of connection sharing
             # (by reusing the url instead of true cloning) by
             # modifying the the url coming from the user.
@@ -603,7 +602,7 @@ class FtpServer(Server):
         # In this case it will run for 100s, or 1000 requests
         self._async_thread = threading.Thread(
                 target=FtpServer._asyncore_loop_ignore_EBADF,
-                kwargs={'timeout':0.1, 'count':1000})
+                kwargs={'timeout':0.1, 'count':10000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
@@ -623,6 +622,11 @@ class FtpServer(Server):
         """
         try:
             asyncore.loop(*args, **kwargs)
+            # FIXME: If we reach that point, we should raise an
+            # exception explaining that the 'count' parameter in
+            # setUp is too low or testers may wonder why their
+            # test just sits there waiting for a server that is
+            # already dead.
         except select.error, e:
             if e.args[0] != errno.EBADF:
                 raise
@@ -674,11 +678,11 @@ def _setup_medusa():
         def log(self, message):
             """Redirect logging requests."""
             mutter('_ftp_channel: %s', message)
-            
+
         def log_info(self, message, type='info'):
             """Redirect logging requests."""
             mutter('_ftp_channel %s: %s', type, message)
-            
+
         def cmd_rnfr(self, line):
             """Prepare for renaming a file."""
             self._renaming = line[1]
