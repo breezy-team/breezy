@@ -2292,6 +2292,7 @@ def test_suite():
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
+                   'bzrlib.tests.test_graph_walker',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_http',

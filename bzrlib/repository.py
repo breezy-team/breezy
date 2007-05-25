@@ -29,6 +29,7 @@ from bzrlib import (
     generate_ids,
     gpg,
     graph,
+    graph_walker,
     lazy_regex,
     lockable_files,
     lockdir,
@@ -733,6 +734,10 @@ class Repository(object):
             result.add_node(revision_id, rev.parent_ids)
             done.add(revision_id)
         return result
+
+    def get_graph_walker(self):
+        """Return the graph walker for this repository format"""
+        return graph_walker.GraphWalker(self.get_revision_graph_with_ghosts())
 
     def _get_history_vf(self):
         """Get a versionedfile whose history graph reflects all revisions.
