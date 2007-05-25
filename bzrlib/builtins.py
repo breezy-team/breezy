@@ -2954,10 +2954,10 @@ class cmd_missing(Command):
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
-                     Option('mine-only', 
+                     Option('mine-only',
                             'Display changes in the local branch only'),
-                     Option('theirs-only', 
-                            'Display changes in the remote branch only'), 
+                     Option('theirs-only',
+                            'Display changes in the remote branch only'),
                      'log-format',
                      'show-ids',
                      'verbose'
@@ -2966,7 +2966,8 @@ class cmd_missing(Command):
 
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None, long=False, short=False, line=False, 
+            theirs_only=False, log_format=None, long=False, short=False,
+            line=False,
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -2975,10 +2976,11 @@ class cmd_missing(Command):
         if other_branch is None:
             other_branch = parent
             if other_branch is None:
-                raise errors.BzrCommandError("No peer location known or specified.")
+                raise errors.BzrCommandError("No peer location known"
+                                             +" or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            print "Using last location: " + display_url
+            self.outf.write("Using last location: " + display_url)
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -2987,10 +2989,11 @@ class cmd_missing(Command):
         try:
             remote_branch.lock_read()
             try:
-                local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-                if (log_format is None):
-                    log_format = log.log_formatter_registry.get_default(
-                        local_branch)
+                local_extra, remote_extra = find_unmerged(local_branch,
+                                                          remote_branch)
+                if log_format is None:
+                    registry = log.log_formatter_registry
+                    log_format = registry.get_default(local_branch)
                 lf = log_format(to_file=self.outf,
                                 show_ids=show_ids,
                                 show_timezone='original')
@@ -2998,8 +3001,10 @@ class cmd_missing(Command):
                     local_extra.reverse()
                     remote_extra.reverse()
                 if local_extra and not theirs_only:
-                    print "You have %d extra revision(s):" % len(local_extra)
-                    for data in iter_log_data(local_extra, local_branch.repository,
+                    self.outf.write("You have %d extra revision(s):" %
+                                    len(local_extra))
+                    for data in iter_log_data(local_extra,
+                                              local_branch.repository,
                                               verbose):
                         lf.show(*data)
                     printed_local = True
@@ -3007,14 +3012,16 @@ class cmd_missing(Command):
                     printed_local = False
                 if remote_extra and not mine_only:
                     if printed_local is True:
-                        print "\n\n"
-                    print "You are missing %d revision(s):" % len(remote_extra)
-                    for data in iter_log_data(remote_extra, remote_branch.repository, 
+                        self.outf.write("\n\n")
+                    self.outf.write("You are missing %d revision(s):" %
+                                    len(remote_extra))
+                    for data in iter_log_data(remote_extra,
+                                              remote_branch.repository,
                                               verbose):
                         lf.show(*data)
                 if not remote_extra and not local_extra:
                     status_code = 0
-                    print "Branches are up to date."
+                    self.outf.write("Branches are up to date.")
                 else:
                     status_code = 1
             finally:
