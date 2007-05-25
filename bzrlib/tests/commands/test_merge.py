@@ -15,28 +15,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Commands behaviour tests for bzr.
+from bzrlib.builtins import cmd_merge
+from bzrlib.tests import StringIOWrapper
+from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
-These test the behaviour of the commands.
-The API is tested in the tests/blackbox files.
-"""
+class TestMerge(TestCaseWithConnectionHookedTransport):
 
-from bzrlib.tests import (
-                          TestLoader,
-                          )
+    def test_merge(self):
+        wt1 = self.make_branch_and_tree('branch1')
+        wt1.commit('empty commit')
+        wt2 = self.make_branch_and_tree('branch2')
+        wt2.pull(wt1.branch)
+        wt2.commit('empty commit too')
 
+        cmd = cmd_merge()
+        # We don't care about the ouput but 'outf' should be defined
+        cmd.outf = StringIOWrapper()
+        cmd.run(self.get_url() + '/branch1', directory='branch2')
+        self.assertEquals(1, len(self.connections))
 
-def test_suite():
-    testmod_names = [
-        'bzrlib.tests.commands.test_branch',
-        'bzrlib.tests.commands.test_checkout',
-        'bzrlib.tests.commands.test_init',
-        'bzrlib.tests.commands.test_init_repository',
-        'bzrlib.tests.commands.test_merge',
-        'bzrlib.tests.commands.test_pull',
-        'bzrlib.tests.commands.test_push',
-        ]
-    loader = TestLoader()
-    suite = loader.loadTestsFromModuleNames(testmod_names)
-
-    return suite

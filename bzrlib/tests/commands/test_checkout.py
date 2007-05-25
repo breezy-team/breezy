@@ -16,7 +16,6 @@
 
 
 from bzrlib.builtins import cmd_checkout
-from bzrlib.tests import StringIOWrapper
 from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
 class TestCheckout(TestCaseWithConnectionHookedTransport):
