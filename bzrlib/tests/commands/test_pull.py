@@ -15,29 +15,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.builtins import cmd_branch
+from bzrlib.builtins import cmd_pull
+from bzrlib.tests import StringIOWrapper
 from bzrlib.tests.TransportUtil import TestCaseWithConnectionHookedTransport
 
+class TestPull(TestCaseWithConnectionHookedTransport):
 
-class TestBranch(TestCaseWithConnectionHookedTransport):
+    def test_pull(self):
+        wt1 = self.make_branch_and_tree('branch1')
+        tip = wt1.commit('empty commit')
+        wt2 = self.make_branch_and_tree('branch2')
 
-    def test_branch_remote_local(self):
-        self.make_branch_and_tree('branch')
-        cmd = cmd_branch()
-        cmd.run(self.get_url() + '/branch', 'local')
+        cmd = cmd_pull()
+        # We don't care about the ouput but 'outf' should be defined
+        cmd.outf = StringIOWrapper()
+        cmd.run(self.get_url() + '/branch1', directory='branch2')
         self.assertEquals(1, len(self.connections))
-
-    # This is bug 112173
-    def test_branch_local_remote(self):
-        self.make_branch_and_tree('branch')
-        cmd = cmd_branch()
-        cmd.run('branch', self.get_url() + '/remote')
-        self.assertEquals(1, len(self.connections))
-
-    # This is bug 112173 too
-    def test_branch_remote_remote(self):
-        self.make_branch_and_tree('branch')
-        cmd = cmd_branch()
-        cmd.run(self.get_url() + '/branch', self.get_url() + '/remote')
-        self.assertEquals(2, len(self.connections))
 

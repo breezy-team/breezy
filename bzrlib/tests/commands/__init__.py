@@ -30,6 +30,7 @@ def test_suite():
     testmod_names = [
         'bzrlib.tests.commands.test_branch',
         'bzrlib.tests.commands.test_init',
+        'bzrlib.tests.commands.test_pull',
         'bzrlib.tests.commands.test_push',
         ]
     loader = TestLoader()
