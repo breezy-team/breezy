@@ -29,10 +29,12 @@ from bzrlib.tests import (
 def test_suite():
     testmod_names = [
         'bzrlib.tests.commands.test_branch',
+        'bzrlib.tests.commands.test_cat',
         'bzrlib.tests.commands.test_checkout',
         'bzrlib.tests.commands.test_init',
         'bzrlib.tests.commands.test_init_repository',
         'bzrlib.tests.commands.test_merge',
+        'bzrlib.tests.commands.test_missing',
         'bzrlib.tests.commands.test_pull',
         'bzrlib.tests.commands.test_push',
         ]
