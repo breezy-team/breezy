@@ -14,6 +14,9 @@ IN DEVELOPMENT
       attempt to explain these concepts. (James Westby, John Arbash Meinel,
       Aaron Bentley)
 
+    * Added ``bzr log --limit`` to report a limited number of revisions.
+      (Kent Gibson, #3659)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
