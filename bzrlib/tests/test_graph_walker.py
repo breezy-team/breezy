@@ -3,9 +3,14 @@ from bzrlib.tests import TestCaseWithMemoryTransport
 
 ancestry_1 = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
               'rev3': ['rev2a'], 'rev4': ['rev3', 'rev2b']}
+ancestry_2 = {'rev1a': [NULL_REVISION], 'rev2a': ['rev1a'],
+              'rev1b': [NULL_REVISION], 'rev3a': ['rev2a'], 'rev4a': ['rev3a']}
 
 criss_cross = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
                'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2a']}
+
+criss_cross2 = {'rev1a': [NULL_REVISION], 'rev1b': [NULL_REVISION],
+                'rev2a': ['rev1a', 'rev1b'], 'rev2b': ['rev1b', 'rev1a']}
 
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
@@ -104,3 +109,17 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual('rev1',
                          graph_walker.unique_common('rev3a', 'rev3b'))
+
+    def test_unique_common_null_revision(self):
+        """Ensure we pick NULL_REVISION when necessary"""
+        graph_walker = self.make_walker(criss_cross2)
+        self.assertEqual('rev1b',
+                         graph_walker.unique_common('rev2a', 'rev1b'))
+        self.assertEqual(NULL_REVISION,
+                         graph_walker.unique_common('rev2a', 'rev2b'))
+
+    def test_unique_common_null_revision2(self):
+        """Ensure we pick NULL_REVISION when necessary"""
+        graph_walker = self.make_walker(ancestry_2)
+        self.assertEqual(NULL_REVISION,
+                         graph_walker.unique_common('rev4a', 'rev1b'))
