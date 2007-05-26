@@ -4,14 +4,20 @@ from bzrlib.tests import TestCaseWithMemoryTransport
 ancestry_1 = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
               'rev3': ['rev2a'], 'rev4': ['rev3', 'rev2b']}
 
+criss_cross = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
+               'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2a']}
+
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
     def test_distance_from_origin(self):
-        tree = self.build_ancestry(ancestry_1)
-        graph_walker = tree.branch.repository.get_graph_walker()
+        graph_walker = self.make_walker(ancestry_1)
         self.assertEqual([1, 0, 2, 4],
                          graph_walker.distance_from_origin(['rev1', 'null:',
                          'rev2b', 'rev4']))
+
+    def make_walker(self, ancestors):
+        tree = self.build_ancestry(ancestors)
+        return tree.branch.repository.get_graph_walker()
 
     def build_ancestry(self, ancestors):
         tree = self.make_branch_and_memory_tree('.')
@@ -25,26 +31,76 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         while len(pending) > 0:
             cur_node = pending.pop()
             for descendant in descendants.get(cur_node, []):
+                if tree.branch.repository.has_revision(descendant):
+                    continue
                 parents = [p for p in ancestors[descendant] if p is not
                            NULL_REVISION]
                 if len([p for p in parents if not
                     tree.branch.repository.has_revision(p)]) > 0:
                     continue
                 tree.set_parent_ids(parents)
+                if len(parents) > 0:
+                    left_parent = parents[0]
+                else:
+                    left_parent = NULL_REVISION
                 tree.branch.set_last_revision_info(
-                    len(tree.branch._lefthand_history(cur_node)),
-                    cur_node)
+                    len(tree.branch._lefthand_history(left_parent)),
+                    left_parent)
                 tree.commit(descendant, rev_id=descendant)
                 pending.append(descendant)
         tree.unlock()
         return tree
 
     def test_mca(self):
-        tree = self.build_ancestry(ancestry_1)
-        graph_walker = tree.branch.repository.get_graph_walker()
+        """Test finding minimal common ancestor.
+
+        ancestry_1 should always have a single common ancestor
+        """
+        graph_walker = self.make_walker(ancestry_1)
         self.assertEqual(set([NULL_REVISION]),
                          graph_walker.minimal_common(NULL_REVISION,
                                                      NULL_REVISION))
         self.assertEqual(set([NULL_REVISION]),
                          graph_walker.minimal_common(NULL_REVISION,
                                                      'rev1'))
+        self.assertEqual(set(['rev1']),
+                         graph_walker.minimal_common('rev1', 'rev1'))
+        self.assertEqual(set(['rev1']),
+                         graph_walker.minimal_common('rev2a', 'rev2b'))
+
+    def test_mca_criss_cross(self):
+        graph_walker = self.make_walker(criss_cross)
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph_walker.minimal_common('rev3a', 'rev3b'))
+        self.assertEqual(set(['rev2b']),
+                         graph_walker.minimal_common('rev3a', 'rev3b',
+                                                     'rev2b'))
+
+    def test_recursive_unique_mca(self):
+        """Test finding a unique minimal common ancestor.
+
+        ancestry_1 should always have a single common ancestor
+        """
+        graph_walker = self.make_walker(ancestry_1)
+        self.assertEqual(NULL_REVISION,
+                         graph_walker.unique_common(NULL_REVISION,
+                                                     NULL_REVISION))
+        self.assertEqual(NULL_REVISION,
+                         graph_walker.unique_common(NULL_REVISION,
+                                                     'rev1'))
+        self.assertEqual('rev1', graph_walker.unique_common('rev1', 'rev1'))
+        self.assertEqual('rev1', graph_walker.unique_common('rev2a', 'rev2b'))
+
+    def test_mca_criss_cross(self):
+        graph_walker = self.make_walker(criss_cross)
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph_walker.minimal_common('rev3a', 'rev3b'))
+        self.assertEqual(set(['rev2b']),
+                         graph_walker.minimal_common('rev3a', 'rev3b',
+                                                     'rev2b'))
+
+    def test_unique_common_criss_cross(self):
+        """Ensure we don't pick non-unique mcas in a criss-cross"""
+        graph_walker = self.make_walker(criss_cross)
+        self.assertEqual('rev1',
+                         graph_walker.unique_common('rev3a', 'rev3b'))
