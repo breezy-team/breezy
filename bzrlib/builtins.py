@@ -54,7 +54,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
-from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
 """)
@@ -2539,10 +2538,8 @@ class cmd_find_merge_base(Command):
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()
 
-        source = MultipleRevisionSources(branch1.repository, 
-                                         branch2.repository)
-        
-        base_rev_id = common_ancestor(last1, last2, source)
+        walker = branch1.repository.get_graph_walker(branch2.repository)
+        base_rev_id = walker.unique_common(last1, last2)
 
         print 'merge base is revision %s' % base_rev_id
 
@@ -2786,8 +2783,8 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            base_revision = common_ancestor(parents[0],
-                                            parents[1], repository)
+            walker = repository.get_graph_walker()
+            base_revision = walker.unique_common(parents[0], parents[1])
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(parents[1])
             interesting_ids = None

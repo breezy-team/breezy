@@ -300,9 +300,12 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
-    def get_graph_walker(self):
+    def get_graph_walker(self, other_repository=None):
         """Return the graph walker for this repository format"""
-        return graph_walker.GraphWalker(self.get_revision_graph_with_ghosts())
+        graphs = [self.get_revision_graph_with_ghosts()]
+        if other_repository is not None:
+            graphs.insert(0, other_repository.get_revision_graph_with_ghosts())
+        return graph_walker.GraphWalker(graphs)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

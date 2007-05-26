@@ -735,9 +735,12 @@ class Repository(object):
             done.add(revision_id)
         return result
 
-    def get_graph_walker(self):
+    def get_graph_walker(self, other_repository=None):
         """Return the graph walker for this repository format"""
-        return graph_walker.GraphWalker(self.get_revision_graph_with_ghosts())
+        graphs = [self.get_revision_graph_with_ghosts()]
+        if other_repository is not None:
+            graphs.append(other_repository.get_revision_graph_with_ghosts())
+        return graph_walker.GraphWalker(graphs)
 
     def _get_history_vf(self):
         """Get a versionedfile whose history graph reflects all revisions.

@@ -29,7 +29,6 @@ from bzrlib import (
     errors,
     urlutils,
     )
-from bzrlib.revision import common_ancestor
 """)
 
 from bzrlib.commands import Command
@@ -155,10 +154,9 @@ class cmd_bundle_revisions(Command):
                                                  ' to be specified.')
             target_branch.repository.fetch(base_branch.repository, 
                                            base_branch.last_revision())
-            base_revision = common_ancestor(base_branch.last_revision(),
-                                            target_revision,
-                                            target_branch.repository)
-
+            walker = target_branch.repository.get_graph_walker()
+            base_revision = walker.unique_common(base_branch.last_revision(),
+                                                 target_revision)
 
         if output is not None:
             fileobj = file(output, 'wb')

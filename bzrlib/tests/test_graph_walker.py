@@ -28,6 +28,12 @@ criss_cross = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
 criss_cross2 = {'rev1a': [NULL_REVISION], 'rev1b': [NULL_REVISION],
                 'rev2a': ['rev1a', 'rev1b'], 'rev2b': ['rev1b', 'rev1a']}
 
+mainline = {'rev1': [NULL_REVISION], 'rev2a': ['rev1', 'rev2b'],
+            'rev2b': ['rev1']}
+
+feature_branch = {'rev1': [NULL_REVISION],
+                  'rev2b': ['rev1'], 'rev3b': ['rev2b']}
+
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
     def test_distance_from_origin(self):
@@ -37,13 +43,18 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                          'rev2b', 'rev4']))
 
     def make_walker(self, ancestors):
-        tree = self.build_ancestry(ancestors)
+        tree = self.prepare_memory_tree('.')
+        self.build_ancestry(tree, ancestors)
+        tree.unlock()
         return tree.branch.repository.get_graph_walker()
 
-    def build_ancestry(self, ancestors):
-        tree = self.make_branch_and_memory_tree('.')
+    def prepare_memory_tree(self, location):
+        tree = self.make_branch_and_memory_tree(location)
         tree.lock_write()
         tree.add('.')
+        return tree
+
+    def build_ancestry(self, tree, ancestors):
         pending = [NULL_REVISION]
         descendants = {}
         for descendant, parents in ancestors.iteritems():
@@ -69,8 +80,6 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                     left_parent)
                 tree.commit(descendant, rev_id=descendant)
                 pending.append(descendant)
-        tree.unlock()
-        return tree
 
     def test_mca(self):
         """Test finding minimal common ancestor.
@@ -139,3 +148,18 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         graph_walker = self.make_walker(ancestry_2)
         self.assertEqual(NULL_REVISION,
                          graph_walker.unique_common('rev4a', 'rev1b'))
+
+    def test_common_ancestor_two_repos(self):
+        """Ensure we do unique_common using data from two repos"""
+        mainline_tree = self.prepare_memory_tree('mainline')
+        self.build_ancestry(mainline_tree, mainline)
+        mainline_tree.unlock()
+
+        # This is cheating, because the revisions in the graph are actually
+        # different revisions, despite having the same revision-id.
+        feature_tree = self.prepare_memory_tree('feature')
+        self.build_ancestry(feature_tree, feature_branch)
+        feature_tree.unlock()
+        graph_walker = mainline_tree.branch.repository.get_graph_walker(
+            feature_tree.branch.repository)
+        self.assertEqual('rev2b', graph_walker.unique_common('rev2a', 'rev3b'))

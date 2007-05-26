@@ -41,8 +41,7 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.merge3 import Merge3
 from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
-from bzrlib.revision import (common_ancestor, is_ancestor, NULL_REVISION,
-                             ensure_null)
+from bzrlib.revision import (is_ancestor, NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,

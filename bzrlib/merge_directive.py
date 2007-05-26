@@ -211,9 +211,8 @@ class MergeDirective(object):
         else:
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
-            ancestor_id = _mod_revision.common_ancestor(revision_id,
-                                                        submit_revision_id,
-                                                        repository)
+            walker = repository.get_graph_walker()
+            ancestor_id = walker.unique_common(revision_id, submit_revision_id)
             type_handler = {'bundle': klass._generate_bundle,
                             'diff': klass._generate_diff,
                             None: lambda x, y, z: None }
