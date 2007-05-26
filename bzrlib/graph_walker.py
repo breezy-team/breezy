@@ -171,15 +171,14 @@ class _AncestryWalker(object):
         self.seen.update(self._lines)
         return self._lines
 
-    def make_iterator(self):
-        while True:
-            yield self.next()
+    def __iter__(self):
+        return self
 
     def find_seen_ancestors(self, revision):
         """Find ancstors of this revision that have already been seen."""
         walker = _AncestryWalker(revision, self._graph_walker)
         seen_ancestors = set()
-        for ancestors in walker.make_iterator():
+        for ancestors in walker:
             for ancestor in ancestors:
                 if ancestor not in self.seen:
                     walker.stop_tracing_any([ancestor])
