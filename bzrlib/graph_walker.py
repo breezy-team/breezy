@@ -68,16 +68,35 @@ class GraphWalker(object):
         descendants are common ancestors.  (This is not quite the standard
         graph theory definition)
         """
-        common = set(self._get_ancestry(revisions[0]))
-        for revision in revisions[1:]:
-            common.intersection_update(self._get_ancestry(revision))
-        common.add(NULL_REVISION)
-        mca = set()
-        for ancestor in common:
-            if len([d for d in self._descendants[0].get(ancestor, []) if d in
-                    common]) == 0:
-                mca.add(ancestor)
-        return mca
+        walkers = [_AncestryWalker(r, self) for r in revisions]
+        active_walkers = walkers[:]
+        maybe_minimal_common = set()
+        seen_ancestors = set()
+        while True:
+            if len(active_walkers) == 0:
+                maybe_minimal_common.difference_update(seen_ancestors)
+                return maybe_minimal_common
+            newly_seen = set()
+            new_active_walkers = []
+            for walker in active_walkers:
+                try:
+                    newly_seen.update(walker.next())
+                except StopIteration:
+                    pass
+                else:
+                    new_active_walkers.append(walker)
+            active_walkers = new_active_walkers
+            for revision in newly_seen:
+                for walker in walkers:
+                    if revision not in walker.seen:
+                        break
+                else:
+                    maybe_minimal_common.add(revision)
+                    for walker in walkers:
+                        w_seen_ancestors = walker.find_seen_ancestors(revision)
+                        walker.stop_tracing_any(w_seen_ancestors)
+                        w_seen_ancestors.discard(revision)
+                        seen_ancestors.update(w_seen_ancestors)
 
     def unique_common(self, left_revision, right_revision):
         """Find a unique minimal common ancestor.
@@ -97,6 +116,15 @@ class GraphWalker(object):
                 return minimal.pop()
             revisions = minimal
 
+    def get_parents(self, revision):
+        for ancestors in self._ancestors:
+            try:
+                return ancestors[revision]
+            except KeyError:
+                pass
+        else:
+            raise KeyError
+
     def _get_ancestry(self, revision):
         if revision == NULL_REVISION:
             ancestry = []
@@ -112,3 +140,52 @@ class GraphWalker(object):
                 raise KeyError(revision)
         ancestry.append(NULL_REVISION)
         return ancestry
+
+
+class _AncestryWalker(object):
+    """Walk the ancestry of a single revision"""
+
+    def __init__(self, revision, graph_walker):
+        self._start = set([revision])
+        self._lines = None
+        self.seen = set()
+        self._graph_walker = graph_walker
+
+    def __repr__(self):
+        return '_AncestryWalker(self._lines=%r, self.seen=%r)' %\
+            (self._lines, self.seen)
+
+    def next(self):
+        """Return the next parents of this revision"""
+        if self._lines is None:
+            self._lines = self._start
+        else:
+            new_lines = set()
+            for revision in self._lines:
+                new_lines.update(p for p in
+                                 self._graph_walker.get_parents(revision) if p
+                                 not in self.seen)
+            self._lines = new_lines
+        if len(self._lines) == 0:
+            raise StopIteration()
+        self.seen.update(self._lines)
+        return self._lines
+
+    def make_iterator(self):
+        while True:
+            yield self.next()
+
+    def find_seen_ancestors(self, revision):
+        """Find ancstors of this revision that have already been seen."""
+        walker = _AncestryWalker(revision, self._graph_walker)
+        seen_ancestors = set()
+        for ancestors in walker.make_iterator():
+            for ancestor in ancestors:
+                if ancestor not in self.seen:
+                    walker.stop_tracing_any([ancestor])
+                else:
+                    seen_ancestors.add(ancestor)
+        return seen_ancestors
+
+    def stop_tracing_any(self, revisions):
+        self._lines = set(l for l in self._lines if l not in revisions)
