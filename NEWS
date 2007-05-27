@@ -26,6 +26,10 @@ bzr-svn 0.4	UNRELEASED
      This should reduce the number of roundtrips significantly when 
 	 finding file id mappings.
 
+  INTERNALS
+
+   * Implement SvnRaTransport.local_abspath() (#117090)
+
 bzr-svn 0.3.4	UNRELEASED
 
   BUG FIXES

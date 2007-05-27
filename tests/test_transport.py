@@ -156,6 +156,11 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t = SvnRaTransport("%s/dir" % repos_url)
         root = t.get_repos_root()
         self.assertEqual(repos_url, root)
+
+    def test_local_abspath(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport("%s" % repos_url)
+        self.assertEquals(os.path.join(self.test_dir, "d"), t.local_abspath('.'))
  
 
 class UrlConversionTest(TestCase):

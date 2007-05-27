@@ -16,7 +16,7 @@
 """Simple transport for accessing Subversion smart servers."""
 
 from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
-                           FileExists)
+                           FileExists, NotLocalUrl)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
@@ -295,3 +295,14 @@ class SvnRaTransport(Transport):
             return SvnRaTransport(self.base)
 
         return SvnRaTransport(urlutils.join(self.base, offset))
+
+    def local_abspath(self, relpath):
+        """See Transport.local_abspath()."""
+        absurl = self.abspath(relpath)
+        if self.base.startswith("file:///"):
+            return urlutils.local_path_from_url(absurl)
+        raise NotLocalUrl(absurl)
+
+    def abspath(self, relpath):
+        """See Transport.abspath()."""
+        return urlutils.join(self.base, relpath)
