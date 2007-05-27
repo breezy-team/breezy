@@ -459,7 +459,7 @@ class SvnRepository(Repository):
             for (branch, revno, exists) in self.find_branches():
                 # Look at their bzr:revision-id-vX
                 revids = self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID, "")
+                        SVN_PROP_BZR_REVISION_ID, "").splitlines()
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them

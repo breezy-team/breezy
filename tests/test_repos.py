@@ -421,7 +421,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
         self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
-                            "myrevid")
+                            "myrevid\n")
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         revid = generate_svn_revision_id(repository.uuid, 2, "")
