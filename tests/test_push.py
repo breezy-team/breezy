@@ -110,6 +110,22 @@ class TestPush(TestCaseWithSubversionRepository):
         self.assertEqual(repos.generate_revision_id(2, ""),
                         self.svndir.open_branch().last_revision())
 
+    def test_empty_file(self):
+        self.build_tree({'dc/file': ''})
+        wt = self.bzrdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.svndir.open_branch().pull(self.bzrdir.open_branch())
+
+        repos = self.svndir.find_repository()
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        self.assertTrue(inv.has_filename('file'))
+        self.assertEquals(wt.branch.last_revision(),
+                repos.generate_revision_id(2, ""))
+        self.assertEqual(repos.generate_revision_id(2, ""),
+                        self.svndir.open_branch().last_revision())
+
     def test_pull_after_push(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()
