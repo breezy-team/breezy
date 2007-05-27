@@ -30,7 +30,7 @@ class NotSvnBranchPath(BzrError):
 
 
 def convert_error(err):
-    (num, msg) = err.args
+    (msg, num) = err.args
 
     if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
         return ConnectionReset(msg=msg)

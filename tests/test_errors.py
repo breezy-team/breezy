@@ -26,14 +26,14 @@ class TestConvertError(TestCase):
     def test_decorator_unknown(self):
         @convert_svn_error
         def test_throws_svn():
-            raise SubversionException(100, "foo")
+            raise SubversionException("foo", 100)
 
         self.assertRaises(SubversionException, test_throws_svn)
 
     def test_decorator_known(self):
         @convert_svn_error
         def test_throws_svn():
-            raise SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")
+            raise SubversionException("Connection closed", svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED)
 
         self.assertRaises(ConnectionReset, test_throws_svn)
 
@@ -42,10 +42,10 @@ class TestConvertError(TestCase):
                 SubversionException)
 
     def test_convert_error_reset(self):
-        self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")), ConnectionReset)
+        self.assertIsInstance(convert_error(SubversionException("Connection closed", svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED)), ConnectionReset)
 
     def test_convert_error_lock(self):
-        self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_WC_LOCKED, "Working copy locked")), LockError)
+        self.assertIsInstance(convert_error(SubversionException("Working copy locked", svn.core.SVN_ERR_WC_LOCKED)), LockError)
 
     def test_decorator_nothrow(self):
         @convert_svn_error
