@@ -162,7 +162,7 @@ class SvnRepository(Repository):
         assert self.base
         assert self.uuid
 
-        cache_file = os.path.join(self.create_cache_dir(), 'cache-v%d' % MAPPING_VERSIO)
+        cache_file = os.path.join(self.create_cache_dir(), 'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
