@@ -34,6 +34,10 @@ mainline = {'rev1': [NULL_REVISION], 'rev2a': ['rev1', 'rev2b'],
 feature_branch = {'rev1': [NULL_REVISION],
                   'rev2b': ['rev1'], 'rev3b': ['rev2b']}
 
+history_shortcut = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'],
+                    'rev2b': ['rev1'], 'rev2c': ['rev1'],
+                    'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2c']}
+
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
     def test_distance_from_origin(self):
@@ -105,6 +109,11 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev2b']),
                          graph_walker.minimal_common('rev3a', 'rev3b',
                                                      'rev2b'))
+
+    def test_mca_shortcut(self):
+        graph_walker = self.make_walker(history_shortcut)
+        self.assertEqual(set(['rev2b']),
+                         graph_walker.minimal_common('rev3a', 'rev3b'))
 
     def test_recursive_unique_mca(self):
         """Test finding a unique minimal common ancestor.

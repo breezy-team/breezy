@@ -68,13 +68,16 @@ class GraphWalker(object):
         descendants are common ancestors.  (This is not quite the standard
         graph theory definition)
         """
+        candidate_mca = self._find_candidate_mca(revisions)
+        return self._filter_candidate_mca(candidate_mca)
+
+    def _find_candidate_mca(self, revisions):
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
         maybe_minimal_common = set()
         seen_ancestors = set()
         while True:
             if len(active_walkers) == 0:
-                maybe_minimal_common.difference_update(seen_ancestors)
                 return maybe_minimal_common
             newly_seen = set()
             new_active_walkers = []
@@ -95,8 +98,39 @@ class GraphWalker(object):
                     for walker in walkers:
                         w_seen_ancestors = walker.find_seen_ancestors(revision)
                         walker.stop_tracing_any(w_seen_ancestors)
-                        w_seen_ancestors.discard(revision)
-                        seen_ancestors.update(w_seen_ancestors)
+
+    def _filter_candidate_mca(self, candidate_mca):
+        """Remove candidates which are ancestors of other candidates"""
+        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_mca)
+        active_walkers = dict(walkers)
+        # skip over the actual candidate for each walker
+        for walker in active_walkers.itervalues():
+            walker.next()
+        while len(active_walkers) > 0:
+            for candidate, walker in list(active_walkers.iteritems()):
+                try:
+                    ancestors = walker.next()
+                except StopIteration:
+                    del active_walkers[candidate]
+                    continue
+                for ancestor in ancestors:
+                    if ancestor in candidate_mca:
+                        candidate_mca.remove(ancestor)
+                        del walkers[ancestor]
+                        if ancestor in active_walkers:
+                            del active_walkers[ancestor]
+                    for walker in walkers.itervalues():
+                        if ancestor not in walker.seen:
+                            break
+                    else:
+                        # if this revision was seen by all walkers, then it
+                        # is a descendant of all candidates, so we can stop
+                        # tracing it, and any seen ancestors
+                        for walker in walkers.itervalues():
+                            seen_ancestors =\
+                                walker.find_seen_ancestors(ancestor)
+                            walker.stop_tracing_any(seen_ancestors)
+        return candidate_mca
 
     def unique_common(self, left_revision, right_revision):
         """Find a unique minimal common ancestor.
