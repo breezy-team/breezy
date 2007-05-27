@@ -162,7 +162,8 @@ class SvnRepository(Repository):
         assert self.base
         assert self.uuid
 
-        cache_file = os.path.join(self.create_cache_dir(), 'cache-v%d' % MAPPING_VERSION)
+        cache_file = os.path.join(self.create_cache_dir(), 
+                                  'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
@@ -463,7 +464,7 @@ class SvnRepository(Repository):
                 # If there are any new entries that are not yet in the cache, 
                 # add them
                 for r in revids:
-                    self.revmap.insert_revid(revid, branch, 0, revno, 
+                    self.revmap.insert_revid(r, branch, 0, revno, 
                             "undefined")
 
                 if revid in revids:

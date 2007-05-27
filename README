@@ -79,13 +79,14 @@ In the future, I also hope to support:
   but the number of corner cases is wide, so support for this 
   has not been enabled by default yet.
 
-- Performance. Network-wise (both bandwidth and roundtrips), the plugin is in
-  good shape. However, it is currently quite CPU-intensive for no good reason 
-  and I hope to make a couple of improvements in that area.
+- Better performance. Network-wise (both bandwidth and roundtrips), the plugin 
+  is in good shape. However, it is currently quite CPU-intensive for no good 
+  reason and I hope to make a couple of improvements in that area.
 
 - Override implementation of get_revision_delta(). Will speed up 'bzr log -v'
 	
-- use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of roundtrips when fetching history.
+- use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of 
+  roundtrips when fetching history.
 
 - implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on 
   a specific directory all at once.

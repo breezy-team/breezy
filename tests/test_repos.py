@@ -669,6 +669,18 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(("", 1), 
             repository.lookup_revision_id("myid"))
 
+    def test_lookup_revision_id_overridden_not_found(self):
+        """Make sure a revision id that is looked up but doesn't exist 
+        doesn't accidently end up in the revid cache."""
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "myid\n")
+        self.client_commit("dc", "foobar")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision, 
+                repository.lookup_revision_id, "foobar")
+
     def test_lookup_revision_id_invalid_uuid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
