@@ -1,3 +1,4 @@
+/* ESTIMATES ARE VERY ROUGH APPROXIMATIONS */
 digraph performance {
   gdfo_api -> gdfo_cache;
   gdfo_api -> gdfo_usage;
