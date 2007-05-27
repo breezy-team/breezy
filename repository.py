@@ -162,7 +162,7 @@ class SvnRepository(Repository):
         assert self.base
         assert self.uuid
 
-        cache_file = os.path.join(self.create_cache_dir(), 'cache-v1')
+        cache_file = os.path.join(self.create_cache_dir(), 'cache-v%d' % MAPPING_VERSIO)
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
@@ -417,8 +417,10 @@ class SvnRepository(Repository):
         if revid is not None:
             return revid
 
+        # Lookup the revision from the bzr:revision-id-vX property
         revid = self.branchprop_list.get_property_diff(path, revnum, 
                 SVN_PROP_BZR_REVISION_ID).strip("\n")
+        # Or generate it
         if revid == "":
             revid = generate_svn_revision_id(self.uuid, revnum, path)
 
@@ -475,10 +477,10 @@ class SvnRepository(Repository):
         i = min_revnum
         for (bp, rev) in self.follow_branch(branch_path, max_revnum):
             if self.branchprop_list.get_property_diff(bp, rev, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
-                self.revmap.insert_revid(revid, bp, rev, rev, "undefined")
+                self.revmap.insert_revid(revid, bp, rev, rev, scheme)
                 return (bp, rev)
 
-        raise AssertionError("Revision id was added incorrectly")
+        raise AssertionError("Revision id %s was added incorrectly" % revid)
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(

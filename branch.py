@@ -113,15 +113,19 @@ class SvnBranch(Branch):
         return WorkingTree.open(to_location)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False):
+        """See Branch.create_checkout()."""
         if lightweight:
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
             return self._create_heavyweight_checkout(to_location, revision_id)
 
     def generate_revision_id(self, revnum):
+        """Generate a new revision id for a revision on this branch."""
+        # FIXME: What if this branch had a different name in the past?
         return self.repository.generate_revision_id(revnum, self.branch_path)
        
     def _generate_revision_history(self, last_revnum):
+        """Generate the revision history up until a specified revision."""
         self._revision_history = []
         for (branch, rev) in self.repository.follow_branch(
                 self.branch_path, last_revnum):
