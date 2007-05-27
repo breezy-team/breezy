@@ -1,0 +1,31 @@
+digraph performance {
+  gdfo_api -> gdfo_cache;
+  gdfo_api -> gdfo_usage;
+  gdfo_api[label="GDFO API\n1 day"];
+  gdfo_cache[label="GDFO Cache\n1 week"];
+  gdfo_usage[label="GDFO Usage\n3 days"];
+  data_collation[label="Data co-location API\n1 month"];
+  repository_stacking[label="Repository stacking API\n2 months"];
+  bundle_container[label="Bundle container format\n2 weeks"]
+  xdelta[label="Xdelta sanity/learning\n2 weeks"];
+  xdelta_imp[label="Xdelta implementation\n1 week"];
+  xdelta -> xdelta_imp;
+  q_splitting[label="Question radix directory splitting\n2 weeks"];
+  i_splitting[label="Implement inventory splitting\n6-8 weeks"]
+  q_splitting -> i_splitting;
+  get_weave[label="deprecate get_weave\n1 week"];
+  per_file_graph -> get_weave;
+  per_file_graph[label="Access for per-file graph data\n1 days"];
+  repo_apis[label="For each use case, build targeted repo agnostic APIs\n10-40 days"];
+  rev_validators[label="Revision validators (use in GPG sigs etc) may poly\n3 days"];
+  anno_cache[label="Annotations become a cache:\n logically separate data\n2 weeks"]
+  anno_regen[label="Annotation regeneration\n"];
+  anno_kinds[label="Different styles of annotation"];
+  anno_regen -> anno_kinds;
+  anno_cache -> anno_regen;
+  memory_copies[label="Stop requiring full memory copies of files"];
+  wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
+  repo_disk_order[label="Repository disk ordering\n1 month"];
+  graph_api[label="Network-efficient revision-graph API\n3 week"];
+  iter_merge[label="iter_changes based merge\n2 days"];
+}
