@@ -130,16 +130,26 @@ class _CallTreeFilter(object):
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
         #print >> out_file, 'ob=%s' % (code.co_filename,)
-        print >> out_file, 'fi=%s' % (code.co_filename,)
+        if isinstance(code, str):
+            print >> out_file, 'fi=~'
+        else:
+            print >> out_file, 'fi=%s' % (code.co_filename,)
         print >> out_file, 'fn=%s' % (label(code, True),)
-        print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+        if isinstance(code, str):
+            print >> out_file, '0 ', inlinetime
+        else:
+            print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
         # recursive calls are counted in entry.calls
         if entry.calls:
             calls = entry.calls
         else:
             calls = []
+        if isinstance(code, str):
+            lineno = 0
+        else:
+            lineno = code.co_firstlineno
         for subentry in calls:
-            self._subentry(code.co_firstlineno, subentry)
+            self._subentry(lineno, subentry)
         print >> out_file
 
     def _subentry(self, lineno, subentry):
@@ -148,11 +158,14 @@ class _CallTreeFilter(object):
         totaltime = int(subentry.totaltime * 1000)
         #print >> out_file, 'cob=%s' % (code.co_filename,)
         print >> out_file, 'cfn=%s' % (label(code, True),)
-        print >> out_file, 'cfi=%s' % (code.co_filename,)
-        print >> out_file, 'calls=%d %d' % (
-            subentry.callcount, code.co_firstlineno)
+        if isinstance(code, str):
+            print >> out_file, 'cfi=~'
+            print >> out_file, 'calls=%d 0' % (subentry.callcount,)
+        else:
+            print >> out_file, 'cfi=%s' % (code.co_filename,)
+            print >> out_file, 'calls=%d %d' % (
+                subentry.callcount, code.co_firstlineno)
         print >> out_file, '%d %d' % (lineno, totaltime)
-
 
 _fn2mod = {}
 
