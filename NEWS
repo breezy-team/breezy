@@ -28,7 +28,9 @@ bzr-svn 0.4	UNRELEASED
 
   INTERNALS
 
-   * Implement SvnRaTransport.local_abspath() (#117090)
+   * Implement SvnRaTransport.local_abspath(). (#117090)
+
+   * Implement SvnRemoteAccess.create_branch().
 
 bzr-svn 0.3.4	UNRELEASED
 

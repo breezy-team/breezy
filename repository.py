@@ -443,6 +443,9 @@ class SvnRepository(Repository):
             assert isinstance(branch_path, str)
             if uuid == self.uuid:
                 return (branch_path, revnum)
+            # If the UUID doesn't match, this may still be a valid revision
+            # id; a revision from another SVN repository may be pushed into 
+            # this one.
         except InvalidRevisionId:
             pass
 

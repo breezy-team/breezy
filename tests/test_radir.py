@@ -20,7 +20,10 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
                            NoWorkingTree)
 
+import svn
+
 from tests import TestCaseWithSubversionRepository
+from transport import SvnRaTransport
 
 class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_clone(self):
@@ -45,6 +48,21 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)
         self.assertRaises(NotLocalUrl, x.create_workingtree)
+
+    def test_create_branch_top(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url)
+        b = x.create_branch()
+        self.assertEquals(repos_url, b.base)
+
+    def test_create_branch_nested(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        b = x.create_branch()
+        self.assertEquals(repos_url+"/trunk", b.base)
+        transport = SvnRaTransport(repos_url)
+        self.assertEquals(svn.core.svn_node_dir, 
+                transport.check_path("trunk", 1))
 
     def test_bad_dir(self):
         repos_url = self.make_client("d", "dc")

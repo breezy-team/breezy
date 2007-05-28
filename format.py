@@ -124,9 +124,13 @@ class SvnRemoteAccess(BzrDir):
     def create_branch(self):
         """See BzrDir.create_branch()."""
         from branch import SvnBranch
-        repos = self.open_repository()
-        # TODO: Check if there are any revisions in this repository 
-        # yet if it is the top-level one
+        repos = self.find_repository()
+
+        if self.branch_path != "":
+            self.root_transport.mkdir(".")
+        else:
+            # TODO: Check if there are any revisions in this repository yet
+            pass
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self
         return branch
