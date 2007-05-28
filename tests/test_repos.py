@@ -308,7 +308,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "remove")
 
         self.assertEqual([("trunk", 1, True)], list(repos.find_branches(1)))
-        self.assertEqual([("trunk", 2, False)], list(repos.find_branches(2)))
+        self.assertEqual([("trunk", 1, False)], list(repos.find_branches(2)))
 
     def test_url(self):
         """ Test repository URL is kept """

@@ -678,7 +678,7 @@ class SvnRepository(Repository):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
-        :return: iterator that returns tuples with (path, revision number, still exists)
+        :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
         """
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
@@ -695,17 +695,21 @@ class SvnRepository(Repository):
                 if self.scheme.is_branch(p) or self.scheme.is_tag(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
-                        yield (p, i, False)
+                        j = self._log.find_latest_change(p, i-1, recurse=True)
+                        yield (p, j, False)
 
                     if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
-                elif self.scheme.is_branch_parent(p) or self.scheme.is_tag_parent(p):
+                elif self.scheme.is_branch_parent(p) or \
+                        self.scheme.is_tag_parent(p):
                     if paths[p][0] in ('R', 'D'):
                         k = created_branches.keys()
                         for c in k:
                             if c.startswith(p+"/"):
                                 del created_branches[c] 
-                                yield (c, i, False)
+                                j = self._log.find_latest_change(c, i-1, 
+                                        recurse=True)
+                                yield (c, j, False)
                     if paths[p][0] in ('A', 'R'):
                         parents = [p]
                         while parents:
