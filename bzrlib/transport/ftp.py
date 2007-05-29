@@ -69,6 +69,7 @@ def _find_FTP(hostname, port, username, password, is_active):
         mutter("Constructing FTP instance against %r" % (alt_key,))
         conn = ftplib.FTP()
 
+        # FIXME: instrument or refactor to allow testing for mutiple connections
         conn.connect(host=hostname, port=port)
         if username and username != 'anonymous' and not password:
             password = bzrlib.ui.ui_factory.get_password(

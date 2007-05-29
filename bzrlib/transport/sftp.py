@@ -824,6 +824,7 @@ class SFTPTransport(SFTPUrlHandling):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
+    # FIXME: instrument or refactor to allow testing for mutiple connections
     def _sftp_connect(self):
         """Connect to the remote sftp server.
         After this, self._sftp should have a valid connection (or

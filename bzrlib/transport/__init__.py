@@ -1038,13 +1038,12 @@ urlescape = urlutils.escape
 urlunescape = urlutils.unescape
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
 
-
-def get_transport(base):
+def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
-    base is either a URL or a directory name.  
+    :param base: either a URL or a directory name.
+    :param transports: optional reusable transports list.
     """
-
     if base is None:
         base = '.'
     last_err = None
@@ -1067,21 +1066,32 @@ def get_transport(base):
         # Only local paths can be Unicode
         base = convert_path_to_url(base,
             'URLs must be properly escaped (protocol: %s)')
-    
-    for proto, factory_list in transport_list_registry.iteritems():
-        if proto is not None and base.startswith(proto):
-            t, last_err = _try_transport_factories(base, factory_list)
-            if t:
-                return t
 
-    # We tried all the different protocols, now try one last time
-    # as a local protocol
-    base = convert_path_to_url(base, 'Unsupported protocol: %s')
+    transport = None
+    if possible_transports:
+        for t in possible_transports:
+            if t.base == base:
+                transport = t
+                break
+    if transport is None:
+        for proto, factory_list in transport_list_registry.iteritems():
+            if proto is not None and base.startswith(proto):
+                transport, last_err = _try_transport_factories(base,
+                                                               factory_list)
+                if transport:
+                    break
+    if transport is None:
+        # We tried all the different protocols, now try one last
+        # time as a local protocol
+        base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
-    # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base,
-                    transport_list_registry.get(None))[0]
-                                                   
+        # The default handler is the filesystem handler, stored
+        # as protocol None
+        factory_list = transport_list_registry.get(None)
+        transport, last_err = _try_transport_factories(base, factory_list)
+    return transport
+
+
 def do_catching_redirections(action, transport, redirected):
     """Execute an action with given transport catching redirections.
 

@@ -594,6 +594,19 @@ class TestWin32LocalTransport(TestCase):
         self.assertEquals(t.base, 'file://HOST/')
 
 
+class TestReusedTransports(TestCase):
+
+    def test_reuse_same_transport(self):
+        t = get_transport('http://foo/')
+        t2 = get_transport('http://foo/', possible_transports=[t])
+        self.assertIs(t, t2)
+
+    def test_don_t_reuse_different_transport(self):
+        t = get_transport('http://foo/')
+        t2 = get_transport('http://bar/', possible_transports=[t])
+        self.assertIsNot(t, t2)
+
+
 def get_test_permutations():
     """Return transport permutations to be used in testing.
 
