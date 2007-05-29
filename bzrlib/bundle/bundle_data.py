@@ -109,6 +109,9 @@ class BundleInfo(object):
         self.timestamp = None
         self.timezone = None
 
+        # Have we checked the repository yet?
+        self._validated_revisions_against_repo = False
+
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
@@ -180,7 +183,8 @@ class BundleInfo(object):
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
         assert base != revision_id
-        self._validate_references_from_repository(repository)
+        if not self._validated_revisions_against_repo:
+            self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
         bundle_tree = BundleTree(repository.revision_tree(base), 
@@ -262,6 +266,7 @@ class BundleInfo(object):
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the bundle.' % count)
+        self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):
         """At this point we should have generated the BundleTree,

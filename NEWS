@@ -1,4 +1,35 @@
 IN DEVELOPMENT
+
+  INTERNALS:
+    * Rework of LogFormatter API to provide beginning/end of log hooks and to
+      encapsulate the details of the revision to be logged in a LogRevision
+      object.
+      In long log formats, merge revision ids are only shown when --show-ids
+      is specified, and are labelled "revision-id:", as per mainline
+      revisions, instead of "merged:". (Kent Gibson)
+
+  IMPROVEMENTS:
+  
+    * There are two new help topics, working-trees and repositories that
+      attempt to explain these concepts. (James Westby, John Arbash Meinel,
+      Aaron Bentley)
+
+    * Added ``bzr log --limit`` to report a limited number of revisions.
+      (Kent Gibson, #3659)
+
+  BUGFIXES:
+
+    * ``bzr push`` should only connect to the remote location one time.
+      We have been connecting 3 times because we forget to pass around
+      the Transport object. This adds ``BzrDir.clone_on_transport()``, so
+      that we can pass in the Transport that we already have.
+      (John Arbash Meinel, #75721)
+
+    * Let TestUIFactoy encode the password prompt with its own stdout.
+      (Vincent Ladeuil, #110204)
+
+
+bzr 0.16  2007-05-07
   
   BUGFIXES:
 
@@ -12,11 +43,14 @@ IN DEVELOPMENT
       Previously we would report the first file as missing, but not show
       the new unknown file. (John Arbash Meinel, #111288)
 
-    * ``bzr push`` should only connect to the remote location one time.
-      We have been connecting 3 times because we forget to pass around
-      the Transport object. This adds ``BzrDir.clone_on_transport()``, so
-      that we can pass in the Transport that we already have.
-      (John Arbash Meinel, #75721)
+    * Avoid error when running hooks after pulling into or pushing from
+      a branch bound to a smartserver branch.  (Martin Pool, #111968)
+
+  IMPROVEMENTS:
+
+    * Move developer documentation to doc/developers/. This reduces clutter in
+      the root of the source tree and allows HACKING to be split into multiple
+      files. (Robert Collins, Alexander Belchenko)
 
     * ``bzr init`` should only connect to the remote location one time.
       We have been connecting several times because we forget to pass

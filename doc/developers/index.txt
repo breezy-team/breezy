@@ -1,0 +1,15 @@
+=======================
+Bazaar Developers Guide
+=======================
+
+-------------------
+Documentation index
+-------------------
+
+* `General HACKING HOWTO <HACKING.htm>`_
+
+  Guide to policies and tools for working on Bazaar itself.
+
+* `Performance roadmap <performance-roadmap.htm>`_
+
+  The roadmap for fixing performance in bzr over the next few releases.

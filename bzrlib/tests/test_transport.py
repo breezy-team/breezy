@@ -605,3 +605,13 @@ class TestReusedTransports(TestCase):
         t = get_transport('http://foo/')
         t2 = get_transport('http://bar/', possible_transports=[t])
         self.assertIsNot(t, t2)
+
+
+def get_test_permutations():
+    """Return transport permutations to be used in testing.
+
+    This module registers some transports, but they're only for testing
+    registration.  We don't really want to run all the transport tests against
+    them.
+    """
+    return []

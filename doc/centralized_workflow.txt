@@ -235,7 +235,7 @@ like they would have collaborated on the ``dev`` branch. [#cbranch]_
 
    % bzr cbranch dev my-feature-branch
 
-.. _bzrtools: https://launchpad.net/products/bzrtools
+.. _bzrtools: http://bazaar-vcs.org/BzrTools
 
 
 Merging changes back
