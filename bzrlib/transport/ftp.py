@@ -599,7 +599,7 @@ class FtpServer(Server):
             )
         self._port = self._ftp_server.getsockname()[1]
         # Don't let it loop forever, or handle an infinite number of requests.
-        # In this case it will run for 100s, or 1000 requests
+        # In this case it will run for 1000s, or 10000 requests
         self._async_thread = threading.Thread(
                 target=FtpServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':10000})
