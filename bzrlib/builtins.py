@@ -249,7 +249,7 @@ class cmd_remove_tree(Command):
 
     To re-create the working tree, use "bzr checkout".
     """
-    _see_also = ['checkout']
+    _see_also = ['checkout', 'working-trees']
 
     takes_args = ['location?']
 
@@ -669,7 +669,7 @@ class cmd_push(Command):
     location can be accessed.
     """
 
-    _see_also = ['pull', 'update']
+    _see_also = ['pull', 'update', 'working-trees']
     takes_options = ['remember', 'overwrite', 'verbose',
         Option('create-prefix',
                help='Create the path leading up to the branch '
@@ -812,8 +812,9 @@ class cmd_push(Command):
                 try:
                     tree_to = dir_to.open_workingtree()
                 except errors.NotLocalUrl:
-                    warning('This transport does not update the working '
-                            'tree of: %s' % (br_to.base,))
+                    warning("This transport does not update the working " 
+                            "tree of: %s. See 'bzr help working-trees' for "
+                            "more information." % br_to.base)
                     push_result = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
                     push_result = br_from.push(br_to, overwrite)
@@ -1017,7 +1018,7 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
 
-    _see_also = ['pull']
+    _see_also = ['pull', 'working-trees']
     takes_args = ['dir?']
     aliases = ['up']
 
@@ -1061,7 +1062,7 @@ class cmd_info(Command):
 
     Branches and working trees will also report any missing revisions.
     """
-    _see_also = ['revno']
+    _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
     takes_options = ['verbose']
 
@@ -1315,8 +1316,11 @@ class cmd_init(Command):
 class cmd_init_repository(Command):
     """Create a shared repository to hold branches.
 
-    New branches created under the repository directory will store their revisions
-    in the repository, not in the branch directory.
+    New branches created under the repository directory will store their
+    revisions in the repository, not in the branch directory.
+
+    If the --no-trees option is used then the branches in the repository
+    will not have working trees by default.
 
     example:
         bzr init-repo --no-trees repo
@@ -1324,6 +1328,8 @@ class cmd_init_repository(Command):
         bzr checkout --lightweight repo/trunk trunk-checkout
         cd trunk-checkout
         (add files here)
+
+    See 'bzr help repositories' for more information.
     """
 
     _see_also = ['init', 'branch', 'checkout']
@@ -1560,6 +1566,14 @@ class cmd_root(Command):
         self.outf.write(tree.basedir + '\n')
 
 
+def _parse_limit(limitstring):
+    try:
+        return int(limitstring)
+    except ValueError:
+        msg = "The limit argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
+
 class cmd_log(Command):
     """Show log of a branch, file, or directory.
 
@@ -1590,6 +1604,9 @@ class cmd_log(Command):
                             short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
+                     Option('limit', 
+                            help='limit the output to the first N revisions',
+                            type=_parse_limit),
                      ]
     encoding_type = 'replace'
 
@@ -1600,7 +1617,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None):
+            message=None,
+            limit=None):
         from bzrlib.log import show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
@@ -1681,7 +1699,8 @@ class cmd_log(Command):
                      direction=direction,
                      start_revision=rev1,
                      end_revision=rev2,
-                     search=message)
+                     search=message,
+                     limit=limit)
         finally:
             b.unlock()
 
@@ -2969,7 +2988,7 @@ class cmd_missing(Command):
             theirs_only=False, log_format=None, long=False, short=False,
             line=False,
             show_ids=False, verbose=False):
-        from bzrlib.missing import find_unmerged, iter_log_data
+        from bzrlib.missing import find_unmerged, iter_log_revisions
         from bzrlib.log import log_formatter
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
@@ -3003,10 +3022,10 @@ class cmd_missing(Command):
                 if local_extra and not theirs_only:
                     self.outf.write("You have %d extra revision(s):" %
                                     len(local_extra))
-                    for data in iter_log_data(local_extra,
-                                              local_branch.repository,
-                                              verbose):
-                        lf.show(*data)
+                    for revision in iter_log_revisions(local_extra,
+                                        local_branch.repository,
+                                        verbose):
+                        lf.log_revision(revision)
                     printed_local = True
                 else:
                     printed_local = False
@@ -3015,10 +3034,10 @@ class cmd_missing(Command):
                         self.outf.write("\n\n")
                     self.outf.write("You are missing %d revision(s):" %
                                     len(remote_extra))
-                    for data in iter_log_data(remote_extra,
-                                              remote_branch.repository,
-                                              verbose):
-                        lf.show(*data)
+                    for revision in iter_log_revisions(remote_extra,
+                                        remote_branch.repository,
+                                        verbose):
+                        lf.log_revision(revision)
                 if not remote_extra and not local_extra:
                     status_code = 0
                     self.outf.write("Branches are up to date.")

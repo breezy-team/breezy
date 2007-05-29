@@ -1,5 +1,22 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+    * Rework of LogFormatter API to provide beginning/end of log hooks and to
+      encapsulate the details of the revision to be logged in a LogRevision
+      object.
+      In long log formats, merge revision ids are only shown when --show-ids
+      is specified, and are labelled "revision-id:", as per mainline
+      revisions, instead of "merged:". (Kent Gibson)
+
+  IMPROVEMENTS:
+  
+    * There are two new help topics, working-trees and repositories that
+      attempt to explain these concepts. (James Westby, John Arbash Meinel,
+      Aaron Bentley)
+
+    * Added ``bzr log --limit`` to report a limited number of revisions.
+      (Kent Gibson, #3659)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
@@ -7,6 +24,9 @@ IN DEVELOPMENT
       the Transport object. This adds ``BzrDir.clone_on_transport()``, so
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
+
+    * Let TestUIFactoy encode the password prompt with its own stdout.
+      (Vincent Ladeuil, #110204)
 
 
 bzr 0.16  2007-05-07

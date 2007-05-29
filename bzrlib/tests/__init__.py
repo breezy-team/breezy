@@ -723,7 +723,7 @@ class TestUIFactory(ui.CLIUIFactory):
     def get_non_echoed_password(self, prompt):
         """Get password from stdin without trying to handle the echo mode"""
         if prompt:
-            self.stdout.write(prompt)
+            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
@@ -2279,6 +2279,7 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
+                   'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
