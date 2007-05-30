@@ -33,7 +33,7 @@ from revids import (generate_svn_revision_id, parse_svn_revision_id,
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
-    _fmt = """Upgrade will change contents in revision %(revid)s."""
+    _fmt = """Upgrade will change contents in revision %(revid)s. Use --allow-changes to override."""
 
     def __init__(self, revid):
         self.revid = revid
