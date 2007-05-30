@@ -216,6 +216,9 @@ accessing branches over http and sftp, for example::
 By installing bzr plugins you can also access branches using the rsync
 protocol.
 
+See the `Publishing your branch`_ section for more about how to put your
+branch at a given location.
+
 Reviewing changes
 =================
 
