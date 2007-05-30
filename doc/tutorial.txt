@@ -243,9 +243,9 @@ working directory since the last revision::
     modified:
        foo
 
-By default **bzr status** hides "boring" files that are either unchanged
-or ignored.  To see them too, use the --all option.  The status command
-can optionally be given the name of some files or directories to check.
+**bzr status** hides "boring" files that are either unchanged or ignored.
+The status command can optionally be given the name of some files or
+directories to check.
 
 bzr diff
 --------
