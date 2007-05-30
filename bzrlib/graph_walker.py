@@ -74,25 +74,24 @@ class GraphWalker(object):
                                          NULL_REVISION)
         return [distances.get(r) for r in revisions]
 
-    def minimal_common(self, *revisions):
-        """Determine the minimal common ancestors of the provided revisions
+    def distinct_common(self, *revisions):
+        """Determine the distinct common ancestors of the provided revisions
 
-        A minimal common ancestor is a common ancestor none of whose
-        descendants are common ancestors.  (This is not quite the standard
-        graph theory definition)
+        A distinct common ancestor is a common ancestor none of whose
+        descendants are common ancestors.
         """
         border_common = self._find_border_ancestors(revisions)
-        return self._filter_candidate_mca(border_common)
+        return self._filter_candidate_dca(border_common)
 
     def _find_border_ancestors(self, revisions):
         """Find common ancestors with at least one uncommon descendant"""
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
-        maybe_minimal_common = set()
+        maybe_distinct_common = set()
         seen_ancestors = set()
         while True:
             if len(active_walkers) == 0:
-                return maybe_minimal_common
+                return maybe_distinct_common
             newly_seen = set()
             new_active_walkers = []
             for walker in active_walkers:
@@ -108,14 +107,14 @@ class GraphWalker(object):
                     if revision not in walker.seen:
                         break
                 else:
-                    maybe_minimal_common.add(revision)
+                    maybe_distinct_common.add(revision)
                     for walker in walkers:
                         w_seen_ancestors = walker.find_seen_ancestors(revision)
                         walker.stop_searching_any(w_seen_ancestors)
 
-    def _filter_candidate_mca(self, candidate_mca):
+    def _filter_candidate_dca(self, candidate_dca):
         """Remove candidates which are ancestors of other candidates"""
-        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_mca)
+        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_dca)
         active_walkers = dict(walkers)
         # skip over the actual candidate for each walker
         for walker in active_walkers.itervalues():
@@ -128,8 +127,8 @@ class GraphWalker(object):
                     del active_walkers[candidate]
                     continue
                 for ancestor in ancestors:
-                    if ancestor in candidate_mca:
-                        candidate_mca.remove(ancestor)
+                    if ancestor in candidate_dca:
+                        candidate_dca.remove(ancestor)
                         del walkers[ancestor]
                         if ancestor in active_walkers:
                             del active_walkers[ancestor]
@@ -144,25 +143,25 @@ class GraphWalker(object):
                             seen_ancestors =\
                                 walker.find_seen_ancestors(ancestor)
                             walker.stop_searching_any(seen_ancestors)
-        return candidate_mca
+        return candidate_dca
 
     def unique_common(self, left_revision, right_revision):
-        """Find a unique minimal common ancestor.
+        """Find a unique distinct common ancestor.
 
-        Find minimal common ancestors.  If there is no unique minimal common
-        ancestor, find the minimal common ancestors of those ancestors.
+        Find distinct common ancestors.  If there is no unique distinct common
+        ancestor, find the distinct common ancestors of those ancestors.
 
-        Iteration stops when a unique minimal common ancestor is found.
+        Iteration stops when a unique distinct common ancestor is found.
         The graph origin is necessarily a unique common ancestor
 
         Note that None is not an acceptable substitute for NULL_REVISION.
         """
         revisions = [left_revision, right_revision]
         while True:
-            minimal = self.minimal_common(*revisions)
-            if len(minimal) == 1:
-                return minimal.pop()
-            revisions = minimal
+            distinct = self.distinct_common(*revisions)
+            if len(distinct) == 1:
+                return distinct.pop()
+            revisions = distinct
 
     def get_parents(self, revision):
         """Determine the parents of a revision"""

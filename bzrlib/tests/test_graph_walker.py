@@ -85,38 +85,38 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                 tree.commit(descendant, rev_id=descendant)
                 pending.append(descendant)
 
-    def test_mca(self):
-        """Test finding minimal common ancestor.
+    def test_dca(self):
+        """Test finding distinct common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
         graph_walker = self.make_walker(ancestry_1)
         self.assertEqual(set([NULL_REVISION]),
-                         graph_walker.minimal_common(NULL_REVISION,
+                         graph_walker.distinct_common(NULL_REVISION,
                                                      NULL_REVISION))
         self.assertEqual(set([NULL_REVISION]),
-                         graph_walker.minimal_common(NULL_REVISION,
+                         graph_walker.distinct_common(NULL_REVISION,
                                                      'rev1'))
         self.assertEqual(set(['rev1']),
-                         graph_walker.minimal_common('rev1', 'rev1'))
+                         graph_walker.distinct_common('rev1', 'rev1'))
         self.assertEqual(set(['rev1']),
-                         graph_walker.minimal_common('rev2a', 'rev2b'))
+                         graph_walker.distinct_common('rev2a', 'rev2b'))
 
-    def test_mca_criss_cross(self):
+    def test_dca_criss_cross(self):
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual(set(['rev2a', 'rev2b']),
-                         graph_walker.minimal_common('rev3a', 'rev3b'))
+                         graph_walker.distinct_common('rev3a', 'rev3b'))
         self.assertEqual(set(['rev2b']),
-                         graph_walker.minimal_common('rev3a', 'rev3b',
+                         graph_walker.distinct_common('rev3a', 'rev3b',
                                                      'rev2b'))
 
-    def test_mca_shortcut(self):
+    def test_dca_shortcut(self):
         graph_walker = self.make_walker(history_shortcut)
         self.assertEqual(set(['rev2b']),
-                         graph_walker.minimal_common('rev3a', 'rev3b'))
+                         graph_walker.distinct_common('rev3a', 'rev3b'))
 
-    def test_recursive_unique_mca(self):
-        """Test finding a unique minimal common ancestor.
+    def test_recursive_unique_dca(self):
+        """Test finding a unique distinct common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
@@ -130,16 +130,16 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         self.assertEqual('rev1', graph_walker.unique_common('rev1', 'rev1'))
         self.assertEqual('rev1', graph_walker.unique_common('rev2a', 'rev2b'))
 
-    def test_mca_criss_cross(self):
+    def test_dca_criss_cross(self):
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual(set(['rev2a', 'rev2b']),
-                         graph_walker.minimal_common('rev3a', 'rev3b'))
+                         graph_walker.distinct_common('rev3a', 'rev3b'))
         self.assertEqual(set(['rev2b']),
-                         graph_walker.minimal_common('rev3a', 'rev3b',
-                                                     'rev2b'))
+                         graph_walker.distinct_common('rev3a', 'rev3b',
+                                                      'rev2b'))
 
     def test_unique_common_criss_cross(self):
-        """Ensure we don't pick non-unique mcas in a criss-cross"""
+        """Ensure we don't pick non-unique dcas in a criss-cross"""
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual('rev1',
                          graph_walker.unique_common('rev3a', 'rev3b'))
