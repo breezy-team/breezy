@@ -140,7 +140,7 @@ class cmd_svn_import(Command):
 register_command(cmd_svn_import)
 
 class cmd_svn_upgrade(Command):
-    """Upgrade the revisions mapped from Subversion in a Bazaar branch.
+    """Upgrade revisions mapped from Subversion in a Bazaar branch.
     
     This will change the revision ids of revisions whose parents 
     were mapped from svn revisions.

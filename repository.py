@@ -74,6 +74,7 @@ def parse_revision_metadata(text, rev):
         else:
             raise BzrError("Invalid key %r" % key)
 
+
 def generate_revision_metadata(timestamp, timezone, committer, revprops):
     """Generate revision metadata text for the specified revision 
     properties.

@@ -23,14 +23,6 @@ import bzrlib.ui as ui
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
 
-# Takes an existing Bazaar branch and replaces all old-version mapped revisions 
-# with new-style revisions mappings. 
-# 
-# It checks the sha1s of the contents to make sure that the revision hasn't 
-# changed. This behaviour can be turned off by specifying --allow-change.
-#
-# Usage: svn-upgrade [--allow-change] PATH REPOSITORY
-
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
     _fmt = """Upgrade will change contents in revision %(revid)s. Use --allow-changes to override."""
@@ -41,6 +33,13 @@ class UpgradeChangesContent(BzrError):
 
 # Change the parent of a revision
 def change_revision_parent(repository, oldrevid, newrevid, new_parents):
+    """Create a copy of a revision with different parents.
+
+    :param repository: Repository in which the revision is present.
+    :param oldrevid: Revision id of the revision to copy.
+    :param newrevid: Revision id of the revision to create.
+    :param new_parents: Revision ids of the new parent revisions.
+    """
     assert isinstance(new_parents, list)
     mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
@@ -120,6 +119,11 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
 
 
 def parse_legacy_revision_id(revid):
+    """Try to parse a legacy Subversion revision id.
+    
+    :param revid: Revision id to parse
+    :return: tuple with (uuid, branch_path, revision number, mapping version)
+    """
     if revid.startswith("svn-v1:"):
         revid = revid[len("svn-v1:"):]
         at = revid.index("@")
@@ -146,6 +150,13 @@ def parse_legacy_revision_id(revid):
 
 
 def create_upgraded_revid(revid):
+    """Create a new revision id for an upgraded version of a revision.
+    
+    Prevents suffix to be appended needlessly.
+
+    :param revid: Original revision id.
+    :return: New revision id
+    """
     suffix = "-svn%d-upgrade" % MAPPING_VERSION
     if revid.endswith("-upgrade"):
         return revid[0:revid.rfind("-svn")] + suffix
@@ -154,6 +165,12 @@ def create_upgraded_revid(revid):
 
 
 def upgrade_branch(branch, svn_repository, allow_change=False):
+    """Upgrade a branch to the current mapping version.
+    
+    :param branch: Branch to upgrade.
+    :param svn_repository: Repository to fetch new revisions from
+    :param allow_change: Allow changes in mappings.
+    """
     renames = upgrade_repository(branch.repository, svn_repository, 
               branch.last_revision(), allow_change)
     mutter('renames %r' % renames)
@@ -162,6 +179,8 @@ def upgrade_branch(branch, svn_repository, allow_change=False):
 
 
 def revision_changed(oldrev, newrev):
+    """Check if two revisions are different. This is exactly the same 
+    as Revision.equals() except that it does not check the revision_id."""
     if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
         newrev.timestamp != oldrev.timestamp or
         newrev.message != oldrev.message or
@@ -174,6 +193,14 @@ def revision_changed(oldrev, newrev):
 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
                        allow_change=False):
+    """Upgrade the revisions in repository until the specified stop revision.
+
+    :param repository: Repository in which to upgrade.
+    :param svn_repository: Repository to fetch new revisions from.
+    :param revision_id: Revision id up until which to upgrade, or None for 
+                        all revisions.
+    :param allow_change: Allow changes to mappings.
+    """
     needed_revs = []
     needs_upgrading = []
     new_parents = {}
