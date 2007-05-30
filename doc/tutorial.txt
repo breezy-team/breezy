@@ -180,11 +180,11 @@ to it will be recorded by the system::
     % bzr status
     unknown:
       hello.txt
-    % bzr unknowns
-    hello.txt
     % bzr add hello.txt
     added hello.txt
-    % bzr unknowns
+    % bzr status
+    added:
+      hello.txt
 
 
 If you add the wrong file, simply use **bzr remove** to make it
