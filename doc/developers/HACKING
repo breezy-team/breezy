@@ -757,6 +757,19 @@ with a declarative interface. A sample session might look like::
 
 Please see bzrlib.treebuilder for more details.
 
+BranchBuilder
+~~~~~~~~~~~~~
+
+The ``BranchBuilder`` interface allows the creation of test branches in a
+quick and easy manner. A sample session::
+
+  builder = BranchBuilder(self.get_transport().clone('relpath'))
+  builder.build_commit()
+  builder.build_commit()
+  builder.build_commit()
+  branch = builder.get_branch()
+
+Please see bzrlib.branchbuilder for more details.
 
 Doctests
 --------
