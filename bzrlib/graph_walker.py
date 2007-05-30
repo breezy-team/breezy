@@ -32,7 +32,7 @@ class GraphWalker(object):
         specialized implementations for particular repository types.  See
         Repository.get_graph_walker()
 
-        Note that the imput graphs *will* be altered to use NULL_REVISION as
+        Note that the input graphs *will* be altered to use NULL_REVISION as
         their origin.
         """
         self._graph = graphs
@@ -79,12 +79,43 @@ class GraphWalker(object):
 
         A distinct common ancestor is a common ancestor none of whose
         descendants are common ancestors.
+
+        This algorithm has two phases.  Phase 1 identifies border ancestors,
+        and phase 2 filters border ancestors to determine distinct ancestors.
+
+        In phase 1, border ancestors are identified, using a breadth-first
+        search starting at the bottom of the graph.  Searches are stopped
+        whenever a node or one of its descendants is determined to be common
+
+        In phase 2, the border ancestors are filtered to find the distinct
+        common ancestors.  This is done by searching the ancestries of each
+        border ancestor.
+
+        Phase 2 is perfomed on the principle that a border ancestor that is not
+        an ancestor of any other border ancestor is a distinct ancestor.
+
+        Searches are stopped when they find a node that is determined to be a
+        common ancestor of all border ancestors, because this shows that it
+        cannot be a descendant of any border ancestor.
+
+        The scaling of this operation should be proportional to
+        1. The number of uncommon ancestors
+        2. The number of border ancestors
+        3. The length of the shortest path between a border ancestor and an
+           ancestor of all border ancestors.
         """
         border_common = self._find_border_ancestors(revisions)
         return self._filter_candidate_dca(border_common)
 
     def _find_border_ancestors(self, revisions):
-        """Find common ancestors with at least one uncommon descendant"""
+        """Find common ancestors with at least one uncommon descendant.
+
+        Border ancestors are identified using a breadth-first
+        search starting at the bottom of the graph.  Searches are stopped
+        whenever a node or one of its descendants is determined to be common.
+
+        This will scale with the number of uncommon ancestors.
+        """
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
         maybe_distinct_common = set()
@@ -113,7 +144,20 @@ class GraphWalker(object):
                         walker.stop_searching_any(w_seen_ancestors)
 
     def _filter_candidate_dca(self, candidate_dca):
-        """Remove candidates which are ancestors of other candidates"""
+        """Remove candidates which are ancestors of other candidates.
+
+        This is done by searching the ancestries of each border ancestor.  It
+        is perfomed on the principle that a border ancestor that is not an
+        ancestor of any other border ancestor is a distinct ancestor.
+
+        Searches are stopped when they find a node that is determined to be a
+        common ancestor of all border ancestors, because this shows that it
+        cannot be a descendant of any border ancestor.
+
+        This will scale with the number of candidate ancestors and the length
+        of the shortest path from a candidate to an ancestor common to all
+        candidates.
+        """
         walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_dca)
         active_walkers = dict(walkers)
         # skip over the actual candidate for each walker
@@ -195,8 +239,8 @@ class _AncestryWalker(object):
     def next(self):
         """Return the next ancestors of this revision.
 
-        Ancestors are returned in the order they are seen.  No ancestor will
-        be returned more than once.
+        Ancestors are returned in the order they are seen in a breadth-first
+        traversal.  No ancestor will be returned more than once.
         """
         if self._search_revisions is None:
             self._search_revisions = self._start
@@ -232,7 +276,7 @@ class _AncestryWalker(object):
         Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
-        search list.
+        search list.  In this case, the call is a no-op.
         """
         self._search_revisions = set(l for l in self._search_revisions
                                      if l not in revisions)
