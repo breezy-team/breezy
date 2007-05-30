@@ -215,13 +215,11 @@ class SvnBranch(Branch):
         # make a new revision history from the graph
 
     def update_revisions(self, other, stop_revision=None):
-        if isinstance(other, SvnBranch):
-            if (self.last_revision() == stop_revision or
-                self.last_revision() == other.last_revision()):
-                return
-            # Import from another Subversion branch
-            assert other.repository.uuid == self.repository.uuid, \
-                    "can only import from elsewhere in the same repository."
+        if (self.last_revision() == stop_revision or
+            self.last_revision() == other.last_revision()):
+            return
+        if isinstance(other, SvnBranch) and \
+            other.repository.uuid == self.repository.uuid:
 
             # FIXME: Make sure branches haven't diverged
             # FIXME: svn.ra.del_dir(self.base_path)
@@ -246,10 +244,12 @@ class SvnBranch(Branch):
         return self.base
 
     def set_parent(self, url):
-        pass # FIXME: Use svn.client.switch()
+        pass
 
     def append_revision(self, *revision_ids):
         #raise NotImplementedError(self.append_revision)
+        #FIXME: Make sure the appended revision is already 
+        # part of the revision history
         pass
 
     def get_physical_lock_status(self):
@@ -277,7 +277,6 @@ class SvnBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
-
 
 
 class SvnBranchFormat(BranchFormat):

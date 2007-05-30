@@ -4,7 +4,8 @@
 - handle parent directories of branches being moved correctly
 - faster "bzr status" in lightweight checkouts
 - when committing specific files in a lightweight checkout, make sure to 
-  commit the right file id changes for "."
+  also commit the file property changes for the tree root (except 
+  for pending merges).														   
 - custom implementation of WorkingTree.revert() / WorkingTree.merge()
 - don't update all entries to the same revnum when opening working tree
 - avoid extra connect in logwalker?
@@ -17,3 +18,4 @@
 - add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - more blackbox tests
 - split fetch tests out of test_repos
+- what happened to WorkingTree.add() ?

@@ -179,6 +179,7 @@ class SvnWorkingTree(WorkingTree):
 
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         # FIXME: Use after argument
+        assert after != True
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_working
         for entry in from_paths:
@@ -201,6 +202,7 @@ class SvnWorkingTree(WorkingTree):
 
     def rename_one(self, from_rel, to_rel, after=False):
         # FIXME: Use after
+        assert after != True
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
         (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
@@ -404,11 +406,7 @@ class SvnWorkingTree(WorkingTree):
         # FIXME: Use allow_pointless
         # FIXME: Use verbose
         # FIXME: Use reporter
-        # FIXME: Use committer
-        # FIXME: Use revprops
         # FIXME: Use strict
-        assert timestamp is None
-        assert timezone is None
         if local:
             raise LocalCommitsUnsupported()
 
@@ -446,8 +444,23 @@ class SvnWorkingTree(WorkingTree):
         finally:
             svn.wc.adm_close(wc)
 
-        commit_info = svn.client.commit3(specific_files, True, False, 
+        try:
+            commit_info = svn.client.commit3(specific_files, True, False, 
                                          self.client_ctx)
+        except:
+            # Reset properties so the next subversion commit won't 
+            # accidently set these properties.
+            wc = self._get_wc(write_lock=True)
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
+                             self._get_bzr_revids(), self.basedir, wc)
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
+                self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, self.base_revnum, 
+                SVN_PROP_BZR_REVISION_INFO, ""), 
+                self.basedir, wc)
+            svn.wc.adm_close(wc)
+            raise
+
         self.client_ctx.log_msg_baton2 = None
 
         revid = self.branch.repository.generate_revision_id(
