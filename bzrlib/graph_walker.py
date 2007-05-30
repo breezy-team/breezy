@@ -19,9 +19,22 @@ from bzrlib.revision import NULL_REVISION
 
 
 class GraphWalker(object):
-    """Provide incremental access to revision graphs"""
+    """Provide incremental access to revision graphs.
+
+    This is the generic implementation; it is intended to be subclassed to
+    specialize it for other repository types.
+    """
 
     def __init__(self, graphs):
+        """Construct a GraphWalker that uses several graphs as its input
+
+        This should not normally be invoked directly, because there may be
+        specialized implementations for particular repository types.  See
+        Repository.get_graph_walker()
+
+        Note that the imput graphs *will* be altered to use NULL_REVISION as
+        their origin.
+        """
         self._graph = graphs
         self._ancestors = []
         self._descendants = []
@@ -68,10 +81,11 @@ class GraphWalker(object):
         descendants are common ancestors.  (This is not quite the standard
         graph theory definition)
         """
-        candidate_mca = self._find_candidate_mca(revisions)
-        return self._filter_candidate_mca(candidate_mca)
+        border_common = self._find_border_ancestors(revisions)
+        return self._filter_candidate_mca(border_common)
 
-    def _find_candidate_mca(self, revisions):
+    def _find_border_ancestors(self, revisions):
+        """Find common ancestors with at least one uncommon descendant"""
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
         maybe_minimal_common = set()
@@ -97,7 +111,7 @@ class GraphWalker(object):
                     maybe_minimal_common.add(revision)
                     for walker in walkers:
                         w_seen_ancestors = walker.find_seen_ancestors(revision)
-                        walker.stop_tracing_any(w_seen_ancestors)
+                        walker.stop_searching_any(w_seen_ancestors)
 
     def _filter_candidate_mca(self, candidate_mca):
         """Remove candidates which are ancestors of other candidates"""
@@ -125,11 +139,11 @@ class GraphWalker(object):
                     else:
                         # if this revision was seen by all walkers, then it
                         # is a descendant of all candidates, so we can stop
-                        # tracing it, and any seen ancestors
+                        # searching it, and any seen ancestors
                         for walker in walkers.itervalues():
                             seen_ancestors =\
                                 walker.find_seen_ancestors(ancestor)
-                            walker.stop_tracing_any(seen_ancestors)
+                            walker.stop_searching_any(seen_ancestors)
         return candidate_mca
 
     def unique_common(self, left_revision, right_revision):
@@ -151,6 +165,7 @@ class GraphWalker(object):
             revisions = minimal
 
     def get_parents(self, revision):
+        """Determine the parents of a revision"""
         for ancestors in self._ancestors:
             try:
                 return ancestors[revision]
@@ -159,51 +174,44 @@ class GraphWalker(object):
         else:
             raise KeyError
 
-    def _get_ancestry(self, revision):
-        if revision == NULL_REVISION:
-            ancestry = []
-        else:
-            for graph in self._graph:
-                try:
-                    ancestry = graph.get_ancestry(revision)
-                except KeyError:
-                    pass
-                else:
-                    break
-            else:
-                raise KeyError(revision)
-        ancestry.append(NULL_REVISION)
-        return ancestry
-
 
 class _AncestryWalker(object):
-    """Walk the ancestry of a single revision"""
+    """Walk the ancestry of a single revision.
+
+    This class implements the iterator protocol, but additionally
+    1. provides a set of seen ancestors, and
+    2. allows some ancestries to be unsearched, via stop_searching_any
+    """
 
     def __init__(self, revision, graph_walker):
         self._start = set([revision])
-        self._lines = None
+        self._search_revisions = None
         self.seen = set()
         self._graph_walker = graph_walker
 
     def __repr__(self):
-        return '_AncestryWalker(self._lines=%r, self.seen=%r)' %\
-            (self._lines, self.seen)
+        return '_AncestryWalker(self._search_revisions=%r, self.seen=%r)' %\
+            (self._search_revisions, self.seen)
 
     def next(self):
-        """Return the next parents of this revision"""
-        if self._lines is None:
-            self._lines = self._start
+        """Return the next ancestors of this revision.
+
+        Ancestors are returned in the order they are seen.  No ancestor will
+        be returned more than once.
+        """
+        if self._search_revisions is None:
+            self._search_revisions = self._start
         else:
-            new_lines = set()
-            for revision in self._lines:
-                new_lines.update(p for p in
+            new_search_revisions = set()
+            for revision in self._search_revisions:
+                new_search_revisions.update(p for p in
                                  self._graph_walker.get_parents(revision) if p
                                  not in self.seen)
-            self._lines = new_lines
-        if len(self._lines) == 0:
+            self._search_revisions = new_search_revisions
+        if len(self._search_revisions) == 0:
             raise StopIteration()
-        self.seen.update(self._lines)
-        return self._lines
+        self.seen.update(self._search_revisions)
+        return self._search_revisions
 
     def __iter__(self):
         return self
@@ -215,10 +223,17 @@ class _AncestryWalker(object):
         for ancestors in walker:
             for ancestor in ancestors:
                 if ancestor not in self.seen:
-                    walker.stop_tracing_any([ancestor])
+                    walker.stop_searching_any([ancestor])
                 else:
                     seen_ancestors.add(ancestor)
         return seen_ancestors
 
-    def stop_tracing_any(self, revisions):
-        self._lines = set(l for l in self._lines if l not in revisions)
+    def stop_searching_any(self, revisions):
+        """
+        Remove any of the specified revisions from the search list.
+
+        None of the specified revisions are required to be present in the
+        search list.
+        """
+        self._search_revisions = set(l for l in self._search_revisions
+                                     if l not in revisions)
