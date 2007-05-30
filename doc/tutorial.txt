@@ -188,7 +188,13 @@ to it will be recorded by the system::
 
 
 If you add the wrong file, simply use **bzr remove** to make it
-unversioned again.  This does not delete the working copy.
+unversioned again.  This does not delete the working copy in this case,
+though it may in others [2]_.
+
+.. [2] ``bzr remove`` will remove the working copy if it is currently
+   versioned, but has no changes from the last committed version.  You
+   can force the file to always be kept with the ``--keep`` option to
+   ``bzr remove``, or force it to always be deleted with ``--force``.
 
 Branch locations
 ================
