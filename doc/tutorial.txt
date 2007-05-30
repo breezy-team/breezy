@@ -466,10 +466,9 @@ Branching
 =========
 
 Often rather than starting your own project, you will want to submit a
-change to an existing project.  You can get a copy of an existing branch
-by copying its directory, expanding a tarball, or by a remote copy using
-something like rsync.  You can also use bzr to fetch a copy.  Because this
-new copy is potentially a new branch, the command is called *branch*::
+change to an existing project.  To do this, you'll need to get a copy of
+the existing branch.  Because this new copy is potentially a new branch,
+the command is called **branch**::
 
     % bzr branch http://bazaar-vcs.org/bzr/bzr.dev 
     % cd bzr.dev
@@ -477,6 +476,9 @@ new copy is potentially a new branch, the command is called *branch*::
 This copies down the complete history of this branch, so we can do all
 operations on it locally: log, annotate, making and merging branches.
 There will be an option to get only part of the history if you wish.
+
+You can also get a copy of an existing branch by copying its directory,
+expanding a tarball, or by a remote copy using something like rsync.
 
 Following upstream changes
 ==========================
