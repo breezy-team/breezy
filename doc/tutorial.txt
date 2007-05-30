@@ -255,10 +255,10 @@ standard unified diff.  This can be piped through many programs such as
 ''patch'', ''diffstat'', ''filterdiff'' and ''colordiff''::
 
     % bzr diff
-    *** added file 'hello.txt'
-    --- /dev/null 
-    +++ hello.txt 
-    @@ -1,0 +1,1 @@
+    === added file 'hello.txt'
+    --- hello.txt   1970-01-01 00:00:00 +0000
+    +++ hello.txt   2005-10-18 14:23:29 +0000
+    @@ -0,0 +1,1 @@
     +hello world
 
 
