@@ -67,6 +67,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         self.assertFalse(repos.make_working_trees())
 
+    def test_get_physical_lock_status(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertFalse(repos.get_physical_lock_status())
+
     def test_set_make_working_trees(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
