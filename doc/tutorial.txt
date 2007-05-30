@@ -441,9 +441,9 @@ You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
 do **cvs remove**.
 
-    **bzr remove** makes the file un-versioned, but does not delete
-    the working copy.  This is useful when you add the wrong file, or decide
-    that a file should actually not be versioned. 
+    **bzr remove** makes the file un-versioned, but may or may not delete
+    the working copy [2]_.  This is useful when you add the wrong file,
+    or decide that a file should actually not be versioned. 
 
 ::
 
