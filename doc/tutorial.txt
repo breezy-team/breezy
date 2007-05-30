@@ -11,7 +11,7 @@
 Bazaar Tutorial
 ===============
 
-Current for bzr-0.8, 2006-04
+Current for bzr-0.16, 2007-05
 
 
 Introduction
