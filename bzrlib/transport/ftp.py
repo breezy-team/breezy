@@ -60,29 +60,6 @@ class FtpPathError(errors.PathError):
     """FTP failed for path: %(path)s%(extra)s"""
 
 
-_FTP_cache = {}
-def _find_FTP(hostname, port, username, password, is_active):
-    """Find an ftplib.FTP instance attached to this triplet."""
-    key = (hostname, port, username, password, is_active)
-    alt_key = (hostname, port, username, '********', is_active)
-    if key not in _FTP_cache:
-        mutter("Constructing FTP instance against %r" % (alt_key,))
-        conn = ftplib.FTP()
-
-        # FIXME: instrument or refactor to allow testing for mutiple connections
-        conn.connect(host=hostname, port=port)
-        if username and username != 'anonymous' and not password:
-            password = bzrlib.ui.ui_factory.get_password(
-                prompt='FTP %(user)s@%(host)s password',
-                user=username, host=hostname)
-        conn.login(user=username, passwd=password)
-        conn.set_pasv(not is_active)
-
-        _FTP_cache[key] = conn
-
-    return _FTP_cache[key]    
-
-
 class FtpStatResult(object):
     def __init__(self, f, relpath):
         try:
@@ -140,17 +117,25 @@ class FtpTransport(Transport):
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
-        if self._FTP_instance is not None:
-            return self._FTP_instance
-        
-        try:
-            self._FTP_instance = _find_FTP(self._host, self._port,
-                                           self._username, self._password,
-                                           self.is_active)
-            return self._FTP_instance
-        except ftplib.error_perm, e:
-            raise errors.TransportError(msg="Error setting up connection: %s"
-                                    % str(e), orig_error=e)
+        if self._FTP_instance is None:
+            mutter("Constructing FTP instance against %r" %
+                   ((self._host, self._port, self._username, '********',
+                    self.is_active),))
+            try:
+                connection = ftplib.FTP()
+                connection.connect(host=self._host, port=self._port)
+                if self._username and self._username != 'anonymous' and \
+                        not self._password:
+                    self._password = bzrlib.ui.ui_factory.get_password(
+                        prompt='FTP %(user)s@%(host)s password',
+                        user=self._username, host=self._host)
+                connection.login(user=self._username, passwd=self._password)
+                connection.set_pasv(not self.is_active)
+            except ftplib.error_perm, e:
+                raise errors.TransportError(msg="Error setting up connection:"
+                                            " %s" % str(e), orig_error=e)
+            self._FTP_instance = connection
+        return self._FTP_instance
 
     def _translate_perm_error(self, err, path, extra=None, unknown_exc=FtpPathError):
         """Try to translate an ftplib.error_perm exception.

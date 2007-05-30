@@ -17,6 +17,9 @@ IN DEVELOPMENT
     * Added ``bzr log --limit`` to report a limited number of revisions.
       (Kent Gibson, #3659)
 
+    * Get rid of FTP connection cache.
+     (Vincent Ladeuil)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
