@@ -394,18 +394,6 @@ class SvnRepository(Repository):
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError(self.add_revision)
 
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        raise NotImplementedError(self.fileid_involved_by_set)
-
-    def fileid_involved(self, last_revid=None):
-        raise NotImplementedError(self.fileid_involved)
-
-    def fileids_altered_by_revision_ids(self, revision_ids):
-        raise NotImplementedError(self.fileids_altered_by_revision_ids)
-
-    def fileid_involved_by_set(self, changes):
-        raise NotImplementedError(self.fileid_involved_by_set)
-
     def generate_revision_id(self, revnum, path):
         """Generate an unambiguous revision id. 
         
@@ -491,31 +479,33 @@ class SvnRepository(Repository):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
             self.get_inventory(revision_id))
 
-    """Get the sha1 for the XML representation of an inventory.
-
-    :param revision_id: Revision id of the inventory for which to return the 
-        SHA1.
-    :return: XML string
-    """
     def get_inventory_sha1(self, revision_id):
+        """Get the sha1 for the XML representation of an inventory.
+
+        :param revision_id: Revision id of the inventory for which to return 
+         the SHA1.
+        :return: XML string
+        """
+
         return osutils.sha_string(self.get_inventory_xml(revision_id))
 
-    """Return the XML representation of a revision.
-
-    :param revision_id: Revision for which to return the XML.
-    :return: XML string
-    """
     def get_revision_xml(self, revision_id):
+        """Return the XML representation of a revision.
+
+        :param revision_id: Revision for which to return the XML.
+        :return: XML string
+        """
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
-    """Yield all the branches found between the start of history 
-    and a specified revision number.
-
-    :param revnum: Revision number up to which to search.
-    :return: iterator over branches in the range 0..revnum
-    """
     def follow_history(self, revnum):
+        """Yield all the branches found between the start of history 
+        and a specified revision number.
+
+        :param revnum: Revision number up to which to search.
+        :return: iterator over branches in the range 0..revnum
+        """
+
         while revnum >= 0:
             yielded_paths = []
             paths = self._log.get_revision_paths(revnum)
@@ -531,14 +521,15 @@ class SvnRepository(Repository):
                     pass
             revnum -= 1
 
-    """Follow the history of a branch. Will yield all the 
-    left-hand side ancestors of a specified revision.
-    
-    :param branch_path: Subversion path to search.
-    :param revnum: Revision number in Subversion to start.
-    :return: iterator over the ancestors
-    """
     def follow_branch(self, branch_path, revnum):
+        """Follow the history of a branch. Will yield all the 
+        left-hand side ancestors of a specified revision.
+    
+        :param branch_path: Subversion path to search.
+        :param revnum: Revision number in Subversion to start.
+        :return: iterator over the ancestors
+        """
+
         assert branch_path is not None
         assert isinstance(revnum, int) and revnum >= 0
         if not self.scheme.is_branch(branch_path) and \
@@ -635,12 +626,14 @@ class SvnRepository(Repository):
         return False # SVN doesn't store GPG signatures. Perhaps 
                      # store in SVN revision property?
 
-    """Return the signature text for a particular revision.
 
-    :param revision_id: Id of the revision for which to return the signature.
-    :raises NoSuchRevision: Always
-    """
     def get_signature_text(self, revision_id):
+        """Return the signature text for a particular revision.
+
+        :param revision_id: Id of the revision for which to return the 
+                            signature.
+        :raises NoSuchRevision: Always
+        """
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
