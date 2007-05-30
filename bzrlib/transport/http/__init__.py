@@ -30,7 +30,7 @@ from bzrlib import errors, ui
 from bzrlib.smart import medium
 from bzrlib.trace import mutter
 from bzrlib.transport import (
-    Transport,
+    ConnectedTransport,
     )
 
 
@@ -113,7 +113,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport, medium.SmartClientMedium):
+class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.

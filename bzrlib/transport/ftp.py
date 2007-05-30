@@ -48,7 +48,7 @@ from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     Server,
     split_url,
-    Transport,
+    ConnectedTransport,
     )
 from bzrlib.transport.local import LocalURLServer
 import bzrlib.ui
@@ -77,7 +77,7 @@ class FtpStatResult(object):
 _number_of_retries = 2
 _sleep_between_retries = 5
 
-class FtpTransport(Transport):
+class FtpTransport(ConnectedTransport):
     """This is the transport agent for ftp:// access."""
 
     def __init__(self, base, _provided_instance=None):

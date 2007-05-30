@@ -51,7 +51,7 @@ class _SmartStat(object):
         self.st_mode = mode
 
 
-class RemoteTransport(transport.Transport):
+class RemoteTransport(transport.ConnectedTransport):
     """Connection to a smart server.
 
     The connection holds references to the medium that can be used to send

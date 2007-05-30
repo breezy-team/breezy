@@ -55,7 +55,7 @@ from bzrlib.transport import (
     Server,
     split_url,
     ssh,
-    Transport,
+    ConnectedTransport,
     )
 
 try:
@@ -135,7 +135,7 @@ class SFTPLock(object):
             pass
 
 
-class SFTPUrlHandling(Transport):
+class SFTPUrlHandling(ConnectedTransport):
     """Mix-in that does common handling of SSH/SFTP URLs."""
 
     def __init__(self, base):

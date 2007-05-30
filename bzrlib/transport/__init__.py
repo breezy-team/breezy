@@ -1147,6 +1147,10 @@ def _try_transport_factories(base, factory_list):
     return None, last_err
 
 
+class ConnectedTransport(Transport):
+    """A transport connected to a remote server"""
+
+
 class Server(object):
     """A Transport Server.
     
