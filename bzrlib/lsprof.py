@@ -106,6 +106,14 @@ class Stats(object):
 
 
 class _CallTreeFilter(object):
+    """Converter of a Stats object to input suitable for KCacheGrind.
+
+    This code is taken from http://ddaa.net/blog/python/lsprof-calltree
+    with the changes made by J.P. Calderone and Itamar applied. Note that
+    isinstance(code, str) needs to be used at times to determine if the code 
+    object is actually an external code object (with a filename, etc.) or
+    a Python built-in.
+    """
 
     def __init__(self, data):
         self.data = data

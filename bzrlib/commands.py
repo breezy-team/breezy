@@ -541,9 +541,9 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.pprint()
     else:
         outfile = open(filename, 'w')
-        if filename.endswith("grind"):
+        if filename.endswith(".callgrind"):
             stats.calltree(outfile)
-        elif filename.endswith("txt"):
+        elif filename.endswith(".txt"):
             stats.pprint(file=outfile)
         else:
             stats.freeze()

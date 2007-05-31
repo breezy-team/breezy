@@ -9,11 +9,11 @@ IN DEVELOPMENT
       revisions, instead of "merged:". (Kent Gibson)
 
     * The --lsprof-file option now dumps a text rendering of the profiling
-      information if the filename ends in "txt". It will also convert the
+      information if the filename ends in ".txt". It will also convert the
       profiling information to a format suitable for KCacheGrind if the
-      output filename ends in "grind". Fixes to the lsprofcalltree conversion
-      process by Jean Paul Calderone and Itamar were also merged. See
-      http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
+      output filename ends in ".callgrind". Fixes to the lsprofcalltree
+      conversion process by Jean Paul Calderone and Itamar were also merged.
+      See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
 
   IMPROVEMENTS:
   

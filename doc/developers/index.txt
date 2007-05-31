@@ -13,3 +13,7 @@ Documentation index
 * `Performance roadmap <performance-roadmap.htm>`_
 
   The roadmap for fixing performance in bzr over the next few releases.
+
+* `Profiling notes <profiling.htm>`_
+
+  Instructions on how to profile bzr code and visualize the results.
