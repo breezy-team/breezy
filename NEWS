@@ -32,6 +32,11 @@ bzr 0.16  2007-05-07
       the root of the source tree and allows HACKING to be split into multiple
       files. (Robert Collins, Alexander Belchenko)
 
+    * Clean up the ``WorkingTree4._iter_changes()`` internal loops as well as
+      ``DirState.update_entry()``. This optimizes the core logic for ``bzr
+      diff`` and ``bzr status`` significantly improving the speed of
+      both. (John Arbash Meinel)
+
 bzr 0.16rc2  2007-04-30
 
   BUGFIXES:
