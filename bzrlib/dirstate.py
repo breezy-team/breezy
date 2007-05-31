@@ -1149,8 +1149,15 @@ class DirState(object):
                                    osutils.pathjoin(entry[0][0], entry[0][1]))
         elif minikind == 'l':
             link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
-            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
-                           False, packed_stat)
+            if self._cutoff_time is None:
+                self._sha_cutoff_time()
+            if (stat_value.st_mtime < self._cutoff_time
+                and stat_value.st_ctime < self._cutoff_time):
+                entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+                               False, packed_stat)
+            else:
+                entry[1][0] = ('l', '', stat_value.st_size,
+                               False, DirState.NULLSTAT)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         return link_or_sha1
 
