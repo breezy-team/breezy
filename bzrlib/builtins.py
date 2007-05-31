@@ -2989,10 +2989,10 @@ class cmd_missing(Command):
             other_branch = parent
             if other_branch is None:
                 raise errors.BzrCommandError("No peer location known"
-                                             +" or specified.")
+                                             " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            self.outf.write("Using last location: " + display_url)
+            self.outf.write("Using last location: " + display_url + '\n')
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -3013,7 +3013,7 @@ class cmd_missing(Command):
                     local_extra.reverse()
                     remote_extra.reverse()
                 if local_extra and not theirs_only:
-                    self.outf.write("You have %d extra revision(s):" %
+                    self.outf.write("You have %d extra revision(s):\n" %
                                     len(local_extra))
                     for revision in iter_log_revisions(local_extra,
                                         local_branch.repository,
@@ -3024,8 +3024,8 @@ class cmd_missing(Command):
                     printed_local = False
                 if remote_extra and not mine_only:
                     if printed_local is True:
-                        self.outf.write("\n\n")
-                    self.outf.write("You are missing %d revision(s):" %
+                        self.outf.write("\n\n\n")
+                    self.outf.write("You are missing %d revision(s):\n" %
                                     len(remote_extra))
                     for revision in iter_log_revisions(remote_extra,
                                         remote_branch.repository,
@@ -3033,7 +3033,7 @@ class cmd_missing(Command):
                         lf.log_revision(revision)
                 if not remote_extra and not local_extra:
                     status_code = 0
-                    self.outf.write("Branches are up to date.")
+                    self.outf.write("Branches are up to date.\n")
                 else:
                     status_code = 1
             finally:
