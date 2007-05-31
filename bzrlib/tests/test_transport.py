@@ -36,6 +36,7 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
+                              ConnectedTransport,
                               _get_protocol_handlers,
                               _set_protocol_handlers,
                               _get_transport_modules,
@@ -593,8 +594,58 @@ class TestWin32LocalTransport(TestCase):
         t = t.clone('..')
         self.assertEquals(t.base, 'file://HOST/')
 
+class TestConnectedTransport(TestCase):
+    """Tests for connected to remote server transports"""
+
+    def test_parse_url(self):
+        t = ConnectedTransport('sftp://simple.example.com/home/source')
+        self.assertEquals(t._host, 'simple.example.com')
+        self.assertEquals(t._port, None)
+        self.assertEquals(t._path, '/home/source/')
+        self.failUnless(t._user is None)
+        self.failUnless(t._password is None)
+
+        self.assertEquals(t.base, 'sftp://simple.example.com/home/source/')
+
+    def test_parse_quoted_url(self):
+        t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')
+        self.assertEquals(t._host, 'exAmple.com')
+        self.assertEquals(t._port, 2222)
+        self.assertEquals(t._user, 'robey')
+        self.assertEquals(t._password, 'h@t')
+        self.assertEquals(t._path, '/path/')
+
+        # Base should not keep track of the password
+        self.assertEquals(t.base, 'http://robey@exAmple.com:2222/path/')
+
+    def test_parse_invalid_url(self):
+        self.assertRaises(errors.InvalidURL,
+                          ConnectedTransport,
+                          'sftp://lily.org:~janneke/public/bzr/gub')
+
+    def test_relpath(self):
+        t = ConnectedTransport('sftp://user@host.com/abs/path')
+
+        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
+        self.assertRaises(errors.PathNotChild, t.relpath,
+                          'http://user@host.com/abs/path/sub')
+        self.assertRaises(errors.PathNotChild, t.relpath,
+                          'sftp://user2@host.com/abs/path/sub')
+        self.assertRaises(errors.PathNotChild, t.relpath,
+                          'sftp://user@otherhost.com/abs/path/sub')
+        self.assertRaises(errors.PathNotChild, t.relpath,
+                          'sftp://user@host.com:33/abs/path/sub')
+        # Make sure it works when we don't supply a username
+        t = ConnectedTransport('sftp://host.com/abs/path')
+        self.assertEquals(t.relpath('sftp://host.com/abs/path/sub'), 'sub')
+
+        # Make sure it works when parts of the path will be url encoded
+        t = ConnectedTransport('sftp://host.com/dev/%path')
+        self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
+
 
 class TestReusedTransports(TestCase):
+    """Tests for transport reuse"""
 
     def test_reuse_same_transport(self):
         t = get_transport('http://foo/')

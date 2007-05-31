@@ -57,6 +57,7 @@ from bzrlib.symbol_versioning import (
         DEPRECATED_PARAMETER,
         zero_eight,
         zero_eleven,
+        zero_seventeen,
         )
 from bzrlib.trace import (
     note,
@@ -169,6 +170,7 @@ def unregister_transport(scheme, factory):
 
 
 
+@deprecated_function(zero_seventeen)
 def split_url(url):
     # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
     if isinstance(url, unicode):
@@ -377,13 +379,8 @@ class Transport(object):
         :param relpath: relative url string for relative part of remote path.
         :return: urlencoded string for final path.
         """
-        # FIXME: share the common code across more transports; variants of
-        # this likely occur in http and sftp too.
-        #
-        # TODO: Also need to consider handling of ~, which might vary between
-        # transports?
         if not isinstance(relpath, str):
-            raise errors.InvalidURL("not a valid url: %r" % relpath)
+            raise errors.InvalidURL(relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
@@ -1032,6 +1029,135 @@ class Transport(object):
         return False
 
 
+class ConnectedTransport(Transport):
+    """A transport connected to a remote server.
+
+    Base class for transports that connect to a remote server
+    with optional user and password. Cloning preserves existing
+    connection and credentials.
+    """
+
+    def __init__(self, base, from_transport=None):
+        if base[-1] != '/':
+            base += '/'
+        if from_transport is not None:
+            # Copy the passowrd as it does not appear in base
+            self._password = from_transport._password
+        (self._scheme,
+         self._user, self._password,
+         self._host, self._port,
+         self._path) = self._split_url(base)
+        # Rebuild base taken any special handling into account
+        base = self._unsplit_url(self._scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 self._urlencode_abspath(self._path))
+        super(ConnectedTransport, self).__init__(base)
+        if from_transport is not None:
+            connection = from_transport.get_connection()
+        else:
+            connection = None
+        self.set_connection(connection)
+
+    def _split_url(self, url):
+        if isinstance(url, unicode):
+            import pdb; pdb.set_trace()
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        username = password = host = port = None
+        if '@' in netloc:
+            username, host = netloc.split('@', 1)
+            if ':' in username:
+                username, password = username.split(':', 1)
+                password = urllib.unquote(password)
+            username = urllib.unquote(username)
+        else:
+            host = netloc
+
+        if ':' in host:
+            host, port = host.rsplit(':', 1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        host = urllib.unquote(host)
+        path = self._urldecode_abspath(path)
+
+        return (scheme, username, password, host, port, path)
+
+    def _unsplit_url(self, scheme, user, password, host, port, path):
+        netloc = urllib.quote(host)
+        if user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (urllib.quote(user), netloc)
+        if port is not None:
+            netloc = '%s:%d' % (netloc, port)
+        return urlparse.urlunparse((scheme, netloc, path, None, None, None))
+
+    def _urlencode_abspath(self, abspath):
+        return urllib.quote(abspath)
+
+    def _urldecode_abspath(self, abspath):
+        return urllib.unquote(abspath)
+
+    def relpath(self, abspath):
+        scheme, user, password, host, port, path = self._split_url(abspath)
+        error = []
+        if (scheme != self._scheme):
+            error.append('scheme mismatch')
+        if (user != self._user):
+            error.append('username mismatch')
+        if (host != self._host):
+            error.append('host mismatch')
+        if (port != self._port):
+            error.append('port mismatch')
+        if not (path == self._path[:-1] or path.startswith(self._path)):
+            error.append('path mismatch')
+        if error:
+            extra = ', '.join(error)
+            raise errors.PathNotChild(abspath, self.base, extra=extra)
+        pl = len(self._path)
+        return path[pl:].strip('/')
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        :param relpath: the relative path urlencoded
+        """
+        path = self._remote_path(relpath)
+        return self._unsplit_url(self._scheme, self._user, self._password,
+                                 self._host, self._port,
+                                 self._urlencode_abspath(path))
+
+    def _remote_path(self, relpath):
+        """Return the absolute path part of the url to the given relative path.
+        
+        :param relpath: is a urlencoded string.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        remote_path = self._combine_paths(self._path, relative)
+        return remote_path
+
+    def get_connection(self):
+        """Returns the transport specific connection object"""
+        return self._connection
+
+    def set_connection(self, connection):
+        """Set the transport specific connection object.
+
+        Note: daughter classes should ensure that the connection
+        is still shared if the connection is reset during the
+        transport lifetime (using a list containing the single
+        connection can help avoid aliasing bugs).
+        """
+        self._connection = connection
+
+
 # jam 20060426 For compatibility we copy the functions here
 # TODO: The should be marked as deprecated
 urlescape = urlutils.escape
@@ -1145,10 +1271,6 @@ def _try_transport_factories(base, factory_list):
             last_err = e
             continue
     return None, last_err
-
-
-class ConnectedTransport(Transport):
-    """A transport connected to a remote server"""
 
 
 class Server(object):
