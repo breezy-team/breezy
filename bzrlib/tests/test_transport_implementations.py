@@ -1165,7 +1165,7 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
-        
+
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
@@ -1291,23 +1291,23 @@ class TransportTests(TestTransportImplementation):
             self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
-        # check that our server (whatever it is) is accessable reliably
+        # check that our server (whatever it is) is accessible reliably
         # via get_transport and multiple connections share content.
         transport = self.get_transport()
         if transport.is_readonly():
             return
         transport.put_bytes('foo', 'bar')
-        transport2 = self.get_transport()
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport3 = self.get_transport()
+        self.check_transport_contents('bar', transport3, 'foo')
         # its base should be usable.
-        transport2 = bzrlib.transport.get_transport(transport.base)
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport4 = bzrlib.transport.get_transport(transport.base)
+        self.check_transport_contents('bar', transport4, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport2 = bzrlib.transport.get_transport(transport.base + "newdir")
-        transport2 = transport2.clone('..')
-        self.check_transport_contents('bar', transport2, 'foo')
+        transport5 = bzrlib.transport.get_transport(transport.base + "newdir")
+        transport6 = transport5.clone('..')
+        self.check_transport_contents('bar', transport6, 'foo')
 
     def test_lock_write(self):
         """Test transport-level write locks.
