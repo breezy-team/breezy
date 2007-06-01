@@ -201,10 +201,9 @@ class TestHttpTransportUrls(object):
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
         t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises(ValueError, t.abspath, '.bzr/')
-        t = self._transport('http://http://bazaar-vcs.org/bzr/bzr.dev/')
         self.assertRaises((errors.InvalidURL, errors.ConnectionError),
-                          t.has, 'foo/bar')
+                          self._transport,
+                          'http://http://bazaar-vcs.org/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""

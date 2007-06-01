@@ -112,7 +112,7 @@ class PyCurlTransport(HttpTransportBase):
         # We set NO BODY=0 in _get_full, so it should be safe
         # to re-use the non-range curl object
         curl = self._curl
-        abspath = self._real_abspath(relpath)
+        abspath = self._unqualified_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
         curl.setopt(pycurl.HTTPGET, 1)
@@ -161,7 +161,7 @@ class PyCurlTransport(HttpTransportBase):
                  data: file that will be filled with the body
                  header: file that will be filled with the headers
         """
-        abspath = self._real_abspath(relpath)
+        abspath = self._unqualified_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
 
@@ -294,7 +294,7 @@ class PyCurlTransport(HttpTransportBase):
             raise errors.RedirectRequested(url,
                                            redirected_to,
                                            is_permament=(code == 301),
-                                           qual_proto=self._qualified_proto)
+                                           qual_proto=self._scheme)
 
 
 def get_test_permutations():

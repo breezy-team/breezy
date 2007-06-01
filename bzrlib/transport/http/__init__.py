@@ -26,7 +26,11 @@ import urlparse
 import urllib
 import sys
 
-from bzrlib import errors, ui
+from bzrlib import (
+    errors,
+    ui,
+    urlutils,
+    )
 from bzrlib.smart import medium
 from bzrlib.trace import mutter
 from bzrlib.transport import (
@@ -122,26 +126,20 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     implementation.
     """
 
-    # _proto: "http" or "https"
-    # _qualified_proto: may have "+pycurl", etc
+    # _unqualified_scheme: "http" or "https"
+    # _scheme: may have "+pycurl", etc
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
-        self._proto = proto_match.group(1)
+        self._unqualified_scheme = proto_match.group(1)
         impl_name = proto_match.group(2)
         if impl_name:
             impl_name = impl_name[1:]
         self._impl_name = impl_name
-        if base[-1] != '/':
-            base = base + '/'
-        super(HttpTransportBase, self).__init__(base)
-        (apparent_proto, self._host,
-            self._path, self._parameters,
-            self._query, self._fragment) = urlparse.urlparse(self.base)
-        self._qualified_proto = apparent_proto
+        super(HttpTransportBase, self).__init__(base, from_transport)
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
         # requests and if the server returns bogus results, we
@@ -154,67 +152,13 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             self._range_hint = 'multi'
 
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-
-        This can be supplied with a string or a list.
-
-        The URL returned always has the protocol scheme originally used to 
-        construct the transport, even if that includes an explicit
-        implementation qualifier.
-        """
-        assert isinstance(relpath, basestring)
-        if isinstance(relpath, unicode):
-            raise errors.InvalidURL(relpath, 'paths must not be unicode.')
-        if isinstance(relpath, basestring):
-            relpath_parts = relpath.split('/')
-        else:
-            # TODO: Don't call this with an array - no magic interfaces
-            relpath_parts = relpath[:]
-        if relpath.startswith('/'):
-            basepath = []
-        else:
-            # Except for the root, no trailing slashes are allowed
-            if len(relpath_parts) > 1 and relpath_parts[-1] == '':
-                raise ValueError(
-                    "path %r within branch %r seems to be a directory"
-                    % (relpath, self._path))
-            basepath = self._path.split('/')
-            if len(basepath) > 0 and basepath[-1] == '':
-                basepath = basepath[:-1]
-
-        for p in relpath_parts:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.' or p == '':
-                continue # No-op
-            else:
-                basepath.append(p)
-        # Possibly, we could use urlparse.urljoin() here, but
-        # I'm concerned about when it chooses to strip the last
-        # portion of the path, and when it doesn't.
-        path = '/'.join(basepath)
-        if path == '':
-            path = '/'
-        result = urlparse.urlunparse((self._qualified_proto,
-                                    self._host, path, '', '', ''))
-        return result
-
-    def _real_abspath(self, relpath):
+    def _unqualified_abspath(self, relpath):
         """Produce absolute path, adjusting protocol if needed"""
-        abspath = self.abspath(relpath)
-        qp = self._qualified_proto
-        rp = self._proto
-        if self._qualified_proto != self._proto:
-            abspath = rp + abspath[len(qp):]
-        if not isinstance(abspath, str):
-            # escaping must be done at a higher level
-            abspath = abspath.encode('ascii')
-        return abspath
+        path = self._remote_path(relpath)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 self._urlencode_abspath(path))
 
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
