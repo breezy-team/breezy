@@ -47,8 +47,11 @@ from bzrlib.smart import medium
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory, remote
-import bzrlib.transport
+from bzrlib.transport import (
+    ConnectedTransport,
+    get_transport,
+    )
+from bzrlib.transport.memory import MemoryTransport
 
 
 class TransportTests(TestTransportImplementation):
@@ -564,7 +567,6 @@ class TransportTests(TestTransportImplementation):
         # same protocol two servers
         # and    different protocols (done for now except for MemoryTransport.
         # - RBC 20060122
-        from bzrlib.transport.memory import MemoryTransport
 
         def simple_copy_files(transport_from, transport_to):
             files = ['a', 'b', 'c', 'd']
@@ -963,7 +965,7 @@ class TransportTests(TestTransportImplementation):
         # This should be:  but SSH still connects on construction. No COOKIE!
         # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
         try:
-            t = bzrlib.transport.get_transport(url)
+            t = get_transport(url)
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
             pass
@@ -1066,6 +1068,18 @@ class TransportTests(TestTransportImplementation):
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
+
+    def test_clone_preserve_info(self):
+        t1 = self.get_transport()
+        if not isinstance(t1, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t2 = t1.clone('subdir')
+        self.assertEquals(t1._scheme, t2._scheme)
+        self.assertEquals(t1._user, t2._user)
+        self.assertEquals(t1._password, t2._password)
+        self.assertEquals(t1._host, t2._host)
+        self.assertEquals(t1._port, t2._port)
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
@@ -1300,12 +1314,12 @@ class TransportTests(TestTransportImplementation):
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
         # its base should be usable.
-        transport4 = bzrlib.transport.get_transport(transport.base)
+        transport4 = get_transport(transport.base)
         self.check_transport_contents('bar', transport4, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport5 = bzrlib.transport.get_transport(transport.base + "newdir")
+        transport5 = get_transport(transport.base + "newdir")
         transport6 = transport5.clone('..')
         self.check_transport_contents('bar', transport6, 'foo')
 

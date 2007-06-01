@@ -64,7 +64,7 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection = None
             self._opener = self._opener_class()
 
-            authuri = extract_authentication_uri(self._unqualified_abspath(self._path))
+            authuri = extract_authentication_uri(self._remote_path(self._path))
             self._auth = {'user': user, 'password': password,
                           'authuri': authuri}
             if user and password is not None: # '' is a valid password
@@ -116,7 +116,7 @@ class HttpTransport_urllib(HttpTransportBase):
     def _get(self, relpath, ranges, tail_amount=0):
         """See HttpTransport._get"""
 
-        abspath = self._unqualified_abspath(relpath)
+        abspath = self._remote_path(relpath)
         headers = {}
         if ranges or tail_amount:
             range_header = self.attempted_range_header(ranges, tail_amount)
@@ -138,7 +138,7 @@ class HttpTransport_urllib(HttpTransportBase):
         return code, data
 
     def _post(self, body_bytes):
-        abspath = self._unqualified_abspath('.bzr/smart')
+        abspath = self._remote_path('.bzr/smart')
         response = self._perform(Request('POST', abspath, body_bytes))
         code = response.code
         data = handle_response(abspath, code, response.headers, response)
@@ -156,7 +156,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
         Performs the request and leaves callers handle the results.
         """
-        abspath = self._unqualified_abspath(relpath)
+        abspath = self._remote_path(relpath)
         request = Request('HEAD', abspath)
         response = self._perform(request)
 

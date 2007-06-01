@@ -152,9 +152,10 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             self._range_hint = 'multi'
 
-    def _unqualified_abspath(self, relpath):
+    def _remote_path(self, relpath):
         """Produce absolute path, adjusting protocol if needed"""
-        path = self._remote_path(relpath)
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
         return self._unsplit_url(self._unqualified_scheme,
                                  self._user, self._password,
                                  self._host, self._port,

@@ -1040,18 +1040,19 @@ class ConnectedTransport(Transport):
     def __init__(self, base, from_transport=None):
         if base[-1] != '/':
             base += '/'
-        if from_transport is not None:
-            # Copy the passowrd as it does not appear in base
-            self._password = from_transport._password
         (self._scheme,
          self._user, self._password,
          self._host, self._port,
-         self._path) = self._split_url(base)
-        # Rebuild base taken any special handling into account
+         self._path) = self._initial_split_url(base)
+        if from_transport is not None:
+            # Copy the password as it does not appear in base
+            self._password = from_transport._password
+
         base = self._unsplit_url(self._scheme,
                                  self._user, self._password,
                                  self._host, self._port,
                                  self._urlencode_abspath(self._path))
+
         super(ConnectedTransport, self).__init__(base)
         if from_transport is not None:
             connection = from_transport.get_connection()
@@ -1059,20 +1060,30 @@ class ConnectedTransport(Transport):
             connection = None
         self.set_connection(connection)
 
+    def clone(self, offset=None):
+        """Return a new transport with root at self.base + offset
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
+        """
+        if offset is None:
+            return self.__class__(self.base, self)
+        else:
+            return self.__class__(self.abspath(offset), self)
+
     def _split_url(self, url):
         if isinstance(url, unicode):
-            import pdb; pdb.set_trace()
             raise errors.InvalidURL('should be ascii:\n%r' % url)
         url = url.encode('utf-8')
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-        username = password = host = port = None
+        user = password = host = port = None
         if '@' in netloc:
-            username, host = netloc.split('@', 1)
-            if ':' in username:
-                username, password = username.split(':', 1)
+            user, host = netloc.split('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
                 password = urllib.unquote(password)
-            username = urllib.unquote(username)
+            user = urllib.unquote(user)
         else:
             host = netloc
 
@@ -1086,7 +1097,10 @@ class ConnectedTransport(Transport):
         host = urllib.unquote(host)
         path = self._urldecode_abspath(path)
 
-        return (scheme, username, password, host, port, path)
+        return (scheme, user, password, host, port, path)
+
+    _initial_split_url = _split_url
+    """Hook for daughter classes that needs a special processing"""
 
     def _unsplit_url(self, scheme, user, password, host, port, path):
         netloc = urllib.quote(host)
@@ -1111,7 +1125,7 @@ class ConnectedTransport(Transport):
         if (scheme != self._scheme):
             error.append('scheme mismatch')
         if (user != self._user):
-            error.append('username mismatch')
+            error.append('user name mismatch')
         if (host != self._host):
             error.append('host mismatch')
         if (port != self._port):
@@ -1128,8 +1142,10 @@ class ConnectedTransport(Transport):
         """Return the full url to the given relative path.
         
         :param relpath: the relative path urlencoded
+        :returns: the Unicode version of the absolute path for relpath.
         """
-        path = self._remote_path(relpath)
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
         return self._unsplit_url(self._scheme, self._user, self._password,
                                  self._host, self._port,
                                  self._urlencode_abspath(path))

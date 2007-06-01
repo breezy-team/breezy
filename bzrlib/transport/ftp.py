@@ -79,17 +79,19 @@ _sleep_between_retries = 5
 class FtpTransport(ConnectedTransport):
     """This is the transport agent for ftp:// access."""
 
-    def __init__(self, base, _provided_instance=None):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         assert base.startswith('ftp://') or base.startswith('aftp://')
-        super(FtpTransport, self).__init__(base)
+        super(FtpTransport, self).__init__(base, from_transport)
+        self._unqualified_scheme = 'ftp'
         if self._scheme == 'aftp':
-            self._unqualified_scheme = 'ftp'
             self.is_active = True
         else:
-            self._unqualified_scheme = self._scheme
             self.is_active = False
-        self._FTP_instance = _provided_instance
+        if from_transport is None:
+            self._FTP_instance = None
+        else:
+            self._FTP_instance = from_transport._FTP_instance
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
@@ -153,15 +155,6 @@ class FtpTransport(ConnectedTransport):
         """Return True if the data pulled across should be cached locally.
         """
         return True
-
-    def clone(self, offset=None):
-        """Return a new FtpTransport with root at self.base + offset.
-        """
-        mutter("FTP clone")
-        if offset is None:
-            return FtpTransport(self.base, self._FTP_instance)
-        else:
-            return FtpTransport(self.abspath(offset), self._FTP_instance)
 
     def _remote_path(self, relpath):
         # XXX: It seems that ftplib does not handle Unicode paths

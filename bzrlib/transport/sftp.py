@@ -146,6 +146,13 @@ class SFTPUrlHandling(ConnectedTransport):
 
     def _urldecode_abspath(self, abspath):
         abspath = super(SFTPUrlHandling, self)._urldecode_abspath(abspath)
+        if abspath.startswith('/~/'):
+            abspath = abspath[3:]
+        elif abspath == '/~':
+            abspath = ''
+        return abspath
+
+    def _combine_paths_respecting_home_dir(self, relpath):
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
         # if it is absolute).
@@ -153,12 +160,25 @@ class SFTPUrlHandling(ConnectedTransport):
         # RBC 20060118 we are not using this as its too user hostile. instead
         # we are following lftp and using /~/foo to mean '~/foo'.
 
-        # handle homedir paths
-        if abspath.startswith('/~/'):
-            abspath = abspath[3:]
-        elif abspath == '/~':
-            abspath = ''
+        if not self._path.startswith('/'):
+            abspath = self._combine_paths('/~/' + self._path, relpath)
+            if abspath.startswith('/~/'):
+                abspath = abspath[3:]
+            elif abspath == '/~':
+                abspath = ''
+        else:
+            abspath = self._combine_paths(self._path, relpath)
+
         return abspath
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path respecting home dir"""
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths_respecting_home_dir(relative)
+        return self._unsplit_url(self._scheme, self._user, self._password,
+                                 self._host, self._port,
+                                 self._urlencode_abspath(path))
+
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
@@ -166,15 +186,7 @@ class SFTPUrlHandling(ConnectedTransport):
         :param relpath: is a urlencoded string.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        if not self._path.startswith('/'):
-            # handle homedir paths
-            remote_path = self._combine_paths('/~/' + self._path, relative)
-            if remote_path.startswith('/~/'):
-                remote_path = remote_path[3:]
-            elif remote_path == '/~':
-                remote_path = ''
-        else:
-            remote_path = self._combine_paths(self._path, relative)
+        remote_path = self._combine_paths_respecting_home_dir(relative)
         return remote_path
 
 class SFTPTransport(SFTPUrlHandling):
@@ -198,14 +210,14 @@ class SFTPTransport(SFTPUrlHandling):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, clone_from=None):
+    def __init__(self, base, from_transport=None):
         assert base.startswith('sftp://')
-        super(SFTPTransport, self).__init__(base)
-        if clone_from is None:
+        super(SFTPTransport, self).__init__(base, from_transport)
+        if from_transport is None:
             self._sftp_connect()
         else:
             # use the same ssh connection, etc
-            self._sftp = clone_from._sftp
+            self._sftp = from_transport._sftp
         # super saves 'self.base'
     
     def should_cache(self):
