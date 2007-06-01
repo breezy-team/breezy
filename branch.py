@@ -79,14 +79,14 @@ class SvnBranch(Branch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
-    """Look up the matching revision number on the mainline of the 
-    branch.
-
-    :param revid: Revision id to look up.
-    :return: Revision number on the branch. 
-    :raises NoSuchRevision: If the revision id was not found.
-    """
     def lookup_revision_id(self, revid):
+        """Look up the matching revision number on the mainline of the 
+        branch.
+
+        :param revid: Revision id to look up.
+        :return: Revision number on the branch. 
+        :raises NoSuchRevision: If the revision id was not found.
+        """
         (bp, revnum) = self.repository.lookup_revision_id(revid)
         assert bp.strip("/") == self.branch_path.strip("/"), \
                 "Got %r, expected %r" % (bp, self.branch_path)
@@ -103,7 +103,6 @@ class SvnBranch(Branch):
             revnum = self.lookup_revision_id(revision_id)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
-            mutter('hist: %r' % self.revision_history())
 
         client_ctx = svn.client.create_context()
         client_ctx.config = svn_config
@@ -121,6 +120,7 @@ class SvnBranch(Branch):
 
     def generate_revision_id(self, revnum):
         """Generate a new revision id for a revision on this branch."""
+        assert isinstance(revnum, int)
         # FIXME: What if this branch had a different name in the past?
         return self.repository.generate_revision_id(revnum, self.branch_path)
        
@@ -175,13 +175,14 @@ class SvnBranch(Branch):
                 return self.repository.generate_revision_id(rev, branch)
             return None
 
-        ph = self.revision_history()
+        ph = self._revision_history
         if ph:
             return ph[-1]
         else:
             return None
 
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None, 
+             _hook_master=None, _run_hooks=True):
         result = PullResult()
         result.source_branch = source
         result.master_branch = None
@@ -220,7 +221,6 @@ class SvnBranch(Branch):
             return
         if isinstance(other, SvnBranch) and \
             other.repository.uuid == self.repository.uuid:
-
             # FIXME: Make sure branches haven't diverged
             # FIXME: svn.ra.del_dir(self.base_path)
             # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
@@ -259,19 +259,6 @@ class SvnBranch(Branch):
         result = BranchFormat.get_default_format().initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         return result
-
-    def copy_content_into(self, destination, revision_id=None):
-        new_history = self.revision_history()
-        if revision_id is not None:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination.set_revision_history(new_history)
-        parent = self.get_parent()
-        if parent:
-            destination.set_parent(parent)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)

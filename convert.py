@@ -136,6 +136,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                 except NotBranchError:
                     target_branch = target_dir.create_branch()
                     target_branch.set_parent(source_branch_url)
+                # FIXME: don't use revision_history()
                 if not revid in target_branch.revision_history():
                     source_branch = Branch.open(source_branch_url)
                     # Check if target_branch contains a subset of 

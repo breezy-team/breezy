@@ -63,7 +63,6 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
             if newinv.has_filename(path):
                 new_id[ie.file_id] = newinv.path2id(path)
 
-    mutter('new id %r' % new_id)
     i = 0
     class MapTree:
         def __init__(self, oldtree, map):
@@ -91,26 +90,25 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     oldinv = repository.get_revision_inventory(oldrevid)
     total = len(oldinv)
     pb = ui.ui_factory.nested_progress_bar()
+    transact = repository.get_transaction()
     try:
         for path, ie in oldinv.iter_entries():
-            pb.update('upgrading revision', i, total)
+            pb.update('upgrading file', i, total)
             i += 1
             new_ie = ie.copy()
             if new_ie.revision == oldrevid:
                 new_ie.revision = None
             def lookup(file_id):
-                if new_id.has_key(file_id):
+                try:
                     return new_id[file_id]
-                return file_id
+                except KeyError:
+                    return file_id
 
             new_ie.file_id = lookup(new_ie.file_id)
             new_ie.parent_id = lookup(new_ie.parent_id)
-            versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
-                    repository.get_transaction())
-            if not versionedfile.has_version(newrevid):
-                builder.record_entry_contents(new_ie, 
-                       map(repository.get_revision_inventory, new_parents), 
-                       path, oldtree)
+            builder.record_entry_contents(new_ie, 
+                   map(repository.get_revision_inventory, new_parents), 
+                   path, oldtree)
     finally:
         pb.finished()
 
@@ -171,11 +169,12 @@ def upgrade_branch(branch, svn_repository, allow_change=False):
     :param svn_repository: Repository to fetch new revisions from
     :param allow_change: Allow changes in mappings.
     """
+    revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, svn_repository, 
-              branch.last_revision(), allow_change)
+              revid, allow_change)
     mutter('renames %r' % renames)
     if len(renames) > 0:
-        branch.generate_revision_history(renames[branch.last_revision()])
+        branch.generate_revision_history(renames[revid])
 
 
 def revision_changed(oldrev, newrev):

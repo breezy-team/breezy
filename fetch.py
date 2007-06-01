@@ -467,7 +467,6 @@ class InterFromSvnRepository(InterRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
-        mutter("Checking from %r %r" % (source, target))
         # FIXME: Also check target uses VersionedFile
         return isinstance(source, SvnRepository)
 

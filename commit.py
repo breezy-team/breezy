@@ -339,12 +339,13 @@ class SvnCommitBuilder(RootCommitBuilder):
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
 
         assert self.revnum is not None
-        revid = self.repository.generate_revision_id(self.revnum, 
-                                                    self.branch.branch_path)
+        revid = self.branch.generate_revision_id(self.revnum)
+
+        self.repository._latest_revnum = self.revnum
 
         #FIXME: Use public API:
-        self.branch.revision_history()
-        self.branch._revision_history.append(revid)
+        if self.branch._revision_history is not None:
+            self.branch._revision_history.append(revid)
 
         mutter('commit %d finished. author: %r, date: %r' % 
                (self.revnum, self.author, self.date))

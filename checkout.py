@@ -463,16 +463,17 @@ class SvnWorkingTree(WorkingTree):
 
         self.client_ctx.log_msg_baton2 = None
 
-        revid = self.branch.repository.generate_revision_id(
-                commit_info.revision, self.branch.branch_path)
+        revid = self.branch.generate_revision_id(commit_info.revision)
 
         self.base_revid = revid
         self.base_revnum = commit_info.revision
         self.base_tree = SvnBasisTree(self)
 
+        self.branch.repository._latest_revnum = commit_info.revision
+
         #FIXME: Use public API:
-        self.branch.revision_history()
-        self.branch._revision_history.append(revid)
+        if self.branch._revision_history is not None:
+            self.branch._revision_history.append(revid)
 
         return revid
 
