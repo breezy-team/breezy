@@ -36,6 +36,9 @@ IN DEVELOPMENT
       into account.
       (Vincent Ladeuil, #112719)
 
+    * WorkingTree4.get_file_sha1 no longer raises an exception when invoked
+      on a missing file.  (Aaron Bentley, #118186)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
