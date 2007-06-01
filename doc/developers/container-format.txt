@@ -1,0 +1,199 @@
+Container format
+----------------
+
+Status
+======
+
+:Date: 2007-06-01
+
+This document describes the proposed container format for streaming and
+storing collections of data in Bazaar.  Initially this will be used for
+streaming revision data for incremental push/pull in the smart server for
+0.18, but the intentional is that this will be the basis for much more
+than just that use case.
+
+In particular, this document currently focuses almost exclusively on the
+streaming case, and not the on-disk storage case.
+
+.. contents::
+
+Specification
+=============
+
+This describes just a basic layer for storing simple series of "records".
+This layer has no intrinsic understanding of the contents of those
+records.
+
+The format is:
+
+  * a **container lead-in**, "``bzr pack format 1\n``",
+  * followed by one or more **records**.
+
+A record is:
+
+  * a 3 byte **kind marker**.
+  * 0 or more bytes of record content, depending on the record type.
+
+Record types
+^^^^^^^^^^^^
+
+End Marker
+++++++++++
+
+An **End Marker** record:
+
+  * has a kind marker of "``EM\n``",
+  * no content bytes.
+
+End Marker records signal the end of a container.
+
+Full Text
++++++++++
+
+A **Full Text** record:
+
+  * has a kind marker of "``FT\n``",
+  * followed by one or more optional **name headers**: 
+    "``name:`` *name*\ ``\n``", e.g.::
+
+      name: revision:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5
+
+  * followed by a mandatory **content length header**: 
+    "``length:`` *number*\ ``\n``", where *number* is in decimal, e.g::
+
+      length: 1234
+
+  * followed by an **end of headers** byte: "``\n``",
+  * followed by some **bytes**, exactly as many as specified by the length
+    prefix header.
+
+So a Full Text record looks a bit like an RFC 822-formatted message.
+e.g.::
+
+  FT
+  name: example-record
+  length: 5
+
+  abcde
+
+
+Names
+^^^^^
+
+Names should be UTF-8 encoded strings, with no whitespace.  Names should
+be unique within a single container, but no guarantee of uniqueness
+outside of the container is made by this layer.
+
+
+Characteristics
+===============
+
+Some key aspects of this format are discussed in this section.
+
+No length-prefixing of entire container
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The overall container is not length prefixed.  Instead there is an end
+marker so that readers can determine when they have read the entire
+container.  This also does not conflict with the goal of allowing
+single-pass writing.
+
+Structured as a self-contained series of records
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The container contains a series of *records*.  Each record is
+self-delimiting.  Record markers are lightweight.  The overhead in terms
+of bytes and processing for records in this container vs. the raw contents
+of those records is minimal.
+
+Addressing records
+^^^^^^^^^^^^^^^^^^
+
+There is a requirement that each object can be given an arbitrary name.
+Some revision control systems address all content by the SHA-1 digest of
+that content, but this scheme is unsatisfactory for Bazaar's revision
+objects.  We can still allow addressing by SHA-1 digest for those content
+types where it makes sense.
+
+Some proposed object names:
+
+  * to name a revision: "``revision:``\ *revision-id*".  e.g., 
+    `revision:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5`.
+  * to name an inventory delta: "``inventory.delta:``\ *revision-id*".  e.g.,
+    `inventory.delta:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5`.
+
+It seems likely that we may want to have multiple names for an object.
+This format allows that (by allowing multiple ``name`` headers in a Full
+Text record).
+
+Although records are in principle addressable by name, this specification
+alone doesn't provide for efficient access to a particular record given
+its name.  It is intended that seperate indexes will be maintained to
+provide this.
+
+
+Use Cases
+=========
+
+Here's a brief description of use cases this format is intended to
+support.
+
+Streaming data between a smart server and client
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It would be nice if we could combine multiple containers into a single
+stream by something no more expensive than concatenation (e.g. by omitting
+end/start marker pairs).  
+
+Incremental push or pull
+++++++++++++++++++++++++
+
+Consider the use case of incremental push/pull, which is currently (0.16)
+very slow on high-latency links due to the large number of round trips.
+What we'd like is something like the following.
+
+A client will make a request meaning "give me the knit contents for these
+revision IDs" (how the client determines which revision IDs it needs is
+unimportant here).  In response, the server streams a single container of:
+
+  * one record per file-id:revision-id knit gzip contents and graph data,
+  * one record per inventory:revision-id knit gzip contents and graph
+    data,
+  * one record per revision knit gzip contents,
+  * one record per revision signature,
+  * end marker record.
+
+in that order.
+
+Persistent storage on disk
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We want a storage format that allows lock-free writes, which suggests a
+format that uses *rename into place*, and *do not modify after writing*.
+
+Usable before deep model changes to Bazaar
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We want a format we can use and refine sooner rather than later.  So it
+should be usable before the anticipated model changes for Bazaar "1.0"
+land, while not conflicting with those changes either.
+
+Specifically, we'd like to have this format in Bazaar 0.18.
+
+
+Examples of possible record content
+===================================
+
+  * full texts
+  * deltas of full texts
+  * revisions
+  * inventories
+  * inventory as tree items e.g. the inventory data for 20 files
+  * revision signatures
+  * per-file graph data
+  * annotation cache
+
+
+..
+   vim: ft=rst tw=74 ai
+
