@@ -1420,8 +1420,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            _alter_files(working_tree, target_tree, tt, child_pb,
-                         filenames, backups)
+            merge_modified = _alter_files(working_tree, target_tree, tt,
+                                          child_pb, filenames, backups)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1439,7 +1439,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             warning(conflict)
         pp.next_phase()
         tt.apply()
-        working_tree.set_merge_modified({})
+        working_tree.set_merge_modified(merge_modified)
     finally:
         target_tree.unlock()
         tt.finalize()
@@ -1505,6 +1505,17 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 elif kind[1] == 'file':
                     tt.create_file(target_tree.get_file_lines(file_id),
                                    trans_id, mode_id)
+                    if basis_tree is None:
+                        basis_tree = working_tree.basis_tree()
+                        basis_tree.lock_read()
+                    new_sha1 = target_tree.get_file_sha1(file_id)
+                    if (file_id in basis_tree and new_sha1 ==
+                        basis_tree.get_file_sha1(file_id)):
+                        if file_id in merge_modified:
+                            del merge_modified[file_id]
+                    else:
+                        merge_modified[file_id] = new_sha1
+
                     # preserve the execute bit when backing up
                     if keep_content and executable[0] == executable[1]:
                         tt.set_executability(executable[1], trans_id)
@@ -1523,6 +1534,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
+    return merge_modified
 
 
 def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):

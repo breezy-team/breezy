@@ -21,6 +21,9 @@ IN DEVELOPMENT
     * Added ``bzr log --limit`` to report a limited number of revisions.
       (Kent Gibson, #3659)
 
+    * Revert does not try to preserve file contents that were originally
+      produced by reverting to a historical revision.  (Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
