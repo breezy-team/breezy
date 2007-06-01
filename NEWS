@@ -24,6 +24,11 @@ IN DEVELOPMENT
     * Revert does not try to preserve file contents that were originally
       produced by reverting to a historical revision.  (Aaron Bentley)
 
+    * ``bzr log --short`` now includes ``[merge]`` for revisions which
+      have more than one parent. This is a small improvement to help
+      understanding what changes have occurred
+      (John Arbash Meinel, #83887)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
