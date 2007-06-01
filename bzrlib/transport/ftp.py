@@ -47,7 +47,6 @@ from bzrlib import (
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     Server,
-    split_url,
     ConnectedTransport,
     )
 from bzrlib.transport.local import LocalURLServer
@@ -82,54 +81,30 @@ class FtpTransport(ConnectedTransport):
 
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
-        assert base.startswith('ftp://') or base.startswith('aftp://')
-
-        self.is_active = base.startswith('aftp://')
-        if self.is_active:
-            # urlparse won't handle aftp://, delete the leading 'a'
-            # FIXME: This breaks even hopes of connection sharing
-            # (by reusing the url instead of true cloning) by
-            # modifying the the url coming from the user.
-            base = base[1:]
-        if not base.endswith('/'):
-            base += '/'
-        (self._proto, self._username,
-            self._password, self._host,
-            self._port, self._path) = split_url(base)
-        base = self._unparse_url()
-
         super(FtpTransport, self).__init__(base)
+        if self._scheme == 'aftp':
+            self._unqualified_scheme = 'ftp'
+            self.is_active = True
+        else:
+            self._unqualified_scheme = self._scheme
+            self.is_active = False
         self._FTP_instance = _provided_instance
-
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
-        path = urllib.quote(path)
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        proto = 'ftp'
-        if self.is_active:
-            proto = 'aftp'
-        return urlparse.urlunparse((proto, netloc, path, '', '', ''))
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
         if self._FTP_instance is None:
             mutter("Constructing FTP instance against %r" %
-                   ((self._host, self._port, self._username, '********',
+                   ((self._host, self._port, self._user, '********',
                     self.is_active),))
             try:
                 connection = ftplib.FTP()
                 connection.connect(host=self._host, port=self._port)
-                if self._username and self._username != 'anonymous' and \
+                if self._user and self._user != 'anonymous' and \
                         not self._password:
                     self._password = bzrlib.ui.ui_factory.get_password(
                         prompt='FTP %(user)s@%(host)s password',
-                        user=self._username, host=self._host)
-                connection.login(user=self._username, passwd=self._password)
+                        user=self._user, host=self._host)
+                connection.login(user=self._user, passwd=self._password)
                 connection.set_pasv(not self.is_active)
             except ftplib.error_perm, e:
                 raise errors.TransportError(msg="Error setting up connection:"
@@ -187,43 +162,16 @@ class FtpTransport(ConnectedTransport):
         else:
             return FtpTransport(self.abspath(offset), self._FTP_instance)
 
-    def _abspath(self, relpath):
-        assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath)
-        if relpath.startswith('/'):
-            basepath = []
-        else:
-            basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
-        for p in relpath.split('/'):
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.' or p == '':
-                continue # No-op
-            else:
-                basepath.append(p)
-        # Possibly, we could use urlparse.urljoin() here, but
-        # I'm concerned about when it chooses to strip the last
-        # portion of the path, and when it doesn't.
-
+    def _remote_path(self, relpath):
         # XXX: It seems that ftplib does not handle Unicode paths
-        # at the same time, medusa won't handle utf8 paths
-        # So if we .encode(utf8) here, then we get a Server failure.
-        # while if we use str(), we get a UnicodeError, and the test suite
-        # just skips testing UnicodePaths.
-        return str('/'.join(basepath) or '/')
-    
-    def abspath(self, relpath):
-        """Return the full url to the given relative path.
-        This can be supplied with a string or a list
-        """
-        path = self._abspath(relpath)
-        return self._unparse_url(path)
+        # at the same time, medusa won't handle utf8 paths So if
+        # we .encode(utf8) here (see ConnectedTransport
+        # implementation), then we get a Server failure.  while
+        # if we use str(), we get a UnicodeError, and the test
+        # suite just skips testing UnicodePaths.
+        relative = str(urlutils.unescape(relpath))
+        remote_path = self._combine_paths(self._path, relative)
+        return remote_path
 
     def has(self, relpath):
         """Does the target location exist?"""
@@ -232,7 +180,7 @@ class FtpTransport(ConnectedTransport):
         # XXX: I assume we're never asked has(dirname) and thus I use
         # the FTP size command and assume that if it doesn't raise,
         # all is good.
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         try:
             f = self._get_FTP()
             mutter('FTP has check: %s => %s', relpath, abspath)
@@ -258,10 +206,10 @@ class FtpTransport(ConnectedTransport):
         """
         # TODO: decode should be deprecated
         try:
-            mutter("FTP get: %s", self._abspath(relpath))
+            mutter("FTP get: %s", self._remote_path(relpath))
             f = self._get_FTP()
             ret = StringIO()
-            f.retrbinary('RETR '+self._abspath(relpath), ret.write, 8192)
+            f.retrbinary('RETR '+self._remote_path(relpath), ret.write, 8192)
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
@@ -297,7 +245,7 @@ class FtpTransport(ConnectedTransport):
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but
         ftplib does not
         """
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
         if getattr(fp, 'read', None) is None:
@@ -339,7 +287,7 @@ class FtpTransport(ConnectedTransport):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         try:
             mutter("FTP mkd: %s", abspath)
             f = self._get_FTP()
@@ -350,7 +298,7 @@ class FtpTransport(ConnectedTransport):
 
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
-        abspath = self._abspath(rel_path)
+        abspath = self._remote_path(rel_path)
         try:
             mutter("FTP rmd: %s", abspath)
             f = self._get_FTP()
@@ -362,7 +310,7 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
             result = ftp.size(abspath)
@@ -381,7 +329,7 @@ class FtpTransport(ConnectedTransport):
         number of retries is exceeded.
         """
         try:
-            abspath = self._abspath(relpath)
+            abspath = self._remote_path(relpath)
             mutter("FTP appe (try %d) to %s", retries, abspath)
             ftp = self._get_FTP()
             ftp.voidcmd("TYPE I")
@@ -412,14 +360,14 @@ class FtpTransport(ConnectedTransport):
         """
         try:
             mutter("FTP site chmod: setting permissions to %s on %s",
-                str(mode), self._abspath(relpath))
+                str(mode), self._remote_path(relpath))
             ftp = self._get_FTP()
-            cmd = "SITE CHMOD %s %s" % (self._abspath(relpath), str(mode))
+            cmd = "SITE CHMOD %s %s" % (self._remote_path(relpath), str(mode))
             ftp.sendcmd(cmd)
         except ftplib.error_perm, e:
             # Command probably not available on this server
             warning("FTP Could not set permissions to %s on %s. %s",
-                    str(mode), self._abspath(relpath), str(e))
+                    str(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able
@@ -427,8 +375,8 @@ class FtpTransport(ConnectedTransport):
     #       So implement a fancier 'copy()'
 
     def rename(self, rel_from, rel_to):
-        abs_from = self._abspath(rel_from)
-        abs_to = self._abspath(rel_to)
+        abs_from = self._remote_path(rel_from)
+        abs_to = self._remote_path(rel_to)
         mutter("FTP rename: %s => %s", abs_from, abs_to)
         f = self._get_FTP()
         return self._rename(abs_from, abs_to, f)
@@ -442,8 +390,8 @@ class FtpTransport(ConnectedTransport):
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        abs_from = self._abspath(rel_from)
-        abs_to = self._abspath(rel_to)
+        abs_from = self._remote_path(rel_from)
+        abs_to = self._remote_path(rel_to)
         try:
             mutter("FTP mv: %s => %s", abs_from, abs_to)
             f = self._get_FTP()
@@ -464,7 +412,7 @@ class FtpTransport(ConnectedTransport):
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         f = self._get_FTP()
         self._delete(abspath, f)
 
@@ -482,7 +430,7 @@ class FtpTransport(ConnectedTransport):
 
     def list_dir(self, relpath):
         """See Transport.list_dir."""
-        basepath = self._abspath(relpath)
+        basepath = self._remote_path(relpath)
         mutter("FTP nlst: %s", basepath)
         f = self._get_FTP()
         try:
@@ -515,7 +463,7 @@ class FtpTransport(ConnectedTransport):
 
     def stat(self, relpath):
         """Return the stat information for a file."""
-        abspath = self._abspath(relpath)
+        abspath = self._remote_path(relpath)
         try:
             mutter("FTP stat: %s", abspath)
             f = self._get_FTP()
