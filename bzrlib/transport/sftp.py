@@ -199,6 +199,7 @@ class SFTPTransport(SFTPUrlHandling):
     _max_request_size = 32768
 
     def __init__(self, base, clone_from=None):
+        assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()

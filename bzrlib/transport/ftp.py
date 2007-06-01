@@ -81,6 +81,7 @@ class FtpTransport(ConnectedTransport):
 
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
+        assert base.startswith('ftp://') or base.startswith('aftp://')
         super(FtpTransport, self).__init__(base)
         if self._scheme == 'aftp':
             self._unqualified_scheme = 'ftp'
