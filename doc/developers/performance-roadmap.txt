@@ -1,0 +1,21 @@
+==========================
+Bazaar Performance Roadmap
+==========================
+
+About the performance roadmap
+#############################
+
+.. include:: performance-roadmap-rationale.txt
+
+Analysis of use cases
+#####################
+
+.. include:: performance-use-case-analysis.txt
+
+.. include:: initial-push-pull.rst
+
+.. include:: incremental-push-pull.txt
+
+.. include:: merge-scaling.rst
+
+.. include:: bundle-creation.rst

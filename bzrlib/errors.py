@@ -845,6 +845,16 @@ class PointlessCommit(BzrError):
     _fmt = "No changes to commit"
 
 
+class CannotCommitSelectedFileMerge(BzrError):
+
+    _fmt = 'Selected-file commit of merges is not supported yet:'\
+        ' files %(files_str)s'
+
+    def __init__(self, files):
+        files_str = ', '.join(files)
+        BzrError.__init__(self, files=files, files_str=files_str)
+
+
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."

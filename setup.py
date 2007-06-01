@@ -223,7 +223,7 @@ elif 'py2exe' in sys.argv:
 
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,
-                               "excludes": ["Tkinter", "medusa"],
+                               "excludes": ["Tkinter", "medusa", "tools"],
                                "dist_dir": "win32_bzr.exe",
                               },
                    }
