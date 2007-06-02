@@ -481,7 +481,7 @@ class RemoteHTTPTransport(RemoteTransport):
         self._medium = _medium
 
     def _remote_path(self, relpath):
-        """After connecting HTTP Transport only deals in relative URLs."""
+        """After connecting, HTTP Transport only deals in relative URLs."""
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
         http_base = urlutils.normalize_url(self._http_transport.base)

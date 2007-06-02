@@ -1160,8 +1160,8 @@ class ConnectedTransport(Transport):
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
-        """Return the local path portion from a given absolute path."""
-       scheme, user, password, host, port, path = self._split_url(abspath)
+        """Return the local path portion from a given absolute path"""
+        scheme, user, password, host, port, path = self._split_url(abspath)
         error = []
         if (scheme != self._scheme):
             error.append('scheme mismatch')
