@@ -788,6 +788,61 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform2.apply()
         self.assertEqual(transform2.rename_count, 2)
 
+    def test_change_parent(self):
+        transform, root = self.get_transform()
+        frexpar = transform.new_directory('frexpar', root)
+        elphaba = transform.new_file('elphaba', frexpar, 'contents')
+        oz = transform.new_directory('oz', root)
+        transform.adjust_path('elphaba', oz, elphaba)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('frexpar/elphaba'))
+        self.failUnlessExists(self.wt.abspath('oz/elphaba'))
+        # rename libbo/new1 => frexpar, rename limbo/new3 => oz
+        # no rename for elphaba
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_cancel_parent(self):
+        """Cancelling a parent doesn't cause deletion of a non-empty directory
+
+        This is like the test_change_parent, except that we cancel the parent
+        before adjusting the path.  The transform must detect that the
+        directory is non-empty, and move children to safe locations.
+        """
+        transform, root = self.get_transform()
+        frexpar = transform.new_directory('frexpar', root)
+        elphaba = transform.new_file('elphaba', frexpar, 'contents')
+        nessarose = transform.new_file('nessarose', frexpar, 'contents')
+        try:
+            transform.cancel_creation(frexpar)
+        except OSError:
+            self.fail('Failed to move elphaba before deleting frexpar')
+        transform.cancel_creation(nessarose)
+        transform.create_directory(frexpar)
+        try:
+            transform.cancel_creation(frexpar)
+        except OSError:
+            self.fail('Transform still thinks nessarose is a child of frexpar')
+        oz = transform.new_directory('oz', root)
+        transform.adjust_path('elphaba', oz, elphaba)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('frexpar'))
+        self.failUnlessExists(self.wt.abspath('oz/elphaba'))
+        # rename limbo/new-3 => oz, rename limbo/new-2 => elphaba
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_adjust_and_cancel(self):
+        transform, root = self.get_transform()
+        frexpar = transform.new_directory('frexpar', root)
+        elphaba = transform.new_file('elphaba', frexpar, 'contents')
+        oz = transform.new_directory('oz', root)
+        transform.adjust_path('elphaba', oz, elphaba)
+        transform.cancel_creation(elphaba)
+        try:
+            transform.cancel_creation(frexpar)
+        except OSError:
+            self.fail('Transform still thinks elphaba is a child of frexpar')
+        transform.finalize()
+
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
         self.name = dirname

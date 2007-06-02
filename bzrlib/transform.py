@@ -107,6 +107,7 @@ class TreeTransform(object):
         self._new_parent = {}
         self._new_contents = {}
         self._limbo_files = {}
+        self._limbo_children = {}
         self._needs_rename = set()
         self._removed_contents = set()
         self._new_executability = {}
@@ -168,8 +169,26 @@ class TreeTransform(object):
         """Change the path that is assigned to a transaction id."""
         if trans_id == self._new_root:
             raise CantMoveRoot
+        previous_parent = self._new_parent.get(trans_id)
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
+        if (trans_id in self._limbo_files and
+            trans_id not in self._needs_rename):
+            self._rename_in_limbo([trans_id])
+            self._limbo_children[previous_parent].remove(trans_id)
+
+    def _rename_in_limbo(self, trans_ids):
+        """Fix a limbo name so that the right final path is produced.
+
+        This means we outsmarted ourselves-- we tried to avoid renaming
+        these file later by creating them with their final names in their
+        final parent.  But now the previous name or parent is no longer
+        suitable, so we have to rename them.
+        """
+        for trans_id in trans_ids:
+            old_path = self._limbo_files[trans_id]
+            new_path = self._limbo_name(trans_id, from_scratch=True)
+            os.rename(old_path, new_path)
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -333,6 +352,12 @@ class TreeTransform(object):
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
+        children = self._limbo_children.get(trans_id)
+        # if this is a limbo directory with children, move them before removing
+        # the directory
+        if children is not None:
+            self._rename_in_limbo(children)
+            del self._limbo_children[trans_id]
         delete_any(self._limbo_name(trans_id))
 
     def delete_contents(self, trans_id):
@@ -756,14 +781,20 @@ class TreeTransform(object):
         self.finalize()
         return _TransformResults(modified_paths)
 
-    def _limbo_name(self, trans_id):
+    def _limbo_name(self, trans_id, from_scratch=False):
         """Generate the limbo name of a file"""
-        if trans_id in self._limbo_files:
+        if trans_id in self._limbo_files and not from_scratch:
             return self._limbo_files[trans_id]
         parent = self.final_parent(trans_id)
-        if parent in self._limbo_files:
+        # if the parent directory is already in limbo (e.g. when building a
+        # tree), choose a limbo name inside the parent, to reduce further
+        # renames.
+        if self._new_contents.get(parent) == 'directory':
             limbo_name = pathjoin(self._limbo_files[parent],
                                   self.final_name(trans_id))
+            if parent not in self._limbo_children:
+                self._limbo_children[parent] = set()
+            self._limbo_children[parent].add(trans_id)
         else:
             limbo_name = pathjoin(self._limbodir, trans_id)
             self._needs_rename.add(trans_id)
