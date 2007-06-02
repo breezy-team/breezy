@@ -106,6 +106,8 @@ class TreeTransform(object):
         self._new_name = {}
         self._new_parent = {}
         self._new_contents = {}
+        self._limbo_files = {}
+        self._needs_rename = set()
         self._removed_contents = set()
         self._new_executability = {}
         self._new_reference_revision = {}
@@ -122,6 +124,7 @@ class TreeTransform(object):
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
+        self.rename_count = 0
 
     def __get_root(self):
         return self._new_root
@@ -755,7 +758,17 @@ class TreeTransform(object):
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
-        return pathjoin(self._limbodir, trans_id)
+        if trans_id in self._limbo_files:
+            return self._limbo_files[trans_id]
+        parent = self.final_parent(trans_id)
+        if parent in self._limbo_files:
+            limbo_name = pathjoin(self._limbo_files[parent],
+                                  self.final_name(trans_id))
+        else:
+            limbo_name = pathjoin(self._limbodir, trans_id)
+            self._needs_rename.add(trans_id)
+        self._limbo_files[trans_id] = limbo_name
+        return limbo_name
 
     def _apply_removals(self, inv, inventory_delta):
         """Perform tree operations that remove directory/inventory names.
@@ -781,6 +794,8 @@ class TreeTransform(object):
                     except OSError, e:
                         if e.errno != errno.ENOENT:
                             raise
+                    else:
+                        self.rename_count += 1
                 if trans_id in self._removed_id:
                     if trans_id == self._new_root:
                         file_id = self._tree.inventory.root.file_id
@@ -812,12 +827,15 @@ class TreeTransform(object):
                 if trans_id in self._new_contents or \
                     self.path_changed(trans_id):
                     full_path = self._tree.abspath(path)
-                    try:
-                        os.rename(self._limbo_name(trans_id), full_path)
-                    except OSError, e:
-                        # We may be renaming a dangling inventory id
-                        if e.errno != errno.ENOENT:
-                            raise
+                    if trans_id in self._needs_rename:
+                        try:
+                            os.rename(self._limbo_name(trans_id), full_path)
+                        except OSError, e:
+                            # We may be renaming a dangling inventory id
+                            if e.errno != errno.ENOENT:
+                                raise
+                        else:
+                            self.rename_count += 1
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                         del self._new_contents[trans_id]
@@ -1223,6 +1241,7 @@ def _build_tree(tree, wt):
     finally:
         tt.finalize()
         top_pb.finished()
+    return tt
 
 
 def _reparent_children(tt, old_parent, new_parent):

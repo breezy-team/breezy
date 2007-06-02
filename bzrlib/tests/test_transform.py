@@ -394,7 +394,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
 
-
     def get_conflicted(self):
         create,root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
@@ -545,9 +544,11 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         wt = transform._tree
         transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
                            True)
-        sac = transform.new_file('set_after_creation', root, 'Set after creation', 'sac')
+        sac = transform.new_file('set_after_creation', root,
+                                 'Set after creation', 'sac')
         transform.set_executability(True, sac)
-        uws = transform.new_file('unset_without_set', root, 'Unset badly', 'uws')
+        uws = transform.new_file('unset_without_set', root, 'Unset badly',
+                                 'uws')
         self.assertRaises(KeyError, transform.set_executability, None, uws)
         transform.apply()
         self.assertTrue(wt.is_executable('soc'))
@@ -773,6 +774,19 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([], list(transform._iter_changes()))
         finally:
             transform.finalize()
+
+    def test_rename_count(self):
+        transform, root = self.get_transform()
+        transform.new_file('elphaba', root, 'contents')
+        self.assertEqual(transform.rename_count, 0)
+        transform.apply()
+        self.assertEqual(transform.rename_count, 1)
+        transform2, root = self.get_transform()
+        transform2.adjust_path('thewicked', root,
+                               transform2.trans_id_tree_path('elphaba'))
+        self.assertEqual(transform2.rename_count, 0)
+        transform2.apply()
+        self.assertEqual(transform2.rename_count, 2)
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
@@ -1115,6 +1129,23 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertRaises(errors.WorkingTreeAlreadyPopulated, 
             build_tree, source.basis_tree(), target)
 
+    def test_build_tree_rename_count(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1', 'source/dir1/'])
+        source.add(['file1', 'dir1'])
+        source.commit('add1')
+        target1 = self.make_branch_and_tree('target1')
+        tt = build_tree(source.basis_tree(), target1)
+        self.assertEqual(2, tt.rename_count)
+
+        self.build_tree(['source/dir1/file2'])
+        source.add(['dir1/file2'])
+        source.commit('add3')
+        target2 = self.make_branch_and_tree('target2')
+        tt = build_tree(source.basis_tree(), target2)
+        # children of non-root directories should not be renamed
+        self.assertEqual(2, tt.rename_count)
+
 
 class MockTransform(object):
 
@@ -1126,6 +1157,7 @@ class MockTransform(object):
             elif name == "name.~%s~" % child_id:
                 return True
         return False
+
 
 class MockEntry(object):
     def __init__(self):
