@@ -643,6 +643,26 @@ class TestConnectedTransport(TestCase):
         t = ConnectedTransport('sftp://host.com/dev/%path')
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
+    def test_connection_sharing(self):
+        t = ConnectedTransport('foo://user@host.com/abs/path')
+        self.assertEquals(None, t.get_connection())
+
+        c = t.clone('subdir')
+        self.assertEquals(None, c.get_connection())
+
+        # But as soon as one transport connects, the other get
+        # the connection too
+        connection = object()
+        t.set_connection(connection)
+        self.assertIs(connection, t.get_connection())
+        self.assertIs(connection, c.get_connection())
+
+        # Temporary failure, we need to create a new connection
+        new_connection = object()
+        t.set_connection(new_connection)
+        self.assertIs(new_connection, t.get_connection())
+        self.assertIs(new_connection, c.get_connection())
+
 
 class TestReusedTransports(TestCase):
     """Tests for transport reuse"""

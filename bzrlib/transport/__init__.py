@@ -1064,11 +1064,16 @@ class ConnectedTransport(Transport):
                                  self._path)
 
         super(ConnectedTransport, self).__init__(base)
-        if from_transport is not None:
-            connection = from_transport.get_connection()
+        if from_transport is None:
+            # We use a list as a container for the connection so that the
+            # connection will be shared even if a transport is cloned before
+            # the first effective connection (generally the first request
+            # made). It also guarantees that the connection will still be
+            # shared if a transport needs to reconnect after a temporary
+            # failure.
+            self._connection = [None]
         else:
-            connection = None
-        self.set_connection(connection)
+            self._connection = from_transport._connection
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
@@ -1207,18 +1212,20 @@ class ConnectedTransport(Transport):
         remote_path = self._combine_paths(self._path, relative)
         return remote_path
 
-    def get_connection(self):
-        """Returns the transport specific connection object"""
-        return self._connection
-
     def set_connection(self, connection):
         """Set the transport specific connection object.
 
-        Note: daughter classes should ensure that the connection is still
-        shared if the connection is reset during the transport lifetime (using
-        a list containing the single connection can help avoid aliasing bugs).
+        Note: To ensure that connection is still shared after a temporary
+        failure and a new one needs to be created, daughter classes should
+        always call this method to set the connection. No assumptions are made
+        about the object type of the connection object.
         """
-        self._connection = connection
+        self._connection[0] = connection
+
+    def get_connection(self):
+        """Returns the transport specific connection object."""
+        return self._connection[0]
+
 
 
 # jam 20060426 For compatibility we copy the functions here
