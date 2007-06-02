@@ -159,7 +159,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         return self._unsplit_url(self._unqualified_scheme,
                                  self._user, self._password,
                                  self._host, self._port,
-                                 self._urlencode_abspath(path))
+                                 path)
 
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)

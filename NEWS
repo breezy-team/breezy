@@ -8,6 +8,11 @@ IN DEVELOPMENT
       is specified, and are labelled "revision-id:", as per mainline
       revisions, instead of "merged:". (Kent Gibson)
 
+    * Refactoring of transport classes connected to a remote server.
+     transport.split_url have been deprecated, use the static method on the
+     object instead (SFTP needs to override the default handling for home
+     directories). URL tests have been refactored too.  (Vincent Ladeuil)
+
   IMPROVEMENTS:
   
     * There are two new help topics, working-trees and repositories that
@@ -55,12 +60,11 @@ bzr 0.16  2007-05-07
       the root of the source tree and allows HACKING to be split into multiple
       files. (Robert Collins, Alexander Belchenko)
 
-    * ``bzr init`` should only connect to the remote location one time.
-      We have been connecting several times because we forget to pass
-      around the Transport object. This modifies
-      ``BzrDir.create_branch_convenience``, so that we can pass in the
-      Transport that we already have.
-     (John Arbash Meinel, Vincent Ladeuil, #111702)
+    * ``bzr init`` should only connect to the remote location one time.  We
+      have been connecting several times because we forget to pass around the
+      Transport object. This modifies ``BzrDir.create_branch_convenience``,
+      so that we can pass in the Transport that we already have.
+      (John Arbash Meinel, Vincent Ladeuil, #111702)
 
 bzr 0.16rc2  2007-04-30
 

@@ -1032,12 +1032,21 @@ class Transport(object):
 class ConnectedTransport(Transport):
     """A transport connected to a remote server.
 
-    Base class for transports that connect to a remote server
-    with optional user and password. Cloning preserves existing
-    connection and credentials.
+    This class provide the basis to implement transports that need to connect
+    to a remote server.
+
+    Host and credentials are available as private attributes, cloning preserves
+    them and share the underlying, protocol specific, connection.
     """
 
     def __init__(self, base, from_transport=None):
+        """Constructor.
+
+        :param base: transport root URL
+
+        :param from_transport: optional transport to build from. The built
+            transport will share the connection with this transport.
+        """
         if base[-1] != '/':
             base += '/'
         (self._scheme,
@@ -1045,13 +1054,14 @@ class ConnectedTransport(Transport):
          self._host, self._port,
          self._path) = self._initial_split_url(base)
         if from_transport is not None:
-            # Copy the password as it does not appear in base
+            # Copy the password as it does not appear in base and will be lost
+            # otherwise.
             self._password = from_transport._password
 
         base = self._unsplit_url(self._scheme,
                                  self._user, self._password,
                                  self._host, self._port,
-                                 self._urlencode_abspath(self._path))
+                                 self._path)
 
         super(ConnectedTransport, self).__init__(base)
         if from_transport is not None:
@@ -1072,6 +1082,17 @@ class ConnectedTransport(Transport):
             return self.__class__(self.abspath(offset), self)
 
     def _split_url(self, url):
+        """
+        Extract the server address, the credentials and the path from the url.
+
+        user, password, host and path should be quoted if they contain reserved
+        chars.
+
+        :param url: an quoted url
+
+        :return: (scheme, user, password, host, port, path) tuple, all fields
+            are unquoted.
+        """
         if isinstance(url, unicode):
             raise errors.InvalidURL('should be ascii:\n%r' % url)
         url = url.encode('utf-8')
@@ -1095,14 +1116,38 @@ class ConnectedTransport(Transport):
                 raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                         (port, url))
         host = urllib.unquote(host)
-        path = self._urldecode_abspath(path)
+        path = urllib.unquote(path)
 
         return (scheme, user, password, host, port, path)
 
     _initial_split_url = _split_url
-    """Hook for daughter classes that needs a special processing"""
+    """Hook for daughter classes that needs a special processing.
+
+    This method is called during transport construction against
+    the provided base.
+    """
 
     def _unsplit_url(self, scheme, user, password, host, port, path):
+        """
+        Build the full URL for the given already URL encoded path.
+
+        user, password, host and path will be quoted if they contain reserved
+        chars.
+
+        :param scheme: protocol
+
+        :param user: login
+
+        :param password: associated password
+
+        :param host: the server address
+
+        :param port: the associated port
+
+        :param path: the absolute path on the server
+
+        :return: The corresponding URL.
+        """
         netloc = urllib.quote(host)
         if user is not None:
             # Note that we don't put the password back even if we
@@ -1111,16 +1156,12 @@ class ConnectedTransport(Transport):
             netloc = '%s@%s' % (urllib.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
+        path = urllib.quote(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
-    def _urlencode_abspath(self, abspath):
-        return urllib.quote(abspath)
-
-    def _urldecode_abspath(self, abspath):
-        return urllib.unquote(abspath)
-
     def relpath(self, abspath):
-        scheme, user, password, host, port, path = self._split_url(abspath)
+        """Return the local path portion from a given absolute path."""
+       scheme, user, password, host, port, path = self._split_url(abspath)
         error = []
         if (scheme != self._scheme):
             error.append('scheme mismatch')
@@ -1142,18 +1183,25 @@ class ConnectedTransport(Transport):
         """Return the full url to the given relative path.
         
         :param relpath: the relative path urlencoded
+
         :returns: the Unicode version of the absolute path for relpath.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
         path = self._combine_paths(self._path, relative)
         return self._unsplit_url(self._scheme, self._user, self._password,
                                  self._host, self._port,
-                                 self._urlencode_abspath(path))
+                                 path)
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.
-        
-        :param relpath: is a urlencoded string.
+
+        This is the path that the remote server expect to receive in the
+        requests, daughter classes should redefine this method if needed and
+        use the result to build their requests.
+
+        :param relpath: the path relative to the transport base urlencoded.
+
+        :return: the absolute Unicode path on the server,
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
         remote_path = self._combine_paths(self._path, relative)
@@ -1166,10 +1214,9 @@ class ConnectedTransport(Transport):
     def set_connection(self, connection):
         """Set the transport specific connection object.
 
-        Note: daughter classes should ensure that the connection
-        is still shared if the connection is reset during the
-        transport lifetime (using a list containing the single
-        connection can help avoid aliasing bugs).
+        Note: daughter classes should ensure that the connection is still
+        shared if the connection is reset during the transport lifetime (using
+        a list containing the single connection can help avoid aliasing bugs).
         """
         self._connection = connection
 
