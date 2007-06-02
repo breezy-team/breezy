@@ -149,8 +149,9 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     def test__remote_path_relative_root(self):
         # relative paths are preserved
         t = self.get_transport('')
-        # the remote path should be ''
-        self.assertEqual('', t._path)
+        self.assertEqual('/~/', t._path)
+        # the remote path should be relative to home dir
+        # (i.e. not begining with a '/')
         self.assertEqual('a', t._remote_path('a'))
 
 
@@ -179,7 +180,7 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._user, 'robey')
         # FIXME: sftp should just not connect at init time !!!
         #self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, 'relative/')
+        self.assertEquals(s._path, '/~/relative/')
 
     def test_relpath(self):
         s = SFTPTransport('sftp://user@host.com/abs/path',
