@@ -1238,6 +1238,9 @@ class cmd_init(Command):
     _see_also = ['init-repo', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
+        Option('create-prefix',
+               help='Create the path leading up to the branch '
+                    'if it does not already exist'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
@@ -1250,7 +1253,8 @@ class cmd_init(Command):
                 help='Never change revnos or the existing log.'
                 '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None, append_revisions_only=False):
+    def run(self, location=None, format=None, append_revisions_only=False,
+            create_prefix=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1264,7 +1268,18 @@ class cmd_init(Command):
         # believe that we want to create a bunch of
         # locations if the user supplies an extended path
         # TODO: create-prefix
-        to_transport.ensure_base()
+        try:
+            to_transport.ensure_base()
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise errors.BzrCommandError("Parent directory of %s"
+                    " does not exist."
+                    "\nYou may supply --create-prefix to create all"
+                    " leading parent directories."
+                    % location)
+
+            _create_prefix(to_transport)
+
 
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
