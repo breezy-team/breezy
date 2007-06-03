@@ -51,16 +51,21 @@ def unique_add(map, key, value):
 
 
 class _TransformResults(object):
-    def __init__(self, modified_paths):
+    def __init__(self, modified_paths, rename_count):
         object.__init__(self)
         self.modified_paths = modified_paths
+        self.rename_count = rename_count
 
 
 class TreeTransform(object):
     """Represent a tree transformation.
     
     This object is designed to support incremental generation of the transform,
-    in any order.  
+    in any order.
+
+    However, it gives optimum performance when parent directories are created
+    before their contents.  The transform is then able to put child files
+    directly in their parent directory, avoiding later renames.
     
     It is easy to produce malformed transforms, but they are generally
     harmless.  Attempting to apply a malformed transform will cause an
@@ -106,9 +111,14 @@ class TreeTransform(object):
         self._new_name = {}
         self._new_parent = {}
         self._new_contents = {}
+        # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
+        # A mapping of transform ids to a set of the transform ids of children
+        # their limbo directory has
         self._limbo_children = {}
+        # Map transform ids to maps of child filename to child transform id
         self._limbo_children_names = {}
+        # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
         self._removed_contents = set()
         self._new_executability = {}
@@ -119,10 +129,10 @@ class TreeTransform(object):
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        self._realpaths = {}
         # Cache of realpath results, to speed up canonical_path
-        self._relpaths = {}
+        self._realpaths = {}
         # Cache of relpath results, to speed up canonical_path
+        self._relpaths = {}
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
@@ -783,7 +793,7 @@ class TreeTransform(object):
         self._tree.apply_inventory_delta(inventory_delta)
         self.__done = True
         self.finalize()
-        return _TransformResults(modified_paths)
+        return _TransformResults(modified_paths, self.rename_count)
 
     def _limbo_name(self, trans_id, from_scratch=False):
         """Generate the limbo name of a file"""
@@ -1281,11 +1291,11 @@ def _build_tree(tree, wt):
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
             pass
-        tt.apply()
+        result = tt.apply()
     finally:
         tt.finalize()
         top_pb.finished()
-    return tt
+    return result
 
 
 def _reparent_children(tt, old_parent, new_parent):
