@@ -852,6 +852,44 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.fail("Can't handle contents with no name")
         transform.finalize()
 
+    def test_reuse_name(self):
+        """Avoid reusing the same limbo name for different files"""
+        transform, root = self.get_transform()
+        oz = transform.new_directory('oz', root)
+        elphaba1 = transform.new_directory('elphaba', oz)
+        try:
+            elphaba2 = transform.new_directory('elphaba', oz)
+        except OSError:
+            self.fail('Tranform tried to use the same limbo name twice')
+        transform.adjust_path('galinda', oz, elphaba2)
+        transform.apply()
+        # limbo/oz => oz, limbo/new-3 => oz/galinda
+        self.assertEqual(2, transform.rename_count)
+
+    def test_reuse_when_first_moved(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        oz = transform.new_directory('oz', root)
+        elphaba1 = transform.new_directory('elphaba', oz)
+        transform.adjust_path('galinda', oz, elphaba1)
+        elphaba2 = transform.new_directory('elphaba', oz)
+        transform.apply()
+        # limbo/oz => oz
+        self.assertEqual(1, transform.rename_count)
+
+    def test_reuse_after_cancel(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        oz = transform.new_directory('oz', root)
+        elphaba1 = transform.new_directory('elphaba', oz)
+        transform.cancel_creation(oz)
+        transform.create_directory(oz)
+        elphaba2 = transform.new_directory('elphaba', oz)
+        transform.adjust_path('galinda', oz, elphaba1)
+        transform.apply()
+        # limbo/oz => oz, limbo/new-1 => oz/elphaba
+        self.assertEqual(2, transform.rename_count)
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):

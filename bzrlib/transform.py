@@ -108,6 +108,7 @@ class TreeTransform(object):
         self._new_contents = {}
         self._limbo_files = {}
         self._limbo_children = {}
+        self._limbo_children_names = {}
         self._needs_rename = set()
         self._removed_contents = set()
         self._new_executability = {}
@@ -170,12 +171,14 @@ class TreeTransform(object):
         if trans_id == self._new_root:
             raise CantMoveRoot
         previous_parent = self._new_parent.get(trans_id)
+        previous_name = self._new_name.get(trans_id)
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
         if (trans_id in self._limbo_files and
             trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
             self._limbo_children[previous_parent].remove(trans_id)
+            del self._limbo_children_names[previous_parent][previous_name]
 
     def _rename_in_limbo(self, trans_ids):
         """Fix a limbo name so that the right final path is produced.
@@ -358,6 +361,7 @@ class TreeTransform(object):
         if children is not None:
             self._rename_in_limbo(children)
             del self._limbo_children[trans_id]
+            del self._limbo_children_names[trans_id]
         delete_any(self._limbo_name(trans_id))
 
     def delete_contents(self, trans_id):
@@ -789,13 +793,21 @@ class TreeTransform(object):
         # if the parent directory is already in limbo (e.g. when building a
         # tree), choose a limbo name inside the parent, to reduce further
         # renames.
-        if (self._new_contents.get(parent) == 'directory'
-            and trans_id in self._new_name):
-            limbo_name = pathjoin(self._limbo_files[parent],
-                                  self._new_name[trans_id])
-            if parent not in self._limbo_children:
-                self._limbo_children[parent] = set()
+        use_direct_path = False
+        if self._new_contents.get(parent) == 'directory':
+            filename = self._new_name.get(trans_id)
+            if filename is not None:
+                if parent not in self._limbo_children:
+                    self._limbo_children[parent] = set()
+                    self._limbo_children_names[parent] = {}
+                    use_direct_path = True
+                elif (self._limbo_children_names[parent].get(filename)
+                      in (trans_id, None)):
+                    use_direct_path = True
+        if use_direct_path:
+            limbo_name = pathjoin(self._limbo_files[parent], filename)
             self._limbo_children[parent].add(trans_id)
+            self._limbo_children_names[parent][filename] = trans_id
         else:
             limbo_name = pathjoin(self._limbodir, trans_id)
             self._needs_rename.add(trans_id)
