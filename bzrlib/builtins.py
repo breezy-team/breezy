@@ -1267,7 +1267,6 @@ class cmd_init(Command):
         # Just using os.mkdir, since I don't
         # believe that we want to create a bunch of
         # locations if the user supplies an extended path
-        # TODO: create-prefix
         try:
             to_transport.ensure_base()
         except errors.NoSuchFile:
