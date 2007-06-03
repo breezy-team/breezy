@@ -751,27 +751,7 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
 
-                cur_transport = to_transport
-                needed = [cur_transport]
-                # Recurse upwards until we can create a directory successfully
-                while True:
-                    new_transport = cur_transport.clone('..')
-                    if new_transport.base == cur_transport.base:
-                        raise errors.BzrCommandError("Failed to create path"
-                                                     " prefix for %s."
-                                                     % location)
-                    try:
-                        new_transport.mkdir('.')
-                    except errors.NoSuchFile:
-                        needed.append(new_transport)
-                        cur_transport = new_transport
-                    else:
-                        break
-
-                # Now we only need to create child directories
-                while needed:
-                    cur_transport = needed.pop()
-                    cur_transport.ensure_base()
+                _create_prefix(to_transport)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -3761,6 +3741,28 @@ def _merge_helper(other_revision, base_revision,
         pb.clear()
     return conflicts
 
+
+def _create_prefix(cur_transport):
+    needed = [cur_transport]
+    # Recurse upwards until we can create a directory successfully
+    while True:
+        new_transport = cur_transport.clone('..')
+        if new_transport.base == cur_transport.base:
+            raise errors.BzrCommandError("Failed to create path"
+                                         " prefix for %s."
+                                         % location)
+        try:
+            new_transport.mkdir('.')
+        except errors.NoSuchFile:
+            needed.append(new_transport)
+            cur_transport = new_transport
+        else:
+            break
+
+    # Now we only need to create child directories
+    while needed:
+        cur_transport = needed.pop()
+        cur_transport.ensure_base()
 
 # Compatibility
 merge = _merge_helper
