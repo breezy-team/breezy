@@ -785,13 +785,14 @@ class TreeTransform(object):
         """Generate the limbo name of a file"""
         if trans_id in self._limbo_files and not from_scratch:
             return self._limbo_files[trans_id]
-        parent = self.final_parent(trans_id)
+        parent = self._new_parent.get(trans_id)
         # if the parent directory is already in limbo (e.g. when building a
         # tree), choose a limbo name inside the parent, to reduce further
         # renames.
-        if self._new_contents.get(parent) == 'directory':
+        if (self._new_contents.get(parent) == 'directory'
+            and trans_id in self._new_name):
             limbo_name = pathjoin(self._limbo_files[parent],
-                                  self.final_name(trans_id))
+                                  self._new_name[trans_id])
             if parent not in self._limbo_children:
                 self._limbo_children[parent] = set()
             self._limbo_children[parent].add(trans_id)

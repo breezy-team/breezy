@@ -843,6 +843,16 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.fail('Transform still thinks elphaba is a child of frexpar')
         transform.finalize()
 
+    def test_noname_contents(self):
+        transform, root = self.get_transform()
+        oz = transform.trans_id_file_id('oz-id')
+        try:
+            transform.create_directory(oz)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        transform.finalize()
+
+
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
         self.name = dirname
