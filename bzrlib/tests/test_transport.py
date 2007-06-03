@@ -645,23 +645,40 @@ class TestConnectedTransport(TestCase):
 
     def test_connection_sharing(self):
         t = ConnectedTransport('foo://user@host.com/abs/path')
-        self.assertEquals(None, t.get_connection())
+        self.assertIs(None, t._get_connection())
 
         c = t.clone('subdir')
-        self.assertEquals(None, c.get_connection())
+        self.assertIs(None, c._get_connection())
 
         # But as soon as one transport connects, the other get
         # the connection too
         connection = object()
-        t.set_connection(connection)
-        self.assertIs(connection, t.get_connection())
-        self.assertIs(connection, c.get_connection())
+        t._set_connection(connection)
+        self.assertIs(connection, t._get_connection())
+        self.assertIs(connection, c._get_connection())
 
         # Temporary failure, we need to create a new connection
         new_connection = object()
-        t.set_connection(new_connection)
-        self.assertIs(new_connection, t.get_connection())
-        self.assertIs(new_connection, c.get_connection())
+        t._set_connection(new_connection)
+        self.assertIs(new_connection, t._get_connection())
+        self.assertIs(new_connection, c._get_connection())
+
+    def test_connection_sharing_propagate_credentials(self):
+        t = ConnectedTransport('foo://user@host.com/abs/path')
+        self.assertIs(None, t._get_connection())
+        self.assertIs(None, t._password)
+        c = t.clone('subdir')
+        self.assertEquals(None, c._get_connection())
+        self.assertIs(None, t._password)
+
+        # Simulate the user entering a password
+        password = 'secret'
+        connection = object()
+        t._set_connection(connection, password)
+        self.assertIs(connection, t._get_connection())
+        self.assertIs(password, t._get_credentials())
+        self.assertIs(connection, c._get_connection())
+        self.assertIs(password, c._get_credentials())
 
 
 class TestReusedTransports(TestCase):

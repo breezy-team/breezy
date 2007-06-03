@@ -1065,14 +1065,10 @@ class ConnectedTransport(Transport):
 
         super(ConnectedTransport, self).__init__(base)
         if from_transport is None:
-            # We use a list as a container for the connection so that the
-            # connection will be shared even if a transport is cloned before
-            # the first effective connection (generally the first request
-            # made). It also guarantees that the connection will still be
-            # shared if a transport needs to reconnect after a temporary
-            # failure.
-            self._connection = [None]
+            self._init_connection()
         else:
+            # set_connection MUST not be used here, see set_connection for an
+            # explanation
             self._connection = from_transport._connection
 
     def clone(self, offset=None):
@@ -1212,20 +1208,38 @@ class ConnectedTransport(Transport):
         remote_path = self._combine_paths(self._path, relative)
         return remote_path
 
-    def set_connection(self, connection):
+    def _init_connection(self):
+        self._connection = [(None, None)]
+
+    def _set_connection(self, connection, credentials=None):
         """Set the transport specific connection object.
 
         Note: To ensure that connection is still shared after a temporary
         failure and a new one needs to be created, daughter classes should
-        always call this method to set the connection. No assumptions are made
-        about the object type of the connection object.
+        always call this method to set the connection.
+
+        :param connection: An opaque object representing the connection used by
+            the daughter class.
+
+        :param credentials: An opaque object representing the credentials
+            needed to create the connection.
         """
-        self._connection[0] = connection
+        # We use a list as a container for the connection so that the
+        # connection will be shared even if a transport is cloned before the
+        # first effective connection (generally the first request made). It
+        # also guarantees that the connection will still be shared if a
+        # transport needs to reconnect after a temporary failure.
 
-    def get_connection(self):
+        self._connection[0] = (connection, credentials)
+
+    def _get_connection(self):
         """Returns the transport specific connection object."""
-        return self._connection[0]
+        return self._connection[0][0]
 
+    def _get_credentials(self):
+        """Returns the credentials needed to establish a connection."""
+        (connection, credentials) = self._connection[0]
+        return self._connection[0][1]
 
 
 # jam 20060426 For compatibility we copy the functions here
