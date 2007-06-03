@@ -88,34 +88,59 @@ class FtpTransport(ConnectedTransport):
             self.is_active = True
         else:
             self.is_active = False
-        if from_transport is None:
-            self._FTP_instance = None
-        else:
-            self._FTP_instance = from_transport._FTP_instance
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
-        if self._FTP_instance is None:
-            mutter("Constructing FTP instance against %r" %
-                   ((self._host, self._port, self._user, '********',
-                    self.is_active),))
-            try:
-                connection = ftplib.FTP()
-                connection.connect(host=self._host, port=self._port)
-                if self._user and self._user != 'anonymous' and \
-                        not self._password:
-                    self._password = bzrlib.ui.ui_factory.get_password(
-                        prompt='FTP %(user)s@%(host)s password',
-                        user=self._user, host=self._host)
-                connection.login(user=self._user, passwd=self._password)
-                connection.set_pasv(not self.is_active)
-            except ftplib.error_perm, e:
-                raise errors.TransportError(msg="Error setting up connection:"
-                                            " %s" % str(e), orig_error=e)
-            self._FTP_instance = connection
-        return self._FTP_instance
+        # Ensures that a connection is established
+        connection = self._get_connection()
+        if connection is None:
+            # First connection ever
+            connection, credentials = self._create_connection()
+            self._set_connection(connection, credentials)
+        return connection
 
-    def _translate_perm_error(self, err, path, extra=None, unknown_exc=FtpPathError):
+    def _create_connection(self, credentials=None):
+        """Create a new connection with the provided credentials.
+
+        :param credentials: The credentials needed to establish the connection.
+
+        :return: The created connection and its associated credentials.
+
+        The credentials are only the password as it may have been entered
+        interactively by the user and may be different from the one provided
+        in base url at transport creation time.
+        """
+        if credentials is None:
+            password = self._password
+        else:
+            password = credentials
+
+        mutter("Constructing FTP instance against %r" %
+               ((self._host, self._port, self._user, '********',
+                self.is_active),))
+        try:
+            connection = ftplib.FTP()
+            connection.connect(host=self._host, port=self._port)
+            if self._user and self._user != 'anonymous' and \
+                    password is not None: # '' is a valid password
+                get_password = bzrlib.ui.ui_factory.get_password
+                password = get_password(prompt='FTP %(user)s@%(host)s password',
+                                        user=self._user, host=self._host)
+            connection.login(user=self._user, passwd=password)
+            connection.set_pasv(not self.is_active)
+        except ftplib.error_perm, e:
+            raise errors.TransportError(msg="Error setting up connection:"
+                                        " %s" % str(e), orig_error=e)
+        return connection, password
+
+    def _reconnect(self):
+        """Create a new connection with the previously used credentials"""
+        credentials = self.get_credentials()
+        connection, credentials = self._create_connection(credentials)
+        self._set_connection(connection, credentials)
+
+    def _translate_perm_error(self, err, path, extra=None,
+                              unknown_exc=FtpPathError):
         """Try to translate an ftplib.error_perm exception.
 
         :param err: The error to translate into a bzr error
@@ -215,7 +240,7 @@ class FtpTransport(ConnectedTransport):
                                      orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
-                self._FTP_instance = None
+                self._reconnect()
                 return self.get(relpath, decode, retries+1)
         except EOFError, e:
             if retries > _number_of_retries:
@@ -225,7 +250,7 @@ class FtpTransport(ConnectedTransport):
             else:
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
-                self._FTP_instance = None
+                self._reconnect()
                 return self.get(relpath, decode, retries+1)
 
     def put_file(self, relpath, fp, mode=None, retries=0):
@@ -267,7 +292,7 @@ class FtpTransport(ConnectedTransport):
                                      % self.abspath(relpath), orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
-                self._FTP_instance = None
+                self._reconnect()
                 self.put_file(relpath, fp, mode, retries+1)
         except EOFError:
             if retries > _number_of_retries:
@@ -276,7 +301,7 @@ class FtpTransport(ConnectedTransport):
             else:
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
-                self._FTP_instance = None
+                self._reconnect()
                 self.put_file(relpath, fp, mode, retries+1)
 
     def mkdir(self, relpath, mode=None):
@@ -343,7 +368,7 @@ class FtpTransport(ConnectedTransport):
                         "Aborting." % abspath, orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
-                self._FTP_instance = None
+                self._reconnect()
                 self._try_append(relpath, text, mode, retries+1)
 
     def _setmode(self, relpath, mode):
