@@ -22,6 +22,8 @@ class TestPush(TestCaseWithConnectionHookedTransport):
 
     def test_push(self):
         self.make_branch_and_tree('branch')
+        # make_branch_and_tree create one connection
+        self.reset_connections()
         cmd = cmd_push()
         cmd.run(self.get_url() + '/remote', directory='branch')
         self.assertEquals(1, len(self.connections))

@@ -36,6 +36,8 @@ class TestCat(TestCaseWithConnectionHookedTransport):
 
     def test_cat(self):
         wt1 = self.make_branch_and_tree('branch')
+        # make_branch_and_tree create one connection
+        self.reset_connections()
         file('branch/foo', 'wb').write('foo')
         wt1.add('foo')
         wt1.commit('add foo')

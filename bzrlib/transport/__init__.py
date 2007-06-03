@@ -1212,11 +1212,12 @@ class ConnectedTransport(Transport):
         self._connection = [(None, None)]
 
     def _set_connection(self, connection, credentials=None):
-        """Set the transport specific connection object.
+        """Record a newly created connection with its associated credentials.
 
         Note: To ensure that connection is still shared after a temporary
         failure and a new one needs to be created, daughter classes should
-        always call this method to set the connection.
+        always call this method to set the connection and do so each time a new
+        connection is created.
 
         :param connection: An opaque object representing the connection used by
             the daughter class.
@@ -1237,7 +1238,7 @@ class ConnectedTransport(Transport):
         return self._connection[0][0]
 
     def _get_credentials(self):
-        """Returns the credentials needed to establish a connection."""
+        """Returns the credentials used to establish the connection."""
         (connection, credentials) = self._connection[0]
         return self._connection[0][1]
 

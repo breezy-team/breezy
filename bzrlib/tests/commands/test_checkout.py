@@ -22,6 +22,8 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
 
     def test_checkout(self):
         self.make_branch_and_tree('branch1')
+        # make_branch_and_tree create one connection
+        self.reset_connections()
 
         cmd = cmd_checkout()
         cmd.run(self.get_url() + '/branch1', 'local')

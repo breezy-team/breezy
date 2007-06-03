@@ -29,9 +29,9 @@ class TransportHooks(Hooks):
 
     def __init__(self):
         Hooks.__init__(self)
-        # invoked when the transport is about to create or reuse
-        # an ftp connection. The api signature is (transport, ftp_instance)
-        self['get_FTP'] = []
+        # Invoked when the transport has just created a new connection.
+        # The api signature is (transport, connection, credentials)
+        self['_set_connection'] = []
 
 
 class InstrumentedTransport(FtpTransport):
@@ -43,25 +43,20 @@ class InstrumentedTransport(FtpTransport):
 class ConnectionHookedTransport(InstrumentedTransport):
     """Transport instrumented to inspect connections"""
 
-    def _get_FTP(self):
-        """See FtpTransport._get_FTP.
-
-        This is where we can detect if the connection is reused
-        or if a new one is created. This a bit ugly, but it's the
-        easiest until transport classes are refactored.
-        """
-        instance = super(ConnectionHookedTransport, self)._get_FTP()
-        for hook in self.hooks['get_FTP']:
-            hook(self, instance)
-        return instance
+    def _set_connection(self, connection, credentials):
+        """Called when a new connection is created """
+        super(ConnectionHookedTransport, self)._set_connection(connection,
+                                                               credentials)
+        for hook in self.hooks['_set_connection']:
+            hook(self, connection, credentials)
 
 
 class TestCaseWithConnectionHookedTransport(TestCaseWithFTPServer):
 
     def setUp(self):
         super(TestCaseWithConnectionHookedTransport, self).setUp()
-        ConnectionHookedTransport.hooks.install_hook('get_FTP',
-                                                     self.get_connection_hook)
+        ConnectionHookedTransport.hooks.install_hook('_set_connection',
+                                                     self.set_connection_hook)
         # Make our instrumented transport the default ftp transport
         register_transport('ftp://', ConnectionHookedTransport)
 
@@ -72,7 +67,9 @@ class TestCaseWithConnectionHookedTransport(TestCaseWithFTPServer):
         self.addCleanup(cleanup)
         self.connections = []
 
-    def get_connection_hook(self, transport, connection):
-        if connection is not None and connection not in self.connections:
-            self.connections.append(connection)
+    def reset_connections(self):
+        self.connections = []
+
+    def set_connection_hook(self, transport, connection, credentials):
+        self.connections.append(connection)
 

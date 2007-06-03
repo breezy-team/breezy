@@ -25,6 +25,8 @@ class TestPull(TestCaseWithConnectionHookedTransport):
         wt1 = self.make_branch_and_tree('branch1')
         tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
+        # make_branch_and_tree calls have created connections
+        self.reset_connections()
 
         cmd = cmd_pull()
         # We don't care about the ouput but 'outf' should be defined

@@ -27,6 +27,8 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
         wt2.commit('empty commit too')
+        # make_branch_and_tree calls have created connections
+        self.reset_connections()
 
         cmd = cmd_missing()
         # We don't care about the ouput but 'outf' should be defined
