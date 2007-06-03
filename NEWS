@@ -8,10 +8,12 @@ IN DEVELOPMENT
       is specified, and are labelled "revision-id:", as per mainline
       revisions, instead of "merged:". (Kent Gibson)
 
-    * Refactoring of transport classes connected to a remote server.
-     transport.split_url have been deprecated, use the static method on the
-     object instead (SFTP needs to override the default handling for home
-     directories). URL tests have been refactored too.  (Vincent Ladeuil)
+    * Refactoring of transport classes connected to a remote
+      server. ConnectedTransport is a new class that serves as a basis for
+      all transports needing to connet to a remote server.
+      transport.split_url have been deprecated, use the static method on the
+      object instead. URL tests have been refactored too.  
+      (Vincent Ladeuil)
 
   IMPROVEMENTS:
   
@@ -36,6 +38,12 @@ IN DEVELOPMENT
     * Let TestUIFactoy encode the password prompt with its own stdout.
       (Vincent Ladeuil, #110204)
 
+    * ``bzr init`` should only connect to the remote location one time.  We
+      have been connecting several times because we forget to pass around the
+      Transport object. This modifies ``BzrDir.create_branch_convenience``,
+      so that we can pass in the Transport that we already have.
+      (John Arbash Meinel, Vincent Ladeuil, #111702)
+
 
 bzr 0.16  2007-05-07
   
@@ -59,12 +67,6 @@ bzr 0.16  2007-05-07
     * Move developer documentation to doc/developers/. This reduces clutter in
       the root of the source tree and allows HACKING to be split into multiple
       files. (Robert Collins, Alexander Belchenko)
-
-    * ``bzr init`` should only connect to the remote location one time.  We
-      have been connecting several times because we forget to pass around the
-      Transport object. This modifies ``BzrDir.create_branch_convenience``,
-      so that we can pass in the Transport that we already have.
-      (John Arbash Meinel, Vincent Ladeuil, #111702)
 
 bzr 0.16rc2  2007-04-30
 
