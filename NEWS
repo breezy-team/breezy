@@ -26,8 +26,7 @@ IN DEVELOPMENT
 
     * TreeTransform avoids many renames when contructing large trees, improving
       speed.  3.25x speedups have been observed for construction of
-      kernel-sized-trees, and lightweight checkouts are 1.28x faster.
-      (Aaron Bentley)
+      kernel-sized-trees, and checkouts are 1.28x faster.  (Aaron Bentley)
 
   BUGFIXES:
 
