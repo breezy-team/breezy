@@ -29,3 +29,7 @@ Needs
 - Access to revision graph proportional to number of revisions read
 - Access to changed file metadata proportional to number of changes and number of intervening revisions.
 - O(1) access to fulltexts
+
+Notes
+=====
+Multiparent deltas may offer some nice properties for performance of annotation based merging.

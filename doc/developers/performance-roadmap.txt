@@ -16,6 +16,14 @@ Analysis of use cases
 
 .. include:: incremental-push-pull.txt
 
+.. include:: add.txt
+
+.. include:: gc.txt
+
+.. include:: revert.txt
+
+.. include:: annotate.txt
+
 .. include:: merge-scaling.rst
 
 .. include:: bundle-creation.rst
