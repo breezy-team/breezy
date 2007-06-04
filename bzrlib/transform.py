@@ -89,7 +89,8 @@ class TreeTransform(object):
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
         
-        Use TreeTransform.finalize() to release the lock
+        Use TreeTransform.finalize() to release the lock (can be omitted if
+        TreeTransform.apply() called).
         """
         object.__init__(self)
         self._tree = tree
@@ -114,7 +115,7 @@ class TreeTransform(object):
         # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
         # A mapping of transform ids to a set of the transform ids of children
-        # their limbo directory has
+        # that their limbo directory has
         self._limbo_children = {}
         # Map transform ids to maps of child filename to child transform id
         self._limbo_children_names = {}
@@ -144,7 +145,11 @@ class TreeTransform(object):
     root = property(__get_root)
 
     def finalize(self):
-        """Release the working tree lock, if held, clean up limbo dir."""
+        """Release the working tree lock, if held, clean up limbo dir.
+
+        This is required if apply has not been invoked, but can be invoked
+        even after apply.
+        """
         if self._tree is None:
             return
         try:
@@ -191,11 +196,11 @@ class TreeTransform(object):
             del self._limbo_children_names[previous_parent][previous_name]
 
     def _rename_in_limbo(self, trans_ids):
-        """Fix a limbo name so that the right final path is produced.
+        """Fix limbo names so that the right final path is produced.
 
         This means we outsmarted ourselves-- we tried to avoid renaming
-        these file later by creating them with their final names in their
-        final parent.  But now the previous name or parent is no longer
+        these files later by creating them with their final names in their
+        final parents.  But now the previous name or parent is no longer
         suitable, so we have to rename them.
         """
         for trans_id in trans_ids:
@@ -776,6 +781,8 @@ class TreeTransform(object):
         
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
+
+        If apply succeeds, finalize is not necessary.
         """
         conflicts = self.find_conflicts()
         if len(conflicts) != 0:
@@ -811,6 +818,9 @@ class TreeTransform(object):
                     self._limbo_children[parent] = set()
                     self._limbo_children_names[parent] = {}
                     use_direct_path = True
+                # the direct path can only be used if no other file has
+                # already taken this pathname, i.e. if the name is unused, or
+                # if it is already associated with this trans_id.
                 elif (self._limbo_children_names[parent].get(filename)
                       in (trans_id, None)):
                     use_direct_path = True
@@ -1223,9 +1233,9 @@ def _build_tree(tree, wt):
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     if tree.inventory.root is not None:
-        # this is kindof a hack: we should be altering the root 
-        # as partof the regular tree shape diff logic.
-        # the conditional test hereis to avoid doing an
+        # This is kind of a hack: we should be altering the root
+        # as part of the regular tree shape diff logic.
+        # The conditional test here is to avoid doing an
         # expensive operation (flush) every time the root id
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
@@ -1542,9 +1552,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 if kind[0] == 'file' and (backups or kind[1] is None):
                     wt_sha1 = working_tree.get_file_sha1(file_id)
                     if merge_modified.get(file_id) != wt_sha1:
-                        # acquire the basis tree lazyily to prevent the expense
-                        # of accessing it when its not needed ? (Guessing, RBC,
-                        # 200702)
+                        # acquire the basis tree lazily to prevent the
+                        # expense of accessing it when it's not needed ?
+                        # (Guessing, RBC, 200702)
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
