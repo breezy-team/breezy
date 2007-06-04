@@ -7,6 +7,8 @@ About the performance roadmap
 
 .. include:: performance-roadmap-rationale.txt
 
+.. include:: planned-performance-changes.txt
+
 Analysis of use cases
 #####################
 
