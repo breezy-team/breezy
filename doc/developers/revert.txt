@@ -17,7 +17,7 @@ One way this might work is to:
 for the selected scopes, for each element in the wt:
 
  1. get hash tree data for that scope.
- 1. get 'new enough' hash data for the siblins of the scope: it can be out of date as long as its not older than the last move or rename out of that siblings scope.
+ 1. get 'new enough' hash data for the siblings of the scope: it can be out of date as long as its not older than the last move or rename out of that siblings scope.
  1. Use the hash tree data to tune the work done in finding matching paths/ids which are different in the two trees.
 
 For each thing that needs to change - group by target directory?

@@ -27,8 +27,8 @@ Optionally:
 Per file algorithm
 ==================
 
-1. If the path is versioned, and it is a directory, push onto the recurse stack.
-1. If the path is supplied by the user or is not ignored, version it, and if a
+#. If the path is versioned, and it is a directory, push onto the recurse stack.
+#. If the path is supplied by the user or is not ignored, version it, and if a 
    directory, push onto the recurse stack. Versioning the path may require
    versioning the paths parents.
-1. Output or otherwise record the ignored rule as per the user interface selected.
+#. Output or otherwise record the ignored rule as per the user interface selected.

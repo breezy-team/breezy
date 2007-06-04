@@ -246,9 +246,13 @@ take N commits from A to B, if B is local then merge changes into the tree.
 copy ebough data to recreate snapshots
 avoid ending up wth corrupt/bad data
 
-setup
-look at graph of revisions for ~N comits to deretmine eligibility for 
-  if preserve mainline is on, check LH only
+Notes from London
+=================
+
+ #. setup
+
+   look at graph of revisions for ~N comits to deretmine eligibility for 
+   if preserve mainline is on, check LH only
 
     identify objects to send that are not on the client repo
       - revision - may be proportional to the graph
@@ -256,17 +260,20 @@ look at graph of revisions for ~N comits to deretmine eligibility for
       - texts     - proportional to work
       - signatures - ???
 
-data transmission
-- send data proportional to the new information
-- validate the data [ validate the sha1 of the full text of each transmitted text.
-                      validate the sha1:name mapping in each newly referenced ivnentory item.
-		      validate the sha1 of the XML of each inventory against the revision. *** this is proportional to tree size and must be fixed
-		      ]
+ #. data transmission
 
-- write the data to the local repo.
+  * send data proportional to the new information
+  * validate the data:
 
-should output the file texts needed by the merge as by product of the transmission
+   #. validate the sha1 of the full text of each transmitted text.
+   #. validate the sha1:name mapping in each newly referenced inventory item.
+   #. validate the sha1 of the XML of each inventory against the revision.
+      *** this is proportional to tree size and must be fixed ***
 
-tree application
-combine the output from the transmission step with additional 'new work data' for anything already in the local repository that is new in this tree.
+ #. write the data to the local repo.
+    The API should output the file texts needed by the merge as by product of the transmission
+
+ #. tree application
+
+Combine the output from the transmission step with additional 'new work data' for anything already in the local repository that is new in this tree.
 should write new files and stat existing files proportional to the count of the new work and the size of the full texts.
