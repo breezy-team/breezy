@@ -825,3 +825,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             actual_kind = tree.kind(names[i-1] + '-id')
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
+
+    def test_missing_file_sha1(self):
+        """If a file is missing, its sha1 should be reported as None."""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['file'])
+        tree.add('file', 'file-id')
+        tree.commit('file added')
+        os.unlink('file')
+        self.assertIs(None, tree.get_file_sha1('file-id'))

@@ -11,7 +11,7 @@
 Bazaar Tutorial
 ===============
 
-Current for bzr-0.8, 2006-04
+Current for bzr-0.16, 2007-05
 
 
 Introduction
@@ -180,15 +180,21 @@ to it will be recorded by the system::
     % bzr status
     unknown:
       hello.txt
-    % bzr unknowns
-    hello.txt
     % bzr add hello.txt
     added hello.txt
-    % bzr unknowns
+    % bzr status
+    added:
+      hello.txt
 
 
 If you add the wrong file, simply use **bzr remove** to make it
-unversioned again.  This does not delete the working copy.
+unversioned again.  This does not delete the working copy in this case,
+though it may in others [2]_.
+
+.. [2] ``bzr remove`` will remove the working copy if it is currently
+   versioned, but has no changes from the last committed version.  You
+   can force the file to always be kept with the ``--keep`` option to
+   ``bzr remove``, or force it to always be deleted with ``--force``.
 
 Branch locations
 ================
@@ -209,6 +215,9 @@ accessing branches over http and sftp, for example::
 
 By installing bzr plugins you can also access branches using the rsync
 protocol.
+
+See the `Publishing your branch`_ section for more about how to put your
+branch at a given location.
 
 Reviewing changes
 =================
@@ -234,9 +243,9 @@ working directory since the last revision::
     modified:
        foo
 
-By default **bzr status** hides "boring" files that are either unchanged
-or ignored.  To see them too, use the --all option.  The status command
-can optionally be given the name of some files or directories to check.
+**bzr status** hides "boring" files that are either unchanged or ignored.
+The status command can optionally be given the name of some files or
+directories to check.
 
 bzr diff
 --------
@@ -246,10 +255,10 @@ standard unified diff.  This can be piped through many programs such as
 ''patch'', ''diffstat'', ''filterdiff'' and ''colordiff''::
 
     % bzr diff
-    *** added file 'hello.txt'
-    --- /dev/null 
-    +++ hello.txt 
-    @@ -1,0 +1,1 @@
+    === added file 'hello.txt'
+    --- hello.txt   1970-01-01 00:00:00 +0000
+    +++ hello.txt   2005-10-18 14:23:29 +0000
+    @@ -0,0 +1,1 @@
     +hello world
 
 
@@ -432,9 +441,9 @@ You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
 do **cvs remove**.
 
-    **bzr remove** makes the file un-versioned, but does not delete
-    the working copy.  This is useful when you add the wrong file, or decide
-    that a file should actually not be versioned. 
+    **bzr remove** makes the file un-versioned, but may or may not delete
+    the working copy [2]_.  This is useful when you add the wrong file,
+    or decide that a file should actually not be versioned. 
 
 ::
 
@@ -457,10 +466,9 @@ Branching
 =========
 
 Often rather than starting your own project, you will want to submit a
-change to an existing project.  You can get a copy of an existing branch
-by copying its directory, expanding a tarball, or by a remote copy using
-something like rsync.  You can also use bzr to fetch a copy.  Because this
-new copy is potentially a new branch, the command is called *branch*::
+change to an existing project.  To do this, you'll need to get a copy of
+the existing branch.  Because this new copy is potentially a new branch,
+the command is called **branch**::
 
     % bzr branch http://bazaar-vcs.org/bzr/bzr.dev 
     % cd bzr.dev
@@ -468,6 +476,9 @@ new copy is potentially a new branch, the command is called *branch*::
 This copies down the complete history of this branch, so we can do all
 operations on it locally: log, annotate, making and merging branches.
 There will be an option to get only part of the history if you wish.
+
+You can also get a copy of an existing branch by copying its directory,
+expanding a tarball, or by a remote copy using something like rsync.
 
 Following upstream changes
 ==========================
@@ -528,17 +539,23 @@ server.  Just mirror the files to your server, including the .bzr
 directory.  One can push a branch (or the changes for a branch) by one of
 the following three methods:
 
-* Rsync:   rsync -avrz LOCALBRANCH  servername.com/path/to/directory
+* The best method is to use bzr itself to do it.
 
-  (or any other tool for publishing a directory to a web site.)
+  ::
 
-* bzr push sftp://servername.com/path/to/directory 
+    % bzr push sftp://servername.com/path/to/directory 
 
   (The destination directory must already exist unless the
   ``--create-prefix`` option is used.)
 
-* The rspush plugin that comes with BzrTools
+* Another option is the rspush plugin that comes with BzrTools, which
+  uses rsync to push the changes to the revision history and the working
+  tree.
 
+You can also use copy the files around manually, by sending a tarball, or
+using rsync, or other related file transfer methods.  This is usually
+less safe than using ``push``, but may be faster or easier in some
+situations.
 
 Moving changes between trees 
 ============================

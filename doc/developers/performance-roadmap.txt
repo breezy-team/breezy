@@ -12,6 +12,8 @@ Analysis of use cases
 
 .. include:: performance-use-case-analysis.txt
 
+.. include:: initial-push-pull.rst
+
 .. include:: incremental-push-pull.txt
 
 .. include:: add.txt
@@ -21,3 +23,7 @@ Analysis of use cases
 .. include:: revert.txt
 
 .. include:: annotate.txt
+
+.. include:: merge-scaling.rst
+
+.. include:: bundle-creation.rst
