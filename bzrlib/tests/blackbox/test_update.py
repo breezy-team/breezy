@@ -66,6 +66,7 @@ class TestUpdate(ExternalBase):
         # now branch should be out of date
         out,err = self.runbzr('update branch')
         self.assertEqual('', out)
+        self.assertContainsRe(err, '\+N  file')
         self.assertEndsWith(err, 'All changes applied successfully.\n'
                          'Updated to revision 1.\n')
         self.failUnlessExists('branch/file')
@@ -80,6 +81,7 @@ class TestUpdate(ExternalBase):
         self.runbzr('commit -m add-file checkout')
         # now checkout2 should be out of date
         out,err = self.runbzr('update checkout2')
+        self.assertContainsRe(err, '\+N  file')
         self.assertEndsWith(err, 'All changes applied successfully.\n'
                          'Updated to revision 1.\n')
         self.assertEqual('', out)
@@ -103,6 +105,7 @@ class TestUpdate(ExternalBase):
         a_file.write('Bar')
         a_file.close()
         out,err = self.runbzr('update checkout2', retcode=1)
+        self.assertContainsRe(err, 'M  file')
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
                          err.split('\n')[-3:-1])
@@ -143,6 +146,8 @@ class TestUpdate(ExternalBase):
         # get all three files and a pending merge.
         out, err = self.run_bzr('update', 'checkout')
         self.assertEqual('', out)
+        self.assertContainsRe(err, '\+N  file')
+        self.assertContainsRe(err, '\+N  file_b')
         self.assertContainsRe(err, 'Updated to revision 1.\n'
                                    'Your local commits will now show as'
                                    ' pending merges')
@@ -193,7 +198,7 @@ class TestUpdate(ExternalBase):
         self.assertEqual('', out)
         self.assertEndsWith(err, 'All changes applied successfully.\n'
                          'Updated to revision 2.\n')
-
+        self.assertContainsRe(err, r'\+N  file3')
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
