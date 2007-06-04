@@ -153,8 +153,9 @@ class TreeTransform(object):
         if self._tree is None:
             return
         try:
-            for trans_id, kind in self._new_contents.iteritems():
-                path = self._limbo_name(trans_id)
+            entries = [(self._limbo_name(t), t, k) for t, k in
+                       self._new_contents.iteritems()]
+            for path, trans_id, kind in sorted(entries, reverse=True):
                 if kind == "directory":
                     os.rmdir(path)
                 else:

@@ -890,6 +890,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # limbo/oz => oz, limbo/new-1 => oz/elphaba
         self.assertEqual(2, transform.rename_count)
 
+    def test_finalize_order(self):
+        transform, root = self.get_transform()
+        oz = transform.new_directory('oz', root)
+        elphaba1 = transform.new_directory('elphaba', oz)
+        try:
+            transform.finalize()
+        except OSError:
+            self.fail('Tried to remove oz before elphaba')
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
