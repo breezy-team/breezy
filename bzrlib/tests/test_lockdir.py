@@ -214,49 +214,6 @@ class TestLockDir(TestCaseWithTransport):
             lf1.unlock()
         self.assertEqual([], self._logged_reports)
 
-    def test_32_lock_wait_succeed(self):
-        """Succeed when trying to acquire a lock that gets released
-
-        One thread holds on a lock and then releases it; another 
-        tries to lock it.
-        """
-        t = self.get_transport()
-        lf1 = LockDir(t, 'test_lock')
-        lf1.create()
-        lf1.attempt_lock()
-
-        def wait_and_unlock():
-            time.sleep(0.1)
-            lf1.unlock()
-        unlocker = Thread(target=wait_and_unlock)
-        unlocker.start()
-        try:
-            lf2 = LockDir(t, 'test_lock')
-            self.setup_log_reporter(lf2)
-            before = time.time()
-            # wait and then lock
-            lf2.wait_lock(timeout=0.4, poll=0.1)
-            after = time.time()
-            self.assertTrue(after - before <= 1.0)
-        finally:
-            unlocker.join()
-
-        # There should be only 1 report, even though it should have to
-        # wait for a while
-        lock_base = lf2.transport.abspath(lf2.path)
-        self.assertEqual(1, len(self._logged_reports))
-        self.assertEqual('%s %s\n'
-                         '%s\n%s\n'
-                         'Will continue to try until %s\n',
-                         self._logged_reports[0][0])
-        args = self._logged_reports[0][1]
-        self.assertEqual('Unable to obtain', args[0])
-        self.assertEqual('lock %s' % (lock_base,), args[1])
-        self.assertStartsWith(args[2], 'held by ')
-        self.assertStartsWith(args[3], 'locked ')
-        self.assertEndsWith(args[3], ' ago')
-        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
-
     def test_33_wait(self):
         """Succeed when waiting on a lock that gets released
 
