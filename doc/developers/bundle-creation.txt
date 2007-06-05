@@ -26,7 +26,7 @@ Bundle Creation
 :i: length of stored diff
 
 Needs
-=====
+-----
 - Improved common ancestor algorithm
 - Access to partial revision graph proportional to relevant revisions
 - Access to changed files proportional to number of change files and
