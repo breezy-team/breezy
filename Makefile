@@ -25,7 +25,7 @@ extensions:
 	@echo "building extension modules."
 	python setup.py build_ext -i
 
-check: extensions
+check: docs extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)

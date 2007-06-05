@@ -567,15 +567,19 @@ class ShortLogFormatter(LogFormatter):
         from bzrlib.osutils import format_date
 
         to_file = self.to_file
-        date_str = format_date(revision.rev.timestamp, 
+        date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        print >>to_file, "%5s %s\t%s" % (revision.revno, 
+        is_merge = ''
+        if len(revision.rev.parent_ids) > 1:
+            is_merge = ' [merge]'
+        print >>to_file, "%5s %s\t%s%s" % (revision.revno,
                 self.short_committer(revision.rev),
-                format_date(revision.rev.timestamp, 
+                format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
-                            show_offset=False))
+                            show_offset=False),
+                is_merge)
         if self.show_ids:
             print >>to_file,  '      revision-id:', revision.rev.revision_id
         if not revision.rev.message:

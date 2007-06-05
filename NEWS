@@ -24,8 +24,13 @@ IN DEVELOPMENT
     * Revert does not try to preserve file contents that were originally
       produced by reverting to a historical revision.  (Aaron Bentley)
 
-    * TreeTransform avoids many renames when contructing large trees, improving
-      speed.  3.25x speedups have been observed for construction of
+    * ``bzr log --short`` now includes ``[merge]`` for revisions which
+      have more than one parent. This is a small improvement to help
+      understanding what changes have occurred
+      (John Arbash Meinel, #83887)
+
+    * TreeTransform avoids many renames when contructing large trees,
+      improving speed.  3.25x speedups have been observed for construction of
       kernel-sized-trees, and checkouts are 1.28x faster.  (Aaron Bentley)
 
   BUGFIXES:
@@ -45,6 +50,9 @@ IN DEVELOPMENT
 
     * WorkingTree4.get_file_sha1 no longer raises an exception when invoked
       on a missing file.  (Aaron Bentley, #118186)
+
+    * WorkingTree.remove works correctly with tree references, and when pwd is
+      not the tree root. (Aaron Bentley)
 
 bzr 0.16  2007-05-07
   
