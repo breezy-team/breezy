@@ -868,6 +868,20 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.fail("Can't handle contents with no name")
         transform.finalize()
 
+    def test_noname_contents_nested(self):
+        """TreeTransform should permit deferring naming files."""
+        transform, root = self.get_transform()
+        parent = transform.trans_id_file_id('parent-id')
+        try:
+            transform.create_directory(parent)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        child = transform.new_directory('child', parent)
+        transform.adjust_path('parent', root, parent)
+        transform.apply()
+        self.failUnlessExists(self.wt.abspath('parent/child'))
+        self.assertEqual(1, transform.rename_count)
+
     def test_reuse_name(self):
         """Avoid reusing the same limbo name for different files"""
         transform, root = self.get_transform()
