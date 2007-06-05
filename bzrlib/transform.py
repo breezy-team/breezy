@@ -208,7 +208,8 @@ class TreeTransform(object):
         for trans_id in trans_ids:
             old_path = self._limbo_files[trans_id]
             new_path = self._limbo_name(trans_id, from_scratch=True)
-            os.rename(old_path, new_path)
+            if trans_id in self._new_contents:
+                os.rename(old_path, new_path)
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
