@@ -1039,7 +1039,8 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(delta._ChangeReporter(unversioned_filter=tree.is_ignored))
+            conflicts = tree.update(delta._ChangeReporter(
+                                        unversioned_filter=tree.is_ignored))
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
