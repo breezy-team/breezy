@@ -591,12 +591,26 @@ class cmd_pull(Command):
             branch_to = Branch.open_containing(directory)[0]
 
         reader = None
+        # The user may provide a bundle or branch as 'location' We first try to
+        # identify a bundle, if it's not, we try to preserve connection used by
+        # the transport to access the branch.
         if location is not None:
-            try:
-                mergeable = bundle.read_mergeable_from_url(
-                    location)
-            except errors.NotABundle:
-                pass # Continue on considering this url a Branch
+            url = urlutils.normalize_url(location)
+            url, filename = urlutils.split(url, exclude_trailing_slash=False)
+            location_transport = transport.get_transport(url)
+            if filename:
+                try:
+                    read_bundle = bundle.read_mergeable_from_transport
+                    # There may be redirections but we ignore the intermediate
+                    # and final transports used
+                    mergeable, t = read_bundle(location_transport, filename)
+                except errors.NotABundle:
+                    # Continue on considering this url a Branch but adjust the
+                    # location_transport
+                    location_transport = location_transport.clone(filename)
+            else:
+                # A directory was provided, location_transport is correct
+                pass
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -608,6 +622,7 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
+                location_transport = transport.get_transport(location)
 
         if mergeable is not None:
             if revision is not None:
@@ -616,7 +631,7 @@ class cmd_pull(Command):
             revision_id = mergeable.install_revisions(branch_to.repository)
             branch_from = branch_to
         else:
-            branch_from = Branch.open(location)
+            branch_from = Branch.open_from_transport(location_transport)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)

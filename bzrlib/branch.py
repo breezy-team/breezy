@@ -122,7 +122,7 @@ class Branch(object):
     def open_downlevel(base):
         """Open a branch which may be of an old format."""
         return Branch.open(base, _unsupported=True)
-        
+
     @staticmethod
     def open(base, _unsupported=False):
         """Open the branch rooted at base.
@@ -131,6 +131,12 @@ class Branch(object):
         Branch.open(URL) -> a Branch instance.
         """
         control = bzrdir.BzrDir.open(base, _unsupported)
+        return control.open_branch(_unsupported)
+
+    @staticmethod
+    def open_from_transport(transport, _unsupported=False):
+        """Open the branch rooted at transport"""
+        control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
         return control.open_branch(_unsupported)
 
     @staticmethod
