@@ -155,7 +155,8 @@ class TreeTransform(object):
         try:
             entries = [(self._limbo_name(t), t, k) for t, k in
                        self._new_contents.iteritems()]
-            for path, trans_id, kind in sorted(entries, reverse=True):
+            entries.sort(reverse=True)
+            for path, trans_id, kind in entries:
                 if kind == "directory":
                     os.rmdir(path)
                 else:
@@ -805,8 +806,10 @@ class TreeTransform(object):
 
     def _limbo_name(self, trans_id, from_scratch=False):
         """Generate the limbo name of a file"""
-        if trans_id in self._limbo_files and not from_scratch:
-            return self._limbo_files[trans_id]
+        if not from_scratch:
+            limbo_name = self._limbo_files.get(trans_id)
+            if limbo_name is not None:
+                return limbo_name
         parent = self._new_parent.get(trans_id)
         # if the parent directory is already in limbo (e.g. when building a
         # tree), choose a limbo name inside the parent, to reduce further

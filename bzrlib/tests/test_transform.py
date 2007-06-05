@@ -777,28 +777,37 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_rename_count(self):
         transform, root = self.get_transform()
-        transform.new_file('elphaba', root, 'contents')
+        transform.new_file('name1', root, 'contents')
         self.assertEqual(transform.rename_count, 0)
         transform.apply()
         self.assertEqual(transform.rename_count, 1)
         transform2, root = self.get_transform()
-        transform2.adjust_path('thewicked', root,
-                               transform2.trans_id_tree_path('elphaba'))
+        transform2.adjust_path('name2', root,
+                               transform2.trans_id_tree_path('name1'))
         self.assertEqual(transform2.rename_count, 0)
         transform2.apply()
         self.assertEqual(transform2.rename_count, 2)
 
     def test_change_parent(self):
+        """Ensure that after we change a parent, the results are still right.
+
+        Renames and parent changes on pending transforms can happen as part
+        of conflict resolution, and are explicitly permitted by the
+        TreeTransform API.
+
+        This test ensures they work correctly with the rename-avoidance
+        optimization.
+        """
         transform, root = self.get_transform()
-        frexpar = transform.new_directory('frexpar', root)
-        elphaba = transform.new_file('elphaba', frexpar, 'contents')
-        oz = transform.new_directory('oz', root)
-        transform.adjust_path('elphaba', oz, elphaba)
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
         transform.apply()
-        self.failIfExists(self.wt.abspath('frexpar/elphaba'))
-        self.failUnlessExists(self.wt.abspath('oz/elphaba'))
-        # rename libbo/new1 => frexpar, rename limbo/new3 => oz
-        # no rename for elphaba
+        self.failIfExists(self.wt.abspath('parent1/child1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-1 => parent1, rename limbo/new-3 => parent2
+        # no rename for child1 (counting only renames during apply)
         self.failUnlessEqual(2, transform.rename_count)
 
     def test_cancel_parent(self):
@@ -809,45 +818,52 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         directory is non-empty, and move children to safe locations.
         """
         transform, root = self.get_transform()
-        frexpar = transform.new_directory('frexpar', root)
-        elphaba = transform.new_file('elphaba', frexpar, 'contents')
-        nessarose = transform.new_file('nessarose', frexpar, 'contents')
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        child2 = transform.new_file('child2', parent1, 'contents')
         try:
-            transform.cancel_creation(frexpar)
+            transform.cancel_creation(parent1)
         except OSError:
-            self.fail('Failed to move elphaba before deleting frexpar')
-        transform.cancel_creation(nessarose)
-        transform.create_directory(frexpar)
+            self.fail('Failed to move child1 before deleting parent1')
+        transform.cancel_creation(child2)
+        transform.create_directory(parent1)
         try:
-            transform.cancel_creation(frexpar)
+            transform.cancel_creation(parent1)
+        # If the transform incorrectly believes that child2 is still in
+        # parent1's limbo directory, it will try to rename it and fail
+        # because was already moved by the first cancel_creation.
         except OSError:
-            self.fail('Transform still thinks nessarose is a child of frexpar')
-        oz = transform.new_directory('oz', root)
-        transform.adjust_path('elphaba', oz, elphaba)
+            self.fail('Transform still thinks child2 is a child of parent1')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
         transform.apply()
-        self.failIfExists(self.wt.abspath('frexpar'))
-        self.failUnlessExists(self.wt.abspath('oz/elphaba'))
-        # rename limbo/new-3 => oz, rename limbo/new-2 => elphaba
+        self.failIfExists(self.wt.abspath('parent1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-3 => parent2, rename limbo/new-2 => child1
         self.failUnlessEqual(2, transform.rename_count)
 
     def test_adjust_and_cancel(self):
+        """Make sure adjust_path keeps track of limbo children properly"""
         transform, root = self.get_transform()
-        frexpar = transform.new_directory('frexpar', root)
-        elphaba = transform.new_file('elphaba', frexpar, 'contents')
-        oz = transform.new_directory('oz', root)
-        transform.adjust_path('elphaba', oz, elphaba)
-        transform.cancel_creation(elphaba)
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.cancel_creation(child1)
         try:
-            transform.cancel_creation(frexpar)
+            transform.cancel_creation(parent1)
+        # if the transform thinks child1 is still in parent1's limbo
+        # directory, it will attempt to move it and fail.
         except OSError:
-            self.fail('Transform still thinks elphaba is a child of frexpar')
+            self.fail('Transform still thinks child1 is a child of parent1')
         transform.finalize()
 
     def test_noname_contents(self):
+        """TreeTransform should permit deferring naming files."""
         transform, root = self.get_transform()
-        oz = transform.trans_id_file_id('oz-id')
+        parent = transform.trans_id_file_id('parent-id')
         try:
-            transform.create_directory(oz)
+            transform.create_directory(parent)
         except KeyError:
             self.fail("Can't handle contents with no name")
         transform.finalize()
@@ -855,49 +871,54 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_reuse_name(self):
         """Avoid reusing the same limbo name for different files"""
         transform, root = self.get_transform()
-        oz = transform.new_directory('oz', root)
-        elphaba1 = transform.new_directory('elphaba', oz)
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
         try:
-            elphaba2 = transform.new_directory('elphaba', oz)
+            child2 = transform.new_directory('child', parent)
         except OSError:
             self.fail('Tranform tried to use the same limbo name twice')
-        transform.adjust_path('galinda', oz, elphaba2)
+        transform.adjust_path('child2', parent, child2)
         transform.apply()
-        # limbo/oz => oz, limbo/new-3 => oz/galinda
+        # limbo/new-1 => parent, limbo/new-3 => parent/child2
+        # child2 is put into top-level limbo because child1 has already
+        # claimed the direct limbo path when child2 is created.  There is no
+        # advantage in renaming files once they're in top-level limbo, except
+        # as part of apply.
         self.assertEqual(2, transform.rename_count)
 
     def test_reuse_when_first_moved(self):
         """Don't avoid direct paths when it is safe to use them"""
         transform, root = self.get_transform()
-        oz = transform.new_directory('oz', root)
-        elphaba1 = transform.new_directory('elphaba', oz)
-        transform.adjust_path('galinda', oz, elphaba1)
-        elphaba2 = transform.new_directory('elphaba', oz)
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
+        transform.adjust_path('child1', parent, child1)
+        child2 = transform.new_directory('child', parent)
         transform.apply()
-        # limbo/oz => oz
+        # limbo/new-1 => parent
         self.assertEqual(1, transform.rename_count)
 
     def test_reuse_after_cancel(self):
         """Don't avoid direct paths when it is safe to use them"""
         transform, root = self.get_transform()
-        oz = transform.new_directory('oz', root)
-        elphaba1 = transform.new_directory('elphaba', oz)
-        transform.cancel_creation(oz)
-        transform.create_directory(oz)
-        elphaba2 = transform.new_directory('elphaba', oz)
-        transform.adjust_path('galinda', oz, elphaba1)
+        parent2 = transform.new_directory('parent2', root)
+        child1 = transform.new_directory('child1', parent2)
+        transform.cancel_creation(parent2)
+        transform.create_directory(parent2)
+        child2 = transform.new_directory('child1', parent2)
+        transform.adjust_path('child2', parent2, child1)
         transform.apply()
-        # limbo/oz => oz, limbo/new-1 => oz/elphaba
+        # limbo/new-1 => parent2, limbo/new-2 => parent2/child1
         self.assertEqual(2, transform.rename_count)
 
     def test_finalize_order(self):
+        """Finalize must be done in child-to-parent order"""
         transform, root = self.get_transform()
-        oz = transform.new_directory('oz', root)
-        elphaba1 = transform.new_directory('elphaba', oz)
+        parent = transform.new_directory('parent', root)
+        child = transform.new_directory('child', parent)
         try:
             transform.finalize()
         except OSError:
-            self.fail('Tried to remove oz before elphaba')
+            self.fail('Tried to remove parent before child1')
 
 
 class TransformGroup(object):
