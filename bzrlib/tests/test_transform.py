@@ -394,7 +394,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
 
-
     def get_conflicted(self):
         create,root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
@@ -545,9 +544,11 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         wt = transform._tree
         transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
                            True)
-        sac = transform.new_file('set_after_creation', root, 'Set after creation', 'sac')
+        sac = transform.new_file('set_after_creation', root,
+                                 'Set after creation', 'sac')
         transform.set_executability(True, sac)
-        uws = transform.new_file('unset_without_set', root, 'Unset badly', 'uws')
+        uws = transform.new_file('unset_without_set', root, 'Unset badly',
+                                 'uws')
         self.assertRaises(KeyError, transform.set_executability, None, uws)
         transform.apply()
         self.assertTrue(wt.is_executable('soc'))
@@ -773,6 +774,166 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([], list(transform._iter_changes()))
         finally:
             transform.finalize()
+
+    def test_rename_count(self):
+        transform, root = self.get_transform()
+        transform.new_file('name1', root, 'contents')
+        self.assertEqual(transform.rename_count, 0)
+        transform.apply()
+        self.assertEqual(transform.rename_count, 1)
+        transform2, root = self.get_transform()
+        transform2.adjust_path('name2', root,
+                               transform2.trans_id_tree_path('name1'))
+        self.assertEqual(transform2.rename_count, 0)
+        transform2.apply()
+        self.assertEqual(transform2.rename_count, 2)
+
+    def test_change_parent(self):
+        """Ensure that after we change a parent, the results are still right.
+
+        Renames and parent changes on pending transforms can happen as part
+        of conflict resolution, and are explicitly permitted by the
+        TreeTransform API.
+
+        This test ensures they work correctly with the rename-avoidance
+        optimization.
+        """
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('parent1/child1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-1 => parent1, rename limbo/new-3 => parent2
+        # no rename for child1 (counting only renames during apply)
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_cancel_parent(self):
+        """Cancelling a parent doesn't cause deletion of a non-empty directory
+
+        This is like the test_change_parent, except that we cancel the parent
+        before adjusting the path.  The transform must detect that the
+        directory is non-empty, and move children to safe locations.
+        """
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        child2 = transform.new_file('child2', parent1, 'contents')
+        try:
+            transform.cancel_creation(parent1)
+        except OSError:
+            self.fail('Failed to move child1 before deleting parent1')
+        transform.cancel_creation(child2)
+        transform.create_directory(parent1)
+        try:
+            transform.cancel_creation(parent1)
+        # If the transform incorrectly believes that child2 is still in
+        # parent1's limbo directory, it will try to rename it and fail
+        # because was already moved by the first cancel_creation.
+        except OSError:
+            self.fail('Transform still thinks child2 is a child of parent1')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.apply()
+        self.failIfExists(self.wt.abspath('parent1'))
+        self.failUnlessExists(self.wt.abspath('parent2/child1'))
+        # rename limbo/new-3 => parent2, rename limbo/new-2 => child1
+        self.failUnlessEqual(2, transform.rename_count)
+
+    def test_adjust_and_cancel(self):
+        """Make sure adjust_path keeps track of limbo children properly"""
+        transform, root = self.get_transform()
+        parent1 = transform.new_directory('parent1', root)
+        child1 = transform.new_file('child1', parent1, 'contents')
+        parent2 = transform.new_directory('parent2', root)
+        transform.adjust_path('child1', parent2, child1)
+        transform.cancel_creation(child1)
+        try:
+            transform.cancel_creation(parent1)
+        # if the transform thinks child1 is still in parent1's limbo
+        # directory, it will attempt to move it and fail.
+        except OSError:
+            self.fail('Transform still thinks child1 is a child of parent1')
+        transform.finalize()
+
+    def test_noname_contents(self):
+        """TreeTransform should permit deferring naming files."""
+        transform, root = self.get_transform()
+        parent = transform.trans_id_file_id('parent-id')
+        try:
+            transform.create_directory(parent)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        transform.finalize()
+
+    def test_noname_contents_nested(self):
+        """TreeTransform should permit deferring naming files."""
+        transform, root = self.get_transform()
+        parent = transform.trans_id_file_id('parent-id')
+        try:
+            transform.create_directory(parent)
+        except KeyError:
+            self.fail("Can't handle contents with no name")
+        child = transform.new_directory('child', parent)
+        transform.adjust_path('parent', root, parent)
+        transform.apply()
+        self.failUnlessExists(self.wt.abspath('parent/child'))
+        self.assertEqual(1, transform.rename_count)
+
+    def test_reuse_name(self):
+        """Avoid reusing the same limbo name for different files"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
+        try:
+            child2 = transform.new_directory('child', parent)
+        except OSError:
+            self.fail('Tranform tried to use the same limbo name twice')
+        transform.adjust_path('child2', parent, child2)
+        transform.apply()
+        # limbo/new-1 => parent, limbo/new-3 => parent/child2
+        # child2 is put into top-level limbo because child1 has already
+        # claimed the direct limbo path when child2 is created.  There is no
+        # advantage in renaming files once they're in top-level limbo, except
+        # as part of apply.
+        self.assertEqual(2, transform.rename_count)
+
+    def test_reuse_when_first_moved(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child1 = transform.new_directory('child', parent)
+        transform.adjust_path('child1', parent, child1)
+        child2 = transform.new_directory('child', parent)
+        transform.apply()
+        # limbo/new-1 => parent
+        self.assertEqual(1, transform.rename_count)
+
+    def test_reuse_after_cancel(self):
+        """Don't avoid direct paths when it is safe to use them"""
+        transform, root = self.get_transform()
+        parent2 = transform.new_directory('parent2', root)
+        child1 = transform.new_directory('child1', parent2)
+        transform.cancel_creation(parent2)
+        transform.create_directory(parent2)
+        child2 = transform.new_directory('child1', parent2)
+        transform.adjust_path('child2', parent2, child1)
+        transform.apply()
+        # limbo/new-1 => parent2, limbo/new-2 => parent2/child1
+        self.assertEqual(2, transform.rename_count)
+
+    def test_finalize_order(self):
+        """Finalize must be done in child-to-parent order"""
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child = transform.new_directory('child', parent)
+        try:
+            transform.finalize()
+        except OSError:
+            self.fail('Tried to remove parent before child1')
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
@@ -1115,6 +1276,23 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertRaises(errors.WorkingTreeAlreadyPopulated, 
             build_tree, source.basis_tree(), target)
 
+    def test_build_tree_rename_count(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1', 'source/dir1/'])
+        source.add(['file1', 'dir1'])
+        source.commit('add1')
+        target1 = self.make_branch_and_tree('target1')
+        transform_result = build_tree(source.basis_tree(), target1)
+        self.assertEqual(2, transform_result.rename_count)
+
+        self.build_tree(['source/dir1/file2'])
+        source.add(['dir1/file2'])
+        source.commit('add3')
+        target2 = self.make_branch_and_tree('target2')
+        transform_result = build_tree(source.basis_tree(), target2)
+        # children of non-root directories should not be renamed
+        self.assertEqual(2, transform_result.rename_count)
+
 
 class MockTransform(object):
 
@@ -1126,6 +1304,7 @@ class MockTransform(object):
             elif name == "name.~%s~" % child_id:
                 return True
         return False
+
 
 class MockEntry(object):
     def __init__(self):
