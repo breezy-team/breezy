@@ -140,7 +140,7 @@ class Branch(object):
         return control.open_branch(_unsupported)
 
     @staticmethod
-    def open_containing(url):
+    def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
         
         This probes for a branch at url, and searches upwards from there.
@@ -151,7 +151,8 @@ class Branch(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        control, relpath = bzrdir.BzrDir.open_containing(url)
+        control, relpath = bzrdir.BzrDir.open_containing(url,
+                                                         possible_transports)
         return control.open_branch(), relpath
 
     @staticmethod

@@ -2646,7 +2646,6 @@ class cmd_merge(Command):
             directory=None,
             ):
         from bzrlib.tag import _merge_tags_if_possible
-        other_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2662,20 +2661,35 @@ class cmd_merge(Command):
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored)
 
+        other_transport = None
+        other_revision_id = None
+        possible_transports = []
+        # The user may provide a bundle or branch as 'branch' We first try to
+        # identify a bundle, if it's not, we try to preserve connection used by
+        # the transport to access the branch.
         if branch is not None:
-            try:
-                mergeable = bundle.read_mergeable_from_url(
-                    branch)
-            except errors.NotABundle:
-                pass # Continue on considering this url a Branch
-            else:
-                if revision is not None:
-                    raise errors.BzrCommandError(
-                        'Cannot use -r with merge directives or bundles')
-                other_revision_id = mergeable.install_revisions(
-                    tree.branch.repository)
-                revision = [RevisionSpec.from_string(
-                    'revid:' + other_revision_id)]
+            url = urlutils.normalize_url(branch)
+            url, filename = urlutils.split(url, exclude_trailing_slash=False)
+            other_transport = transport.get_transport(url)
+            if filename:
+                try:
+                    read_bundle = bundle.read_mergeable_from_transport
+                    # There may be redirections but we ignore the intermediate
+                    # and final transports used
+                    mergeable, t = read_bundle(other_transport, filename)
+                except errors.NotABundle:
+                    # Continue on considering this url a Branch but adjust the
+                    # other_transport
+                    other_transport = other_transport.clone(filename)
+                else:
+                    if revision is not None:
+                        raise errors.BzrCommandError('Cannot use -r with merge'
+                                                     ' directives or bundles')
+                    other_revision_id = mergeable.install_revisions(
+                        tree.branch.repository)
+                    revision = [RevisionSpec.from_string(
+                        'revid:' + other_revision_id)]
+                possible_transports.append(other_transport)
 
         if revision is None \
                 or len(revision) < 1 or revision[0].needs_branch():
@@ -2688,7 +2702,8 @@ class cmd_merge(Command):
             else:
                 base = [None, None]
                 other = [branch, -1]
-            other_branch, path = Branch.open_containing(branch)
+            other_branch, path = Branch.open_containing(branch,
+                                                        possible_transports)
         else:
             if uncommitted:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
@@ -2697,11 +2712,13 @@ class cmd_merge(Command):
             if len(revision) == 1:
                 base = [None, None]
                 if other_revision_id is not None:
+                    # We merge from a bundle
                     other_branch = None
                     path = ""
                     other = None
                 else:
-                    other_branch, path = Branch.open_containing(branch)
+                    other_branch, path = Branch.open_containing(
+                        branch, possible_transports)
                     revno = revision[0].in_history(other_branch).revno
                     other = [branch, revno]
             else:
@@ -2709,9 +2726,11 @@ class cmd_merge(Command):
                 if None in revision:
                     raise errors.BzrCommandError(
                         "Merge doesn't permit empty revision specifier.")
-                base_branch, path = Branch.open_containing(branch)
+                base_branch, path = Branch.open_containing(branch,
+                                                           possible_transports)
                 branch1 = revision[1].get_branch() or branch
-                other_branch, path1 = Branch.open_containing(branch1)
+                other_branch, path1 = Branch.open_containing(
+                    branch1, possible_transports)
                 if revision[0].get_branch() is not None:
                     # then path was obtained from it, and is None.
                     path = path1
@@ -2719,6 +2738,7 @@ class cmd_merge(Command):
                 base = [branch, revision[0].in_history(base_branch).revno]
                 other = [branch1, revision[1].in_history(other_branch).revno]
 
+        # Remember where we merge from
         if ((tree.branch.get_parent() is None or remember) and
             other_branch is not None):
             tree.branch.set_parent(other_branch.base)
@@ -2736,7 +2756,8 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = _merge_helper(
-                    other, base, other_rev_id=other_revision_id,
+                    other, base, possible_transports,
+                    other_rev_id=other_revision_id,
                     check_clean=(not force),
                     merge_type=merge_type,
                     reprocess=reprocess,
@@ -3682,7 +3703,7 @@ class cmd_tags(Command):
 
 
 # command-line interpretation helper for merge-related commands
-def _merge_helper(other_revision, base_revision,
+def _merge_helper(other_revision, base_revision, possible_transports=None,
                   check_clean=True, ignore_zero=False,
                   this_dir=None, backup_files=False,
                   merge_type=None,
@@ -3749,7 +3770,7 @@ def _merge_helper(other_revision, base_revision,
         if other_rev_id is not None:
             merger.set_other_revision(other_rev_id, this_tree.branch)
         else:
-            merger.set_other(other_revision)
+            merger.set_other(other_revision, possible_transports)
         merger.pp.next_phase()
         merger.set_base(base_revision)
         if merger.base_rev_id == merger.other_rev_id:

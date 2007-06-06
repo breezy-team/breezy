@@ -52,13 +52,13 @@ from bzrlib import ui
 
 # TODO: Report back as changes are merged in
 
-def _get_tree(treespec, local_branch=None):
+def _get_tree(treespec, local_branch=None, possible_transports=None):
     from bzrlib import workingtree
     location, revno = treespec
     if revno is None:
         tree = workingtree.WorkingTree.open_containing(location)[0]
         return tree.branch, tree
-    branch = Branch.open_containing(location)[0]
+    branch = Branch.open_containing(location, possible_transports)[0]
     if revno == -1:
         revision_id = branch.last_revision()
     else:
@@ -206,7 +206,7 @@ class Merger(object):
             return
         self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
 
-    def set_other(self, other_revision):
+    def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
 
         This sets the other_tree, other_rev_id, other_basis attributes.
@@ -214,7 +214,8 @@ class Merger(object):
         :param other_revision: The [path, revision] list to merge from.
         """
         self.other_branch, self.other_tree = _get_tree(other_revision,
-                                                  self.this_branch)
+                                                       self.this_branch,
+                                                       possible_transports)
         if other_revision[1] == -1:
             self.other_rev_id = self.other_branch.last_revision()
             if self.other_rev_id is None:

@@ -575,11 +575,11 @@ class FtpServer(Server):
         """
         try:
             asyncore.loop(*args, **kwargs)
-            # FIXME: If we reach that point, we should raise an
-            # exception explaining that the 'count' parameter in
-            # setUp is too low or testers may wonder why their
-            # test just sits there waiting for a server that is
-            # already dead.
+            # FIXME: If we reach that point, we should raise an exception
+            # explaining that the 'count' parameter in setUp is too low or
+            # testers may wonder why their test just sits there waiting for a
+            # server that is already dead. Note that if the tester waits too
+            # long under pdb the server will also die.
         except select.error, e:
             if e.args[0] != errno.EBADF:
                 raise

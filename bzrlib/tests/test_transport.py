@@ -685,13 +685,22 @@ class TestReusedTransports(TestCase):
     """Tests for transport reuse"""
 
     def test_reuse_same_transport(self):
-        t = get_transport('http://foo/')
-        t2 = get_transport('http://foo/', possible_transports=[t])
-        self.assertIs(t, t2)
+        t1 = get_transport('http://foo/')
+        t2 = get_transport('http://foo/', possible_transports=[t1])
+        self.assertIs(t1, t2)
+
+        # Also check that final '/' are handled correctly
+        t3 = get_transport('http://foo/path/')
+        t4 = get_transport('http://foo/path', possible_transports=[t3])
+        self.assertIs(t3, t4)
+
+        t3 = get_transport('http://foo/path')
+        t4 = get_transport('http://foo/path/', possible_transports=[t3])
+        self.assertIs(t3, t4)
 
     def test_don_t_reuse_different_transport(self):
-        t = get_transport('http://foo/')
-        t2 = get_transport('http://bar/', possible_transports=[t])
+        t = get_transport('http://foo/path')
+        t2 = get_transport('http://bar/path', possible_transports=[t])
         self.assertIsNot(t, t2)
 
 

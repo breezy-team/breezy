@@ -81,5 +81,8 @@ class TestCaseWithConnectionHookedTransport(TestCaseWithFTPServer):
         self.connections = []
 
     def set_connection_hook(self, transport, connection, credentials):
+        # Note: uncomment the following line and use 'bt' under pdb, here is
+        # the extra connection.
+        # import pdb; pdb.set_trace()
         self.connections.append(connection)
 

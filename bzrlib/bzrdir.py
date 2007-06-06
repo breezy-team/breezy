@@ -588,13 +588,14 @@ class BzrDir(object):
         raise NotImplementedError(self.open_branch)
 
     @staticmethod
-    def open_containing(url):
+    def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
         
         :param url: url to search from.
         See open_containing_from_transport for more detail.
         """
-        return BzrDir.open_containing_from_transport(get_transport(url))
+        transport = get_transport(url, possible_transports)
+        return BzrDir.open_containing_from_transport(transport)
     
     @staticmethod
     def open_containing_from_transport(a_transport):

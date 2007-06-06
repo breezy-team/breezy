@@ -1028,6 +1028,8 @@ class Transport(object):
         # several questions about the transport.
         return False
 
+    def _reuse_for(self, other_base):
+        return None
 
 class ConnectedTransport(Transport):
     """A transport connected to a remote server.
@@ -1242,18 +1244,62 @@ class ConnectedTransport(Transport):
         (connection, credentials) = self._connection[0]
         return self._connection[0][1]
 
+    def _reuse_for(self, other_base):
+        """Returns a transport sharing the same connection if possible.
+
+        Note: we share the connection if the expected credentials are the
+        same: (host, port, user). Some protocols may disagree and redefine the
+        criteria in daughter classes.
+
+        Note: we don't compare the passwords here because other_base may have
+        been obtained from an existing transport.base which do not mention the
+        password.
+
+        :param other_base: the URL we want to share the connection with.
+
+        :return: A new transport or None if the connection cannot be shared.
+        """
+        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        transport = None
+        # Don't compare passwords, they may be absent from other_base
+        if (scheme,
+            user,
+            host, port) == (self._scheme,
+                            self._user,
+                            self._host, self._port):
+            if not path.endswith('/'):
+                # This normally occurs at __init__ time, but it's easier to do
+                # it now to avoid positives (creating two transports for the
+                # same base).
+                path += '/'
+            if self._path  == path:
+                # shortcut, it's really the same transport
+                return self
+            # We don't call clone here because the intent is different: we
+            # build a new transport on a different base (which may be totally
+            # unrelated) but we share the connection.
+            transport = self.__class__(other_base, self)
+        return transport
+
+
 
 # jam 20060426 For compatibility we copy the functions here
 # TODO: The should be marked as deprecated
 urlescape = urlutils.escape
 urlunescape = urlutils.unescape
-_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+# We try to recognize an url lazily (ignoring user, password, etc)
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
 
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
-    :param transports: optional reusable transports list.
+
+    :param transports: optional reusable transports list. If not None, created
+    transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+    possible_transports.
     """
     if base is None:
         base = '.'
@@ -1281,26 +1327,45 @@ def get_transport(base, possible_transports=None):
     transport = None
     if possible_transports:
         for t in possible_transports:
-            if t.base == base:
-                transport = t
-                break
-    if transport is None:
-        for proto, factory_list in transport_list_registry.iteritems():
-            if proto is not None and base.startswith(proto):
-                transport, last_err = _try_transport_factories(base,
-                                                               factory_list)
-                if transport:
-                    break
-    if transport is None:
-        # We tried all the different protocols, now try one last
-        # time as a local protocol
-        base = convert_path_to_url(base, 'Unsupported protocol: %s')
+            t_same_connection = t._reuse_for(base)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
 
-        # The default handler is the filesystem handler, stored
-        # as protocol None
-        factory_list = transport_list_registry.get(None)
-        transport, last_err = _try_transport_factories(base, factory_list)
+    for proto, factory_list in transport_list_registry.iteritems():
+        if proto is not None and base.startswith(proto):
+            transport, last_err = _try_transport_factories(base, factory_list)
+            if transport:
+                if possible_transports:
+                    assert transport not in possible_transports
+                    possible_transports.append(transport)
+                return transport
+
+    # We tried all the different protocols, now try one last
+    # time as a local protocol
+    base = convert_path_to_url(base, 'Unsupported protocol: %s')
+
+    # The default handler is the filesystem handler, stored
+    # as protocol None
+    factory_list = transport_list_registry.get(None)
+    transport, last_err = _try_transport_factories(base, factory_list)
+
     return transport
+
+
+def _try_transport_factories(base, factory_list):
+    last_err = None
+    for factory in factory_list:
+        try:
+            return factory.get_obj()(base), None
+        except errors.DependencyNotPresent, e:
+            mutter("failed to instantiate transport %r for %r: %r" %
+                    (factory, base, e))
+            last_err = e
+            continue
+    return None, last_err
 
 
 def do_catching_redirections(action, transport, redirected):
@@ -1343,19 +1408,6 @@ def do_catching_redirections(action, transport, redirected):
         # were trying to act upon when the redirection loop
         # occurred).
         raise errors.TooManyRedirections
-
-
-def _try_transport_factories(base, factory_list):
-    last_err = None
-    for factory in factory_list:
-        try:
-            return factory.get_obj()(base), None
-        except errors.DependencyNotPresent, e:
-            mutter("failed to instantiate transport %r for %r: %r" %
-                    (factory, base, e))
-            last_err = e
-            continue
-    return None, last_err
 
 
 class Server(object):
