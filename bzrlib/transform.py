@@ -51,16 +51,21 @@ def unique_add(map, key, value):
 
 
 class _TransformResults(object):
-    def __init__(self, modified_paths):
+    def __init__(self, modified_paths, rename_count):
         object.__init__(self)
         self.modified_paths = modified_paths
+        self.rename_count = rename_count
 
 
 class TreeTransform(object):
     """Represent a tree transformation.
     
     This object is designed to support incremental generation of the transform,
-    in any order.  
+    in any order.
+
+    However, it gives optimum performance when parent directories are created
+    before their contents.  The transform is then able to put child files
+    directly in their parent directory, avoiding later renames.
     
     It is easy to produce malformed transforms, but they are generally
     harmless.  Attempting to apply a malformed transform will cause an
@@ -84,7 +89,8 @@ class TreeTransform(object):
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
         
-        Use TreeTransform.finalize() to release the lock
+        Use TreeTransform.finalize() to release the lock (can be omitted if
+        TreeTransform.apply() called).
         """
         object.__init__(self)
         self._tree = tree
@@ -106,6 +112,15 @@ class TreeTransform(object):
         self._new_name = {}
         self._new_parent = {}
         self._new_contents = {}
+        # A mapping of transform ids to their limbo filename
+        self._limbo_files = {}
+        # A mapping of transform ids to a set of the transform ids of children
+        # that their limbo directory has
+        self._limbo_children = {}
+        # Map transform ids to maps of child filename to child transform id
+        self._limbo_children_names = {}
+        # List of transform ids that need to be renamed from limbo into place
+        self._needs_rename = set()
         self._removed_contents = set()
         self._new_executability = {}
         self._new_reference_revision = {}
@@ -115,13 +130,14 @@ class TreeTransform(object):
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        self._realpaths = {}
         # Cache of realpath results, to speed up canonical_path
-        self._relpaths = {}
+        self._realpaths = {}
         # Cache of relpath results, to speed up canonical_path
+        self._relpaths = {}
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
+        self.rename_count = 0
 
     def __get_root(self):
         return self._new_root
@@ -129,12 +145,18 @@ class TreeTransform(object):
     root = property(__get_root)
 
     def finalize(self):
-        """Release the working tree lock, if held, clean up limbo dir."""
+        """Release the working tree lock, if held, clean up limbo dir.
+
+        This is required if apply has not been invoked, but can be invoked
+        even after apply.
+        """
         if self._tree is None:
             return
         try:
-            for trans_id, kind in self._new_contents.iteritems():
-                path = self._limbo_name(trans_id)
+            entries = [(self._limbo_name(t), t, k) for t, k in
+                       self._new_contents.iteritems()]
+            entries.sort(reverse=True)
+            for path, trans_id, kind in entries:
                 if kind == "directory":
                     os.rmdir(path)
                 else:
@@ -165,8 +187,28 @@ class TreeTransform(object):
         """Change the path that is assigned to a transaction id."""
         if trans_id == self._new_root:
             raise CantMoveRoot
+        previous_parent = self._new_parent.get(trans_id)
+        previous_name = self._new_name.get(trans_id)
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
+        if (trans_id in self._limbo_files and
+            trans_id not in self._needs_rename):
+            self._rename_in_limbo([trans_id])
+            self._limbo_children[previous_parent].remove(trans_id)
+            del self._limbo_children_names[previous_parent][previous_name]
+
+    def _rename_in_limbo(self, trans_ids):
+        """Fix limbo names so that the right final path is produced.
+
+        This means we outsmarted ourselves-- we tried to avoid renaming
+        these files later by creating them with their final names in their
+        final parents.  But now the previous name or parent is no longer
+        suitable, so we have to rename them.
+        """
+        for trans_id in trans_ids:
+            old_path = self._limbo_files[trans_id]
+            new_path = self._limbo_name(trans_id, from_scratch=True)
+            os.rename(old_path, new_path)
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -330,6 +372,13 @@ class TreeTransform(object):
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
+        children = self._limbo_children.get(trans_id)
+        # if this is a limbo directory with children, move them before removing
+        # the directory
+        if children is not None:
+            self._rename_in_limbo(children)
+            del self._limbo_children[trans_id]
+            del self._limbo_children_names[trans_id]
         delete_any(self._limbo_name(trans_id))
 
     def delete_contents(self, trans_id):
@@ -734,6 +783,8 @@ class TreeTransform(object):
         
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
+
+        If apply succeeds, finalize is not necessary.
         """
         conflicts = self.find_conflicts()
         if len(conflicts) != 0:
@@ -751,11 +802,41 @@ class TreeTransform(object):
         self._tree.apply_inventory_delta(inventory_delta)
         self.__done = True
         self.finalize()
-        return _TransformResults(modified_paths)
+        return _TransformResults(modified_paths, self.rename_count)
 
-    def _limbo_name(self, trans_id):
+    def _limbo_name(self, trans_id, from_scratch=False):
         """Generate the limbo name of a file"""
-        return pathjoin(self._limbodir, trans_id)
+        if not from_scratch:
+            limbo_name = self._limbo_files.get(trans_id)
+            if limbo_name is not None:
+                return limbo_name
+        parent = self._new_parent.get(trans_id)
+        # if the parent directory is already in limbo (e.g. when building a
+        # tree), choose a limbo name inside the parent, to reduce further
+        # renames.
+        use_direct_path = False
+        if self._new_contents.get(parent) == 'directory':
+            filename = self._new_name.get(trans_id)
+            if filename is not None:
+                if parent not in self._limbo_children:
+                    self._limbo_children[parent] = set()
+                    self._limbo_children_names[parent] = {}
+                    use_direct_path = True
+                # the direct path can only be used if no other file has
+                # already taken this pathname, i.e. if the name is unused, or
+                # if it is already associated with this trans_id.
+                elif (self._limbo_children_names[parent].get(filename)
+                      in (trans_id, None)):
+                    use_direct_path = True
+        if use_direct_path:
+            limbo_name = pathjoin(self._limbo_files[parent], filename)
+            self._limbo_children[parent].add(trans_id)
+            self._limbo_children_names[parent][filename] = trans_id
+        else:
+            limbo_name = pathjoin(self._limbodir, trans_id)
+            self._needs_rename.add(trans_id)
+        self._limbo_files[trans_id] = limbo_name
+        return limbo_name
 
     def _apply_removals(self, inv, inventory_delta):
         """Perform tree operations that remove directory/inventory names.
@@ -781,6 +862,8 @@ class TreeTransform(object):
                     except OSError, e:
                         if e.errno != errno.ENOENT:
                             raise
+                    else:
+                        self.rename_count += 1
                 if trans_id in self._removed_id:
                     if trans_id == self._new_root:
                         file_id = self._tree.inventory.root.file_id
@@ -812,12 +895,15 @@ class TreeTransform(object):
                 if trans_id in self._new_contents or \
                     self.path_changed(trans_id):
                     full_path = self._tree.abspath(path)
-                    try:
-                        os.rename(self._limbo_name(trans_id), full_path)
-                    except OSError, e:
-                        # We may be renaming a dangling inventory id
-                        if e.errno != errno.ENOENT:
-                            raise
+                    if trans_id in self._needs_rename:
+                        try:
+                            os.rename(self._limbo_name(trans_id), full_path)
+                        except OSError, e:
+                            # We may be renaming a dangling inventory id
+                            if e.errno != errno.ENOENT:
+                                raise
+                        else:
+                            self.rename_count += 1
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                         del self._new_contents[trans_id]
@@ -1151,9 +1237,9 @@ def _build_tree(tree, wt):
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     if tree.inventory.root is not None:
-        # this is kindof a hack: we should be altering the root 
-        # as partof the regular tree shape diff logic.
-        # the conditional test hereis to avoid doing an
+        # This is kind of a hack: we should be altering the root
+        # as part of the regular tree shape diff logic.
+        # The conditional test here is to avoid doing an
         # expensive operation (flush) every time the root id
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
@@ -1219,10 +1305,11 @@ def _build_tree(tree, wt):
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
             pass
-        tt.apply()
+        result = tt.apply()
     finally:
         tt.finalize()
         top_pb.finished()
+    return result
 
 
 def _reparent_children(tt, old_parent, new_parent):
@@ -1420,8 +1507,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            _alter_files(working_tree, target_tree, tt, child_pb,
-                         filenames, backups)
+            merge_modified = _alter_files(working_tree, target_tree, tt,
+                                          child_pb, filenames, backups)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1439,7 +1526,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             warning(conflict)
         pp.next_phase()
         tt.apply()
-        working_tree.set_merge_modified({})
+        working_tree.set_merge_modified(merge_modified)
     finally:
         target_tree.unlock()
         tt.finalize()
@@ -1469,9 +1556,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 if kind[0] == 'file' and (backups or kind[1] is None):
                     wt_sha1 = working_tree.get_file_sha1(file_id)
                     if merge_modified.get(file_id) != wt_sha1:
-                        # acquire the basis tree lazyily to prevent the expense
-                        # of accessing it when its not needed ? (Guessing, RBC,
-                        # 200702)
+                        # acquire the basis tree lazily to prevent the
+                        # expense of accessing it when it's not needed ?
+                        # (Guessing, RBC, 200702)
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
@@ -1505,6 +1592,17 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 elif kind[1] == 'file':
                     tt.create_file(target_tree.get_file_lines(file_id),
                                    trans_id, mode_id)
+                    if basis_tree is None:
+                        basis_tree = working_tree.basis_tree()
+                        basis_tree.lock_read()
+                    new_sha1 = target_tree.get_file_sha1(file_id)
+                    if (file_id in basis_tree and new_sha1 ==
+                        basis_tree.get_file_sha1(file_id)):
+                        if file_id in merge_modified:
+                            del merge_modified[file_id]
+                    else:
+                        merge_modified[file_id] = new_sha1
+
                     # preserve the execute bit when backing up
                     if keep_content and executable[0] == executable[1]:
                         tt.set_executability(executable[1], trans_id)
@@ -1523,6 +1621,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
+    return merge_modified
 
 
 def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
