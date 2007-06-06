@@ -187,7 +187,7 @@ to it will be recorded by the system::
       hello.txt
 
 
-If you add the wrong file, simply use **bzr remove** to make it
+If you add the wrong file, simply use ``bzr remove`` to make it
 unversioned again.  This does not delete the working copy in this case,
 though it may in others [2]_.
 
@@ -202,7 +202,7 @@ Branch locations
 All history is stored in a branch, which is just an on-disk directory
 containing control files.  By default there is no separate repository or
 database as used in svn or svk. You can choose to create a repository if
-you want to (see the **bzr init-repo** command). You may wish to do this
+you want to (see the ``bzr init-repo`` command). You may wish to do this
 if you have very large branches, or many branches of a moderately sized
 project.
 
@@ -243,7 +243,7 @@ working directory since the last revision::
     modified:
        foo
 
-**bzr status** hides "boring" files that are either unchanged or ignored.
+``bzr status`` hides "boring" files that are either unchanged or ignored.
 The status command can optionally be given the name of some files or
 directories to check.
 
@@ -332,9 +332,9 @@ Removing uncommitted changes
 
 If you've made some changes and don't want to keep them, use the
 **revert** command to go back to the previous head version.  It's a good
-idea to use **bzr diff** first to see what will be removed. By default the
+idea to use ``bzr diff`` first to see what will be removed. By default the
 revert command reverts the whole tree; if file or directory names are
-given then only those ones will be affected. **revert** also clears the
+given then only those ones will be affected. ``bzr revert`` also clears the
 list of pending merges revisions.
 
 Ignoring files
@@ -364,7 +364,7 @@ and HTML files in ``doc/``::
     doc/*.html
 
 To get a list of which files are ignored and what pattern they matched,
-use ''bzr ignored''::
+use ``bzr ignored``::
 
     % bzr ignored
     config.h                 ./config.h
@@ -398,11 +398,11 @@ Examining history
 bzr log
 -------
 
-The **bzr log** command shows a list of previous revisions. The **bzr log
---forward** command does the same in chronological order to get most
+The ``bzr log`` command shows a list of previous revisions. The ``bzr log
+--forward`` command does the same in chronological order to get most
 recent revisions printed at last.
 
-As with bzr diff, bzr log supports the -r argument::
+As with ``bzr diff``, ``bzr log`` supports the ``-r`` argument::
 
     % bzr log -r 1000..          # Revision 1000 and everything after it
     % bzr log -r ..1000          # Everything up to and including r1000
@@ -413,7 +413,7 @@ As with bzr diff, bzr log supports the -r argument::
 Branch statistics
 =================
 
-The **bzr info** command shows some summary information about the working
+The ``bzr info`` command shows some summary information about the working
 tree and the branch history.  
 
 
@@ -439,9 +439,9 @@ Deleting and removing files
 
 You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
-do **cvs remove**.
+do ``cvs remove``.
 
-    **bzr remove** makes the file un-versioned, but may or may not delete
+    ``bzr remove`` makes the file un-versioned, but may or may not delete
     the working copy [2]_.  This is useful when you add the wrong file,
     or decide that a file should actually not be versioned. 
 
@@ -458,7 +458,7 @@ do **cvs remove**.
     unknown:
       hello.txt
 
-If you remove the wrong file by accident, you can use **bzr revert** to
+If you remove the wrong file by accident, you can use ``bzr revert`` to
 restore it.
 
 
@@ -500,8 +500,8 @@ branch.
 Merging from related branches
 =============================
 
-If two branches have diverged (both have unique changes) then **bzr
-merge** is the appropriate command to use. Merge will automatically
+If two branches have diverged (both have unique changes) then ``bzr
+merge`` is the appropriate command to use. Merge will automatically
 calculate the changes that exist in the branch you're merging from that
 are not in your branch and attempt to apply them in your branch.
 
@@ -548,7 +548,7 @@ the following three methods:
   (The destination directory must already exist unless the
   ``--create-prefix`` option is used.)
 
-* Another option is the rspush plugin that comes with BzrTools, which
+* Another option is the ``rspush`` plugin that comes with BzrTools, which
   uses rsync to push the changes to the revision history and the working
   tree.
 
@@ -574,8 +574,8 @@ To move your changes from one tree to another, use
 
 This will apply all of the uncommitted changes you made in OLDDIR to NEWDIR.
 It will not apply committed changes, even if they could be applied to NEWDIR
-with a regular merge.  The changes will remain in OLDDIR, but you can use **bzr
-revert OLDDIR** to remove them, once you're satisfied with NEWDIR.
+with a regular merge.  The changes will remain in OLDDIR, but you can use ``bzr
+revert OLDDIR`` to remove them, once you're satisfied with NEWDIR.
 
 NEWDIR does not have to be a copy of OLDDIR, but they should be related.
 The more different they are, the greater the chance of conflicts.
