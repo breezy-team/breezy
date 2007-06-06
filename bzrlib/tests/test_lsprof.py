@@ -25,6 +25,10 @@ from bzrlib.lsprof import profile
 from bzrlib.tests import TestCaseInTempDir
 
 
+_TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
+    "Inline(ms) module:lineno(function)\n"
+
+
 def _junk_callable():
     "A simple routine to profile."
     result = sorted(['abc', 'def', 'ghi'])
@@ -50,13 +54,18 @@ class TestStatsSave(TestCaseInTempDir):
         f = self._tempfile("txt")
         self.stats.save(f)
         lines = open(f).readlines()
-        self.assertEqual(lines[0], "   CallCount    Recursive    Total(ms)   "
-            "Inline(ms) module:lineno(function)\n")
+        self.assertEqual(lines[0], _TXT_HEADER)
 
     def test_stats_save_to_callgrind(self):
         f = self._tempfile("callgrind")
         self.stats.save(f)
         lines = open(f).readlines()
+        self.assertEqual(lines[0], "events: Ticks\n")
+        # Test explicit format nommination
+        f2 = self._tempfile("txt")
+        self.stats.save(f2, format="callgrind")
+        lines2 = open(f2).readlines()
+        self.assertEqual(lines2[0], "events: Ticks\n")
 
     def test_stats_save_to_pickle(self):
         f = self._tempfile("pkl")
