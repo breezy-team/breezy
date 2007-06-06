@@ -934,6 +934,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         except OSError:
             self.fail('Tried to remove parent before child1')
 
+    def test_cancel_with_cancelled_child_should_succeed(self):
+        transform, root = self.get_transform()
+        parent = transform.new_directory('parent', root)
+        child = transform.new_directory('child', parent)
+        transform.cancel_creation(child)
+        transform.cancel_creation(parent)
+        transform.finalize()
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):

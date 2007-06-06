@@ -206,6 +206,9 @@ class TreeTransform(object):
         suitable, so we have to rename them.
         """
         for trans_id in trans_ids:
+            if trans_id not in self._new_contents:
+                del self._limbo_files[trans_id]
+                continue
             old_path = self._limbo_files[trans_id]
             new_path = self._limbo_name(trans_id, from_scratch=True)
             os.rename(old_path, new_path)
