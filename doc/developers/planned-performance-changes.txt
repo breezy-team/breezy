@@ -54,7 +54,8 @@ thus do not pose a significant migration issue.
 
  * Use the _iter_changes API to perform merges. This is a small change that may
    remove the need to use inventories in merge, making a dramatic difference to
-   merge performance.
+   merge performance once the tree shape comparison optimisations are
+   implemented.
 
  * Create a network-efficient revision graph API. This is the logic at the
    start of push and pull operations, which currently scales O(graph size).
@@ -120,9 +121,11 @@ Interoperable disk changes
    repositories.
 
  * Delta storage optimisation. We plan to change the delta storage logic to use
-   a binary delta like xdelta rather than using ancestry-graph driven line
-   based deltas. Line based deltas will still be created for cached
-   annotations.
+   a binary delta like xdelta rather than using line based deltas from python.
+   These binary deltas could be done along ancestry ordering, or other
+   arbitrary patterns chosen for their intended use. Line based deltas will
+   still be created for cached annotations. This is still under some discussion.
+   http://bazaar-vcs.org/PerformanceRoadmap/Xdelta
 
  * Greatest distance from origin cache. This is a possible change to introduce,
    but it may be unnecessary - listed here for completeness till it has been
