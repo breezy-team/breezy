@@ -57,6 +57,9 @@ IN DEVELOPMENT
     * Merge no longer fails when a file is renamed in one tree and deleted
       in the other. (Aaron Bentley, #110279)
 
+    * Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
+      (Daniel Watkins, #111958)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
