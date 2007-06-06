@@ -29,6 +29,10 @@ IN DEVELOPMENT
       understanding what changes have occurred
       (John Arbash Meinel, #83887)
 
+    * TreeTransform avoids many renames when contructing large trees,
+      improving speed.  3.25x speedups have been observed for construction of
+      kernel-sized-trees, and checkouts are 1.28x faster.  (Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
@@ -49,6 +53,9 @@ IN DEVELOPMENT
 
     * WorkingTree.remove works correctly with tree references, and when pwd is
       not the tree root. (Aaron Bentley)
+
+    * Merge no longer fails when a file is renamed in one tree and deleted
+      in the other. (Aaron Bentley, #110279)
 
 bzr 0.16  2007-05-07
   
