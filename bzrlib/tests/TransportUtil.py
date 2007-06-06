@@ -55,17 +55,27 @@ class TestCaseWithConnectionHookedTransport(TestCaseWithFTPServer):
 
     def setUp(self):
         super(TestCaseWithConnectionHookedTransport, self).setUp()
+        self._hooks_installed = False
+
+        def cleanup():
+            # Be nice and reset hooks if the test writer forgot about them
+            if self._hooks_installed:
+                self.reset_hooks()
+
+        self.addCleanup(cleanup)
+        self.connections = []
+
+    def install_hooks(self):
         ConnectionHookedTransport.hooks.install_hook('_set_connection',
                                                      self.set_connection_hook)
         # Make our instrumented transport the default ftp transport
         register_transport('ftp://', ConnectionHookedTransport)
+        self._hooks_installed = True
 
-        def cleanup():
-            InstrumentedTransport.hooks = TransportHooks()
-            unregister_transport('ftp://', ConnectionHookedTransport)
-
-        self.addCleanup(cleanup)
-        self.connections = []
+    def reset_hooks(self):
+        InstrumentedTransport.hooks = TransportHooks()
+        unregister_transport('ftp://', ConnectionHookedTransport)
+        self._hooks_installed = False
 
     def reset_connections(self):
         self.connections = []

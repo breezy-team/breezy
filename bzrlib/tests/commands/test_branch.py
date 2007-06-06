@@ -24,8 +24,8 @@ class TestBranch(TestCaseWithConnectionHookedTransport):
     def setUp(self):
         super(TestBranch, self).setUp()
         self.make_branch_and_tree('branch')
-        # make_branch_and_tree create one connection
-        self.reset_connections()
+        self.install_hooks()
+        self.addCleanup(self.reset_hooks)
 
     def test_branch_remote_local(self):
         cmd = cmd_branch()
