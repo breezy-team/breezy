@@ -1792,7 +1792,6 @@ class DirState(object):
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
         """ 
-        self._validate()
         # TODO: generate a list of parent indexes to preserve to save 
         # processing specific parent trees. In the common case one tree will
         # be preserved - the left most parent.
@@ -1923,7 +1922,6 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = id_index
-        self._validate()
 
     def _sort_entries(self, entry_list):
         """Given a list of entries, sort them into the right order.

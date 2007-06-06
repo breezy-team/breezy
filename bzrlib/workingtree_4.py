@@ -1060,10 +1060,8 @@ class WorkingTree4(WorkingTree3):
             except (errors.NoSuchRevision, errors.RevisionNotPresent):
                 revtree = None
             trees.append((revision_id, revtree))
-        self.current_dirstate()._validate()
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-        self.current_dirstate()._validate()
 
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
@@ -1074,7 +1072,6 @@ class WorkingTree4(WorkingTree3):
             parent tree - i.e. a ghost.
         """
         dirstate = self.current_dirstate()
-        dirstate._validate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
@@ -1090,11 +1087,8 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
-        dirstate._validate()
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        dirstate._validate()
         self._make_dirty(reset_inventory=False)
-        dirstate._validate()
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
@@ -1283,7 +1277,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
-        wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 if branch.repository.supports_rich_root():
@@ -1291,7 +1284,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-                wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)
             wt.flush()
             basis = wt.basis_tree()
