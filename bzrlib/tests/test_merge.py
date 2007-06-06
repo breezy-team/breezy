@@ -250,7 +250,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertFalse('merge4' in [x[0] for x in 
                         merge_type_option.iter_switches()])
 
-    def test_merge_move_deleted(self):
+    def test_merge_other_moves_we_deleted(self):
         tree_a = self.make_branch_and_tree('A')
         tree_a.lock_write()
         self.addCleanup(tree_a.unlock)
