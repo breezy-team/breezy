@@ -145,8 +145,8 @@ guess that Bazaar makes, then three options exist:
 
 
  #. Overriding the two previous options by setting the global environment
-    variable ``$BZREMAIL`` or ``$EMAIL`` (``$BZREMAIL`` will take precedence) 
-    to your full email address.
+    variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
+    precedence) to your full email address.
 
 .. [1] On Windows, the users configuration files can be found in the
    application data directory. So instead of ``~/.bazaar/branch.conf``
