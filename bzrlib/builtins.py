@@ -307,7 +307,7 @@ class cmd_revision_info(Command):
         if len(revs) == 0:
             raise errors.BzrCommandError('You must supply a revision identifier')
 
-        b = WorkingTree.open_containing(u'.')[0].branch
+        b = Branch.open_containing(u'.')[0]
 
         for rev in revs:
             revinfo = rev.in_history(b)
