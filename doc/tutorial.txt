@@ -129,16 +129,19 @@ guess that Bazaar makes, then three options exist:
  
     % bzr whoami --branch "Your Name <email@example.com>"
  
- #. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by adding the following lines.
-    Please note that  ``[DEFAULT]`` is case sensitive::
-    [DEFAULT]
-    email= Your Name <email@isp.com>
- 
-    As above, you can override this settings on a branch by branch basis by
-    creating a branch section in ``~/.bazaar/locations.conf`` and adding the
-    following lines::
-    [/the/path/to/the/branch]
-    email=Your Name <email@isp.com>
+ #. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
+    adding the following lines.  Please note that  ``[DEFAULT]`` is case
+    sensitive::
+
+        [DEFAULT]
+        email=Your Name <email@isp.com>
+
+    As above, you can override this settings on a branch by branch basis
+    by creating a branch section in ``~/.bazaar/locations.conf`` and
+    adding the following lines::
+
+        [/the/path/to/the/branch]
+        email=Your Name <email@isp.com>
 
 
  #. Overriding the two previous options by setting the global environment
