@@ -265,19 +265,20 @@ standard unified diff.  This can be piped through many programs such as
     +hello world
 
 
-With the ''-r'' option, the tree is compared to an earlier revision, or
+With the ``-r`` option, the tree is compared to an earlier revision, or
 the differences between two versions are shown::
 
     % bzr diff -r 1000..          # everything since r1000
     % bzr diff -r 1000..1100      # changes from 1000 to 1100
 
-The --diff-options option causes bzr to run the external diff program,
+The ``--diff-options`` option causes bzr to run the external diff program,
 passing options.  For example::
 
     % bzr diff --diff-options --side-by-side foo
 
-Some projects prefer patches to show a prefix at the start of the path for
-old and new files.  The --prefix option can be used to provide such a prefix. 
+Some projects prefer patches to show a prefix at the start of the path
+for old and new files.  The ``--prefix`` option can be used to provide
+such a prefix. 
 As a shortcut, ``bzr diff -p1`` produces a form that works with the 
 command ``patch -p1``.
 
@@ -293,7 +294,7 @@ bzr commit
 The **commit** command takes a message describing the changes in the
 revision.  It also records your userid, the current time and timezone, and
 the inventory and contents of the tree.  The commit message is specified
-by the ''-m'' or ''--message'' option. You can enter a multi-line commit
+by the ``-m`` or ``--message`` option. You can enter a multi-line commit
 message; in most shells you can enter this just by leaving the quotes open
 at the end of the line.
 
@@ -301,7 +302,7 @@ at the end of the line.
 
     % bzr commit -m "added my first file"
 
-You can also use the -F option to take the message from a file.  Some
+You can also use the ``-F`` option to take the message from a file.  Some
 people like to make notes for a commit message while they work, then
 review the diff to make sure they did what they said they did.  (This file
 can also be useful when you pick up your work after a break.)
@@ -347,7 +348,7 @@ Many source trees contain some files that do not need to be versioned,
 such as editor backups, object or bytecode files, and built programs.  You
 can simply not add them, but then they'll always crop up as unknown files.
 You can also tell bzr to ignore these files by adding them to a file
-called ''.bzrignore'' at the top of the tree.
+called ``.bzrignore`` at the top of the tree.
 
 This file contains a list of file wildcards (or "globs"), one per line.
 Typical contents are like this::
@@ -360,7 +361,7 @@ Typical contents are like this::
 If a glob contains a slash, it is matched against the whole path from the
 top of the tree; otherwise it is matched against only the filename.  So
 the previous example ignores files with extension ``.o`` in all
-subdirectories, but this example ignores only config.h at the top level
+subdirectories, but this example ignores only ``config.h`` at the top level
 and HTML files in ``doc/``::
 
     ./config.h
