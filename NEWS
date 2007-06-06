@@ -54,6 +54,9 @@ IN DEVELOPMENT
     * WorkingTree.remove works correctly with tree references, and when pwd is
       not the tree root. (Aaron Bentley)
 
+    * Merge no longer fails when a file is renamed in one tree and deleted
+      in the other. (Aaron Bentley, #110279)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
