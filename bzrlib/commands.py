@@ -540,15 +540,18 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     if filename is None:
         stats.pprint()
     else:
-        outfile = open(filename, 'w')
-        if filename.endswith(".callgrind"):
-            stats.calltree(outfile)
-        elif filename.endswith(".txt"):
-            stats.pprint(file=outfile)
-        else:
-            stats.freeze()
-            cPickle.dump(stats, outfile, 2)
-        outfile.close()
+        stats.save(filename)
+        outfile = open(filename, 'wb')
+        try:
+            if filename.endswith(".callgrind"):
+                stats.calltree(outfile)
+            elif filename.endswith(".txt"):
+                stats.pprint(file=outfile)
+            else:
+                stats.freeze()
+                cPickle.dump(stats, outfile, 2)
+        finally:
+            outfile.close()
         print 'Profile data written to %r.' % filename
     return ret
 

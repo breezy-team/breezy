@@ -3,6 +3,8 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+import cPickle
+import os
 import sys
 import thread
 import threading
@@ -103,6 +105,32 @@ class Stats(object):
     def calltree(self, file):
         """Output profiling data in calltree format (for KCacheGrind)."""
         _CallTreeFilter(self.data).output(file)
+
+    def save(self, filename, format=None):
+        """Save profiling data to a file.
+
+        :param filename: the name of the output file
+        :param format: 'txt' for a text representation;
+            'callgrind' for calltree format;
+            otherwise a pickled Python object. A format of None indicates
+            that the format to use is to be found from the extension of
+            filename.
+        """
+        if format is None:
+            ext = os.path.splitext(filename)[1]
+            if len(ext) > 1:
+                format = ext[1:]
+        outfile = open(filename, 'wb')
+        try:
+            if format == "callgrind":
+                self.calltree(outfile)
+            elif format == "txt":
+                self.pprint(file=outfile)
+            else:
+                self.freeze()
+                cPickle.dump(self, outfile, 2)
+        finally:
+            outfile.close()
 
 
 class _CallTreeFilter(object):
