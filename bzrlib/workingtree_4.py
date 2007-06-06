@@ -472,6 +472,7 @@ class WorkingTree4(WorkingTree3):
 
     @needs_read_lock
     def id2path(self, file_id):
+        "Convert a file-id to a path."
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
@@ -481,16 +482,22 @@ class WorkingTree4(WorkingTree3):
         return path_utf8.decode('utf8')
 
     if not osutils.supports_executable():
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
     else:
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             if not path:
                 file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
@@ -530,12 +537,13 @@ class WorkingTree4(WorkingTree3):
                 # path is missing on disk.
                 continue
 
-    @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
 
         This is always the actual kind that's on disk, regardless of what it
         was added as.
+
+        Note: The caller is expected to take a read-lock before calling this.
         """
         relpath = self.id2path(file_id)
         assert relpath != None, \
