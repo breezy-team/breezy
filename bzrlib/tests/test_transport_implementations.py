@@ -962,18 +962,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        # This should be:  but SSH still connects on construction. No COOKIE!
-        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
-        try:
-            t = get_transport(url)
-            t.get('.bzr/branch')
-        except (ConnectionError, NoSuchFile), e:
-            pass
-        except (Exception), e:
-            self.fail('Wrong exception thrown (%s.%s): %s' 
-                        % (e.__class__.__module__, e.__class__.__name__, e))
-        else:
-            self.fail('Did not get the expected ConnectionError or NoSuchFile.')
+        t = get_transport(url)
+        self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing

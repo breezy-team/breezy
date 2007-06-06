@@ -104,16 +104,6 @@ class SFTPLockTests (TestCaseWithSFTPServer):
         l.unlock()
         l2.unlock()
 
-    def test_multiple_connections(self):
-        t = self.get_transport()
-        self.assertTrue('sftpserver - new connection' in self.get_server().logs)
-        self.get_server().logs = []
-        # The second request should reuse the first connection
-        # SingleListener only allows for a single connection,
-        # So the next line fails unless the connection is reused
-        t2 = self.get_transport()
-        self.assertEquals(self.get_server().logs, [])
-
 
 class SFTPTransportTestRelative(TestCaseWithSFTPServer):
     """Test the SFTP transport with homedir based relative paths."""
@@ -155,17 +145,6 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
         self.assertEqual('a', t._remote_path('a'))
 
 
-class FakeSFTPTransport (object):
-    _sftp = object()
-    _password = None
-
-    def get_connection(self):
-        return None
-
-
-avoid_sftp_connection = FakeSFTPTransport()
-
-
 class SFTPNonServerTest(TestCase):
     def setUp(self):
         TestCase.setUp(self)
@@ -173,18 +152,15 @@ class SFTPNonServerTest(TestCase):
             raise TestSkipped('you must have paramiko to run this test')
 
     def test_parse_url_with_home_dir(self):
-        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative',
-                          from_transport=avoid_sftp_connection)
+        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative')
         self.assertEquals(s._host, 'example.com')
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._user, 'robey')
-        # FIXME: sftp should just not connect at init time !!!
-        #self.assertEquals(s._password, 'h@t')
+        self.assertEquals(s._password, 'h@t')
         self.assertEquals(s._path, '/~/relative/')
 
     def test_relpath(self):
-        s = SFTPTransport('sftp://user@host.com/abs/path',
-                          from_transport=avoid_sftp_connection)
+        s = SFTPTransport('sftp://user@host.com/abs/path')
         self.assertRaises(errors.PathNotChild, s.relpath,
                           'sftp://user@host.com/~/rel/path/sub')
 
@@ -339,8 +315,8 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         """Test that a real connection attempt raises the right error"""
         from bzrlib.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
-        self.assertRaises(errors.ConnectionError,
-                          bzrlib.transport.get_transport, self.bogus_url)
+        t = bzrlib.transport.get_transport(self.bogus_url)
+        self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
@@ -381,6 +357,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         start_time = time.time()
         self.get_server().add_latency = 0.5
         transport = self.get_transport()
+        transport.has('not me') # Force connection by issuing a request
         with_latency_knob_time = time.time() - start_time
         self.assertTrue(with_latency_knob_time > 0.4)
 
@@ -389,6 +366,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         # it could fail, but that is quite unlikely
         start_time = time.time()
         transport = self.get_transport()
+        transport.has('not me') # Force connection by issuing a request
         regular_time = time.time() - start_time
         self.assertTrue(regular_time < 0.5)
 

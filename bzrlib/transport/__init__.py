@@ -110,11 +110,11 @@ class TransportListRegistry(registry.Registry):
     2) register the protocol provider with the function
     register_transport_provider( ) ( and the "lazy" variant )
 
-    This in needed because:
+    This is needed because:
     a) a single provider can support multple protcol ( like the ftp
-    privider which supports both the ftp:// and the aftp:// protocols )
+    provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
-    protocol which is supported by both the urllib and pycurl privider )
+    protocol which is supported by both the urllib and pycurl provider )
     """
 
     def register_transport_provider(self, key, obj):
@@ -1310,6 +1310,7 @@ def get_transport(base, possible_transports=None):
         if m:
             # This looks like a URL, but we weren't able to 
             # instantiate it as such raise an appropriate error
+            # FIXME: we have a 'error_str' unused and we use last_err below
             raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)

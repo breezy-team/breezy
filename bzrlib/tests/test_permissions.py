@@ -282,7 +282,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             t.put_bytes('b', 'txt', mode=0666)
             self.assertTransportMode(t, 'b', 0666)
 
-            t._sftp.mkdir('c', mode=0777)
+            t._get_sftp().mkdir('c', mode=0777)
             self.assertTransportMode(t, 'c', 0777 &~umask)
 
             t.mkdir('d', mode=0777)

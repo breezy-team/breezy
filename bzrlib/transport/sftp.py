@@ -34,7 +34,6 @@ import sys
 import time
 import urllib
 import urlparse
-import weakref
 
 from bzrlib import (
     errors,
@@ -48,6 +47,10 @@ from bzrlib.errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
+from bzrlib.symbol_versioning import (
+        deprecated_function,
+        zero_seventeen,
+        )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     local,
@@ -72,25 +75,18 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
-# This is a weakref dictionary, so that we can reuse connections
-# that are still active. Long term, it might be nice to have some
-# sort of expiration policy, such as disconnect if inactive for
-# X seconds. But that requires a lot more fanciness.
-_connected_hosts = weakref.WeakValueDictionary()
-
-
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
+@deprecated_function(zero_seventeen)
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
     Primarily useful for test cases wanting to force garbage collection.
+    We don't have a global connection cache anymore.
     """
-    _connected_hosts.clear()
-
 
 class SFTPLock(object):
     """This fakes a lock in a remote location.
@@ -158,12 +154,6 @@ class SFTPTransport(ConnectedTransport):
     def __init__(self, base, from_transport=None):
         assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base, from_transport)
-        if from_transport is None:
-            self._sftp_connect()
-        else:
-            # use the same ssh connection, etc
-            self._sftp = from_transport._sftp
-        # super saves 'self.base'
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
@@ -184,29 +174,49 @@ class SFTPTransport(ConnectedTransport):
             remote_path = ''
         return remote_path
 
+    def _create_connection(self, credentials=None):
+        """Create a new connection with the provided credentials.
+
+        :param credentials: The credentials needed to establish the connection.
+
+        :return: The created connection and its associated credentials.
+
+        The credentials are only the password as it may have been entered
+        interactively by the user and may be different from the one provided
+        in base url at transport creation time.
+        """
+        if credentials is None:
+            password = self._password
+        else:
+            password = credentials
+
+        vendor = ssh._get_ssh_vendor()
+        connection = vendor.connect_sftp(self._user, password,
+                                         self._host, self._port)
+        return connection, password
+
+    def _get_sftp(self):
+        """Ensures that a connection is established"""
+        connection = self._get_connection()
+        if connection is None:
+            # First connection ever
+            connection, credentials = self._create_connection()
+            self._set_connection(connection, credentials)
+        return connection
+
+
     def should_cache(self):
         """
         Return True if the data pulled across should be cached locally.
         """
         return True
 
-    def clone(self, offset=None):
-        """
-        Return a new SFTPTransport with root at self.base + offset.
-        We share the same SFTP session between such transports, because it's
-        fairly expensive to set them up.
-        """
-        if offset is None:
-            return SFTPTransport(self.base, self)
-        else:
-            return SFTPTransport(self.abspath(offset), self)
-
     def has(self, relpath):
         """
         Does the target location exist?
         """
         try:
-            self._sftp.stat(self._remote_path(relpath))
+            self._get_sftp().stat(self._remote_path(relpath))
             return True
         except IOError:
             return False
@@ -219,7 +229,7 @@ class SFTPTransport(ConnectedTransport):
         """
         try:
             path = self._remote_path(relpath)
-            f = self._sftp.file(path, mode='rb')
+            f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
@@ -236,7 +246,7 @@ class SFTPTransport(ConnectedTransport):
 
         try:
             path = self._remote_path(relpath)
-            fp = self._sftp.file(path, mode='rb')
+            fp = self._get_sftp().file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
@@ -385,7 +395,7 @@ class SFTPTransport(ConnectedTransport):
             # Because we set_pipelined() earlier, theoretically we might 
             # avoid the round trip for fout.close()
             if mode is not None:
-                self._sftp.chmod(tmp_abspath, mode)
+                self._get_sftp().chmod(tmp_abspath, mode)
             fout.close()
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
@@ -400,7 +410,7 @@ class SFTPTransport(ConnectedTransport):
             try:
                 if not closed:
                     fout.close()
-                self._sftp.remove(tmp_abspath)
+                self._get_sftp().remove(tmp_abspath)
             except:
                 # raise the saved except
                 raise e
@@ -421,7 +431,7 @@ class SFTPTransport(ConnectedTransport):
             fout = None
             try:
                 try:
-                    fout = self._sftp.file(abspath, mode='wb')
+                    fout = self._get_sftp().file(abspath, mode='wb')
                     fout.set_pipelined(True)
                     writer(fout)
                 except (paramiko.SSHException, IOError), e:
@@ -432,7 +442,7 @@ class SFTPTransport(ConnectedTransport):
                 # Because we set_pipelined() earlier, theoretically we might 
                 # avoid the round trip for fout.close()
                 if mode is not None:
-                    self._sftp.chmod(abspath, mode)
+                    self._get_sftp().chmod(abspath, mode)
             finally:
                 if fout is not None:
                     fout.close()
@@ -502,9 +512,9 @@ class SFTPTransport(ConnectedTransport):
         else:
             local_mode = mode
         try:
-            self._sftp.mkdir(abspath, local_mode)
+            self._get_sftp().mkdir(abspath, local_mode)
             if mode is not None:
-                self._sftp.chmod(abspath, mode=mode)
+                self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
@@ -550,9 +560,9 @@ class SFTPTransport(ConnectedTransport):
         """
         try:
             path = self._remote_path(relpath)
-            fout = self._sftp.file(path, 'ab')
+            fout = self._get_sftp().file(path, 'ab')
             if mode is not None:
-                self._sftp.chmod(path, mode)
+                self._get_sftp().chmod(path, mode)
             result = fout.tell()
             self._pump(f, fout)
             return result
@@ -562,7 +572,7 @@ class SFTPTransport(ConnectedTransport):
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         try:
-            self._sftp.rename(self._remote_path(rel_from),
+            self._get_sftp().rename(self._remote_path(rel_from),
                               self._remote_path(rel_to))
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, rel_from,
@@ -574,11 +584,13 @@ class SFTPTransport(ConnectedTransport):
         Using the implementation provided by osutils.
         """
         try:
+            sftp = self._get_sftp()
             fancy_rename(abs_from, abs_to,
-                    rename_func=self._sftp.rename,
-                    unlink_func=self._sftp.remove)
+                         rename_func=sftp.rename,
+                         unlink_func=sftp.remove)
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, abs_from, ': unable to rename to %r' % (abs_to))
+            self._translate_io_exception(e, abs_from,
+                                         ': unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -590,7 +602,7 @@ class SFTPTransport(ConnectedTransport):
         """Delete the item at relpath"""
         path = self._remote_path(relpath)
         try:
-            self._sftp.remove(path)
+            self._get_sftp().remove(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
             
@@ -608,7 +620,7 @@ class SFTPTransport(ConnectedTransport):
         # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            entries = self._sftp.listdir(path)
+            entries = self._get_sftp().listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
@@ -617,7 +629,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.rmdir."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.rmdir(path)
+            return self._get_sftp().rmdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
@@ -625,7 +637,7 @@ class SFTPTransport(ConnectedTransport):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)
         try:
-            return self._sftp.stat(path)
+            return self._get_sftp().stat(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
 
@@ -655,18 +667,6 @@ class SFTPTransport(ConnectedTransport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-    # FIXME: instrument or refactor to allow testing for mutiple connections
-    def _sftp_connect(self):
-        """Connect to the remote sftp server.
-        After this, self._sftp should have a valid connection (or
-        we raise an TransportError 'could not connect').
-
-        TODO: Raise a more reasonable ConnectionFailed exception
-        """
-        self._sftp = _sftp_connect(self._host, self._port,
-                                   self._user,
-                                   self._password)
-
     def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
 
@@ -685,7 +685,7 @@ class SFTPTransport(ConnectedTransport):
         #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
         #       However, there is no way to set the permission mode at open 
         #       time using the sftp_client.file() functionality.
-        path = self._sftp._adjust_cwd(abspath)
+        path = self._get_sftp()._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
@@ -693,11 +693,11 @@ class SFTPTransport(ConnectedTransport):
         omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
-            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
+            t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
-            return SFTPFile(self._sftp, handle, 'wb', -1)
+            return SFTPFile(self._get_sftp(), handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
@@ -1027,31 +1027,6 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def setUp(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
         super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
-
-
-def _sftp_connect(host, port, username, password):
-    """Connect to the remote sftp server.
-
-    :raises: a TransportError 'could not connect'.
-
-    :returns: an paramiko.sftp_client.SFTPClient
-
-    TODO: Raise a more reasonable ConnectionFailed exception
-    """
-    idx = (host, port, username)
-    try:
-        return _connected_hosts[idx]
-    except KeyError:
-        pass
-    
-    sftp = _sftp_connect_uncached(host, port, username, password)
-    _connected_hosts[idx] = sftp
-    return sftp
-
-def _sftp_connect_uncached(host, port, username, password):
-    vendor = ssh._get_ssh_vendor()
-    sftp = vendor.connect_sftp(username, password, host, port)
-    return sftp
 
 
 def get_test_permutations():
