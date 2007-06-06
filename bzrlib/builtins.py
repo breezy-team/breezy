@@ -312,7 +312,9 @@ class cmd_revision_info(Command):
         for rev in revs:
             revinfo = rev.in_history(b)
             if revinfo.revno is None:
-                print '     %s' % revinfo.rev_id
+                dotted_map = b.get_revision_id_to_revno_map()
+                revno = '.'.join(str(i) for i in dotted_map[revinfo.rev_id])
+                print '%s %s' % (revno, revinfo.rev_id)
             else:
                 print '%4d %s' % (revinfo.revno, revinfo.rev_id)
 
