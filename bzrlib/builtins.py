@@ -45,6 +45,7 @@ from bzrlib import (
     osutils,
     registry,
     repository,
+    revisionspec,
     symbol_versioning,
     transport,
     tree as _mod_tree,
@@ -304,10 +305,11 @@ class cmd_revision_info(Command):
         if revision_info_list is not None:
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
-        if len(revs) == 0:
-            raise errors.BzrCommandError('You must supply a revision identifier')
 
         b = Branch.open_containing(u'.')[0]
+
+        if len(revs) == 0:
+            revs.append(RevisionSpec.from_string('-1'))
 
         for rev in revs:
             revinfo = rev.in_history(b)
