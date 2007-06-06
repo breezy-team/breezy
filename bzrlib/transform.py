@@ -204,13 +204,15 @@ class TreeTransform(object):
         these files later by creating them with their final names in their
         final parents.  But now the previous name or parent is no longer
         suitable, so we have to rename them.
+
+        Even for trans_ids that have no new contents, we must remove their
+        entries from _limbo_files, because they are now stale.
         """
         for trans_id in trans_ids:
+            old_path = self._limbo_files.pop(trans_id)
             if trans_id not in self._new_contents:
-                del self._limbo_files[trans_id]
                 continue
-            old_path = self._limbo_files[trans_id]
-            new_path = self._limbo_name(trans_id, from_scratch=True)
+            new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
 
     def adjust_root_path(self, name, parent):
@@ -807,12 +809,11 @@ class TreeTransform(object):
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
 
-    def _limbo_name(self, trans_id, from_scratch=False):
+    def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
-        if not from_scratch:
-            limbo_name = self._limbo_files.get(trans_id)
-            if limbo_name is not None:
-                return limbo_name
+        limbo_name = self._limbo_files.get(trans_id)
+        if limbo_name is not None:
+            return limbo_name
         parent = self._new_parent.get(trans_id)
         # if the parent directory is already in limbo (e.g. when building a
         # tree), choose a limbo name inside the parent, to reduce further
