@@ -2,6 +2,15 @@
 Bazaar Performance Roadmap
 ==========================
 
+.. Mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+.. contents::
+.. sectnum::
+
 About the performance roadmap
 #############################
 
@@ -14,7 +23,10 @@ Analysis of use cases
 
 .. include:: performance-use-case-analysis.txt
 
-.. include:: initial-push-pull.rst
+Use cases
+#########
+
+.. include:: initial-push-pull.txt
 
 .. include:: incremental-push-pull.txt
 
@@ -26,6 +38,6 @@ Analysis of use cases
 
 .. include:: annotate.txt
 
-.. include:: merge-scaling.rst
+.. include:: merge-scaling.txt
 
-.. include:: bundle-creation.rst
+.. include:: bundle-creation.txt

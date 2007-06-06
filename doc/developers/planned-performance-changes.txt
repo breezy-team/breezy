@@ -1,5 +1,5 @@
 Planned changes to the bzr core
--------------------------------
+===============================
 
 Delivering the best possible performance requires changing the bzr core design
 from that present in 0.16. Some of these changes are incremental and can be
@@ -22,7 +22,7 @@ library only, disk format but interoperable, disk format interoperability
 unknown, and disk format, not interoperable.
 
 Library changes
-===============
+---------------
 
 These changes will change bzrlib's API but will not affect the disk format and
 thus do not pose a significant migration issue.
@@ -88,7 +88,7 @@ thus do not pose a significant migration issue.
    sufficiently clean to let us simplify/remove a lot of related code today.
 
 Interoperable disk changes
-==========================
+--------------------------
 
  * New container format to allow single-file description of multiple named
    objects. This will provide the basis for transmission of revisions over the
@@ -132,7 +132,7 @@ Interoperable disk changes
    established as [un]needed.
 
 Possibly non-interoperable disk changes
-=======================================
+---------------------------------------
 
  * Removing of derivable data from the core of bzr. Much of the data that bzr
    stores is derivable from the users source files. For instance the
@@ -157,7 +157,7 @@ Possibly non-interoperable disk changes
    * Annotations
 
 Non-interoperable disk changes
-==============================
+------------------------------
 
  * Drop the per-file merge graph 'cache' currently held in the FILE-ID.kndx
    files. A specific case of removing derivable data, this may allow smaller

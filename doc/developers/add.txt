@@ -1,5 +1,5 @@
 Add
----
+===
 
 Add is used to recursively version some paths supplied by the user. Paths that
 match ignore rules are not versioned, and paths that become versioned are
@@ -7,7 +7,7 @@ versioned in the nearest containing bzr tree. Currently we only do this within
 a single tree, but perhaps with nested trees this should change.
 
 Least work we can hope to perform
-=================================
+---------------------------------
 
 * Read a subset of the full versioned paths data for the tree matching the scope of the paths the user supplied.
 * Seek once to each directory within the scope and readdir its contents.
@@ -25,7 +25,7 @@ Optionally:
   (proportional to the number we actually calculate).
 
 Per file algorithm
-==================
+------------------
 
 #. If the path is versioned, and it is a directory, push onto the recurse stack.
 #. If the path is supplied by the user or is not ignored, version it, and if a 
