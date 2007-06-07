@@ -1149,7 +1149,7 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    fs_encoding = sys.getfilesystemencoding()
+    fs_encoding = sys.getfilesystemencoding().upper()
     if (sys.platform == 'win32' or
         fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968')): # ascii
         return _walkdirs_unicode_to_utf8(top, prefix=prefix)
