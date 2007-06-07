@@ -266,6 +266,26 @@ class TestErrors(TestCaseWithTransport):
             "Could not understand response from smart server: ('not yes',)",
             str(e))
 
+    def test_unknown_container_format(self):
+        """Test the formatting of UnknownContainerFormatError."""
+        e = errors.UnknownContainerFormatError('bad format string')
+        self.assertEqual(
+            "Unrecognised container format: 'bad format string'",
+            str(e))
+
+    def test_unexpected_end_of_container(self):
+        """Test the formatting of UnexpectedEndOfContainerError."""
+        e = errors.UnexpectedEndOfContainerError()
+        self.assertEqual(
+            "Unexpected end of container stream", str(e))
+
+    def test_unknown_record_type(self):
+        """Test the formatting of UnknownRecordTypeError."""
+        e = errors.UnknownRecordTypeError("X")
+        self.assertEqual(
+            "Unknown record type: 'X'",
+            str(e))
+
 
 class PassThroughError(errors.BzrError):
     
