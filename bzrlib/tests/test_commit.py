@@ -681,3 +681,17 @@ class TestCommit(TestCaseWithTransport):
         repository.add_inventory = raise_
         self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
+
+    def test_selected_file_merge_commit(self):
+        """Ensure the correct error is raised"""
+        tree = self.make_branch_and_tree('foo')
+        # pending merge would turn into a left parent
+        tree.commit('commit 1')
+        tree.add_parent_tree_id('example')
+        self.build_tree(['foo/bar', 'foo/baz'])
+        tree.add(['bar', 'baz'])
+        err = self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            tree.commit, 'commit 2', specific_files=['bar', 'baz'])
+        self.assertEqual(['bar', 'baz'], err.files)
+        self.assertEqual('Selected-file commit of merges is not supported'
+                         ' yet: files bar, baz', str(err))
