@@ -214,3 +214,13 @@ class TestInfo(tests.TestCaseWithTransport):
              'shared repository': srepo.bzrdir.root_transport.base},
             info.gather_location_info(shcheckout.branch.repository,
                                       shcheckout.branch, shcheckout))
+
+    def test_gather_location_bound(self):
+        branch = self.make_branch('branch')
+        bound_branch = self.make_branch('bound_branch')
+        bound_branch.bind(branch)
+        self.assertEqual(
+            {'branch root': bound_branch.bzrdir.root_transport.base,
+             'bound to branch': branch.bzrdir.root_transport.base},
+            info.gather_location_info(bound_branch.repository, bound_branch)
+        )
