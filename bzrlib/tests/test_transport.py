@@ -712,7 +712,7 @@ class TestReusedTransports(TestCase):
     def test_don_t_reuse_different_transport(self):
         t1 = get_transport('http://foo/path')
         t2 = get_transport('http://bar/path', possible_transports=[t1])
-        self.assertIsNot(t, t2)
+        self.assertIsNot(t1, t2)
 
 
 def get_test_permutations():
