@@ -81,6 +81,9 @@ IN DEVELOPMENT
     * ``revision-info`` now accepts dotted revnos, doesn't require a tree,
       and defaults to the last revision (Matthew Fuller, #90048)
 
+    * Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
+      (Daniel Watkins, #111958)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
