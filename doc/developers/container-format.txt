@@ -1,5 +1,6 @@
+================
 Container format
-----------------
+================
 
 Status
 ======
@@ -35,10 +36,10 @@ A record is:
   * 0 or more bytes of record content, depending on the record type.
 
 Record types
-^^^^^^^^^^^^
+------------
 
 End Marker
-++++++++++
+~~~~~~~~~~
 
 An **End Marker** record:
 
@@ -48,7 +49,7 @@ An **End Marker** record:
 End Marker records signal the end of a container.
 
 Full Text
-+++++++++
+~~~~~~~~~
 
 A **Full Text** record:
 
@@ -78,7 +79,7 @@ e.g.::
 
 
 Names
-^^^^^
+-----
 
 Names should be UTF-8 encoded strings, with no whitespace.  Names should
 be unique within a single container, but no guarantee of uniqueness
@@ -91,7 +92,7 @@ Characteristics
 Some key aspects of this format are discussed in this section.
 
 No length-prefixing of entire container
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------------
 
 The overall container is not length prefixed.  Instead there is an end
 marker so that readers can determine when they have read the entire
@@ -99,7 +100,7 @@ container.  This also does not conflict with the goal of allowing
 single-pass writing.
 
 Structured as a self-contained series of records
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------------
 
 The container contains a series of *records*.  Each record is
 self-delimiting.  Record markers are lightweight.  The overhead in terms
@@ -107,7 +108,7 @@ of bytes and processing for records in this container vs. the raw contents
 of those records is minimal.
 
 Addressing records
-^^^^^^^^^^^^^^^^^^
+------------------
 
 There is a requirement that each object can be given an arbitrary name.
 Some revision control systems address all content by the SHA-1 digest of
@@ -139,14 +140,14 @@ Here's a brief description of use cases this format is intended to
 support.
 
 Streaming data between a smart server and client
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------------
 
 It would be nice if we could combine multiple containers into a single
 stream by something no more expensive than concatenation (e.g. by omitting
 end/start marker pairs).  
 
 Incremental push or pull
-++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Consider the use case of incremental push/pull, which is currently (0.16)
 very slow on high-latency links due to the large number of round trips.
@@ -166,13 +167,13 @@ unimportant here).  In response, the server streams a single container of:
 in that order.
 
 Persistent storage on disk
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 We want a storage format that allows lock-free writes, which suggests a
 format that uses *rename into place*, and *do not modify after writing*.
 
 Usable before deep model changes to Bazaar
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------
 
 We want a format we can use and refine sooner rather than later.  So it
 should be usable before the anticipated model changes for Bazaar "1.0"
