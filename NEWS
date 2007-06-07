@@ -62,6 +62,10 @@ IN DEVELOPMENT
       that we can pass in the Transport that we already have.
       (John Arbash Meinel, #75721)
 
+    * ``DirState.set_state_from_inventory()`` needs to properly order
+      based on split paths, not just string paths.
+      (John Arbash Meinel, #115947)
+
     * Let TestUIFactoy encode the password prompt with its own stdout.
       (Vincent Ladeuil, #110204)
 
