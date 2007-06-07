@@ -546,6 +546,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         base_url = self._server.get_url()
         # try getting the transport via the regular interface:
         t = get_transport(base_url)
+        # vila--20070607 if the following are commented out the test suite
+        # still pass. Is this really still needed or was it a forgotten
+        # temporary fix ?
         if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
@@ -680,6 +683,14 @@ class TestConnectedTransport(TestCase):
         self.assertIs(connection, c._get_connection())
         self.assertIs(password, c._get_credentials())
 
+        # credentials can be updated
+        new_password = 'even more secret'
+        c._update_credentials(new_password)
+        self.assertIs(connection, t._get_connection())
+        self.assertIs(new_password, t._get_credentials())
+        self.assertIs(connection, c._get_connection())
+        self.assertIs(new_password, c._get_credentials())
+
 
 class TestReusedTransports(TestCase):
     """Tests for transport reuse"""
@@ -694,13 +705,13 @@ class TestReusedTransports(TestCase):
         t4 = get_transport('http://foo/path', possible_transports=[t3])
         self.assertIs(t3, t4)
 
-        t3 = get_transport('http://foo/path')
-        t4 = get_transport('http://foo/path/', possible_transports=[t3])
-        self.assertIs(t3, t4)
+        t5 = get_transport('http://foo/path')
+        t6 = get_transport('http://foo/path/', possible_transports=[t5])
+        self.assertIs(t5, t6)
 
     def test_don_t_reuse_different_transport(self):
-        t = get_transport('http://foo/path')
-        t2 = get_transport('http://bar/path', possible_transports=[t])
+        t1 = get_transport('http://foo/path')
+        t2 = get_transport('http://bar/path', possible_transports=[t1])
         self.assertIsNot(t, t2)
 
 

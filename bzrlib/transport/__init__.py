@@ -1057,7 +1057,9 @@ class ConnectedTransport(Transport):
          self._path) = self._initial_split_url(base)
         if from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
-            # otherwise.
+            # otherwise. It can appear in the _initial_split_url above if the
+            # user provided it on the command line. Otherwise, daughter classes
+            # will prompt the user for one when appropriate.
             self._password = from_transport._password
 
         base = self._unsplit_url(self._scheme,
@@ -1244,6 +1246,19 @@ class ConnectedTransport(Transport):
         (connection, credentials) = self._connection[0]
         return self._connection[0][1]
 
+    def _update_credentials(self, credentials):
+        """Update the credentials of the current connection.
+
+        Some protocols can renegociate the credentials within a connection,
+        this method allows daughter classes to share updated credentials.
+        
+        :param credentials: the updated credentials.
+        """
+        # We don't want to call _set_connection here as we are only updating
+        # the credentials not creating a new connection.
+        (connection, old_credentials) = self._connection[0]
+        self._connection[0] = (connection, credentials)
+
     def _reuse_for(self, other_base):
         """Returns a transport sharing the same connection if possible.
 
@@ -1261,16 +1276,13 @@ class ConnectedTransport(Transport):
         """
         (scheme, user, password, host, port, path) = self._split_url(other_base)
         transport = None
-        # Don't compare passwords, they may be absent from other_base
-        if (scheme,
-            user,
-            host, port) == (self._scheme,
-                            self._user,
-                            self._host, self._port):
+        # Don't compare passwords, they may be absent from other_base or from
+        # self and they don't carry more information than user anyway.
+        if (scheme, user, host, port) == (self._scheme,
+                                          self._user, self._host, self._port):
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
-                # it now to avoid positives (creating two transports for the
-                # same base).
+                # it now to avoid creating two transports for the same base.
                 path += '/'
             if self._path  == path:
                 # shortcut, it's really the same transport
@@ -1284,7 +1296,8 @@ class ConnectedTransport(Transport):
 
 
 # jam 20060426 For compatibility we copy the functions here
-# TODO: The should be marked as deprecated
+# TODO: They should be marked as deprecated
+# vila-20070606: How should we do that ?
 urlescape = urlutils.escape
 urlunescape = urlutils.unescape
 # We try to recognize an url lazily (ignoring user, password, etc)

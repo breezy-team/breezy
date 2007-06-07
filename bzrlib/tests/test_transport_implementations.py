@@ -1071,6 +1071,67 @@ class TransportTests(TestTransportImplementation):
         self.assertEquals(t1._host, t2._host)
         self.assertEquals(t1._port, t2._port)
 
+    def test__reuse_for(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        def new_url(scheme=None, user=None, password=None,
+                    host=None, port=None, path=None):
+            """Build a new url from t.base chaging only parts of it.
+
+            Only the parameters different from None will be changed.
+            """
+            if scheme is None: scheme = t._scheme
+            if user is None: user = t._user
+            if password is None: password = t._password
+            if user is None: user = t._user
+            if host is None: host = t._host
+            if port is None: port = t._port
+            if path is None: path = t._path
+            return t._unsplit_url(scheme, user, password, host, port, path)
+
+        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._user == 'me':
+            user = 'you'
+        else:
+            user = 'me'
+        self.assertIsNot(t, t._reuse_for(new_url(user=user)))
+        # passwords are not taken into account because:
+        # - it makes no sense to have two different valid passwords for the
+        #   same user
+        # - _password in ConnectedTransport is intended to collect what the
+        #   user specified from the command-line and there are cases where the
+        #   new url can contain no password (if the url was built from an
+        #   existing transport.base for example)
+        # - password are considered part of the credentials provided at
+        #   connection creation time and as such may not be present in the url
+        #   (they may be typed by the user when prompted for example)
+        self.assertIs(t, t._reuse_for(new_url(password='from space')))
+        # We will not connect, we can use a invalid host
+        self.assertIsNot(t, t._reuse_for(new_url(host=t._host + 'bar')))
+        if t._port == 1234:
+            port = 4321
+        else:
+            port = 1234
+        self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+
+    def test_reuse_connection_for_various_paths(self):
+        t = self.get_transport()
+        if not isinstance(t, ConnectedTransport):
+            raise TestSkipped("not a connected transport")
+
+        t.has('surely_not') # Force connection
+        self.assertIsNot(None, t._get_connection())
+
+        subdir = t._reuse_for(t.base + 'whatever/but/deep/down/the/path')
+        self.assertIsNot(t, subdir)
+        self.assertIs(t._get_connection(), subdir._get_connection())
+
+        home = subdir._reuse_for(t.base + 'home')
+        self.assertIs(t._get_connection(), home._get_connection())
+        self.assertIs(subdir._get_connection(), home._get_connection())
+
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
         t1 = self.get_transport()
