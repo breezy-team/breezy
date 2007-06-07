@@ -88,7 +88,7 @@ class PyCurlTransport(HttpTransportBase):
     """
 
     def __init__(self, base, from_transport=None):
-        super(PyCurlTransport, self).__init__(base)
+        super(PyCurlTransport, self).__init__(base, from_transport)
         if base.startswith('https'):
             # Check availability of https into pycurl supported
             # protocols
@@ -96,11 +96,17 @@ class PyCurlTransport(HttpTransportBase):
             if 'https' not in supported:
                 raise DependencyNotPresent('pycurl', 'no https support')
         self.cabundle = ca_bundle.get_ca_path()
-        if from_transport is not None:
-            self._curl = from_transport._curl
-        else:
-            mutter('using pycurl %s' % pycurl.version)
-            self._curl = pycurl.Curl()
+
+    def _get_curl(self):
+        connection = self._get_connection()
+        if connection is None:
+            # First connection ever. There is no credentials for pycurl, either
+            # the password was embedded in the URL or it's not needed. The
+            # connection for pycurl is just the Curl object, it will not
+            # connect until the first request
+            connection = pycurl.Curl()
+            self._set_connection(connection, None)
+        return connection
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -111,7 +117,7 @@ class PyCurlTransport(HttpTransportBase):
         """See Transport.has()"""
         # We set NO BODY=0 in _get_full, so it should be safe
         # to re-use the non-range curl object
-        curl = self._curl
+        curl = self._get_curl()
         abspath = self._remote_path(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
@@ -174,7 +180,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def _get_full(self, relpath):
         """Make a request for the entire file"""
-        curl = self._curl
+        curl = self._get_curl()
         abspath, data, header = self._setup_get_request(curl, relpath)
         self._curl_perform(curl, header)
 
@@ -191,7 +197,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def _get_ranged(self, relpath, ranges, tail_amount):
         """Make a request for just part of the file."""
-        curl = self._curl
+        curl = self._get_curl()
         abspath, data, header = self._setup_get_request(curl, relpath)
 
         range_header = self.attempted_range_header(ranges, tail_amount)
@@ -212,10 +218,10 @@ class PyCurlTransport(HttpTransportBase):
 
     def _post(self, body_bytes):
         fake_file = StringIO(body_bytes)
-        curl = self._curl
-        # Other places that use _base_curl for GET requests explicitly set
-        # HTTPGET, so it should be safe to re-use the same object for both GETs
-        # and POSTs.
+        curl = self._get_curl()
+        # Other places that use the Curl object (returned by _get_curl)
+        # for GET requests explicitly set HTTPGET, so it should be safe to
+        # re-use the same object for both GETs and POSTs.
         curl.setopt(pycurl.POST, 1)
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)
