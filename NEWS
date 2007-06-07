@@ -78,6 +78,9 @@ IN DEVELOPMENT
     * Merge no longer fails when a file is renamed in one tree and deleted
       in the other. (Aaron Bentley, #110279)
 
+    * ``revision-info`` now accepts dotted revnos, doesn't require a tree,
+      and defaults to the last revision (Matthew Fuller, #90048)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
