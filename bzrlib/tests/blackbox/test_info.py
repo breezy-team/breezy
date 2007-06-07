@@ -247,8 +247,8 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
- light checkout root: %s
-  checkout of branch: %s
+  light checkout root: %s
+   checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -436,8 +436,8 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
- light checkout root: %s
-  checkout of branch: %s
+  light checkout root: %s
+   checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -563,7 +563,7 @@ Repository:
             lightweight=True)
         branch2 = tree2.branch
         self.assertCheckoutStatusOutput('-v tree/lightcheckout', tree2,
-                   shared_repo=repo, verbose=True)
+                   shared_repo=repo, repo_branch=branch1, verbose=True)
 
         # Create normal checkout
         tree3 = branch1.create_checkout('tree/checkout')
@@ -580,9 +580,9 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
- light checkout root: %s
-   shared repository: %s
-   repository branch: branch
+  light checkout root: %s
+   checkout of branch: %s
+    shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -611,6 +611,7 @@ Repository:
          1 revision
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
+       tree2.branch.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
@@ -716,9 +717,9 @@ Repository:
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags)
 Location:
- light checkout root: %s
-   shared repository: %s
-   repository branch: branch
+  light checkout root: %s
+   checkout of branch: %s
+    shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -749,6 +750,7 @@ Repository:
          2 revisions
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
+       tree2.branch.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
@@ -852,8 +854,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-    shared repository: %s
-  repository checkout: branch1
+  shared repository: %s
+  repository branch: branch1
 
 Format:
        control: Meta directory format 1
@@ -895,8 +897,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-    shared repository: %s
-  repository checkout: branch1
+  shared repository: %s
+  repository branch: branch1
 
 Format:
        control: Meta directory format 1
@@ -939,8 +941,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-    shared repository: %s
-  repository checkout: branch2
+  shared repository: %s
+  repository branch: branch2
 
 Related branches:
   parent branch: %s
@@ -985,8 +987,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-    shared repository: %s
-  repository checkout: branch2
+  shared repository: %s
+  repository branch: branch2
 
 Related branches:
   parent branch: %s
@@ -1088,8 +1090,8 @@ Repository:
         self.assertEqualDiff(
 """Repository tree (format: knit)
 Location:
-    shared repository: %s
-  repository checkout: .
+  shared repository: %s
+  repository branch: .
 
 Format:
        control: Meta directory format 1
@@ -1126,8 +1128,9 @@ Repository:
         tree_locked=False,
         branch_locked=False, repo_locked=False,
         verbose=False,
-        light_checkout=True):
-        """Check the output of info in a light checkout tree.
+        light_checkout=True,
+        checkout_root=None):
+        """Check the output of info in a checkout.
 
         This is not quite a mirror of the info code: rather than using the
         tree being examined to predict output, it uses a bunch of flags which
@@ -1179,23 +1182,28 @@ Repository:
                     locked_message(repo_locked)))
         else:
             expected_lock_output = ''
+        tree_data = ''
+        extra_space = ''
         if light_checkout:
-            tree_data = (" light checkout root: %s" %
+            tree_data = ("  light checkout root: %s\n" %
                 lco_tree.bzrdir.root_transport.base)
-        else:
-            tree_data = ("       checkout root: %s" %
-                lco_tree.bzrdir.root_transport.base)
+            extra_space = ' '
+        if lco_tree.branch.get_bound_location() is not None:
+            tree_data += ("%s       checkout root: %s\n" % (extra_space,
+                lco_tree.branch.bzrdir.root_transport.base))
         if shared_repo is not None:
             branch_data = (
-                "   shared repository: %s\n"
-                "   repository branch: branch\n" %
-                shared_repo.bzrdir.root_transport.base)
+                "   checkout of branch: %s\n"
+                "    shared repository: %s\n" %
+                (repo_branch.bzrdir.root_transport.base,
+                 shared_repo.bzrdir.root_transport.base))
         elif repo_branch is not None:
             branch_data = (
-                "  checkout of branch: %s\n" % 
-                repo_branch.bzrdir.root_transport.base)
+                "%s  checkout of branch: %s\n" %
+                (extra_space,
+                 repo_branch.bzrdir.root_transport.base))
         else:
-            branch_data = ("  checkout of branch: %s\n" % 
+            branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
         
         if verbose:
@@ -1206,8 +1214,7 @@ Repository:
         self.assertEqualDiff(
 """%s (format: %s)
 Location:
-%s
-%s
+%s%s
 Format:
        control: Meta directory format 1
   working tree: %s
@@ -1269,13 +1276,14 @@ Repository:
 
         # U U U
         self.assertCheckoutStatusOutput('-v tree/lightcheckout', lco_tree,
-                                        verbose=True)
+                                        repo_branch=repo_branch,
+                                        verbose=True, light_checkout=True)
         # U U L
         lco_tree.branch.repository.lock_write()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
-            repo_locked=True, verbose=True)
+            lco_tree, repo_branch=repo_branch,
+            repo_locked=True, verbose=True, light_checkout=True)
         finally:
             lco_tree.branch.repository.unlock()
         # U L L
@@ -1285,6 +1293,7 @@ Repository:
             lco_tree,
             branch_locked=True,
             repo_locked=True,
+            repo_branch=repo_branch,
             verbose=True)
         finally:
             lco_tree.branch.unlock()
@@ -1292,7 +1301,7 @@ Repository:
         lco_tree.lock_write()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
+            lco_tree, repo_branch=repo_branch,
             tree_locked=True,
             branch_locked=True,
             repo_locked=True,
@@ -1304,7 +1313,7 @@ Repository:
         lco_tree.branch.repository.unlock()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
+            lco_tree, repo_branch=repo_branch,
             tree_locked=True,
             branch_locked=True,
             verbose=True)
@@ -1316,7 +1325,7 @@ Repository:
         lco_tree.branch.unlock()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
+            lco_tree, repo_branch=repo_branch,
             tree_locked=True,
             verbose=True)
         finally:
@@ -1328,7 +1337,7 @@ Repository:
         lco_tree.branch.repository.lock_write()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
+            lco_tree, repo_branch=repo_branch,
             tree_locked=True,
             repo_locked=True,
             verbose=True)
@@ -1341,7 +1350,7 @@ Repository:
         lco_tree.branch.repository.unlock()
         try:
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
-            lco_tree,
+            lco_tree, repo_branch=repo_branch,
             branch_locked=True,
             verbose=True)
         finally:

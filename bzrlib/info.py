@@ -58,51 +58,84 @@ def _repo_rel_url(repo_url, inner_url):
         result = result.rstrip('/')
     return result
 
+class _UrlList(object):
 
-def _show_location_info(repository, branch=None, working=None):
-    """Show known locations for working, branch and repository."""
+    def __init__(self):
+        self.urls = []
+
+    def add_url(self, label, url):
+        self.add_path(label, urlutils.unescape_for_display(url, 'ascii'))
+
+    def add_url(self, label, url):
+        self.add_path(label, url)
+
+    def add_path(self, label, path):
+        self.urls.append((label, path))
+
+    def print_lines(self):
+        max_len = max(len(l) for l, u in self.urls)
+        for label, url in self.urls:
+            print "  %*s: %s" % (max_len, label, url)
+
+
+def gather_location_info(repository, branch=None, working=None):
+    locs = {}
     repository_path = repository.bzrdir.root_transport.base
-    print 'Location:'
-    if working and branch:
-        working_path = working.bzrdir.root_transport.base
+    if branch is not None:
         branch_path = branch.bzrdir.root_transport.base
-        if working_path != branch_path:
-            # lightweight checkout
-            print ' light checkout root: %s' % working_path
-            if repository.is_shared():
-                # lightweight checkout of branch in shared repository
-                print '   shared repository: %s' % repository_path
-                print '   repository branch: %s' % (
-                    _repo_rel_url(repository_path, branch_path))
-            else:
-                # lightweight checkout of standalone branch
-                print '  checkout of branch: %s' % branch_path
-        elif repository.is_shared():
-            # branch with tree inside shared repository
-            print '    shared repository: %s' % repository_path
-            print '  repository checkout: %s' % (
-                _repo_rel_url(repository_path, branch_path))
-        elif branch.get_bound_location():
-            # normal checkout
-            print '       checkout root: %s' % working_path
-            print '  checkout of branch: %s' % branch.get_bound_location()
-        else:
-            # standalone
-            print '  branch root: %s' % working_path
-    elif branch:
-        branch_path = branch.bzrdir.root_transport.base
-        if repository.is_shared():
-            # branch is part of shared repository
-            print '  shared repository: %s' % repository_path
-            print '  repository branch: %s' % (
-                _repo_rel_url(repository_path, branch_path))
-        else:
-            # standalone branch
-            print '  branch root: %s' % branch_path
+        master_path = branch.get_bound_location()
+        if master_path is None:
+            master_path = branch_path
     else:
-        # shared repository
-        assert repository.is_shared()
-        print '  shared repository: %s' % repository_path
+        branch_path = None
+        master_path = None
+    if working:
+        working_path = working.bzrdir.root_transport.base
+        if working_path != branch_path:
+            locs['light checkout root'] = working_path
+        if master_path != branch_path:
+            if repository.is_shared():
+                locs['repository checkout root'] = branch_path
+            else:
+                locs['checkout root'] = branch_path
+        if working_path != master_path:
+            locs['checkout of branch'] = master_path
+        elif repository.is_shared():
+            locs['repository branch'] = _repo_rel_url(repository_path,
+                branch_path)
+        elif branch_path is not None:
+            # standalone
+            locs['branch root'] = branch_path
+    else:
+        working_path = None
+        if repository.is_shared():
+            # lightweight checkout of branch in shared repository
+            if branch_path is not None:
+                locs['repository branch'] = _repo_rel_url(repository_path,
+                                                          branch_path)
+        elif branch_path is not None:
+            # standalone
+            locs['branch root'] = branch_path
+        else:
+            locs['repository'] = repository_path
+    if repository.is_shared():
+        # lightweight checkout of branch in shared repository
+        locs['shared repository'] = repository_path
+    return locs
+
+
+def _show_location_info(locs):
+    """Show known locations for working, branch and repository."""
+    print 'Location:'
+    path_list = _UrlList()
+    for loc in ['light checkout root', 'repository checkout root',
+                'checkout root', 'checkout of branch', 'shared repository',
+                'repository branch', 'branch root']:
+        try:
+            path_list.add_url(loc, locs[loc])
+        except KeyError:
+            pass
+    path_list.print_lines()
 
 
 def _show_related_info(branch):
@@ -308,7 +341,7 @@ def show_component_info(control, repository, branch=None, working=None,
     layout = describe_layout(repository, branch, working)
     format = describe_format(control, repository, branch, working)
     print "%s (format: %s)" % (layout, format)
-    _show_location_info(repository, branch, working)
+    _show_location_info(gather_location_info(repository, branch, working))
     if verbose == 0:
         return
     if branch is not None:

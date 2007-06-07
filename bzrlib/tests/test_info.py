@@ -152,3 +152,65 @@ class TestInfo(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('unknown', format=format)
         self.assertEqual('unnamed', info.describe_format(tree.bzrdir,
             tree.branch.repository, tree.branch, tree))
+
+    def test_gather_location_standalone(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertEqual({'branch root': tree.bzrdir.root_transport.base},
+            info.gather_location_info(tree.branch.repository, tree.branch,
+                                      tree))
+        self.assertEqual({'branch root': tree.bzrdir.root_transport.base},
+            info.gather_location_info(tree.branch.repository, tree.branch))
+        return tree
+
+    def test_gather_location_repo(self):
+        srepo = self.make_repository('shared', shared=True)
+        self.assertEqual({'shared repository':
+                          srepo.bzrdir.root_transport.base},
+                          info.gather_location_info(srepo))
+        urepo = self.make_repository('unshared')
+        self.assertEqual({'repository':
+                          urepo.bzrdir.root_transport.base},
+                          info.gather_location_info(urepo))
+
+    def test_gather_location_repo_branch(self):
+        srepo = self.make_repository('shared', shared=True)
+        self.assertEqual({'shared repository':
+                          srepo.bzrdir.root_transport.base},
+                          info.gather_location_info(srepo))
+        tree = self.make_branch_and_tree('shared/tree')
+        self.assertEqual({'shared repository':
+                          srepo.bzrdir.root_transport.base,
+                          'repository branch': 'tree'},
+                          info.gather_location_info(srepo,
+                              tree.branch, tree))
+
+    def test_gather_location_checkout(self):
+        tree = self.make_branch_and_tree('tree')
+        hcheckout = tree.branch.create_checkout('hcheckout')
+        self.assertEqual(
+            {'checkout root': hcheckout.bzrdir.root_transport.base,
+             'checkout of branch': tree.bzrdir.root_transport.base},
+            info.gather_location_info(hcheckout.branch.repository,
+                                      hcheckout.branch, hcheckout))
+        lcheckout = tree.branch.create_checkout('lcheckout', lightweight=True)
+        self.assertEqual(
+            {'light checkout root': lcheckout.bzrdir.root_transport.base,
+             'checkout of branch': tree.bzrdir.root_transport.base},
+            info.gather_location_info(lcheckout.branch.repository,
+                                      lcheckout.branch, lcheckout))
+        lhcheckout = hcheckout.branch.create_checkout('lhcheckout',
+                                                      lightweight=True)
+        self.assertEqual(
+            {'light checkout root': lhcheckout.bzrdir.root_transport.base,
+             'checkout root': hcheckout.bzrdir.root_transport.base,
+             'checkout of branch': tree.bzrdir.root_transport.base},
+             info.gather_location_info(lhcheckout.branch.repository,
+                                      lhcheckout.branch, lhcheckout))
+        srepo = self.make_repository('shared', shared=True)
+        shcheckout = tree.branch.create_checkout('shared/hcheckout')
+        self.assertEqual(
+            {'repository checkout root': shcheckout.bzrdir.root_transport.base,
+             'checkout of branch': tree.bzrdir.root_transport.base,
+             'shared repository': srepo.bzrdir.root_transport.base},
+            info.gather_location_info(shcheckout.branch.repository,
+                                      shcheckout.branch, shcheckout))
