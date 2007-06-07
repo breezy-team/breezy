@@ -54,6 +54,10 @@ IN DEVELOPMENT
       66 seconds to 32 seconds. For a small tree of 600 files, commit of a
       small change is 33% faster. (Ian Clatworthy)
 
+    * ``info`` now defaults to non-verbose mode, displaying only paths and
+      abbreviated format info.  ``info -v`` displays all the information
+      formerly displayed by ``info``.
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
