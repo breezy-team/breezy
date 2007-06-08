@@ -25,7 +25,7 @@ extensions:
 	@echo "building extension modules."
 	python setup.py build_ext -i
 
-check: extensions
+check: docs extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
@@ -121,6 +121,7 @@ copy-docs: docs
 		doc/default.css NEWS README \
 		win32_bzr.exe/doc
 	python tools/win32/ostools.py copytodir doc/developers/HACKING.htm \
+		$(dev_htm_files) \
 		win32_bzr.exe/doc/developers
 
 # clean produced docs
@@ -154,6 +155,7 @@ clean-win32:
 	python tools/win32/ostools.py remove win32_bzr.exe
 	python tools/win32/ostools.py remove py2exe.log
 	python tools/win32/ostools.py remove doc/*.htm
+	python tools/win32/ostools.py remove doc/developers/*.htm
 	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe

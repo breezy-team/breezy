@@ -1,0 +1,28 @@
+Annotate
+========
+
+Broadly tries to ascribe parts of the tree state to individual commits.
+
+There appear to be three basic ways of generating annotations:
+
+If the annotation works by asking the storage layer for successive full texts
+then the scaling of this will be proportional to the time to diff throughout
+the history of thing being annotated.
+
+If the annotation works by asking the storage layer for successive deltas
+within the history of the thing being annotated we believe we can make it scale
+broadly proportional to the depth of the tree of revisions of the annotated
+object.
+
+If the annotation works by combining cached annotations such that creating a
+full text recreates annotations for it then it will scale with the cost of
+obtaining that text.
+
+Generally we want our current annotations but it would be nice to be able to do
+whitespace annotations and potentially other diff based annotations.
+
+Some things to think about:
+
+ * Perhaps multiparent deltas would allow us to not store the cached
+   annotations in each delta without losing performance or accuracy.
+
