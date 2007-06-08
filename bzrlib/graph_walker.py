@@ -112,12 +112,31 @@ class GraphWalker(object):
 
         This will scale with the number of uncommon ancestors.
         """
+        common_walker = _AncestryWalker([], self)
+        common_ancestors = set()
         walkers = [_AncestryWalker([r], self) for r in revisions]
         active_walkers = walkers[:]
         border_ancestors = set()
+        def update_common(walker, revisions):
+            w_seen_ancestors = walker.find_seen_ancestors(
+                revision)
+            stopped = walker.stop_searching_any(w_seen_ancestors)
+            common_ancestors.update(w_seen_ancestors)
+            common_walker.start_searching(stopped)
+
         while True:
             if len(active_walkers) == 0:
                 return border_ancestors
+            try:
+                new_common = common_walker.next()
+                common_ancestors.update(new_common)
+            except StopIteration:
+                pass
+            else:
+                for walker in active_walkers:
+                    for revision in new_common.intersection(walker.seen):
+                        update_common(walker, revision)
+
             newly_seen = set()
             new_active_walkers = []
             for walker in active_walkers:
@@ -129,15 +148,17 @@ class GraphWalker(object):
                     new_active_walkers.append(walker)
             active_walkers = new_active_walkers
             for revision in newly_seen:
+                if revision in common_ancestors:
+                    for walker in walkers:
+                        update_common(walker, revision)
+                    continue
                 for walker in walkers:
                     if revision not in walker.seen:
                         break
                 else:
                     border_ancestors.add(revision)
                     for walker in walkers:
-                        w_seen_ancestors = walker.find_seen_ancestors(
-                            revision)
-                        stopped = walker.stop_searching_any(w_seen_ancestors)
+                        update_common(walker, revision)
 
     def _filter_candidate_lca(self, candidate_lca):
         """Remove candidates which are ancestors of other candidates.
@@ -276,7 +297,8 @@ class _AncestryWalker(object):
 
     def start_searching(self, revisions):
         if self._search_revisions is None:
-            self._start = revisions
+            self._start = set(revisions)
         else:
             self._search_revisions.update(r for r in revisions if
                                           r not in self.seen)
+        self.seen.update(revisions)
