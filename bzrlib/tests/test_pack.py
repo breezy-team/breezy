@@ -19,11 +19,10 @@
 
 from cStringIO import StringIO
 
-from bzrlib import pack, errors
-from bzrlib.tests import TestCase
+from bzrlib import pack, errors, tests
 
 
-class TestContainerWriter(TestCase):
+class TestContainerWriter(tests.TestCase):
 
     def test_construct(self):
         """Test constructing a ContainerWriter.
@@ -34,14 +33,14 @@ class TestContainerWriter(TestCase):
         writer = pack.ContainerWriter(None)
 
     def test_begin(self):
-        """Test the begin() method."""
+        """The begin() method writes the container format marker line."""
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         self.assertEqual('bzr pack format 1\n', output.getvalue())
 
     def test_end(self):
-        """Test the end() method."""
+        """The end() method writes an End Marker record."""
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
@@ -75,7 +74,7 @@ class TestContainerWriter(TestCase):
                          output.getvalue())
 
 
-class TestContainerReader(TestCase):
+class TestContainerReader(tests.TestCase):
 
     def test_construct(self):
         """Test constructing a ContainerReader.
@@ -119,9 +118,9 @@ class TestContainerReader(TestCase):
     def test_container_with_one_unnamed_record(self):
         """Read a container with one Bytes record.
         
-        Parsing Bytes records is more thoroughly exercised by XXX.  This test is
-        here to ensure that ContainerReader's integration with BytesRecordReader
-        is working.
+        Parsing Bytes records is more thoroughly exercised by
+        TestBytesRecordReader.  This test is here to ensure that
+        ContainerReader's integration with BytesRecordReader is working.
         """
         input = StringIO("bzr pack format 1\nB5\n\naaaaaE")
         reader = pack.ContainerReader(input.read)
@@ -129,7 +128,7 @@ class TestContainerReader(TestCase):
         self.assertEqual(expected_records, list(reader.iter_records()))
 
 
-class TestBytesRecordReader(TestCase):
+class TestBytesRecordReader(tests.TestCase):
     """Tests for parsing Bytes records with BytesRecordReader."""
 
     def test_record_with_no_name(self):
