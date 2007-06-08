@@ -852,6 +852,10 @@ class cmd_branch(Command):
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
+    If the FROM_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the FROM_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "branch lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
@@ -881,7 +885,7 @@ class cmd_branch(Command):
                 # RBC 20060209
                 revision_id = br_from.last_revision()
             if to_location is None:
-                to_location = os.path.basename(from_location.rstrip("/\\"))
+                to_location = urlutils.derive_to_location(from_location)
                 name = None
             else:
                 name = os.path.basename(to_location) + '\n'
@@ -921,6 +925,10 @@ class cmd_checkout(Command):
     
     If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
     be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+    If the BRANCH_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the BRANCH_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "checkout lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
@@ -957,7 +965,7 @@ class cmd_checkout(Command):
         else:
             revision_id = None
         if to_location is None:
-            to_location = os.path.basename(branch_location.rstrip("/\\"))
+            to_location = urlutils.derive_to_location(branch_location)
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
