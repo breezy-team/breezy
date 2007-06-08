@@ -13,3 +13,8 @@ Documentation index
 * `Performance roadmap <performance-roadmap.htm>`_
 
   The roadmap for fixing performance in bzr over the next few releases.
+
+* `Container format <container-format.htm>`_
+
+  Notes on a container format for streaming and storing Bazaar data.
+

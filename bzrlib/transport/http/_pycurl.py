@@ -206,9 +206,7 @@ class PyCurlTransport(HttpTransportBase):
             # Forget ranges, the server can't handle them
             return self._get_full(relpath)
 
-        self._curl_perform(curl, header,
-                           ['Range: bytes=%s'
-                            % self.range_header(ranges, tail_amount)])
+        self._curl_perform(curl, header, ['Range: bytes=%s' % range_header])
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
