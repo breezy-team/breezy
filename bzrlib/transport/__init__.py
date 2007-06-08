@@ -1072,11 +1072,11 @@ class ConnectedTransport(Transport):
 
         super(ConnectedTransport, self).__init__(base)
         if from_transport is None:
-            self._init_connection()
+            self._init_connection_sharing()
         else:
             # set_connection MUST not be used here, see set_connection for an
             # explanation
-            self._connection = from_transport._connection
+            self._connection_sharing = from_transport._connection_sharing
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
@@ -1215,8 +1215,10 @@ class ConnectedTransport(Transport):
         remote_path = self._combine_paths(self._path, relative)
         return remote_path
 
-    def _init_connection(self):
-        self._connection = [(None, None)]
+    def _init_connection_sharing(self):
+        # Note: What we share is really the connection itself and any
+        # credentials that may be needed to create a new one.
+        self._connection_sharing = [(None, None)]
 
     def _set_connection(self, connection, credentials=None):
         """Record a newly created connection with its associated credentials.
@@ -1237,16 +1239,16 @@ class ConnectedTransport(Transport):
         # temporary failure. It also quarantee that the connection will still
         # be shared even if a transport is cloned before the first effective
         # connection (generally the first request) is made.
-        self._connection[0] = (connection, credentials)
+        self._connection_sharing[0] = (connection, credentials)
 
     def _get_connection(self):
         """Returns the transport specific connection object."""
-        return self._connection[0][0]
+        return self._connection_sharing[0][0]
 
     def _get_credentials(self):
         """Returns the credentials used to establish the connection."""
-        (connection, credentials) = self._connection[0]
-        return self._connection[0][1]
+        (connection, credentials) = self._connection_sharing[0]
+        return self._connection_sharing[0][1]
 
     def _update_credentials(self, credentials):
         """Update the credentials of the current connection.
@@ -1258,8 +1260,8 @@ class ConnectedTransport(Transport):
         """
         # We don't want to call _set_connection here as we are only updating
         # the credentials not creating a new connection.
-        (connection, old_credentials) = self._connection[0]
-        self._connection[0] = (connection, credentials)
+        (connection, old_credentials) = self._connection_sharing[0]
+        self._connection_sharing[0] = (connection, credentials)
 
     def _reuse_for(self, other_base):
         """Returns a transport sharing the same connection if possible.
