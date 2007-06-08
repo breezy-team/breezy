@@ -558,7 +558,7 @@ class cmd_pull(Command):
             type=unicode,
             ),
         ]
-    takes_args = ['location?']
+    takes_args = ['location?', 'status-flags']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
