@@ -2605,7 +2605,7 @@ class cmd_merge(Command):
     --force is given.
     """
 
-    _see_also = ['update', 'remerge']
+    _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
         Option('show-base', help="Show base revision text in "
