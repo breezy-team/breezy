@@ -2539,7 +2539,7 @@ class cmd_find_merge_base(Command):
         last2 = branch2.last_revision()
 
         walker = branch1.repository.get_graph_walker(branch2.repository)
-        base_rev_id = walker.unique_common(last1, last2)
+        base_rev_id = walker.find_unique_lca(last1, last2)
 
         print 'merge base is revision %s' % base_rev_id
 
@@ -2784,7 +2784,7 @@ class cmd_remerge(Command):
                                              " multi-merges.")
             repository = tree.branch.repository
             walker = repository.get_graph_walker()
-            base_revision = walker.unique_common(parents[0], parents[1])
+            base_revision = walker.find_unique_lca(parents[0], parents[1])
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(parents[1])
             interesting_ids = None

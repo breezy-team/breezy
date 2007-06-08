@@ -18,6 +18,36 @@ from bzrlib import graph
 from bzrlib.revision import NULL_REVISION
 
 
+class _StackedParentsProvider(object):
+
+    def __init__(self, parent_providers):
+        self._parent_providers = parent_providers
+
+    def get_parents(self, revision_ids):
+        """
+        Find revision ids of the parents of a list of revisions
+
+        A list is returned of the same length as the input.  Each entry
+        is a list of parent ids for the corresponding input revision.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        If the revision is not present (i.e. a ghost), None is used in place
+        of the list of parents.
+        """
+        found = {}
+        for parents_provider in self._parent_providers:
+            parent_list = parents_provider.get_parents(
+                [r for r in revision_ids if r not in found])
+            new_found = dict((k, v) for k, v in zip(revision_ids, parent_list)
+                             if v is not None)
+            found.update(new_found)
+            if len(found) == len(revision_ids):
+                break
+        return [found.get(r) for r in revision_ids]
+
+
 class GraphWalker(object):
     """Provide incremental access to revision graphs.
 
@@ -25,74 +55,40 @@ class GraphWalker(object):
     specialize it for other repository types.
     """
 
-    def __init__(self, graphs):
+    def __init__(self, parents_provider):
         """Construct a GraphWalker that uses several graphs as its input
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
         Repository.get_graph_walker()
 
-        Note that the input graphs *will* be altered to use NULL_REVISION as
-        their origin.
+        :param parents_func: a list of objects providing a get_parents call
+            conforming to the behavior of GraphWalker.get_parents
         """
-        self._graph = graphs
-        self._ancestors = []
-        self._descendants = []
-        for graph in graphs:
-            self._extract_data(graph)
+        self.get_parents = parents_provider.get_parents
 
-    def _extract_data(self, graph):
-        """Convert graph to use NULL_REVISION as origin"""
-        ancestors = dict(graph.get_ancestors())
-        descendants = dict(graph.get_descendants())
-        descendants[NULL_REVISION] = {}
-        ancestors[NULL_REVISION] = []
-        for root in graph.roots:
-            descendants[NULL_REVISION][root] = 1
-            ancestors[root] = ancestors[root] + [NULL_REVISION]
-        for ghost in graph.ghosts:
-            # ghosts act as roots for the purpose of finding
-            # the longest paths from the root: any ghost *might*
-            # be directly attached to the root, so we treat them
-            # as being such.
-            # ghost now descends from NULL
-            descendants[NULL_REVISION][ghost] = 1
-            # that is it has an ancestor of NULL
-            ancestors[ghost] = [NULL_REVISION]
-        self._ancestors.append(ancestors)
-        self._descendants.append(descendants)
+    def find_lca(self, *revisions):
+        """Determine the lowest common ancestors of the provided revisions
 
-    def distance_from_origin(self, revisions):
-        """Determine the of the named revisions from the origin
-
-        :param revisions: The revisions to examine
-        :return: A list of revision distances.  None is provided if no distance
-            could be found.
-        """
-        distances = graph.node_distances(self._descendants[0],
-                                         self._ancestors[0],
-                                         NULL_REVISION)
-        return [distances.get(r) for r in revisions]
-
-    def distinct_common(self, *revisions):
-        """Determine the distinct common ancestors of the provided revisions
-
-        A distinct common ancestor is a common ancestor none of whose
-        descendants are common ancestors.
+        A lowest common ancestor is a common ancestor none of whose
+        descendants are common ancestors.  In graphs, unlike trees, there may
+        be multiple lowest common ancestors.
 
         This algorithm has two phases.  Phase 1 identifies border ancestors,
-        and phase 2 filters border ancestors to determine distinct ancestors.
+        and phase 2 filters border ancestors to determine lowest common
+        ancestors.
 
         In phase 1, border ancestors are identified, using a breadth-first
         search starting at the bottom of the graph.  Searches are stopped
         whenever a node or one of its descendants is determined to be common
 
-        In phase 2, the border ancestors are filtered to find the distinct
+        In phase 2, the border ancestors are filtered to find the least
         common ancestors.  This is done by searching the ancestries of each
         border ancestor.
 
-        Phase 2 is perfomed on the principle that a border ancestor that is not
-        an ancestor of any other border ancestor is a distinct ancestor.
+        Phase 2 is perfomed on the principle that a border ancestor that is
+        not an ancestor of any other border ancestor is a least common
+        ancestor.
 
         Searches are stopped when they find a node that is determined to be a
         common ancestor of all border ancestors, because this shows that it
@@ -105,7 +101,7 @@ class GraphWalker(object):
            ancestor of all border ancestors.
         """
         border_common = self._find_border_ancestors(revisions)
-        return self._filter_candidate_dca(border_common)
+        return self._filter_candidate_lca(border_common)
 
     def _find_border_ancestors(self, revisions):
         """Find common ancestors with at least one uncommon descendant.
@@ -118,11 +114,11 @@ class GraphWalker(object):
         """
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
-        maybe_distinct_common = set()
+        border_ancestors = set()
         seen_ancestors = set()
         while True:
             if len(active_walkers) == 0:
-                return maybe_distinct_common
+                return border_ancestors
             newly_seen = set()
             new_active_walkers = []
             for walker in active_walkers:
@@ -138,17 +134,18 @@ class GraphWalker(object):
                     if revision not in walker.seen:
                         break
                 else:
-                    maybe_distinct_common.add(revision)
+                    border_ancestors.add(revision)
                     for walker in walkers:
-                        w_seen_ancestors = walker.find_seen_ancestors(revision)
+                        w_seen_ancestors = walker.find_seen_ancestors(
+                            revision)
                         walker.stop_searching_any(w_seen_ancestors)
 
-    def _filter_candidate_dca(self, candidate_dca):
+    def _filter_candidate_lca(self, candidate_lca):
         """Remove candidates which are ancestors of other candidates.
 
         This is done by searching the ancestries of each border ancestor.  It
         is perfomed on the principle that a border ancestor that is not an
-        ancestor of any other border ancestor is a distinct ancestor.
+        ancestor of any other border ancestor is a lowest common ancestor.
 
         Searches are stopped when they find a node that is determined to be a
         common ancestor of all border ancestors, because this shows that it
@@ -158,7 +155,7 @@ class GraphWalker(object):
         of the shortest path from a candidate to an ancestor common to all
         candidates.
         """
-        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_dca)
+        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_lca)
         active_walkers = dict(walkers)
         # skip over the actual candidate for each walker
         for walker in active_walkers.itervalues():
@@ -171,8 +168,8 @@ class GraphWalker(object):
                     del active_walkers[candidate]
                     continue
                 for ancestor in ancestors:
-                    if ancestor in candidate_dca:
-                        candidate_dca.remove(ancestor)
+                    if ancestor in candidate_lca:
+                        candidate_lca.remove(ancestor)
                         del walkers[ancestor]
                         if ancestor in active_walkers:
                             del active_walkers[ancestor]
@@ -187,35 +184,26 @@ class GraphWalker(object):
                             seen_ancestors =\
                                 walker.find_seen_ancestors(ancestor)
                             walker.stop_searching_any(seen_ancestors)
-        return candidate_dca
+        return candidate_lca
 
-    def unique_common(self, left_revision, right_revision):
-        """Find a unique distinct common ancestor.
+    def find_unique_lca(self, left_revision, right_revision):
+        """Find a unique LCA.
 
-        Find distinct common ancestors.  If there is no unique distinct common
-        ancestor, find the distinct common ancestors of those ancestors.
+        Find lowest common ancestors.  If there is no unique  common
+        ancestor, find the lowest common ancestors of those ancestors.
 
-        Iteration stops when a unique distinct common ancestor is found.
-        The graph origin is necessarily a unique common ancestor
+        Iteration stops when a unique lowest common ancestor is found.
+        The graph origin is necessarily a unique lowest common ancestor.
 
         Note that None is not an acceptable substitute for NULL_REVISION.
+        in the input for this method.
         """
         revisions = [left_revision, right_revision]
         while True:
-            distinct = self.distinct_common(*revisions)
-            if len(distinct) == 1:
-                return distinct.pop()
-            revisions = distinct
-
-    def get_parents(self, revision):
-        """Determine the parents of a revision"""
-        for ancestors in self._ancestors:
-            try:
-                return ancestors[revision]
-            except KeyError:
-                pass
-        else:
-            raise KeyError
+            lca = self.find_lca(*revisions)
+            if len(lca) == 1:
+                return lca.pop()
+            revisions = lca
 
 
 class _AncestryWalker(object):
@@ -246,10 +234,12 @@ class _AncestryWalker(object):
             self._search_revisions = self._start
         else:
             new_search_revisions = set()
-            for revision in self._search_revisions:
-                new_search_revisions.update(p for p in
-                                 self._graph_walker.get_parents(revision) if p
-                                 not in self.seen)
+            for parents in self._graph_walker.get_parents(
+                self._search_revisions):
+                if parents is None:
+                    continue
+                new_search_revisions.update(p for p in parents if
+                                            p not in self.seen)
             self._search_revisions = new_search_revisions
         if len(self._search_revisions) == 0:
             raise StopIteration()

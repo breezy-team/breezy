@@ -640,7 +640,7 @@ class RevisionSpec_ancestor(RevisionSpec):
         if revision.NULL_REVISION in (revision_a, revision_b):
             rev_id = revision.NULL_REVISION
         else:
-            rev_id = walker.unique_common(revision_a, revision_b)
+            rev_id = walker.find_unique_lca(revision_a, revision_b)
             if rev_id == revision.NULL_REVISION:
                 raise errors.NoCommonAncestor(revision_a, revision_b)
         try:

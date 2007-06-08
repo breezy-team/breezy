@@ -155,8 +155,8 @@ class cmd_bundle_revisions(Command):
             target_branch.repository.fetch(base_branch.repository, 
                                            base_branch.last_revision())
             walker = target_branch.repository.get_graph_walker()
-            base_revision = walker.unique_common(base_branch.last_revision(),
-                                                 target_revision)
+            base_revision = walker.find_unique_lca(
+                base_branch.last_revision(), target_revision)
 
         if output is not None:
             fileobj = file(output, 'wb')

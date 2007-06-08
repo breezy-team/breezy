@@ -39,6 +39,28 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, note, warning
 
 
+class _KnitParentsProvider(object):
+
+    def __init__(self, knit):
+        self._knit = knit
+
+    def get_parents(self, revision_ids):
+        parents_list = []
+        for revision_id in revision_ids:
+            if revision_id == _mod_revision.NULL_REVISION:
+                parents = []
+            else:
+                try:
+                    parents = self._knit.get_parents_with_ghosts(revision_id)
+                except errors.RevisionNotPresent:
+                    parents = None
+                else:
+                    if len(parents) == 0:
+                        parents = [_mod_revision.NULL_REVISION]
+            parents_list.append(parents)
+        return parents_list
+
+
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
 
@@ -201,6 +223,9 @@ class KnitRepository(MetaDirRepository):
     def revision_parents(self, revision_id):
         revision_id = osutils.safe_revision_id(revision_id)
         return self._get_revision_vf().get_parents(revision_id)
+
+    def _make_parents_provider(self):
+        return _KnitParentsProvider(self._get_revision_vf())
 
 
 class KnitRepository3(KnitRepository):

@@ -2084,8 +2084,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             #       should be able to remove this extra flush.
             self.flush()
             walker = self.branch.repository.get_graph_walker()
-            base_rev_id = walker.unique_common(self.branch.last_revision(),
-                                               old_tip)
+            base_rev_id = walker.find_unique_lca(self.branch.last_revision(),
+                                                 old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             result += merge.merge_inner(

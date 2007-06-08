@@ -40,12 +40,6 @@ history_shortcut = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'],
 
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
-    def test_distance_from_origin(self):
-        graph_walker = self.make_walker(ancestry_1)
-        self.assertEqual([1, 0, 2, 4],
-                         graph_walker.distance_from_origin(['rev1', 'null:',
-                         'rev2b', 'rev4']))
-
     def make_walker(self, ancestors):
         tree = self.prepare_memory_tree('.')
         self.build_ancestry(tree, ancestors)
@@ -85,81 +79,83 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                 tree.commit(descendant, rev_id=descendant)
                 pending.append(descendant)
 
-    def test_dca(self):
+    def test_lca(self):
         """Test finding distinct common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
         graph_walker = self.make_walker(ancestry_1)
         self.assertEqual(set([NULL_REVISION]),
-                         graph_walker.distinct_common(NULL_REVISION,
+                         graph_walker.find_lca(NULL_REVISION,
                                                      NULL_REVISION))
         self.assertEqual(set([NULL_REVISION]),
-                         graph_walker.distinct_common(NULL_REVISION,
+                         graph_walker.find_lca(NULL_REVISION,
                                                      'rev1'))
         self.assertEqual(set(['rev1']),
-                         graph_walker.distinct_common('rev1', 'rev1'))
+                         graph_walker.find_lca('rev1', 'rev1'))
         self.assertEqual(set(['rev1']),
-                         graph_walker.distinct_common('rev2a', 'rev2b'))
+                         graph_walker.find_lca('rev2a', 'rev2b'))
 
-    def test_dca_criss_cross(self):
+    def test_lca_criss_cross(self):
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual(set(['rev2a', 'rev2b']),
-                         graph_walker.distinct_common('rev3a', 'rev3b'))
+                         graph_walker.find_lca('rev3a', 'rev3b'))
         self.assertEqual(set(['rev2b']),
-                         graph_walker.distinct_common('rev3a', 'rev3b',
+                         graph_walker.find_lca('rev3a', 'rev3b',
                                                      'rev2b'))
 
-    def test_dca_shortcut(self):
+    def test_lca_shortcut(self):
         graph_walker = self.make_walker(history_shortcut)
         self.assertEqual(set(['rev2b']),
-                         graph_walker.distinct_common('rev3a', 'rev3b'))
+                         graph_walker.find_lca('rev3a', 'rev3b'))
 
-    def test_recursive_unique_dca(self):
+    def test_recursive_unique_lca(self):
         """Test finding a unique distinct common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
         graph_walker = self.make_walker(ancestry_1)
         self.assertEqual(NULL_REVISION,
-                         graph_walker.unique_common(NULL_REVISION,
-                                                     NULL_REVISION))
+                         graph_walker.find_unique_lca(NULL_REVISION,
+                                                      NULL_REVISION))
         self.assertEqual(NULL_REVISION,
-                         graph_walker.unique_common(NULL_REVISION,
-                                                     'rev1'))
-        self.assertEqual('rev1', graph_walker.unique_common('rev1', 'rev1'))
-        self.assertEqual('rev1', graph_walker.unique_common('rev2a', 'rev2b'))
+                         graph_walker.find_unique_lca(NULL_REVISION,
+                                                      'rev1'))
+        self.assertEqual('rev1', graph_walker.find_unique_lca('rev1',
+                                                              'rev1'))
+        self.assertEqual('rev1', graph_walker.find_unique_lca('rev2a',
+                                                              'rev2b'))
 
-    def test_dca_criss_cross(self):
+    def test_lca_criss_cross(self):
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual(set(['rev2a', 'rev2b']),
-                         graph_walker.distinct_common('rev3a', 'rev3b'))
+                         graph_walker.find_lca('rev3a', 'rev3b'))
         self.assertEqual(set(['rev2b']),
-                         graph_walker.distinct_common('rev3a', 'rev3b',
+                         graph_walker.find_lca('rev3a', 'rev3b',
                                                       'rev2b'))
 
-    def test_unique_common_criss_cross(self):
-        """Ensure we don't pick non-unique dcas in a criss-cross"""
+    def test_unique_lca_criss_cross(self):
+        """Ensure we don't pick non-unique lcas in a criss-cross"""
         graph_walker = self.make_walker(criss_cross)
         self.assertEqual('rev1',
-                         graph_walker.unique_common('rev3a', 'rev3b'))
+                         graph_walker.find_unique_lca('rev3a', 'rev3b'))
 
-    def test_unique_common_null_revision(self):
+    def test_unique_lca_null_revision(self):
         """Ensure we pick NULL_REVISION when necessary"""
         graph_walker = self.make_walker(criss_cross2)
         self.assertEqual('rev1b',
-                         graph_walker.unique_common('rev2a', 'rev1b'))
+                         graph_walker.find_unique_lca('rev2a', 'rev1b'))
         self.assertEqual(NULL_REVISION,
-                         graph_walker.unique_common('rev2a', 'rev2b'))
+                         graph_walker.find_unique_lca('rev2a', 'rev2b'))
 
-    def test_unique_common_null_revision2(self):
+    def test_unique_lca_null_revision2(self):
         """Ensure we pick NULL_REVISION when necessary"""
         graph_walker = self.make_walker(ancestry_2)
         self.assertEqual(NULL_REVISION,
-                         graph_walker.unique_common('rev4a', 'rev1b'))
+                         graph_walker.find_unique_lca('rev4a', 'rev1b'))
 
     def test_common_ancestor_two_repos(self):
-        """Ensure we do unique_common using data from two repos"""
+        """Ensure we do unique_lca using data from two repos"""
         mainline_tree = self.prepare_memory_tree('mainline')
         self.build_ancestry(mainline_tree, mainline)
         mainline_tree.unlock()
@@ -171,4 +167,5 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         feature_tree.unlock()
         graph_walker = mainline_tree.branch.repository.get_graph_walker(
             feature_tree.branch.repository)
-        self.assertEqual('rev2b', graph_walker.unique_common('rev2a', 'rev3b'))
+        self.assertEqual('rev2b', graph_walker.find_unique_lca('rev2a',
+                         'rev3b'))

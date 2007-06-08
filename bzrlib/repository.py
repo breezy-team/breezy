@@ -735,13 +735,6 @@ class Repository(object):
             done.add(revision_id)
         return result
 
-    def get_graph_walker(self, other_repository=None):
-        """Return the graph walker for this repository format"""
-        graphs = [self.get_revision_graph_with_ghosts()]
-        if other_repository is not None:
-            graphs.append(other_repository.get_revision_graph_with_ghosts())
-        return graph_walker.GraphWalker(graphs)
-
     def _get_history_vf(self):
         """Get a versionedfile whose history graph reflects all revisions.
 
@@ -869,6 +862,34 @@ class Repository(object):
     def revision_parents(self, revision_id):
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_inventory_weave().parent_names(revision_id)
+
+    def get_parents(self, revision_ids):
+        """See GraphWalker.get_parents"""
+        parents_list = []
+        for revision_id in revision_ids:
+            if revision_id == _mod_revision.NULL_REVISION:
+                parents = []
+            else:
+                try:
+                    parents = self.get_revision(revision_id).parent_ids
+                except errors.NoSuchRevision:
+                    parents = None
+                else:
+                    if len(parents) == 0:
+                        parents = [_mod_revision.NULL_REVISION]
+            parents_list.append(parents)
+        return parents_list
+
+    def _make_parents_provider(self):
+        return self
+
+    def get_graph_walker(self, other_repository=None):
+        """Return the graph walker for this repository format"""
+        parents_provider = self._make_parents_provider()
+        if other_repository is not None:
+            parents_provider = graph_walker._StackedParentsProvider(
+                [parents_provider, other_repository._make_parents_provider()])
+        return graph_walker.GraphWalker(parents_provider)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):

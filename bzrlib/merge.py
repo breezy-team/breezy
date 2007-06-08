@@ -264,7 +264,7 @@ class Merger(object):
                     if NULL_REVISION in revisions:
                         self.base_rev_id = NULL_REVISION
                     else:
-                        self.base_rev_id = walker.unique_common(*revisions)
+                        self.base_rev_id = walker.find_unique_lca(*revisions)
                         if self.base_rev_id == NULL_REVISION:
                             raise UnrelatedBranches()
                 finally:
