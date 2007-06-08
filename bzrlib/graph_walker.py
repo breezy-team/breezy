@@ -112,7 +112,7 @@ class GraphWalker(object):
 
         This will scale with the number of uncommon ancestors.
         """
-        walkers = [_AncestryWalker(r, self) for r in revisions]
+        walkers = [_AncestryWalker([r], self) for r in revisions]
         active_walkers = walkers[:]
         border_ancestors = set()
         while True:
@@ -154,7 +154,8 @@ class GraphWalker(object):
         of the shortest path from a candidate to an ancestor common to all
         candidates.
         """
-        walkers = dict((c, _AncestryWalker(c, self)) for c in candidate_lca)
+        walkers = dict((c, _AncestryWalker([c], self))
+                       for c in candidate_lca)
         active_walkers = dict(walkers)
         # skip over the actual candidate for each walker
         for walker in active_walkers.itervalues():
@@ -213,10 +214,10 @@ class _AncestryWalker(object):
     2. allows some ancestries to be unsearched, via stop_searching_any
     """
 
-    def __init__(self, revision, graph_walker):
-        self._start = set([revision])
+    def __init__(self, revisions, graph_walker):
+        self._start = set(revisions)
         self._search_revisions = None
-        self.seen = set([revision])
+        self.seen = set(revisions)
         self._graph_walker = graph_walker
 
     def __repr__(self):
@@ -250,7 +251,7 @@ class _AncestryWalker(object):
 
     def find_seen_ancestors(self, revision):
         """Find ancstors of this revision that have already been seen."""
-        walker = _AncestryWalker(revision, self._graph_walker)
+        walker = _AncestryWalker([revision], self._graph_walker)
         seen_ancestors = set()
         for ancestors in walker:
             for ancestor in ancestors:
