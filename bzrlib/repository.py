@@ -886,7 +886,9 @@ class Repository(object):
     def get_graph_walker(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
-        if other_repository is not None:
+        if (other_repository is not None and
+            other_repository.bzrdir.transport.base !=
+            self.bzrdir.transport.base):
             parents_provider = graph_walker._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph_walker.GraphWalker(parents_provider)
