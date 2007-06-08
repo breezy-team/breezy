@@ -22,7 +22,6 @@ from cStringIO import StringIO
 from bzrlib import (
     branch,
     errors,
-    graph_walker,
     lockdir,
     repository,
 )
@@ -300,9 +299,9 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
-    def get_graph_walker(self, other_repository=None):
-        """Return the graph walker for this repository format"""
-        return self._real_repository.get_graph_walker(other_repository)
+    def get_graph(self, other_repository=None):
+        """Return the graph for this repository format"""
+        return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

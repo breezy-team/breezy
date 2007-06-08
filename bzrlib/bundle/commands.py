@@ -154,8 +154,8 @@ class cmd_bundle_revisions(Command):
                                                  ' to be specified.')
             target_branch.repository.fetch(base_branch.repository, 
                                            base_branch.last_revision())
-            walker = target_branch.repository.get_graph_walker()
-            base_revision = walker.find_unique_lca(
+            graph = target_branch.repository.get_graph()
+            base_revision = graph.find_unique_lca(
                 base_branch.last_revision(), target_revision)
 
         if output is not None:

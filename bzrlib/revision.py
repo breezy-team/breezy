@@ -19,7 +19,12 @@
 
 
 import bzrlib.errors as errors
-from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
+from bzrlib.deprecated_graph import (
+    all_descendants,
+    Graph,
+    node_distances,
+    select_farthest,
+    )
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import (deprecated_function,

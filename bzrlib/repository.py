@@ -25,11 +25,11 @@ import unittest
 from bzrlib import (
     bzrdir,
     check,
+    deprecated_graph,
     errors,
     generate_ids,
     gpg,
     graph,
-    graph_walker,
     lazy_regex,
     lockable_files,
     lockdir,
@@ -704,7 +704,7 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
-        result = graph.Graph()
+        result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
             required = set([])
@@ -883,15 +883,15 @@ class Repository(object):
     def _make_parents_provider(self):
         return self
 
-    def get_graph_walker(self, other_repository=None):
+    def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             other_repository.bzrdir.transport.base !=
             self.bzrdir.transport.base):
-            parents_provider = graph_walker._StackedParentsProvider(
+            parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
-        return graph_walker.GraphWalker(parents_provider)
+        return graph.GraphWalker(parents_provider)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):

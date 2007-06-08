@@ -258,13 +258,13 @@ class Merger(object):
                 pb = ui.ui_factory.nested_progress_bar()
                 try:
                     this_repo = self.this_branch.repository
-                    walker = this_repo.get_graph_walker()
+                    graph = this_repo.get_graph()
                     revisions = [ensure_null(self.this_basis),
                                  ensure_null(self.other_basis)]
                     if NULL_REVISION in revisions:
                         self.base_rev_id = NULL_REVISION
                     else:
-                        self.base_rev_id = walker.find_unique_lca(*revisions)
+                        self.base_rev_id = graph.find_unique_lca(*revisions)
                         if self.base_rev_id == NULL_REVISION:
                             raise UnrelatedBranches()
                 finally:

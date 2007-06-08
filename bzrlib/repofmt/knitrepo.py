@@ -16,8 +16,8 @@
 
 from bzrlib import (
     bzrdir,
+    deprecated_graph,
     errors,
-    graph,
     knit,
     lockable_files,
     lockdir,
@@ -166,7 +166,7 @@ class KnitRepository(MetaDirRepository):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
-        result = graph.Graph()
+        result = deprecated_graph.Graph()
         vf = self._get_revision_vf()
         versions = set(vf.versions())
         if not revision_ids:

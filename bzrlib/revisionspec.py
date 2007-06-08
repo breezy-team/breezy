@@ -634,13 +634,13 @@ class RevisionSpec_ancestor(RevisionSpec):
                 raise errors.NoCommits(b)
         revision_source = revision.MultipleRevisionSources(
                 branch.repository, other_branch.repository)
-        walker = branch.repository.get_graph_walker(other_branch.repository)
+        graph = branch.repository.get_graph(other_branch.repository)
         revision_a = revision.ensure_null(revision_a)
         revision_b = revision.ensure_null(revision_b)
         if revision.NULL_REVISION in (revision_a, revision_b):
             rev_id = revision.NULL_REVISION
         else:
-            rev_id = walker.find_unique_lca(revision_a, revision_b)
+            rev_id = graph.find_unique_lca(revision_a, revision_b)
             if rev_id == revision.NULL_REVISION:
                 raise errors.NoCommonAncestor(revision_a, revision_b)
         try:
