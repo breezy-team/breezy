@@ -1029,6 +1029,9 @@ class Transport(object):
         return False
 
     def _reuse_for(self, other_base):
+        # This is really needed for ConnectedTransport only, but it's easier to
+        # have Transport refuses to be reused than testing that the reuse
+        # should be asked to ConnectedTransport only.
         return None
 
 class ConnectedTransport(Transport):
@@ -1356,12 +1359,11 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(transport)
                 return transport
 
-    # We tried all the different protocols, now try one last
-    # time as a local protocol
+    # We tried all the different protocols, now try one last time
+    # as a local protocol
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
-    # The default handler is the filesystem handler, stored
-    # as protocol None
+    # The default handler is the filesystem handler, stored as protocol None
     factory_list = transport_list_registry.get(None)
     transport, last_err = _try_transport_factories(base, factory_list)
 

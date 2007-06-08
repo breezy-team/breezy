@@ -135,7 +135,6 @@ class RemoteTransport(transport.ConnectedTransport):
         if from_transport is not None:
             _medium = from_transport._medium
         else:
-            import pdb; pdb.set_trace()
             _medium = None
             # No credentials
             self._set_connection(_medium, None)

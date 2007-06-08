@@ -133,6 +133,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     """Test the SFTP transport with homedir based relative paths."""
 
     def setUp(self):
+        # Only SFTPHomeDirServer is tested here
         self._get_remote_is_absolute = False
         super(SFTPTransportTestRelativeRoot, self).setUp()
 

@@ -103,7 +103,8 @@ class PyCurlTransport(HttpTransportBase):
             # First connection ever. There is no credentials for pycurl, either
             # the password was embedded in the URL or it's not needed. The
             # connection for pycurl is just the Curl object, it will not
-            # connect until the first request
+            # connect to the http server until the first request (which had
+            # just called us).
             connection = pycurl.Curl()
             self._set_connection(connection, None)
         return connection

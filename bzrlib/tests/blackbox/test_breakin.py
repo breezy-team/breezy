@@ -44,9 +44,7 @@ class TestBreakin(TestCase):
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
-        print 'bzr server started in test_breakin with pid: %d' % proc.pid
         proc.stdout.readline()
-        print 'stdout read'
         # first sigquit pops into debugger
         os.kill(proc.pid, signal.SIGQUIT)
         proc.stdin.write("q\n")
@@ -58,9 +56,7 @@ class TestBreakin(TestCase):
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
-        print 'bzr server started in test_breakin_harder with pid: %d' % proc.pid
         proc.stdout.readline()
-        print 'stdout read'
         # another hit gives the default behaviour of terminating it
         os.kill(proc.pid, signal.SIGQUIT)
         # wait for it to go into pdb
