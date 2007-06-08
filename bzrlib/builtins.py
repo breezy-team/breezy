@@ -156,23 +156,6 @@ class cmd_status(Command):
     --short gives a status flags for each item, similar to the SVN's status
     command.
 
-    Column 1: versioning / renames
-      + File versioned
-      - File unversioned
-      R File renamed
-      ? File unknown
-      C File has conflicts
-      P Entry for a pending merge (not a file)
-
-    Column 2: Contents
-      N File created
-      D File deleted
-      K File kind changed
-      M File modified
-
-    Column 3: Execute
-      * The execute bit was changed
-
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
@@ -191,7 +174,7 @@ class cmd_status(Command):
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
-    _see_also = ['diff', 'revert']
+    _see_also = ['diff', 'revert', 'status-flags']
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
