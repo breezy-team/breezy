@@ -137,7 +137,7 @@ class GraphWalker(object):
                     for walker in walkers:
                         w_seen_ancestors = walker.find_seen_ancestors(
                             revision)
-                        walker.stop_searching_any(w_seen_ancestors)
+                        stopped = walker.stop_searching_any(w_seen_ancestors)
 
     def _filter_candidate_lca(self, candidate_lca):
         """Remove candidates which are ancestors of other candidates.
@@ -267,5 +267,15 @@ class _AncestryWalker(object):
         None of the specified revisions are required to be present in the
         search list.  In this case, the call is a no-op.
         """
+        stopped_searches = set(l for l in self._search_revisions
+                               if l in revisions)
         self._search_revisions = set(l for l in self._search_revisions
                                      if l not in revisions)
+        return stopped_searches
+
+    def start_searching(self, revisions):
+        if self._search_revisions is None:
+            self._start = revisions
+        else:
+            self._search_revisions.update(r for r in revisions if
+                                          r not in self.seen)
