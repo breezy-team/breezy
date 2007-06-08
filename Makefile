@@ -86,13 +86,13 @@ pretty_docs:
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
 doc/developers/%.htm: doc/developers/%.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
 doc/developers/HACKING.htm: doc/developers/HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css $< $@
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
 %.htm: %.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $< $@
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
 
 $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
