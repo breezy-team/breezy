@@ -115,7 +115,6 @@ class GraphWalker(object):
         walkers = [_AncestryWalker(r, self) for r in revisions]
         active_walkers = walkers[:]
         border_ancestors = set()
-        seen_ancestors = set()
         while True:
             if len(active_walkers) == 0:
                 return border_ancestors
@@ -217,7 +216,7 @@ class _AncestryWalker(object):
     def __init__(self, revision, graph_walker):
         self._start = set([revision])
         self._search_revisions = None
-        self.seen = set()
+        self.seen = set([revision])
         self._graph_walker = graph_walker
 
     def __repr__(self):
