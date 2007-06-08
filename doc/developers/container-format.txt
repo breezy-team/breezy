@@ -10,7 +10,7 @@ Status
 This document describes the proposed container format for streaming and
 storing collections of data in Bazaar.  Initially this will be used for
 streaming revision data for incremental push/pull in the smart server for
-0.18, but the intentional is that this will be the basis for much more
+0.18, but the intention is that this will be the basis for much more
 than just that use case.
 
 In particular, this document currently focuses almost exclusively on the
@@ -48,7 +48,13 @@ Streaming data between a smart server and client
 
 It would be nice if we could combine multiple containers into a single
 stream by something no more expensive than concatenation (e.g. by omitting
-end/start marker pairs).  
+end/start marker pairs).
+
+This doesn't imply that such a combination necessarily produces a valid
+container (e.g. care must be taken to ensure that names are still unique
+in the combined container), or even a useful container.  It is simply that
+the cost of assembling a new combined container is practically as cheap as
+simple concatenation.
 
 Incremental push or pull
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,7 +112,7 @@ Some key aspects of the described format are discussed in this section.
 No length-prefixing of entire container
 ---------------------------------------
 
-The overall container is not length prefixed.  Instead there is an end
+The overall container is not length-prefixed.  Instead there is an end
 marker so that readers can determine when they have read the entire
 container.  This also does not conflict with the goal of allowing
 single-pass writing.
@@ -164,9 +170,9 @@ record with no name).
 Specification
 =============
 
-This describes just a basic layer for storing simple series of "records".
-This layer has no intrinsic understanding of the contents of those
-records.
+This describes just a basic layer for storing a simple series of
+"records".  This layer has no intrinsic understanding of the contents of
+those records.
 
 The format is:
 
