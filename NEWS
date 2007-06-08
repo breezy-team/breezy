@@ -8,12 +8,16 @@ IN DEVELOPMENT
       is specified, and are labelled "revision-id:", as per mainline
       revisions, instead of "merged:". (Kent Gibson)
 
-    * Refactoring of transport classes connected to a remote
-      server. ConnectedTransport is a new class that serves as a basis for
-      all transports needing to connet to a remote server.
-      transport.split_url have been deprecated, use the static method on the
-      object instead. URL tests have been refactored too.  
-      (Vincent Ladeuil)
+    * Refactoring of transport classes connected to a remote server.
+      ConnectedTransport is a new class that serves as a basis for all
+      transports needing to connet to a remote server.  transport.split_url
+      have been deprecated, use the static method on the object instead. URL
+      tests have been refactored too.  (Vincent Ladeuil)
+
+    * Better connection sharing for ConnectedTransport objects.
+      transport.get_transport() now accepts a 'possible_transports' parameter.
+      If a newly requested transport can share a connection with one of the
+      list, it will.
 
   IMPROVEMENTS:
   
@@ -43,6 +47,13 @@ IN DEVELOPMENT
       Transport object. This modifies ``BzrDir.create_branch_convenience``,
       so that we can pass in the Transport that we already have.
       (John Arbash Meinel, Vincent Ladeuil, #111702)
+
+    * Get rid of sftp cache.
+      (Vincent Ladeuil, #43731)
+
+    * All identified multiple connections for a single bzr command have been
+      fixed. See bzrlib/tests/commands directory.
+      (Vincent Ladeuil)
 
 
 bzr 0.16  2007-05-07

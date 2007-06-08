@@ -1230,11 +1230,10 @@ class ConnectedTransport(Transport):
             needed to create the connection.
         """
         # We use a list as a container for the connection so that the
-        # connection will be shared even if a transport is cloned before the
-        # first effective connection (generally the first request made). It
-        # also guarantees that the connection will still be shared if a
-        # transport needs to reconnect after a temporary failure.
-
+        # connection will be shared if a transport needs to reconnect after a
+        # temporary failure. It also quarantee that the connection will still
+        # be shared even if a transport is cloned before the first effective
+        # connection (generally the first request) is made.
         self._connection[0] = (connection, credentials)
 
     def _get_connection(self):
