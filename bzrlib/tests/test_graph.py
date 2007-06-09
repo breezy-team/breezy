@@ -156,3 +156,22 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         graph = mainline_tree.branch.repository.get_graph(
             feature_tree.branch.repository)
         self.assertEqual('rev2b', graph.find_unique_lca('rev2a', 'rev3b'))
+
+    def test_graph_difference(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual((set(), set()), graph.find_difference('rev1', 'rev1'))
+        self.assertEqual((set(), set(['rev1'])),
+                         graph.find_difference(NULL_REVISION, 'rev1'))
+        self.assertEqual((set(['rev1']), set()),
+                         graph.find_difference('rev1', NULL_REVISION))
+        self.assertEqual((set(['rev2a', 'rev3']), set(['rev2b'])),
+                         graph.find_difference('rev3', 'rev2b'))
+        self.assertEqual((set(['rev4', 'rev3', 'rev2a']), set()),
+                         graph.find_difference('rev4', 'rev2b'))
+
+    def test_graph_difference_criss_cross(self):
+        graph = self.make_graph(criss_cross)
+        self.assertEqual((set(['rev3a']), set(['rev3b'])),
+                         graph.find_difference('rev3a', 'rev3b'))
+        self.assertEqual((set([]), set(['rev3b', 'rev2b'])),
+                         graph.find_difference('rev2a', 'rev3b'))

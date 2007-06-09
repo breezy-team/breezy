@@ -100,8 +100,14 @@ class Graph(object):
         3. The length of the shortest path between a border ancestor and an
            ancestor of all border ancestors.
         """
-        border_common = self._find_border_ancestors(revisions)
+        border_common, common, sides = self._find_border_ancestors(revisions)
         return self._filter_candidate_lca(border_common)
+
+    def find_difference(self, left_revision, right_revision):
+        border, common, (left, right) = self._find_border_ancestors(
+            [left_revision, right_revision])
+        return (left.difference(right).difference(common),
+                right.difference(left).difference(common))
 
     def _make_breadth_first_searcher(self, revisions):
         return _BreadthFirstSearcher(revisions, self)
@@ -130,7 +136,8 @@ class Graph(object):
 
         while True:
             if len(active_searchers) == 0:
-                return border_ancestors
+                return border_ancestors, common_ancestors, [s.seen for s in
+                                                            searchers]
             try:
                 new_common = common_searcher.next()
                 common_ancestors.update(new_common)
