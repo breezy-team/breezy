@@ -286,6 +286,13 @@ class TestErrors(TestCaseWithTransport):
             "Unknown record type: 'X'",
             str(e))
 
+    def test_invalid_record(self):
+        """Test the formatting of InvalidRecordError."""
+        e = errors.InvalidRecordError("xxx")
+        self.assertEqual(
+            "Invalid record: xxx",
+            str(e))
+
 
 class PassThroughError(errors.BzrError):
     

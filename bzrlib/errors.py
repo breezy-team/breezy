@@ -2163,3 +2163,10 @@ class UnknownRecordTypeError(ContainerError):
         self.record_type = record_type
 
 
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
