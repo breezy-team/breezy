@@ -88,6 +88,10 @@ IN DEVELOPMENT
     * Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
       (Daniel Watkins, #111958)
 
+    * Add a relpath parameter to get_transport methods in test framework to
+      avoid useless cloning.
+      (Vincent Ladeuil, #110448)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:

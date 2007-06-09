@@ -1617,19 +1617,27 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_readonly_server = None
         self.__vfs_server = None
 
-    def get_transport(self):
-        """Return a writeable transport for the test scratch space"""
-        t = get_transport(self.get_url())
+    def get_transport(self, relpath=None):
+        """Return a writeable transport.
+
+        This transport is for the test scratch space relative to
+        "self._test_root""
+        
+        :param relpath: a path relative to the base url.
+        """
+        t = get_transport(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
-    def get_readonly_transport(self):
+    def get_readonly_transport(self, relpath=None):
         """Return a readonly transport for the test scratch space
         
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
+
+        :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_readonly_url())
+        t = get_transport(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -1666,11 +1674,7 @@ class TestCaseWithMemoryTransport(TestCase):
         These should only be downwards relative, not upwards.
         """
         base = self.get_readonly_server().get_url()
-        if relpath is not None:
-            if not base.endswith('/'):
-                base = base + '/'
-            base = base + relpath
-        return base
+        return self._adjust_url(base, relpath)
 
     def get_vfs_only_server(self):
         """Get the vfs only read/write server instance.
