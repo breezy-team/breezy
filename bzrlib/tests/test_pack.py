@@ -168,6 +168,49 @@ class TestBytesRecordReader(tests.TestCase):
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
+    def test_early_eof(self):
+        """Tests for premature EOF occuring during parsing Bytes records with
+        BytesRecordReader.
+        
+        A incomplete container might be interrupted at any point.  The
+        BytesRecordReader needs to cope with the input stream running out no
+        matter where it is in the parsing process.
+
+        In all cases, UnexpectedEndOfContainerError should be raised.
+        """
+        complete_record = "6\nname\n\nabcdef"
+        for count in range(0, len(complete_record)):
+            input = StringIO(complete_record[:count])
+            reader = pack.BytesRecordReader(input.read)
+            # We don't use assertRaises to make diagnosing failures easier.
+            try:
+                reader.read()
+            except errors.UnexpectedEndOfContainerError:
+                pass
+            else:
+                self.fail(
+                    "UnexpectedEndOfContainerError not raised when parsing %r"
+                    % (input.getvalue()))
+
+    def test_initial(self):
+        """EOF before any bytes read at all."""
+        input = StringIO("")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+
+    def test_after_length(self):
+        """EOF after reading the length and before reading name(s)."""
+        input = StringIO("123\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+
+    def test_during_name(self):
+        """EOF during reading a name."""
+        input = StringIO("123\nname")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+
+        
     # Other Bytes record parsing cases to test:
     #  - incomplete bytes (i.e. stream ends before $length bytes read)
     #  - _read_line encountering end of stream (at any time; during length,

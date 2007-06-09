@@ -66,7 +66,8 @@ class BaseReader(object):
 
         :param reader_func: a callable that takes one optional argument,
             ``size``, and returns at most that many bytes.  When the callable
-            returns an empty string, then at most that many bytes are read.
+            returns less than the requested number of bytes, then the end of the
+            file/stream has been reached.
         """
         self.reader_func = reader_func
 
@@ -84,7 +85,10 @@ class BaseReader(object):
         #   -- Andrew Bennetts, 2007-05-07.
         line = ''
         while not line.endswith('\n'):
-            line += self.reader_func(1)
+            byte = self.reader_func(1)
+            if byte == '':
+                raise errors.UnexpectedEndOfContainerError()
+            line += byte
         return line[:-1]
 
 
@@ -177,6 +181,7 @@ class BytesRecordReader(BaseReader):
                 break
             names.append(name)
         bytes = self.reader_func(length)
-        # XXX: deal with case where len(bytes) != length
+        if len(bytes) != length:
+            raise errors.UnexpectedEndOfContainerError()
         return names, bytes
 
