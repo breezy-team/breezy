@@ -48,7 +48,7 @@ class _StackedParentsProvider(object):
         return [found.get(r) for r in revision_ids]
 
 
-class GraphWalker(object):
+class Graph(object):
     """Provide incremental access to revision graphs.
 
     This is the generic implementation; it is intended to be subclassed to
@@ -56,14 +56,14 @@ class GraphWalker(object):
     """
 
     def __init__(self, parents_provider):
-        """Construct a GraphWalker that uses several graphs as its input
+        """Construct a Graph that uses several graphs as its input
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
         Repository.get_graph()
 
-        :param parents_func: a list of objects providing a get_parents call
-            conforming to the behavior of GraphWalker.get_parents
+        :param parents_func: an object providing a get_parents call
+            conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
 
@@ -103,6 +103,9 @@ class GraphWalker(object):
         border_common = self._find_border_ancestors(revisions)
         return self._filter_candidate_lca(border_common)
 
+    def _make_breadth_first_searcher(self, revisions):
+        return _BreadthFirstSearcher(revisions, self)
+
     def _find_border_ancestors(self, revisions):
         """Find common ancestors with at least one uncommon descendant.
 
@@ -112,53 +115,54 @@ class GraphWalker(object):
 
         This will scale with the number of uncommon ancestors.
         """
-        common_walker = _AncestryWalker([], self)
+        common_searcher = self._make_breadth_first_searcher([])
         common_ancestors = set()
-        walkers = [_AncestryWalker([r], self) for r in revisions]
-        active_walkers = walkers[:]
+        searchers = [self._make_breadth_first_searcher([r])
+                     for r in revisions]
+        active_searchers = searchers[:]
         border_ancestors = set()
-        def update_common(walker, revisions):
-            w_seen_ancestors = walker.find_seen_ancestors(
+        def update_common(searcher, revisions):
+            w_seen_ancestors = searcher.find_seen_ancestors(
                 revision)
-            stopped = walker.stop_searching_any(w_seen_ancestors)
+            stopped = searcher.stop_searching_any(w_seen_ancestors)
             common_ancestors.update(w_seen_ancestors)
-            common_walker.start_searching(stopped)
+            common_searcher.start_searching(stopped)
 
         while True:
-            if len(active_walkers) == 0:
+            if len(active_searchers) == 0:
                 return border_ancestors
             try:
-                new_common = common_walker.next()
+                new_common = common_searcher.next()
                 common_ancestors.update(new_common)
             except StopIteration:
                 pass
             else:
-                for walker in active_walkers:
-                    for revision in new_common.intersection(walker.seen):
-                        update_common(walker, revision)
+                for searcher in active_searchers:
+                    for revision in new_common.intersection(searcher.seen):
+                        update_common(searcher, revision)
 
             newly_seen = set()
-            new_active_walkers = []
-            for walker in active_walkers:
+            new_active_searchers = []
+            for searcher in active_searchers:
                 try:
-                    newly_seen.update(walker.next())
+                    newly_seen.update(searcher.next())
                 except StopIteration:
                     pass
                 else:
-                    new_active_walkers.append(walker)
-            active_walkers = new_active_walkers
+                    new_active_searchers.append(searcher)
+            active_searchers = new_active_searchers
             for revision in newly_seen:
                 if revision in common_ancestors:
-                    for walker in walkers:
-                        update_common(walker, revision)
+                    for searcher in searchers:
+                        update_common(searcher, revision)
                     continue
-                for walker in walkers:
-                    if revision not in walker.seen:
+                for searcher in searchers:
+                    if revision not in searcher.seen:
                         break
                 else:
                     border_ancestors.add(revision)
-                    for walker in walkers:
-                        update_common(walker, revision)
+                    for searcher in searchers:
+                        update_common(searcher, revision)
 
     def _filter_candidate_lca(self, candidate_lca):
         """Remove candidates which are ancestors of other candidates.
@@ -175,36 +179,36 @@ class GraphWalker(object):
         of the shortest path from a candidate to an ancestor common to all
         candidates.
         """
-        walkers = dict((c, _AncestryWalker([c], self))
-                       for c in candidate_lca)
-        active_walkers = dict(walkers)
-        # skip over the actual candidate for each walker
-        for walker in active_walkers.itervalues():
-            walker.next()
-        while len(active_walkers) > 0:
-            for candidate, walker in list(active_walkers.iteritems()):
+        searchers = dict((c, self._make_breadth_first_searcher([c]))
+                          for c in candidate_lca)
+        active_searchers = dict(searchers)
+        # skip over the actual candidate for each searcher
+        for searcher in active_searchers.itervalues():
+            searcher.next()
+        while len(active_searchers) > 0:
+            for candidate, searcher in list(active_searchers.iteritems()):
                 try:
-                    ancestors = walker.next()
+                    ancestors = searcher.next()
                 except StopIteration:
-                    del active_walkers[candidate]
+                    del active_searchers[candidate]
                     continue
                 for ancestor in ancestors:
                     if ancestor in candidate_lca:
                         candidate_lca.remove(ancestor)
-                        del walkers[ancestor]
-                        if ancestor in active_walkers:
-                            del active_walkers[ancestor]
-                    for walker in walkers.itervalues():
-                        if ancestor not in walker.seen:
+                        del searchers[ancestor]
+                        if ancestor in active_searchers:
+                            del active_searchers[ancestor]
+                    for searcher in searchers.itervalues():
+                        if ancestor not in searcher.seen:
                             break
                     else:
-                        # if this revision was seen by all walkers, then it
+                        # if this revision was seen by all searchers, then it
                         # is a descendant of all candidates, so we can stop
                         # searching it, and any seen ancestors
-                        for walker in walkers.itervalues():
+                        for searcher in searchers.itervalues():
                             seen_ancestors =\
-                                walker.find_seen_ancestors(ancestor)
-                            walker.stop_searching_any(seen_ancestors)
+                                searcher.find_seen_ancestors(ancestor)
+                            searcher.stop_searching_any(seen_ancestors)
         return candidate_lca
 
     def find_unique_lca(self, left_revision, right_revision):
@@ -227,23 +231,23 @@ class GraphWalker(object):
             revisions = lca
 
 
-class _AncestryWalker(object):
-    """Walk the ancestry of a single revision.
+class _BreadthFirstSearcher(object):
+    """Parallel search the breadth-first the ancestry of revisions.
 
     This class implements the iterator protocol, but additionally
     1. provides a set of seen ancestors, and
     2. allows some ancestries to be unsearched, via stop_searching_any
     """
 
-    def __init__(self, revisions, graph_walker):
+    def __init__(self, revisions, parents_provider):
         self._start = set(revisions)
         self._search_revisions = None
         self.seen = set(revisions)
-        self._graph_walker = graph_walker
+        self._parents_provider = parents_provider 
 
     def __repr__(self):
-        return '_AncestryWalker(self._search_revisions=%r, self.seen=%r)' %\
-            (self._search_revisions, self.seen)
+        return '_BreadthFirstSearcher(self._search_revisions=%r,' \
+            ' self.seen=%r)' % (self._search_revisions, self.seen)
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -255,7 +259,7 @@ class _AncestryWalker(object):
             self._search_revisions = self._start
         else:
             new_search_revisions = set()
-            for parents in self._graph_walker.get_parents(
+            for parents in self._parents_provider.get_parents(
                 self._search_revisions):
                 if parents is None:
                     continue
@@ -272,12 +276,12 @@ class _AncestryWalker(object):
 
     def find_seen_ancestors(self, revision):
         """Find ancstors of this revision that have already been seen."""
-        walker = _AncestryWalker([revision], self._graph_walker)
+        searcher = _BreadthFirstSearcher([revision], self._parents_provider)
         seen_ancestors = set()
-        for ancestors in walker:
+        for ancestors in searcher:
             for ancestor in ancestors:
                 if ancestor not in self.seen:
-                    walker.stop_searching_any([ancestor])
+                    searcher.stop_searching_any([ancestor])
                 else:
                     seen_ancestors.add(ancestor)
         return seen_ancestors

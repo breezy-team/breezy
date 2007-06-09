@@ -864,7 +864,7 @@ class Repository(object):
         return self.get_inventory_weave().parent_names(revision_id)
 
     def get_parents(self, revision_ids):
-        """See GraphWalker.get_parents"""
+        """See StackedParentsProvider.get_parents"""
         parents_list = []
         for revision_id in revision_ids:
             if revision_id == _mod_revision.NULL_REVISION:
@@ -891,7 +891,7 @@ class Repository(object):
             self.bzrdir.transport.base):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
-        return graph.GraphWalker(parents_provider)
+        return graph.Graph(parents_provider)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
