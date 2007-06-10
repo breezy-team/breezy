@@ -58,6 +58,7 @@ from bzrlib.tests.HTTPTestUtil import (
     ProxyDigestAuthServer,
     ProxyServer,
     SingleRangeRequestHandler,
+    SingleOnlyRangeRequestHandler,
     TestCaseWithRedirectedWebserver,
     TestCaseWithTwoWebservers,
     TestCaseWithWebserver,
@@ -689,6 +690,26 @@ class TestSingleRangeRequestServer_urllib(TestSingleRangeRequestServer,
 class TestSingleRangeRequestServer_pycurl(TestWithTransport_pycurl,
                                           TestSingleRangeRequestServer,
                                           TestCaseWithWebserver):
+    """Tests single range requests accepting server for pycurl implementation"""
+
+
+class TestSingleOnlyRangeRequestServer(TestRangeRequestServer):
+    """Test readv against a server which only accept single range requests"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(SingleOnlyRangeRequestHandler)
+
+
+class TestSingleOnlyRangeRequestServer_urllib(TestSingleOnlyRangeRequestServer,
+                                              TestCaseWithWebserver):
+    """Tests single range requests accepting server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestSingleOnlyRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                                              TestSingleOnlyRangeRequestServer,
+                                              TestCaseWithWebserver):
     """Tests single range requests accepting server for pycurl implementation"""
 
 

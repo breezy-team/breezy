@@ -871,7 +871,7 @@ class Merge3Merger(object):
             except KeyError:
                 this_name = other_name = self.tt.final_name(trans_id)
             other_path = fp.get_path(trans_id)
-            if this_parent is not None:
+            if this_parent is not None and this_name is not None:
                 this_parent_path = \
                     fp.get_path(self.tt.trans_id_file_id(this_parent))
                 this_path = pathjoin(this_parent_path, this_name)

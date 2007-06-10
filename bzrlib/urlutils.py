@@ -608,3 +608,24 @@ def unescape_for_display(url, encoding):
                 # Otherwise take the url decoded one
                 res[i] = decoded
     return u'/'.join(res)
+
+
+def derive_to_location(from_location):
+    """Derive a TO_LOCATION given a FROM_LOCATION.
+
+    The normal case is a FROM_LOCATION of http://foo/bar => bar.
+    The Right Thing for some logical destinations may differ though
+    because no / may be present at all. In that case, the result is
+    the full name without the scheme indicator, e.g. lp:foo-bar => foo-bar.
+    This latter case also applies when a Windows drive
+    is used without a path, e.g. c:foo-bar => foo-bar.
+    If no /, path separator or : is found, the from_location is returned.
+    """
+    if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
+        return os.path.basename(from_location.rstrip("/\\"))
+    else:
+        sep = from_location.find(":")
+        if sep > 0:
+            return from_location[sep+1:]
+        else:
+            return from_location

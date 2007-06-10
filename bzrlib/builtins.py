@@ -45,6 +45,7 @@ from bzrlib import (
     osutils,
     registry,
     repository,
+    revisionspec,
     symbol_versioning,
     transport,
     tree as _mod_tree,
@@ -304,15 +305,18 @@ class cmd_revision_info(Command):
         if revision_info_list is not None:
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
-        if len(revs) == 0:
-            raise errors.BzrCommandError('You must supply a revision identifier')
 
-        b = WorkingTree.open_containing(u'.')[0].branch
+        b = Branch.open_containing(u'.')[0]
+
+        if len(revs) == 0:
+            revs.append(RevisionSpec.from_string('-1'))
 
         for rev in revs:
             revinfo = rev.in_history(b)
             if revinfo.revno is None:
-                print '     %s' % revinfo.rev_id
+                dotted_map = b.get_revision_id_to_revno_map()
+                revno = '.'.join(str(i) for i in dotted_map[revinfo.rev_id])
+                print '%s %s' % (revno, revinfo.rev_id)
             else:
                 print '%4d %s' % (revinfo.revno, revinfo.rev_id)
 
@@ -863,6 +867,10 @@ class cmd_branch(Command):
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
+    If the FROM_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the FROM_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "branch lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
@@ -892,7 +900,7 @@ class cmd_branch(Command):
                 # RBC 20060209
                 revision_id = br_from.last_revision()
             if to_location is None:
-                to_location = os.path.basename(from_location.rstrip("/\\"))
+                to_location = urlutils.derive_to_location(from_location)
                 name = None
             else:
                 name = os.path.basename(to_location) + '\n'
@@ -932,6 +940,10 @@ class cmd_checkout(Command):
     
     If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
     be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+    If the BRANCH_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the BRANCH_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "checkout lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
@@ -968,7 +980,7 @@ class cmd_checkout(Command):
         else:
             revision_id = None
         if to_location is None:
-            to_location = os.path.basename(branch_location.rstrip("/\\"))
+            to_location = urlutils.derive_to_location(branch_location)
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
