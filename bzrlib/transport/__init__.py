@@ -1247,7 +1247,6 @@ class ConnectedTransport(Transport):
 
     def _get_credentials(self):
         """Returns the credentials used to establish the connection."""
-        (connection, credentials) = self._connection[0]
         return self._connection_sharing[0][1]
 
     def _update_credentials(self, credentials):

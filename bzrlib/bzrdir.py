@@ -52,7 +52,6 @@ from bzrlib import (
     workingtree_4,
     )
 from bzrlib.osutils import (
-    safe_unicode,
     sha_strings,
     sha_string,
     )
@@ -232,7 +231,7 @@ class BzrDir(object):
         t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return format.initialize(safe_unicode(base), possible_transports)
+        return format.initialize(base, possible_transports)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -299,7 +298,7 @@ class BzrDir(object):
         """
         if force_new_tree:
             # check for non local urls
-            t = get_transport(safe_unicode(base), possible_transports)
+            t = get_transport(base, possible_transports)
             if not isinstance(t, LocalTransport):
                 raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create(base, format, possible_transports)
@@ -344,10 +343,10 @@ class BzrDir(object):
 
         :return: The WorkingTree object.
         """
-        t = get_transport(safe_unicode(base))
+        t = get_transport(base)
         if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base),
+        bzrdir = BzrDir.create_branch_and_repo(base,
                                                force_new_repo=True,
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
