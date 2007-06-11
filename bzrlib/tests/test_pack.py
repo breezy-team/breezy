@@ -211,10 +211,3 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
         
-    # Other Bytes record parsing cases to test:
-    #  - incomplete bytes (i.e. stream ends before $length bytes read)
-    #  - _read_line encountering end of stream (at any time; during length,
-    #    names, end of headers...)
-
-
-
