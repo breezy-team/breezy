@@ -563,6 +563,7 @@ class _Reconstructor(object):
         length = self.diffs.get_diff(version_id).num_lines()
         return self._reconstruct(lines, version_id, 0, length)
 
+
 def gzip_string(lines):
     sio = StringIO()
     data_file = GzipFile(None, mode='wb', fileobj=sio)

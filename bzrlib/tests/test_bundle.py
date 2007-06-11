@@ -1042,13 +1042,30 @@ class V10BundleTester(TestCaseWithTransport):
     def test_creation(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add('file')
+        tree.add('file', 'fileid-2')
         tree.commit('added file', rev_id='rev1')
         s = StringIO()
         serializer = BundleSerializerV10('1.0')
         serializer.write(tree.branch.repository, ['rev1'], {}, s)
         s.seek(0)
-        bundle_info = serializer.read(s)
+        tree2 = self.make_branch_and_tree('target')
+        target_repo = tree2.branch.repository
+        install_bundle(target_repo, serializer.read(s))
+        vf = target_repo.weave_store.get_weave('fileid-2',
+            target_repo.get_transaction())
+        self.assertEqual(tree.get_file_text('fileid-2'), vf.get_text('rev1'))
+
+    def test_name_encode(self):
+        self.assertEqual('revision:rev1',
+            BundleSerializerV10.encode_name('revision', 'rev1'))
+        self.assertEqual('file:rev1/file-id-1',
+            BundleSerializerV10.encode_name('file', 'rev1', 'file-id-1'))
+
+    def test_name_decode(self):
+        self.assertEqual(('revision', 'rev1', None),
+            BundleSerializerV10.decode_name('revision:rev1'))
+        self.assertEqual(('file', 'rev1', 'file-id-1'),
+            BundleSerializerV10.decode_name('file:rev1/file-id-1'))
 
 
 class MungedBundleTester(TestCaseWithTransport):
