@@ -18,6 +18,7 @@
 
 from bzrlib import (
     remote,
+    revision as _mod_revision,
     tests,
     )
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
@@ -80,3 +81,19 @@ class TestSprout(TestCaseWithBranch):
         branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
         self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
+
+    def test_sprout_from_any_repo_revision(self):
+        """We should be able to sprout from any revision."""
+        wt = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        wt.add('a')
+        wt.commit('rev1a', rev_id='rev1a')
+        # simulated uncommit
+        wt.branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
+        wt.set_last_revision(None)
+        wt.revert([])
+        wt.commit('rev1b', rev_id='rev1b')
+        wt2 = wt.bzrdir.sprout('target',
+            revision_id='rev1a').open_workingtree()
+        self.assertEqual('rev1a', wt2.last_revision())
+        self.failUnlessExists('target/a')
