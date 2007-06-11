@@ -2,6 +2,7 @@ from bzrlib import multiparent
 from bzrlib.bundle import serializer
 from bzrlib.util import bencode
 
+
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
@@ -111,5 +112,5 @@ class _RecordReader(object):
                               pending_file_records):
         for type_, revision, parents, text in pending_file_records:
             assert type_ == 'M'
-            mpdiff = multiparent.MultiParent.from_lines(text)
+            mpdiff = multiparent.MultiParent.from_patch(text.splitlines(True))
             current_versionedfile.add_mpdiff(revision, parents, mpdiff)
