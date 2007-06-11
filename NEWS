@@ -54,6 +54,11 @@ IN DEVELOPMENT
       66 seconds to 32 seconds. For a small tree of 600 files, commit of a
       small change is 33% faster. (Ian Clatworthy)
 
+    * Clean up the ``WorkingTree4._iter_changes()`` internal loops as well as
+      ``DirState.update_entry()``. This optimizes the core logic for ``bzr
+      diff`` and ``bzr status`` significantly improving the speed of
+      both. (John Arbash Meinel)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
@@ -114,11 +119,6 @@ bzr 0.16  2007-05-07
     * Move developer documentation to doc/developers/. This reduces clutter in
       the root of the source tree and allows HACKING to be split into multiple
       files. (Robert Collins, Alexander Belchenko)
-
-    * Clean up the ``WorkingTree4._iter_changes()`` internal loops as well as
-      ``DirState.update_entry()``. This optimizes the core logic for ``bzr
-      diff`` and ``bzr status`` significantly improving the speed of
-      both. (John Arbash Meinel)
 
 bzr 0.16rc2  2007-04-30
 
