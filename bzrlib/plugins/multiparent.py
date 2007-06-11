@@ -168,7 +168,3 @@ def get_file_weave(filename=None, wt=None):
 
 commands.register_command(cmd_mp_regen)
 commands.register_command(cmd_mp_extract)
-
-def test_suite():
-    from bzrlib.plugins.multiparent import test_multiparent
-    return TestUtil.TestLoader().loadTestsFromModule(test_multiparent)

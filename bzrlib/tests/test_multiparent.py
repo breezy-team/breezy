@@ -1,8 +1,9 @@
 from unittest import TestCase
 
-from bzrlib import tests
-
-import multiparent
+from bzrlib import (
+    multiparent,
+    tests,
+    )
 
 
 LINES_1 = "a\nb\nc\nd\ne\n".splitlines(True)
