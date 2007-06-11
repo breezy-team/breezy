@@ -440,14 +440,13 @@ class RemoteTCPTransport(RemoteTransport):
         SmartTCPClientMedium).
     """
 
-    def _initial_split_url(self, base):
-        scheme, user, password, host, port, path = self._split_url(base)
-        if port is None:
-            port = BZR_DEFAULT_PORT
-        return (scheme, user, password, host, port, path)
+    def __init__(self, base, from_transport=None):
+        assert base.startswith('bzr://')
+        super(RemoteTCPTransport, self).__init__(base, from_transport)
+        if self._port is None:
+            self._port = BZR_DEFAULT_PORT
 
     def _build_medium(self, from_transport=None):
-        assert self.base.startswith('bzr://')
         if from_transport is not None:
             _medium = from_transport._medium
         else:

@@ -1057,7 +1057,7 @@ class ConnectedTransport(Transport):
         (self._scheme,
          self._user, self._password,
          self._host, self._port,
-         self._path) = self._initial_split_url(base)
+         self._path) = self._split_url(base)
         if from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
             # otherwise. It can appear in the _initial_split_url above if the
@@ -1089,7 +1089,8 @@ class ConnectedTransport(Transport):
         else:
             return self.__class__(self.abspath(offset), self)
 
-    def _split_url(self, url):
+    @staticmethod
+    def _split_url(url):
         """
         Extract the server address, the credentials and the path from the url.
 
@@ -1128,14 +1129,8 @@ class ConnectedTransport(Transport):
 
         return (scheme, user, password, host, port, path)
 
-    _initial_split_url = _split_url
-    """Hook for daughter classes that needs a special processing.
-
-    This method is called during transport construction against
-    the provided base.
-    """
-
-    def _unsplit_url(self, scheme, user, password, host, port, path):
+    @staticmethod
+    def _unsplit_url(scheme, user, password, host, port, path):
         """
         Build the full URL for the given already URL encoded path.
 
