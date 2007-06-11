@@ -14,22 +14,29 @@ class BundleSerializerV10(serializer.BundleSerializer):
             file_revision_ids = [r for r in revision_ids if r in
                                  file_revision_ids]
             for file_revision_id in file_revision_ids:
+                parents = vf.get_parents(file_revision_id)
                 text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
                 container_name = self.encode_name('file', file_revision_id,
                                                   file_id)
-                parents = self.encode_parents(vf.get_parents(file_revision_id))
-                text = parents + text
-                container.add_record('M', len(text), [container_name],
-                                     text)
+                self.add_record(container, 'M', container_name, parents, text)
         for revision_id in revision_ids:
+            parents = repository.revision_parents(revision_id)
             container_name = self.encode_name('inventory', revision_id)
-            parents = self.encode_parents(repository.revision_parents(
-                revision_id))
-            inventory_text = parents + \
-                repository.get_inventory_xml(revision_id)
-            container.add_record('B', len(inventory_text), [container_name],
-                                 inventory_text)
+            inventory_text = repository.get_inventory_xml(revision_id)
+            self.add_record(container, 'B', container_name, parents,
+                            inventory_text)
+        for revision_id in revision_ids:
+            parents = repository.revision_parents(revision_id)
+            container_name = self.encode_name('revision', revision_id)
+            revision_text = repository.get_revision_xml(revision_id)
+            self.add_record(container, 'B', container_name, parents,
+                            revision_text)
         container.finish()
+
+    def add_record(self, container, type_, name, parents, text):
+        parents = self.encode_parents(parents)
+        text = parents + text
+        container.add_record(type_, len(text), [name], text)
 
     def encode_parents(self, parents):
         return ' '.join(parents) + '\n'
@@ -121,6 +128,9 @@ class _RecordReader(object):
                     self._install_inventory(repository, type_, revision_id,
                         self.read_record(), added_inv)
                     added_inv.add(revision_id)
+                if kind == 'revision':
+                    self._install_revision(repository, type_, revision_id,
+                        self.read_record())
             if kind == 'file':
                 if file_id != current_file:
                     self._install_file_records(current_versionedfile,
@@ -154,3 +164,9 @@ class _RecordReader(object):
         text = ''.join(lines[1:])
         inv = repository.deserialise_inventory(revision_id, text)
         repository.add_inventory(revision_id, inv, present_parents)
+
+    def _install_revision(self, repository, type_, revision_id, text):
+        lines = text.splitlines(True)
+        parents = self._serializer.decode_parents(lines[0])
+        text = ''.join(lines[1:])
+        repository._add_revision_text(revision_id, text)

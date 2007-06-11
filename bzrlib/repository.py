@@ -143,6 +143,12 @@ class Repository(object):
                 self.add_inventory(revision_id, inv, rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
+    def _add_revision_text(self, revision_id, text):
+        revision = self._revision_store._serializer.read_revision_from_string(
+            text)
+        self._revision_store._add_revision(revision, StringIO(text),
+                                           self.get_transaction())
+
     @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""

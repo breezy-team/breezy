@@ -1045,7 +1045,7 @@ class V10BundleTester(TestCaseWithTransport):
         tree.add('file', 'fileid-2')
         tree.commit('added file', rev_id='rev1')
         self.build_tree_contents([('tree/file', 'contents2\nstatic\n')])
-        tree.commit('added file', rev_id='rev2')
+        tree.commit('changed file', rev_id='rev2')
         s = StringIO()
         serializer = BundleSerializerV10('1.0')
         serializer.write(tree.branch.repository, ['rev1', 'rev2'], {}, s)
@@ -1060,6 +1060,8 @@ class V10BundleTester(TestCaseWithTransport):
         rtree = target_repo.revision_tree('rev2')
         inventory_vf = target_repo.get_inventory_weave()
         self.assertEqual(['rev1'], inventory_vf.get_parents('rev2'))
+        self.assertEqual('changed file',
+                         target_repo.get_revision('rev2').message)
 
     def test_name_encode(self):
         self.assertEqual('revision:rev1',
