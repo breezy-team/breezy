@@ -1041,19 +1041,23 @@ class V10BundleTester(TestCaseWithTransport):
 
     def test_creation(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
+        self.build_tree_contents([('tree/file', 'contents1\nstatic\n')])
         tree.add('file', 'fileid-2')
         tree.commit('added file', rev_id='rev1')
+        self.build_tree_contents([('tree/file', 'contents2\nstatic\n')])
+        tree.commit('added file', rev_id='rev2')
         s = StringIO()
         serializer = BundleSerializerV10('1.0')
-        serializer.write(tree.branch.repository, ['rev1'], {}, s)
+        serializer.write(tree.branch.repository, ['rev1', 'rev2'], {}, s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
         install_bundle(target_repo, serializer.read(s))
         vf = target_repo.weave_store.get_weave('fileid-2',
             target_repo.get_transaction())
-        self.assertEqual(tree.get_file_text('fileid-2'), vf.get_text('rev1'))
+        self.assertEqual('contents1\nstatic\n', vf.get_text('rev1'))
+        self.assertEqual('contents2\nstatic\n', vf.get_text('rev2'))
+        rtree = target_repo.revision_tree('rev2')
 
     def test_name_encode(self):
         self.assertEqual('revision:rev1',
