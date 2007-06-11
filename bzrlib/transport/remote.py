@@ -492,6 +492,9 @@ class RemoteHTTPTransport(RemoteTransport):
         assert base.startswith('bzr+http://')
 
         if http_transport is None:
+            # FIXME: the password may be lost here because it appears in the
+            # url only for an intial construction (when the url came from the
+            # command-line).
             http_url = base[len('bzr+'):]
             self._http_transport = transport.get_transport(http_url)
         else:

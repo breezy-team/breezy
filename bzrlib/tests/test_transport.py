@@ -647,6 +647,10 @@ class TestConnectedTransport(TestCase):
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing(self):
+        # Note: this is not sufficient to ensure that daughter classes will
+        # respect the contract (RemoteTransport share its _medium attribute
+        # with other objects which evades the connection sharing ensured by
+        # ConnectedTransport).
         t = ConnectedTransport('foo://user@host.com/abs/path')
         self.assertIs(None, t._get_connection())
 

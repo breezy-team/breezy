@@ -37,6 +37,13 @@ from bzrlib.transport import (
     ConnectedTransport,
     )
 
+# FIXME: There are two known cases where we open a new connection during the
+# lifetime of the transport:
+# - when an error is received from the server,
+# - when the keep-alive header reach zero.
+# This should be taken into account for the connection sharing by either
+# failing without reconnecting or inform the clones that a new connection have
+# been established.
 
 # TODO: This is not used anymore by HttpTransport_urllib
 # (extracting the auth info and prompting the user for a password

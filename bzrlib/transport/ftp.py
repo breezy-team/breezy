@@ -76,6 +76,10 @@ class FtpStatResult(object):
 _number_of_retries = 2
 _sleep_between_retries = 5
 
+# FIXME: there are inconsistencies in the way temporary errors are
+# handled. Sometimes we reconnect, sometimes we raise an exception. Care should
+# be taken to analyze the implications for write operations (read operations
+# are safe to retry). Overall even some read operations are never retried.
 class FtpTransport(ConnectedTransport):
     """This is the transport agent for ftp:// access."""
 
