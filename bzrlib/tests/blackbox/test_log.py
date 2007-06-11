@@ -148,6 +148,13 @@ class TestLog(ExternalBase):
         log = self.runbzr("log -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
 
+    def test_log_limit(self):
+        self._prepare()
+        log = self.runbzr("log --limit 2")[0]
+        self.assertTrue('revno: 1\n' not in log)
+        self.assertTrue('revno: 2\n' in log)
+        self.assertTrue('revno: 3\n' in log)
+
 
 class TestLogMerges(ExternalBase):
 
