@@ -27,6 +27,7 @@ import unittest
 from bzrlib import (
     errors,
     osutils,
+    multiparent,
     tsort,
     revision,
     ui,
@@ -266,6 +267,21 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def make_mpdiff(self, version_id):
+        lines = self._get_line_list([version_id]+self.get_parents(version_id))
+        target = lines[0]
+        parents = lines[1:]
+        return multiparent.MultiParent.from_lines(target, parents)
+
+    def add_mpdiff(self, version, parents, mpdiff):
+        parent_lines = self._get_line_list(parents)
+        mpvf = multiparent.MultiMemoryVersionedFile()
+        for parent_id, lines in zip(parents, parent_lines):
+            mpvf.add_version(lines, parent_id, [])
+        mpvf.add_diff(mpdiff, version, parents)
+        lines = mpvf.get_line_list([version])[0]
+        self.add_lines(version, parents, lines)
+
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
@@ -301,6 +317,9 @@ class VersionedFile(object):
         file history.
         """
         raise NotImplementedError(self.get_lines)
+
+    def _get_line_list(self, version_ids):
+        return [t.splitlines(True) for t in self.get_texts(version_ids)]
 
     def get_ancestry(self, version_ids):
         """Return a list of all ancestors of given version(s). This
