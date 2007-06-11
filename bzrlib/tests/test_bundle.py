@@ -1058,6 +1058,8 @@ class V10BundleTester(TestCaseWithTransport):
         self.assertEqual('contents1\nstatic\n', vf.get_text('rev1'))
         self.assertEqual('contents2\nstatic\n', vf.get_text('rev2'))
         rtree = target_repo.revision_tree('rev2')
+        inventory_vf = target_repo.get_inventory_weave()
+        self.assertEqual(['rev1'], inventory_vf.get_parents('rev2'))
 
     def test_name_encode(self):
         self.assertEqual('revision:rev1',
