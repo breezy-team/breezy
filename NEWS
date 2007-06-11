@@ -9,7 +9,7 @@ IN DEVELOPMENT
       (John Arbash Meinel, #75721)
 
     * ``bzr branch -r revid:foo`` can be used to branch any revision in
-      your ancestry. (Previously Branch6 only supported revisions in your
+      your repository. (Previously Branch6 only supported revisions in your
       mainline). (John Arbash Meinel, #115343)
 
 
