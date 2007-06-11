@@ -15,7 +15,10 @@ class BundleSerializerV10(serializer.BundleSerializer):
                 text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
                 container.add_record('M', len(text), ['file:%s/%s' %
                                      (file_id, file_revision_id)], text)
-        container.finish()   
+        container.finish()
+
+    def read(self, file)
+        
 
 class _PseudoContainer(object):
     

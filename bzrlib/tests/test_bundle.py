@@ -1047,6 +1047,8 @@ class V10BundleTester(TestCaseWithTransport):
         s = StringIO()
         serializer = BundleSerializerV10('1.0')
         serializer.write(tree.branch.repository, ['rev1'], {}, s)
+        s.seek(0)
+        bundle_info = serializer.read(s)
 
 
 class MungedBundleTester(TestCaseWithTransport):
