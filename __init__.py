@@ -59,29 +59,8 @@ def check_subversion_version():
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
-def check_pysqlite_version():
-    """Check that sqlite library is compatible.
-
-    """
-    try:
-        try:
-            import sqlite3
-        except ImportError:
-            from pysqlite2 import dbapi2 as sqlite3
-    except:
-        warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
-                'module')
-        raise bzrlib.errors.BzrError("missing sqlite library")
-
-    if (sqlite3.sqlite_version_info[0] < 3 or 
-            (sqlite3.sqlite_version_info[0] == 3 and 
-             sqlite3.sqlite_version_info[1] < 3)):
-        warning('Needs at least sqlite 3.3.x')
-        raise bzrlib.errors.BzrError("incompatible sqlite library")
-
 check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
 check_subversion_version()
-check_pysqlite_version()
 
 import branch
 import convert

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Working tree tests."""
+
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -114,13 +116,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_get_ignore_list_empty(self):
         self.make_client('a', 'dc')
         tree = WorkingTree.open("dc")
-        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" "), tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ")), tree.get_ignore_list())
 
     def test_get_ignore_list_onelevel(self):
         self.make_client('a', 'dc')
         self.client_set_prop("dc", "svn:ignore", "*.d\n*.c\n")
         tree = WorkingTree.open("dc")
-        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c"], tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c"]), tree.get_ignore_list())
 
     def test_get_ignore_list_morelevel(self):
         self.make_client('a', 'dc')
@@ -129,7 +131,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/x")
         self.client_set_prop("dc/x", "svn:ignore", "*.e\n")
         tree = WorkingTree.open("dc")
-        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c", "./x/*.e"], tree.get_ignore_list())
+        self.assertEqual(set([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c", "./x/*.e"]), tree.get_ignore_list())
 
     def test_add_reopen(self):
         self.make_client('a', 'dc')

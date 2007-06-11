@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Checkouts and working trees (working copies)."""
 
 from bzrlib.branch import PullResult
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
@@ -55,8 +56,7 @@ class WorkingTreeInconsistent(BzrError):
 
 
 class SvnWorkingTree(WorkingTree):
-    """Implementation of WorkingTree that uses a Subversion 
-    Working Copy for storage."""
+    """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
         self._format = SvnWorkingTreeFormat()
         self.basedir = local_path
@@ -108,15 +108,15 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def get_ignore_list(self):
-        ignores = [svn.wc.get_adm_dir()] + \
-                   svn.wc.get_default_ignores(svn_config)
+        ignores = set([svn.wc.get_adm_dir()])
+        ignores.update(svn.wc.get_default_ignores(svn_config))
 
         def dir_add(wc, prefix):
             ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
-                    ignores.append("./"+os.path.join(prefix, pat))
+                    ignores.add("./"+os.path.join(prefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
@@ -602,6 +602,7 @@ class SvnWorkingTree(WorkingTree):
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
+    """Subversion working copy format."""
     def get_format_description(self):
         return "Subversion Working Copy"
 

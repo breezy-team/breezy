@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Subversion BzrDir formats."""
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
@@ -142,6 +143,7 @@ class SvnRemoteAccess(BzrDir):
 
 
 class SvnFormat(BzrDirFormat):
+    """Format for the Subversion smart server."""
     _lock_class = TransportLock
 
     @classmethod
