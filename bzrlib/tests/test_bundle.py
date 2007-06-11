@@ -33,6 +33,7 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
+from bzrlib.bundle.serializer.v10 import BundleSerializerV10
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
@@ -1034,6 +1035,18 @@ class V09BundleKnit1Tester(V08BundleTester):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         return format
+
+
+class V10BundleTester(TestCaseWithTransport):
+
+    def test_creation(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add('file')
+        tree.commit('added file', rev_id='rev1')
+        s = StringIO()
+        serializer = BundleSerializerV10('1.0')
+        serializer.write(tree.branch.repository, ['rev1'], {}, s)
 
 
 class MungedBundleTester(TestCaseWithTransport):
