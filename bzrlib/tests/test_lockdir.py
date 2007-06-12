@@ -229,7 +229,7 @@ class TestLockDir(TestCaseWithTransport):
         # AssertionError: not equal:
         # a = 1
         # b = 0
-        raise TestSkipped("Test fails intermittently")
+        raise tests.TestSkipped("Test fails intermittently")
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
