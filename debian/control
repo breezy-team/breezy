@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <jw+debian@jameswestby.net>
-Build-Depends: debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11)
+Build-Depends: debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11), bzr (>= 0.16~), bzr (<< 0.17~), python-central (>= 0.5.8), python-debian, python-deb822
 Build-Depends-Indep: python-central (>= 0.5), python-docutils
 XS-Python-Version: >= 2.4
 Standards-Version: 3.7.2

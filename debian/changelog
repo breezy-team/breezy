@@ -1,3 +1,10 @@
+bzr-builddeb (0.16.1) unstable; urgency=low
+
+  * fix FTBFS by correcting build depends. Thanks to
+    "Rob Weir" <rob@weir.id.au> for providing the patch! (Closes: #423745)
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 14 May 2007 14:08:11 +0200
+
 bzr-builddeb (0.16) unstable; urgency=low
 
   [James Westby]
@@ -15,8 +22,14 @@ bzr-builddeb (0.16) unstable; urgency=low
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue,  8 May 2007 18:43:19 +0200
 
-bzr-builddeb (0.15~rc1) UNRELEASED; urgency=low
+bzr-builddeb (0.15~rc1ubuntu1) gutsy; urgency=low
 
+  * loosen depends, 0.15 works with bzr 0.16 as well
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue,  1 May 2007 16:17:06 +0200
+
+bzr-builddeb (0.15~rc1) feisty; urgency=low
+  
   * Version designed to work with bzr 0.15.
   * Bump depends on bzr appropriately.
   * Install the plugin in .../plugins/builddeb instead of
@@ -27,6 +40,20 @@ bzr-builddeb (0.15~rc1) UNRELEASED; urgency=low
     dpkg-source when building and Closes: #409981. Thanks to James Vega.
 
  -- James Westby <jw+debian@jameswestby.net>  Wed, 28 Feb 2007 19:16:28 +0000
+
+bzr-builddeb (0.14ubuntu2) feisty; urgency=low
+
+  * fix the deprecation warning about 'short options' on every load of
+    this plugin with bzr 0.14.
+  * repack with a full bzr branch in the source
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 31 Jan 2007 08:46:05 +0100
+
+bzr-builddeb (0.14ubuntu1) feisty; urgency=low
+
+  * revert the smart options patch so that the package gets usable with bzr 0.13 again.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 16 Jan 2007 23:16:44 +0100
 
 bzr-builddeb (0.14) UNRELEASED; urgency=low
 
@@ -68,6 +95,13 @@ bzr-builddeb (0.14) UNRELEASED; urgency=low
     commands.
 
  -- James Westby <jw+debian@jameswestby.net>  Wed, 31 Jan 2007 20:15:42 +0000
+
+bzr-builddeb (0.13ubuntu1) feisty; urgency=low
+
+  * upload to feisty
+  * bump depends on bzr on (>= 0.13)
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 16 Jan 2007 00:47:39 +0100
 
 bzr-builddeb (0.13) unstable; urgency=low
 
