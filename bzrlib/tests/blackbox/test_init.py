@@ -73,10 +73,11 @@ class TestInit(ExternalBase):
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
         
-        self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
-                            'init', 'subdir2/nothere')
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: No such file: .*'
+            '\[Err(no|or) 2\]')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -118,24 +119,6 @@ class TestInit(ExternalBase):
             raise TestSkipped("Unable to create Unicode filename")
         # try to init unicode dir
         self.run_bzr('init', u'mu-\xb5')
-
-    def create_simple_tree(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
-        return tree
-
-    def test_init_create_prefix(self):
-        """'bzr init --create-prefix; will create leading directories."""
-        tree = self.create_simple_tree()
-
-        self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
-                            'init', '../new/tree',
-                            working_dir='tree')
-        self.run_bzr('init', '../new/tree', '--create-prefix',
-                        working_dir='tree')
-        self.failUnlessExists('new/tree/.bzr')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):

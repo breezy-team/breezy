@@ -755,7 +755,27 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
 
-                _create_prefix(to_transport)
+                cur_transport = to_transport
+                needed = [cur_transport]
+                # Recurse upwards until we can create a directory successfully
+                while True:
+                    new_transport = cur_transport.clone('..')
+                    if new_transport.base == cur_transport.base:
+                        raise errors.BzrCommandError("Failed to create path"
+                                                     " prefix for %s."
+                                                     % location)
+                    try:
+                        new_transport.mkdir('.')
+                    except errors.NoSuchFile:
+                        needed.append(new_transport)
+                        cur_transport = new_transport
+                    else:
+                        break
+
+                # Now we only need to create child directories
+                while needed:
+                    cur_transport = needed.pop()
+                    cur_transport.ensure_base()
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -1250,9 +1270,6 @@ class cmd_init(Command):
     _see_also = ['init-repo', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
-        Option('create-prefix',
-               help='Create the path leading up to the branch '
-                    'if it does not already exist'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
@@ -1265,8 +1282,7 @@ class cmd_init(Command):
                 help='Never change revnos or the existing log.'
                 '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None, append_revisions_only=False,
-            create_prefix=False):
+    def run(self, location=None, format=None, append_revisions_only=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1279,16 +1295,8 @@ class cmd_init(Command):
         # Just using os.mkdir, since I don't
         # believe that we want to create a bunch of
         # locations if the user supplies an extended path
-        try:
-            to_transport.ensure_base()
-        except errors.NoSuchFile:
-            if not create_prefix:
-                raise errors.BzrCommandError("Parent directory of %s"
-                    " does not exist."
-                    "\nYou may supply --create-prefix to create all"
-                    " leading parent directories."
-                    % location)
-            _create_prefix(to_transport)
+        # TODO: create-prefix
+        to_transport.ensure_base()
 
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
@@ -3765,28 +3773,6 @@ def _merge_helper(other_revision, base_revision,
         pb.clear()
     return conflicts
 
-
-def _create_prefix(cur_transport):
-    needed = [cur_transport]
-    # Recurse upwards until we can create a directory successfully
-    while True:
-        new_transport = cur_transport.clone('..')
-        if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError("Failed to create path"
-                                         " prefix for %s."
-                                         % location)
-        try:
-            new_transport.mkdir('.')
-        except errors.NoSuchFile:
-            needed.append(new_transport)
-            cur_transport = new_transport
-        else:
-            break
-
-    # Now we only need to create child directories
-    while needed:
-        cur_transport = needed.pop()
-        cur_transport.ensure_base()
 
 # Compatibility
 merge = _merge_helper
