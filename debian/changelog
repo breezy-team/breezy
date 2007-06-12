@@ -1,3 +1,10 @@
+bzr-builddeb (0.16.2) unstable; urgency=low
+
+  * loosen the dependency on bzr. bzr-builddeb seems to be not be broken
+    by bzr version 0.17, so remove the upper bound of the dependency.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 12 Jun 2007 19:45:38 +0100
+
 bzr-builddeb (0.16.1) unstable; urgency=low
 
   * fix FTBFS by correcting build depends. Thanks to
