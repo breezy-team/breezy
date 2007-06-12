@@ -88,6 +88,10 @@ IN DEVELOPMENT
     * Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
       (Daniel Watkins, #111958)
 
+    * ``bzr branch -r revid:foo`` can be used to branch any revision in
+      your repository. (Previously Branch6 only supported revisions in your
+      mainline). (John Arbash Meinel, #115343)
+
 bzr 0.16  2007-05-07
   
   BUGFIXES:
