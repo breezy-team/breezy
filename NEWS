@@ -1,5 +1,7 @@
 IN DEVELOPMENT
 
+bzr 0.17rc1  2007-06-12
+
   NOTES WHEN UPGRADING:
 
     * The kind() and is_executable() APIs on the WorkingTree interface no
