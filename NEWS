@@ -54,6 +54,9 @@ IN DEVELOPMENT
       66 seconds to 32 seconds. For a small tree of 600 files, commit of a
       small change is 33% faster. (Ian Clatworthy)
 
+    * New --create-prefix option to bzr init, like for push.  (Daniel Watkins,
+      #56322)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
