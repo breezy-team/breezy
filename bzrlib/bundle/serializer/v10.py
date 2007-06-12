@@ -1,12 +1,21 @@
-from bzrlib import multiparent
+from bzrlib import (
+    multiparent,
+    pack,
+    )
 from bzrlib.bundle import serializer
 from bzrlib.util import bencode
+
+class ContainerWriter(pack.ContainerWriter):
+
+    def add_multiparent_record(self, names, mp_bytes):
+        self.add_bytes_record(names, mp_bytes)
 
 
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
-        container = _PseudoContainer(fileobj)
+        container = ContainerWriter(fileobj.write)
+        container.begin()
         transaction = repository.get_transaction()
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
@@ -18,25 +27,26 @@ class BundleSerializerV10(serializer.BundleSerializer):
                 text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
                 container_name = self.encode_name('file', file_revision_id,
                                                   file_id)
-                self.add_record(container, 'M', container_name, parents, text)
+                self.add_record(container.add_multiparent_record,
+                                container_name, parents, text)
         for revision_id in revision_ids:
             parents = repository.revision_parents(revision_id)
             container_name = self.encode_name('inventory', revision_id)
             inventory_text = repository.get_inventory_xml(revision_id)
-            self.add_record(container, 'B', container_name, parents,
-                            inventory_text)
+            self.add_record(container.add_bytes_record, container_name,
+                            parents, inventory_text)
         for revision_id in revision_ids:
             parents = repository.revision_parents(revision_id)
             container_name = self.encode_name('revision', revision_id)
             revision_text = repository.get_revision_xml(revision_id)
-            self.add_record(container, 'B', container_name, parents,
-                            revision_text)
-        container.finish()
+            self.add_record(container.add_bytes_record, container_name,
+                            parents, revision_text)
+        container.end()
 
-    def add_record(self, container, type_, name, parents, text):
+    def add_record(self, add_method, name, parents, text):
         parents = self.encode_parents(parents)
         text = parents + text
-        container.add_record(type_, len(text), [name], text)
+        add_method(text, [name])
 
     def encode_parents(self, parents):
         return ' '.join(parents) + '\n'
@@ -76,46 +86,20 @@ class BundleSerializerV10(serializer.BundleSerializer):
         return kind, revision_id, file_id
 
 
-class _PseudoContainer(object):
-    
-    def __init__(self, fileobj):
-        self._records = []
-        self._fileobj = fileobj
-
-    def add_record(self, type, size, names, text):
-        self._records.append((type, size, names, text))
-
-    def finish(self):
-        self._fileobj.write(bencode.bencode([list(e) for e in self._records]))
-
-
 class _RecordReader(object):
 
     def __init__(self, fileobj, serializer):
-        self._records = [tuple(e) for e in bencode.bdecode(fileobj.read())]
-        self._record_iter = iter(self._records)
+        self._container = pack.ContainerReader(fileobj.read)
         self._current_text = None
         self._serializer = serializer
-
-    def iter_records(self):
-        for type, size, names, text in self._records:
-            self._current_text = text
-            yield type, size, names
-        yield 'E', None, None
-
-    def read_record(self):
-        return self._current_text
 
     def install(self, repository):
         current_file = None
         current_versionedfile = None
         pending_file_records = []
         added_inv = set()
-        for type_, size, names  in self.iter_records():
-            if type_ == 'E':
-                self._install_file_records(current_versionedfile,
-                    pending_file_records)
-                break
+        for names, bytes in self._container.iter_records():
+            assert len(names) == 1, repr(names)
             (name,) = names
             kind, revision_id, file_id = self._serializer.decode_name(name)
             if  kind != 'file':
@@ -125,12 +109,11 @@ class _RecordReader(object):
                 current_versionedfile = None
                 pending_file_records = []
                 if kind == 'inventory':
-                    self._install_inventory(repository, type_, revision_id,
-                        self.read_record(), added_inv)
+                    self._install_inventory(repository, revision_id, bytes,
+                                            added_inv)
                     added_inv.add(revision_id)
                 if kind == 'revision':
-                    self._install_revision(repository, type_, revision_id,
-                        self.read_record())
+                    self._install_revision(repository, revision_id, bytes)
             if kind == 'file':
                 if file_id != current_file:
                     self._install_file_records(current_versionedfile,
@@ -142,21 +125,20 @@ class _RecordReader(object):
                     pending_file_records = []
                 if revision_id in current_versionedfile:
                     continue
-                pending_file_records.append((type_, revision_id,
-                                            self.read_record()))
+                pending_file_records.append((revision_id, bytes))
+        self._install_file_records(current_versionedfile, pending_file_records)
 
 
     def _install_file_records(self, current_versionedfile,
                               pending_file_records):
-        for type_, revision, text in pending_file_records:
-            assert type_ == 'M'
+        for revision, text in pending_file_records:
             mpdiff_text = text.splitlines(True)
             parents, mpdiff_text = mpdiff_text[0], mpdiff_text[1:]
             parents = self._serializer.decode_parents(parents)
             mpdiff = multiparent.MultiParent.from_patch(mpdiff_text)
             current_versionedfile.add_mpdiff(revision, parents, mpdiff)
 
-    def _install_inventory(self, repository, type_, revision_id, text, added):
+    def _install_inventory(self, repository, revision_id, text, added):
         lines = text.splitlines(True)
         parents = self._serializer.decode_parents(lines[0])
         present_parents = [p for p in parents if
@@ -165,7 +147,7 @@ class _RecordReader(object):
         inv = repository.deserialise_inventory(revision_id, text)
         repository.add_inventory(revision_id, inv, present_parents)
 
-    def _install_revision(self, repository, type_, revision_id, text):
+    def _install_revision(self, repository, revision_id, text):
         lines = text.splitlines(True)
         parents = self._serializer.decode_parents(lines[0])
         text = ''.join(lines[1:])
