@@ -9,9 +9,10 @@ include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
 
 clean::
-	-rm -rf build test*.tmp doc/*.htm doc/bzr_man.txt
+	-rm -rf build test*.tmp doc/bzr_man.txt
+	find doc -name "*.htm" -print0 | xargs -0 rm -f
 	find . -name "*.pyc" -print0 | xargs -0 rm -f
-	rm -f bzr.1
+	rm -f bzr.1 man1/bzr.1
 	rm -f debian/stamp-doc
 	rm -f .bzr.log
 
