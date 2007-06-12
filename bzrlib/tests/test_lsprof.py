@@ -21,8 +21,18 @@ import cPickle
 import os
 
 import bzrlib
-from bzrlib.lsprof import profile
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import tests
+
+
+class LSProf(tests.Feature):
+
+    def available(self):
+        try:
+            from bzrlib import lsprof
+        except ImportError:
+            return False
+        else:
+            return True
 
 
 _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
@@ -36,14 +46,16 @@ def _junk_callable():
 
 def _collect_stats():
     "Collect and return some dummy profile data."
+    from bzrlib.lsprof import profile
     ret, stats = profile(_junk_callable)
     return stats
 
 
-class TestStatsSave(TestCaseInTempDir):
+class TestStatsSave(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(TestCaseInTempDir, self).setUp()
+        super(tests.TestCaseInTempDir, self).setUp()
+        self.requireFeature(LSProf())
         self.stats = _collect_stats()
 
     def _tempfile(self, ext):
