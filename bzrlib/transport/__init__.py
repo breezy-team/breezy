@@ -575,7 +575,7 @@ class Transport(object):
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
-        :return: yield _CoalescedOffset objects, which have members for wher
+        :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
         """

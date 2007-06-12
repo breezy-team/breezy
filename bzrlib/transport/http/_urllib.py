@@ -113,13 +113,13 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
 
         abspath = self._real_abspath(relpath)
         headers = {}
-        if ranges or tail_amount:
-            range_header = self.attempted_range_header(ranges, tail_amount)
+        if offsets or tail_amount:
+            range_header = self._attempted_range_header(offsets, tail_amount)
             if range_header is not None:
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}

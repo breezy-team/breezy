@@ -28,8 +28,13 @@ import sys
 
 from bzrlib import errors, ui
 from bzrlib.smart import medium
+from bzrlib.symbol_versioning import (
+        deprecated_method,
+        zero_seventeen,
+        )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
+    _CoalescedOffset,
     Transport,
     )
 
@@ -232,7 +237,7 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
 
         :param relpath: Path relative to transport base URL
         :param ranges: None to get the whole file;
-            or [(start,end)+], a list of tuples to fetch parts of a file.
+            or  a list of _CoalescedOffset to fetch parts of a file.
         :param tail_amount: The amount to get from the end of the file.
 
         :returns: (http_code, result_file)
@@ -279,30 +284,47 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
             # unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
 
+    # Having to round trip to the server means waiting for a response, so it is
+    # better to download extra bytes. We have two constraints to satisfy when
+    # choosing the right value: a request with too much ranges will make some
+    # servers issue a '400: Bad request' error (when we have too much ranges,
+    # we exceed the apache header max size (8190 by default) for example) ;
+    # coalescing too much ranges will increasing the data transferred and
+    # degrade performances.
+    _bytes_to_read_before_seek = 512
+    # No limit on the offset number combined into one, we are trying to avoid
+    # downloading the whole file.
+    _max_readv_combined = 0
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        ranges = self.offsets_to_ranges(offsets)
-        mutter('http readv of %s collapsed %s offsets => %s',
-                relpath, len(offsets), ranges)
+        sorted_offsets = sorted(list(offsets))
+        fudge = self._bytes_to_read_before_seek
+        coalesced = self._coalesce_offsets(sorted_offsets,
+                                           limit=self._max_readv_combine,
+                                           fudge_factor=fudge)
+        coalesced = list(coalesced)
+        mutter('http readv of %s  offsets => %s collapsed %s',
+                relpath, len(offsets), len(coalesced))
 
         try_again = True
         while try_again:
             try_again = False
             try:
-                code, f = self._get(relpath, ranges)
+                code, f = self._get(relpath, coalesced)
             except (errors.InvalidRange, errors.ShortReadvError), e:
-                try_again, code, f = self._retry_get(relpath, ranges,
+                try_again, code, f = self._retry_get(relpath, coalesced,
                                                      sys.exc_info())
 
         for start, size in offsets:
             try_again = True
             while try_again:
                 try_again = False
-                f.seek(start, (start < 0) and 2 or 0)
+                f.seek(start, ((start < 0) and 2) or 0)
                 start = f.tell()
                 try:
                     data = f.read(size)
@@ -313,12 +335,13 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
                     # Note that we replace 'f' here and that it
                     # may need cleaning one day before being
                     # thrown that way.
-                    try_again, code, f = self._retry_get(relpath, ranges,
+                    try_again, code, f = self._retry_get(relpath, coalesced,
                                                          sys.exc_info())
             # After one or more tries, we get the data.
             yield start, data
 
     @staticmethod
+    @deprecated_method(zero_seventeen)
     def offsets_to_ranges(offsets):
         """Turn a list of offsets and sizes into a list of byte ranges.
 
@@ -453,37 +476,40 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
         else:
             return self.__class__(self.abspath(offset), self)
 
-    def attempted_range_header(self, ranges, tail_amount):
+    def _attempted_range_header(self, offsets, tail_amount):
         """Prepare a HTTP Range header at a level the server should accept"""
 
         if self._range_hint == 'multi':
             # Nothing to do here
-            return self.range_header(ranges, tail_amount)
+            return self._range_header(offsets, tail_amount)
         elif self._range_hint == 'single':
             # Combine all the requested ranges into a single
             # encompassing one
-            if len(ranges) > 0:
-                start, ignored = ranges[0]
-                ignored, end = ranges[-1]
+            if len(offsets) > 0:
                 if tail_amount not in (0, None):
-                    # Nothing we can do here to combine ranges
-                    # with tail_amount, just returns None. The
-                    # whole file should be downloaded.
+                    # Nothing we can do here to combine ranges with tail_amount
+                    # in a single range, just returns None. The whole file
+                    # should be downloaded.
                     return None
                 else:
-                    return self.range_header([(start, end)], 0)
+                    start = offsets[0].start
+                    last = offsets[-1]
+                    end = last.start + last.length - 1
+                    whole = self._coalesce_offsets([(start, end - start + 1)],
+                                                   limit=0, fudge_factor=0)
+                    return self._range_header(list(whole), 0)
             else:
                 # Only tail_amount, requested, leave range_header
                 # do its work
-                return self.range_header(ranges, tail_amount)
+                return self._range_header(offsets, tail_amount)
         else:
             return None
 
     @staticmethod
-    def range_header(ranges, tail_amount):
+    def _range_header(ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
-        :param ranges: A list of byte ranges, (start, end).
+        :param ranges: A list of _CoalescedOffset
         :param tail_amount: The amount to get from the end of the file.
 
         :return: HTTP range header string.
@@ -492,8 +518,9 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
         provided.
         """
         strings = []
-        for start, end in ranges:
-            strings.append('%d-%d' % (start, end))
+        for offset in ranges:
+            strings.append('%d-%d' % (offset.start,
+                                      offset.start + offset.length - 1))
 
         if tail_amount:
             strings.append('-%d' % tail_amount)

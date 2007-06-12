@@ -65,6 +65,7 @@ from bzrlib.tests.HTTPTestUtil import (
     WallRequestHandler,
     )
 from bzrlib.transport import (
+    _CoalescedOffset,
     do_catching_redirections,
     get_transport,
     Transport,
@@ -361,30 +362,6 @@ class TestHttpTransportRegistration(TestCase):
         self.assertIsInstance(t, HttpTransport_urllib)
 
 
-class TestOffsets(TestCase):
-    """Test offsets_to_ranges method"""
-
-    def test_offsets_to_ranges_simple(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-        ranges = to_range([(10, 1)])
-        self.assertEqual([[10, 10]], ranges)
-
-        ranges = to_range([(0, 1), (1, 1)])
-        self.assertEqual([[0, 1]], ranges)
-
-        ranges = to_range([(1, 1), (0, 1)])
-        self.assertEqual([[0, 1]], ranges)
-
-    def test_offset_to_ranges_overlapped(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-
-        ranges = to_range([(10, 1), (20, 2), (22, 5)])
-        self.assertEqual([[10, 10], [20, 26]], ranges)
-
-        ranges = to_range([(10, 1), (11, 2), (22, 5)])
-        self.assertEqual([[10, 12], [22, 26]], ranges)
-
-
 class TestPost(object):
 
     def _test_post_body_is_received(self, scheme):
@@ -427,12 +404,15 @@ class TestRangeHeader(TestCase):
     """Test range_header method"""
 
     def check_header(self, value, ranges=[], tail=0):
-        range_header = HttpTransportBase.range_header
-        self.assertEqual(value, range_header(ranges, tail))
+        offsets = [ (start, end - start + 1) for start, end in ranges]
+        coalesce = Transport._coalesce_offsets
+        coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
+        range_header = HttpTransportBase._range_header
+        self.assertEqual(value, range_header(coalesced, tail))
 
     def test_range_header_single(self):
-        self.check_header('0-9', ranges=[[0,9]])
-        self.check_header('100-109', ranges=[[100,109]])
+        self.check_header('0-9', ranges=[(0,9)])
+        self.check_header('100-109', ranges=[(100,109)])
 
     def test_range_header_tail(self):
         self.check_header('-10', tail=10)
@@ -926,18 +906,21 @@ class TestRanges(object):
         server = self.get_readonly_server()
         self.transport = self._transport(server.get_url())
 
-    def _file_contents(self, relpath, ranges, tail_amount=0):
-         code, data = self.transport._get(relpath, ranges)
-         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-         for start, end in ranges:
-             data.seek(start)
-             yield data.read(end - start + 1)
+    def _file_contents(self, relpath, ranges):
+        offsets = [ (start, end - start + 1) for start, end in ranges]
+        coalesce = self.transport._coalesce_offsets
+        coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
+        code, data = self.transport._get(relpath, coalesced)
+        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        for start, end in ranges:
+            data.seek(start)
+            yield data.read(end - start + 1)
 
     def _file_tail(self, relpath, tail_amount):
-         code, data = self.transport._get(relpath, [], tail_amount)
-         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-         data.seek(-tail_amount + 1, 2)
-         return data.read(tail_amount)
+        code, data = self.transport._get(relpath, [], tail_amount)
+        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        data.seek(-tail_amount + 1, 2)
+        return data.read(tail_amount)
 
     def test_range_header(self):
         # Valid ranges
@@ -946,11 +929,11 @@ class TestRanges(object):
         # Tail
         self.assertEqual('789', self._file_tail('a', 3))
         # Syntactically invalid range
-        self.assertRaises(errors.InvalidRange,
-                          self.transport._get, 'a', [(4, 3)])
+        self.assertListRaises(errors.InvalidRange,
+                          self._file_contents, 'a', [(4, 3)])
         # Semantically invalid range
-        self.assertRaises(errors.InvalidRange,
-                          self.transport._get, 'a', [(42, 128)])
+        self.assertListRaises(errors.InvalidRange,
+                          self._file_contents, 'a', [(42, 128)])
 
 
 class TestRanges_urllib(TestRanges, TestCaseWithWebserver):
