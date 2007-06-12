@@ -549,7 +549,7 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
-    _see_also = ['push', 'update']
+    _see_also = ['push', 'update', 'status-flags']
     takes_options = ['remember', 'overwrite', 'revision', 'verbose',
         Option('directory',
             help='branch to pull into, '
@@ -558,7 +558,7 @@ class cmd_pull(Command):
             type=unicode,
             ),
         ]
-    takes_args = ['location?', 'status-flags']
+    takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
