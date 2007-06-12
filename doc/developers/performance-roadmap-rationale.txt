@@ -1,5 +1,5 @@
 What should be in the roadmap?
-------------------------------
+==============================
 
 A good roadmap provides a place for contributors to look for tasks, it
 provides users with a sense of when we will fix things that are
@@ -28,7 +28,7 @@ the APIs for Branch and Repository in London in the light of what we
 have learnt over the last years.
 
 What should the final system look like, how is it different to what we have today?
-----------------------------------------------------------------------------------
+==================================================================================
 
 One of the things I like the most about bzr is its rich library API, and
 I've heard this from numerous other folk. So anything that will remove
@@ -50,7 +50,7 @@ major actors in the system - primarily Tree, Branch, Repository - based
 on what we have learnt.
 
 What use cases should be covered?
----------------------------------
+=================================
 
 My list of use cases is probably not complete - its just the ones I
 happen to see a lot :). I think each should be analysed comprehensively
@@ -88,8 +88,8 @@ optimised.
  * update
  * cbranch
 
-how is development on the roadmap coordinated?
-----------------------------------------------
+How is development on the roadmap coordinated?
+==============================================
 
 I think we should hold regular get-togethers (on IRC) to coordinate on
 our progress, because this is a big task and its a lot easier to start

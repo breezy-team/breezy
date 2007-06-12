@@ -1,5 +1,5 @@
 Incremental push/pull
----------------------
+=====================
 
 This use case covers pulling in or pushing out some number of revisions which
 is typically a small fraction of the number already present in the target
@@ -9,7 +9,7 @@ bzr-svn or GNU Arch) but within bzrlib's core they are currently the
 responsibility of the Repository object.
 
 Functional Requirements
-=======================
+-----------------------
 
 A push or pull operation must:
  * Copy all the data to reconstruct the selected revisions in the target
@@ -18,7 +18,7 @@ A push or pull operation must:
    data, corrupted data should not be incorporated accidentally.
 
 Factors which should add work for push/pull
-===========================================
+-------------------------------------------
 
  * Baseline overhead: The time to connect to both branches.
  * Actual new data in the revisions being pulled (drives the amount of data to
@@ -27,7 +27,7 @@ Factors which should add work for push/pull
    determination of what revisions to move around).
 
 Push/pull overview
-==================
+------------------
 
 1. New data is identified in the source repository.
 2. That data is read from the source repository.
@@ -35,7 +35,7 @@ Push/pull overview
    manner that its not visible to readers until its ready for use.
 
 New data identification
-+++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~
 
 We have a single top level data object: revisions. Everything else is
 subordinate to revisions, so determining the revisions to propogate should be
@@ -124,7 +124,7 @@ With ghost and new-signature detection:
 
 
 Data reading
-++++++++++++
+~~~~~~~~~~~~
 
 When transferring information about a revision the graph of data for the
 revision is walked: revision -> inventory, revision -> matching signature,
@@ -156,7 +156,7 @@ for some file data we want the fileid:revisionid:validationhash + content).
 
 
 Data Verification and writing
-+++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 New data written to a repository should be completed intact when it is made
 visible. This suggests that either all the data for a revision must be made
@@ -247,7 +247,7 @@ copy ebough data to recreate snapshots
 avoid ending up wth corrupt/bad data
 
 Notes from London
-=================
+-----------------
 
  #. setup
 
@@ -268,7 +268,7 @@ Notes from London
    #. validate the sha1 of the full text of each transmitted text.
    #. validate the sha1:name mapping in each newly referenced inventory item.
    #. validate the sha1 of the XML of each inventory against the revision.
-      *** this is proportional to tree size and must be fixed ***
+      **this is proportional to tree size and must be fixed**
 
  #. write the data to the local repo.
     The API should output the file texts needed by the merge as by product of the transmission

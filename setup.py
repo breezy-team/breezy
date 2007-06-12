@@ -170,10 +170,13 @@ if 'bdist_wininst' in sys.argv:
     import glob
     # doc files
     docs = glob.glob('doc/*.htm') + ['doc/default.css']
+    dev_docs = glob.glob('doc/developers/*.htm')
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             # help pages
-            'data_files': [('Doc/Bazaar', docs)],
+            'data_files': [('Doc/Bazaar', docs),
+                           ('Doc/Bazaar/developers', dev_docs),
+                          ],
            }
 
     ARGS.update(META_INFO)
