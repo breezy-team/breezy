@@ -99,7 +99,7 @@ class ContainerReader(BaseReader):
         """Iterate over the container, yielding each record as it is read.
 
         Each yielded record will be a 2-tuple of (names, bytes), where names is
-        a ``list`` and bytes is a ``str`.
+        a ``list`` and bytes is a ``str``.
 
         :raises UnknownContainerFormatError: if the format of the container is
             unrecognised.
