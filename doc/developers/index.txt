@@ -14,6 +14,10 @@ Documentation index
 
   The roadmap for fixing performance in bzr over the next few releases.
 
+* `Container format <container-format.htm>`_
+
+  Notes on a container format for streaming and storing Bazaar data.
+
 * `Profiling notes <profiling.htm>`_
 
   Instructions on how to profile bzr code and visualize the results.

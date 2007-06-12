@@ -132,7 +132,8 @@ def show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Write out human-readable log of commits to this branch.
 
     lf
@@ -154,6 +155,12 @@ def show_log(branch,
 
     end_revision
         If not None, only show revisions <= end_revision
+
+    search
+        If not None, only show revisions with matching commit messages
+
+    limit
+        If not None or 0, only show limit revisions
     """
     branch.lock_read()
     try:
@@ -161,7 +168,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search)
+                  start_revision, end_revision, search, limit)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -175,7 +182,8 @@ def _show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None):
+             search=None,
+             limit=None):
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
@@ -282,6 +290,7 @@ def _show_log(branch,
             num = min(int(num * 1.5), 200)
 
     # now we just print all the revisions
+    log_count = 0
     for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
 
@@ -309,6 +318,10 @@ def _show_log(branch,
                                             rev_tag_dict.get(rev_id))
                     else:
                         lf.show_merge_revno(rev, merge_depth, revno)
+        if limit:
+            log_count += 1
+            if log_count >= limit:
+                break
 
 
 def _get_revisions_touching_file_id(branch, file_id, mainline_revisions,
@@ -554,15 +567,19 @@ class ShortLogFormatter(LogFormatter):
         from bzrlib.osutils import format_date
 
         to_file = self.to_file
-        date_str = format_date(revision.rev.timestamp, 
+        date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
                                self.show_timezone)
-        print >>to_file, "%5s %s\t%s" % (revision.revno, 
+        is_merge = ''
+        if len(revision.rev.parent_ids) > 1:
+            is_merge = ' [merge]'
+        print >>to_file, "%5s %s\t%s%s" % (revision.revno,
                 self.short_committer(revision.rev),
-                format_date(revision.rev.timestamp, 
+                format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
-                            show_offset=False))
+                            show_offset=False),
+                is_merge)
         if self.show_ids:
             print >>to_file,  '      revision-id:', revision.rev.revision_id
         if not revision.rev.message:

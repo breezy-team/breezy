@@ -1109,6 +1109,7 @@ class TestCase(unittest.TestCase):
             # -- vila 20061212
             'ftp_proxy': None,
             'FTP_PROXY': None,
+            'BZR_REMOTE_PATH': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -2268,6 +2269,7 @@ def test_suite():
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_branchbuilder',
                    'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',

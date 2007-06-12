@@ -41,8 +41,7 @@ def show_version():
         print "    revid:", src_revision_id
         print "    branch nick:", src_tree.branch.nick
     print "Using python interpreter:", sys.executable
-    import site
-    print "Using python standard library:", os.path.dirname(site.__file__)
+    print "Using python standard library:", os.path.dirname(os.__file__)
     print "Using bzrlib:",
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
