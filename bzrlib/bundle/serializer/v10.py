@@ -25,19 +25,10 @@ class BundleSerializerV10(serializer.BundleSerializer):
             vf = repository.weave_store.get_weave(file_id, transaction)
             file_revision_ids = [r for r in revision_ids if r in
                                  file_revision_ids]
-            for file_revision_id in file_revision_ids:
-                parents = vf.get_parents(file_revision_id)
-                text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
-                container_name = self.encode_name('file', file_revision_id,
-                                                  file_id)
-                self.add_record(container.add_multiparent_record,
-                                container_name, parents, text)
-        for revision_id in revision_ids:
-            parents = repository.revision_parents(revision_id)
-            container_name = self.encode_name('inventory', revision_id)
-            inventory_text = repository.get_inventory_xml(revision_id)
-            self.add_record(container.add_bytes_record, container_name,
-                            parents, inventory_text)
+            self.add_mp_records(container, 'file', file_id, vf,
+                                file_revision_ids)
+        inv_vf = repository.get_inventory_weave()
+        self.add_mp_records(container, 'inventory', None, inv_vf, revision_ids)
         for revision_id in revision_ids:
             parents = repository.revision_parents(revision_id)
             container_name = self.encode_name('revision', revision_id)
@@ -50,6 +41,16 @@ class BundleSerializerV10(serializer.BundleSerializer):
         parents = self.encode_parents(parents)
         text = parents + text
         add_method(text, [name])
+
+    def add_mp_records(self, container, name_kind, file_id, vf,
+                       file_revision_ids):
+        for file_revision_id in file_revision_ids:
+            parents = vf.get_parents(file_revision_id)
+            text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
+            container_name = self.encode_name(name_kind, file_revision_id,
+                                              file_id)
+            self.add_record(container.add_multiparent_record,
+                            container_name, parents, text)
 
     def encode_parents(self, parents):
         return ' '.join(parents) + '\n'
@@ -101,8 +102,12 @@ class BundleInfoV10(object):
         return self.install_revisions(repository)
 
     def install_revisions(self, repository):
-        ri = RevisionInstaller(self._fileobj, self._serializer, repository)
-        return ri.install()
+        repository.lock_write()
+        try:
+            ri = RevisionInstaller(self._fileobj, self._serializer, repository)
+            return ri.install()
+        finally:
+            repository.unlock()
 
     def _get_real_revisions(self):
         from bzrlib import xml7
@@ -159,7 +164,7 @@ class RevisionInstaller(object):
             (name,) = names
             kind, revision_id, file_id = self._serializer.decode_name(name)
             if  kind != 'file':
-                self._install_file_records(current_versionedfile,
+                self._install_mp_records(current_versionedfile,
                     pending_file_records)
                 current_file = None
                 current_versionedfile = None
@@ -173,7 +178,7 @@ class RevisionInstaller(object):
                     self._install_revision(revision_id, bytes)
             if kind == 'file':
                 if file_id != current_file:
-                    self._install_file_records(current_versionedfile,
+                    self._install_mp_records(current_versionedfile,
                         pending_file_records)
                     current_file = file_id
                     current_versionedfile = \
@@ -183,12 +188,11 @@ class RevisionInstaller(object):
                 if revision_id in current_versionedfile:
                     continue
                 pending_file_records.append((revision_id, bytes))
-        self._install_file_records(current_versionedfile, pending_file_records)
+        self._install_mp_records(current_versionedfile, pending_file_records)
         return target_revision
 
-    def _install_file_records(self, current_versionedfile,
-                              pending_file_records):
-        for revision, text in pending_file_records:
+    def _install_mp_records(self, current_versionedfile, records):
+        for revision, text in records:
             mpdiff_text = text.splitlines(True)
             parents, mpdiff_text = mpdiff_text[0], mpdiff_text[1:]
             parents = self._serializer.decode_parents(parents)
@@ -196,15 +200,8 @@ class RevisionInstaller(object):
             current_versionedfile.add_mpdiff(revision, parents, mpdiff)
 
     def _install_inventory(self, revision_id, text, added):
-        if self._repository.has_revision(revision_id):
-            return
-        lines = text.splitlines(True)
-        parents = self._serializer.decode_parents(lines[0])
-        present_parents = [p for p in parents if
-            (p in added or self._repository.has_revision(p))]
-        text = ''.join(lines[1:])
-        inv = self._repository.deserialise_inventory(revision_id, text)
-        self._repository.add_inventory(revision_id, inv, present_parents)
+        vf = self._repository.get_inventory_weave()
+        return self._install_mp_records(vf, [(revision_id, text)])
 
     def _install_revision(self, revision_id, text):
         if self._repository.has_revision(revision_id):
