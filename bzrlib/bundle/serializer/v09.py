@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.bundle.serializer import BUNDLE_HEADER
+from bzrlib.bundle.serializer import _get_bundle_header
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08, BundleReader
 from bzrlib.testament import StrictTestament3
 from bzrlib.bundle.bundle_data import BundleInfo

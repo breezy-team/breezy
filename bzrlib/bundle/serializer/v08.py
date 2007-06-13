@@ -131,7 +131,7 @@ class BundleSerializerV08(BundleSerializer):
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(get_bundle_header('0.8'))
+        f.write(_get_bundle_header('0.8'))
         f.write('#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
