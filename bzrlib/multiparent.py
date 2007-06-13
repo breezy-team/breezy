@@ -526,6 +526,8 @@ class _Reconstructor(object):
     def _reconstruct(self, lines, req_version_id, req_start, req_end):
         """Append lines for the requested version_id range"""
         # stack of pending range requests
+        if req_start == req_end:
+            return
         pending_reqs = [(req_version_id, req_start, req_end)]
         while len(pending_reqs) > 0:
             req_version_id, req_start, req_end = pending_reqs.pop()

@@ -148,6 +148,11 @@ class TestVersionedFile(TestCase):
         self.assertEqual(REV_A, vf.get_line_list(['rev-a'])[0])
         self.assertEqual([REV_B, REV_C], vf.get_line_list(['rev-b', 'rev-c']))
 
+    def test_reconstruct_empty(self):
+        vf = multiparent.MultiMemoryVersionedFile()
+        vf.add_version([], 'a', [])
+        self.assertEqual([], self.reconstruct_version(vf, 'a'))
+
     @staticmethod
     def reconstruct(vf, revision_id, start, end):
         reconstructor = multiparent._Reconstructor(vf, vf._lines,
