@@ -369,11 +369,12 @@ class HttpDavTransport(HttpTransport_urllib):
         # objects (see handling chunked data and 100-continue).
         abspath = self._real_abspath(relpath)
 
+        # Content-Range is start-end/size. 'size' is the file size, not the
+        # chunk size. We can't be sure about the size of the file so put '*' at
+        # the end of the range instead.
         request = PUTRequest(abspath, bytes,
                              {'Content-Range':
-                              'bytes %d-%d/%d' % (at, at+len(bytes),
-                                                  len(bytes)),
-                              })
+                                  'bytes %d-%d/*' % (at, at+len(bytes)),})
         response = self._perform(request)
         code = response.code
 
@@ -559,7 +560,6 @@ class HttpDavTransport(HttpTransport_urllib):
         if code == 404:
             relpath_size = 0
         else:
-            mutter('response.headers [%r]' % response.headers)
             # Consider the absence of Content-Length header as
             # indicating an existing but empty file (Apache 2.0
             # does this, and there is even a comment in
