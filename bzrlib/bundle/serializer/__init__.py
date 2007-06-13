@@ -38,6 +38,8 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 _serializers = {}
 
+def _get_bundle_header(version):
+    return '%s%s\n' % (BUNDLE_HEADER, version)
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
