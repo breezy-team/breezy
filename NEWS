@@ -1,5 +1,14 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * The --lsprof-file option now dumps a text rendering of the profiling
+      information if the filename ends in ".txt". It will also convert the
+      profiling information to a format suitable for KCacheGrind if the
+      output filename ends in ".callgrind". Fixes to the lsprofcalltree
+      conversion process by Jean Paul Calderone and Itamar were also merged.
+      See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:
