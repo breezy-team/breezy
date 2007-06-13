@@ -24,7 +24,7 @@ import re
 from bzrlib import errors
 
 
-FORMAT_ONE = "bzr pack format 1"
+FORMAT_ONE = "Bazaar pack format 1"
 
 
 _whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
