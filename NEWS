@@ -1,5 +1,16 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * The --lsprof-file option now dumps a text rendering of the profiling
+      information if the filename ends in ".txt". It will also convert the
+      profiling information to a format suitable for KCacheGrind if the
+      output filename ends in ".callgrind". Fixes to the lsprofcalltree
+      conversion process by Jean Paul Calderone and Itamar were also merged.
+      See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
+
+bzr 0.17rc1  2007-06-12
+
   NOTES WHEN UPGRADING:
 
     * The kind() and is_executable() APIs on the WorkingTree interface no
@@ -54,6 +65,9 @@ IN DEVELOPMENT
       66 seconds to 32 seconds. For a small tree of 600 files, commit of a
       small change is 33% faster. (Ian Clatworthy)
 
+    * New --create-prefix option to bzr init, like for push.  (Daniel Watkins,
+      #56322)
+
   BUGFIXES:
 
     * ``bzr push`` should only connect to the remote location one time.
@@ -87,6 +101,10 @@ IN DEVELOPMENT
 
     * Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
       (Daniel Watkins, #111958)
+
+    * ``bzr branch -r revid:foo`` can be used to branch any revision in
+      your repository. (Previously Branch6 only supported revisions in your
+      mainline). (John Arbash Meinel, #115343)
 
 bzr 0.16  2007-05-07
   

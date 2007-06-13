@@ -193,7 +193,12 @@ command.  (e.g. "bzr --quiet help").
 --profile      Profile execution using the hotshot profiler
 --lsprof       Profile execution using the lsprof profiler
 --lsprof-file  Profile execution using the lsprof profiler, and write the
-               results to a specified file.
+               results to a specified file.  If the filename ends with ".txt",
+               text format will be used.  If the filename ends with
+               ".callgrind", output will be formatted for use with KCacheGrind.
+               Otherwise, the output will be a pickle.
+
+See doc/developers/profiling.txt for more information on profiling.
 
 Note: --version must be supplied before any command.
 """
