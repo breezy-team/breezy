@@ -73,6 +73,17 @@ class TestContainerWriter(tests.TestCase):
         self.assertEqual('bzr pack format 1\nB3\nname1\nname2\n\nabc',
                          output.getvalue())
 
+    def test_add_bytes_record_invalid_name(self):
+        """Adding a Bytes record with a name with whitespace in it raises
+        InvalidRecordError.
+        """
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        self.assertRaises(
+            errors.InvalidRecordError,
+            writer.add_bytes_record, 'abc', names=['bad name'])
+
 
 class TestContainerReader(tests.TestCase):
 
@@ -192,22 +203,39 @@ class TestBytesRecordReader(tests.TestCase):
                     "UnexpectedEndOfContainerError not raised when parsing %r"
                     % (input.getvalue()))
 
-    def test_initial(self):
+    def test_initial_eof(self):
         """EOF before any bytes read at all."""
         input = StringIO("")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-    def test_after_length(self):
+    def test_eof_after_length(self):
         """EOF after reading the length and before reading name(s)."""
         input = StringIO("123\n")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-    def test_during_name(self):
+    def test_eof_during_name(self):
         """EOF during reading a name."""
         input = StringIO("123\nname")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-        
+    def test_invalid_name_whitespace(self):
+        """Names must have no whitespace."""
+        # A name with a space.
+        input = StringIO("0\nbad name\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+        # A name with a tab.
+        input = StringIO("0\nbad\tname\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+        # A name with a vertical tab.
+        input = StringIO("0\nbad\vname\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+                

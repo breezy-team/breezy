@@ -19,10 +19,28 @@
 "Containers" and "records" are described in doc/developers/container-format.txt.
 """
 
+import re
+
 from bzrlib import errors
 
 
 FORMAT_ONE = "bzr pack format 1"
+
+
+_whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
+
+
+def _check_name(name):
+    """Do some basic checking of 'name'.
+    
+    At the moment, this just checks that there are no whitespace characters in a
+    name.
+
+    :raises InvalidRecordError: if name is not valid.
+    """
+    # XXX: consider checking that name is a str of valid UTF-8 too?
+    if _whitespace_re.search(name) is not None:
+        raise errors.InvalidRecordError("%r is not a valid name." % (name,))
 
 
 class ContainerWriter(object):
@@ -52,6 +70,9 @@ class ContainerWriter(object):
         self.write_func(str(len(bytes)) + "\n")
         # Names
         for name in names:
+            # Make sure we're writing valid names.  Note that we will leave a
+            # half-written record if a name is bad!
+            _check_name(name)
             self.write_func(name + "\n")
         # End of headers
         self.write_func("\n")
@@ -145,6 +166,7 @@ class BytesRecordReader(BaseReader):
             name = self._read_line()
             if name == '':
                 break
+            _check_name(name)
             names.append(name)
         bytes = self.reader_func(length)
         if len(bytes) != length:
