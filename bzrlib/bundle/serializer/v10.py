@@ -15,7 +15,7 @@ class ContainerWriter(pack.ContainerWriter):
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
-        fileobj.write(serializer._get_bundle_header('1.0'))
+        fileobj.write(serializer._get_bundle_header('1.0alpha'))
         fileobj.write('#\n')
         container = ContainerWriter(fileobj.write)
         container.begin()

@@ -1039,7 +1039,7 @@ class V09BundleKnit1Tester(V08BundleTester):
 
 class V10BundleTester(V08BundleTester):
 
-    format = '1.0'
+    format = '1.0alpha'
 
     def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
         """Create a bundle from base_rev_id -> rev_id in built-in branch.
