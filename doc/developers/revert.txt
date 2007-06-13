@@ -1,11 +1,11 @@
 Revert
-------
+======
 
 Change users selected paths to be the same as those in a given revision making
 backups of any paths that bzr did not set the last contents itself.
 
 Least work we can hope to perform
-=================================
+---------------------------------
 
 We should be able to do work proportional to the scope the user is reverting
 and the amount of changes between the working tree and the revision being

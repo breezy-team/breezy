@@ -45,6 +45,7 @@ from bzrlib import (
     osutils,
     registry,
     repository,
+    revisionspec,
     symbol_versioning,
     transport,
     tree as _mod_tree,
@@ -304,15 +305,18 @@ class cmd_revision_info(Command):
         if revision_info_list is not None:
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
-        if len(revs) == 0:
-            raise errors.BzrCommandError('You must supply a revision identifier')
 
-        b = WorkingTree.open_containing(u'.')[0].branch
+        b = Branch.open_containing(u'.')[0]
+
+        if len(revs) == 0:
+            revs.append(RevisionSpec.from_string('-1'))
 
         for rev in revs:
             revinfo = rev.in_history(b)
             if revinfo.revno is None:
-                print '     %s' % revinfo.rev_id
+                dotted_map = b.get_revision_id_to_revno_map()
+                revno = '.'.join(str(i) for i in dotted_map[revinfo.rev_id])
+                print '%s %s' % (revno, revinfo.rev_id)
             else:
                 print '%4d %s' % (revinfo.revno, revinfo.rev_id)
 
@@ -751,27 +755,7 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
 
-                cur_transport = to_transport
-                needed = [cur_transport]
-                # Recurse upwards until we can create a directory successfully
-                while True:
-                    new_transport = cur_transport.clone('..')
-                    if new_transport.base == cur_transport.base:
-                        raise errors.BzrCommandError("Failed to create path"
-                                                     " prefix for %s."
-                                                     % location)
-                    try:
-                        new_transport.mkdir('.')
-                    except errors.NoSuchFile:
-                        needed.append(new_transport)
-                        cur_transport = new_transport
-                    else:
-                        break
-
-                # Now we only need to create child directories
-                while needed:
-                    cur_transport = needed.pop()
-                    cur_transport.ensure_base()
+                _create_prefix(to_transport)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -848,6 +832,10 @@ class cmd_branch(Command):
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
+    If the FROM_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the FROM_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "branch lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
@@ -877,7 +865,7 @@ class cmd_branch(Command):
                 # RBC 20060209
                 revision_id = br_from.last_revision()
             if to_location is None:
-                to_location = os.path.basename(from_location.rstrip("/\\"))
+                to_location = urlutils.derive_to_location(from_location)
                 name = None
             else:
                 name = os.path.basename(to_location) + '\n'
@@ -917,6 +905,10 @@ class cmd_checkout(Command):
     
     If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
     be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+    If the BRANCH_LOCATION has no / or path separator embedded, the TO_LOCATION
+    is derived from the BRANCH_LOCATION by stripping a leading scheme or drive
+    identifier, if any. For example, "checkout lp:foo-bar" will attempt to
+    create ./foo-bar.
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
@@ -953,7 +945,7 @@ class cmd_checkout(Command):
         else:
             revision_id = None
         if to_location is None:
-            to_location = os.path.basename(branch_location.rstrip("/\\"))
+            to_location = urlutils.derive_to_location(branch_location)
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
@@ -1258,6 +1250,9 @@ class cmd_init(Command):
     _see_also = ['init-repo', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
+        Option('create-prefix',
+               help='Create the path leading up to the branch '
+                    'if it does not already exist'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
@@ -1270,7 +1265,8 @@ class cmd_init(Command):
                 help='Never change revnos or the existing log.'
                 '  Append revisions to it only.')
          ]
-    def run(self, location=None, format=None, append_revisions_only=False):
+    def run(self, location=None, format=None, append_revisions_only=False,
+            create_prefix=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1283,8 +1279,16 @@ class cmd_init(Command):
         # Just using os.mkdir, since I don't
         # believe that we want to create a bunch of
         # locations if the user supplies an extended path
-        # TODO: create-prefix
-        to_transport.ensure_base()
+        try:
+            to_transport.ensure_base()
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise errors.BzrCommandError("Parent directory of %s"
+                    " does not exist."
+                    "\nYou may supply --create-prefix to create all"
+                    " leading parent directories."
+                    % location)
+            _create_prefix(to_transport)
 
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
@@ -3761,6 +3765,28 @@ def _merge_helper(other_revision, base_revision,
         pb.clear()
     return conflicts
 
+
+def _create_prefix(cur_transport):
+    needed = [cur_transport]
+    # Recurse upwards until we can create a directory successfully
+    while True:
+        new_transport = cur_transport.clone('..')
+        if new_transport.base == cur_transport.base:
+            raise errors.BzrCommandError("Failed to create path"
+                                         " prefix for %s."
+                                         % location)
+        try:
+            new_transport.mkdir('.')
+        except errors.NoSuchFile:
+            needed.append(new_transport)
+            cur_transport = new_transport
+        else:
+            break
+
+    # Now we only need to create child directories
+    while needed:
+        cur_transport = needed.pop()
+        cur_transport.ensure_base()
 
 # Compatibility
 merge = _merge_helper

@@ -691,6 +691,47 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # This will unlock it
             self.check_state_with_reopen(expected_result, state)
 
+    def test_set_state_from_inventory_mixed_paths(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
+                         'tree1/a/b/foo', 'tree1/a-b/bar'])
+        tree1.lock_write()
+        try:
+            tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
+                      ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
+            tree1.commit('rev1', rev_id='rev1')
+            root_id = tree1.get_root_id()
+            inv = tree1.inventory
+        finally:
+            tree1.unlock()
+        expected_result1 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a', 'b', 'b-id', 'd'),
+                            ('a/b', 'foo', 'foo-id', 'f'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        expected_result2 = [('', '', root_id, 'd'),
+                            ('', 'a', 'a-id', 'd'),
+                            ('', 'a-b', 'a-b-id', 'd'),
+                            ('a-b', 'bar', 'bar-id', 'f'),
+                           ]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result1, values)
+            del inv['b-id']
+            state.set_state_from_inventory(inv)
+            values = []
+            for entry in state._iter_entries():
+                values.append(entry[0] + entry[1][0][:1])
+            self.assertEqual(expected_result2, values)
+        finally:
+            state.unlock()
+
     def test_set_path_id_no_parents(self):
         """The id of a path can be changed trivally with no parents."""
         state = dirstate.DirState.initialize('dirstate')

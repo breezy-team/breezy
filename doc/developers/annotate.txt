@@ -1,5 +1,5 @@
 Annotate
---------
+========
 
 Broadly tries to ascribe parts of the tree state to individual commits.
 
