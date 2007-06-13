@@ -128,40 +128,6 @@ class ContainerReader(BaseReader):
                 raise errors.UnknownRecordTypeError(record_kind)
 
 
-class ContainerWriter(object):
-    """A class for writing containers."""
-
-    def __init__(self, write_func):
-        """Constructor.
-
-        :param write_func: a callable that will be called when this
-            ContainerWriter needs to write some bytes.
-        """
-        self.write_func = write_func
-
-    def begin(self):
-        """Begin writing a container."""
-        self.write_func(FORMAT_ONE + "\n")
-
-    def end(self):
-        """Finish writing a container."""
-        self.write_func("E")
-
-    def add_bytes_record(self, bytes, names):
-        """Add a Bytes record with the given names."""
-        # Kind marker
-        self.write_func("B")
-        # Length
-        self.write_func(str(len(bytes)) + "\n")
-        # Names
-        for name in names:
-            self.write_func(name + "\n")
-        # End of headers
-        self.write_func("\n")
-        # Finally, the contents.
-        self.write_func(bytes)
-
-
 class BytesRecordReader(BaseReader):
 
     def read(self):
