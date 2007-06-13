@@ -54,8 +54,8 @@ def _collect_stats():
 class TestStatsSave(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(tests.TestCaseInTempDir, self).setUp()
         self.requireFeature(LSProf())
+        super(tests.TestCaseInTempDir, self).setUp()
         self.stats = _collect_stats()
 
     def _tempfile(self, ext):
