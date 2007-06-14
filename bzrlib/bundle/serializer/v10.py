@@ -8,7 +8,7 @@ from bzrlib import (
 from bzrlib.bundle import bundle_data, serializer
 
 
-class ContainerWriter(object):
+class BundleWriter(object):
 
     def __init__(self, fileobj):
         self._stringio = StringIO()
@@ -57,7 +57,7 @@ class ContainerWriter(object):
         self._container.add_bytes_record(bytes, [name])
 
 
-class ContainerReader(object):
+class BundleReader(object):
 
     def __init__(self, fileobj):
         line = fileobj.readline()
@@ -94,7 +94,7 @@ class ContainerReader(object):
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
-        container = ContainerWriter(fileobj)
+        container = BundleWriter(fileobj)
         container.begin()
         transaction = repository.get_transaction()
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
@@ -149,7 +149,7 @@ class BundleInfoV10(object):
 
     def _get_container_reader(self):
         self._fileobj.seek(0)
-        return ContainerReader(self._fileobj)
+        return BundleReader(self._fileobj)
 
     def _get_real_revisions(self):
         from bzrlib import xml7

@@ -1115,15 +1115,15 @@ class V10BundleTester(V08BundleTester):
 
     def test_name_encode(self):
         self.assertEqual('revision:rev1',
-            v10.ContainerWriter.encode_name('revision', 'rev1'))
+            v10.BundleWriter.encode_name('revision', 'rev1'))
         self.assertEqual('file:rev1/file-id-1',
-            v10.ContainerWriter.encode_name('file', 'rev1', 'file-id-1'))
+            v10.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
 
     def test_name_decode(self):
         self.assertEqual(('revision', 'rev1', None),
-            BundleSerializerV10.decode_name('revision:rev1'))
+            v10.BundleReader.decode_name('revision:rev1'))
         self.assertEqual(('file', 'rev1', 'file-id-1'),
-            BundleSerializerV10.decode_name('file:rev1/file-id-1'))
+            v10.BundleReader.decode_name('file:rev1/file-id-1'))
 
 
 class MungedBundleTester(TestCaseWithTransport):
