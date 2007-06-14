@@ -16,12 +16,12 @@ class ContainerWriter(object):
         self._fileobj = fileobj
 
     def begin(self):
+        self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
+        self._fileobj.write('#\n')
         self._container.begin()
 
     def end(self):
         self._container.end()
-        self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
-        self._fileobj.write('#\n')
         encoded = self._stringio.getvalue().encode('bz2').encode('base-64')
         self._fileobj.write(encoded)
 
