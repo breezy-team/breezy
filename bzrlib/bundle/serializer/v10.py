@@ -1,6 +1,8 @@
 from cStringIO import StringIO
+import bz2
 
 from bzrlib import (
+    iterablefile,
     multiparent,
     pack,
     timestamp,
@@ -63,8 +65,14 @@ class BundleReader(object):
         line = fileobj.readline()
         if line != '\n':
             fileobj.readline()
-        s = StringIO(fileobj.read().decode('base-64').decode('bz2'))
-        self._container = pack.ContainerReader(s.read)
+        self._container = pack.ContainerReader(
+            iterablefile.IterableFile(self.iter_decode(fileobj)).read)
+
+    @staticmethod
+    def iter_decode(fileobj):
+        decompressor = bz2.BZ2Decompressor()
+        for line in fileobj:
+            yield decompressor.decompress(line.decode('base-64'))
 
     @staticmethod
     def decode_name(name):
