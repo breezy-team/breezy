@@ -123,20 +123,19 @@ def gather_location_info(repository, branch=None, working=None):
     if repository.is_shared():
         # lightweight checkout of branch in shared repository
         locs['shared repository'] = repository_path
-    return locs
+    order = ['light checkout root', 'repository checkout root',
+             'checkout root', 'checkout of branch', 'shared repository',
+             'repository', 'repository branch', 'branch root',
+             'bound to branch']
+    return [(n, locs[n]) for n in order if n in locs]
 
 
 def _show_location_info(locs):
     """Show known locations for working, branch and repository."""
     print 'Location:'
     path_list = _UrlList()
-    for loc in ['light checkout root', 'repository checkout root',
-                'checkout root', 'checkout of branch', 'shared repository',
-                'repository branch', 'branch root']:
-        try:
-            path_list.add_url(loc, locs[loc])
-        except KeyError:
-            pass
+    for name, loc in locs:
+        path_list.add_url(name, loc)
     path_list.print_lines()
 
 
