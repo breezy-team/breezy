@@ -8,14 +8,47 @@ from bzrlib import (
 from bzrlib.bundle import bundle_data, serializer
 
 
-class ContainerWriter(pack.ContainerWriter):
+class ContainerWriter(object):
 
-    def add_multiparent_record(self, names, mp_bytes):
-        self.add_bytes_record(names, mp_bytes)
-    def add_record(self, add_method, name, parents, text):
+    def __init__(self, write_func):
+        self._container = pack.ContainerWriter(write_func)
+
+    def begin(self):
+        self._container.begin()
+
+    def end(self):
+        self._container.end()
+
+    def add_multiparent_record(self, mp_bytes, parents, repo_kind,
+                               revision_id, file_id):
+        self._add_record(mp_bytes, parents, repo_kind, revision_id, file_id)
+
+    def add_fulltext_record(self, bytes, parents, repo_kind, revision_id,
+                            file_id):
+        self._add_record(bytes, parents, repo_kind, revision_id, file_id)
+
+    @staticmethod
+    def encode_parents(parents):
+        return ' '.join(parents) + '\n'
+
+    @staticmethod
+    def encode_name(name_kind, revision_id, file_id=None):
+        assert name_kind in ('revision', 'file', 'inventory')
+        if name_kind in ('revision', 'inventory'):
+            assert file_id is None
+        else:
+            assert file_id is not None
+        if file_id is not None:
+            file_tail = '/' + file_id
+        else:
+            file_tail = ''
+        return name_kind + ':' + revision_id + file_tail
+
+    def _add_record(self, bytes, parents, repo_kind, revision_id, file_id):
+        name = self.encode_name(repo_kind, revision_id, file_id)
         parents = self.encode_parents(parents)
-        text = parents + text
-        add_method(text, [name])
+        bytes = parents + bytes
+        self._container.add_bytes_record(bytes, [name])
 
 
 class BundleSerializerV10(serializer.BundleSerializer):
@@ -38,26 +71,19 @@ class BundleSerializerV10(serializer.BundleSerializer):
         self.add_mp_records(container, 'inventory', None, inv_vf, revision_ids)
         for revision_id in revision_ids:
             parents = repository.revision_parents(revision_id)
-            container_name = self.encode_name('revision', revision_id)
             revision_text = repository.get_revision_xml(revision_id)
-            self.add_record(container.add_bytes_record, container_name,
-                            parents, revision_text)
+            container.add_fulltext_record(revision_text, parents,
+                                          'revision', revision_id, None)
         container.end()
         fileobj.write(s.getvalue().encode('bz2').encode('base-64'))
 
-
-    def add_mp_records(self, container, name_kind, file_id, vf,
-                       file_revision_ids):
-        for file_revision_id in file_revision_ids:
-            parents = vf.get_parents(file_revision_id)
-            text = ''.join(vf.make_mpdiff(file_revision_id).to_patch())
-            container_name = self.encode_name(name_kind, file_revision_id,
-                                              file_id)
-            self.add_record(container.add_multiparent_record,
-                            container_name, parents, text)
-
-    def encode_parents(self, parents):
-        return ' '.join(parents) + '\n'
+    def add_mp_records(self, container, repo_kind, file_id, vf,
+                       revision_ids):
+        for revision_id in revision_ids:
+            parents = vf.get_parents(revision_id)
+            text = ''.join(vf.make_mpdiff(revision_id).to_patch())
+            container.add_multiparent_record(text, parents, repo_kind,
+                                             revision_id, file_id)
 
     def decode_parents(self, parents_line):
         parents = parents_line.rstrip('\n').split(' ')
@@ -68,19 +94,6 @@ class BundleSerializerV10(serializer.BundleSerializer):
     def read(self, file):
         container = BundleInfoV10(file, self)
         return container
-
-    @staticmethod
-    def encode_name(name_kind, revision_id, file_id=None):
-        assert name_kind in ('revision', 'file', 'inventory')
-        if name_kind in ('revision', 'inventory'):
-            assert file_id is None
-        else:
-            assert file_id is not None
-        if file_id is not None:
-            file_tail = '/' + file_id
-        else:
-            file_tail = ''
-        return name_kind + ':' + revision_id + file_tail
 
     @staticmethod
     def decode_name(name):
@@ -108,20 +121,25 @@ class BundleInfoV10(object):
     def install_revisions(self, repository):
         repository.lock_write()
         try:
-            ri = RevisionInstaller(self._fileobj, self._serializer, repository)
+            ri = RevisionInstaller(self._get_container_reader(),
+                                   self._serializer, repository)
             return ri.install()
         finally:
             repository.unlock()
 
+    def _get_container_reader(self):
+        self._fileobj.seek(0)
+        line = self._fileobj.readline()
+        if line != '\n':
+            self._fileobj.readline()
+        s = StringIO(self._fileobj.read().decode('base-64').decode('bz2'))
+        return pack.ContainerReader(s.read)
+
     def _get_real_revisions(self):
         from bzrlib import xml7
-        self._fileobj.seek(0)
         if self.__real_revisions is None:
             self.__real_revisions = []
-            line = self._fileobj.readline()
-            if line != '\n':
-                line = self._fileobj.readline()
-            container = pack.ContainerReader(self._fileobj.read)
+            container = self._get_container_reader()
             for (name,), bytes in container.iter_records():
                 kind, revision_id, file_id = self._serializer.decode_name(name)
                 if kind == 'revision':
@@ -148,13 +166,8 @@ class BundleInfoV10(object):
 
 class RevisionInstaller(object):
 
-    def __init__(self, fileobj, serializer, repository):
-        fileobj.seek(0)
-        line = fileobj.readline()
-        if line != '\n':
-            fileobj.readline()
-        s = StringIO(fileobj.read().decode('base-64').decode('bz2'))
-        self._container = pack.ContainerReader(s.read)
+    def __init__(self, container, serializer, repository):
+        self._container = container
         self._serializer = serializer
         self._repository = repository
 

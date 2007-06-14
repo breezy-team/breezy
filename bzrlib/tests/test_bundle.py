@@ -30,7 +30,7 @@ from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bundle.serializer import write_bundle, read_bundle
+from bzrlib.bundle.serializer import write_bundle, read_bundle, v10
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v10 import BundleSerializerV10
@@ -1115,9 +1115,9 @@ class V10BundleTester(V08BundleTester):
 
     def test_name_encode(self):
         self.assertEqual('revision:rev1',
-            BundleSerializerV10.encode_name('revision', 'rev1'))
+            v10.ContainerWriter.encode_name('revision', 'rev1'))
         self.assertEqual('file:rev1/file-id-1',
-            BundleSerializerV10.encode_name('file', 'rev1', 'file-id-1'))
+            v10.ContainerWriter.encode_name('file', 'rev1', 'file-id-1'))
 
     def test_name_decode(self):
         self.assertEqual(('revision', 'rev1', None),
