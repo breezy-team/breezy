@@ -1,3 +1,5 @@
+from cStringIO import StringIO
+
 from bzrlib import (
     multiparent,
     pack,
@@ -10,6 +12,10 @@ class ContainerWriter(pack.ContainerWriter):
 
     def add_multiparent_record(self, names, mp_bytes):
         self.add_bytes_record(names, mp_bytes)
+    def add_record(self, add_method, name, parents, text):
+        parents = self.encode_parents(parents)
+        text = parents + text
+        add_method(text, [name])
 
 
 class BundleSerializerV10(serializer.BundleSerializer):
@@ -17,7 +23,8 @@ class BundleSerializerV10(serializer.BundleSerializer):
     def write(self, repository, revision_ids, forced_bases, fileobj):
         fileobj.write(serializer._get_bundle_header('1.0alpha'))
         fileobj.write('#\n')
-        container = ContainerWriter(fileobj.write)
+        s = StringIO()
+        container = ContainerWriter(s.write)
         container.begin()
         transaction = repository.get_transaction()
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
@@ -36,11 +43,8 @@ class BundleSerializerV10(serializer.BundleSerializer):
             self.add_record(container.add_bytes_record, container_name,
                             parents, revision_text)
         container.end()
+        fileobj.write(s.getvalue().encode('bz2').encode('base-64'))
 
-    def add_record(self, add_method, name, parents, text):
-        parents = self.encode_parents(parents)
-        text = parents + text
-        add_method(text, [name])
 
     def add_mp_records(self, container, name_kind, file_id, vf,
                        file_revision_ids):
@@ -149,7 +153,8 @@ class RevisionInstaller(object):
         line = fileobj.readline()
         if line != '\n':
             fileobj.readline()
-        self._container = pack.ContainerReader(fileobj.read)
+        s = StringIO(fileobj.read().decode('base-64').decode('bz2'))
+        self._container = pack.ContainerReader(s.read)
         self._serializer = serializer
         self._repository = repository
 

@@ -1084,8 +1084,6 @@ class V10BundleTester(V08BundleTester):
         self.assertEqual(bundle_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)
-        self.assertEqual(bundle_txt.readline().decode('utf-8'),
-                         u'bzr pack format 1\n')
 
         open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
