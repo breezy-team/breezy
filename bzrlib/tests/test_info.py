@@ -188,8 +188,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual([('shared repository',
                           srepo.bzrdir.root_transport.base),
                           ('repository branch', 'tree')],
-                          info.gather_location_info(srepo,
-                              tree.branch, tree))
+                          info.gather_location_info(srepo, tree.branch, tree))
 
     def test_gather_location_light_checkout(self):
         tree = self.make_branch_and_tree('tree')
