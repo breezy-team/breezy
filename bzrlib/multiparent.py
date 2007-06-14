@@ -21,23 +21,25 @@ def topo_iter(vf, versions=None):
     descendants = {}
     if versions is None:
         versions = vf.versions()
+    def pending_parents(version):
+        return [v for v in vf.get_parents(version) if v in versions and
+                v not in seen]
     for version_id in versions:
         for parent_id in vf.get_parents(version_id):
             descendants.setdefault(parent_id, []).append(version_id)
-    cur = [v for v in versions if len([v for v in vf.get_parents(v) if
-           v in versions]) == 0]
+    cur = [v for v in versions if len(pending_parents(v)) == 0]
     while len(cur) > 0:
         next = []
         for version_id in cur:
             if version_id in seen:
                 continue
-            parents = vf.get_parents(version_id)
-            if not seen.issuperset(parents):
+            if len(pending_parents(version_id)) != 0:
                 continue
             next.extend(descendants.get(version_id, []))
             yield version_id
             seen.add(version_id)
         cur = next
+    assert len(seen) == len(versions)
 
 
 class MultiParent(object):

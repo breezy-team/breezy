@@ -1053,7 +1053,6 @@ class V10BundleTester(V08BundleTester):
         # This should also validate the generated bundle 
         bundle = read_bundle(bundle_txt)
         repository = self.b1.repository
-        return bundle
         for bundle_rev in bundle.real_revisions:
             # These really should have already been checked when we read the
             # bundle, since it computes the sha1 hash for the revision, which
@@ -1067,8 +1066,8 @@ class V10BundleTester(V08BundleTester):
                                  getattr(bundle_rev, a))
             self.assertEqual(len(branch_rev.parent_ids), 
                              len(bundle_rev.parent_ids))
-        self.assertEqual(rev_ids, 
-                         [r.revision_id for r in bundle.real_revisions])
+        self.assertEqual(set(rev_ids),
+                         set([r.revision_id for r in bundle.real_revisions]))
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 

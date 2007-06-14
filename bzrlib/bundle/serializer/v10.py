@@ -199,6 +199,11 @@ class BundleInfoV10(object):
 
     revisions = property(_get_revisions)
 
+    def _get_target(self):
+        return self.revisions[-1].revision_id
+
+    target = property(_get_target)
+
 
 class RevisionInstaller(object):
 
@@ -212,6 +217,7 @@ class RevisionInstaller(object):
         current_versionedfile = None
         pending_file_records = []
         added_inv = set()
+        target_revision = None
         for bytes, parents, repo_kind, revision_id, file_id in\
             self._container.iter_records():
             if  repo_kind != 'file':
