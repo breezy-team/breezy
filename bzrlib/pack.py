@@ -133,12 +133,25 @@ class ContainerReader(BaseReader):
     def iter_records(self):
         """Iterate over the container, yielding each record as it is read.
 
-        Each yielded record will be a 2-tuple of (names, bytes), where names is
-        a ``list`` and bytes is a ``str``.
+        Each yielded record will be a 2-tuple of (names, callable), where names
+        is a ``list`` and bytes is a function that takes one argument,
+        ``max_length``.
+
+        You **must not** call the callable after advancing the interator to the
+        next record.  That is, this code is invalid::
+
+            record_iter = container.iter_records()
+            names1, callable1 = record_iter.next()
+            names2, callable2 = record_iter.next()
+            bytes1 = callable1(None)
+        
+        As it will give incorrect results and invalidate the state of the
+        ContainerReader.
 
         :raises ContainerError: if any sort of containter corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
+        :seealso: ContainerReader.read
         """
         self._read_format()
         return self._iter_records()
@@ -147,11 +160,13 @@ class ContainerReader(BaseReader):
         """Iterate over the container, yielding each record as it is read.
 
         Each yielded record will be an object with ``read`` and ``validate``
-        methods.
+        methods.  Like with iter_records, it is not safe to use a record object
+        after advancing the iterator to yield next record.
 
         :raises ContainerError: if any sort of containter corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
+        :seealso: iter_records
         """
         self._read_format()
         return self._iter_record_objects()
@@ -212,7 +227,7 @@ class BytesRecordReader(BaseReader):
     def read(self):
         """Read this record.
 
-        You can either validate or read, you can't do both.
+        You can either validate or read a record, you can't do both.
 
         :returns: A tuple of (names, callable).  The callable can be called
             repeatedly to obtain the bytes for the record, with a max_length
