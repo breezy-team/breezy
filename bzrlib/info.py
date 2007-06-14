@@ -29,7 +29,7 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eight, zero_eightteen)
+        zero_eight, zero_eighteen)
 
 
 def plural(n, base='', pl=None):
@@ -456,7 +456,7 @@ def show_info(b):
     return show_bzrdir_info(b.bzrdir)
 
 
-@deprecated_function(zero_eightteen)
+@deprecated_function(zero_eighteen)
 def show_tree_info(working, verbose):
     """Output to stdout the 'info' for working."""
     branch = working.branch
@@ -465,7 +465,7 @@ def show_tree_info(working, verbose):
     show_component_info(control, repository, branch, working, verbose)
 
 
-@deprecated_function(zero_eightteen)
+@deprecated_function(zero_eighteen)
 def show_branch_info(branch, verbose):
     """Output to stdout the 'info' for branch."""
     repository = branch.repository
@@ -473,7 +473,7 @@ def show_branch_info(branch, verbose):
     show_component_info(control, repository, branch, verbose=verbose)
 
 
-@deprecated_function(zero_eightteen)
+@deprecated_function(zero_eighteen)
 def show_repository_info(repository, verbose):
     """Output to stdout the 'info' for repository."""
     control = repository.bzrdir
