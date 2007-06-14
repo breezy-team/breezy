@@ -1109,6 +1109,7 @@ class TestCase(unittest.TestCase):
             # -- vila 20061212
             'ftp_proxy': None,
             'FTP_PROXY': None,
+            'BZR_REMOTE_PATH': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -2308,6 +2309,7 @@ def test_suite():
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_lsprof',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',

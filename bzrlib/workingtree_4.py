@@ -472,6 +472,7 @@ class WorkingTree4(WorkingTree3):
 
     @needs_read_lock
     def id2path(self, file_id):
+        "Convert a file-id to a path."
         file_id = osutils.safe_file_id(file_id)
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id)
@@ -481,16 +482,22 @@ class WorkingTree4(WorkingTree3):
         return path_utf8.decode('utf8')
 
     if not osutils.supports_executable():
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             file_id = osutils.safe_file_id(file_id)
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
     else:
-        @needs_read_lock
         def is_executable(self, file_id, path=None):
+            """Test if a file is executable or not.
+
+            Note: The caller is expected to take a read-lock before calling this.
+            """
             if not path:
                 file_id = osutils.safe_file_id(file_id)
                 path = self.id2path(file_id)
@@ -530,12 +537,13 @@ class WorkingTree4(WorkingTree3):
                 # path is missing on disk.
                 continue
 
-    @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
 
         This is always the actual kind that's on disk, regardless of what it
         was added as.
+
+        Note: The caller is expected to take a read-lock before calling this.
         """
         relpath = self.id2path(file_id)
         assert relpath != None, \
@@ -1060,10 +1068,8 @@ class WorkingTree4(WorkingTree3):
             except (errors.NoSuchRevision, errors.RevisionNotPresent):
                 revtree = None
             trees.append((revision_id, revtree))
-        self.current_dirstate()._validate()
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-        self.current_dirstate()._validate()
 
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
@@ -1074,7 +1080,6 @@ class WorkingTree4(WorkingTree3):
             parent tree - i.e. a ghost.
         """
         dirstate = self.current_dirstate()
-        dirstate._validate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
@@ -1090,11 +1095,8 @@ class WorkingTree4(WorkingTree3):
                 real_trees.append((rev_id,
                     self.branch.repository.revision_tree(None)))
                 ghosts.append(rev_id)
-        dirstate._validate()
         dirstate.set_parent_trees(real_trees, ghosts=ghosts)
-        dirstate._validate()
         self._make_dirty(reset_inventory=False)
-        dirstate._validate()
 
     def _set_root_id(self, file_id):
         """See WorkingTree.set_root_id."""
@@ -1283,7 +1285,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                          _control_files=control_files)
         wt._new_tree()
         wt.lock_tree_write()
-        wt.current_dirstate()._validate()
         try:
             if revision_id in (None, NULL_REVISION):
                 if branch.repository.supports_rich_root():
@@ -1291,7 +1292,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-                wt.current_dirstate()._validate()
             wt.set_last_revision(revision_id)
             wt.flush()
             basis = wt.basis_tree()

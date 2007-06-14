@@ -1,5 +1,5 @@
 Initial push / pull
-###################
+===================
 
 Optimal case
 ------------
@@ -43,12 +43,12 @@ Smart Network Case
 ------------------
 
 Phase 1
-=======
+~~~~~~~
 Push: ask if there is a repository, and if not, what formats are okay
 Pull: Nothing
 
 Phase 2
-=======
+~~~~~~~
 Push: send initial push command, streaming data in acceptable format, following
 disk case strategy
 Pull: receive initial pull command, specifying format

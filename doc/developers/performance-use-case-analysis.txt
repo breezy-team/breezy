@@ -1,5 +1,5 @@
 Analysing a specific use case
------------------------------
+=============================
 
 The analysis of a use case needs to provide as outputs:
  * The functional requirements that the use case has to satisfy.
@@ -15,7 +15,7 @@ The analysis of a use case needs to provide as outputs:
    should also be mentioned.
 
 Performing the analysis
------------------------
+=======================
 
 The analysis needs to be able to define the characteristics of the
 involved disk storage and APIs. That means we need to examine the data
@@ -38,7 +38,7 @@ dotted revnos could be done as the text is retrieved, but its completely
 fine to post-process the annotated text to obtain dotted-revnos.'
 
 What factors should be considered?
-----------------------------------
+==================================
 
 Obviously, those that will make for an extremely fast system :). There
 are many possible factors, but the ones I think are most interesting to
@@ -49,7 +49,7 @@ design with are:
    - The time to get bzr ready to begin the use case.
 
 - scaling: how does performance change when any of the follow aspects
-   of the system are ratched massively up or down:
+  of the system are ratched massively up or down:
 
    - number of files/dirs/symlinks/subtrees in a tree (both working and 
      revision trees)
@@ -71,12 +71,13 @@ design with are:
    - bandwidth to the disk storage
    - latency to perform semantic operations (hpss specific)
    - bandwidth when performing semantic operations.
+
 - locality of reference: If an operation requires data that is located
-   within a small region at any point, we often get better performance 
-   than with an implementation of the same operation that requires the
-   same amount of data but with a lower locality of reference. Its 
-   fairly tricky to add locality of reference after the fact, so I think
-   its worth considering up front.
+  within a small region at any point, we often get better performance 
+  than with an implementation of the same operation that requires the
+  same amount of data but with a lower locality of reference. Its 
+  fairly tricky to add locality of reference after the fact, so I think
+  its worth considering up front.
 
 Using these factors, to the annotate example we can add that its
 reasonable to do two 'semantic' round trips to the local tree, one to

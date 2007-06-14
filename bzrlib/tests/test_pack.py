@@ -37,7 +37,7 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        self.assertEqual('bzr pack format 1\n', output.getvalue())
+        self.assertEqual('Bazaar pack format 1\n', output.getvalue())
 
     def test_end(self):
         """The end() method writes an End Marker record."""
@@ -45,7 +45,7 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.end()
-        self.assertEqual('bzr pack format 1\nE', output.getvalue())
+        self.assertEqual('Bazaar pack format 1\nE', output.getvalue())
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
@@ -53,7 +53,7 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=[])
-        self.assertEqual('bzr pack format 1\nB3\n\nabc', output.getvalue())
+        self.assertEqual('Bazaar pack format 1\nB3\n\nabc', output.getvalue())
 
     def test_add_bytes_record_one_name(self):
         """Add a bytes record with one name."""
@@ -61,7 +61,7 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1'])
-        self.assertEqual('bzr pack format 1\nB3\nname1\n\nabc',
+        self.assertEqual('Bazaar pack format 1\nB3\nname1\n\nabc',
                          output.getvalue())
 
     def test_add_bytes_record_two_names(self):
@@ -70,8 +70,19 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1', 'name2'])
-        self.assertEqual('bzr pack format 1\nB3\nname1\nname2\n\nabc',
+        self.assertEqual('Bazaar pack format 1\nB3\nname1\nname2\n\nabc',
                          output.getvalue())
+
+    def test_add_bytes_record_invalid_name(self):
+        """Adding a Bytes record with a name with whitespace in it raises
+        InvalidRecordError.
+        """
+        output = StringIO()
+        writer = pack.ContainerWriter(output.write)
+        writer.begin()
+        self.assertRaises(
+            errors.InvalidRecordError,
+            writer.add_bytes_record, 'abc', names=['bad name'])
 
 
 class TestContainerReader(tests.TestCase):
@@ -86,7 +97,7 @@ class TestContainerReader(tests.TestCase):
 
     def test_empty_container(self):
         """Read an empty container."""
-        input = StringIO("bzr pack format 1\nE")
+        input = StringIO("Bazaar pack format 1\nE")
         reader = pack.ContainerReader(input.read)
         self.assertEqual([], list(reader.iter_records()))
 
@@ -101,7 +112,7 @@ class TestContainerReader(tests.TestCase):
         """Containers that don't end with an End Marker record should cause
         UnexpectedEndOfContainerError to be raised.
         """
-        input = StringIO("bzr pack format 1\n")
+        input = StringIO("Bazaar pack format 1\n")
         reader = pack.ContainerReader(input.read)
         iterator = reader.iter_records()
         self.assertRaises(
@@ -109,7 +120,7 @@ class TestContainerReader(tests.TestCase):
 
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
-        input = StringIO("bzr pack format 1\nX")
+        input = StringIO("Bazaar pack format 1\nX")
         reader = pack.ContainerReader(input.read)
         iterator = reader.iter_records()
         self.assertRaises(
@@ -122,7 +133,7 @@ class TestContainerReader(tests.TestCase):
         TestBytesRecordReader.  This test is here to ensure that
         ContainerReader's integration with BytesRecordReader is working.
         """
-        input = StringIO("bzr pack format 1\nB5\n\naaaaaE")
+        input = StringIO("Bazaar pack format 1\nB5\n\naaaaaE")
         reader = pack.ContainerReader(input.read)
         expected_records = [([], 'aaaaa')]
         self.assertEqual(expected_records, list(reader.iter_records()))
@@ -192,22 +203,39 @@ class TestBytesRecordReader(tests.TestCase):
                     "UnexpectedEndOfContainerError not raised when parsing %r"
                     % (input.getvalue()))
 
-    def test_initial(self):
+    def test_initial_eof(self):
         """EOF before any bytes read at all."""
         input = StringIO("")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-    def test_after_length(self):
+    def test_eof_after_length(self):
         """EOF after reading the length and before reading name(s)."""
         input = StringIO("123\n")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-    def test_during_name(self):
+    def test_eof_during_name(self):
         """EOF during reading a name."""
         input = StringIO("123\nname")
         reader = pack.BytesRecordReader(input.read)
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-        
+    def test_invalid_name_whitespace(self):
+        """Names must have no whitespace."""
+        # A name with a space.
+        input = StringIO("0\nbad name\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+        # A name with a tab.
+        input = StringIO("0\nbad\tname\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+        # A name with a vertical tab.
+        input = StringIO("0\nbad\vname\n\n")
+        reader = pack.BytesRecordReader(input.read)
+        self.assertRaises(errors.InvalidRecordError, reader.read)
+
+                

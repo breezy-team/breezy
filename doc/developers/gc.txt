@@ -1,5 +1,5 @@
 Garbage Collection
-------------------
+==================
 
 Garbage collection is used to remove data from a repository that is no longer referenced.
 
@@ -7,7 +7,7 @@ Generally this involves locking the repository and scanning all its branches
 then generating a new repository with less data.
 
 Least work we can hope to perform
-=================================
+---------------------------------
 
 * Read all branches to get initial references - tips + tags.
 * Read through the revision graph to find unreferenced revisions. A cheap HEADS
