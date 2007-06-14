@@ -1,6 +1,10 @@
 from cStringIO import StringIO
 import bz2
 
+# The number of bytes per base64-encoded line.  We could use less, but it would
+# be ugly
+BASE64_LINE_BYTES = 57
+
 from bzrlib import (
     iterablefile,
     multiparent,
@@ -13,19 +17,28 @@ from bzrlib.bundle import bundle_data, serializer
 class BundleWriter(object):
 
     def __init__(self, fileobj):
-        self._stringio = StringIO()
-        self._container = pack.ContainerWriter(self._stringio.write)
+        self._container = pack.ContainerWriter(self._write_encoded)
         self._fileobj = fileobj
+        self._compressor = bz2.BZ2Compressor()
+        self._base64_buffer = ''
 
     def begin(self):
         self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
         self._fileobj.write('#\n')
         self._container.begin()
 
+    def _write_encoded(self, bytes):
+        self._base64_buffer += self._compressor.compress(bytes)
+        if len(self._base64_buffer) >=  BASE64_LINE_BYTES:
+            to_leave = len(self._base64_buffer) % BASE64_LINE_BYTES
+            self._fileobj.write(self._base64_buffer[:-to_leave].encode(
+                'base-64'))
+            self._base64_buffer = self._base64_buffer[-to_leave:]
+
     def end(self):
         self._container.end()
-        encoded = self._stringio.getvalue().encode('bz2').encode('base-64')
-        self._fileobj.write(encoded)
+        tail = self._base64_buffer+self._compressor.flush()
+        self._fileobj.write(tail.encode('base-64'))
 
     def add_multiparent_record(self, mp_bytes, parents, repo_kind,
                                revision_id, file_id):
