@@ -1059,7 +1059,7 @@ class cmd_info(Command):
     takes_options = ['verbose']
 
     @display_command
-    def run(self, location=None, verbose=False):
+    def run(self, location=None, verbose=0):
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
                          verbose=verbose)

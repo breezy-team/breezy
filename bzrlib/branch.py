@@ -847,6 +847,12 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    def __eq__(self, other):
+        return self.__class__ is other.__class__
+
+    def __ne__(self, other):
+        return not (self == other)
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the branch object in a_bzrdir."""

@@ -9,6 +9,10 @@ IN DEVELOPMENT
       conversion process by Jean Paul Calderone and Itamar were also merged.
       See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
 
+    * ``info`` now defaults to non-verbose mode, displaying only paths and
+      abbreviated format info.  ``info -v`` displays all the information
+      formerly displayed by ``info``.  (Aaron Bentley)
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:
