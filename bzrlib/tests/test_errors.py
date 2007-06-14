@@ -293,6 +293,13 @@ class TestErrors(TestCaseWithTransport):
             "Invalid record: xxx",
             str(e))
 
+    def test_container_has_excess_data(self):
+        """Test the formatting of ContainerHasExcessDataError."""
+        e = errors.ContainerHasExcessDataError("excess bytes")
+        self.assertEqual(
+            "Container has data after end marker: 'excess bytes'",
+            str(e))
+
 
 class PassThroughError(errors.BzrError):
     

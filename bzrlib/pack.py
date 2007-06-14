@@ -148,10 +148,31 @@ class ContainerReader(BaseReader):
                 # Unknown record type.
                 raise errors.UnknownRecordTypeError(record_kind)
 
+    def validate(self):
+        """Validate this container and its records.
+
+        You can either validate or iter_records, you can't do both.
+
+        :raises ContainerError: if something is invalid.
+        """
+        for names, bytes in self.iter_records():
+            # XXX: bytes is str, should be callable to get bytes.
+            # callable()
+            pass
+        excess_bytes = self.reader_func(1)
+        if excess_bytes != '':
+            raise errors.ContainerHasExcessDataError(excess_bytes)
+
 
 class BytesRecordReader(BaseReader):
 
     def read(self):
+        """Read this record.
+
+        You can either validate or read, you can't do both.
+
+        :returns: (names, bytes)
+        """
         # Read the content length.
         length_line = self._read_line()
         try:
@@ -173,3 +194,11 @@ class BytesRecordReader(BaseReader):
             raise errors.UnexpectedEndOfContainerError()
         return names, bytes
 
+    def validate(self):
+        """Validate this record.
+
+        You can either validate or read, you can't do both.
+
+        :raises ContainerError: if this record is invalid.
+        """
+        self.read()
