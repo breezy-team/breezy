@@ -2083,7 +2083,14 @@ class BzrBranch6(BzrBranch5):
         if revision_id is None:
             revno, revision_id = self.last_revision_info()
         else:
-            revno = self.revision_id_to_revno(revision_id)
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
         destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):
