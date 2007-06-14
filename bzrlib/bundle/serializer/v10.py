@@ -127,7 +127,7 @@ class BundleSerializerV10(serializer.BundleSerializer):
                                 file_revision_ids)
         inv_vf = repository.get_inventory_weave()
         self.add_mp_records(container, 'inventory', None, inv_vf, revision_ids)
-        for revision_id in revision_ids:
+        for revision_id in multiparent.topo_iter(inv_vf, revision_ids):
             parents = repository.revision_parents(revision_id)
             revision_text = repository.get_revision_xml(revision_id)
             container.add_fulltext_record(revision_text, parents,
@@ -136,7 +136,7 @@ class BundleSerializerV10(serializer.BundleSerializer):
 
     def add_mp_records(self, container, repo_kind, file_id, vf,
                        revision_ids):
-        for revision_id in revision_ids:
+        for revision_id in multiparent.topo_iter(vf, revision_ids):
             parents = vf.get_parents(revision_id)
             text = ''.join(vf.make_mpdiff(revision_id).to_patch())
             container.add_multiparent_record(text, parents, repo_kind,
@@ -145,7 +145,6 @@ class BundleSerializerV10(serializer.BundleSerializer):
     def read(self, file):
         container = BundleInfoV10(file, self)
         return container
-
 
 
 class BundleInfoV10(object):
@@ -213,7 +212,6 @@ class RevisionInstaller(object):
         current_versionedfile = None
         pending_file_records = []
         added_inv = set()
-        target_revision = None
         for bytes, parents, repo_kind, revision_id, file_id in\
             self._container.iter_records():
             if  repo_kind != 'file':
@@ -227,8 +225,7 @@ class RevisionInstaller(object):
                                             added_inv)
                     added_inv.add(revision_id)
                 if repo_kind == 'revision':
-                    if target_revision is None:
-                        target_revision = revision_id
+                    target_revision = revision_id
                     self._install_revision(revision_id, parents, bytes)
             if repo_kind == 'file':
                 if file_id != current_file:
@@ -248,6 +245,8 @@ class RevisionInstaller(object):
     def _install_mp_records(self, current_versionedfile, records):
         for revision, parents, text in records:
             mpdiff = multiparent.MultiParent.from_patch(text.splitlines(True))
+            if revision in current_versionedfile:
+                continue
             current_versionedfile.add_mpdiff(revision, parents, mpdiff)
 
     def _install_inventory(self, revision_id, parents, text, added):

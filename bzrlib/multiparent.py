@@ -16,13 +16,16 @@ from bzrlib.util import bencode
 from bzrlib.tuned_gzip import GzipFile
 
 
-def topo_iter(vf):
+def topo_iter(vf, versions=None):
     seen = set()
     descendants = {}
-    for version_id in vf.versions():
+    if versions is None:
+        versions = vf.versions()
+    for version_id in versions:
         for parent_id in vf.get_parents(version_id):
             descendants.setdefault(parent_id, []).append(version_id)
-    cur = [v for v in vf.versions() if len(vf.get_parents(v)) == 0]
+    cur = [v for v in versions if len([v for v in vf.get_parents(v) if
+           v in versions]) == 0]
     while len(cur) > 0:
         next = []
         for version_id in cur:
