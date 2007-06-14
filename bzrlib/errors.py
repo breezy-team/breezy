@@ -2178,3 +2178,11 @@ class ContainerHasExcessDataError(ContainerError):
     def __init__(self, excess):
         self.excess = excess
 
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+

@@ -37,10 +37,24 @@ def _check_name(name):
     name.
 
     :raises InvalidRecordError: if name is not valid.
+    :seealso: _check_name_encoding
     """
-    # XXX: consider checking that name is a str of valid UTF-8 too?
     if _whitespace_re.search(name) is not None:
         raise errors.InvalidRecordError("%r is not a valid name." % (name,))
+
+
+def _check_name_encoding(name):
+    """Check that 'name' is valid UTF-8.
+    
+    This is separate from _check_name because UTF-8 decoding is relatively
+    expensive, and we usually want to avoid it.
+
+    :raises InvalidRecordError: if name is not valid UTF-8.
+    """
+    try:
+        name.decode('utf-8')
+    except UnicodeDecodeError, e:
+        raise errors.InvalidRecordError(str(e))
 
 
 class ContainerWriter(object):
@@ -119,24 +133,55 @@ class ContainerReader(BaseReader):
     def iter_records(self):
         """Iterate over the container, yielding each record as it is read.
 
-        Each yielded record will be a 2-tuple of (names, bytes), where names is
-        a ``list`` and bytes is a ``str``.
+        Each yielded record will be a 2-tuple of (names, callable), where names
+        is a ``list`` and bytes is a function that takes one argument,
+        ``max_length``.
 
-        :raises UnknownContainerFormatError: if the format of the container is
-            unrecognised.
+        You **must not** call the callable after advancing the interator to the
+        next record.  That is, this code is invalid::
+
+            record_iter = container.iter_records()
+            names1, callable1 = record_iter.next()
+            names2, callable2 = record_iter.next()
+            bytes1 = callable1(None)
+        
+        As it will give incorrect results and invalidate the state of the
+        ContainerReader.
+
+        :raises ContainerError: if any sort of containter corruption is
+            detected, e.g. UnknownContainerFormatError is the format of the
+            container is unrecognised.
+        :seealso: ContainerReader.read
         """
-        format = self._read_line()
-        if format != FORMAT_ONE:
-            raise errors.UnknownContainerFormatError(format)
+        self._read_format()
         return self._iter_records()
     
+    def iter_record_objects(self):
+        """Iterate over the container, yielding each record as it is read.
+
+        Each yielded record will be an object with ``read`` and ``validate``
+        methods.  Like with iter_records, it is not safe to use a record object
+        after advancing the iterator to yield next record.
+
+        :raises ContainerError: if any sort of containter corruption is
+            detected, e.g. UnknownContainerFormatError is the format of the
+            container is unrecognised.
+        :seealso: iter_records
+        """
+        self._read_format()
+        return self._iter_record_objects()
+    
     def _iter_records(self):
+        for record in self._iter_record_objects():
+            yield record.read()
+
+    def _iter_record_objects(self):
         while True:
             record_kind = self.reader_func(1)
             if record_kind == 'B':
                 # Bytes record.
                 reader = BytesRecordReader(self.reader_func)
-                yield reader.read()
+                yield reader
             elif record_kind == 'E':
                 # End marker.  There are no more records.
                 return
@@ -148,17 +193,32 @@ class ContainerReader(BaseReader):
                 # Unknown record type.
                 raise errors.UnknownRecordTypeError(record_kind)
 
+    def _read_format(self):
+        format = self._read_line()
+        if format != FORMAT_ONE:
+            raise errors.UnknownContainerFormatError(format)
+
     def validate(self):
         """Validate this container and its records.
 
-        You can either validate or iter_records, you can't do both.
+        Validating consumes the data stream just like iter_records and
+        iter_record_objects, so you cannot call it after
+        iter_records/iter_record_objects.
 
         :raises ContainerError: if something is invalid.
         """
-        for names, bytes in self.iter_records():
-            # XXX: bytes is str, should be callable to get bytes.
-            # callable()
-            pass
+        all_names = set()
+        for record_names, read_bytes in self.iter_records():
+            read_bytes(None)
+            for name in record_names:
+                _check_name_encoding(name)
+                # Check that the name is unique.  Note that Python will refuse
+                # to decode non-shortest forms of UTF-8 encoding, so there is no
+                # risk that the same unicode string has been encoded two
+                # different ways.
+                if name in all_names:
+                    raise errors.DuplicateRecordNameError(name)
+                all_names.add(name)
         excess_bytes = self.reader_func(1)
         if excess_bytes != '':
             raise errors.ContainerHasExcessDataError(excess_bytes)
@@ -169,9 +229,13 @@ class BytesRecordReader(BaseReader):
     def read(self):
         """Read this record.
 
-        You can either validate or read, you can't do both.
+        You can either validate or read a record, you can't do both.
 
-        :returns: (names, bytes)
+        :returns: A tuple of (names, callable).  The callable can be called
+            repeatedly to obtain the bytes for the record, with a max_length
+            argument.  If max_length is None, returns all the bytes.  Because
+            records can be arbitrarily large, using None is not recommended
+            unless you have reason to believe the content will fit in memory.
         """
         # Read the content length.
         length_line = self._read_line()
@@ -189,10 +253,20 @@ class BytesRecordReader(BaseReader):
                 break
             _check_name(name)
             names.append(name)
-        bytes = self.reader_func(length)
-        if len(bytes) != length:
+
+        self._remaining_length = length
+        return names, self._content_reader
+
+    def _content_reader(self, max_length):
+        if max_length is None:
+            length_to_read = self._remaining_length
+        else:
+            length_to_read = min(max_length, self._remaining_length)
+        self._remaining_length -= length_to_read
+        bytes = self.reader_func(length_to_read)
+        if len(bytes) != length_to_read:
             raise errors.UnexpectedEndOfContainerError()
-        return names, bytes
+        return bytes
 
     def validate(self):
         """Validate this record.
@@ -201,4 +275,8 @@ class BytesRecordReader(BaseReader):
 
         :raises ContainerError: if this record is invalid.
         """
-        self.read()
+        names, read_bytes = self.read()
+        for name in names:
+            _check_name_encoding(name)
+        read_bytes(None)
+

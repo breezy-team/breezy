@@ -136,19 +136,30 @@ class TestContainerReader(tests.TestCase):
         """
         reader = self.get_reader_for("Bazaar pack format 1\nB5\n\naaaaaE")
         expected_records = [([], 'aaaaa')]
-        self.assertEqual(expected_records, list(reader.iter_records()))
+        self.assertEqual(
+            expected_records,
+            [(names, read_bytes(None))
+             for (names, read_bytes) in reader.iter_records()])
 
     def test_validate_empty_container(self):
+        """validate does not raise an error for a container with no records."""
         reader = self.get_reader_for("Bazaar pack format 1\nE")
         # No exception raised
         reader.validate()
 
     def test_validate_non_empty_valid_container(self):
+        """validate does not raise an error for a container with a valid record.
+        """
         reader = self.get_reader_for("Bazaar pack format 1\nB3\nname\n\nabcE")
         # No exception raised
         reader.validate()
 
     def test_validate_bad_format(self):
+        """validate raises an error for unrecognised format strings.
+
+        It may raise either UnexpectedEndOfContainerError or
+        UnknownContainerFormatError, depending on exactly what the string is.
+        """
         inputs = ["", "x", "Bazaar pack format 1", "bad\n"]
         for input in inputs:
             reader = self.get_reader_for(input)
@@ -158,22 +169,47 @@ class TestContainerReader(tests.TestCase):
                 reader.validate)
 
     def test_validate_bad_record_marker(self):
+        """validate raises UnknownRecordTypeError for unrecognised record
+        types.
+        """
         reader = self.get_reader_for("Bazaar pack format 1\nX")
         self.assertRaises(errors.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
+        """validate raises ContainerHasExcessDataError if there are any bytes
+        after the end of the container.
+        """
         reader = self.get_reader_for("Bazaar pack format 1\nEcrud")
         self.assertRaises(
             errors.ContainerHasExcessDataError, reader.validate)
 
     def test_validate_no_end_marker(self):
+        """validate raises UnexpectedEndOfContainerError if there's no end of
+        container marker, even if the container up to this point has been valid.
+        """
         reader = self.get_reader_for("Bazaar pack format 1\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
+    def test_validate_duplicate_name(self):
+        """validate raises DuplicateRecordNameError if the same name occurs
+        multiple times in the container.
+        """
+        reader = self.get_reader_for(
+            "Bazaar pack format 1\n"
+            "B0\nname\n\n"
+            "B0\nname\n\n"
+            "E")
+        self.assertRaises(errors.DuplicateRecordNameError, reader.validate)
+
+    def test_validate_undecodeable_name(self):
+        """Names that aren't valid UTF-8 cause validate to fail."""
+        reader = self.get_reader_for("Bazaar pack format 1\nB0\n\xcc\n\nE")
+        self.assertRaises(errors.InvalidRecordError, reader.validate)
+        
 
 class TestBytesRecordReader(tests.TestCase):
-    """Tests for parsing Bytes records with BytesRecordReader."""
+    """Tests for reading and validating Bytes records with BytesRecordReader."""
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
@@ -185,26 +221,26 @@ class TestBytesRecordReader(tests.TestCase):
         names.
         """
         reader = self.get_reader_for("5\n\naaaaa")
-        names, bytes = reader.read()
+        names, get_bytes = reader.read()
         self.assertEqual([], names)
-        self.assertEqual('aaaaa', bytes)
+        self.assertEqual('aaaaa', get_bytes(None))
 
     def test_record_with_one_name(self):
         """Reading a Bytes record with one name returns a list of just that
         name.
         """
         reader = self.get_reader_for("5\nname1\n\naaaaa")
-        names, bytes = reader.read()
+        names, get_bytes = reader.read()
         self.assertEqual(['name1'], names)
-        self.assertEqual('aaaaa', bytes)
+        self.assertEqual('aaaaa', get_bytes(None))
 
     def test_record_with_two_names(self):
         """Reading a Bytes record with two names returns a list of both names.
         """
         reader = self.get_reader_for("5\nname1\nname2\n\naaaaa")
-        names, bytes = reader.read()
+        names, get_bytes = reader.read()
         self.assertEqual(['name1', 'name2'], names)
-        self.assertEqual('aaaaa', bytes)
+        self.assertEqual('aaaaa', get_bytes(None))
 
     def test_invalid_length(self):
         """If the length-prefix is not a number, parsing raises
@@ -225,16 +261,19 @@ class TestBytesRecordReader(tests.TestCase):
         """
         complete_record = "6\nname\n\nabcdef"
         for count in range(0, len(complete_record)):
-            reader = self.get_reader_for(complete_record[:count])
-            # We don't use assertRaises to make diagnosing failures easier.
+            incomplete_record = complete_record[:count]
+            reader = self.get_reader_for(incomplete_record)
+            # We don't use assertRaises to make diagnosing failures easier
+            # (assertRaises doesn't allow a custom failure message).
             try:
-                reader.read()
+                names, read_bytes = reader.read()
+                read_bytes(None)
             except errors.UnexpectedEndOfContainerError:
                 pass
             else:
                 self.fail(
                     "UnexpectedEndOfContainerError not raised when parsing %r"
-                    % (input.getvalue()))
+                    % (incomplete_record,))
 
     def test_initial_eof(self):
         """EOF before any bytes read at all."""
@@ -251,7 +290,7 @@ class TestBytesRecordReader(tests.TestCase):
         reader = self.get_reader_for("123\nname")
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
-    def test_invalid_name_whitespace(self):
+    def test_read_invalid_name_whitespace(self):
         """Names must have no whitespace."""
         # A name with a space.
         reader = self.get_reader_for("0\nbad name\n\n")
@@ -266,21 +305,57 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
     def test_validate_whitespace_in_name(self):
-        reader = self.get_reader_for("0\nbad name\n\nE")
+        """Names must have no whitespace."""
+        reader = self.get_reader_for("0\nbad name\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
 
     def test_validate_interrupted_prelude(self):
+        """EOF during reading a record's prelude causes validate to fail."""
         reader = self.get_reader_for("")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_interrupted_body(self):
+        """EOF during reading a record's body causes validate to fail."""
         reader = self.get_reader_for("1\n\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_unparseable_length(self):
+        """An unparseable record length causes validate to fail."""
         reader = self.get_reader_for("\n\n")
         self.assertRaises(
             errors.InvalidRecordError, reader.validate)
+
+    def test_validate_undecodeable_name(self):
+        """Names that aren't valid UTF-8 cause validate to fail."""
+        reader = self.get_reader_for("0\n\xcc\n\n")
+        self.assertRaises(errors.InvalidRecordError, reader.validate)
+
+    def test_read_max_length(self):
+        """If the max_length passed to the callable returned by read is not
+        None, then no more than that many bytes will be read.
+        """
+        reader = self.get_reader_for("6\n\nabcdef")
+        names, get_bytes = reader.read()
+        self.assertEqual('abc', get_bytes(3))
+
+    def test_read_no_max_length(self):
+        """If the max_length passed to the callable returned by read is None,
+        then all the bytes in the record will be read.
+        """
+        reader = self.get_reader_for("6\n\nabcdef")
+        names, get_bytes = reader.read()
+        self.assertEqual('abcdef', get_bytes(None))
+
+    def test_repeated_read_calls(self):
+        """Repeated calls to the callable returned from BytesRecordReader.read
+        will not read beyond the end of the record.
+        """
+        reader = self.get_reader_for("6\n\nabcdefB3\nnext-record\nXXX")
+        names, get_bytes = reader.read()
+        self.assertEqual('abcdef', get_bytes(None))
+        self.assertEqual('', get_bytes(None))
+        self.assertEqual('', get_bytes(99))
+
 
