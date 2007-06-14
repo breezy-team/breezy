@@ -176,7 +176,7 @@ those records.
 
 The format is:
 
-  * a **container lead-in**, "``bzr pack format 1\n``",
+  * a **container lead-in**, "``Bazaar pack format 1\n``",
   * followed by one or more **records**.
 
 A record is:
