@@ -10,14 +10,20 @@ from bzrlib.bundle import bundle_data, serializer
 
 class ContainerWriter(object):
 
-    def __init__(self, write_func):
-        self._container = pack.ContainerWriter(write_func)
+    def __init__(self, fileobj):
+        self._stringio = StringIO()
+        self._container = pack.ContainerWriter(self._stringio.write)
+        self._fileobj = fileobj
 
     def begin(self):
         self._container.begin()
 
     def end(self):
         self._container.end()
+        self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
+        self._fileobj.write('#\n')
+        encoded = self._stringio.getvalue().encode('bz2').encode('base-64')
+        self._fileobj.write(encoded)
 
     def add_multiparent_record(self, mp_bytes, parents, repo_kind,
                                revision_id, file_id):
@@ -53,8 +59,12 @@ class ContainerWriter(object):
 
 class ContainerReader(object):
 
-    def __init__(self, read_function):
-        self._container = pack.ContainerReader(read_function)
+    def __init__(self, fileobj):
+        line = fileobj.readline()
+        if line != '\n':
+            fileobj.readline()
+        s = StringIO(fileobj.read().decode('base-64').decode('bz2'))
+        self._container = pack.ContainerReader(s.read)
 
     @staticmethod
     def decode_name(name):
@@ -84,10 +94,7 @@ class ContainerReader(object):
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
-        fileobj.write(serializer._get_bundle_header('1.0alpha'))
-        fileobj.write('#\n')
-        s = StringIO()
-        container = ContainerWriter(s.write)
+        container = ContainerWriter(fileobj)
         container.begin()
         transaction = repository.get_transaction()
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
@@ -105,7 +112,6 @@ class BundleSerializerV10(serializer.BundleSerializer):
             container.add_fulltext_record(revision_text, parents,
                                           'revision', revision_id, None)
         container.end()
-        fileobj.write(s.getvalue().encode('bz2').encode('base-64'))
 
     def add_mp_records(self, container, repo_kind, file_id, vf,
                        revision_ids):
@@ -143,11 +149,7 @@ class BundleInfoV10(object):
 
     def _get_container_reader(self):
         self._fileobj.seek(0)
-        line = self._fileobj.readline()
-        if line != '\n':
-            self._fileobj.readline()
-        s = StringIO(self._fileobj.read().decode('base-64').decode('bz2'))
-        return ContainerReader(s.read)
+        return ContainerReader(self._fileobj)
 
     def _get_real_revisions(self):
         from bzrlib import xml7
