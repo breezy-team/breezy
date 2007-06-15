@@ -42,7 +42,7 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
-                          TestCase, TestSkipped)
+                          TestCase, TestSkipped, test_commit)
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -1137,6 +1137,27 @@ class V10BundleTester(BundleTester):
 
         return bundle
 
+    def get_invalid_bundle(self, base_rev_id, rev_id):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Munge the text so that it's invalid.
+
+        :return: The in-memory bundle
+        """
+        from bzrlib.bundle import serializer
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        new_text = new_text.replace('<file file_id="exe-1"',
+                                    '<file executable="y" file_id="exe-1"')
+        new_text = new_text.replace('B418', 'B433')
+        bundle_txt = StringIO()
+        bundle_txt.write(serializer._get_bundle_header('1.0alpha'))
+        bundle_txt.write('\n')
+        bundle_txt.write(new_text.encode('bz2').encode('base-64'))
+        bundle_txt.seek(0)
+        bundle = read_bundle(bundle_txt)
+        self.valid_apply_bundle(base_rev_id, bundle)
+        return bundle
+
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
@@ -1195,6 +1216,40 @@ class V10BundleTester(BundleTester):
         bundle_file.readline()
         lines = bundle_file.readlines()
         return ''.join(lines).decode('base-64').decode('bz2')
+
+    def test_copy_signatures(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        import bzrlib.gpg
+        import bzrlib.commit as commit
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = tree_a.branch
+        repo_a = branch.repository
+        tree_a.commit("base", allow_pointless=True, rev_id='A')
+        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        try:
+            from bzrlib.testament import Testament
+            # monkey patch gpg signing mechanism
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            new_config = test_commit.MustSignConfig(branch)
+            commit.Commit(config=new_config).commit(message="base",
+                                                    allow_pointless=True,
+                                                    rev_id='B',
+                                                    working_tree=tree_a)
+            def sign(text):
+                return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
+            self.assertTrue(repo_a.has_signature_for_revision_id('B'))
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy
+        tree_b = self.make_branch_and_tree('tree_b')
+        repo_b = tree_b.branch.repository
+        s = StringIO()
+        serializer = BundleSerializerV10('1.0')
+        serializer.write(tree_a.branch.repository, ['A', 'B'], {}, s)
+        s.seek(0)
+        install_bundle(repo_b, serializer.read(s))
+        self.assertTrue(repo_b.has_signature_for_revision_id('B'))
+        self.assertEqual(repo_b.get_signature_text('B'),
+                         repo_a.get_signature_text('B'))
 
 
 class MungedBundleTester(TestCaseWithTransport):
@@ -1280,4 +1335,3 @@ class MungedBundleTester(TestCaseWithTransport):
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
-

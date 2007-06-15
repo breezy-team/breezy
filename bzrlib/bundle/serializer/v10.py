@@ -6,9 +6,11 @@ import bz2
 BASE64_LINE_BYTES = 57
 
 from bzrlib import (
+    errors,
     iterablefile,
     multiparent,
     pack,
+    testament as _mod_testament,
     )
 from bzrlib.bundle import bundle_data, serializer
 
@@ -53,8 +55,9 @@ class BundleWriter(object):
 
     @staticmethod
     def encode_name(name_kind, revision_id, file_id=None):
-        assert name_kind in ('revision', 'file', 'inventory')
-        if name_kind in ('revision', 'inventory'):
+        assert name_kind in ('revision', 'file', 'inventory', 'testament',
+                             'signature')
+        if name_kind in ('revision', 'inventory', 'testament', 'signature'):
             assert file_id is None
         else:
             assert file_id is not None
@@ -117,6 +120,7 @@ class BundleSerializerV10(serializer.BundleSerializer):
         container = BundleWriter(fileobj)
         container.begin()
         transaction = repository.get_transaction()
+
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
             vf = repository.weave_store.get_weave(file_id, transaction)
@@ -126,11 +130,23 @@ class BundleSerializerV10(serializer.BundleSerializer):
                                 file_revision_ids)
         inv_vf = repository.get_inventory_weave()
         self.add_mp_records(container, 'inventory', None, inv_vf, revision_ids)
+        revision_id = None
         for revision_id in multiparent.topo_iter(inv_vf, revision_ids):
             parents = repository.revision_parents(revision_id)
             revision_text = repository.get_revision_xml(revision_id)
             container.add_fulltext_record(revision_text, parents,
                                           'revision', revision_id, None)
+            try:
+                container.add_fulltext_record(repository.get_signature_text(
+                    revision_id), parents, 'signature', revision_id, None)
+            except errors.NoSuchRevision:
+                pass
+
+        if revision_id is not None:
+            t = _mod_testament.StrictTestament3.from_revision(repository,
+                                                              revision_id)
+            container.add_fulltext_record(t.as_short_text(), parents,
+                                          'testament', '', None)
         container.end()
 
     def add_mp_records(self, container, repo_kind, file_id, vf,
@@ -214,6 +230,8 @@ class RevisionInstaller(object):
         target_revision = None
         for bytes, parents, repo_kind, revision_id, file_id in\
             self._container.iter_records():
+            if repo_kind == 'testament':
+                testament = bytes
             if  repo_kind != 'file':
                 self._install_mp_records(current_versionedfile,
                     pending_file_records)
@@ -227,6 +245,8 @@ class RevisionInstaller(object):
                 if repo_kind == 'revision':
                     target_revision = revision_id
                     self._install_revision(revision_id, parents, bytes)
+                if repo_kind == 'signature':
+                    self._install_signature(revision_id, parents, bytes)
             if repo_kind == 'file':
                 if file_id != current_file:
                     self._install_mp_records(current_versionedfile,
@@ -240,7 +260,15 @@ class RevisionInstaller(object):
                     continue
                 pending_file_records.append((revision_id, parents, bytes))
         self._install_mp_records(current_versionedfile, pending_file_records)
+        if target_revision is not None:
+            self._check_testament(target_revision, testament)
         return target_revision
+
+    def _check_testament(self, target_revision, testament):
+        t = _mod_testament.StrictTestament3.from_revision(self._repository,
+                                                          target_revision)
+        if testament != t.as_short_text():
+            raise TestamentMismatch(revision_id, testament, t.as_short_text())
 
     def _install_mp_records(self, current_versionedfile, records):
         for revision, parents, text in records:
@@ -257,3 +285,7 @@ class RevisionInstaller(object):
         if self._repository.has_revision(revision_id):
             return
         self._repository._add_revision_text(revision_id, text)
+
+    def _install_signature(self, revision_id, parents, text):
+        self._repository._revision_store.add_revision_signature_text(
+            revision_id, text, self._repository.get_transaction())
