@@ -6,10 +6,12 @@ import bz2
 BASE64_LINE_BYTES = 57
 
 from bzrlib import (
+    diff,
     errors,
     iterablefile,
     multiparent,
     pack,
+    revision as _mod_revision,
     testament as _mod_testament,
     )
 from bzrlib.bundle import bundle_data, serializer
@@ -26,6 +28,16 @@ class BundleWriter(object):
     def begin(self):
         self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
         self._fileobj.write('#\n')
+
+    def write_patch(self, patch_text):
+        """Write the human-readable patch.
+
+        This is a required step, and it also begins the binary section.
+        The patch text must not contain a line that begins with "# End of
+        patch\n".  Any other string is legal.
+        """
+        self._fileobj.write(patch_text)
+        self._fileobj.write('# End of patch\n')
         self._container.begin()
 
     def _write_encoded(self, bytes):
@@ -80,6 +92,13 @@ class BundleReader(object):
         line = fileobj.readline()
         if line != '\n':
             fileobj.readline()
+        self.patch_lines = []
+        while True:
+            line = fileobj.readline()
+            if line.rstrip('\n') == '# End of patch':
+                break
+            assert line != ''
+            self.patch_lines.append(line)
         self._container = pack.ContainerReader(
             StringIO(fileobj.read().decode('base-64').decode('bz2')).read)
 #            Have to use StringIO for perf, until ContainerReader fixed.
@@ -118,11 +137,32 @@ class BundleReader(object):
 
 class BundleSerializerV10(serializer.BundleSerializer):
 
+    @staticmethod
+    def get_base_target(revision_ids, forced_bases, repository):
+        target = revision_ids[0]
+        base = forced_bases.get(target)
+        if base is None:
+            parents = repository.get_revision(target).parent_ids
+            if len(parents) == 0:
+                base_tree = repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+                target_tree = repository.revision_tree(target)
+                return base_tree, target_tree
+            else:
+                base = parents[0]
+        trees = list(repository.revision_trees([base, target]))
+        return trees[0], trees[1]
+
     def write(self, repository, revision_ids, forced_bases, fileobj):
         bundle = BundleWriter(fileobj)
         bundle.begin()
+        patch = StringIO()
+        if len(revision_ids) > 0:
+            base, target = self.get_base_target(revision_ids, forced_bases,
+                                                repository)
+            diff.show_diff_trees(base, target, patch)
+        bundle.write_patch(patch.getvalue())
         transaction = repository.get_transaction()
-
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
             vf = repository.weave_store.get_weave(file_id, transaction)

@@ -1212,8 +1212,11 @@ class V10BundleTester(BundleTester):
     @staticmethod
     def get_raw(bundle_file):
         bundle_file.seek(0)
-        bundle_file.readline()
-        bundle_file.readline()
+        while True:
+            line = bundle_file.readline()
+            assert '' != line
+            if line.rstrip('\n') == '# End of patch':
+                break
         lines = bundle_file.readlines()
         return ''.join(lines).decode('base-64').decode('bz2')
 
@@ -1250,6 +1253,27 @@ class V10BundleTester(BundleTester):
         self.assertTrue(repo_b.has_signature_for_revision_id('B'))
         self.assertEqual(repo_b.get_signature_text('B'),
                          repo_a.get_signature_text('B'))
+
+    def test_has_diff(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'File content 1')])
+        tree.add('file')
+        tree.commit('added file', rev_id='rev1')
+        s = StringIO()
+        serializer = BundleSerializerV10('1.0')
+        serializer.write(tree.branch.repository, ['rev1'], {}, s)
+        self.assertContainsRe(s.getvalue(), '\+File content 1')
+
+    def test_write_patch(self):
+        s = StringIO()
+        writer = v10.BundleWriter(s)
+        writer.begin()
+        writer.write_patch('My patch\n')
+        writer.end()
+        self.assertContainsRe(s.getvalue(),
+            '# Bazaar revision bundle v1.0alpha\n'
+            '#\nMy patch\n'
+            '# End of patch\n')
 
 
 class MungedBundleTester(TestCaseWithTransport):
