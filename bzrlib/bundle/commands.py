@@ -28,6 +28,7 @@ from bzrlib import (
     branch,
     errors,
     urlutils,
+    transport,
     )
 from bzrlib.revision import common_ancestor
 """)
@@ -35,45 +36,6 @@ from bzrlib.revision import common_ancestor
 from bzrlib.commands import Command
 from bzrlib.option import Option
 from bzrlib.trace import note
-
-
-class cmd_send_changeset(Command):
-    """Send a bundled up changset via mail.
-
-    If no revision has been specified, the last commited change will
-    be sent.
-
-    Subject of the mail can be specified by the --message option,
-    otherwise information from the changeset log will be used.
-
-    A editor will be spawned where the user may enter a description
-    of the changeset.  The description can be read from a file with
-    the --file FILE option.
-    """
-    takes_options = ['revision', 'message', 'file']
-    takes_args = ['to?']
-
-    def run(self, to=None, message=None, revision=None, file=None):
-        from bzrlib.errors import BzrCommandError
-        from send_changeset import send_changeset
-        
-        if isinstance(revision, (list, tuple)):
-            if len(revision) > 1:
-                raise BzrCommandError('We do not support rollup-changesets yet.')
-            revision = revision[0]
-
-        b = branch.Branch.open_containing('.')
-
-        if not to:
-            try:
-                to = b.controlfile('x-send-address', 'rb').read().strip('\n')
-            except:
-                raise BzrCommandError('destination address is not known')
-
-        if not isinstance(revision, (list, tuple)):
-            revision = [revision]
-
-        send_changeset(b, revision, to, message, file)
 
 
 class cmd_bundle_revisions(Command):
@@ -172,24 +134,51 @@ class cmd_bundle_revisions(Command):
             target_branch.repository.unlock()
 
 
-class cmd_verify_changeset(Command):
-    """Read a written changeset, and make sure it is valid.
+class cmd_bundle_info(Command):
+    """Output interesting info about a bundle"""
 
-    """
-    takes_args = ['filename?']
+    hidden = True
+    takes_args = ['location']
+    takes_options = ['verbose']
 
-    def run(self, filename=None):
-        from read_changeset import read_changeset
-        #from bzrlib.xml import serializer_v4
+    def run(self, location, verbose=False):
+        from bzrlib.bundle.serializer import read_bundle
+        dirname, basename = urlutils.split(location)
+        bundle_file = transport.get_transport(dirname).get(basename)
+        bundle_info = read_bundle(bundle_file)
+        reader_method = getattr(bundle_info, 'get_bundle_reader', None)
+        if reader_method is None:
+            raise errors.BzrCommandError('Bundle format not supported')
 
-        b, relpath = branch.Branch.open_containing('.')
+        by_kind = {}
+        file_ids = set()
+        for bytes, parents, repo_kind, revision_id, file_id\
+            in reader_method().iter_records():
+            by_kind.setdefault(repo_kind, []).append(
+                (bytes, parents, repo_kind, revision_id, file_id))
+            if file_id is not None:
+                file_ids.add(file_id)
+        print >> self.outf, 'Records'
+        for kind, records in sorted(by_kind.iteritems()):
+            multiparent = sum(1 for b, p, k, r, f in records if len(p) > 1)
+            print >> self.outf, '%s: %d (%d multiparent)' % \
+                (kind, len(records), multiparent)
+        print >> self.outf, 'unique files: %d' % len(file_ids)
+        print >> self.outf
+        nicks = set()
+        committers = set()
+        for revision in bundle_info.real_revisions:
+            nicks.add(revision.properties['branch-nick'])
+            committers.add(revision.committer)
 
-        if filename is None or filename == '-':
-            f = sys.stdin
-        else:
-            f = open(filename, 'U')
-
-        cset_info, cset_tree = read_changeset(f, b)
-        # print cset_info
-        # print cset_tree
-        #serializer_v4.write(cset_tree.inventory, sys.stdout)
+        print >> self.outf, 'Revisions'
+        print >> self.outf, 'nicks: %s' % ', '.join(sorted(nicks))
+        print >> self.outf, 'committers: \n%s' % '\n'.join(sorted(committers))
+        if verbose:
+            print >> self.outf
+            bundle_file.seek(0)
+            bundle_file.readline()
+            bundle_file.readline()
+            content = bundle_file.read().decode('base-64').decode('bz2')
+            print >> self.outf, "Decoded contents"
+            self.outf.write(content)

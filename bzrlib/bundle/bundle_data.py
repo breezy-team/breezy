@@ -106,7 +106,8 @@ class BundleInfo(object):
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
-    def __init__(self):
+    def __init__(self, bundle_format=None):
+        self.bundle_format = None
         self.committer = None
         self.date = None
         self.message = None

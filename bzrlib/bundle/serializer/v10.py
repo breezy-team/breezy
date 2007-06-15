@@ -176,13 +176,13 @@ class BundleInfoV10(object):
     def install_revisions(self, repository):
         repository.lock_write()
         try:
-            ri = RevisionInstaller(self._get_container_reader(),
+            ri = RevisionInstaller(self.get_bundle_reader(),
                                    self._serializer, repository)
             return ri.install()
         finally:
             repository.unlock()
 
-    def _get_container_reader(self):
+    def get_bundle_reader(self):
         self._fileobj.seek(0)
         return BundleReader(self._fileobj)
 
@@ -190,7 +190,7 @@ class BundleInfoV10(object):
         from bzrlib import xml7
         if self.__real_revisions is None:
             self.__real_revisions = []
-            container = self._get_container_reader()
+            container = self.get_bundle_reader()
             for bytes, parents, repo_kind, revision_id, file_id in \
                 container.iter_records():
                 if repo_kind == 'revision':
