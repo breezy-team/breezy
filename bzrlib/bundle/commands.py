@@ -135,11 +135,11 @@ class cmd_bundle_revisions(Command):
 
 
 class cmd_bundle_info(Command):
-    """Output interesting info about a bundle"""
+    """Output interesting stats about a bundle"""
 
     hidden = True
     takes_args = ['location']
-    takes_options = ['verbose']
+    takes_options = [Option('verbose', help="output decoded contents")]
 
     def run(self, location, verbose=False):
         from bzrlib.bundle.serializer import read_bundle

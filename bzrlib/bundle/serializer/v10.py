@@ -81,7 +81,9 @@ class BundleReader(object):
         if line != '\n':
             fileobj.readline()
         self._container = pack.ContainerReader(
-            iterablefile.IterableFile(self.iter_decode(fileobj)).read)
+            StringIO(fileobj.read().decode('base-64').decode('bz2')).read)
+#            Have to use StringIO for perf, until ContainerReader fixed.
+#            iterablefile.IterableFile(self.iter_decode(fileobj)).read)
 
     @staticmethod
     def iter_decode(fileobj):
