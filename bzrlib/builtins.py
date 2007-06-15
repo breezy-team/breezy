@@ -2965,7 +2965,7 @@ class cmd_fetch(Command):
 
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
-
+    
     OTHER_BRANCH may be local or remote.
     """
 
@@ -2974,8 +2974,10 @@ class cmd_missing(Command):
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 
                             'Display changes in the local branch only'),
+                     Option('this' , 'same as --mine-only'),
                      Option('theirs-only', 
-                            'Display changes in the remote branch only'), 
+                            'Display changes in the remote branch only'),
+                     Option('other', 'same as --theirs-only'),
                      'log-format',
                      'show-ids',
                      'verbose'
@@ -2985,9 +2987,15 @@ class cmd_missing(Command):
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
-            show_ids=False, verbose=False):
+            show_ids=False, verbose=False, this=False, other=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         from bzrlib.log import log_formatter
+
+        if this:
+          mine_only = this
+        if other:
+          theirs_only = other
+
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
         if other_branch is None:

@@ -13,6 +13,9 @@ IN DEVELOPMENT
       abbreviated format info.  ``info -v`` displays all the information
       formerly displayed by ``info``.  (Aaron Bentley)
 
+    * ``bzr missing`` now has better option names ``--this`` and ``--other``.
+      (Elliot Murphy)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
