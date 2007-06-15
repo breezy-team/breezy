@@ -24,8 +24,8 @@ import bzrlib
 
 from bzrlib.trace import warning
 
-__version__ = '0.3.4'
-COMPATIBLE_BZR_VERSIONS = [(0, 15), (0, 16), (0, 17)]
+__version__ = '0.3.5'
+COMPATIBLE_BZR_VERSIONS = [(0, 15), (0, 16), (0, 17), (0, 18)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
