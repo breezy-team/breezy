@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 
 from bzrlib import merge, tests, transform, workingtree
 
@@ -108,3 +109,17 @@ class TestRevert(tests.TestCaseWithTransport):
         tt.apply()
         transform.revert(tree, tree.basis_tree(), [])
         self.assertTrue(tree.is_executable('newfile-id'))
+
+    def test_revert_deletes_files_from_revert(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add('file')
+        tree.commit('added file', rev_id='rev1')
+        os.unlink('file')
+        tree.commit('removed file')
+        self.failIfExists('file')
+        tree.revert([], old_tree=tree.branch.repository.revision_tree('rev1'))
+        self.failUnlessExists('file')
+        tree.revert([])
+        self.failIfExists('file')
+        self.assertEqual({}, tree.merge_modified())

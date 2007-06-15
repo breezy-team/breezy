@@ -19,6 +19,7 @@
 """
 
 
+import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -68,6 +69,16 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(out, 'http://')
         self.assertContainsRe(out, 'https://')
         self.assertContainsRe(out, 'sftp://')
+
+    def test_help_repositories(self):
+        """Smoke test for 'bzr help repositories'"""
+        out, err = self.runbzr('help repositories')
+        self.assertEqual(bzrlib.help_topics._repositories, out)
+
+    def test_help_working_trees(self):
+        """Smoke test for 'bzr help working-trees'"""
+        out, err = self.runbzr('help working-trees')
+        self.assertEqual(bzrlib.help_topics._working_trees, out)
 
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]

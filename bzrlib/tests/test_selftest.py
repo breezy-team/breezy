@@ -54,7 +54,8 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           filter_suite_by_re,
                           sort_suite_by_re,
-                          test_suite
+                          test_lsprof,
+                          test_suite,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -620,18 +621,19 @@ class TestTestResult(TestCase):
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
         # if a benchmark time is given, we want a x of y style result.
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms/ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(
+            timed_string, "^ +[0-9]+ms/ +[0-9]+ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -679,10 +681,7 @@ class TestTestResult(TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProf())
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
@@ -1194,10 +1193,7 @@ class TestTestCase(TestCase):
         
         Each self.time() call is individually and separately profiled.
         """
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProf())
         # overrides the class member with an instance member so no cleanup 
         # needed.
         self._gather_lsprof_in_benchmarks = True
