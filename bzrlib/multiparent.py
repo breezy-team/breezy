@@ -133,11 +133,7 @@ class MultiParent(object):
 
     @classmethod
     def from_patch(cls, text):
-        lines = text.split('\n')
-        new_lines = [l + '\n' for l in lines[:-1]]
-        if lines[-1] != '':
-            new_lines.append(lines[-1])
-        return cls._from_patch(new_lines)
+        return cls._from_patch(StringIO(text))
 
     @staticmethod
     def _from_patch(lines):
