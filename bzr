@@ -101,6 +101,10 @@ if __name__ == '__main__':
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
 
+    # run anything registered by atexit, because it won't be run in the normal
+    # way
+    sys.exitfunc()
+
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here
     # stops any background threads getting into trouble as code is unloaded,

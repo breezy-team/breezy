@@ -1857,6 +1857,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
+        # create a directory within the top level test directory
         candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
         # now create test and home directories within this dir
         self.test_base_dir = candidate_dir
