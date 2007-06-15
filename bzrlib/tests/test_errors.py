@@ -293,6 +293,20 @@ class TestErrors(TestCaseWithTransport):
             "Invalid record: xxx",
             str(e))
 
+    def test_container_has_excess_data(self):
+        """Test the formatting of ContainerHasExcessDataError."""
+        e = errors.ContainerHasExcessDataError("excess bytes")
+        self.assertEqual(
+            "Container has data after end marker: 'excess bytes'",
+            str(e))
+
+    def test_duplicate_record_name_error(self):
+        """Test the formatting of DuplicateRecordNameError."""
+        e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
+        self.assertEqual(
+            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
+            str(e))
+
 
 class PassThroughError(errors.BzrError):
     

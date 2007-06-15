@@ -2170,3 +2170,19 @@ class InvalidRecordError(ContainerError):
     def __init__(self, reason):
         self.reason = reason
 
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+
