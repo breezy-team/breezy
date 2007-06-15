@@ -110,7 +110,7 @@ class BundleReader(object):
 
     def iter_records(self):
         for (name,), bytes in self._container.iter_records():
-            lines = bytes.splitlines(True)
+            lines = bytes(None).splitlines(True)
             parents, lines = lines[0], lines[1:]
             parents = self.decode_parents(parents)
             yield (''.join(lines), parents) + self.decode_name(name)
