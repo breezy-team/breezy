@@ -9,7 +9,6 @@ from bzrlib import (
     iterablefile,
     multiparent,
     pack,
-    timestamp,
     )
 from bzrlib.bundle import bundle_data, serializer
 
@@ -188,13 +187,8 @@ class BundleInfoV10(object):
         if self.__revisions is None:
             self.__revisions = []
             for revision in self.real_revisions:
-                self.__revisions.append(bundle_data.RevisionInfo(
-                    revision.revision_id))
-                date = timestamp.format_highres_date(revision.timestamp,
-                                                     revision.timezone)
-                self.__revisions[-1].date = date
-                self.__revisions[-1].timezone = revision.timezone
-                self.__revisions[-1].timestamp = revision.timestamp
+                self.__revisions.append(
+                    bundle_data.RevisionInfo.from_revision(revision))
         return self.__revisions
 
     revisions = property(_get_revisions)
