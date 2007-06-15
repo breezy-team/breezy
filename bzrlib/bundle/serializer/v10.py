@@ -119,8 +119,8 @@ class BundleReader(object):
 class BundleSerializerV10(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
-        container = BundleWriter(fileobj)
-        container.begin()
+        bundle = BundleWriter(fileobj)
+        bundle.begin()
         transaction = repository.get_transaction()
 
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
@@ -128,18 +128,18 @@ class BundleSerializerV10(serializer.BundleSerializer):
             vf = repository.weave_store.get_weave(file_id, transaction)
             file_revision_ids = [r for r in revision_ids if r in
                                  file_revision_ids]
-            self.add_mp_records(container, 'file', file_id, vf,
+            self.add_mp_records(bundle, 'file', file_id, vf,
                                 file_revision_ids)
         inv_vf = repository.get_inventory_weave()
-        self.add_mp_records(container, 'inventory', None, inv_vf, revision_ids)
+        self.add_mp_records(bundle, 'inventory', None, inv_vf, revision_ids)
         revision_id = None
         for revision_id in multiparent.topo_iter(inv_vf, revision_ids):
             parents = repository.revision_parents(revision_id)
             revision_text = repository.get_revision_xml(revision_id)
-            container.add_fulltext_record(revision_text, parents,
-                                          'revision', revision_id, None)
+            bundle.add_fulltext_record(revision_text, parents,
+                                       'revision', revision_id, None)
             try:
-                container.add_fulltext_record(repository.get_signature_text(
+                bundle.add_fulltext_record(repository.get_signature_text(
                     revision_id), parents, 'signature', revision_id, None)
             except errors.NoSuchRevision:
                 pass
@@ -147,21 +147,21 @@ class BundleSerializerV10(serializer.BundleSerializer):
         if revision_id is not None:
             t = _mod_testament.StrictTestament3.from_revision(repository,
                                                               revision_id)
-            container.add_fulltext_record(t.as_short_text(), parents,
-                                          'testament', '', None)
-        container.end()
+            bundle.add_fulltext_record(t.as_short_text(), parents,
+                                       'testament', '', None)
+        bundle.end()
 
-    def add_mp_records(self, container, repo_kind, file_id, vf,
+    def add_mp_records(self, bundle, repo_kind, file_id, vf,
                        revision_ids):
         for revision_id in multiparent.topo_iter(vf, revision_ids):
             parents = vf.get_parents(revision_id)
             text = ''.join(vf.make_mpdiff(revision_id).to_patch())
-            container.add_multiparent_record(text, parents, repo_kind,
+            bundle.add_multiparent_record(text, parents, repo_kind,
                                              revision_id, file_id)
 
     def read(self, file):
-        container = BundleInfoV10(file, self)
-        return container
+        bundle = BundleInfoV10(file, self)
+        return bundle
 
 
 class BundleInfoV10(object):
@@ -192,9 +192,9 @@ class BundleInfoV10(object):
         from bzrlib import xml7
         if self.__real_revisions is None:
             self.__real_revisions = []
-            container = self.get_bundle_reader()
+            bundle_reader = self.get_bundle_reader()
             for bytes, parents, repo_kind, revision_id, file_id in \
-                container.iter_records():
+                bundle_reader.iter_records():
                 if repo_kind == 'revision':
                     rev = xml7.serializer_v7.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)

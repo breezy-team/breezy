@@ -139,7 +139,8 @@ class cmd_bundle_info(Command):
 
     hidden = True
     takes_args = ['location']
-    takes_options = [Option('verbose', help="output decoded contents")]
+    takes_options = [Option('verbose', help="output decoded contents",
+                            short_name='v')]
 
     def run(self, location, verbose=False):
         from bzrlib.bundle.serializer import read_bundle
