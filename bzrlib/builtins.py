@@ -2359,11 +2359,6 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but no
-    existing data is affected.  These directories are deleted if the tests
-    pass, or left behind to help in debugging if they fail and --keep-output
-    is specified.
-    
     If arguments are given, they are regular expressions that say which tests
     should run.  Tests matching any expression are run, and other tests are
     not run.
@@ -2477,6 +2472,10 @@ class cmd_selftest(Command):
             from bzrlib.tests import clean_selftest_output
             clean_selftest_output()
             return 0
+        if keep_output:
+            trace.warning("notice: selftest --keep-output "
+                          "is no longer supported; "
+                          "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
@@ -2505,7 +2504,6 @@ class cmd_selftest(Command):
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
-                              keep_output=keep_output,
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
