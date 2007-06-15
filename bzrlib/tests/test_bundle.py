@@ -766,8 +766,12 @@ class V08BundleTester(TestCaseWithTransport):
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
                                'a@cset-0-1', bundle_file, format=self.format)
         self.assertNotContainsRe(bundle_file.getvalue(), '\btwo\b')
-        self.assertContainsRe(bundle_file.getvalue(), 'one')
-        self.assertContainsRe(bundle_file.getvalue(), 'three')
+        self.assertContainsRe(self.get_raw(bundle_file), 'one')
+        self.assertContainsRe(self.get_raw(bundle_file), 'three')
+
+    @staticmethod
+    def get_raw(bundle_file):
+        return bundle_file.getvalue()
 
     def test_unicode_bundle(self):
         # Handle international characters
@@ -1123,6 +1127,14 @@ class V10BundleTester(V08BundleTester):
             v10.BundleReader.decode_name('revision:rev1'))
         self.assertEqual(('file', 'rev1', 'file-id-1'),
             v10.BundleReader.decode_name('file:rev1/file-id-1'))
+
+    @staticmethod
+    def get_raw(bundle_file):
+        bundle_file.seek(0)
+        bundle_file.readline()
+        bundle_file.readline()
+        lines = bundle_file.readlines()
+        return ''.join(lines).decode('base-64').decode('bz2')
 
 
 class MungedBundleTester(TestCaseWithTransport):
