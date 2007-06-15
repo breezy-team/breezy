@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion-specific errors and conversion of Subversion-specific errors."""
 
-from bzrlib.errors import BzrError, ConnectionReset, LockError
+from bzrlib.errors import BzrError, ConnectionReset, LockError, PermissionDenied
 
 import svn.core
 
@@ -36,6 +36,8 @@ def convert_error(err):
         return ConnectionReset(msg=msg)
     elif num == svn.core.SVN_ERR_WC_LOCKED:
         return LockError(message=msg)
+    elif num == svn.core.SVN_ERR_RA_NOT_AUTHORIZED:
+        return PermissionDenied('.', msg)
     else:
         return err
 

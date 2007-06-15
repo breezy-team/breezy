@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import ConnectionReset, LockError
+from bzrlib.errors import ConnectionReset, LockError, PermissionDenied
 from bzrlib.tests import TestCase
 
 from errors import convert_svn_error, convert_error
@@ -46,6 +46,9 @@ class TestConvertError(TestCase):
 
     def test_convert_error_lock(self):
         self.assertIsInstance(convert_error(SubversionException("Working copy locked", svn.core.SVN_ERR_WC_LOCKED)), LockError)
+
+    def test_convert_perm_denied(self):
+        self.assertIsInstance(convert_error(SubversionException("Permission Denied", svn.core.SVN_ERR_RA_NOT_AUTHORIZED)), PermissionDenied)
 
     def test_decorator_nothrow(self):
         @convert_svn_error

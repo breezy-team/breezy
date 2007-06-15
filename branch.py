@@ -154,6 +154,10 @@ class SvnBranch(Branch):
     def set_last_revision_info(self, revno, revid):
         pass
 
+    def last_revision_info(self):
+        hist = self.revision_history()
+        return len(hist), hist[-1]
+
     def set_push_location(self, location):
         raise NotImplementedError(self.set_push_location)
 
@@ -214,6 +218,24 @@ class SvnBranch(Branch):
         """
         # stop_revision must be a descendant of last_revision
         # make a new revision history from the graph
+
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch6, but works for BzrBranch5, as long as the destination's
+        repository contains all the lefthand ancestors of the intended
+        last_revision.  If not, set_last_revision_info will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
+        if revision_id is None:
+            revno, revision_id = self.last_revision_info()
+        else:
+            revno = self.revision_id_to_revno(revision_id)
+        destination.set_last_revision_info(revno, revision_id)
 
     def update_revisions(self, other, stop_revision=None):
         if (self.last_revision() == stop_revision or
