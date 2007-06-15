@@ -131,9 +131,17 @@ class MultiParent(object):
     def zipped_patch_len(self):
         return len(gzip_string(self.to_patch()))
 
+    @classmethod
+    def from_patch(cls, text):
+        lines = text.split('\n')
+        new_lines = [l + '\n' for l in lines[:-1]]
+        if lines[-1] != '':
+            new_lines.append(lines[-1])
+        return cls._from_patch(new_lines)
+
     @staticmethod
-    def from_patch(lines):
-        """Produce a MultiParent from a sequence of lines"""
+    def _from_patch(lines):
+        """This is private because it is essential to split lines on \n only"""
         line_iter = iter(lines)
         hunks = []
         cur_line = None
@@ -470,7 +478,7 @@ class MultiVersionedFile(BaseVersionedFile):
         zip_file = GzipFile(None, mode='rb', fileobj=sio)
         try:
             file_version_id = zip_file.readline()
-            return MultiParent.from_patch(zip_file.readlines())
+            return MultiParent.from_patch(zip_file.read())
         finally:
             zip_file.close()
 

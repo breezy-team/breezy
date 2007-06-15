@@ -9,6 +9,7 @@ from bzrlib import (
 LINES_1 = "a\nb\nc\nd\ne\n".splitlines(True)
 LINES_2 = "a\nc\nd\ne\n".splitlines(True)
 LINES_3 = "a\nb\nc\nd\n".splitlines(True)
+LF_SPLIT_LINES = ['\x00\n', '\x00\r\x01\n', '\x02\r\xff']
 
 
 class Mock(object):
@@ -67,13 +68,16 @@ class TestMulti(TestCase):
         self.assertEqual(multiparent.MultiParent(
             [multiparent.NewText(['a\n']),
              multiparent.ParentText(0, 1, 2, 3)]),
-             multiparent.MultiParent.from_patch(
-             ['i 1\n', 'a\n', '\n', 'c 0 1 2 3\n']))
+             multiparent.MultiParent.from_patch('i 1\na\n\nc 0 1 2 3'))
         self.assertEqual(multiparent.MultiParent(
             [multiparent.NewText(['a']),
              multiparent.ParentText(0, 1, 2, 3)]),
-             multiparent.MultiParent.from_patch(
-             ['i 1\n', 'a\n', 'c 0 1 2 3\n']))
+             multiparent.MultiParent.from_patch('i 1\na\nc 0 1 2 3\n'))
+
+    def test_binary_content(self):
+        patch = list(
+            multiparent.MultiParent.from_lines(LF_SPLIT_LINES).to_patch())
+        multiparent.MultiParent.from_patch(''.join(patch))
 
     def test_num_lines(self):
         mp = multiparent.MultiParent([multiparent.NewText(['a\n'])])

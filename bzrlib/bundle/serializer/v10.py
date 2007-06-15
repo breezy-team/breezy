@@ -250,7 +250,7 @@ class RevisionInstaller(object):
 
     def _install_mp_records(self, current_versionedfile, records):
         for revision, parents, text in records:
-            mpdiff = multiparent.MultiParent.from_patch(text.splitlines(True))
+            mpdiff = multiparent.MultiParent.from_patch(text)
             if revision in current_versionedfile:
                 continue
             current_versionedfile.add_mpdiff(revision, parents, mpdiff)
