@@ -267,11 +267,23 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
-    def make_mpdiff(self, version_id):
-        lines = self._get_line_list([version_id]+self.get_parents(version_id))
-        target = lines[0]
-        parents = lines[1:]
-        return multiparent.MultiParent.from_lines(target, parents)
+    def make_mpdiffs(self, version_ids):
+        knit_versions = set()
+        for version_id in version_ids:
+            knit_versions.add(version_id)
+            knit_versions.update(self.get_parents(version_id))
+        lines = dict(zip(knit_versions, self._get_line_list(knit_versions)))
+        diffs = []
+        for version_id in version_ids:
+            target = lines[version_id]
+            parents = [lines[p] for p in self.get_parents(version_id)]
+            left_parent_blocks = self._extract_blocks(version_id, target)
+            diffs.append(multiparent.MultiParent.from_lines(target, parents,
+                         left_parent_blocks))
+        return diffs
+
+    def _extract_blocks(self, version_id, target):
+        return None
 
     def add_mpdiff(self, version, parents, mpdiff):
         parent_lines = self._get_line_list(parents)

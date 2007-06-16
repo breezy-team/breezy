@@ -59,13 +59,19 @@ class MultiParent(object):
         return (self.hunks == other.hunks)
 
     @staticmethod
-    def from_lines(text, parents=()):
+    def from_lines(text, parents=(), left_blocks=None):
         """Produce a MultiParent from a list of lines and parents"""
         def compare(parent):
             matcher = patiencediff.PatienceSequenceMatcher(None, parent,
                                                            text)
             return matcher.get_matching_blocks()
-        parent_comparisons = [compare(p) for p in parents]
+        if len(parents) > 0:
+            if left_blocks is None:
+                left_blocks = compare(parents[0])
+            parent_comparisons = [left_blocks] + [compare(p) for p in
+                                                  parents[1:]]
+        else:
+            parent_comparisons = []
         cur_line = 0
         new_text = NewText([])
         parent_text = []

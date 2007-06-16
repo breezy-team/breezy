@@ -193,9 +193,11 @@ class BundleSerializerV10(serializer.BundleSerializer):
 
     def add_mp_records(self, bundle, repo_kind, file_id, vf,
                        revision_ids):
-        for revision_id in multiparent.topo_iter(vf, revision_ids):
+        revision_ids = list(multiparent.topo_iter(vf, revision_ids))
+        mpdiffs = vf.make_mpdiffs(revision_ids)
+        for mpdiff, revision_id in zip(mpdiffs, revision_ids):
             parents = vf.get_parents(revision_id)
-            text = ''.join(vf.make_mpdiff(revision_id).to_patch())
+            text = ''.join(mpdiff.to_patch())
             bundle.add_multiparent_record(text, parents, repo_kind,
                                              revision_id, file_id)
 
