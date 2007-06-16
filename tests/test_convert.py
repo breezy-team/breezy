@@ -17,14 +17,15 @@
 """Full repository conversion tests."""
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError, NoSuchFile
+from bzrlib.bzrdir import BzrDir, format_registry
+from bzrlib.errors import NotBranchError, NoSuchFile, IncompatibleRepositories
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os
 from convert import convert_repository, NotDumpFile, load_dumpfile
+from format import get_rich_root_format
 from repository import generate_svn_revision_id
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
@@ -115,7 +116,8 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(3, "branches/somebranch")))
 
     def test_shared_import_continue(self):
-        BzrDir.create_repository("e", shared=True)
+        BzrDir.create_repository("e", shared=True, 
+                format=get_rich_root_format())
 
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True)
@@ -139,13 +141,14 @@ class TestConversion(TestCaseWithSubversionRepository):
                 TrunkBranchingScheme(), working_trees=True)
 
     def test_shared_import_nonescheme_empty(self):
-        BzrDir.create_repository("e", shared=True)
+        BzrDir.create_repository("e", shared=True, format=get_rich_root_format())
 
         convert_repository("svn+"+self.repos_url, "e", 
                 NoBranchingScheme(), True)
 
     def test_shared_import_with_wt(self):
-        BzrDir.create_repository("e", shared=True)
+        BzrDir.create_repository("e", shared=True, 
+                format=get_rich_root_format())
 
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True, True)
@@ -154,13 +157,22 @@ class TestConversion(TestCaseWithSubversionRepository):
                         self.test_dir, "e", "trunk", "file")))
 
     def test_shared_import_without_wt(self):
-        BzrDir.create_repository("e", shared=True)
+        BzrDir.create_repository("e", shared=True, 
+                format=get_rich_root_format())
 
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True, False)
 
         self.assertFalse(os.path.isfile(os.path.join(
                         self.test_dir, "e", "trunk", "file")))
+
+    def test_shared_import_old_repos_fails(self):
+        BzrDir.create_repository("e", shared=True, 
+                format=format_registry.make_bzrdir('knit'))
+
+        self.assertRaises(IncompatibleRepositories, 
+            lambda: convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True, False))
 
     def test_shared_import_continue_branch(self):
         convert_repository("svn+"+self.repos_url, "e", 

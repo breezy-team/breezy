@@ -121,7 +121,7 @@ def revision_id_to_svk_feature(revid):
 class SvnRepositoryFormat(RepositoryFormat):
     """Repository format for Subversion repositories (accessed using svn_ra).
     """
-    rich_root_data = False
+    rich_root_data = True
 
     def __init__(self):
         super(SvnRepositoryFormat, self).__init__()

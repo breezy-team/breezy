@@ -30,6 +30,7 @@ from bzrlib.transport import get_transport
 import bzrlib.urlutils as urlutils
 import bzrlib.ui as ui
 
+from format import get_rich_root_format
 from repository import SvnRepository
 
 import svn.core, svn.repos
@@ -89,7 +90,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
             dirs[path] = BzrDir.open_from_transport(nt)
         except NotBranchError:
             transport_makedirs(to_transport, urlutils.join(to_transport.base, path))
-            dirs[path] = BzrDirFormat.get_default_format().initialize_on_transport(nt)
+            dirs[path] = get_rich_root_format().initialize_on_transport(nt)
         return dirs[path]
 
     try:

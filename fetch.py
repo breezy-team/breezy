@@ -136,9 +136,11 @@ class RevisionBuildEditor(svn.delta.Editor):
     def close_directory(self, id):
         self.inventory[id].revision = self.revid
 
-        file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
-        if not file_weave.has_version(self.revid):
-            file_weave.add_lines(self.revid, self.dir_baserev[id], [])
+        # Only record root if the target repository supports it
+        if self.target.supports_rich_root:
+            file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
+            if not file_weave.has_version(self.revid):
+                file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
                       pool):
@@ -468,5 +470,6 @@ class InterFromSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         # FIXME: Also check target uses VersionedFile
-        return isinstance(source, SvnRepository)
+        return isinstance(source, SvnRepository) and \
+                target.supports_rich_root()
 

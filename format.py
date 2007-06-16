@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion BzrDir formats."""
 
-from bzrlib.bzrdir import BzrDirFormat, BzrDir
+from bzrlib.bzrdir import BzrDirFormat, BzrDir, format_registry
 from bzrlib.errors import (NotBranchError, NotLocalUrl, NoRepositoryPresent,
                            NoWorkingTree)
 from bzrlib.lockable_files import TransportLock
@@ -27,6 +27,16 @@ import svn.core, svn.repos
 from repository import SvnRepository
 from scheme import BranchingScheme
 from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
+
+def get_rich_root_format():
+    format = BzrDirFormat.get_default_format()
+    if format.repository_format.rich_root_data:
+        return format
+    # Default format does not support rich root data, 
+    # fall back to dirstate-with-subtree
+    format = format_registry.make_bzrdir('dirstate-with-subtree')
+    assert format.repository_format.rich_root_data
+    return format
 
 
 class SvnRemoteAccess(BzrDir):
@@ -67,7 +77,8 @@ class SvnRemoteAccess(BzrDir):
             recurse='down'):
         """See BzrDir.sprout()."""
         # FIXME: Use recurse
-        result = BzrDirFormat.get_default_format().initialize(url)
+        format = get_rich_root_format()
+        result = format.initialize(url)
         repo = self.find_repository()
         if force_new_repo:
             result_repo = repo.clone(result, revision_id)

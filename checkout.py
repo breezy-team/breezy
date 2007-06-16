@@ -50,6 +50,7 @@ import svn.core, svn.wc
 from svn.core import SubversionException, Pool
 
 from errors import NoCheckoutSupport
+from format import get_rich_root_format
 
 class WorkingTreeInconsistent(BzrError):
     _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
@@ -683,7 +684,7 @@ class SvnCheckout(BzrDir):
                recurse='down'):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
-        result = BzrDirFormat.get_default_format().initialize(url)
+        result = get_rich_root_format().initialize(url)
         repo = self.find_repository()
         repo.clone(result, revision_id)
         branch = self.open_branch()
@@ -756,5 +757,5 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
-            format = BzrDirFormat.get_default_format()
+            format = get_rich_root_format()
         return SvnConverter(format)

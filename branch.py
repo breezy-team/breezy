@@ -25,6 +25,7 @@ from bzrlib.workingtree import WorkingTree
 import svn.client, svn.core
 
 from commit import push
+from format import get_rich_root_format
 from repository import SvnRepository
 from transport import bzr_to_svn_url, svn_config
 
@@ -71,7 +72,7 @@ class SvnBranch(Branch):
 
     def _create_heavyweight_checkout(self, to_location, revision_id=None):
         checkout_branch = BzrDir.create_branch_convenience(
-            to_location, force_new_tree=False)
+            to_location, force_new_tree=False, format=get_rich_root_format())
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
         # pull up to the specified revision_id to set the initial 
@@ -278,7 +279,7 @@ class SvnBranch(Branch):
         return False
 
     def sprout(self, to_bzrdir, revision_id=None):
-        result = BranchFormat.get_default_format().initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         return result
 
