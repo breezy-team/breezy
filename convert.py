@@ -22,8 +22,8 @@ load_plugins()
 
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, Converter
 from bzrlib.branch import Branch
-from bzrlib.errors import (BzrError, NotBranchError, 
-                           NoSuchFile, NoRepositoryPresent)
+from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
+                           NoRepositoryPresent, NoSuchRevision)
 import bzrlib.osutils as osutils
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -137,15 +137,16 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                 except NotBranchError:
                     target_branch = target_dir.create_branch()
                     target_branch.set_parent(source_branch_url)
-                # FIXME: don't use revision_history()
-                if not revid in target_branch.revision_history():
+                if revid != target_branch.last_revision():
                     source_branch = Branch.open(source_branch_url)
                     # Check if target_branch contains a subset of 
                     # source_branch. If that is not the case, 
                     # assume that source_branch has been replaced 
                     # and remove target_branch
-                    if not target_branch.last_revision() in \
-                            source_branch.revision_history():
+                    try:
+                        source_branch.revision_id_to_revno(
+                                target_branch.last_revision())
+                    except NoSuchRevision:
                         target_branch.set_revision_history([])
                     target_branch.pull(source_branch)
                 if working_trees and not target_dir.has_workingtree():
