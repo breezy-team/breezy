@@ -23,8 +23,6 @@ import os
 from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
 
-from util import add_ignore
-
 
 class DebBuildConfig(object):
   """Holds the configuration settings for builddeb. These are taken from

@@ -30,35 +30,6 @@ from debian_bundle.changelog import Changelog
 
 from errors import MissingChangelogError
 
-def add_ignore(file):
-  """Adds file to .bzrignore if it exists and not already in the file."""
-  if os.path.exists(file):
-    tree, relpath = WorkingTree.open_containing(u'.')
-    ifn = tree.abspath('.bzrignore')
-    ignored = set()
-    if os.path.exists(ifn):
-      f = open(ifn, 'rt')
-      ignored = parse_ignore_file(f)
-      f.close()
-    
-    if file not in ignored:
-      info("Adding %s to .bzrignore", file)
-      ignored.add(file)
-
-      f = AtomicFile(ifn, 'wt')
-      try:
-        for ign in ignored:
-          f.write(ign.encode('utf-8')+"\n")
-        f.commit()
-      finally:
-        f.close()
-
-    if tree.path2id('.bzrignore'):
-      mutter('.bzrignore is already versioned')
-    else:
-      mutter('need to make new .bzrignore file versioned')
-      tree.add(['.bzrignore'])
-
 
 def recursive_copy(fromdir, todir):
   """Copy the contents of fromdir to todir. Like shutil.copytree, but the 
