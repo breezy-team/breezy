@@ -68,7 +68,10 @@ class DebBuildConfig(object):
     assert(len(files) > 0)
     for input in files:
       self._config_files.append((ConfigObj(input[0]), input[1]))
-    self._branch_config = TreeConfig(branch)
+    if branch is not None:
+      self._branch_config = TreeConfig(branch)
+    else:
+      self._branch_config = None
 
   def _get_opt(self, config, key):
     """Returns the value for key from config, of None if it is not defined in 
