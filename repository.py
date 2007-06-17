@@ -430,7 +430,11 @@ class SvnRepository(Repository):
         if line == "":
             revid = generate_svn_revision_id(self.uuid, revnum, path)
         else:
-            (bzr_revno, revid) = parse_revid_property(line)
+            try:
+                (bzr_revno, revid) = parse_revid_property(line)
+            except errors.InvalidPropertyValue, e:
+                mutter(str(e))
+                revid = generate_svn_revision_id(self.uuid, revnum, path)
 
         self.revmap.insert_revid(revid, path, revnum, revnum, "undefined")
 
@@ -468,9 +472,13 @@ class SvnRepository(Repository):
             # If there is no entry in the map, walk over all branches:
             for (branch, revno, exists) in self.find_branches():
                 # Look at their bzr:revision-id-vX
-                revids = map(parse_revid_property, 
-                        self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID, "").splitlines())
+                revids = []
+                for line in self.branchprop_list.get_property(branch, revno, 
+                        SVN_PROP_BZR_REVISION_ID, "").splitlines():
+                    try:
+                        revids.append(parse_revid_property(line))
+                    except errors.InvalidPropertyValue, e:
+                        mutter(str(e))
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them
@@ -488,9 +496,14 @@ class SvnRepository(Repository):
         # added revid
         i = min_revnum
         for (bp, rev) in self.follow_branch(branch_path, max_revnum):
-            (entry_revno, entry_revid) = parse_revid_property(
+            try:
+                (entry_revno, entry_revid) = parse_revid_property(
                  self.branchprop_list.get_property_diff(bp, rev, 
                      SVN_PROP_BZR_REVISION_ID).strip("\n"))
+            except errors.InvalidPropertyValue:
+                # Don't warn about encountering an invalid property, 
+                # that will already have happened earlier
+                continue
             if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme)
                 return (bp, rev)

@@ -94,6 +94,16 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         revid = repos.generate_revision_id(1, "")
         self.assertEquals("someid", revid)
 
+    def test_generate_revision_id_forced_revid_invalid(self):
+        repos_url = self.make_client("a", "dc")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "corrupt-id\n")
+        self.client_commit("dc", "set id")
+        repos = Repository.open(repos_url)
+        revid = repos.generate_revision_id(1, "")
+        self.assertEquals(
+               u"svn-v%d-undefined:%s::1" % (MAPPING_VERSION, repos.uuid),
+               revid)
+
     def test_add_revision(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
@@ -678,6 +688,37 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             generate_svn_revision_id(repository.uuid, 1, "")))
         self.assertEqual(("", 1), 
             repository.lookup_revision_id("myid"))
+
+    def test_lookup_revision_id_overridden_invalid(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "corrupt-entry\n")
+        self.client_commit("dc", "foobar")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual(("", 1), repository.lookup_revision_id( 
+            generate_svn_revision_id(repository.uuid, 1, "")))
+        self.assertRaises(NoSuchRevision, repository.lookup_revision_id, 
+            "corrupt-entry")
+
+    def test_lookup_revision_id_overridden_invalid_dup(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bloe': None})
+        self.client_add("dc/bloe")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "corrupt-entry\n")
+        self.client_commit("dc", "foobar")
+        self.build_tree({'dc/bla': None})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, 
+                "corrupt-entry\n2 corrupt-entry\n")
+        self.client_commit("dc", "foobar")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual(("", 2), repository.lookup_revision_id( 
+            generate_svn_revision_id(repository.uuid, 2, "")))
+        self.assertEqual(("", 1), repository.lookup_revision_id( 
+            generate_svn_revision_id(repository.uuid, 1, "")))
+        self.assertEqual(("", 2), repository.lookup_revision_id( 
+            "corrupt-entry"))
 
     def test_lookup_revision_id_overridden_not_found(self):
         """Make sure a revision id that is looked up but doesn't exist 
