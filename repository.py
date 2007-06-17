@@ -62,6 +62,9 @@ def parse_revid_property(line):
     except ValueError:
         raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
                 "missing space")
+    if revid == "":
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID,
+                "empty revision id")
     return (int(revno), revid)
 
 

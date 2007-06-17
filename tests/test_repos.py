@@ -2410,3 +2410,7 @@ class MetadataMarshallerTests(TestCase):
     def test_parse_revid_property_invalid(self):
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revid_property("blabla"))
+
+    def test_parse_revid_property_empty_revid(self):
+        self.assertRaises(InvalidPropertyValue, 
+                lambda: parse_revid_property("2 "))
