@@ -145,7 +145,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.finish_inventory()
         builder.commit("foo")
 
-        self.assertEqual("my-revision-id\n", 
+        self.assertEqual("3 my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
 
     def test_commit_metadata(self):
@@ -167,7 +167,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.finish_inventory()
         builder.commit("foo")
 
-        self.assertEqual("my-revision-id\n", 
+        self.assertEqual("3 my-revision-id\n", 
                 self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
 
         self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 

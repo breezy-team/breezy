@@ -148,11 +148,12 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
 
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual([branch.generate_revision_id(0)], branch.revision_history())
+        self.assertEqual([branch.generate_revision_id(0)], 
+                branch.revision_history())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "mycommit\n")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "42 mycommit\n")
         self.client_commit("dc", "My Message")
         
         branch = Branch.open("svn+"+repos_url)
@@ -192,7 +193,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
-                            "myrevid\n")
+                            "2 myrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
         self.assertEquals(2, branch.revision_id_to_revno("myrevid"))
@@ -202,11 +203,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
-                            "myrevid\n")
+                            "2 myrevid\n")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "someotherdata"})
         self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
-                            "myrevid\nmysecondrevid\n")
+                            "2 myrevid\n3 mysecondrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
         self.assertEquals(3, branch.revision_id_to_revno("mysecondrevid"))

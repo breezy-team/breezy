@@ -159,6 +159,9 @@ class SvnBranch(Branch):
         last_revid = self.last_revision()
         return self.revision_id_to_revno(last_revid), last_revid
 
+    def revno(self):
+        return self.last_revision_info()[0]
+
     def revision_id_to_revno(self, revision_id):
         if revision_id is None:
             return 0

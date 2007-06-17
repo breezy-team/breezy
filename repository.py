@@ -51,6 +51,20 @@ SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id-v%d' % MAPPING_VERSION
 
+def parse_revid_property(line):
+    """Parse a (revnum, revid) tuple as set in revision id properties.
+    :param line: line to parse
+    :return: tuple with (bzr_revno, revid)
+    """
+    assert not '\n' in line
+    try:
+        (revno, revid) = line.split(' ', 1)
+    except ValueError:
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
+                "missing space")
+    return (int(revno), revid)
+
+
 def parse_revision_metadata(text, rev):
     """Parse a revision info text (as set in bzr:revision-info).
 
@@ -62,7 +76,8 @@ def parse_revision_metadata(text, rev):
         try:
             key, value = l.split(": ", 2)
         except ValueError:
-            raise BzrError("Missing : in revision metadata")
+            raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
+                    "Missing : in revision metadata")
         if key == "committer":
             rev.committer = str(value)
         elif key == "timestamp":
@@ -72,7 +87,8 @@ def parse_revision_metadata(text, rev):
         elif key[0] == "\t" and in_properties:
             rev.properties[str(key[1:])] = str(value)
         else:
-            raise BzrError("Invalid key %r" % key)
+            raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
+                    "Invalid key %r" % key)
 
 
 def generate_revision_metadata(timestamp, timezone, committer, revprops):
@@ -408,11 +424,13 @@ class SvnRepository(Repository):
             return revid
 
         # Lookup the revision from the bzr:revision-id-vX property
-        revid = self.branchprop_list.get_property_diff(path, revnum, 
+        line = self.branchprop_list.get_property_diff(path, revnum, 
                 SVN_PROP_BZR_REVISION_ID).strip("\n")
         # Or generate it
-        if revid == "":
+        if line == "":
             revid = generate_svn_revision_id(self.uuid, revnum, path)
+        else:
+            (bzr_revno, revid) = parse_revid_property(line)
 
         self.revmap.insert_revid(revid, path, revnum, revnum, "undefined")
 
@@ -450,13 +468,14 @@ class SvnRepository(Repository):
             # If there is no entry in the map, walk over all branches:
             for (branch, revno, exists) in self.find_branches():
                 # Look at their bzr:revision-id-vX
-                revids = self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID, "").splitlines()
+                revids = map(parse_revid_property, 
+                        self.branchprop_list.get_property(branch, revno, 
+                        SVN_PROP_BZR_REVISION_ID, "").splitlines())
 
                 # If there are any new entries that are not yet in the cache, 
                 # add them
-                for r in revids:
-                    self.revmap.insert_revid(r, branch, 0, revno, 
+                for (entry_revno, entry_revid) in revids:
+                    self.revmap.insert_revid(entry_revid, branch, 0, revno, 
                             "undefined")
 
                 if revid in revids:
@@ -469,7 +488,10 @@ class SvnRepository(Repository):
         # added revid
         i = min_revnum
         for (bp, rev) in self.follow_branch(branch_path, max_revnum):
-            if self.branchprop_list.get_property_diff(bp, rev, SVN_PROP_BZR_REVISION_ID).strip("\n") == revid:
+            (entry_revno, entry_revid) = parse_revid_property(
+                 self.branchprop_list.get_property_diff(bp, rev, 
+                     SVN_PROP_BZR_REVISION_ID).strip("\n"))
+            if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme)
                 return (bp, rev)
 

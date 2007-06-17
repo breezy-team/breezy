@@ -76,9 +76,9 @@ To override the revision id this way, set the revision property:
 
 bzr:revision-id-v%d (where %d is the current mapping version) 
 
-to the revision id. This property should only be honored for the revision 
-in which it was set, as subversion will not erase the property 
-for subsequent commits.
+to the bzr revision number following by a space and the revision id. This o
+property should only be honored for the revision in which it was set, as 
+subversion will not erase the property for subsequent commits.
 
 A (path,revnum) tuple is valid if:
 * path is valid according to the branching scheme

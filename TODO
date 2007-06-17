@@ -19,3 +19,4 @@
 - more blackbox tests
 - split fetch tests out of test_repos
 - what happened to WorkingTree.add() ?
+- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXX ?

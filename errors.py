@@ -65,3 +65,12 @@ class NoCheckoutSupport(BzrError):
 class LocalCommitsUnsupported(BzrError):
 
     _fmt = 'Local commits are not supported for lightweight Subversion checkouts.'
+
+
+class InvalidPropertyValue(BzrError):
+    _fmt = 'Invalid property value for Subversion property %(property)s: %(msg)s'
+
+    def __init__(self, property, msg):
+        BzrError.__init__(self)
+        self.property = property
+        self.msg = msg

@@ -89,7 +89,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self._svnprops[SVN_PROP_SVK_MERGE] = old + new
 
         if revision_id is not None:
-            if branch.last_revision():
+            (previous_revno, previous_revid) = branch.last_revision_info()
+            if previous_revid is not None:
                 (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
                 old = repository.branchprop_list.get_property(bp, revnum, 
                             SVN_PROP_BZR_REVISION_ID, "")
@@ -97,7 +98,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 old = ""
 
             self._svnprops[SVN_PROP_BZR_REVISION_ID] = old + \
-                    "%s\n" % revision_id
+                    "%d %s\n" % (previous_revno+1, revision_id)
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.

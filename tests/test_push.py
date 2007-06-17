@@ -182,7 +182,7 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         self.client_update("sc")
-        self.assertEqual("some-rid\n", 
+        self.assertEqual("3 some-rid\n", 
                 self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID))
 
     def test_commit_check_rev_equal(self):

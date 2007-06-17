@@ -29,6 +29,7 @@ import os
 import svn.fs
 
 from convert import load_dumpfile
+from errors import InvalidPropertyValue
 from fileids import generate_svn_file_id, generate_file_id
 import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
@@ -37,7 +38,8 @@ from tests import TestCaseWithSubversionRepository
 from tests.test_fileids import MockRepo
 from repository import (svk_feature_to_revision_id, revision_id_to_svk_feature,
                         SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
-                        generate_revision_metadata, parse_revision_metadata)
+                        generate_revision_metadata, parse_revision_metadata,
+                        parse_revid_property)
 from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
                     parse_svn_revision_id, generate_svn_revision_id)
 
@@ -86,7 +88,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_generate_revision_id_forced_revid(self):
         repos_url = self.make_client("a", "dc")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "someid\n")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "2 someid\n")
         self.client_commit("dc", "set id")
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(1, "")
@@ -402,7 +404,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_get_revision(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertRaises(NoSuchRevision, repository.get_revision, "nonexisting")
+        self.assertRaises(NoSuchRevision, repository.get_revision, 
+                "nonexisting")
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
@@ -413,7 +416,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             repository.generate_revision_id(2, ""))
         self.assertEqual([repository.generate_revision_id(1, "")],
                 rev.parent_ids)
-        self.assertEqual(rev.revision_id, repository.generate_revision_id(2, ""))
+        self.assertEqual(rev.revision_id, 
+                repository.generate_revision_id(2, ""))
         self.assertEqual(author, rev.committer)
         self.assertIsInstance(rev.properties, dict)
 
@@ -426,7 +430,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
         self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
-                            "myrevid\n")
+                            "3 myrevid\n")
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         revid = generate_svn_revision_id(repository.uuid, 2, "")
@@ -608,7 +612,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_get_inventory(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertRaises(NoSuchRevision, repository.get_inventory, "nonexisting")
+        self.assertRaises(NoSuchRevision, repository.get_inventory, 
+                "nonexisting")
         self.build_tree({'dc/foo': "data", 'dc/blah': "other data"})
         self.client_add("dc/foo")
         self.client_add("dc/blah")
@@ -666,7 +671,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/bloe': None})
         self.client_add("dc/bloe")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "myid\n")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "2 myid\n")
         self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(("", 1), repository.lookup_revision_id( 
@@ -680,7 +685,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/bloe': None})
         self.client_add("dc/bloe")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "myid\n")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "2 myid\n")
         self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, 
@@ -2347,8 +2352,20 @@ class MetadataMarshallerTests(TestCase):
 
     def test_parse_revision_metadata_no_colon(self):
         rev = Revision('someid')
-        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla", rev))
+        self.assertRaises(InvalidPropertyValue, 
+                lambda: parse_revision_metadata("bla", rev))
 
     def test_parse_revision_metadata_invalid_name(self):
         rev = Revision('someid')
-        self.assertRaises(BzrError, lambda: parse_revision_metadata("bla: b", rev))
+        self.assertRaises(InvalidPropertyValue, 
+                lambda: parse_revision_metadata("bla: b", rev))
+
+    def test_parse_revid_property(self):
+        self.assertEquals((1, "bloe"), parse_revid_property("1 bloe"))
+
+    def test_parse_revid_property_space(self):
+        self.assertEquals((42, "bloe bla"), parse_revid_property("42 bloe bla"))
+
+    def test_parse_revid_property_invalid(self):
+        self.assertRaises(InvalidPropertyValue, 
+                lambda: parse_revid_property("blabla"))

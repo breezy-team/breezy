@@ -17,7 +17,7 @@
 from bzrlib.errors import ConnectionReset, LockError, PermissionDenied
 from bzrlib.tests import TestCase
 
-from errors import convert_svn_error, convert_error
+from errors import convert_svn_error, convert_error, InvalidPropertyValue
 
 import svn.core
 from svn.core import SubversionException
@@ -56,3 +56,9 @@ class TestConvertError(TestCase):
             return foo+1
         self.assertEqual(2, test_nothrow(1))
 
+    def test_invalid_property_value(self):
+        error = InvalidPropertyValue("svn:foobar", "corrupt")
+
+        self.assertEqual(
+          "Invalid property value for Subversion property svn:foobar: corrupt", 
+          str(error))

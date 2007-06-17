@@ -428,7 +428,7 @@ class SvnWorkingTree(WorkingTree):
 
         self.client_ctx.log_msg_baton2 = log_message_func
         if rev_id is not None:
-            extra = "%s\n" % rev_id
+            extra = "%d %s\n" % (self.branch.revno()+1, rev_id)
         else:
             extra = ""
         wc = self._get_wc(write_lock=True)
