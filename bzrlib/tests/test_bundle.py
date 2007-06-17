@@ -348,7 +348,7 @@ class BundleTester1(TestCaseWithTransport):
                           target.repository, read_bundle(text))
 
 
-class BundleTester(TestCaseWithTransport):
+class BundleTester(object):
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -965,8 +965,19 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual({'branch-nick':'tree', 'omega':u'\u03a9',
                           'alpha':u'\u03b1'}, rev.properties)
 
+    def test_bundle_with_ghosts(self):
+        tree = self.make_branch_and_tree('tree')
+        self.b1 = tree.branch
+        self.build_tree_contents([('tree/file', 'content1')])
+        tree.add(['file'])
+        tree.commit('rev1')
+        self.build_tree_contents([('tree/file', 'content2')])
+        tree.add_parent_tree_id('ghost')
+        tree.commit('rev2', rev_id='rev2')
+        bundle = self.get_valid_bundle(None, 'rev2')
 
-class V08BundleTester(BundleTester):
+
+class V08BundleTester(BundleTester, TestCaseWithTransport):
 
     format = '0.8'
 
@@ -1101,7 +1112,7 @@ class V09BundleKnit1Tester(V08BundleTester):
         return format
 
 
-class V10BundleTester(BundleTester):
+class V10BundleTester(BundleTester, TestCaseWithTransport):
 
     format = '1.0alpha'
 
