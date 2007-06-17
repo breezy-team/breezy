@@ -24,6 +24,9 @@ from bzrlib.commands import Command, register_command
 from bzrlib.trace import info, warning
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
+from bzrlib.bzrdir import BzrDir
+from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
+import bzrlib.transport
 
 from builder import (DebBuild,
                      DebMergeBuild,
@@ -269,6 +272,40 @@ class cmd_builddeb(Command):
     return retcode
 
 register_command(cmd_builddeb)
+
+class cmd_merge_upstream(Command):
+  """ merges a new upstream version into the current branch
+
+  you need to specify the revision of the last upstream import at the
+  moment
+
+  """
+  config = DebBuildConfig()
+  takes_args = ['file']
+  takes_options = ['revision']
+  aliases = ['mu']
+
+  def run(self, revision=None, location=None, file=None):
+    from bzrlib.plugins.bzrtools.upstream_import import do_import
+    from bzrlib.builtins import _merge_helper
+
+    tree, relpath = WorkingTree.open_containing('.')
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise BzrCommandError("Working tree has uncommitted changes.")
+
+    from_branch = tree.branch
+    revno, rev_id = revision[0].in_branch(from_branch)
+    to_transport = bzrlib.transport.get_transport('/tmp/bzrfoo')
+    dir_to = from_branch.bzrdir.clone_on_transport(to_transport,rev_id)
+    to_tree = dir_to.open_workingtree()
+    to_tree.revert([])
+    do_import(file, '/tmp/bzrfoo')
+    to_tree.commit('import upstream from file %s' % file)
+    other_revision = ['.', None]
+    _merge_helper(other_revision, [None, None], this_dir='/tmp/bzrfoo')
+
+
+register_command(cmd_merge_upstream)
 
 def test_suite():
     from unittest import TestSuite
