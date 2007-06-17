@@ -435,11 +435,13 @@ class SvnRepository(Repository):
         else:
             try:
                 (bzr_revno, revid) = parse_revid_property(line)
+                self.revmap.insert_revid(revid, path, revnum, revnum, 
+                        "undefined", bzr_revno)
             except errors.InvalidPropertyValue, e:
                 mutter(str(e))
                 revid = generate_svn_revision_id(self.uuid, revnum, path)
-
-        self.revmap.insert_revid(revid, path, revnum, revnum, "undefined")
+                self.revmap.insert_revid(revid, path, revnum, revnum, 
+                        "undefined")
 
         return revid
 
@@ -487,7 +489,7 @@ class SvnRepository(Repository):
                 # add them
                 for (entry_revno, entry_revid) in revids:
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
-                            "undefined")
+                            "undefined", entry_revno)
 
                 if revid in revids:
                     break
@@ -508,7 +510,8 @@ class SvnRepository(Repository):
                 # that will already have happened earlier
                 continue
             if entry_revid == revid:
-                self.revmap.insert_revid(revid, bp, rev, rev, scheme)
+                self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
+                                         entry_revno)
                 return (bp, rev)
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)

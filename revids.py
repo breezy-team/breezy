@@ -85,7 +85,7 @@ class RevidMap(object):
         else:
             self.cachedb = cache_db
         self.cachedb.executescript("""
-        create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
+        create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text, dist_to_origin integer);
         create index if not exists revid on revmap (revid);
         """)
         self.cachedb.commit()
@@ -107,6 +107,21 @@ class RevidMap(object):
             return str(revid[0])
         return None
 
-    def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme):
+    def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme, 
+                     dist_to_origin=None):
         assert revid is not None and revid != ""
-        self.cachedb.execute("insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", (revid, branch, min_revnum, max_revnum, scheme))
+        self.cachedb.execute(
+            "insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
+            (revid, branch, min_revnum, max_revnum, scheme))
+        if dist_to_origin is not None:
+            self.cachedb.execute(
+                "update revmap set dist_to_origin = ?", 
+                (dist_to_origin,))
+
+    def lookup_dist_to_origin(self, revid):
+        revno = self.cachedb.execute(
+                "select dist_to_origin from revmap where revid='%s'" % revid).fetchone()
+        if revno is not None:
+            return int(revno[0])
+        return None
+

@@ -43,6 +43,15 @@ class TestRevidMap(TestCase):
         self.assertEquals("bla", 
                 revidmap.lookup_branch_revnum(42, "mypath"))
 
+    def test_lookup_dist(self):
+        revidmap = RevidMap()
+        revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug", 
+                                    50)
+        self.assertEquals(50,
+                revidmap.lookup_dist_to_origin("bla"))
+        self.assertIs(None,
+                revidmap.lookup_dist_to_origin("blabla"))
+
     def test_lookup_branch_nonexistant(self):
         revidmap = RevidMap()
         self.assertIs(None,
