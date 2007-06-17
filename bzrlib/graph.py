@@ -142,7 +142,7 @@ class Graph(object):
         """Return a dictionary of graph node:ancestor_list entries."""
         return dict(self._graph_ancestors.items())
 
-    def get_ancestry(self, node_id):
+    def get_ancestry(self, node_id, topo_sorted=True):
         """Return the inclusive ancestors of node_id in topological order."""
         # maybe optimise this ?
         result = {}
@@ -155,6 +155,8 @@ class Graph(object):
             for parent in parents:
                 if parent not in result and parent not in pending:
                     pending.add(parent)
+        if not topo_sorted:
+            return result.keys()
         return topo_sort(result.items())
 
     def get_descendants(self):

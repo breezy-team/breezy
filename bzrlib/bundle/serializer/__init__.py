@@ -120,9 +120,10 @@ def _write_bundle(repository, revision_id, base_revision_id, out, format):
     """
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
-    base_ancestry = set(repository.get_ancestry(base_revision_id))
-    revision_ids = [r for r in repository.get_ancestry(revision_id) if r
-                    not in base_ancestry]
+    base_ancestry = set(repository.get_ancestry(base_revision_id,
+                                                topo_sorted=False))
+    revision_ids = [r for r in repository.get_ancestry(revision_id)
+                    if r not in base_ancestry]
     revision_ids = list(reversed(revision_ids))
     write(repository, revision_ids, out, format,
           forced_bases = {revision_id:base_revision_id})

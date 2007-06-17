@@ -86,17 +86,17 @@ class KnitRepository(MetaDirRepository):
         return self._fileid_involved_by_set(changed)
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
         
-        This is topologically sorted.
+        This is topologically sorted, unless 'sorted' is specified as False
         """
         if revision_id is None:
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()
         try:
-            return [None] + vf.get_ancestry(revision_id)
+            return [None] + vf.get_ancestry(revision_id, topo_sorted)
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
 

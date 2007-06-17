@@ -253,10 +253,10 @@ def common_ancestor(revision_a, revision_b, revision_source,
                 [revision_a, revision_b])
             # Shortcut the case where one of the tips is already included in
             # the other graphs ancestry.
-            ancestry_a = graph.get_ancestry(revision_a)
+            ancestry_a = graph.get_ancestry(revision_a, topo_sorted=False)
             if revision_b in ancestry_a:
                 return revision_b
-            ancestry_b = graph.get_ancestry(revision_b)
+            ancestry_b = graph.get_ancestry(revision_b, topo_sorted=False)
             if revision_a in ancestry_b:
                 return revision_a
             # convert to a NULL_REVISION based graph.
