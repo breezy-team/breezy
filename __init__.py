@@ -153,8 +153,6 @@ class cmd_builddeb(Command):
           export_upstream=None, export_upstream_revision=None,
           source=False):
 
-    retcode = 0
-
     goto_branch(branch)
 
     tree, relpath = WorkingTree.open_containing('.')
@@ -270,7 +268,7 @@ class cmd_builddeb(Command):
       build.export(use_existing)
     except StopBuild, e:
       warning('Stopping the build: %s.', e.reason)
-      return retcode
+      return
 
     if not export_only:
       build.build(builder)
@@ -279,7 +277,6 @@ class cmd_builddeb(Command):
       if result is not None:
         build.move_result(result)
 
-    return retcode
 
 register_command(cmd_builddeb)
 
