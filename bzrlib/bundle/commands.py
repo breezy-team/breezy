@@ -169,7 +169,8 @@ class cmd_bundle_info(Command):
         nicks = set()
         committers = set()
         for revision in bundle_info.real_revisions:
-            nicks.add(revision.properties['branch-nick'])
+            if 'branch-nick' in revision.properties:
+                nicks.add(revision.properties['branch-nick'])
             committers.add(revision.committer)
 
         print >> self.outf, 'Revisions'
