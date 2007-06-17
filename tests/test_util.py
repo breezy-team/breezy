@@ -23,9 +23,39 @@ import os
 from errors import MissingChangelogError
 from util import (is_clean,
                   find_changelog,
+                  recursive_copy,
                   )
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (TestCaseWithTransport,
+                          TestCaseInTempDir,
+                          )
+
+
+class RecursiveCopyTests(TestCaseInTempDir):
+
+  def test_recursive_copy(self):
+    os.mkdir('a')
+    os.mkdir('b')
+    os.mkdir('c')
+    os.mkdir('a/d')
+    os.mkdir('a/d/e')
+    f = open('a/f', 'wb')
+    try:
+      f.write('f')
+    finally:
+      f.close()
+    os.mkdir('b/g')
+    recursive_copy('a', 'b')
+    self.failUnlessExists('a')
+    self.failUnlessExists('b')
+    self.failUnlessExists('c')
+    self.failUnlessExists('b/d')
+    self.failUnlessExists('b/d/e')
+    self.failUnlessExists('b/f')
+    self.failUnlessExists('a/d')
+    self.failUnlessExists('a/d/e')
+    self.failUnlessExists('a/f')
+
 
 class IsCleanTests(TestCaseWithTransport):
 
