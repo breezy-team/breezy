@@ -3539,6 +3539,8 @@ class cmd_merge_directive(Command):
             help='Message to use when committing this merge')
         ]
 
+    encoding_type = 'exact'
+
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
         if patch_type == 'plain':

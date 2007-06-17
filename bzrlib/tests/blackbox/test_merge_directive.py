@@ -213,3 +213,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
                                   '.')
         call = connect_calls[0]
         self.assertEqual(('bogushost', 0), call[1:3])
+
+    def test_encoding_exact(self):
+        tree1, tree2 = self.prepare_merge_directive()
+        tree1.commit(u'messag\xe9')
+        self.run_bzr('merge-directive', '../tree2') # no exception raised
