@@ -70,6 +70,17 @@ def load_dumpfile(dumpfile, outputdir):
 
 def convert_repository(url, output_url, scheme, create_shared_repo=True, 
                        working_trees=False, all=False):
+    """Convert a Subversion repository and its' branches to a 
+    Bazaar repository.
+
+    :param url: URL of the Subversion repository
+    :param output_url: URL to write Bazaar repository to.
+    :param scheme: Branching scheme (object) to use
+    :param create_shared_repo: Whether to create a shared Bazaar repository
+    :param working_trees: Whether to create working trees
+    :param all: Whether old revisions, even those not part of any existing 
+        branches, should be imported
+    """
     assert not all or create_shared_repo
 
     if os.path.isfile(url):
