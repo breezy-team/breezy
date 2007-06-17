@@ -107,8 +107,8 @@ class cmd_bundle_revisions(Command):
 
             # We don't want to lock the same branch across
             # 2 different branches
-            if target_branch.base == base_branch.base:
-                base_branch = target_branch 
+            target_branch.lock_write()
+            base_branch.lock_read()
             if submit_branch is None or remember:
                 if base_specified:
                     target_branch.set_submit_branch(base_branch.base)
@@ -126,12 +126,12 @@ class cmd_bundle_revisions(Command):
             fileobj = file(output, 'wb')
         else:
             fileobj = sys.stdout
-        target_branch.repository.lock_read()
         try:
             write_bundle(target_branch.repository, target_revision,
                          base_revision, fileobj)
         finally:
-            target_branch.repository.unlock()
+            base_branch.unlock()
+            target_branch.unlock()
 
 
 class cmd_bundle_info(Command):
@@ -141,9 +141,12 @@ class cmd_bundle_info(Command):
     takes_args = ['location']
     takes_options = [Option('verbose', help="output decoded contents",
                             short_name='v')]
+    encoding_type = 'exact'
 
     def run(self, location, verbose=False):
         from bzrlib.bundle.serializer import read_bundle
+        from bzrlib import osutils
+        term_encoding = osutils.get_terminal_encoding()
         dirname, basename = urlutils.split(location)
         bundle_file = transport.get_transport(dirname).get(basename)
         bundle_info = read_bundle(bundle_file)
@@ -174,8 +177,10 @@ class cmd_bundle_info(Command):
             committers.add(revision.committer)
 
         print >> self.outf, 'Revisions'
-        print >> self.outf, 'nicks: %s' % ', '.join(sorted(nicks))
-        print >> self.outf, 'committers: \n%s' % '\n'.join(sorted(committers))
+        print >> self.outf, ('nicks: %s'
+            % ', '.join(sorted(nicks))).encode(term_encoding, 'replace')
+        print >> self.outf, ('committers: \n%s' %
+        '\n'.join(sorted(committers)).encode(term_encoding, 'replace'))
         if verbose:
             print >> self.outf
             bundle_file.seek(0)
