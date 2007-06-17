@@ -5,6 +5,9 @@ bzr-builddeb (0.17) unstable; urgency=low
     needed currently. This requires a newer python-debian (0.1.3), so bump the
     version requirements. This would have helped with cases like #429299, but
     Reinhard already fixed that in python-debian.
+  * Using .bzr-builddeb/local.conf is now deprected, please move the contents
+    to .bzr/branch/branch.conf. The local.conf file will not be read in the
+    next version.
 
  -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 20:26:40 +0100
 
@@ -56,7 +59,7 @@ bzr-builddeb (0.15~rc1) feisty; urgency=low
     version rather than the full version. This removes a warning from
     dpkg-source when building and Closes: #409981. Thanks to James Vega.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 28 Feb 2007 19:16:28 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Fri,  9 Mar 2007 21:31:30 +0000
 
 bzr-builddeb (0.14ubuntu2) feisty; urgency=low
 

@@ -24,6 +24,7 @@ from unittest import TestSuite
 from bzrlib.tests import TestUtil
 
 import changes
+import config
 
 def test_suite():
     loader = TestUtil.TestLoader()
@@ -32,8 +33,15 @@ def test_suite():
             'test_builder',
             'test_util',
             ]
-    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
-    suite.addTest(doctest.DocTestSuite(changes))
+    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
+                                            for i in testmod_names]))
+
+    doctest_mod_names = [
+             'changes',
+             'config'
+             ]
+    for mod in doctest_mod_names:
+      suite.addTest(doctest.DocTestSuite(mod))
 
     return suite
 
