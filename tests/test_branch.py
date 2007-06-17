@@ -38,6 +38,15 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
 
+    def test_last_rev_rev_info(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        self.assertEqual((1, branch.generate_revision_id(0)),
+                branch.last_revision_info())
+        branch.revision_history()
+        self.assertEqual((1, branch.generate_revision_id(0)),
+                branch.last_revision_info())
+
     def test_lookup_revision_id_unknown(self):
         repos_url = self.make_client("a", "dc")
         branch = Branch.open(repos_url)
@@ -164,6 +173,44 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
             "mycommit",
             repos.generate_revision_id(2, "")],
             branch.revision_history())
+
+    def test_revision_id_to_revno_none(self):
+        """The None revid should map to revno 0."""
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open(repos_url)
+        self.assertEquals(0, branch.revision_id_to_revno(None))
+
+    def test_revision_id_to_revno_nonexistant(self):
+        """revision_id_to_revno() should raise NoSuchRevision if
+        the specified revision did not exist in the branch history."""
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open(repos_url)
+        self.assertRaises(NoSuchRevision, branch.revision_id_to_revno, "bla")
+    
+    def test_revision_id_to_revno_simple(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+                            "myrevid\n")
+        self.client_commit("dc", "My Message")
+        branch = Branch.open(repos_url)
+        self.assertEquals(2, branch.revision_id_to_revno("myrevid"))
+
+    def test_revision_id_to_revno_older(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+                            "myrevid\n")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "someotherdata"})
+        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+                            "myrevid\nmysecondrevid\n")
+        self.client_commit("dc", "My Message")
+        branch = Branch.open(repos_url)
+        self.assertEquals(3, branch.revision_id_to_revno("mysecondrevid"))
+        self.assertEquals(2, branch.revision_id_to_revno("myrevid"))
 
     def test_get_nick_none(self):
         repos_url = self.make_client('a', 'dc')

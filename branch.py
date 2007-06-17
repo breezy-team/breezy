@@ -17,7 +17,7 @@
 
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, DivergedBranches
+from bzrlib.errors import NoSuchFile, DivergedBranches, NoSuchRevision
 from bzrlib.inventory import (Inventory)
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -81,8 +81,8 @@ class SvnBranch(Branch):
         return checkout.create_workingtree(revision_id)
 
     def lookup_revision_id(self, revid):
-        """Look up the matching revision number on the mainline of the 
-        branch.
+        """Look up the matching Subversion revision number on the mainline of 
+        the branch.
 
         :param revid: Revision id to look up.
         :return: Revision number on the branch. 
@@ -156,8 +156,17 @@ class SvnBranch(Branch):
         pass
 
     def last_revision_info(self):
-        hist = self.revision_history()
-        return len(hist), hist[-1]
+        last_revid = self.last_revision()
+        return self.revision_id_to_revno(last_revid), last_revid
+
+    def revision_id_to_revno(self, revision_id):
+        if revision_id is None:
+            return 0
+        history = self.revision_history()
+        try:
+            return history.index(revision_id) + 1
+        except ValueError:
+            raise NoSuchRevision(self, revision_id)
 
     def set_push_location(self, location):
         raise NotImplementedError(self.set_push_location)
