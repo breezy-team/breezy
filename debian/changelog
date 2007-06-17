@@ -1,3 +1,13 @@
+bzr-builddeb (0.17) unstable; urgency=low
+
+  [ James Westby ]
+  * Pass max_blocks=1 when constructing changelogs as that is all that is
+    needed currently. This requires a newer python-debian (0.1.3), so bump the
+    version requirements. This would have helped with cases like #429299, but
+    Reinhard already fixed that in python-debian.
+
+ -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 20:26:40 +0100
+
 bzr-builddeb (0.16.2) unstable; urgency=low
 
   * loosen the dependency on bzr. bzr-builddeb seems to be not be broken

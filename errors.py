@@ -56,3 +56,10 @@ class StopBuild(DebianError):
     BzrError.__init__(self)
     self.reason = reason
 
+class MissingChangelogError(DebianError):
+  _fmt = """Could not find changelog at %(location)s."""
+
+  def __init__(self, locations):
+    BzrError.__init__(self)
+    self.location = locations
+

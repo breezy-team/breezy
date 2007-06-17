@@ -30,6 +30,7 @@ def test_suite():
     suite = TestSuite()
     testmod_names = [
             'test_builder',
+            'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
     suite.addTest(doctest.DocTestSuite(changes))

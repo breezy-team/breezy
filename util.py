@@ -28,7 +28,7 @@ from bzrlib.workingtree import WorkingTree
 
 from debian_bundle.changelog import Changelog
 
-from errors import DebianError
+from errors import MissingChangelogError
 
 def add_ignore(file):
   """Adds file to .bzrignore if it exists and not already in the file."""
@@ -105,15 +105,15 @@ def find_changelog(t, merge):
           changelog_file = 'changelog'
           larstiq = True
           if not t.has_filename(changelog_file):
-            raise DebianError("Could not open debian/changelog or changelog")
+            raise MissingChangelogError("debian/changelog or changelog")
         else:
-          raise DebianError("Could not open debian/changelog")
+          raise MissingChangelogError("debian/changelog")
       mutter("Using '%s' to get package information", changelog_file)
       changelog_id = t.path2id(changelog_file)
       contents = t.get_file_text(changelog_id)
     finally:
       t.unlock()
-    changelog = Changelog(contents)
-    return changelog, larstiq 
+    changelog = Changelog(contents, max_blocks=1)
+    return changelog, larstiq
 
 
