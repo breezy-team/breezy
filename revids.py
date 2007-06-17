@@ -121,7 +121,7 @@ class RevidMap(object):
     def lookup_dist_to_origin(self, revid):
         revno = self.cachedb.execute(
                 "select dist_to_origin from revmap where revid='%s'" % revid).fetchone()
-        if revno is not None:
+        if revno is not None and revno[0] is not None:
             return int(revno[0])
         return None
 

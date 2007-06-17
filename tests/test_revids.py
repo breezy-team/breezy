@@ -49,6 +49,15 @@ class TestRevidMap(TestCase):
                                     50)
         self.assertEquals(50,
                 revidmap.lookup_dist_to_origin("bla"))
+
+    def test_lookup_dist_notset(self):
+        revidmap = RevidMap()
+        revidmap.insert_revid("bloe", "someotherpath", 42, 42, "brainslug") 
+        self.assertIs(None,
+                revidmap.lookup_dist_to_origin("bloe"))
+
+    def test_lookup_dist_notfound(self):
+        revidmap = RevidMap()
         self.assertIs(None,
                 revidmap.lookup_dist_to_origin("blabla"))
 
