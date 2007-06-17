@@ -133,7 +133,7 @@ class cmd_svn_import(Command):
 
         if all:
             standalone = False
-        convert_repository(from_location, to_location, scheme, standalone, 
+        convert_repository(from_location, to_location, scheme, not standalone, 
                 trees, all)
 
 

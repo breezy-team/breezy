@@ -19,6 +19,8 @@ bzr-svn 0.4	UNRELEASED
    * Support true push (#80612).
 
    * Support commits in heavy checkouts (#79330).
+   
+   * Use shared repositories by default in svn-import command.
 
   PERFORMANCE
 
