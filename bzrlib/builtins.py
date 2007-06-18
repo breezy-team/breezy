@@ -1059,7 +1059,7 @@ class cmd_info(Command):
     takes_options = ['verbose']
 
     @display_command
-    def run(self, location=None, verbose=False):
+    def run(self, location=None, verbose=0):
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
                          verbose=verbose)
@@ -2359,11 +2359,6 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory, but no
-    existing data is affected.  These directories are deleted if the tests
-    pass, or left behind to help in debugging if they fail and --keep-output
-    is specified.
-    
     If arguments are given, they are regular expressions that say which tests
     should run.  Tests matching any expression are run, and other tests are
     not run.
@@ -2477,6 +2472,10 @@ class cmd_selftest(Command):
             from bzrlib.tests import clean_selftest_output
             clean_selftest_output()
             return 0
+        if keep_output:
+            trace.warning("notice: selftest --keep-output "
+                          "is no longer supported; "
+                          "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
@@ -2505,7 +2504,6 @@ class cmd_selftest(Command):
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
-                              keep_output=keep_output,
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
@@ -2967,7 +2965,7 @@ class cmd_fetch(Command):
 
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
-
+    
     OTHER_BRANCH may be local or remote.
     """
 
@@ -2976,8 +2974,10 @@ class cmd_missing(Command):
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 
                             'Display changes in the local branch only'),
+                     Option('this' , 'same as --mine-only'),
                      Option('theirs-only', 
-                            'Display changes in the remote branch only'), 
+                            'Display changes in the remote branch only'),
+                     Option('other', 'same as --theirs-only'),
                      'log-format',
                      'show-ids',
                      'verbose'
@@ -2987,9 +2987,15 @@ class cmd_missing(Command):
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
-            show_ids=False, verbose=False):
+            show_ids=False, verbose=False, this=False, other=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         from bzrlib.log import log_formatter
+
+        if this:
+          mine_only = this
+        if other:
+          theirs_only = other
+
         local_branch = Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
         if other_branch is None:

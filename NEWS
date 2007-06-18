@@ -1,5 +1,28 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+
+    * The --lsprof-file option now dumps a text rendering of the profiling
+      information if the filename ends in ".txt". It will also convert the
+      profiling information to a format suitable for KCacheGrind if the
+      output filename ends in ".callgrind". Fixes to the lsprofcalltree
+      conversion process by Jean Paul Calderone and Itamar were also merged.
+      See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
+
+    * ``info`` now defaults to non-verbose mode, displaying only paths and
+      abbreviated format info.  ``info -v`` displays all the information
+      formerly displayed by ``info``.  (Aaron Bentley)
+
+    * ``bzr missing`` now has better option names ``--this`` and ``--other``.
+      (Elliot Murphy)
+
+  TESTING:
+
+    * Removed the ``--keep-output`` option from selftest and clean up test
+      directories as they're used.  This reduces the IO load from 
+      running the test suite and cuts the time by about half.
+      (Andrew Bennetts, Martin Pool)
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:
