@@ -2085,13 +2085,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             #       inventory and calls tree._write_inventory(). Ultimately we
             #       should be able to remove this extra flush.
             self.flush()
-            from bzrlib.revision import common_ancestor
-            try:
-                base_rev_id = common_ancestor(self.branch.last_revision(),
-                                              old_tip,
-                                              self.branch.repository)
-            except errors.NoCommonAncestor:
-                base_rev_id = None
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             result += merge.merge_inner(
