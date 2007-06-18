@@ -133,6 +133,7 @@ class SvnBranch(Branch):
             self._revision_history.append(
                     self.repository.generate_revision_id(rev, branch))
         self._revision_history.reverse()
+        self.repository.revmap.insert_revision_history(self._revision_history)
 
     def get_root_id(self):
         if self.last_revision() is None:
@@ -165,6 +166,9 @@ class SvnBranch(Branch):
     def revision_id_to_revno(self, revision_id):
         if revision_id is None:
             return 0
+        revno = self.repository.revmap.lookup_dist_to_origin(revision_id)
+        if revno is not None:
+            return revno
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -199,7 +203,7 @@ class SvnBranch(Branch):
             return None
 
     def pull(self, source, overwrite=False, stop_revision=None, 
-             _hook_master=None, _run_hooks=True):
+             _hook_master=None, run_hooks=True):
         result = PullResult()
         result.source_branch = source
         result.master_branch = None

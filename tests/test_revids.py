@@ -56,6 +56,16 @@ class TestRevidMap(TestCase):
         self.assertIs(None,
                 revidmap.lookup_dist_to_origin("bloe"))
 
+    def test_insert_revhistory(self):
+        revidmap = RevidMap()
+        revidmap.insert_revision_history(["bla", "bloe", "blo"])
+        self.assertIs(1,
+                revidmap.lookup_dist_to_origin("bla"))
+        self.assertIs(2,
+                revidmap.lookup_dist_to_origin("bloe"))
+        self.assertIs(3,
+                revidmap.lookup_dist_to_origin("blo"))
+
     def test_lookup_dist_notfound(self):
         revidmap = RevidMap()
         self.assertIs(None,
