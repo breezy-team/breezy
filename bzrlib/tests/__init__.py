@@ -26,6 +26,7 @@
 # general style of bzrlib.  Please continue that consistency when adding e.g.
 # new assertFoo() methods.
 
+import atexit
 import codecs
 from cStringIO import StringIO
 import difflib
@@ -42,6 +43,7 @@ import sys
 import tempfile
 import unittest
 import time
+import warnings
 
 
 from bzrlib import (
@@ -499,7 +501,6 @@ class TextTestRunner(object):
                  stream=sys.stderr,
                  descriptions=0,
                  verbosity=1,
-                 keep_output=False,
                  bench_history=None,
                  use_numbered_dirs=False,
                  list_only=False
@@ -507,7 +508,6 @@ class TextTestRunner(object):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
-        self.keep_output = keep_output
         self._bench_history = bench_history
         self.use_numbered_dirs = use_numbered_dirs
         self.list_only = list_only
@@ -574,29 +574,6 @@ class TextTestRunner(object):
             for feature, count in sorted(result.unsupported.items()):
                 self.stream.writeln("Missing feature '%s' skipped %d tests." %
                     (feature, count))
-        result.report_cleaning_up()
-        # This is still a little bogus, 
-        # but only a little. Folk not using our testrunner will
-        # have to delete their temp directories themselves.
-        test_root = TestCaseWithMemoryTransport.TEST_ROOT
-        if result.wasSuccessful() or not self.keep_output:
-            if test_root is not None:
-                # If LANG=C we probably have created some bogus paths
-                # which rmtree(unicode) will fail to delete
-                # so make sure we are using rmtree(str) to delete everything
-                # except on win32, where rmtree(str) will fail
-                # since it doesn't have the property of byte-stream paths
-                # (they are either ascii or mbcs)
-                if sys.platform == 'win32':
-                    # make sure we are using the unicode win32 api
-                    test_root = unicode(test_root)
-                else:
-                    test_root = test_root.encode(
-                        sys.getfilesystemencoding())
-                _rmtree_temp_dir(test_root)
-        else:
-            note("Failed tests working directories are in '%s'\n", test_root)
-        TestCaseWithMemoryTransport.TEST_ROOT = None
         result.finished()
         return result
 
@@ -1601,11 +1578,13 @@ class TestCaseWithMemoryTransport(TestCase):
     file defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
+
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus
+    a .bzr directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
     _TEST_NAME = 'test'
-
 
     def __init__(self, methodName='runTest'):
         # allow test parameterisation after test construction and before test
@@ -1763,24 +1742,16 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
-        i = 0
-        while True:
-            root = u'test%04d.tmp' % i
-            try:
-                os.mkdir(root)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    i += 1
-                    continue
-                else:
-                    raise
-            # successfully created
-            TestCaseWithMemoryTransport.TEST_ROOT = osutils.abspath(root)
-            break
+        root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+        TestCaseWithMemoryTransport.TEST_ROOT = root
+        
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        bzrdir.BzrDir.create_standalone_workingtree(
-            TestCaseWithMemoryTransport.TEST_ROOT)
+        bzrdir.BzrDir.create_standalone_workingtree(root)
+
+        # The same directory is used by all tests, and we're not specifically
+        # told when all tests are finished.  This will do.
+        atexit.register(_rmtree_temp_dir, root)
 
     def makeAndChdirToTestDir(self):
         """Create a temporary directories for this one test.
@@ -1860,7 +1831,14 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     All test cases create their own directory within that.  If the
     tests complete successfully, the directory is removed.
 
-    InTempDir is an old alias for FunctionalTestCase.
+    :ivar test_base_dir: The path of the top-level directory for this 
+    test, which contains a home directory and a work directory.
+
+    :ivar test_home_dir: An initially empty directory under test_base_dir
+    which is used as $HOME for this test.
+
+    :ivar test_dir: A directory under test_base_dir used as the current
+    directory when the test proper is run.
     """
 
     OVERRIDE_PYTHON = 'python'
@@ -1880,45 +1858,25 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        if self.use_numbered_dirs:  # strongly recommended on Windows
-                                    # due the path length limitation (260 ch.)
-            candidate_dir = '%s/%dK/%05d' % (self.TEST_ROOT,
-                                             int(self.number/1000),
-                                             self.number)
-            os.makedirs(candidate_dir)
-            self.test_home_dir = candidate_dir + '/home'
-            os.mkdir(self.test_home_dir)
-            self.test_dir = candidate_dir + '/work'
-            os.mkdir(self.test_dir)
-            os.chdir(self.test_dir)
-            # put name of test inside
-            f = file(candidate_dir + '/name', 'w')
+        # create a directory within the top level test directory
+        candidate_dir = tempfile.mkdtemp(dir=self.TEST_ROOT)
+        # now create test and home directories within this dir
+        self.test_base_dir = candidate_dir
+        self.test_home_dir = self.test_base_dir + '/home'
+        os.mkdir(self.test_home_dir)
+        self.test_dir = self.test_base_dir + '/work'
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        # put name of test inside
+        f = file(self.test_base_dir + '/name', 'w')
+        try:
             f.write(self.id())
+        finally:
             f.close()
-            return
-        # Else NAMED DIRS
-        # shorten the name, to avoid test failures due to path length
-        short_id = self.id().replace('bzrlib.tests.', '') \
-                   .replace('__main__.', '')[-100:]
-        # it's possible the same test class is run several times for
-        # parameterized tests, so make sure the names don't collide.  
-        i = 0
-        while True:
-            if i > 0:
-                candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
-            else:
-                candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
-            if os.path.exists(candidate_dir):
-                i = i + 1
-                continue
-            else:
-                os.mkdir(candidate_dir)
-                self.test_home_dir = candidate_dir + '/home'
-                os.mkdir(self.test_home_dir)
-                self.test_dir = candidate_dir + '/work'
-                os.mkdir(self.test_dir)
-                os.chdir(self.test_dir)
-                break
+        self.addCleanup(self.deleteTestDir)
+
+    def deleteTestDir(self):
+        _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
@@ -2160,7 +2118,7 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False, keep_output=False,
+              stop_on_failure=False,
               transport=None, lsprof_timed=None, bench_history=None,
               matching_tests_first=None,
               numbered_dirs=None,
@@ -2180,7 +2138,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
-                            keep_output=keep_output,
                             bench_history=bench_history,
                             use_numbered_dirs=use_numbered_dirs,
                             list_only=list_only,
@@ -2215,7 +2172,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
-             keep_output=False,
              transport=None,
              test_suite_factory=None,
              lsprof_timed=None,
@@ -2243,7 +2199,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure, keep_output=keep_output,
+                     stop_on_failure=stop_on_failure,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
                      bench_history=bench_history,
@@ -2283,6 +2239,7 @@ def test_suite():
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
+                   'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_errors',
@@ -2302,6 +2259,7 @@ def test_suite():
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_ignores',
+                   'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
@@ -2422,6 +2380,17 @@ def adapt_modules(mods_list, adapter, loader, suite):
 
 
 def _rmtree_temp_dir(dirname):
+    # If LANG=C we probably have created some bogus paths
+    # which rmtree(unicode) will fail to delete
+    # so make sure we are using rmtree(str) to delete everything
+    # except on win32, where rmtree(str) will fail
+    # since it doesn't have the property of byte-stream paths
+    # (they are either ascii or mbcs)
+    if sys.platform == 'win32':
+        # make sure we are using the unicode win32 api
+        dirname = unicode(dirname)
+    else:
+        dirname = dirname.encode(sys.getfilesystemencoding())
     try:
         osutils.rmtree(dirname)
     except OSError, e:

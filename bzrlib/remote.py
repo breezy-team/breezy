@@ -19,7 +19,12 @@
 
 from cStringIO import StringIO
 
-from bzrlib import branch, errors, lockdir, repository
+from bzrlib import (
+    branch,
+    errors,
+    lockdir,
+    repository,
+)
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
@@ -293,6 +298,10 @@ class RemoteRepository(object):
         response = self._client.call('Repository.has_revision', path, revision_id)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def get_graph(self, other_repository=None):
+        """Return the graph for this repository format"""
+        return self._real_repository.get_graph(other_repository)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

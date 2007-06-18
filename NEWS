@@ -9,6 +9,26 @@ IN DEVELOPMENT
       conversion process by Jean Paul Calderone and Itamar were also merged.
       See http://ddaa.net/blog/python/lsprof-calltree. (Ian Clatworthy)
 
+    * ``info`` now defaults to non-verbose mode, displaying only paths and
+      abbreviated format info.  ``info -v`` displays all the information
+      formerly displayed by ``info``.  (Aaron Bentley)
+
+    * ``bzr missing`` now has better option names ``--this`` and ``--other``.
+      (Elliot Murphy)
+
+    * The internal ``weave-list`` command has become ``versionedfile-list``,
+      and now lists knits as well as weaves.  (Aaron Bentley)
+
+    * Automatic merge base selection uses a faster algorithm that chooses
+      better bases in criss-cross merge situations (Aaron Bentley)
+
+  TESTING:
+
+    * Removed the ``--keep-output`` option from selftest and clean up test
+      directories as they're used.  This reduces the IO load from 
+      running the test suite and cuts the time by about half.
+      (Andrew Bennetts, Martin Pool)
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:

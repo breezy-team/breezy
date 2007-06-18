@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib import tests
 
 
-class LSProf(tests.Feature):
+class _LSProfFeature(tests.Feature):
 
     def available(self):
         try:
@@ -33,6 +33,9 @@ class LSProf(tests.Feature):
             return False
         else:
             return True
+
+
+LSProfFeature = _LSProfFeature()
 
 
 _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
@@ -53,8 +56,9 @@ def _collect_stats():
 
 class TestStatsSave(tests.TestCaseInTempDir):
 
+    _test_needs_features = [LSProfFeature]
+
     def setUp(self):
-        self.requireFeature(LSProf())
         super(tests.TestCaseInTempDir, self).setUp()
         self.stats = _collect_stats()
 
