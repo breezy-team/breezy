@@ -3807,5 +3807,5 @@ from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
         cmd_weave_plan_merge, cmd_weave_merge_text
