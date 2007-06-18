@@ -8,8 +8,12 @@ bzr-builddeb (0.17) unstable; urgency=low
   * Using .bzr-builddeb/local.conf is now deprected, please move the contents
     to .bzr/branch/branch.conf. The local.conf file will not be read in the
     next version.
+  * python-deb822 changed from new classes to old classes in version 0.3.
+    Handle the change in API, and bump the dependencies to make sure it will
+    work.
+  * Fix up Build-Depends and Build-Depends-Indep (thanks lintian).
 
- -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 20:26:40 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 18 Jun 2007 22:50:07 +0100
 
 bzr-builddeb (0.16.2) unstable; urgency=low
 
