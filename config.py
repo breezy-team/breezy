@@ -19,9 +19,66 @@
 #
 
 import os
+from StringIO import StringIO
 
-from bzrlib.config import ConfigObj, TreeConfig
+from bzrlib.config import ConfigObj, IniBasedConfig #, TreeConfig
+from bzrlib import errors
 from bzrlib.trace import mutter
+
+
+# Temporarily stolen from bzrlib until a bug gets fixed there in 0.18
+class TreeConfig(IniBasedConfig):
+    """Branch configuration data associated with its contents, not location"""
+    def __init__(self, branch):
+        self.branch = branch
+
+    def _get_parser(self, file=None):
+        if file is not None:
+            return IniBasedConfig._get_parser(file)
+        return self._get_config()
+
+    def _get_config(self):
+        try:
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
+                            encoding='utf-8')
+        except errors.NoSuchFile:
+            obj = ConfigObj(encoding='utf=8')
+        return obj
+
+    def get_option(self, name, section=None, default=None):
+        self.branch.lock_read()
+        try:
+            obj = self._get_config()
+            try:
+                if section is not None:
+                    obj = obj[section]
+                result = obj[name]
+            except KeyError:
+                result = default
+        finally:
+            self.branch.unlock()
+        return result
+
+    def set_option(self, value, name, section=None):
+        """Set a per-branch configuration option"""
+        self.branch.lock_write()
+        try:
+            cfg_obj = self._get_config()
+            if section is None:
+                obj = cfg_obj
+            else:
+                try:
+                    obj = cfg_obj[section]
+                except KeyError:
+                    cfg_obj[section] = {}
+                    obj = cfg_obj[section]
+            obj[name] = value
+            out_file = StringIO()
+            cfg_obj.write(out_file)
+            out_file.seek(0)
+            self.branch.control_files.put('branch.conf', out_file)
+        finally:
+            self.branch.unlock()
 
 
 class DebBuildConfig(object):
