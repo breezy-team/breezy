@@ -14,29 +14,109 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import graph
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
+
+# Ancestry 1:
+#
+#  NULL_REVISION
+#       |
+#     rev1
+#      /\
+#  rev2a rev2b
+#     |    |
+#   rev3  /
+#     |  /
+#   rev4
 ancestry_1 = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
               'rev3': ['rev2a'], 'rev4': ['rev3', 'rev2b']}
+
+
+# Ancestry 2:
+#
+#  NULL_REVISION
+#    /    \
+# rev1a  rev1b
+#   |
+# rev2a
+#   |
+# rev3a
+#   |
+# rev4a
 ancestry_2 = {'rev1a': [NULL_REVISION], 'rev2a': ['rev1a'],
               'rev1b': [NULL_REVISION], 'rev3a': ['rev2a'], 'rev4a': ['rev3a']}
 
+
+# Criss cross ancestry
+#
+#     NULL_REVISION
+#         |
+#        rev1
+#        /  \
+#    rev2a  rev2b
+#       |\  /|
+#       |  X |
+#       |/  \|
+#    rev3a  rev3b
 criss_cross = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
                'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2a']}
 
+
+# Criss-cross 2
+#
+#  NULL_REVISION
+#    /   \
+# rev1a  rev1b
+#   |\   /|
+#   | \ / |
+#   |  X  |
+#   | / \ |
+#   |/   \|
+# rev2a  rev2b
 criss_cross2 = {'rev1a': [NULL_REVISION], 'rev1b': [NULL_REVISION],
                 'rev2a': ['rev1a', 'rev1b'], 'rev2b': ['rev1b', 'rev1a']}
 
+
+# Mainline:
+#
+#  NULL_REVISION
+#       |
+#      rev1
+#      /  \
+#      | rev2b
+#      |  /
+#     rev2a
 mainline = {'rev1': [NULL_REVISION], 'rev2a': ['rev1', 'rev2b'],
             'rev2b': ['rev1']}
 
+
+# feature branch:
+#
+#  NULL_REVISION
+#       |
+#      rev1
+#       |
+#     rev2b
+#       |
+#     rev3b
 feature_branch = {'rev1': [NULL_REVISION],
                   'rev2b': ['rev1'], 'rev3b': ['rev2b']}
 
+
+# History shortcut
+#  NULL_REVISION
+#       |
+#     rev1------
+#     /  \      \
+#  rev2a rev2b rev2c
+#    |  /   \   /
+#  rev3a    reveb
 history_shortcut = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'],
                     'rev2b': ['rev1'], 'rev2c': ['rev1'],
                     'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2c']}
+
 
 class TestGraphWalker(TestCaseWithMemoryTransport):
 
@@ -53,6 +133,11 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         return tree
 
     def build_ancestry(self, tree, ancestors):
+        """Create an ancestry as specified by a graph dict
+
+        :param tree: A tree to use
+        :param ancestors: a dict of {node: [node_parent, ...]}
+        """
         pending = [NULL_REVISION]
         descendants = {}
         for descendant, parents in ancestors.iteritems():
@@ -80,7 +165,7 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                 pending.append(descendant)
 
     def test_lca(self):
-        """Test finding distinct common ancestor.
+        """Test finding least common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
@@ -93,19 +178,20 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev1']), graph.find_lca('rev2a', 'rev2b'))
 
     def test_lca_criss_cross(self):
+        """Test least-common-ancestor after a criss-cross merge."""
         graph = self.make_graph(criss_cross)
         self.assertEqual(set(['rev2a', 'rev2b']),
                          graph.find_lca('rev3a', 'rev3b'))
         self.assertEqual(set(['rev2b']),
-                         graph.find_lca('rev3a', 'rev3b',
-                                                     'rev2b'))
+                         graph.find_lca('rev3a', 'rev3b', 'rev2b'))
 
     def test_lca_shortcut(self):
+        """Test least-common ancestor on this history shortcut"""
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
 
     def test_recursive_unique_lca(self):
-        """Test finding a unique distinct common ancestor.
+        """Test finding a unique least common ancestor.
 
         ancestry_1 should always have a single common ancestor
         """
@@ -116,13 +202,6 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                          graph.find_unique_lca(NULL_REVISION, 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev1', 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev2a', 'rev2b'))
-
-    def test_lca_criss_cross(self):
-        graph = self.make_graph(criss_cross)
-        self.assertEqual(set(['rev2a', 'rev2b']),
-                         graph.find_lca('rev3a', 'rev3b'))
-        self.assertEqual(set(['rev2b']),
-                         graph.find_lca('rev3a', 'rev3b', 'rev2b'))
 
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
@@ -175,3 +254,25 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                          graph.find_difference('rev3a', 'rev3b'))
         self.assertEqual((set([]), set(['rev3b', 'rev2b'])),
                          graph.find_difference('rev2a', 'rev3b'))
+
+    def test_stacked_parents_provider(self):
+
+        class ParentsProvider(object):
+
+            def __init__(self, ancestry):
+                self.ancestry = ancestry
+
+            def get_parents(self, revisions):
+                return [self.ancestry.get(r, None) for r in revisions]
+
+        parents1 = ParentsProvider({'rev2': ['rev3']})
+        parents2 = ParentsProvider({'rev1': ['rev4']})
+        stacked = graph._StackedParentsProvider([parents1, parents2])
+        self.assertEqual([['rev4',], ['rev3']],
+                         stacked.get_parents(['rev1', 'rev2']))
+        self.assertEqual([['rev3',], ['rev4']],
+                         stacked.get_parents(['rev2', 'rev1']))
+        self.assertEqual([['rev3',], ['rev3']],
+                         stacked.get_parents(['rev2', 'rev2']))
+        self.assertEqual([['rev4',], ['rev4']],
+                         stacked.get_parents(['rev1', 'rev1']))

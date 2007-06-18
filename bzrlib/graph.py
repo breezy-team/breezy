@@ -17,6 +17,29 @@
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
 from bzrlib.revision import NULL_REVISION
 
+# DIAGRAM of terminology
+#       A
+#       /\
+#      B  C
+#      |  |\
+#      D  E F
+#      |\/| |
+#      |/\|/
+#      G  H
+#
+# In this diagram, relative to G and H:
+# A, B, C, D, E are common ancestors.
+# C, D and E are border ancestors, because each has a non-common descendant.
+# D and E are least common ancestors because none of their descendants are
+# common ancestors.
+# C is not a least common ancestor because its descendant, E, is a common
+# ancestor.
+#
+# The find_unique_lca algorithm will pick A in two steps:
+# 1. find_lca('G', 'H') => ['D', 'E']
+# 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
+
+
 
 class _StackedParentsProvider(object):
 
@@ -24,8 +47,7 @@ class _StackedParentsProvider(object):
         self._parent_providers = parent_providers
 
     def get_parents(self, revision_ids):
-        """
-        Find revision ids of the parents of a list of revisions
+        """Find revision ids of the parents of a list of revisions
 
         A list is returned of the same length as the input.  Each entry
         is a list of parent ids for the corresponding input revision.
@@ -38,14 +60,14 @@ class _StackedParentsProvider(object):
         """
         found = {}
         for parents_provider in self._parent_providers:
-            parent_list = parents_provider.get_parents(
-                [r for r in revision_ids if r not in found])
-            new_found = dict((k, v) for k, v in zip(revision_ids, parent_list)
-                             if v is not None)
+            pending_revisions = [r for r in revision_ids if r not in found]
+            parent_list = parents_provider.get_parents(pending_revisions)
+            new_found = dict((k, v) for k, v in zip(pending_revisions,
+                             parent_list) if v is not None)
             found.update(new_found)
             if len(found) == len(revision_ids):
                 break
-        return [found.get(r) for r in revision_ids]
+        return [found.get(r, None) for r in revision_ids]
 
 
 class Graph(object):
@@ -104,6 +126,7 @@ class Graph(object):
         return self._filter_candidate_lca(border_common)
 
     def find_difference(self, left_revision, right_revision):
+        """Determine the graph difference between two revisions"""
         border, common, (left, right) = self._find_border_ancestors(
             [left_revision, right_revision])
         return (left.difference(right).difference(common),
@@ -120,6 +143,11 @@ class Graph(object):
         whenever a node or one of its descendants is determined to be common.
 
         This will scale with the number of uncommon ancestors.
+
+        As well as the border ancestors, a set of seen common ancestors and a
+        list of sets of seen ancestors for each input revision is returned.
+        This allows calculation of graph difference from the results of this
+        operation.
         """
         common_searcher = self._make_breadth_first_searcher([])
         common_ancestors = set()
@@ -253,8 +281,8 @@ class _BreadthFirstSearcher(object):
         self._parents_provider = parents_provider 
 
     def __repr__(self):
-        return '_BreadthFirstSearcher(self._search_revisions=%r,' \
-            ' self.seen=%r)' % (self._search_revisions, self.seen)
+        return ('_BreadthFirstSearcher(self._search_revisions=%r,'
+                ' self.seen=%r)' % (self._search_revisions, self.seen))
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -282,7 +310,7 @@ class _BreadthFirstSearcher(object):
         return self
 
     def find_seen_ancestors(self, revision):
-        """Find ancstors of this revision that have already been seen."""
+        """Find ancestors of this revision that have already been seen."""
         searcher = _BreadthFirstSearcher([revision], self._parents_provider)
         seen_ancestors = set()
         for ancestors in searcher:
@@ -300,16 +328,13 @@ class _BreadthFirstSearcher(object):
         None of the specified revisions are required to be present in the
         search list.  In this case, the call is a no-op.
         """
-        stopped_searches = set(l for l in self._search_revisions
-                               if l in revisions)
-        self._search_revisions = set(l for l in self._search_revisions
-                                     if l not in revisions)
-        return stopped_searches
+        stopped = self._search_revisions.intersection(revisions)
+        self._search_revisions = self._search_revisions.difference(revisions)
+        return stopped
 
     def start_searching(self, revisions):
         if self._search_revisions is None:
             self._start = set(revisions)
         else:
-            self._search_revisions.update(r for r in revisions if
-                                          r not in self.seen)
+            self._search_revisions.update(revisions.difference(self.seen))
         self.seen.update(revisions)
