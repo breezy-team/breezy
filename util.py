@@ -53,8 +53,7 @@ def add_ignore(file):
       finally:
         f.close()
 
-    inv = tree.inventory
-    if inv.path2id('.bzrignore'):
+    if tree.path2id('.bzrignore'):
       mutter('.bzrignore is already versioned')
     else:
       mutter('need to make new .bzrignore file versioned')
@@ -110,7 +109,7 @@ def find_changelog(t, merge):
         else:
           raise DebianError("Could not open debian/changelog")
       mutter("Using '%s' to get package information", changelog_file)
-      changelog_id = t.inventory.path2id(changelog_file)
+      changelog_id = t.path2id(changelog_file)
       contents = t.get_file_text(changelog_id)
     finally:
       t.unlock()
