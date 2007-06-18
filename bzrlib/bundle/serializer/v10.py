@@ -13,6 +13,7 @@ from bzrlib import (
     pack,
     revision as _mod_revision,
     testament as _mod_testament,
+    trace,
     )
 from bzrlib.bundle import bundle_data, serializer
 
@@ -166,10 +167,15 @@ class BundleSerializerV10(serializer.BundleSerializer):
         altered = repository.fileids_altered_by_revision_ids(revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
             vf = repository.weave_store.get_weave(file_id, transaction)
-            file_revision_ids = [r for r in revision_ids if r in
-                                 file_revision_ids]
+            sorted_revision_ids = []
+            for r in revision_ids:
+                if r in file_revision_ids:
+                    sorted_revision_ids.append(r)
+                elif vf.has_version(r):
+                    trace.warning('%s is not referenced in inventory', r)
+                    sorted_revision_ids.append(r)
             self.add_mp_records(bundle, 'file', file_id, vf,
-                                file_revision_ids)
+                                sorted_revision_ids)
         inv_vf = repository.get_inventory_weave()
         self.add_mp_records(bundle, 'inventory', None, inv_vf, revision_ids)
         revision_id = None
