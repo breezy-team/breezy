@@ -79,6 +79,11 @@ def find_changelog(t, merge):
             raise MissingChangelogError("debian/changelog or changelog")
         else:
           raise MissingChangelogError("debian/changelog")
+      else:
+        if merge and t.has_filename('changelog'):
+          if os.path.islink('debian') and os.readlink('debian') == '.':
+            changelog_file = 'changelog'
+            larstiq = True
       mutter("Using '%s' to get package information", changelog_file)
       changelog_id = t.path2id(changelog_file)
       contents = t.get_file_text(changelog_id)
