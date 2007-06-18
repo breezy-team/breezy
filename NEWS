@@ -16,6 +16,9 @@ IN DEVELOPMENT
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
 
+    * The internal ``list-weave`` command has become ``list-versionedfile``,
+      and now lists knits as well as weaves.  (Aaron Bentley)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
