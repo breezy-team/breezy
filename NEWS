@@ -5,6 +5,9 @@ bzr 0.17  2007-06-18
     * Fix crash of commit due to wrong lookup of filesystem encoding.
       (Colin Watson, #120647)
 
+    * Revert logging just to stderr in commit as broke unicode filenames.
+      (Aaron Bentley, Ian Clatworthy, #120930)
+
 
 bzr 0.17rc1  2007-06-12
 
