@@ -28,7 +28,7 @@ from bzrlib.workingtree import WorkingTree
 
 from debian_bundle.changelog import Changelog
 
-from errors import MissingChangelogError
+from errors import MissingChangelogError, AddChangelogError
 
 
 def recursive_copy(fromdir, todir):
@@ -86,6 +86,8 @@ def find_changelog(t, merge):
             larstiq = True
       mutter("Using '%s' to get package information", changelog_file)
       changelog_id = t.path2id(changelog_file)
+      if changelog_id is None:
+        raise AddChangelogError(changelog_file)
       contents = t.get_file_text(changelog_id)
     finally:
       t.unlock()

@@ -20,7 +20,7 @@
 
 import os
 
-from errors import MissingChangelogError
+from errors import MissingChangelogError, AddChangelogError
 from util import (is_clean,
                   find_changelog,
                   recursive_copy,
@@ -227,4 +227,10 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     (cl, lq) = find_changelog(tree, True)
     self.assertEqual(str(cl), cl_block1)
     self.assertEqual(lq, False)
+
+  def test_changelog_not_added(self):
+    tree = self.make_branch_and_tree('.')
+    os.mkdir('debian')
+    self.write_changelog('debian/changelog')
+    self.assertRaises(AddChangelogError, find_changelog, tree, False)
 

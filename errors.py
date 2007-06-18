@@ -63,3 +63,10 @@ class MissingChangelogError(DebianError):
     BzrError.__init__(self)
     self.location = locations
 
+class AddChangelogError(DebianError):
+  _fmt = """Please add %(changelog)s to the branch using bzr add."""
+
+  def __init__(self, changelog):
+    BzrError.__init__(self)
+    self.changelog = changelog
+

@@ -12,8 +12,10 @@ bzr-builddeb (0.17) unstable; urgency=low
     Handle the change in API, and bump the dependencies to make sure it will
     work.
   * Fix up Build-Depends and Build-Depends-Indep (thanks lintian).
+  * Now require the changelog to be added to the branch with bzr add before
+    it will try and read it. This avoids a nasty error.
 
- -- James Westby <jw+debian@jameswestby.net>  Mon, 18 Jun 2007 22:50:07 +0100
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 18 Jun 2007 22:56:29 +0100
 
 bzr-builddeb (0.16.2) unstable; urgency=low
 
