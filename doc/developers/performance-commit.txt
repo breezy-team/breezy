@@ -57,7 +57,7 @@ This requires finding the appropriate basis for each modified file: in
 the current scheme we get the file id, last-revision from the
 dirstate, look into the knit for that text, extract that text in
 total, generate a delta, then store that into the knit.  Most delta
-operations are O(n2) to O(n3) in the size of the modified files.
+operations are O(n**2) to O(n**3) in the size of the modified files.
 
 1.4 - Cache annotation information for the changes: at the moment this
 is done as part of the delta storage.  There are some flaws in that
@@ -260,3 +260,120 @@ that you don't care about most of the records, just like commit. So the
 sooner you can stop evaluating the 99% that you don't care about, the
 less work you do.
 
+
+Interface stack
+---------------
+
+The commit api is invoked by the command interface, and copies information
+from the tree into the branch and its repository, possibly updating the
+WorkingTree afterwards.
+
+The command interface passes:
+ 
+ * a commit message (from an option, if any),
+ * or an indication that it should be read interactively from the ui object;
+ * a list of files to commit
+ * an option for a dry-run commit
+ * verbose option, or callback to indicate 
+ * timestamp, timezone, committer, chosen revision id
+ * config (for what?)
+ * option for local-only commit on a bound branch
+ * option for strict commits (fail if there are unknown or missing files)
+ * option to allow "pointless" commits (with no tree changes)
+
+>>> Branch.commit(from_tree, message, files_to_commit)
+
+There will be different implementations of this for different Branch
+classes, whether for foreign branches or Bazaar repositories using
+different storage methods.
+
+Most of the commit should occur during a single lockstep iteration across
+the workingtree and parent trees.  The WorkingTree interface needs to
+provide methods that give commit all it needs.  Some of these methods
+(such as answering the file's last change revision) may be deprecated in
+newer working trees and there we have a choice of either calculating the
+value from the data that is present, or refusing to support commit to
+newer repositories.
+
+For a dirstate tree the iteration of changes from the parent can easily be
+done within its own iter_changes.
+
+XXX: We currently don't support selective-file commit of a merge; this
+could be done if we decide how it should be recorded - is this to be
+stored as an overall merge revision; as a preliminary non-merge revisions;
+or will the per-file graph diverge from the revision graph.
+
+Other things commit needs to do:
+
+ * check if there are any conflicts in the tree - if so, commit cannot
+   continue
+
+ * check if there are any unknown files, if --strict or automatic add is
+   turned on
+
+ * check the working tree basis version is up to date with the branch tip
+
+ * when automatically adding new files or deleting missing files during
+   commit, they must be noted during commit and written into the working
+   tree at some point
+
+ * refuse "pointless" commits with no file changes - should be easy by
+   just refusing to do the final step of storing a new overall inventory
+   and revision object
+
+ * heuristic detection of renames between add and delete (out of scope for
+   this change)
+
+ * pushing changes to a master branch if any
+
+ * running hooks, pre and post commit
+
+ * prompting for a commit message if necessary, including a list of the
+   changes that have already been observed
+
+ * if there are tree references and recursing into them is enabled, then
+   do so
+
+Updates that need to be made in the working tree, either on conclusion
+of commit or during the scan, include
+
+ * Changes made to the tree shape, including automatic adds, renames or
+   deletes
+
+ * For trees (eg dirstate) that cache parent inventories, the old parent
+   information must be removed and the new one inserted
+
+ * The tree hashcache information should be updated to reflect the stat
+   value at which the file was the same as the committed version.  This
+   needs to be done carefully to prevent inconsistencies if the file is
+   modified during or shortly after the commit.  Perhaps it would work to
+   read the mtime of the file before we read its text to commit.
+
+Dirstate inventories may be most easily updated in a single operation at
+the end; however it may be best to accumulate data as we proceed through
+the tree rather than revisiting it at the end.
+
+Showing a progress bar for commit may not be necessary if we report files
+as they are committed.  Alternatively we could transiently show a progress
+bar for each directory that's scanned, even if no changes are observed.
+
+This needs to collect a list of added/changed/removed files, each of which
+must have its text stored (if any) and containing directory updated.  This
+can be done by calling Tree._iter_changes on the source tree, asking for
+changes 
+
+In the 0.17 model the commit operation needs to know the per-file parents
+and per-file last-changed revision.  
+
+XXX: If we want to retain explicitly stored per-file graphs, it would seem
+that we do need to record per-file parents.  We have not yet finally
+settled that we do want to remove them or treat them as a cache.  This api
+stack is still ok whether we do or not, but the internals of it may
+change.
+
+(In this and other operations we must avoid having multiple layers walk
+over the tree separately.  For example, it is no good to have the Command
+layer walk the tree to generate a list of all file ids to commit, because
+the tree will also be walked later.  The layers that do need to operate
+per-file should probably be bound together in a per-dirblock iterator,
+rather than each iterating independently.)

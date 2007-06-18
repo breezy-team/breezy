@@ -44,4 +44,4 @@ Use cases
 
 .. include:: status.txt
 
-.. include:: commit.txt
+.. include:: performance-commit.txt
