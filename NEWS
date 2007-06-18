@@ -1,3 +1,11 @@
+bzr 0.17  2007-06-18
+
+  BUGFIXES:
+
+    * Fix crash of commit due to wrong lookup of filesystem encoding.
+      (Colin Watson, #120647)
+
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:
