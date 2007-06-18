@@ -157,7 +157,7 @@ class cmd_builddeb(Command):
     goto_branch(branch)
 
     tree, relpath = WorkingTree.open_containing('.')
-    
+
     config = DebBuildConfig()
 
     if reuse:
@@ -280,14 +280,17 @@ class cmd_merge_upstream(Command):
   moment
 
   """
-  config = DebBuildConfig()
-  takes_args = ['file']
+#  config = DebBuildConfig()
+  takes_args = ['filename']
   takes_options = ['revision']
   aliases = ['mu']
 
-  def run(self, revision=None, location=None, file=None):
-    from bzrlib.plugins.bzrtools.upstream_import import do_import
+  def run(self, revision=None, location=None, filename=None):
+
+    from bzrlib.plugins.bzrtools.upstream_import import do_import, import_tar
     from bzrlib.builtins import _merge_helper
+    from bzrlib.commit import Commit
+    from bzrlib.repository import RootCommitBuilder
 
     tree, relpath = WorkingTree.open_containing('.')
     if tree.changes_from(tree.basis_tree()).has_changed():
@@ -295,6 +298,18 @@ class cmd_merge_upstream(Command):
 
     from_branch = tree.branch
     revno, rev_id = revision[0].in_branch(from_branch)
+    tree.revert([], tree.branch.repository.revision_tree(rev_id))
+    tar_input = open(filename, 'rb')
+    import_tar(tree, tar_input)
+
+    builder = RootCommitBuilder(tree.branch.repository,
+                                [rev_id],
+                                tree.branch.get_config())
+
+    # look at commit.py:295
+    builder.commit('import upstream from file %s' % file)
+    return
+  
     to_transport = bzrlib.transport.get_transport('/tmp/bzrfoo')
     dir_to = from_branch.bzrdir.clone_on_transport(to_transport,rev_id)
     to_tree = dir_to.open_workingtree()
@@ -303,7 +318,6 @@ class cmd_merge_upstream(Command):
     to_tree.commit('import upstream from file %s' % file)
     other_revision = ['.', None]
     _merge_helper(other_revision, [None, None], this_dir='/tmp/bzrfoo')
-
 
 register_command(cmd_merge_upstream)
 
