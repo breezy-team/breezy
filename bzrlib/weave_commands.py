@@ -25,16 +25,25 @@ import sys
 from bzrlib.commands import Command
 from bzrlib.trace import warning
 
-class cmd_weave_list(Command):
-    """List the revision ids present in a weave, in alphabetical order"""
+class cmd_versionedfile_list(Command):
+    """List the revision ids present in a versionedfile, alphabetically"""
 
     hidden = True
-    takes_args = ['weave_filename']
+    takes_args = ['filename']
+    aliases = ['weave-list']
 
-    def run(self, weave_filename):
+    def run(self, filename):
         from bzrlib.weavefile import read_weave
-        weave = read_weave(file(weave_filename, 'rb'))
-        names = weave.versions()
+        from bzrlib.transport import get_transport
+        from bzrlib import osutils
+        from bzrlib.knit import KnitVersionedFile
+        if filename.endswith('.knit'):
+            transport = get_transport(osutils.dirname(filename))
+            relpath = osutils.basename(filename)[:-len('.knit')]
+            vf = KnitVersionedFile(relpath, transport)
+        else:
+            vf = read_weave(file(filename, 'rb'))
+        names = vf.versions()
         names.sort()
         print '\n'.join(names)
 

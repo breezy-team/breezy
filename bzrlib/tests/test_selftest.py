@@ -681,7 +681,7 @@ class TestTestResult(TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        self.requireFeature(test_lsprof.LSProf())
+        self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
@@ -970,7 +970,7 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -989,7 +989,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1009,7 +1009,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1193,7 +1193,7 @@ class TestTestCase(TestCase):
         
         Each self.time() call is individually and separately profiled.
         """
-        self.requireFeature(test_lsprof.LSProf())
+        self.requireFeature(test_lsprof.LSProfFeature)
         # overrides the class member with an instance member so no cleanup 
         # needed.
         self._gather_lsprof_in_benchmarks = True
