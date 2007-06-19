@@ -138,78 +138,112 @@ class BundleReader(object):
 
 class BundleSerializerV10(serializer.BundleSerializer):
 
-    @staticmethod
-    def get_base_target(revision_ids, forced_bases, repository):
-        target = revision_ids[0]
-        base = forced_bases.get(target)
-        if base is None:
-            parents = repository.get_revision(target).parent_ids
-            if len(parents) == 0:
-                base_tree = repository.revision_tree(
-                    _mod_revision.NULL_REVISION)
-                target_tree = repository.revision_tree(target)
-                return base_tree, target_tree
-            else:
-                base = parents[0]
-        trees = list(repository.revision_trees([base, target]))
-        return trees[0], trees[1]
-
     def write(self, repository, revision_ids, forced_bases, fileobj):
+        write_op = BundleWriteOperation.from_old_args(repository, revision_ids,
+                                                      forced_bases, fileobj)
+        write_op.do_write()
+
+    def read(self, file):
+        bundle = BundleInfoV10(file, self)
+        return bundle
+
+
+class BundleWriteOperation(object):
+
+    @classmethod
+    def from_old_args(cls, repository, revision_ids, forced_bases, fileobj):
+        base, target = cls.get_base_target(revision_ids, forced_bases,
+                                           repository)
+        return BundleWriteOperation(base, target, repository, fileobj,
+                                    revision_ids)
+
+    def __init__(self, base, target, repository, fileobj, revision_ids):
+        self.base = base
+        self.target = target
+        self.repository = repository
         bundle = BundleWriter(fileobj)
-        bundle.begin()
-        patch = StringIO()
-        if len(revision_ids) > 0:
-            base, target = self.get_base_target(revision_ids, forced_bases,
-                                                repository)
-            diff.show_diff_trees(base, target, patch)
-        bundle.write_patch(patch.getvalue())
-        transaction = repository.get_transaction()
-        altered = repository.fileids_altered_by_revision_ids(revision_ids)
+        self.bundle = bundle
+        self.revision_ids = revision_ids
+
+    def do_write(self):
+        self.bundle.begin()
+        self.write_patch()
+        self.write_files()
+        self.write_revisions()
+        self.write_testament()
+        self.bundle.end()
+
+    def write_files(self):
+        transaction = self.repository.get_transaction()
+        altered = self.repository.fileids_altered_by_revision_ids(
+            self.revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
-            vf = repository.weave_store.get_weave(file_id, transaction)
+            vf = self.repository.weave_store.get_weave(file_id, transaction)
             sorted_revision_ids = []
-            for r in revision_ids:
+            for r in self.revision_ids:
                 if r in file_revision_ids:
                     sorted_revision_ids.append(r)
                 elif vf.has_version(r):
                     trace.warning('%s is not referenced in inventory', r)
                     sorted_revision_ids.append(r)
-            self.add_mp_records(bundle, 'file', file_id, vf,
-                                sorted_revision_ids)
-        inv_vf = repository.get_inventory_weave()
-        self.add_mp_records(bundle, 'inventory', None, inv_vf, revision_ids)
-        revision_id = None
-        for revision_id in multiparent.topo_iter(inv_vf, revision_ids):
-            parents = repository.revision_parents(revision_id)
-            revision_text = repository.get_revision_xml(revision_id)
-            bundle.add_fulltext_record(revision_text, parents,
+            self.add_mp_records('file', file_id, vf, sorted_revision_ids)
+
+    def write_revisions(self):
+        inv_vf = self.repository.get_inventory_weave()
+        revision_order = list(multiparent.topo_iter(inv_vf, self.revision_ids))
+        if self.target is not None:
+            revision_order.remove(self.target)
+            revision_order.append(self.target)
+        self.add_mp_records('inventory', None, inv_vf, revision_order)
+        for revision_id in revision_order:
+            parents = self.repository.revision_parents(revision_id)
+            revision_text = self.repository.get_revision_xml(revision_id)
+            self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id, None)
             try:
-                bundle.add_fulltext_record(repository.get_signature_text(
+                self.bundle.add_fulltext_record(
+                    self.repository.get_signature_text(
                     revision_id), parents, 'signature', revision_id, None)
             except errors.NoSuchRevision:
                 pass
 
-        if revision_id is not None:
-            t = _mod_testament.StrictTestament3.from_revision(repository,
-                                                              revision_id)
-            bundle.add_fulltext_record(t.as_short_text(), parents,
-                                       'testament', '', None)
-        bundle.end()
+    def write_patch(self):
+        patch = StringIO()
+        if self.target is not None:
+            base_tree = self.repository.revision_tree(self.base)
+            target_tree = self.repository.revision_tree(self.target)
+            diff.show_diff_trees(base_tree, target_tree, patch)
+        self.bundle.write_patch(patch.getvalue())
 
-    def add_mp_records(self, bundle, repo_kind, file_id, vf,
-                       revision_ids):
+    def write_testament(self):
+        if self.target is not None:
+            t = _mod_testament.StrictTestament3.from_revision(self.repository,
+                                                              self.target)
+            self.bundle.add_fulltext_record(t.as_short_text(), [],
+                                            'testament', '', None)
+
+    @staticmethod
+    def get_base_target(revision_ids, forced_bases, repository):
+        if len(revision_ids) == 0:
+            return None, None
+        target = revision_ids[0]
+        base = forced_bases.get(target)
+        if base is None:
+            parents = repository.get_revision(target).parent_ids
+            if len(parents) == 0:
+                base = _mod_revision.NULL_REVISION
+            else:
+                base = parents[0]
+        return base, target
+
+    def add_mp_records(self, repo_kind, file_id, vf, revision_ids):
         revision_ids = list(multiparent.topo_iter(vf, revision_ids))
         mpdiffs = vf.make_mpdiffs(revision_ids)
         for mpdiff, revision_id in zip(mpdiffs, revision_ids):
             parents = vf.get_parents(revision_id)
             text = ''.join(mpdiff.to_patch())
-            bundle.add_multiparent_record(text, parents, repo_kind,
-                                             revision_id, file_id)
-
-    def read(self, file):
-        bundle = BundleInfoV10(file, self)
-        return bundle
+            self.bundle.add_multiparent_record(text, parents, repo_kind,
+                                               revision_id, file_id)
 
 
 class BundleInfoV10(object):
@@ -318,7 +352,8 @@ class RevisionInstaller(object):
         t = _mod_testament.StrictTestament3.from_revision(self._repository,
                                                           target_revision)
         if testament != t.as_short_text():
-            raise TestamentMismatch(revision_id, testament, t.as_short_text())
+            raise errors.TestamentMismatch(target_revision, testament,
+                                           t.as_short_text())
 
     def _install_mp_records(self, current_versionedfile, records):
         for revision, parents, text in records:
