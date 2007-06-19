@@ -202,6 +202,13 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         tree_a.commit('Commit of rev2a', rev_id='rev2a')
         return tree_a, tree_b, branch_c
 
+    def test_empty_target(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_d = self.make_branch_and_tree('tree_d')
+        md2 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_d.branch.base,
+            patch_type='diff', public_branch=tree_a.branch.base)
+
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md2 = merge_directive.MergeDirective.from_objects(
