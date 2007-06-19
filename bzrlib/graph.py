@@ -92,10 +92,10 @@ class Graph(object):
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
-        self.parents_provider = parents_provider
+        self._parents_provider = parents_provider
 
     def __repr__(self):
-        return 'Graph(%r)' % self.parents_provider
+        return 'Graph(%r)' % self._parents_provider
 
     def find_lca(self, *revisions):
         """Determine the lowest common ancestors of the provided revisions
