@@ -173,20 +173,22 @@ class BundleWriteOperation(object):
         self.write_testament()
         self.bundle.end()
 
-    def write_files(self):
+    def iter_file_revisions(self):
+        """This is the correct approach, but not compatible.
+
+        It does not work with bzr.dev, because certain old revisions were not
+        converted correctly, and have the wrong "revision" marker.
+        """
         transaction = self.repository.get_transaction()
         altered = self.repository.fileids_altered_by_revision_ids(
             self.revision_ids)
         for file_id, file_revision_ids in altered.iteritems():
             vf = self.repository.weave_store.get_weave(file_id, transaction)
-            sorted_revision_ids = []
-            for r in self.revision_ids:
-                if r in file_revision_ids:
-                    sorted_revision_ids.append(r)
-                elif vf.has_version(r):
-                    trace.warning('%s is not referenced in inventory', r)
-                    sorted_revision_ids.append(r)
-            self.add_mp_records('file', file_id, vf, sorted_revision_ids)
+            yield vf, file_id, file_revision_ids
+
+    def write_files(self):
+        for vf, file_id, revision_ids in self.iter_file_revisions():
+            self.add_mp_records('file', file_id, vf, revision_ids)
 
     def write_revisions(self):
         inv_vf = self.repository.get_inventory_weave()
