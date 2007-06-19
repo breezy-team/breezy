@@ -2134,3 +2134,10 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class NoDestinationAddress(BzrError):
+
+    internal_error = True
+
+    _fmt = "Message does not have a destination address."
