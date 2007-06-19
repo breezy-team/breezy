@@ -108,7 +108,8 @@ class MergeDirective(object):
             patch = ''.join(patch_lines)
             try:
                 bundle_serializer.read_bundle(StringIO(patch))
-            except errors.NotABundle:
+            except (errors.NotABundle, errors.BundleNotSupported,
+                    errors.BadBundle):
                 patch_type = 'diff'
             else:
                 patch_type = 'bundle'
