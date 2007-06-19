@@ -35,8 +35,8 @@ from bzrlib.errors import (
                            WeaveParentMismatch
                            )
 from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory
-from bzrlib.tests import TestCaseWithTransport
+     KnitAnnotateFactory, KnitPlainFactory
+from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -773,9 +773,17 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
+
+    def test_get_format_signature(self):
+        """VersionedFiles have a get_format_signature method that returns a
+        string.
+        """
+        vf = self.get_file()
+        format_signature = vf.get_format_signature()
+        self.assertIsInstance(format_signature, str)
         
 
-class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -827,7 +835,7 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         return WeaveFile
 
 
-class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
+class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
@@ -876,7 +884,7 @@ class InterString(versionedfile.InterVersionedFile):
 # if we make the registry a separate class though we still need to 
 # test the behaviour in the active registry to catch failure-to-handle-
 # stange-objects
-class TestInterVersionedFile(TestCaseWithTransport):
+class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
     def test_get_default_inter_versionedfile(self):
         # test that the InterVersionedFile.get(a, b) probes
@@ -1196,7 +1204,7 @@ class MergeCasesMixin(object):
         self._test_merge_from_strings(base, a, b, result)
 
 
-class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
@@ -1206,7 +1214,7 @@ class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
         pass
 
 
-class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
+class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')), create=True)
@@ -1219,3 +1227,32 @@ class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
+
+
+class TestFormatSignatures(TestCaseWithMemoryTransport):
+
+    def get_knit_file(self, name, delta, annotated):
+        if annotated:
+            factory = KnitAnnotateFactory()
+        else:
+            factory = KnitPlainFactory()
+        return KnitVersionedFile(
+            name, get_transport(self.get_url('.')), delta=delta, create=True,
+            factory=factory)
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.get_knit_file('d-a', True, True)
+        self.assertEqual('knit-delta-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('d-p', True, False)
+        self.assertEqual('knit-delta-plain', knit.get_format_signature())
+        knit = self.get_knit_file('f-a', False, True)
+        self.assertEqual('knit-full-annotated', knit.get_format_signature())
+        knit = self.get_knit_file('f-p', False, False)
+        self.assertEqual('knit-full-plain', knit.get_format_signature())
+
+    def test_weave_format_signature(self):
+        weave = WeaveFile('weave', get_transport(self.get_url('.')),
+                          create=True)
+        self.assertEqual('weave', weave.get_format_signature())
+

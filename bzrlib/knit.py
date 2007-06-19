@@ -547,6 +547,18 @@ class KnitVersionedFile(VersionedFile):
         else:
             delta = self.factory.parse_line_delta(data, version_id)
             return parent, sha1, noeol, delta
+
+    def get_format_signature(self):
+        """See VersionedFile.get_format_signature()."""
+        if self.delta:
+            delta_part = "delta"
+        else:
+            delta_part = "full"
+        if self.factory.annotated:
+            annotated_part = "annotated"
+        else:
+            annotated_part = "plain"
+        return "knit-%s-%s" % (delta_part, annotated_part)
         
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""

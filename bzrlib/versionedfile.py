@@ -266,6 +266,13 @@ class VersionedFile(object):
             result[version_id] = self.get_delta(version_id)
         return result
 
+    def get_format_signature(self):
+        """Get a text description of the data encoding in this file.
+        
+        :since: 0.18
+        """
+        raise NotImplementedError(self.get_format_signature)
+
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
