@@ -154,15 +154,20 @@ class KnitContent(object):
         return KnitContent(self._lines[:])
 
     @staticmethod
-    def get_line_delta_blocks(knit_delta, target_len):
+    def get_line_delta_blocks(knit_delta, source_lines, target_lines):
         """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
+        target_len = len(target_lines)
         s_pos = 0
         t_pos = 0
         for s_begin, s_end, t_len, new_text in knit_delta:
-            n = s_begin - s_pos
+            true_n = s_begin - s_pos
+            n = true_n
             if n > 0:
-                yield s_pos, t_pos, n
-            t_pos += t_len + n
+                if source_lines[s_pos + n -1] != target_lines[t_pos + n -1]:
+                    n-=1
+                if n > 0:
+                    yield s_pos, t_pos, n
+            t_pos += t_len + true_n
             s_pos = s_end
         if t_pos < target_len:
             yield s_pos, t_pos, target_len - t_pos
@@ -534,11 +539,11 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
-    def _extract_blocks(self, version_id, target):
+    def _extract_blocks(self, version_id, source, target):
         if self._index.get_method(version_id) != 'line-delta':
             return None
         parent, sha1, noeol, delta = self.get_delta(version_id)
-        return KnitContent.get_line_delta_blocks(delta, len(target))
+        return KnitContent.get_line_delta_blocks(delta, source, target)
 
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""

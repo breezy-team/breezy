@@ -754,18 +754,23 @@ class BasicKnitTests(KnitTests):
         out = apply_line_delta(TEXT_1.splitlines(True), td)
         self.assertEqualDiff(''.join(out), TEXT_1A)
 
-    def assertDerivedBlocksEqual(self, source, target):
+    def assertDerivedBlocksEqual(self, source, target, noeol=False):
         """Assert that the derived matching blocks match real output"""
         source_lines = source.splitlines(True)
         target_lines = target.splitlines(True)
-        source_content = KnitContent([(None, l) for l in source_lines])
-        target_content = KnitContent([(None, l) for l in target_lines])
+        def nl(line):
+            if noeol and not line.endswith('\n'):
+                return line + '\n'
+            else:
+                return line
+        source_content = KnitContent([(None, nl(l)) for l in source_lines])
+        target_content = KnitContent([(None, nl(l)) for l in target_lines])
         line_delta = source_content.line_delta(target_content)
-        delta_blocks = KnitContent.get_line_delta_blocks(line_delta,
-                                                         len(target_lines))
+        delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
+            source_lines, target_lines))
         matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        self.assertEqual(list(matcher.get_matching_blocks()),
-                         list(delta_blocks))
+        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        self.assertEqual(matcher_blocks, delta_blocks)
 
     def test_get_line_delta_blocks(self):
         self.assertDerivedBlocksEqual('a\nb\nc\n', 'q\nc\n')
@@ -777,6 +782,11 @@ class BasicKnitTests(KnitTests):
         self.assertDerivedBlocksEqual(TEXT_1A, '')
         self.assertDerivedBlocksEqual('', TEXT_1A)
         self.assertDerivedBlocksEqual('', '')
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
+
+    def test_get_line_delta_blocks_noeol(self):
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd\n', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\nd\n', 'a\nb\nc', noeol=True)
 
     def test_add_with_parents(self):
         """Store in knit with parents"""
