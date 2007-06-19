@@ -50,17 +50,12 @@ class LogCatcher(LogFormatter):
         self.logs.append(revision)
 
 
-class SimpleLogTest(TestCaseWithTransport):
+class TestShowLog(TestCaseWithTransport):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
         for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
             expected = kw.get(n, [])
-
-            # tests are written with unix paths; fix them up for windows
-            #if os.sep != '/':
-            #    expected = [x.replace('/', os.sep) for x in expected]
-
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]
             self.assertEquals(expected, got)
@@ -131,7 +126,7 @@ class SimpleLogTest(TestCaseWithTransport):
         eq(logentry.rev.message, 'add one file')
         d = logentry.delta
         self.log('log 2 delta: %r' % d)
-        # self.checkDelta(d, added=['hello'])
+        self.checkDelta(d, added=['hello'])
         
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
@@ -158,27 +153,72 @@ class SimpleLogTest(TestCaseWithTransport):
         self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg == committed_msg)
 
+    def test_deltas_in_merge_revisions(self):
+        """Check deltas created for both mainline and merge revisions"""
+        eq = self.assertEquals
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
+        wt.add('file1')
+        wt.add('file2')
+        wt.commit(message='add file1 and file2')
+        self.run_bzr('branch', 'parent', 'child')
+        os.unlink('child/file1')
+        print >> file('child/file2', 'wb'), 'hello'
+        self.run_bzr('commit', '-m', 'remove file1 and modify file2', 'child')
+        os.chdir('parent')
+        self.run_bzr('merge', '../child')
+        wt.commit('merge child branch')
+        os.chdir('..')
+        b = wt.branch
+        lf = LogCatcher()
+        lf.supports_merge_revisions = True
+        show_log(b, lf, verbose=True)
+        eq(len(lf.logs),3)
+        logentry = lf.logs[0]
+        eq(logentry.revno, '2')
+        eq(logentry.rev.message, 'merge child branch')
+        d = logentry.delta
+        self.checkDelta(d, removed=['file1'], modified=['file2'])
+        logentry = lf.logs[1]
+        eq(logentry.revno, '1.1.1')
+        eq(logentry.rev.message, 'remove file1 and modify file2')
+        d = logentry.delta
+        self.checkDelta(d, removed=['file1'], modified=['file2'])
+        logentry = lf.logs[2]
+        eq(logentry.revno, '1')
+        eq(logentry.rev.message, 'add file1 and file2')
+        d = logentry.delta
+        self.checkDelta(d, added=['file1', 'file2'])
+
+
+def make_commits_with_trailing_newlines(wt):
+    """Helper method for LogFormatter tests"""    
+    b = wt.branch
+    b.nick='test'
+    open('a', 'wb').write('hello moto\n')
+    wt.add('a')
+    wt.commit('simple log message', rev_id='a1'
+            , timestamp=1132586655.459960938, timezone=-6*3600
+            , committer='Joe Foo <joe@foo.com>')
+    open('b', 'wb').write('goodbye\n')
+    wt.add('b')
+    wt.commit('multiline\nlog\nmessage\n', rev_id='a2'
+            , timestamp=1132586842.411175966, timezone=-6*3600
+            , committer='Joe Foo <joe@foo.com>')
+
+    open('c', 'wb').write('just another manic monday\n')
+    wt.add('c')
+    wt.commit('single line with trailing newline\n', rev_id='a3'
+            , timestamp=1132587176.835228920, timezone=-6*3600
+            , committer = 'Joe Foo <joe@foo.com>')
+    return b
+
+
+class TestShortLogFormatter(TestCaseWithTransport):
+
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        b.nick='test'
-        open('a', 'wb').write('hello moto\n')
-        wt.add('a')
-        wt.commit('simple log message', rev_id='a1'
-                , timestamp=1132586655.459960938, timezone=-6*3600
-                , committer='Joe Foo <joe@foo.com>')
-        open('b', 'wb').write('goodbye\n')
-        wt.add('b')
-        wt.commit('multiline\nlog\nmessage\n', rev_id='a2'
-                , timestamp=1132586842.411175966, timezone=-6*3600
-                , committer='Joe Foo <joe@foo.com>')
-
-        open('c', 'wb').write('just another manic monday\n')
-        wt.add('c')
-        wt.commit('single line with trailing newline\n', rev_id='a3'
-                , timestamp=1132587176.835228920, timezone=-6*3600
-                , committer = 'Joe Foo <joe@foo.com>')
-
+        b = make_commits_with_trailing_newlines(wt)
         sio = StringIO()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
@@ -196,35 +236,22 @@ class SimpleLogTest(TestCaseWithTransport):
 
 """)
 
-        sio = StringIO()
-        lf = LongLogFormatter(to_file=sio)
-        show_log(b, lf)
-        self.assertEquals(sio.getvalue(), """\
-------------------------------------------------------------
-revno: 3
-committer: Joe Foo <joe@foo.com>
-branch nick: test
-timestamp: Mon 2005-11-21 09:32:56 -0600
-message:
-  single line with trailing newline
-------------------------------------------------------------
-revno: 2
-committer: Joe Foo <joe@foo.com>
-branch nick: test
-timestamp: Mon 2005-11-21 09:27:22 -0600
-message:
-  multiline
-  log
-  message
-------------------------------------------------------------
-revno: 1
-committer: Joe Foo <joe@foo.com>
-branch nick: test
-timestamp: Mon 2005-11-21 09:24:15 -0600
-message:
-  simple log message
-""")
-        
+
+class TestLongLogFormatter(TestCaseWithTransport):
+
+    def normalize_log(self,log):
+        """Replaces the variable lines of logs with fixed lines"""
+        committer = 'committer: Lorem Ipsum <test@example.com>'
+        lines = log.splitlines(True)
+        for idx,line in enumerate(lines):
+            stripped_line = line.lstrip()
+            indent = ' ' * (len(line) - len(stripped_line))
+            if stripped_line.startswith('committer:'):
+                lines[idx] = indent + committer + '\n'
+            if stripped_line.startswith('timestamp:'):
+                lines[idx] = indent + 'timestamp: Just now\n'
+        return ''.join(lines)
+
     def test_verbose_log(self):
         """Verbose log includes changed files
         
@@ -258,6 +285,149 @@ added:
   a
 ''')
 
+    def test_merges_are_indented_by_level(self):
+        wt = self.make_branch_and_tree('parent')
+        wt.commit('first post')
+        self.run_bzr('branch', 'parent', 'child')
+        self.run_bzr('commit', '-m', 'branch 1', '--unchanged', 'child')
+        self.run_bzr('branch', 'child', 'smallerchild')
+        self.run_bzr('commit', '-m', 'branch 2', '--unchanged', 'smallerchild')
+        os.chdir('child')
+        self.run_bzr('merge', '../smallerchild')
+        self.run_bzr('commit', '-m', 'merge branch 2')
+        os.chdir('../parent')
+        self.run_bzr('merge', '../child')
+        wt.commit('merge branch 1')
+        b = wt.branch
+        sio = StringIO()
+        lf = LongLogFormatter(to_file=sio)
+        show_log(b, lf, verbose=True)
+        log = self.normalize_log(sio.getvalue())
+        self.assertEqualDiff("""\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+    ------------------------------------------------------------
+    revno: 1.1.2
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      merge branch 2
+        ------------------------------------------------------------
+        revno: 1.1.1.1.1
+        committer: Lorem Ipsum <test@example.com>
+        branch nick: smallerchild
+        timestamp: Just now
+        message:
+          branch 2
+    ------------------------------------------------------------
+    revno: 1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      branch 1
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+""", log)
+
+    def test_verbose_merge_revisions_contain_deltas(self):
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/f1', 'parent/f2'])
+        wt.add(['f1','f2'])
+        wt.commit('first post')
+        self.run_bzr('branch', 'parent', 'child')
+        os.unlink('child/f1')
+        print >> file('child/f2', 'wb'), 'hello'
+        self.run_bzr('commit', '-m', 'removed f1 and modified f2', 'child')
+        os.chdir('parent')
+        self.run_bzr('merge', '../child')
+        wt.commit('merge branch 1')
+        b = wt.branch
+        sio = StringIO()
+        lf = LongLogFormatter(to_file=sio)
+        show_log(b, lf, verbose=True)
+        log = self.normalize_log(sio.getvalue())
+        self.assertEqualDiff("""\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+removed:
+  f1
+modified:
+  f2
+    ------------------------------------------------------------
+    revno: 1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      removed f1 and modified f2
+    removed:
+      f1
+    modified:
+      f2
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+added:
+  f1
+  f2
+""", log)
+
+    def test_trailing_newlines(self):
+        wt = self.make_branch_and_tree('.')
+        b = make_commits_with_trailing_newlines(wt)
+        sio = StringIO()
+        lf = LongLogFormatter(to_file=sio)
+        show_log(b, lf)
+        self.assertEqualDiff(sio.getvalue(), """\
+------------------------------------------------------------
+revno: 3
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:32:56 -0600
+message:
+  single line with trailing newline
+------------------------------------------------------------
+revno: 2
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:27:22 -0600
+message:
+  multiline
+  log
+  message
+------------------------------------------------------------
+revno: 1
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:24:15 -0600
+message:
+  simple log message
+""")
+
+
+class TestLineLogFormatter(TestCaseWithTransport):
+
     def test_line_log(self):
         """Line log should show revno
         
@@ -279,6 +449,21 @@ added:
         logfile.seek(0)
         log_contents = logfile.read()
         self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
+
+    def test_trailing_newlines(self):
+        wt = self.make_branch_and_tree('.')
+        b = make_commits_with_trailing_newlines(wt)
+        sio = StringIO()
+        lf = LineLogFormatter(to_file=sio)
+        show_log(b, lf)
+        self.assertEqualDiff(sio.getvalue(), """\
+3: Joe Foo 2005-11-21 single line with trailing newline
+2: Joe Foo 2005-11-21 multiline
+1: Joe Foo 2005-11-21 simple log message
+""")
+
+
+class TestGetViewRevisions(TestCaseWithTransport):
 
     def make_tree_with_commits(self):
         """Create a tree with well-known revision ids"""
