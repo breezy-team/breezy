@@ -27,6 +27,7 @@ lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
+    revision as _mod_revision,
     urlutils,
     transport,
     )
@@ -71,6 +72,7 @@ class cmd_bundle_revisions(Command):
         target_branch = branch.Branch.open_containing(u'.')[0]
         target_branch.lock_write()
         locked = [target_branch]
+
         try:
             if base is None:
                 base_specified = False
@@ -120,7 +122,8 @@ class cmd_bundle_revisions(Command):
                                                base_branch.last_revision())
                 graph = target_branch.repository.get_graph()
                 base_revision = graph.find_unique_lca(
-                    base_branch.last_revision(), target_revision)
+                    _mod_revision.ensure_null(base_branch.last_revision()),
+                    _mod_revision.ensure_null(target_revision))
 
             if output is not None:
                 fileobj = file(output, 'wb')

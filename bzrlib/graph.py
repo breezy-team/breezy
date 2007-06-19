@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import errors
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
 from bzrlib.revision import NULL_REVISION
 
@@ -45,6 +46,9 @@ class _StackedParentsProvider(object):
 
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
+
+    def __repr__(self):
+        return "_StackedParentsProvider(%r)" % self._parent_providers
 
     def get_parents(self, revision_ids):
         """Find revision ids of the parents of a list of revisions
@@ -88,6 +92,10 @@ class Graph(object):
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
+        self._parents_provider = parents_provider
+
+    def __repr__(self):
+        return 'Graph(%r)' % self._parents_provider
 
     def find_lca(self, *revisions):
         """Determine the lowest common ancestors of the provided revisions
@@ -149,6 +157,8 @@ class Graph(object):
         This allows calculation of graph difference from the results of this
         operation.
         """
+        if None in revisions:
+            raise errors.InvalidRevisionId(None, self)
         common_searcher = self._make_breadth_first_searcher([])
         common_ancestors = set()
         searchers = [self._make_breadth_first_searcher([r])
