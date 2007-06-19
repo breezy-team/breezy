@@ -48,8 +48,8 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar internal_error: if true (or absent) this was probably caused by a
-    bzr bug and should be displayed with a traceback; if False this was
+    :cvar internal_error: if True this was probably caused by a bzr bug and
+    should be displayed with a traceback; if False (or absent) this was
     probably a user or environment error and they don't need the gory details.
     (That can be overridden by -Derror on the command line.)
 
