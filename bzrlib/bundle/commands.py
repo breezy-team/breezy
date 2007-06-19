@@ -69,67 +69,68 @@ class cmd_bundle_revisions(Command):
         from bzrlib.bundle.serializer import write_bundle
 
         target_branch = branch.Branch.open_containing(u'.')[0]
-
-        if base is None:
-            base_specified = False
-        else:
-            base_specified = True
-
-        if revision is None:
-            target_revision = target_branch.last_revision()
-        elif len(revision) < 3:
-            target_revision = revision[-1].in_history(target_branch).rev_id
-            if len(revision) == 2:
-                if base_specified:
-                    raise errors.BzrCommandError('Cannot specify base as well'
-                                                 ' as two revision arguments.')
-                base_revision = revision[0].in_history(target_branch).rev_id
-        else:
-            raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
-
-        if revision is None or len(revision) < 2:
-            submit_branch = target_branch.get_submit_branch()
-            if base is None:
-                base = submit_branch
-            if base is None:
-                base = target_branch.get_parent()
-            if base is None:
-                raise errors.BzrCommandError("No base branch known or"
-                                             " specified.")
-            elif not base_specified:
-                # FIXME:
-                # note() doesn't pay attention to terminal_encoding() so
-                # we must format with 'ascii' to be safe
-                note('Using saved location: %s',
-                     urlutils.unescape_for_display(base, 'ascii'))
-            base_branch = branch.Branch.open(base)
-
-            # We don't want to lock the same branch across
-            # 2 different branches
-            target_branch.lock_write()
-            base_branch.lock_read()
-            if submit_branch is None or remember:
-                if base_specified:
-                    target_branch.set_submit_branch(base_branch.base)
-                elif remember:
-                    raise errors.BzrCommandError('--remember requires a branch'
-                                                 ' to be specified.')
-            target_branch.repository.fetch(base_branch.repository, 
-                                           base_branch.last_revision())
-            graph = target_branch.repository.get_graph()
-            base_revision = graph.find_unique_lca(
-                base_branch.last_revision(), target_revision)
-
-        if output is not None:
-            fileobj = file(output, 'wb')
-        else:
-            fileobj = sys.stdout
+        target_branch.lock_write()
+        locked = [target_branch]
         try:
+            if base is None:
+                base_specified = False
+            else:
+                base_specified = True
+
+            if revision is None:
+                target_revision = target_branch.last_revision()
+            elif len(revision) < 3:
+                target_revision = revision[-1].in_history(target_branch).rev_id
+                if len(revision) == 2:
+                    if base_specified:
+                        raise errors.BzrCommandError(
+                            'Cannot specify base as well as two revision'
+                            ' arguments.')
+                    revspec = revision[0].in_history(target_branch)
+                    base_revision = revspec.rev_id
+            else:
+                raise errors.BzrCommandError('--revision takes 1 or 2 '
+                                             'parameters')
+
+            if revision is None or len(revision) < 2:
+                submit_branch = target_branch.get_submit_branch()
+                if base is None:
+                    base = submit_branch
+                if base is None:
+                    base = target_branch.get_parent()
+                if base is None:
+                    raise errors.BzrCommandError("No base branch known or"
+                                                 " specified.")
+                elif not base_specified:
+                    # FIXME:
+                    # note() doesn't pay attention to terminal_encoding() so
+                    # we must format with 'ascii' to be safe
+                    note('Using saved location: %s',
+                         urlutils.unescape_for_display(base, 'ascii'))
+                base_branch = branch.Branch.open(base)
+                base_branch.lock_read()
+                locked.append(base_branch)
+                if submit_branch is None or remember:
+                    if base_specified:
+                        target_branch.set_submit_branch(base_branch.base)
+                    elif remember:
+                        raise errors.BzrCommandError(
+                            '--remember requires a branch to be specified.')
+                target_branch.repository.fetch(base_branch.repository,
+                                               base_branch.last_revision())
+                graph = target_branch.repository.get_graph()
+                base_revision = graph.find_unique_lca(
+                    base_branch.last_revision(), target_revision)
+
+            if output is not None:
+                fileobj = file(output, 'wb')
+            else:
+                fileobj = sys.stdout
             write_bundle(target_branch.repository, target_revision,
                          base_revision, fileobj)
         finally:
-            base_branch.unlock()
-            target_branch.unlock()
+            for item in reversed(locked):
+                item.unlock()
 
 
 class cmd_bundle_info(Command):
