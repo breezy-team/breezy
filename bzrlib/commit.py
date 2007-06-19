@@ -109,15 +109,9 @@ class ReportCommitToLog(NullCommitReporter):
     def _note(self, format, *args):
         """Output a message.
 
-        Messages are output by writing directly to stderr instead of
-        using bzrlib.trace.note(). The latter constantly updates the
-        log file as we go causing an unnecessary performance hit.
-
-        Subclasses may choose to override this method but need to be aware
-        of its potential impact on performance.
+        Subclasses may choose to override this method.
         """
-        bzrlib.ui.ui_factory.clear_term()
-        sys.stderr.write((format + "\n") % args)
+        note(format, *args)
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
