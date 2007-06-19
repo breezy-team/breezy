@@ -2138,6 +2138,6 @@ class UnexpectedSmartServerResponse(BzrError):
 
 class NoDestinationAddress(BzrError):
 
-    internal_error = True
-
     _fmt = "Message does not have a destination address."
+
+    internal_error = True
