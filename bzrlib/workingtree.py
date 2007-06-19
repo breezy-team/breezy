@@ -813,7 +813,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 to_revision = osutils.safe_revision_id(to_revision)
             merger.other_rev_id = to_revision
             if merger.other_rev_id is None:
-                raise error.NoCommits(branch)
+                raise errors.NoCommits(branch)
             self.branch.fetch(branch, last_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(

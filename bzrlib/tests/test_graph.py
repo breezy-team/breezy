@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import graph
+from bzrlib import (
+    errors,
+    graph,
+    )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
@@ -170,6 +173,7 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         ancestry_1 should always have a single common ancestor
         """
         graph = self.make_graph(ancestry_1)
+        self.assertRaises(errors.InvalidRevisionId, graph.find_lca, None)
         self.assertEqual(set([NULL_REVISION]),
                          graph.find_lca(NULL_REVISION, NULL_REVISION))
         self.assertEqual(set([NULL_REVISION]),

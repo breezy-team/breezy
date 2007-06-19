@@ -44,6 +44,9 @@ class _KnitParentsProvider(object):
     def __init__(self, knit):
         self._knit = knit
 
+    def __repr__(self):
+        return 'KnitParentsProvider(%r)' % self._knit
+
     def get_parents(self, revision_ids):
         parents_list = []
         for revision_id in revision_ids:

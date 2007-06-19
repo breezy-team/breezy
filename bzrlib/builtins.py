@@ -2551,13 +2551,13 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import MultipleRevisionSources
+        from bzrlib.revision import ensure_null, MultipleRevisionSources
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
 
-        last1 = branch1.last_revision()
-        last2 = branch2.last_revision()
+        last1 = ensure_null(branch1.last_revision())
+        last2 = ensure_null(branch2.last_revision())
 
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
@@ -3538,6 +3538,7 @@ class cmd_merge_directive(Command):
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
+        from bzrlib.revision import ensure_null, NULL_REVISION
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
@@ -3568,6 +3569,9 @@ class cmd_merge_directive(Command):
                 revision_id = revision[0].in_history(branch).rev_id
         else:
             revision_id = branch.last_revision()
+        revision_id = ensure_null(revision_id)
+        if revision_id == NULL_REVISION:
+            raise errors.BzrCommandError('No revisions to bundle.')
         directive = merge_directive.MergeDirective.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
