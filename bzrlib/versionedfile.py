@@ -277,12 +277,16 @@ class VersionedFile(object):
         for version_id in version_ids:
             target = lines[version_id]
             parents = [lines[p] for p in self.get_parents(version_id)]
-            left_parent_blocks = self._extract_blocks(version_id, target)
+            if len(parents) > 0:
+                left_parent_blocks = self._extract_blocks(version_id,
+                                                          parents[0], target)
+            else:
+                left_parent_blocks = None
             diffs.append(multiparent.MultiParent.from_lines(target, parents,
                          left_parent_blocks))
         return diffs
 
-    def _extract_blocks(self, version_id, target):
+    def _extract_blocks(self, version_id, source, target):
         return None
 
     def add_mpdiff(self, version, parents, mpdiff):

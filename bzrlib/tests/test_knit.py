@@ -785,8 +785,18 @@ class BasicKnitTests(KnitTests):
         self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
 
     def test_get_line_delta_blocks_noeol(self):
+        """Handle historical knit deltas safely
+
+        Some existing knit deltas don't consider the last line to differ
+        when the only difference whether it has a final newline.
+
+        New knit deltas appear to always consider the last line to differ
+        in this case.
+        """
         self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd\n', noeol=True)
         self.assertDerivedBlocksEqual('a\nb\nc\nd\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc\n', 'a\nb\nc', noeol=True)
+        self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\n', noeol=True)
 
     def test_add_with_parents(self):
         """Store in knit with parents"""

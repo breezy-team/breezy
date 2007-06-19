@@ -154,23 +154,29 @@ class KnitContent(object):
         return KnitContent(self._lines[:])
 
     @staticmethod
-    def get_line_delta_blocks(knit_delta, source_lines, target_lines):
+    def get_line_delta_blocks(knit_delta, source, target):
         """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
-        target_len = len(target_lines)
+        target_len = len(target)
         s_pos = 0
         t_pos = 0
         for s_begin, s_end, t_len, new_text in knit_delta:
             true_n = s_begin - s_pos
             n = true_n
             if n > 0:
-                if source_lines[s_pos + n -1] != target_lines[t_pos + n -1]:
+                # knit deltas do not provide reliable info about whether the
+                # last line of a file matches, due to eol handling.
+                if source[s_pos + n -1] != target[t_pos + n -1]:
                     n-=1
                 if n > 0:
                     yield s_pos, t_pos, n
             t_pos += t_len + true_n
             s_pos = s_end
-        if t_pos < target_len:
-            yield s_pos, t_pos, target_len - t_pos
+        n = target_len - t_pos
+        if n > 0:
+            if source[s_pos + n -1] != target[t_pos + n -1]:
+                n-=1
+            if n > 0:
+                yield s_pos, t_pos, n
         yield s_pos + (target_len - t_pos), target_len, 0
 
 
