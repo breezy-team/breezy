@@ -18,6 +18,9 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
+
+"""bzr-builddeb - manage packages in a Bazaar branch."""
+
 import os
 
 from bzrlib.commands import Command, register_command
