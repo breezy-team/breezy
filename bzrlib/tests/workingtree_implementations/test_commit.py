@@ -345,18 +345,17 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 9 steps: 1 for rev, 2 for inventory, 1 for finishing. 2 for root
-        # and 6 for inventory files.
-        # 2 steps don't trigger an update, as 'a' and 'c' are not 
+        # 4 steps, the first of which is reported 5 times, once per file
+        # 2 files don't trigger an update, as 'a' and 'c' are not 
         # committed.
         self.assertEqual(
-            [("update", 0, 9),
-             ("update", 1, 9),
-             ("update", 2, 9),
-             ("update", 3, 9),
-             ("update", 4, 9),
-             ("update", 5, 9),
-             ("update", 6, 9),
-             ("update", 7, 9)],
+            [('update', 1, 4),
+             ('update', 1, 4),
+             ('update', 1, 4),
+             ('update', 1, 4),
+             ('update', 1, 4),
+             ('update', 2, 4),
+             ('update', 3, 4),
+             ('update', 4, 4)],
             factory._calls
            )
