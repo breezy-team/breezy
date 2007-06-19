@@ -43,9 +43,6 @@ strict digraph performance {
   update_api_stack[label="Targeted API stack for update"];
   cbranch_api_stack[label="Targeted API stack for cbranch"];
 
-/*  gdfo_api[label="GDFO API\n1 day"];
-  gdfo_cache[label="GDFO Cache\n1 week"];
-  gdfo_usage[label="GDFO Usage\n3 days"]; */
   data_collation[label="Stream API for inserting/obtaining revision data.\n1 month"];
   repository_stacking[label="Repository stacking API\n2 months"];
   new_container[label="New container format\n2 weeks"]
@@ -68,6 +65,9 @@ strict digraph performance {
   /* under discussion/optional */
   node[color="yellow"];
   hash_names[label="Use hashes as names for some objects\n(to reduce tracking metadata and ease interoperability."];
+  gdfo_api[label="GDFO API\n1 day"];
+  gdfo_cache[label="GDFO Cache\n1 week"];
+  gdfo_usage[label="GDFO Usage\n3 days"];
 
   /* dependencies */
   gdfo_api -> gdfo_cache;
