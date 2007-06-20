@@ -20,6 +20,8 @@ Also doing this might allow more explicit choices to be recorded, rather
 than having to infer them, perhaps helping with the
 new-upstream-release-handling and it's ilk.
 
+If there are sources provided the branch can be initialised with some history.
+
 Design
 ------
 
