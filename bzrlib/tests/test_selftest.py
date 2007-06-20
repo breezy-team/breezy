@@ -54,7 +54,8 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           filter_suite_by_re,
                           sort_suite_by_re,
-                          test_suite
+                          test_lsprof,
+                          test_suite,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -680,10 +681,7 @@ class TestTestResult(TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
@@ -972,7 +970,7 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -991,7 +989,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1011,7 +1009,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1195,10 +1193,7 @@ class TestTestCase(TestCase):
         
         Each self.time() call is individually and separately profiled.
         """
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProfFeature)
         # overrides the class member with an instance member so no cleanup 
         # needed.
         self._gather_lsprof_in_benchmarks = True

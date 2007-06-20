@@ -213,3 +213,17 @@ class TestMergeDirective(tests.TestCaseWithTransport):
                                   '.')
         call = connect_calls[0]
         self.assertEqual(('bogushost', 0), call[1:3])
+
+    def test_no_common_ancestor(self):
+        foo = self.make_branch_and_tree('foo')
+        foo.commit('rev1')
+        bar = self.make_branch_and_tree('bar')
+        os.chdir('foo')
+        self.run_bzr('merge-directive', '../bar')
+
+    def test_no_commits(self):
+        foo = self.make_branch_and_tree('foo')
+        bar = self.make_branch_and_tree('bar')
+        os.chdir('foo')
+        self.run_bzr_error(('No revisions to bundle.', ),
+                            'merge-directive', '../bar')

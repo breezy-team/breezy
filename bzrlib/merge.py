@@ -41,7 +41,7 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.merge3 import Merge3
 from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
-from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
+from bzrlib.revision import (is_ancestor, NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
@@ -259,9 +259,15 @@ class Merger(object):
                 pb = ui.ui_factory.nested_progress_bar()
                 try:
                     this_repo = self.this_branch.repository
-                    self.base_rev_id = common_ancestor(self.this_basis, 
-                                                       self.other_basis, 
-                                                       this_repo, pb)
+                    graph = this_repo.get_graph()
+                    revisions = [ensure_null(self.this_basis),
+                                 ensure_null(self.other_basis)]
+                    if NULL_REVISION in revisions:
+                        self.base_rev_id = NULL_REVISION
+                    else:
+                        self.base_rev_id = graph.find_unique_lca(*revisions)
+                        if self.base_rev_id == NULL_REVISION:
+                            raise UnrelatedBranches()
                 finally:
                     pb.finished()
             except NoCommonAncestor:

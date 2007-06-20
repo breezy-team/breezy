@@ -25,6 +25,7 @@ import unittest
 from bzrlib import (
     bzrdir,
     check,
+    deprecated_graph,
     errors,
     generate_ids,
     gpg,
@@ -703,7 +704,7 @@ class Repository(object):
         :param revision_ids: an iterable of revisions to graph or None for all.
         :return: a Graph object with the graph reachable from revision_ids.
         """
-        result = graph.Graph()
+        result = deprecated_graph.Graph()
         if not revision_ids:
             pending = set(self.all_revision_ids())
             required = set([])
@@ -861,6 +862,36 @@ class Repository(object):
     def revision_parents(self, revision_id):
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_inventory_weave().parent_names(revision_id)
+
+    def get_parents(self, revision_ids):
+        """See StackedParentsProvider.get_parents"""
+        parents_list = []
+        for revision_id in revision_ids:
+            if revision_id == _mod_revision.NULL_REVISION:
+                parents = []
+            else:
+                try:
+                    parents = self.get_revision(revision_id).parent_ids
+                except errors.NoSuchRevision:
+                    parents = None
+                else:
+                    if len(parents) == 0:
+                        parents = [_mod_revision.NULL_REVISION]
+            parents_list.append(parents)
+        return parents_list
+
+    def _make_parents_provider(self):
+        return self
+
+    def get_graph(self, other_repository=None):
+        """Return the graph walker for this repository format"""
+        parents_provider = self._make_parents_provider()
+        if (other_repository is not None and
+            other_repository.bzrdir.transport.base !=
+            self.bzrdir.transport.base):
+            parents_provider = graph._StackedParentsProvider(
+                [parents_provider, other_repository._make_parents_provider()])
+        return graph.Graph(parents_provider)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):

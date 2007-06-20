@@ -69,6 +69,7 @@ class TestDefaultFormat(TestCase):
             self.assertEqual(result, 'A bzr repository dir')
         finally:
             bzrdir.format_registry.remove('default')
+            bzrdir.format_registry.remove('sample')
             bzrdir.format_registry.register('default', old_default, '')
         self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
                               old_format.__class__)
