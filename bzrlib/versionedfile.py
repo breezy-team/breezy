@@ -290,9 +290,9 @@ class VersionedFile(object):
         return None
 
     def add_mpdiffs(self, records):
-        mpvf = multiparent.MultiMemoryVersionedFile()
         vf_parents = {}
         for version, parents, expected_sha1, mpdiff in records:
+            mpvf = multiparent.MultiMemoryVersionedFile()
             needed_parents = [p for p in parents if not mpvf.has_version(p)]
             parent_lines = self._get_line_list(needed_parents)
             for parent_id, lines in zip(needed_parents, parent_lines):
