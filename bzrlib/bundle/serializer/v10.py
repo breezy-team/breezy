@@ -167,12 +167,12 @@ class BundleWriteOperation(object):
         self.repository = repository
         bundle = BundleWriter(fileobj)
         self.bundle = bundle
+        self.base_ancestry = set(repository.get_ancestry(base))
         if revision_ids is not None:
             self.revision_ids = revision_ids
         else:
-            base_ancestry = set(repository.get_ancestry(base))
             revision_ids = set(repository.get_ancestry(target))
-            self.revision_ids = revision_ids.difference(base_ancestry)
+            self.revision_ids = revision_ids.difference(self.base_ancestry)
 
     def do_write(self):
         self.bundle.begin()
@@ -187,7 +187,8 @@ class BundleWriteOperation(object):
         """This is the correct approach, but not compatible.
 
         It does not work with bzr.dev, because certain old revisions were not
-        converted correctly, and have the wrong "revision" marker.
+        converted correctly, and have the wrong "revision" marker in
+        inventories.
         """
         transaction = self.repository.get_transaction()
         altered = self.repository.fileids_altered_by_revision_ids(
@@ -196,8 +197,31 @@ class BundleWriteOperation(object):
             vf = self.repository.weave_store.get_weave(file_id, transaction)
             yield vf, file_id, file_revision_ids
 
+    def iter_file_revisions_aggressive(self):
+        """Ensure that all required revisions are fetched.
+
+        This uses the standard iter_file_revisions to determine what revisions
+        are referred to by inventories, but then uses the versionedfile to
+        determine what the build-dependencies of each required revision.
+
+        All build dependencies which are not ancestors of the base revision
+        are emitted.
+        """
+        for vf, file_id, file_revision_ids in self.iter_file_revisions():
+            new_revision_ids = set()
+            pending = list(file_revision_ids)
+            while len(pending) > 0:
+                revision_id = pending.pop()
+                if revision_id in new_revision_ids:
+                    continue
+                if revision_id in self.base_ancestry:
+                    continue
+                new_revision_ids.add(revision_id)
+                pending.extend(vf.get_parents(revision_id))
+            yield vf, file_id, new_revision_ids
+
     def write_files(self):
-        for vf, file_id, revision_ids in self.iter_file_revisions():
+        for vf, file_id, revision_ids in self.iter_file_revisions_aggressive():
             self.add_mp_records('file', file_id, vf, revision_ids)
 
     def write_revisions(self):
