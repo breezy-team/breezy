@@ -132,7 +132,7 @@ clean-docs:
 
 # build a png of our performance task list
 doc/developers/performance.png: doc/developers/performance.dot
-	dot -Tpng $< -o$@
+	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
 
 # make bzr.exe for win32 with py2exe
