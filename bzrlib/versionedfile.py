@@ -289,14 +289,19 @@ class VersionedFile(object):
     def _extract_blocks(self, version_id, source, target):
         return None
 
-    def add_mpdiff(self, version, parents, mpdiff):
-        parent_lines = self._get_line_list(parents)
+    def add_mpdiffs(self, records):
         mpvf = multiparent.MultiMemoryVersionedFile()
-        for parent_id, lines in zip(parents, parent_lines):
-            mpvf.add_version(lines, parent_id, [])
-        mpvf.add_diff(mpdiff, version, parents)
-        lines = mpvf.get_line_list([version])[0]
-        self.add_lines(version, parents, lines)
+        vf_parents = {}
+        for version, parents, expected_sha1, mpdiff in records:
+            needed_parents = [p for p in parents if not mpvf.has_version(p)]
+            parent_lines = self._get_line_list(needed_parents)
+            for parent_id, lines in zip(needed_parents, parent_lines):
+                mpvf.add_version(lines, parent_id, [])
+            mpvf.add_diff(mpdiff, version, parents)
+            lines = mpvf.get_line_list([version])[0]
+            version_text = self.add_lines(version, parents, lines, vf_parents)
+            vf_parents[version] = version_text
+            assert expected_sha1 == self.get_sha1(version)
 
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.

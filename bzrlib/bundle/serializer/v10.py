@@ -385,13 +385,12 @@ class RevisionInstaller(object):
                                            t.as_short_text())
 
     def _install_mp_records(self, versionedfile, records):
-        for revision, metadata, text in records:
-            mpdiff = multiparent.MultiParent.from_patch(text)
-            if revision in versionedfile:
-                continue
-            versionedfile.add_mpdiff(revision, metadata['parents'],
-                                             mpdiff)
-            assert metadata['sha1'] == versionedfile.get_sha1(revision)
+        if len(records) == 0:
+            return
+        d_func = multiparent.MultiParent.from_patch
+        vf_records = [(r, m['parents'], m['sha1'], d_func(t)) for r, m, t in
+                      records if r not in versionedfile]
+        versionedfile.add_mpdiffs(vf_records)
 
     def _install_inventory(self, revision_id, metadata, text):
         vf = self._repository.get_inventory_weave()

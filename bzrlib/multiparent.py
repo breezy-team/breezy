@@ -261,6 +261,9 @@ class BaseVersionedFile(object):
     def versions(self):
         return iter(self._parents)
 
+    def has_version(self, version):
+        return version in self._parents
+
     def do_snapshot(self, version_id, parent_ids):
         if self.snapshot_interval is None:
             return False
