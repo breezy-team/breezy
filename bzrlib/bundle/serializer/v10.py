@@ -66,10 +66,6 @@ class BundleWriter(object):
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
     @staticmethod
-    def encode_parents(parents):
-        return ' '.join(parents) + '\n'
-
-    @staticmethod
     def encode_name(name_kind, revision_id, file_id=None):
         assert name_kind in ('revision', 'file', 'inventory', 'testament',
                              'signature')
@@ -123,12 +119,6 @@ class BundleReader(object):
         else:
             revision_id, file_id = revisionfile_id
         return kind, revision_id, file_id
-
-    def decode_parents(self, parents_line):
-        parents = parents_line.rstrip('\n').split(' ')
-        if parents == ['']:
-            parents = []
-        return parents
 
     def iter_records(self):
         for (name,), bytes in self._container.iter_records():
@@ -361,16 +351,12 @@ class RevisionInstaller(object):
                 current_versionedfile = None
                 pending_file_records = []
                 if repo_kind == 'inventory':
-                    self._install_inventory(revision_id,
-                        metadata.get('parents'), bytes, added_inv)
-                    added_inv.add(revision_id)
+                    self._install_inventory(revision_id, metadata, bytes)
                 if repo_kind == 'revision':
                     target_revision = revision_id
-                    self._install_revision(revision_id,
-                        metadata.get('parents'), bytes)
+                    self._install_revision(revision_id, metadata, bytes)
                 if repo_kind == 'signature':
-                    self._install_signature(revision_id,
-                        metadata.get('parents'), bytes)
+                    self._install_signature(revision_id, metadata, bytes)
             if repo_kind == 'file':
                 if file_id != current_file:
                     self._install_mp_records(current_versionedfile,
@@ -382,8 +368,7 @@ class RevisionInstaller(object):
                     pending_file_records = []
                 if revision_id in current_versionedfile:
                     continue
-                pending_file_records.append((revision_id,
-                    metadata.get('parents'), bytes))
+                pending_file_records.append((revision_id, metadata, bytes))
         self._install_mp_records(current_versionedfile, pending_file_records)
         if target_revision is not None:
             self._check_testament(target_revision, testament)
@@ -397,21 +382,22 @@ class RevisionInstaller(object):
                                            t.as_short_text())
 
     def _install_mp_records(self, current_versionedfile, records):
-        for revision, parents, text in records:
+        for revision, metadata, text in records:
             mpdiff = multiparent.MultiParent.from_patch(text)
             if revision in current_versionedfile:
                 continue
-            current_versionedfile.add_mpdiff(revision, parents, mpdiff)
+            current_versionedfile.add_mpdiff(revision, metadata['parents'],
+                                             mpdiff)
 
-    def _install_inventory(self, revision_id, parents, text, added):
+    def _install_inventory(self, revision_id, metadata, text):
         vf = self._repository.get_inventory_weave()
-        return self._install_mp_records(vf, [(revision_id, parents, text)])
+        return self._install_mp_records(vf, [(revision_id, metadata, text)])
 
-    def _install_revision(self, revision_id, parents, text):
+    def _install_revision(self, revision_id, metadata, text):
         if self._repository.has_revision(revision_id):
             return
         self._repository._add_revision_text(revision_id, text)
 
-    def _install_signature(self, revision_id, parents, text):
+    def _install_signature(self, revision_id, metadata, text):
         self._repository._revision_store.add_revision_signature_text(
             revision_id, text, self._repository.get_transaction())
