@@ -1269,8 +1269,6 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'File content 1')])
         tree.add('file')
-        tree.commit('added file', rev_id='rev1')
-        s = StringIO()
         serializer = BundleSerializerV10('1.0')
         serializer.write(tree.branch.repository, ['rev1'], {}, s)
         self.assertContainsRe(s.getvalue(), '\+File content 1')
@@ -1370,3 +1368,20 @@ class MungedBundleTester(TestCaseWithTransport):
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
+
+
+class TestBundleWriterReader(TestCase):
+
+    def test_roundtrip_record(self):
+        fileobj = StringIO()
+        writer = v10.BundleWriter(fileobj)
+        writer.begin()
+        writer.write_patch("Hi there!\n")
+        writer._add_record("Record body", {'parents': ['1', '3']},
+                           'file', 'revid', 'fileid')
+        writer.end()
+        fileobj.seek(0)
+        reader = v10.BundleReader(fileobj)
+        record = reader.iter_records().next()
+        self.assertEqual(("Record body", ['1', '3'], 'file',
+                          'revid', 'fileid'), record)

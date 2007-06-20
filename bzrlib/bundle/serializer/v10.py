@@ -16,6 +16,7 @@ from bzrlib import (
     trace,
     )
 from bzrlib.bundle import bundle_data, serializer
+from bzrlib.util import bencode
 
 
 class BundleWriter(object):
@@ -56,11 +57,13 @@ class BundleWriter(object):
 
     def add_multiparent_record(self, mp_bytes, parents, repo_kind,
                                revision_id, file_id):
-        self._add_record(mp_bytes, parents, repo_kind, revision_id, file_id)
+        self._add_record(mp_bytes, {'parents': parents}, repo_kind,
+                         revision_id, file_id)
 
     def add_fulltext_record(self, bytes, parents, repo_kind, revision_id,
                             file_id):
-        self._add_record(bytes, parents, repo_kind, revision_id, file_id)
+        self._add_record(bytes, {'parents': parents}, repo_kind, revision_id,
+                         file_id)
 
     @staticmethod
     def encode_parents(parents):
@@ -80,10 +83,9 @@ class BundleWriter(object):
             file_tail = ''
         return name_kind + ':' + revision_id + file_tail
 
-    def _add_record(self, bytes, parents, repo_kind, revision_id, file_id):
+    def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         name = self.encode_name(repo_kind, revision_id, file_id)
-        parents = self.encode_parents(parents)
-        bytes = parents + bytes
+        bytes = bencode.bencode(metadata) + '\n' + bytes
         self._container.add_bytes_record(bytes, [name])
 
 
@@ -132,7 +134,7 @@ class BundleReader(object):
         for (name,), bytes in self._container.iter_records():
             lines = bytes(None).splitlines(True)
             parents, lines = lines[0], lines[1:]
-            parents = self.decode_parents(parents)
+            parents = bencode.bdecode(parents.rstrip('\n')).get('parents')
             yield (''.join(lines), parents) + self.decode_name(name)
 
 
