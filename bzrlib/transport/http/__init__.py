@@ -255,45 +255,56 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
         """
         return self
 
-    def _retry_get(self, relpath, ranges, exc_info):
-        """A GET request have failed, let's retry with a simpler request."""
-
-        try_again = False
-        # The server does not gives us enough data or
-        # a bogus-looking result, let's try again with
-        # a simpler request if possible.
+    def _degrade_range_hint(self, relpath, ranges, exc_info):
         if self._range_hint == 'multi':
             self._range_hint = 'single'
-            mutter('Retry %s with single range request' % relpath)
-            try_again = True
+            mutter('Retry "%s" with single range request' % relpath)
         elif self._range_hint == 'single':
             self._range_hint = None
-            mutter('Retry %s without ranges' % relpath)
-            try_again = True
-        if try_again:
-            # Note that since the offsets and the ranges may not
-            # be in the same order, we don't try to calculate a
-            # restricted single range encompassing unprocessed
-            # offsets.
-            code, f = self._get(relpath, ranges)
-            return try_again, code, f
+            mutter('Retry "%s" without ranges' % relpath)
         else:
-            # We tried all the tricks, but nothing worked. We
-            # re-raise original exception; the 'mutter' calls
-            # above will indicate that further tries were
-            # unsuccessful
+            # We tried all the tricks, but nothing worked. We re-raise original
+            # exception; the 'mutter' calls above will indicate that further
+            # tries were unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
 
-    # Having to round trip to the server means waiting for a response, so it is
-    # better to download extra bytes. We have two constraints to satisfy when
-    # choosing the right value: a request with too much ranges will make some
-    # servers issue a '400: Bad request' error (when we have too much ranges,
-    # we exceed the apache header max size (8190 by default) for example) ;
-    # coalescing too much ranges will increasing the data transferred and
-    # degrade performances.
-    _bytes_to_read_before_seek = 512
-    # No limit on the offset number combined into one, we are trying to avoid
-    # downloading the whole file.
+    def _get_ranges_hinted(self, relpath, ranges):
+        """Issue a ranged GET request taking server capabilities into account.
+
+        Depending of the errors returned by the server, we try several GET
+        requests, trying to minimize the data transferred.
+
+        :param relpath: Path relative to transport base URL
+        :param ranges: None to get the whole file;
+            or  a list of _CoalescedOffset to fetch parts of a file.
+        :returns: A file handle containing at least the requested ranges.
+        """
+        exc_info = None
+        try_again = True
+        while try_again:
+            try_again = False
+            try:
+                code, f = self._get(relpath, ranges)
+            except errors.InvalidRange, e:
+                if exc_info is None:
+                    exc_info = sys.exc_info()
+                self._degrade_range_hint(relpath, ranges, exc_info)
+                try_again = True
+        return f
+
+    # _coalesce_offsets is a helper for readv, it try to combine ranges without
+    # degrading readv performances. _bytes_to_read_before_seek is the value
+    # used for the limit parameter and has been tuned for other transports. For
+    # HTTP, the name is inappropriate but the parameter is still useful and
+    # helps reduce the number of chunks in the response. The overhead for a
+    # chunk (headers, length, footer around the data itself is variable but
+    # around 50 bytes. We use 128 to reduce the range specifiers that appear in
+    # the header, some servers (notably Apache) enforce a maximum length for a
+    # header and issue a '400: Bad request' error when too much ranges are
+    # specified.
+    _bytes_to_read_before_seek = 128
+    # No limit on the offset number that get combined into one, we are trying
+    # to avoid downloading the whole file.
     _max_readv_combined = 0
 
     def readv(self, relpath, offsets):
@@ -311,15 +322,7 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
         mutter('http readv of %s  offsets => %s collapsed %s',
                 relpath, len(offsets), len(coalesced))
 
-        try_again = True
-        while try_again:
-            try_again = False
-            try:
-                code, f = self._get(relpath, coalesced)
-            except (errors.InvalidRange, errors.ShortReadvError), e:
-                try_again, code, f = self._retry_get(relpath, coalesced,
-                                                     sys.exc_info())
-
+        f = self._get_ranges_hinted(relpath, coalesced)
         for start, size in offsets:
             try_again = True
             while try_again:
@@ -331,12 +334,18 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
                     if len(data) != size:
                         raise errors.ShortReadvError(relpath, start, size,
                                                      actual=len(data))
-                except (errors.InvalidRange, errors.ShortReadvError), e:
-                    # Note that we replace 'f' here and that it
-                    # may need cleaning one day before being
-                    # thrown that way.
-                    try_again, code, f = self._retry_get(relpath, coalesced,
-                                                         sys.exc_info())
+                except errors.ShortReadvError, e:
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+
+                    # Since the offsets and the ranges may not be in the same
+                    # order, we don't try to calculate a restricted single
+                    # range encompassing unprocessed offsets.
+
+                    # Note: we replace 'f' here, it may need cleaning one day
+                    # before being thrown that way.
+                    f = self._get_ranges_hinted(relpath, coalesced)
+                    try_again = True
+
             # After one or more tries, we get the data.
             yield start, data
 

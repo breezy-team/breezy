@@ -53,6 +53,7 @@ from bzrlib.tests.HTTPTestUtil import (
     HTTPDigestAuthServer,
     HTTPServerRedirecting,
     InvalidStatusRequestHandler,
+    LimitedRangeHTTPServer,
     NoRangeRequestHandler,
     ProxyBasicAuthServer,
     ProxyDigestAuthServer,
@@ -712,6 +713,67 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
                                TestNoRangeRequestServer,
                                TestCaseWithWebserver):
     """Tests range requests refusing server for pycurl implementation"""
+
+
+class TestLimitedRangeRequestServer(object):
+    """Tests readv requests against server that errors out on too much ranges.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    range_limit = 3
+
+    def create_transport_readonly_server(self):
+        # Requests with more range specifiers will error out
+        return LimitedRangeHTTPServer(range_limit=self.range_limit)
+
+    def get_transport(self):
+        return self._transport(self.get_readonly_server().get_url())
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        # We need to manipulate ranges that correspond to real chunks in the
+        # response, so we build a content appropriately.
+        filler = ''.join(['abcdefghij' for _ in range(102)])
+        content = ''.join(['%04d' % v + filler for v in range(16)])
+        self.build_tree_contents([('a', content)],)
+
+    def test_few_ranges(self):
+        t = self.get_transport()
+        l = list(t.readv('a', ((0, 4), (1024, 4), )))
+        self.assertEqual(l[0], (0, '0000'))
+        self.assertEqual(l[1], (1024, '0001'))
+        self.assertEqual(1, self.get_readonly_server().GET_request_nb)
+
+    def test_a_lot_of_ranges(self):
+        t = self.get_transport()
+        l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
+        self.assertEqual(l[0], (0, '0000'))
+        self.assertEqual(l[1], (1024, '0001'))
+        self.assertEqual(l[2], (4096, '0004'))
+        self.assertEqual(l[3], (8192, '0008'))
+        # The server will refuse to serve the first request (too much ranges),
+        # a second request will succeeds.
+        self.assertEqual(2, self.get_readonly_server().GET_request_nb)
+
+
+class TestLimitedRangeRequestServer_urllib(TestLimitedRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests limited range requests server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestLimitedRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                                          TestLimitedRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests limited range requests server for pycurl implementation"""
+
 
 
 class TestHttpProxyWhiteBox(TestCase):
