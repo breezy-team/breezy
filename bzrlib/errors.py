@@ -1579,6 +1579,8 @@ class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
 
+    internal_error = True
+
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
 
