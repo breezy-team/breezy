@@ -55,14 +55,16 @@ class BundleWriter(object):
         tail = self._base64_buffer+self._compressor.flush()
         self._fileobj.write(tail.encode('base-64'))
 
-    def add_multiparent_record(self, mp_bytes, parents, repo_kind,
+    def add_multiparent_record(self, mp_bytes, sha1, parents, repo_kind,
                                revision_id, file_id):
-        self._add_record(mp_bytes, {'parents': parents, 
-            'storage_kind': 'mpdiff'}, repo_kind, revision_id, file_id)
+        metadata = {'parents': parents,
+                    'storage_kind': 'mpdiff',
+                    'sha1': sha1}
+        self._add_record(mp_bytes, metadata, repo_kind, revision_id, file_id)
 
     def add_fulltext_record(self, bytes, parents, repo_kind, revision_id,
                             file_id):
-        self._add_record(bytes, {'parents': parents, 
+        self._add_record(bytes, {'parents': parents,
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
     @staticmethod
@@ -269,8 +271,9 @@ class BundleWriteOperation(object):
         mpdiffs = vf.make_mpdiffs(revision_ids)
         for mpdiff, revision_id in zip(mpdiffs, revision_ids):
             parents = vf.get_parents(revision_id)
+            sha1 = vf.get_sha1(revision_id)
             text = ''.join(mpdiff.to_patch())
-            self.bundle.add_multiparent_record(text, parents, repo_kind,
+            self.bundle.add_multiparent_record(text, sha1, parents, repo_kind,
                                                revision_id, file_id)
 
 
@@ -381,13 +384,14 @@ class RevisionInstaller(object):
             raise errors.TestamentMismatch(target_revision, testament,
                                            t.as_short_text())
 
-    def _install_mp_records(self, current_versionedfile, records):
+    def _install_mp_records(self, versionedfile, records):
         for revision, metadata, text in records:
             mpdiff = multiparent.MultiParent.from_patch(text)
-            if revision in current_versionedfile:
+            if revision in versionedfile:
                 continue
-            current_versionedfile.add_mpdiff(revision, metadata['parents'],
+            versionedfile.add_mpdiff(revision, metadata['parents'],
                                              mpdiff)
+            assert metadata['sha1'] == versionedfile.get_sha1(revision)
 
     def _install_inventory(self, revision_id, metadata, text):
         vf = self._repository.get_inventory_weave()
