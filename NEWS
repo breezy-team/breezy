@@ -22,6 +22,19 @@ IN DEVELOPMENT
     * Automatic merge base selection uses a faster algorithm that chooses
       better bases in criss-cross merge situations (Aaron Bentley)
 
+    * Progress reporting in ``commit`` has been improved. The various logical
+      stages are now reported on as follows, namely:
+
+      * Collecting changes [Entry x/y] - Stage n/m
+      * Saving data locally - Stage n/m
+      * Uploading data to master branch - Stage n/m
+      * Updating the working tree - Stage n/m
+      * Running post commit hooks - Stage n/m
+      
+      If there is no master branch, the 3rd stage is omitted and the total
+      number of stages is adjusted accordingly.
+      (Ian Clatworthy)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
