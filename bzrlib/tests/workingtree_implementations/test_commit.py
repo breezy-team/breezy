@@ -60,7 +60,7 @@ class CapturingUIFactory(ui.UIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
         if self.depth == 1:
-            self._calls.append(("update", count, total))
+            self._calls.append(("update", count, total, message))
 
 
 class TestCapturingUI(TestCase):
@@ -75,7 +75,7 @@ class TestCapturingUI(TestCase):
         pb2.update('foo', 0, 1)
         pb2.finished()
         pb1.finished()
-        self.assertEqual([("update", 0, 1)], factory._calls)
+        self.assertEqual([("update", 0, 1, 'foo')], factory._calls)
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -349,13 +349,13 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # 2 files don't trigger an update, as 'a' and 'c' are not 
         # committed.
         self.assertEqual(
-            [('update', 1, 4),
-             ('update', 1, 4),
-             ('update', 1, 4),
-             ('update', 1, 4),
-             ('update', 1, 4),
-             ('update', 2, 4),
-             ('update', 3, 4),
-             ('update', 4, 4)],
+            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 1/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 2/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 3/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 4/4] - Stage'),
+             ('update', 2, 4, 'Saving data locally - Stage'),
+             ('update', 3, 4, 'Updating the working tree - Stage'),
+             ('update', 4, 4, 'Running post commit hooks - Stage')],
             factory._calls
            )

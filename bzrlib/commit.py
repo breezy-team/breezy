@@ -701,12 +701,10 @@ class Commit(object):
             self.pb_entries_total = '?'
         self._emit_progress()
 
-
     def _emit_progress_next_entry(self):
         """Emit an update to the progress bar and increment the file count."""
         self.pb_entries_count += 1
         self._emit_progress()
-
 
     def _emit_progress(self):
         if self.pb_entries_show:
@@ -715,7 +713,6 @@ class Commit(object):
         else:
             text = "%s - Stage" % (self.pb_stage_name)
         self.pb.update(text, self.pb_stage_count, self.pb_stage_total)
-
 
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
