@@ -128,6 +128,9 @@ class BundleSerializerV08(BundleSerializer):
         finally:
             source.unlock()
 
+    def write_bundle(self, repository, target, base, fileobj):
+        return self._write_bundle(repository, target, base, fileobj)
+
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file

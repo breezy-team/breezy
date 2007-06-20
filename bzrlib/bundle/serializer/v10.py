@@ -141,7 +141,11 @@ class BundleSerializerV10(serializer.BundleSerializer):
     def write(self, repository, revision_ids, forced_bases, fileobj):
         write_op = BundleWriteOperation.from_old_args(repository, revision_ids,
                                                       forced_bases, fileobj)
-        write_op.do_write()
+        return write_op.do_write()
+
+    def write_bundle(self, repository, target, base, fileobj):
+        write_op =  BundleWriteOperation(base, target, repository, fileobj)
+        return write_op.do_write()
 
     def read(self, file):
         bundle = BundleInfoV10(file, self)
@@ -157,13 +161,18 @@ class BundleWriteOperation(object):
         return BundleWriteOperation(base, target, repository, fileobj,
                                     revision_ids)
 
-    def __init__(self, base, target, repository, fileobj, revision_ids):
+    def __init__(self, base, target, repository, fileobj, revision_ids=None):
         self.base = base
         self.target = target
         self.repository = repository
         bundle = BundleWriter(fileobj)
         self.bundle = bundle
-        self.revision_ids = revision_ids
+        if revision_ids is not None:
+            self.revision_ids = revision_ids
+        else:
+            base_ancestry = set(repository.get_ancestry(base))
+            revision_ids = set(repository.get_ancestry(target))
+            self.revision_ids = revision_ids.difference(base_ancestry)
 
     def do_write(self):
         self.bundle.begin()
@@ -172,6 +181,7 @@ class BundleWriteOperation(object):
         self.write_revisions()
         self.write_testament()
         self.bundle.end()
+        return self.revision_ids
 
     def iter_file_revisions(self):
         """This is the correct approach, but not compatible.
