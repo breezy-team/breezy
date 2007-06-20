@@ -2141,3 +2141,11 @@ class NoDestinationAddress(BzrError):
     _fmt = "Message does not have a destination address."
 
     internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error

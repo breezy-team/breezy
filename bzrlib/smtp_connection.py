@@ -20,7 +20,7 @@ from email import Utils
 import smtplib
 
 from bzrlib import ui
-from bzrlib.errors import BzrCommandError, NoDestinationAddress
+from bzrlib.errors import NoDestinationAddress, SMTPError
 
 
 class SMTPConnection(object):
@@ -110,10 +110,9 @@ class SMTPConnection(object):
             self._connect()
             self._connection.sendmail(from_email, to_emails, message.as_string())
         except smtplib.SMTPRecipientsRefused, e:
-            raise BzrCommandError('SMTP server refused recipient: %d %s' 
-                % e.recipients.values()[0])
+            raise SMTPError('server refused recipient: %d %s' %
+                    e.recipients.values()[0])
         except smtplib.SMTPResponseException, e:
-            raise BzrCommandError('SMTP error: %d %s' % (e.smtp_code,
-                e.smtp_error))
+            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException, e:
-            raise BzrCommandError('SMTP error: ' + str(e))
+            raise SMTPError(str(e))
