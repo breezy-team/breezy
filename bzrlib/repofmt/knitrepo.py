@@ -116,7 +116,7 @@ class KnitRepository(MetaDirRepository):
         
         This is topologically sorted.
         """
-        if revision_id is None:
+        if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         vf = self._get_revision_vf()

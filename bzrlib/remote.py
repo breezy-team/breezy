@@ -527,6 +527,10 @@ class RemoteRepository(object):
         return self._real_repository.fetch(
             source, revision_id=revision_id, pb=pb)
 
+    def create_bundle(self, target, base, fileobj, format=None):
+        self._ensure_real()
+        self._real_repository.create_bundle(target, base, fileobj, format)
+
     @property
     def control_weaves(self):
         self._ensure_real()

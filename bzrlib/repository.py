@@ -41,6 +41,7 @@ from bzrlib import (
     transactions,
     ui,
     )
+from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.store.text import TextStore
@@ -371,6 +372,9 @@ class Repository(object):
             return inter.fetch(revision_id=revision_id, pb=pb)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
@@ -834,7 +838,7 @@ class Repository(object):
         
         This is topologically sorted.
         """
-        if revision_id is None:
+        if revision_id is None or revision_id == NULL_REVISION:
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):

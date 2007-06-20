@@ -106,16 +106,6 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
 
 
 def write_bundle(repository, revision_id, base_revision_id, out, format=None):
-    """"""
-    repository.lock_read()
-    try:
-        return _write_bundle(repository, revision_id, base_revision_id, out,
-                             format)
-    finally:
-        repository.unlock()
-
-
-def _write_bundle(repository, revision_id, base_revision_id, out, format):
     """Write a bundle of revisions.
 
     :param repository: Repository containing revisions to serialize.
@@ -124,8 +114,12 @@ def _write_bundle(repository, revision_id, base_revision_id, out, format):
          applying the bundle.
     :param out: Output file.
     """
-    return get_serializer(format).write_bundle(repository, revision_id,
-                                               base_revision_id, out)
+    repository.lock_read()
+    try:
+        return get_serializer(format).write_bundle(repository, revision_id,
+                                                   base_revision_id, out)
+    finally:
+        repository.unlock()
 
 
 class BundleSerializer(object):
