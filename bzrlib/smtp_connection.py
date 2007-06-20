@@ -16,7 +16,7 @@
 
 """A convenience class around smtplib."""
 
-from email.Utils import getaddresses, parseaddr
+from email import Utils
 import smtplib
 
 from bzrlib import ui
@@ -84,11 +84,12 @@ class SMTPConnection(object):
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = parseaddr(message['From'])[1]
+        from_email = Utils.parseaddr(message['From'])[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
             to_full_addresses += message.get_all(header, [])
-        to_emails = [ pair[1] for pair in getaddresses(to_full_addresses) ]
+        to_emails = [ pair[1] for pair in
+                Utils.getaddresses(to_full_addresses) ]
 
         return from_email, to_emails
 
