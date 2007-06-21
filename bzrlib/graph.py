@@ -278,17 +278,14 @@ class Graph(object):
                 return lca.pop()
             revisions = lca
 
-    def iter_topo(self, revisions):
+    def iter_topo_order(self, revisions):
         """Iterate through the input revisions in topological order.
 
         This sorting only ensures that parents come before their children.
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
-        subgraph = zip(revisions, self.get_parents(revisions))
-        subgraph = [(r, [p for p in ps if p in revisions])
-                    for r, ps in subgraph]
-        return tsort.topo_sort(subgraph)
+        return tsort.topo_sort(zip(revisions, self.get_parents(revisions)))
 
 
 class _BreadthFirstSearcher(object):
