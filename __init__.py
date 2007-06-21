@@ -311,47 +311,6 @@ class cmd_merge_upstream(Command):
 
 register_command(cmd_merge_upstream)
 
-class cmd_switch_to_id(Command):
-  """ switches to an revision id"""
-  takes_options = ['revision']
-  aliases = ['sti']
-
-  def run(self, revision=None, location='.'):
-    from bzrlib.builtins import cmd_pull
-    from bzrlib.branch import Branch
-
-    if not revision:
-      raise BzrCommandError("Must specify a revision")
-
-    tree_to, relpath = WorkingTree.open_containing('.')
-    branch_to = tree_to.branch
-
-    if tree_to.changes_from(tree_to.basis_tree()).has_changed():
-      raise BzrCommandError("Working tree has uncommitted changes.")
-
-    branch_from = Branch.open(location)
-    revision_id = revision[0].in_history(branch_from).rev_id
-    result = branch_to.pull(branch_from, True, revision_id)
-
-    tree_to.update()
-
-register_command(cmd_switch_to_id)
-
-class cmd_merge_dead_head(Command):
-  """ merges a dead head revision"""
-  takes_options = ['revision']
-  aliases = ['mdh']
-
-  def run(self, revision=None, location='.'):
-    if not revision:
-      raise BzrCommandError("Must specify a revision")
-
-    wt, relpath = WorkingTree.open_containing('.')
-    rev_id = revision[0].in_history(wt.branch).rev_id
-    wt.merge_from_branch(wt.branch, to_revision=rev_id)
-
-register_command(cmd_merge_dead_head)
-
 def test_suite():
     from unittest import TestSuite
     import tests
