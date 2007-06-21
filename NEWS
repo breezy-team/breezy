@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * Automatic merge base selection uses a faster algorithm that chooses
       better bases in criss-cross merge situations (Aaron Bentley)
 
+    * Various operations that are now faster due to avoiding unnecessary
+      topological sorts. (Aaron Bentley)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
