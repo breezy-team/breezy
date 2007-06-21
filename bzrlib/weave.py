@@ -607,7 +607,7 @@ class Weave(VersionedFile):
         else:
             return self.get_ancestry(version_ids)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(version_ids, basestring):
             version_ids = [version_ids]
