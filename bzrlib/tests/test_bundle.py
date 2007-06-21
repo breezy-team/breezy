@@ -1091,6 +1091,16 @@ class V08BundleTester(BundleTester, TestCaseWithTransport):
         self.assertEqual({'branch-nick':'tree', 'omega':u'\u03a9',
                           'alpha':u'\u03b1'}, rev.properties)
 
+    def test_has_diff(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'File content 1')])
+        tree.add('file')
+        tree.commit('added file', rev_id='rev1')
+        s = StringIO()
+        serializer = BundleSerializerV10('1.0')
+        serializer.write(tree.branch.repository, ['rev1'], {}, s)
+        self.assertContainsRe(s.getvalue(), '\+File content 1')
+
 
 class V09BundleKnit2Tester(V08BundleTester):
 
@@ -1159,7 +1169,7 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B418', 'B433')
+        new_text = new_text.replace('B407', 'B422')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('1.0alpha'))
         bundle_txt.write('\n')
@@ -1223,11 +1233,8 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
     @staticmethod
     def get_raw(bundle_file):
         bundle_file.seek(0)
-        while True:
-            line = bundle_file.readline()
-            assert '' != line
-            if line.rstrip('\n') == '# End of patch':
-                break
+        line = bundle_file.readline()
+        line = bundle_file.readline()
         lines = bundle_file.readlines()
         return ''.join(lines).decode('base-64').decode('bz2')
 
@@ -1264,27 +1271,6 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
         self.assertTrue(repo_b.has_signature_for_revision_id('B'))
         self.assertEqual(repo_b.get_signature_text('B'),
                          repo_a.get_signature_text('B'))
-
-    def test_has_diff(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'File content 1')])
-        tree.add('file')
-        tree.commit('added file', rev_id='rev1')
-        s = StringIO()
-        serializer = BundleSerializerV10('1.0')
-        serializer.write(tree.branch.repository, ['rev1'], {}, s)
-        self.assertContainsRe(s.getvalue(), '\+File content 1')
-
-    def test_write_patch(self):
-        s = StringIO()
-        writer = v10.BundleWriter(s)
-        writer.begin()
-        writer.write_patch('My patch\n')
-        writer.end()
-        self.assertContainsRe(s.getvalue(),
-            '# Bazaar revision bundle v1.0alpha\n'
-            '#\nMy patch\n'
-            '# End of patch\n')
 
 
 class MungedBundleTester(TestCaseWithTransport):

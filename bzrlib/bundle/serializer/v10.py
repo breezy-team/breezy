@@ -30,16 +30,6 @@ class BundleWriter(object):
     def begin(self):
         self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
         self._fileobj.write('#\n')
-
-    def write_patch(self, patch_text):
-        """Write the human-readable patch.
-
-        This is a required step, and it also begins the binary section.
-        The patch text must not contain a line that begins with "# End of
-        patch\n".  Any other string is legal.
-        """
-        self._fileobj.write(patch_text)
-        self._fileobj.write('# End of patch\n')
         self._container.begin()
 
     def _write_encoded(self, bytes):
@@ -94,12 +84,6 @@ class BundleReader(object):
         if line != '\n':
             fileobj.readline()
         self.patch_lines = []
-        while True:
-            line = fileobj.readline()
-            if line.rstrip('\n') == '# End of patch':
-                break
-            assert line != ''
-            self.patch_lines.append(line)
         self._container = pack.ContainerReader(
             StringIO(fileobj.read().decode('base-64').decode('bz2')).read)
 #            Have to use StringIO for perf, until ContainerReader fixed.
@@ -171,7 +155,6 @@ class BundleWriteOperation(object):
 
     def do_write(self):
         self.bundle.begin()
-        self.write_patch()
         self.write_files()
         self.write_revisions()
         self.write_testament()
@@ -237,14 +220,6 @@ class BundleWriteOperation(object):
                     revision_id), parents, 'signature', revision_id, None)
             except errors.NoSuchRevision:
                 pass
-
-    def write_patch(self):
-        patch = StringIO()
-        if self.target is not None:
-            base_tree = self.repository.revision_tree(self.base)
-            target_tree = self.repository.revision_tree(self.target)
-            diff.show_diff_trees(base_tree, target_tree, patch)
-        self.bundle.write_patch(patch.getvalue())
 
     def write_testament(self):
         if self.target is not None:
