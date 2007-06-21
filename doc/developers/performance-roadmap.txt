@@ -45,3 +45,5 @@ Use cases
 .. include:: status.txt
 
 .. include:: performance-commit.txt
+
+.. include:: uncommit.txt
