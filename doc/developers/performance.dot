@@ -3,22 +3,22 @@ strict digraph performance {
   /* completed node list */
   node[color="green"];
   add_analysis[label="Work required analysis for add"];
+  annotate_analysis[label="Work required analysis for annotate"];
   branch_analysis[label="Work required analysis for branch"];
   bundle_analysis[label="Work required analysis for creating a bundle"];
+  commit_analysis[label="Work required analysis for commit"];
+  fetch_analysis[label="Work required analysis for push/pull"];
+  revert_analysis[label="Work required analysis for revert"];
+  revert_path_analysis[label="Work required analysis for revert of selected paths"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
 
   /* uncompleted node list - add new tasks here */
   node[color="blue"];
-  annotate_analysis[label="Work required analysis for annotate"];
   status_analysis[label="Work required analysis for status"];
-  commit_analysis[label="Work required analysis for commit"];
-  fetch_analysis[label="Work required analysis for push/pull"];
   log_analysis[label="Work required analysis for log"];
   log_path_analysis[label="Work required analysis for log of selected paths."];
   diff_analysis[label="Work required analysis for diff"];
   diff_path_analysis[label="Work required analysis for diff of selected paths"];
-  revert_analysis[label="Work required analysis for revert"];
-  revert_path_analysis[label="Work required analysis for revert of selected paths"];
   merge_analysis[label="Work required analysis for merge"];
   uncommit_analysis[label="Work required analysis for uncommit"];
   missing_analysis[label="Work required analysis for missing"];
