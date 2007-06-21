@@ -3572,7 +3572,7 @@ class cmd_merge_directive(Command):
         revision_id = ensure_null(revision_id)
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to bundle.')
-        directive = merge_directive.MergeDirective.from_objects(
+        directive = merge_directive.MergeDirective2.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
             public_branch=public_branch, patch_type=patch_type,

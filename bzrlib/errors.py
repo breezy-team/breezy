@@ -2043,6 +2043,16 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
+class IllegalMergeDirectivePayload(BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        BzrError(self)
+        self.start = start
+
+
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
