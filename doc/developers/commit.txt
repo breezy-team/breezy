@@ -1,6 +1,20 @@
 Commit Performance Notes
 ========================
 
+Changes to commit
+-----------------
+
+We want to improve the commit code in two phases.
+
+Phase one is to have a better separation from the format-specific logic,
+the user interface, and the general process of committing.
+
+Phase two is to have better interfaces by which a good workingtree format
+can efficiently pass data to a good storage format.  If we get phase one
+right, it will be relatively easy and non-disruptive to bring this in.
+
+
+
 Commit: The Minimum Work Required
 ---------------------------------
 
@@ -285,6 +299,47 @@ the parent revision is present in the inventory and rely on the invariant
 that if a revision is present, everything to reconstruct it will be
 present too.
 
+
+Code structure
+--------------
+
+Caller starts a commit
+
+>>> Branch.commit(from_tree, options)
+
+This creates a CommitBuilder object matched to the Branch, Repository and
+Tree.  It can vary depending on model differences or by knowledge of what
+is efficient with the Repository and Tree.  Model differences might
+include whether no-text-change merges need to be reported, and whether the 
+
+The basic CommitBuilder.commit structure can be 
+
+1. Ask the branch if it is ready to commit (up to date with master if
+   any.)
+
+2. Ask the tree if it is ready to commit to the branch (up to date with
+   branch?), no conflicts, etc
+
+3. Commit changed files; prototype implementation:
+
+   a. Ask the working tree for all committable files; for each it should
+      return the per-file parents, stat information, kind, etc.
+
+   b. Ask the repository to store the new file text; the repository should
+      return the stored sha1 and new revision id.
+
+4. Commit changed inventory
+
+5. Commit revision object
+
+
+
+
+
+
+
+
+
 Complications of commit
 -----------------------
 
@@ -339,6 +394,9 @@ Other complications:
 
 * if there are tree references and recursing into them is enabled, then
   do so
+
+Commit needs to protect against duplicated file ids 
+
 
 Updates that need to be made in the working tree, either on conclusion
 of commit or during the scan, include
@@ -477,10 +535,18 @@ The main things the tree needs to tell the Branch about are:
   revision, for repositories that store per-file graphs or last-change
   revisions.  Perhaps this behaviour should be optional.
 
+  **XXX:** are renames/deletions reported here too?
+
 * The complete contents of a modified directory, so that its inventory
   text may be stored.  This should be done after all the contained files
   and directories have been reported.  If there are unmodified files, 
   or unselected files carried through from 
+
+  XXX: Actually perhaps not grouped by directory, but rather grouped 
+  appropriately for the shape of inventory storage in the repository. 
+
+  In a zoomed-in checkout the workingtree may not have all the shape data
+  for the entire tree.
 
 * A file is missing -- could cause either automatic removal or an aborted
   commit.
@@ -524,6 +590,8 @@ general filter that selects paths from one tree into another?
 However, the tree walking code does probably need to know about selected
 paths to avoid examining unselected files or directories.
 
+We never refuse selective file commits (except of merges).  
+
 
 
 Common commit code
@@ -537,12 +605,6 @@ repository format?
 * Auto add/remove?
 
 How should this be separated?
-
-
-Draft API
----------
-
-
 
 
 
