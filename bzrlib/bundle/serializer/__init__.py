@@ -216,7 +216,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
 
 register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 register_lazy('0.9', 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
-register_lazy('1.0alpha', 'bzrlib.bundle.serializer.v10',
-              'BundleSerializerV10')
-register_lazy(None, 'bzrlib.bundle.serializer.v10', 'BundleSerializerV10')
+register_lazy('4alpha', 'bzrlib.bundle.serializer.v4',
+              'BundleSerializerV4')
+register_lazy(None, 'bzrlib.bundle.serializer.v4', 'BundleSerializerV4')
 

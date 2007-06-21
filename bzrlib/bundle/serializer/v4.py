@@ -28,7 +28,7 @@ class BundleWriter(object):
         self._base64_buffer = ''
 
     def begin(self):
-        self._fileobj.write(serializer._get_bundle_header('1.0alpha'))
+        self._fileobj.write(serializer._get_bundle_header('4alpha'))
         self._fileobj.write('#\n')
         self._container.begin()
 
@@ -113,7 +113,7 @@ class BundleReader(object):
             yield (bytes(None), metadata) + self.decode_name(name)
 
 
-class BundleSerializerV10(serializer.BundleSerializer):
+class BundleSerializerV4(serializer.BundleSerializer):
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
         write_op = BundleWriteOperation.from_old_args(repository, revision_ids,
@@ -125,7 +125,7 @@ class BundleSerializerV10(serializer.BundleSerializer):
         return write_op.do_write()
 
     def read(self, file):
-        bundle = BundleInfoV10(file, self)
+        bundle = BundleInfoV4(file, self)
         return bundle
 
 
@@ -253,7 +253,7 @@ class BundleWriteOperation(object):
                                                revision_id, file_id)
 
 
-class BundleInfoV10(object):
+class BundleInfoV4(object):
 
     def __init__(self, fileobj, serializer):
         self._fileobj = fileobj

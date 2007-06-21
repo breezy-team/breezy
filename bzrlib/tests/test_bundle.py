@@ -30,10 +30,10 @@ from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bundle.serializer import write_bundle, read_bundle, v10
+from bzrlib.bundle.serializer import write_bundle, read_bundle, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
-from bzrlib.bundle.serializer.v10 import BundleSerializerV10
+from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
@@ -1092,16 +1092,6 @@ class V08BundleTester(BundleTester, TestCaseWithTransport):
         self.assertEqual({'branch-nick':'tree', 'omega':u'\u03a9',
                           'alpha':u'\u03b1'}, rev.properties)
 
-    def test_has_diff(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'File content 1')])
-        tree.add('file')
-        tree.commit('added file', rev_id='rev1')
-        s = StringIO()
-        serializer = BundleSerializerV10('1.0')
-        serializer.write(tree.branch.repository, ['rev1'], {}, s)
-        self.assertContainsRe(s.getvalue(), '\+File content 1')
-
 
 class V09BundleKnit2Tester(V08BundleTester):
 
@@ -1123,9 +1113,9 @@ class V09BundleKnit1Tester(V08BundleTester):
         return format
 
 
-class V10BundleTester(BundleTester, TestCaseWithTransport):
+class V4BundleTester(BundleTester, TestCaseWithTransport):
 
-    format = '1.0alpha'
+    format = '4alpha'
 
     def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
         """Create a bundle from base_rev_id -> rev_id in built-in branch.
@@ -1172,7 +1162,7 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
                                     '<file executable="y" file_id="exe-1"')
         new_text = new_text.replace('B407', 'B422')
         bundle_txt = StringIO()
-        bundle_txt.write(serializer._get_bundle_header('1.0alpha'))
+        bundle_txt.write(serializer._get_bundle_header('4alpha'))
         bundle_txt.write('\n')
         bundle_txt.write(new_text.encode('bz2').encode('base-64'))
         bundle_txt.seek(0)
@@ -1203,7 +1193,7 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
         self.build_tree_contents([('tree/file', 'contents2\nstatic\n')])
         tree.commit('changed file', rev_id='rev2')
         s = StringIO()
-        serializer = BundleSerializerV10('1.0')
+        serializer = BundleSerializerV4('1.0')
         serializer.write(tree.branch.repository, ['rev1', 'rev2'], {}, s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
@@ -1221,15 +1211,15 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
 
     def test_name_encode(self):
         self.assertEqual('revision/rev1',
-            v10.BundleWriter.encode_name('revision', 'rev1'))
+            v4.BundleWriter.encode_name('revision', 'rev1'))
         self.assertEqual('file/rev1/file-id-1',
-            v10.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
+            v4.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
 
     def test_name_decode(self):
         self.assertEqual(('revision', 'rev1', None),
-            v10.BundleReader.decode_name('revision/rev1'))
+            v4.BundleReader.decode_name('revision/rev1'))
         self.assertEqual(('file', 'rev1', 'file-id-1'),
-            v10.BundleReader.decode_name('file/rev1/file-id-1'))
+            v4.BundleReader.decode_name('file/rev1/file-id-1'))
 
     @staticmethod
     def get_raw(bundle_file):
@@ -1265,7 +1255,7 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
         tree_b = self.make_branch_and_tree('tree_b')
         repo_b = tree_b.branch.repository
         s = StringIO()
-        serializer = BundleSerializerV10('1.0')
+        serializer = BundleSerializerV4('4alpha')
         serializer.write(tree_a.branch.repository, ['A', 'B'], {}, s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
@@ -1363,14 +1353,13 @@ class TestBundleWriterReader(TestCase):
 
     def test_roundtrip_record(self):
         fileobj = StringIO()
-        writer = v10.BundleWriter(fileobj)
+        writer = v4.BundleWriter(fileobj)
         writer.begin()
-        writer.write_patch("Hi there!\n")
         writer._add_record("Record body", {'parents': ['1', '3']},
                            'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        reader = v10.BundleReader(fileobj)
+        reader = v4.BundleReader(fileobj)
         record = reader.iter_records().next()
         self.assertEqual(("Record body", {'parents': ['1', '3']}, 'file',
                           'revid', 'fileid'), record)
