@@ -939,14 +939,14 @@ class KnitVersionedFile(VersionedFile):
         except KeyError:
             raise RevisionNotPresent(version_id, self.filename)
 
-    def get_ancestry(self, versions):
+    def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(versions, basestring):
             versions = [versions]
         if not versions:
             return []
         versions = [osutils.safe_revision_id(v) for v in versions]
-        return self._index.get_ancestry(versions)
+        return self._index.get_ancestry(versions, topo_sorted)
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry_with_ghosts."""
@@ -1217,7 +1217,7 @@ class _KnitIndex(_KnitComponentFile):
     def get_graph(self):
         return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
 
-    def get_ancestry(self, versions):
+    def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         # get a graph of all the mentioned versions:
         graph = {}
@@ -1233,6 +1233,8 @@ class _KnitIndex(_KnitComponentFile):
             # if not completed and not a ghost
             pending.update([p for p in parents if p not in graph])
             graph[version] = parents
+        if not topo_sorted:
+            return graph.keys()
         return topo_sort(graph.items())
 
     def get_ancestry_with_ghosts(self, versions):

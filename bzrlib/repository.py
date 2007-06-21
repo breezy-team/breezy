@@ -819,7 +819,7 @@ class Repository(object):
             yield RevisionTree(self, inv, revision_id)
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
 
         The first element of the list is always None, indicating the origin 

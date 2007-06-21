@@ -538,6 +538,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
 
+    def test_get_unsorted_ancestry(self):
+        repo = self.bzrdir.open_repository()
+        self.assertEqual(set(repo.get_ancestry('rev3')),
+                         set(repo.get_ancestry('rev3', topo_sorted=False)))
+
     def test_get_revision_graph(self):
         # we can get a mapping of id->parents for the entire revision graph or bits thereof.
         self.assertEqual({'rev1':[],
