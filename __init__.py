@@ -26,6 +26,7 @@ from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
+from bzrlib.trace import info, mutter
 import bzrlib.transport
 
 from builder import (DebBuild,
@@ -287,39 +288,69 @@ class cmd_merge_upstream(Command):
 
   def run(self, revision=None, location=None, filename=None):
 
-    from bzrlib.plugins.bzrtools.upstream_import import do_import, import_tar
-    from bzrlib.builtins import _merge_helper
-    from bzrlib.commit import Commit
-    from bzrlib.repository import RootCommitBuilder
+    from bzrlib.plugins.bzrtools.upstream_import import import_tar
+
+    if not revision:
+      raise BzrCommandError("Must specify a revision")
 
     tree, relpath = WorkingTree.open_containing('.')
     if tree.changes_from(tree.basis_tree()).has_changed():
       raise BzrCommandError("Working tree has uncommitted changes.")
 
-    from_branch = tree.branch
-    revno, rev_id = revision[0].in_branch(from_branch)
+    current_revision = tree.last_revision()
+    revno, rev_id = revision[0].in_branch(tree.branch)
     tree.revert([], tree.branch.repository.revision_tree(rev_id))
     tar_input = open(filename, 'rb')
     import_tar(tree, tar_input)
-
-    builder = RootCommitBuilder(tree.branch.repository,
-                                [rev_id],
-                                tree.branch.get_config())
-
-    # look at commit.py:295
-    builder.commit('import upstream from file %s' % file)
-    return
-  
-    to_transport = bzrlib.transport.get_transport('/tmp/bzrfoo')
-    dir_to = from_branch.bzrdir.clone_on_transport(to_transport,rev_id)
-    to_tree = dir_to.open_workingtree()
-    to_tree.revert([])
-    do_import(file, '/tmp/bzrfoo')
-    to_tree.commit('import upstream from file %s' % file)
-    other_revision = ['.', None]
-    _merge_helper(other_revision, [None, None], this_dir='/tmp/bzrfoo')
+    tree.set_parent_ids([rev_id])
+    tree.branch.set_last_revision_info(revno, rev_id)
+    mutter("importing upstream from file %s' % file")
+    tree.commit('import upstream from file %s' % file)
+    mutter("merging changes into new upstream")
+    tree.merge_from_branch(tree.branch, to_revision=current_revision)
 
 register_command(cmd_merge_upstream)
+
+class cmd_switch_to_id(Command):
+  """ switches to an revision id"""
+  takes_options = ['revision']
+  aliases = ['sti']
+
+  def run(self, revision=None, location='.'):
+    from bzrlib.builtins import cmd_pull
+    from bzrlib.branch import Branch
+
+    if not revision:
+      raise BzrCommandError("Must specify a revision")
+
+    tree_to, relpath = WorkingTree.open_containing('.')
+    branch_to = tree_to.branch
+
+    if tree_to.changes_from(tree_to.basis_tree()).has_changed():
+      raise BzrCommandError("Working tree has uncommitted changes.")
+
+    branch_from = Branch.open(location)
+    revision_id = revision[0].in_history(branch_from).rev_id
+    result = branch_to.pull(branch_from, True, revision_id)
+
+    tree_to.update()
+
+register_command(cmd_switch_to_id)
+
+class cmd_merge_dead_head(Command):
+  """ merges a dead head revision"""
+  takes_options = ['revision']
+  aliases = ['mdh']
+
+  def run(self, revision=None, location='.'):
+    if not revision:
+      raise BzrCommandError("Must specify a revision")
+
+    wt, relpath = WorkingTree.open_containing('.')
+    rev_id = revision[0].in_history(wt.branch).rev_id
+    wt.merge_from_branch(wt.branch, to_revision=rev_id)
+
+register_command(cmd_merge_dead_head)
 
 def test_suite():
     from unittest import TestSuite
