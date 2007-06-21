@@ -24,16 +24,26 @@ from unittest import TestSuite
 from bzrlib.tests import TestUtil
 
 import changes
+import config
 
 def test_suite():
     loader = TestUtil.TestLoader()
     suite = TestSuite()
     testmod_names = [
             'test_builder',
+            'test_config',
             'test_merge_upstream',
+            'test_util',
             ]
-    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
-    suite.addTest(doctest.DocTestSuite(changes))
+    suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
+                                            for i in testmod_names]))
+
+    doctest_mod_names = [
+             'changes',
+             'config'
+             ]
+    for mod in doctest_mod_names:
+      suite.addTest(doctest.DocTestSuite(mod))
 
     return suite
 

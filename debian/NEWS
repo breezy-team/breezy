@@ -1,0 +1,12 @@
+bzr-builddeb (0.17) unstable; urgency=low
+
+  * From this version onwards use of .bzr-builddeb/local.conf is deprecated,
+    as it is incompatible with proposed changes to better integrate builddeb
+    with the rest of bzr and support building remote branches. Please move the
+    contents of .bzr-builddeb/local.conf to .bzr/branch/branch.conf. You can
+    then delete the former, and remove any mention from .bzrignore.
+    
+    For compatibility the file will still be read and the values used for
+    this release, but starting from 0.18 the file will be ignored.
+
+ -- James Westby <jw+debian@jameswestby.net>  Sun, 17 Jun 2007 21:39:19 +0100

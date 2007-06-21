@@ -28,36 +28,7 @@ from bzrlib.workingtree import WorkingTree
 
 from debian_bundle.changelog import Changelog
 
-from errors import DebianError
-
-def add_ignore(file):
-  """Adds file to .bzrignore if it exists and not already in the file."""
-  if os.path.exists(file):
-    tree, relpath = WorkingTree.open_containing(u'.')
-    ifn = tree.abspath('.bzrignore')
-    ignored = set()
-    if os.path.exists(ifn):
-      f = open(ifn, 'rt')
-      ignored = parse_ignore_file(f)
-      f.close()
-    
-    if file not in ignored:
-      info("Adding %s to .bzrignore", file)
-      ignored.add(file)
-
-      f = AtomicFile(ifn, 'wt')
-      try:
-        for ign in ignored:
-          f.write(ign.encode('utf-8')+"\n")
-        f.commit()
-      finally:
-        f.close()
-
-    if tree.path2id('.bzrignore'):
-      mutter('.bzrignore is already versioned')
-    else:
-      mutter('need to make new .bzrignore file versioned')
-      tree.add(['.bzrignore'])
+from errors import MissingChangelogError, AddChangelogError
 
 
 def recursive_copy(fromdir, todir):
@@ -105,15 +76,22 @@ def find_changelog(t, merge):
           changelog_file = 'changelog'
           larstiq = True
           if not t.has_filename(changelog_file):
-            raise DebianError("Could not open debian/changelog or changelog")
+            raise MissingChangelogError("debian/changelog or changelog")
         else:
-          raise DebianError("Could not open debian/changelog")
+          raise MissingChangelogError("debian/changelog")
+      else:
+        if merge and t.has_filename('changelog'):
+          if os.path.islink('debian') and os.readlink('debian') == '.':
+            changelog_file = 'changelog'
+            larstiq = True
       mutter("Using '%s' to get package information", changelog_file)
       changelog_id = t.path2id(changelog_file)
+      if changelog_id is None:
+        raise AddChangelogError(changelog_file)
       contents = t.get_file_text(changelog_id)
     finally:
       t.unlock()
-    changelog = Changelog(contents)
-    return changelog, larstiq 
+    changelog = Changelog(contents, max_blocks=1)
+    return changelog, larstiq
 
 

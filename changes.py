@@ -59,7 +59,7 @@ class DebianChanges(deb822.Changes):
     if not os.path.exists(changes):
       raise DebianError("Could not find .changes file: %s" % changes)
     fp = open(changes)
-    super(DebianChanges, self).__init__(fp)
+    deb822.Changes.__init__(self, fp)
     self._filename = changes
     
   def files(self):

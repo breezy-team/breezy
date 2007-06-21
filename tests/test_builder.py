@@ -1,4 +1,4 @@
-#    __init__.py -- Testsuite for builddeb builder.py
+#    test_util.py -- Testsuite for builddeb builder.py
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
@@ -766,6 +766,32 @@ class TestMergeBuilder(BuilderTestCase):
       self.failUnlessExists(join(self.source_dir, f))
     for f in ['control', 'unknown']:
       self.failIfExists(join(self.source_dir, f))
+
+  def test_export_handles_debian_in_upstream(self):
+    """Make sure export can handle upstream shipping debian/ as well."""
+    self.upstream_files = self.upstream_files + ['debian/', 'debian/changelog']
+    wt = self._make_branch()
+    basedir = 'debian/'
+    files = [basedir]
+    files = files + [join(basedir, f) for f in self.debian_files]
+    self.build_branch_tree(files)
+    f = open(join(self.branch_dir, basedir, 'changelog'), 'wb')
+    try:
+      f.write("branch")
+    finally:
+      f.close()
+    wt.add(files)
+    wt.commit('commit one')
+    builder = self.get_builder(wt=wt)
+    self.make_orig_tarball()
+    builder.prepare()
+    builder.export()
+    f = open(join(self.source_dir, basedir, 'changelog'))
+    try:
+      contents = f.read()
+    finally:
+      f.close()
+    self.assertEqual(contents, 'branch')
 
 
 class TestMergeExportUpstreamBuilder(BuilderTestCase):
