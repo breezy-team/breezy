@@ -272,6 +272,16 @@ class TestMergeDirectiveBranch(tests.TestCaseWithTransport):
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
 
+    def test_broken_bundle(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md1 = merge_directive.MergeDirective.from_objects(
+            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
+            public_branch=branch_c.base)
+        lines = md1.to_lines()
+        lines = [l.replace('\n', '\r\n') for l in lines]
+        md2 = merge_directive.MergeDirective.from_lines(lines)
+        self.assertEqual('rev2a', md2.revision_id)
+
     def test_signing(self):
         time = 453
         timezone = 7200
