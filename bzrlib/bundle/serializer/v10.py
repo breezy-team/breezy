@@ -161,11 +161,13 @@ class BundleWriteOperation(object):
         self.repository = repository
         bundle = BundleWriter(fileobj)
         self.bundle = bundle
-        self.base_ancestry = set(repository.get_ancestry(base))
+        self.base_ancestry = set(repository.get_ancestry(base,
+                                                         topo_sorted=False))
         if revision_ids is not None:
             self.revision_ids = revision_ids
         else:
-            revision_ids = set(repository.get_ancestry(target))
+            revision_ids = set(repository.get_ancestry(target,
+                                                       topo_sorted=False))
             self.revision_ids = revision_ids.difference(self.base_ancestry)
 
     def do_write(self):
