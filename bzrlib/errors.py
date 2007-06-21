@@ -1186,6 +1186,11 @@ class RevisionAlreadyPresent(VersionedFileError):
         self.file_id = file_id
 
 
+class VersionedFileInvalidChecksum(VersionedFileError):
+
+    _fmt = "Text did not match its checksum: %(message)s"
+
+
 class KnitError(BzrError):
     
     _fmt = "Knit error"

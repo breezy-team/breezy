@@ -301,7 +301,8 @@ class VersionedFile(object):
             lines = mpvf.get_line_list([version])[0]
             version_text = self.add_lines(version, parents, lines, vf_parents)
             vf_parents[version] = version_text
-            assert expected_sha1 == self.get_sha1(version)
+            if expected_sha1 != self.get_sha1(version):
+                raise errors.VersionedFileInvalidChecksum(version)
 
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.

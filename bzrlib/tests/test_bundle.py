@@ -605,8 +605,9 @@ class BundleTester(object):
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         bundle = self.get_valid_bundle('a@cset-0-2', 'a@cset-0-3')
-        self.assertRaises(TestamentMismatch, self.get_invalid_bundle, 
-                          'a@cset-0-2', 'a@cset-0-3')
+        self.assertRaises((TestamentMismatch,
+            errors.VersionedFileInvalidChecksum), self.get_invalid_bundle,
+            'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle 
         bundle = self.get_valid_bundle(None, 'a@cset-0-3')
 
