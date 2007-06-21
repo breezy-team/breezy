@@ -156,7 +156,6 @@ class LimitedRangeRequestHandler(TestingHTTPRequestHandler):
     def get_multiple_ranges(self, file, file_size, ranges):
         """Refuses the multiple ranges request"""
         tcs = self.server.test_case_server
-        #import pdb; pdb.set_trace()
         if tcs.range_limit is not None and len(ranges) > tcs.range_limit:
             file.close()
             # Emulate apache behavior
