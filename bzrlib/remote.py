@@ -537,9 +537,9 @@ class RemoteRepository(object):
         return self._real_repository.control_weaves
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id)
+        return self._real_repository.get_ancestry(revision_id, topo_sorted)
 
     @needs_read_lock
     def get_inventory_weave(self):

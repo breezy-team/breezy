@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    tsort,
+    )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
 from bzrlib.revision import NULL_REVISION
 
@@ -274,6 +277,15 @@ class Graph(object):
             if len(lca) == 1:
                 return lca.pop()
             revisions = lca
+
+    def iter_topo_order(self, revisions):
+        """Iterate through the input revisions in topological order.
+
+        This sorting only ensures that parents come before their children.
+        An ancestor may sort after a descendant if the relationship is not
+        visible in the supplied list of revisions.
+        """
+        return tsort.topo_sort(zip(revisions, self.get_parents(revisions)))
 
 
 class _BreadthFirstSearcher(object):

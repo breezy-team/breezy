@@ -165,10 +165,13 @@ class BundleSerializer(object):
         forced_bases = {revision_id:base_revision_id}
         if base_revision_id is NULL_REVISION:
             base_revision_id = None
-        base_ancestry = set(repository.get_ancestry(base_revision_id))
-        revision_ids = [r for r in repository.get_ancestry(revision_id) if r
-                        not in base_ancestry]
-        revision_ids = list(reversed(revision_ids))
+        revision_ids = set(repository.get_ancestry(revision_id,
+                           topo_sorted=False))
+        revision_ids.difference_update(repository.get_ancestry(
+            base_revision_id, topo_sorted=False))
+        revision_ids = list(repository.get_graph().iter_topo_order(
+            revision_ids))
+        revision_ids.reverse()
         self.write(repository, revision_ids, forced_bases, out)
         return revision_ids
 
