@@ -280,3 +280,11 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                          stacked.get_parents(['rev2', 'rev2']))
         self.assertEqual([['rev4',], ['rev4']],
                          stacked.get_parents(['rev1', 'rev1']))
+
+    def test_iter_topo(self):
+        graph = self.make_graph(ancestry_1)
+        args = ['rev2a', 'rev3', 'rev1']
+        topo_args = list(graph.iter_topo(args))
+        self.assertEqual(set(args), set(topo_args))
+        self.assertTrue(topo_args.index('rev2a') > topo_args.index('rev1'))
+        self.assertTrue(topo_args.index('rev2a') < topo_args.index('rev3'))
