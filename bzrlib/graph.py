@@ -285,7 +285,8 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
-        return tsort.topo_sort(zip(revisions, self.get_parents(revisions)))
+        sorter = tsort.TopoSorter(zip(revisions, self.get_parents(revisions)))
+        return sorter.iter_topo_order()
 
 
 class _BreadthFirstSearcher(object):

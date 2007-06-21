@@ -35,6 +35,9 @@ IN DEVELOPMENT
       number of stages is adjusted accordingly.
       (Ian Clatworthy)
 
+    * Various operations that are now faster due to avoiding unnecessary
+      topological sorts. (Aaron Bentley)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
