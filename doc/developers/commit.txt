@@ -296,20 +296,20 @@ or will the per-file graph diverge from the revision graph.
 There are several checks that may cause the commit to be refused, which
 may be activated or deactivated by options.
 
- * presence of conflicts in the tree
- 
- * presence of unknown files
+* presence of conflicts in the tree
 
- * the working tree basis is up to date with the branch tip
+* presence of unknown files
 
- * the local branch is up to date with the master branch, if there 
-   is one and --local is not specified
+* the working tree basis is up to date with the branch tip
 
- * an empty commit message is given, 
+* the local branch is up to date with the master branch, if there 
+  is one and --local is not specified
 
- * a hook flags an error
+* an empty commit message is given, 
 
- * a "pointless" commit, with no inventory changes
+* a hook flags an error
+
+* a "pointless" commit, with no inventory changes
 
 Most of these require walking the tree and can be easily done while
 recording the tree shape.  This does require that it be possible to abort
@@ -319,42 +319,42 @@ or to roll back.
 
 Other complications:
 
- * when automatically adding new files or deleting missing files during
-   commit, they must be noted during commit and written into the working
-   tree at some point
+* when automatically adding new files or deleting missing files during
+  commit, they must be noted during commit and written into the working
+  tree at some point
 
- * refuse "pointless" commits with no file changes - should be easy by
-   just refusing to do the final step of storing a new overall inventory
-   and revision object
+* refuse "pointless" commits with no file changes - should be easy by
+  just refusing to do the final step of storing a new overall inventory
+  and revision object
 
- * heuristic detection of renames between add and delete (out of scope for
-   this change)
+* heuristic detection of renames between add and delete (out of scope for
+  this change)
 
- * pushing changes to a master branch if any
+* pushing changes to a master branch if any
 
- * running hooks, pre and post commit
+* running hooks, pre and post commit
 
- * prompting for a commit message if necessary, including a list of the
-   changes that have already been observed
+* prompting for a commit message if necessary, including a list of the
+  changes that have already been observed
 
- * if there are tree references and recursing into them is enabled, then
-   do so
+* if there are tree references and recursing into them is enabled, then
+  do so
 
 Updates that need to be made in the working tree, either on conclusion
 of commit or during the scan, include
 
- * Changes made to the tree shape, including automatic adds, renames or
-   deletes
+* Changes made to the tree shape, including automatic adds, renames or
+  deletes
 
- * For trees (eg dirstate) that cache parent inventories, the old parent
-   information must be removed and the new one inserted
+* For trees (eg dirstate) that cache parent inventories, the old parent
+  information must be removed and the new one inserted
 
- * The tree hashcache information should be updated to reflect the stat
-   value at which the file was the same as the committed version, and the
-   content hash it was observed to have.  This needs to be done carefully to
-   prevent inconsistencies if the file is modified during or shortly after
-   the commit.  Perhaps it would work to read the mtime of the file before we
-   read its text to commit.
+* The tree hashcache information should be updated to reflect the stat
+  value at which the file was the same as the committed version, and the
+  content hash it was observed to have.  This needs to be done carefully to
+  prevent inconsistencies if the file is modified during or shortly after
+  the commit.  Perhaps it would work to read the mtime of the file before we
+  read its text to commit.
 
 
 Interface stack
@@ -365,17 +365,17 @@ from the tree into the branch and its repository, possibly updating the
 WorkingTree afterwards.
 
 The command interface passes:
- 
- * a commit message (from an option, if any),
- * or an indication that it should be read interactively from the ui object;
- * a list of files to commit
- * an option for a dry-run commit
- * verbose option, or callback to indicate 
- * timestamp, timezone, committer, chosen revision id
- * config (for what?)
- * option for local-only commit on a bound branch
- * option for strict commits (fail if there are unknown or missing files)
- * option to allow "pointless" commits (with no tree changes)
+
+* a commit message (from an option, if any),
+* or an indication that it should be read interactively from the ui object;
+* a list of files to commit
+* an option for a dry-run commit
+* verbose option, or callback to indicate 
+* timestamp, timezone, committer, chosen revision id
+* config (for what?)
+* option for local-only commit on a bound branch
+* option for strict commits (fail if there are unknown or missing files)
+* option to allow "pointless" commits (with no tree changes)
  
 (This is rather a lot of options to pass individually and just for code tidyness maybe some of them should be combine into objects.)
 
@@ -433,14 +433,133 @@ information per directory block.
 The interface should not return a block for directories that are
 recursively unchanged.
 
-The tree's idea of what is possibly changed may be more conservative than that of the branch.  For example the tree may report on merges of files where the text is identical to the parents: this must be recorded for Bazaar branches that record per-file ancestry but is not necessary for all branches. 
-If the tree is responsible for determining when directories have been recursively modified then it will report on all the parents of such files.
-There are several implementation options:
+The tree's idea of what is possibly changed may be more conservative than
+that of the branch.  For example the tree may report on merges of files
+where the text is identical to the parents: this must be recorded for
+Bazaar branches that record per-file ancestry but is not necessary for all
+branches.  If the tree is responsible for determining when directories
+have been recursively modified then it will report on all the parents of
+such files.  There are several implementation options:
 
-1. Return all files and directories the branch might want to commit, even if the branch ends up taking no action on them.
-2. When starting the iteration, the branch can specify what type of change is considered interesting.
+1. Return all files and directories the branch might want to commit, even
+if the branch ends up taking no action on them.
 
-Since these types of changes are probably (??) rare compared to files that are either completely unmodified or substantially modified, the first may be the best and simplest option.
+2. When starting the iteration, the branch can specify what type of change
+is considered interesting.
+
+Since these types of changes are probably (??) rare compared to files that
+are either completely unmodified or substantially modified, the first may
+be the best and simplest option.
+
+The branch needs to build an inventory to commit, which must include
+unchanged files within changed directories.  This should be returned from
+the working tree too.  Repositories that store per-directory inventories
+will want to build and store these from the lowest directories up.
+For 0.17 format repositories with an all-in-one inventory it may be
+easiest to accumulate inventory entries in arbitrary order into an
+in-memory Inventory and then serialize it.
+
+It ought to be possible to commit any Tree into a Branch, without
+requiring a WorkingTree; the commit code should cope if the tree is not
+interested in updating hashcache information or does not have a
+``last_revision``.
+
+
+Information from the tree to repository
+---------------------------------------
+
+The main things the tree needs to tell the Branch about are:
+
+* A file is modified from its parent revision (in text, permissions,
+  other), and so its text may need to be stored.  
+  
+  Files should also be reported if they have more than one unique parent
+  revision, for repositories that store per-file graphs or last-change
+  revisions.  Perhaps this behaviour should be optional.
+
+* The complete contents of a modified directory, so that its inventory
+  text may be stored.  This should be done after all the contained files
+  and directories have been reported.  If there are unmodified files, 
+  or unselected files carried through from 
+
+* A file is missing -- could cause either automatic removal or an aborted
+  commit.
+
+* Any unknown files -- can cause automatic addition, abortion of a strict
+  commit, or just reporting.
+
+
+Information from the repository to the tree
+-------------------------------------------
+
+After the commit the tree needs to be updated to the new revision.  Some
+information which was accumulated during the commit must be made available
+to the workingtree.  It's probably reasonable to hold it all in memory and
+allow the workingtree to get it in whatever order it wants.
+
+* A list of modified entries, and for each one:
+
+  * The stat values observed when the file was first read.
+
+  * The hash of the committed file text.
+
+  * The file's last-change revision, if appropriate.
+
+  This should include any entries automatically added or removed.
+
+This might be construed as an enhanced version of ``set_parent_trees``.
+We can avoid a stat on each file by using the value that was observed when
+it was first read.
+ 
+
+
+Selective commit
+----------------
+
+For a partial commit the directory contents may need to contain a mix of
+entries from the working tree and parent trees.  This code probably
+shouldn't live in a specific tree implementation; maybe there should be a
+general filter that selects paths from one tree into another?
+
+However, the tree walking code does probably need to know about selected
+paths to avoid examining unselected files or directories.
+
+
+
+Common commit code
+------------------
+
+What is common to all commit implementations, regardless of workingtree or
+repository format?
+
+* Prompting for a commit message?
+* Strictness/conflict checks?
+* Auto add/remove?
+
+How should this be separated?
+
+
+Draft API
+---------
+
+
+
+
+
+Order of traversal
+------------------
+
+For current and contemplated Bazaar storage formats, we can only finally
+commit a directory after its contained files and directories have been
+committed.
+
+The dirstate workingtree format naturally iterates by directory in order
+by path, yielding directories before their contents.  This may also be the
+most efficient order in which to stat and read the files.
+
+One option would be to construe the interface as a visitor which reports
+when files are detected to be changed, and also when directories are
+finished.
 
 
 Open question: per-file graphs
