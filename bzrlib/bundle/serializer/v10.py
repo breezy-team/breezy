@@ -68,18 +68,17 @@ class BundleWriter(object):
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
     @staticmethod
-    def encode_name(name_kind, revision_id, file_id=None):
-        assert name_kind in ('revision', 'file', 'inventory', 'testament',
+    def encode_name(content_kind, revision_id, file_id=None):
+        assert content_kind in ('revision', 'file', 'inventory', 'testament',
                              'signature')
-        if name_kind in ('revision', 'inventory', 'testament', 'signature'):
+        if content_kind in ('revision', 'inventory', 'testament', 'signature'):
             assert file_id is None
         else:
             assert file_id is not None
+        names = [content_kind, revision_id]
         if file_id is not None:
-            file_tail = '/' + file_id
-        else:
-            file_tail = ''
-        return name_kind + ':' + revision_id + file_tail
+            names.append(file_id)
+        return '/'.join(names)
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         name = self.encode_name(repo_kind, revision_id, file_id)
@@ -113,14 +112,13 @@ class BundleReader(object):
 
     @staticmethod
     def decode_name(name):
-        kind, revisionfile_id = name.split(':', 1)
-        revisionfile_id = revisionfile_id.split('/')
-        if len(revisionfile_id) == 1:
-            revision_id = revisionfile_id[0]
-            file_id = None
+        names = name.split('/')
+        content_kind, revision_id = names[:2]
+        if len(names) > 2:
+            file_id = names[2]
         else:
-            revision_id, file_id = revisionfile_id
-        return kind, revision_id, file_id
+            file_id = None
+        return content_kind, revision_id, file_id
 
     def iter_records(self):
         for (name,), bytes in self._container.iter_records():

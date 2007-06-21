@@ -1209,16 +1209,16 @@ class V10BundleTester(BundleTester, TestCaseWithTransport):
                          target_repo.get_revision('rev2').message)
 
     def test_name_encode(self):
-        self.assertEqual('revision:rev1',
+        self.assertEqual('revision/rev1',
             v10.BundleWriter.encode_name('revision', 'rev1'))
-        self.assertEqual('file:rev1/file-id-1',
+        self.assertEqual('file/rev1/file-id-1',
             v10.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
 
     def test_name_decode(self):
         self.assertEqual(('revision', 'rev1', None),
-            v10.BundleReader.decode_name('revision:rev1'))
+            v10.BundleReader.decode_name('revision/rev1'))
         self.assertEqual(('file', 'rev1', 'file-id-1'),
-            v10.BundleReader.decode_name('file:rev1/file-id-1'))
+            v10.BundleReader.decode_name('file/rev1/file-id-1'))
 
     @staticmethod
     def get_raw(bundle_file):
