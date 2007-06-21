@@ -1,0 +1,36 @@
+---------------
+Bundle format 4
+---------------
+
+Summary
+=======
+Format 4 is designed to be fast to generate and to retrieve data from.  It is
+intended to be compact.  It is not intended to be human-readable.
+
+Format Name
+===========
+This is the fourth format to see public use.  Previous versions were 0.7, 0.8,
+and 0.9.  Only 0.7's version number was aligned with a Bazaar release.
+
+Dependencies
+============
+- Container format 1
+- Multiparent diffs
+- Bencode
+
+Description
+===========
+This format was designed to trade human-readability for speed and compactness.
+It does not contain a human-readable "prelude" patch.
+
+Relation to merge directives
+============================
+Merge directives may contain a
+
+Serialization
+=============
+Format 4 differs from older formats in that it transmits revision and inventory
+records in their current serialization format.  Installing data from this kind
+of bundle may therefore require translation, but in the common case, the
+transmitter serialization format will be the same as the the receiver
+serialization format.
