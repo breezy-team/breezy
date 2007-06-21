@@ -1144,10 +1144,6 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
-    def get_format_signature(self):
-        """See VersionedFile.get_format_signature()."""
-        return 'weave'
-
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Join other into self and save."""

@@ -773,14 +773,6 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
-
-    def test_get_format_signature(self):
-        """VersionedFiles have a get_format_signature method that returns a
-        string.
-        """
-        vf = self.get_file()
-        format_signature = vf.get_format_signature()
-        self.assertIsInstance(format_signature, str)
         
 
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
@@ -1250,9 +1242,4 @@ class TestFormatSignatures(TestCaseWithMemoryTransport):
         self.assertEqual('knit-full-annotated', knit.get_format_signature())
         knit = self.get_knit_file('f-p', False, False)
         self.assertEqual('knit-full-plain', knit.get_format_signature())
-
-    def test_weave_format_signature(self):
-        weave = WeaveFile('weave', get_transport(self.get_url('.')),
-                          create=True)
-        self.assertEqual('weave', weave.get_format_signature())
 
