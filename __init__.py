@@ -281,14 +281,13 @@ class cmd_merge_upstream(Command):
   moment
 
   """
-#  config = DebBuildConfig()
   takes_args = ['filename']
   takes_options = ['revision']
   aliases = ['mu']
 
-  def run(self, revision=None, location=None, filename=None):
+  def run(self, filename=None, revision=None):
 
-    from bzrlib.plugins.bzrtools.upstream_import import import_tar
+    from merge_upstream import merge_upstream
 
     if not revision:
       raise BzrCommandError("Must specify a revision")
@@ -297,17 +296,8 @@ class cmd_merge_upstream(Command):
     if tree.changes_from(tree.basis_tree()).has_changed():
       raise BzrCommandError("Working tree has uncommitted changes.")
 
-    current_revision = tree.last_revision()
-    revno, rev_id = revision[0].in_branch(tree.branch)
-    tree.revert([], tree.branch.repository.revision_tree(rev_id))
-    tar_input = open(filename, 'rb')
-    import_tar(tree, tar_input)
-    tree.set_parent_ids([rev_id])
-    tree.branch.set_last_revision_info(revno, rev_id)
-    mutter("importing upstream from file %s' % file")
-    tree.commit('import upstream from file %s' % file)
-    mutter("merging changes into new upstream")
-    tree.merge_from_branch(tree.branch, to_revision=current_revision)
+    merge_upstream(tree, filename, revision)
+
 
 register_command(cmd_merge_upstream)
 
