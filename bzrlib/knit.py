@@ -967,7 +967,7 @@ class KnitVersionedFile(VersionedFile):
         from bzrlib.weave import Weave
 
         w = Weave(self.filename)
-        ancestry = self.get_ancestry(version_ids)
+        ancestry = set(self.get_ancestry(version_ids, topo_sorted=False))
         sorted_graph = topo_sort(self._index.get_graph())
         version_list = [vid for vid in sorted_graph if vid in ancestry]
         
@@ -982,14 +982,14 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.plan_merge."""
         ver_a = osutils.safe_revision_id(ver_a)
         ver_b = osutils.safe_revision_id(ver_b)
-        ancestors_b = set(self.get_ancestry(ver_b))
+        ancestors_b = set(self.get_ancestry(ver_b, topo_sorted=False))
         def status_a(revision, text):
             if revision in ancestors_b:
                 return 'killed-b', text
             else:
                 return 'new-a', text
         
-        ancestors_a = set(self.get_ancestry(ver_a))
+        ancestors_a = set(self.get_ancestry(ver_a, topo_sorted=False))
         def status_b(revision, text):
             if revision in ancestors_a:
                 return 'killed-a', text
