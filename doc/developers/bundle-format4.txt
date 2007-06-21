@@ -50,9 +50,23 @@ in the common case, where the sender and receiver use the same serialization
 format for their repository. Steps have been taken to ensure a faithful
 conversion when serialization formats are mismatched.
 
-Record naming
--------------
-All records have a single name.  Records are named according to their
+Record metainfo
+---------------
+The bundle format creates a single meta-record out of two.  The first record
+contains metainfo as a Bencoded dict.  The second record contains the body.
+
+:record_kind: The storage strategy of the record.  May be "fulltext" (the
+    record body contains the full text of the value), "mpdiff" (the record body
+    contains a multi-parent diff of the value), or "header" (no record body).
+:parents: Used in fulltext and mpdiff records.  The revisions that should be
+    noted as parents of this revision in the repository.  For mpdiffs, this is
+    also the list of build-parents.
+:sha1: Used in mpdiff records.  The sha-1 hash of the full-text value.
+
+Bundle record naming
+---------------------
+All bundle records have a single name, which is associated with the metainfo.
+(The body records are anonymous).  Records are named according to the body's
 content-kind, revision-id, and file-id.
 
 Content-kind may be one of:
@@ -66,20 +80,6 @@ Content-kind may be one of:
 Names are constructed like so: "content-kind/revision-id/file-id".
 A record has a file-id if-and-only-if it is a file record.
 
-Record metainfo
----------------
-The bundle format subdivides a pack record body into a bundle header and body.
-The header contains a Bencoded dict of values.  It is separated from the body
-by a newline.
-
-:record_kind: The storage strategy of the record.  May be "fulltext" (the
-    record body contains the full text of the value), "mpdiff" (the record body
-    contains a multi-parent diff of the value), or "header" (the record body is
-    empty).
-:parents: Used in fulltext and mpdiff records.  The revisions that should be
-    noted as parents of this revision in the repository.  For mpdiffs, this is
-    also the list of build-parents.
-:sha1: Used in mpdiff records.  The sha-1 hash of the full-text value.
 
 Layout
 ------

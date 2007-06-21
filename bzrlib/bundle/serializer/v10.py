@@ -82,8 +82,9 @@ class BundleWriter(object):
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         name = self.encode_name(repo_kind, revision_id, file_id)
-        bytes = bencode.bencode(metadata) + '\n' + bytes
-        self._container.add_bytes_record(bytes, [name])
+        metadata = bencode.bencode(metadata)
+        self._container.add_bytes_record(metadata, [name])
+        self._container.add_bytes_record(bytes, [])
 
 
 class BundleReader(object):
@@ -121,11 +122,11 @@ class BundleReader(object):
         return content_kind, revision_id, file_id
 
     def iter_records(self):
-        for (name,), bytes in self._container.iter_records():
-            lines = bytes(None).splitlines(True)
-            metaline, lines = lines[0], lines[1:]
-            metadata = bencode.bdecode(metaline.rstrip('\n'))
-            yield (''.join(lines), metadata) + self.decode_name(name)
+        iterator = self._container.iter_records()
+        for (name,), meta_bytes in iterator:
+            metadata = bencode.bdecode(meta_bytes(None))
+            _unused, bytes = iterator.next()
+            yield (bytes(None), metadata) + self.decode_name(name)
 
 
 class BundleSerializerV10(serializer.BundleSerializer):
