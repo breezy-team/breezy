@@ -6,9 +6,10 @@ Bundle format 4
 
 Motivation
 ----------
-Format 4 is designed to be a compact format that can be generated quickly and
-installed into a repository efficiently.  It is not intended to be
-human-readable; that responsibility has been given to merge directives.
+Format 4 is designed to be a compact format for storing revision metadata that
+can be generated quickly and installed into a repository efficiently.  It is
+not intended to be human-readable; that responsibility has been given to merge
+directives.
 
 Format Name
 -----------
@@ -28,8 +29,8 @@ Description
 This format was designed to trade human-readability for speed and compactness.
 It does not contain a human-readable "prelude" patch.
 
-Relation to merge directives
-----------------------------
+Relationship to merge directives
+--------------------------------
 A merge directive specifies a merge command to apply and a preview of what that
 command would do.  Merge directives may contain a format-4 bundle.  The
 bundle's job is to provide the data needed to perform that merge command.
@@ -62,7 +63,7 @@ Content-kind may be one of:
 :signature: the revision signature for a revision
 :testament: a testament for a revision
 
-Names are constructed like so: "content-kind:revision-id/file-id".
+Names are constructed like so: "content-kind/revision-id/file-id".
 A record has a file-id if-and-only-if it is a file record.
 
 Record metainfo
