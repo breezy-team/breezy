@@ -48,7 +48,8 @@ class TestBundle(tests.TestCaseWithTransport):
         self.assertRevisions(br, ['revision3'])
 
     def assertRevisions(self, bi, expected):
-        self.assertEqual([r.revision_id for r in bi.revisions], expected)
+        self.assertEqual(set(r.revision_id for r in bi.revisions),
+            set(expected))
 
     def test_uses_submit(self):
         """Submit location can be used and set"""
