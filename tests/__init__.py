@@ -18,13 +18,66 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from copy import deepcopy
 import doctest
+import os
 from unittest import TestSuite
 
-from bzrlib.tests import TestUtil
+from bzrlib.tests import TestUtil, adapt_modules
 
 import changes
 import config
+import shutil
+import tarfile
+
+def make_new_upstream_dir(dir):
+  def _make_upstream_dir():
+    os.rename('package-0.2', dir)
+  return _make_upstream_dir
+
+def make_new_upstream_tarball(tarball):
+  def _make_upstream_tarball():
+    tar = tarfile.open(tarball, 'w:gz')
+    try:
+      tar.add('package-0.2')
+    finally:
+      tar.close()
+    shutil.rmtree('package-0.2')
+  return _make_upstream_tarball
+
+def make_new_upstream_tarball_bz2(tarball):
+  def _make_upstream_tarball():
+    tar = tarfile.open(tarball, 'w:bz2')
+    try:
+      tar.add('package-0.2')
+    finally:
+      tar.close()
+    shutil.rmtree('package-0.2')
+  return _make_upstream_tarball
+
+tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
+                     ('.tar.gz', make_new_upstream_tarball,
+                      '../package-0.2.tar.gz'),
+                     ('.tar.bz2', make_new_upstream_tarball_bz2,
+                      '../package-0.2.tar.bz2'),
+                     ]
+
+
+class MergeUpstreamAdaptor(object):
+
+  def adapt(self, test):
+    result = TestSuite()
+    for (name, function, source) in tarball_functions:
+      new_test = deepcopy(test)
+      new_test.build_tarball = function(source)
+      new_test.upstream_tarball = source
+      def make_new_id():
+        new_id = '%s(%s)' % (test.id(), name)
+        return lambda: new_id
+      new_test.id = make_new_id()
+      result.addTest(new_test)
+    return result
+
 
 def test_suite():
     loader = TestUtil.TestLoader()
@@ -32,7 +85,6 @@ def test_suite():
     testmod_names = [
             'test_builder',
             'test_config',
-            'test_merge_upstream',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
@@ -44,6 +96,9 @@ def test_suite():
              ]
     for mod in doctest_mod_names:
       suite.addTest(doctest.DocTestSuite(mod))
+
+    adapt_modules(['%s.test_merge_upstream' % __name__],
+                  MergeUpstreamAdaptor(), loader, suite)
 
     return suite
 
