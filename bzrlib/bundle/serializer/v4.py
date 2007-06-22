@@ -12,7 +12,6 @@ from bzrlib import (
     multiparent,
     pack,
     revision as _mod_revision,
-    testament as _mod_testament,
     trace,
     )
 from bzrlib.bundle import bundle_data, serializer
@@ -52,9 +51,8 @@ class BundleWriter(object):
 
     @staticmethod
     def encode_name(content_kind, revision_id, file_id=None):
-        assert content_kind in ('revision', 'file', 'inventory', 'testament',
-                             'signature')
-        if content_kind in ('revision', 'inventory', 'testament', 'signature'):
+        assert content_kind in ('revision', 'file', 'inventory', 'signature')
+        if content_kind in ('revision', 'inventory', 'signature'):
             assert file_id is None
         else:
             assert file_id is not None
@@ -150,7 +148,6 @@ class BundleWriteOperation(object):
         self.bundle.begin()
         self.write_files()
         self.write_revisions()
-        self.write_testament()
         self.bundle.end()
         return self.revision_ids
 
@@ -213,13 +210,6 @@ class BundleWriteOperation(object):
                     revision_id), parents, 'signature', revision_id, None)
             except errors.NoSuchRevision:
                 pass
-
-    def write_testament(self):
-        if self.target is not None:
-            t = _mod_testament.StrictTestament3.from_revision(self.repository,
-                                                              self.target)
-            self.bundle.add_fulltext_record(t.as_short_text(), [],
-                                            'testament', '', None)
 
     @staticmethod
     def get_base_target(revision_ids, forced_bases, repository):
@@ -314,8 +304,6 @@ class RevisionInstaller(object):
         target_revision = None
         for bytes, metadata, repo_kind, revision_id, file_id in\
             self._container.iter_records():
-            if repo_kind == 'testament':
-                testament = bytes
             if  repo_kind != 'file':
                 self._install_mp_records(current_versionedfile,
                     pending_file_records)
@@ -342,16 +330,7 @@ class RevisionInstaller(object):
                     continue
                 pending_file_records.append((revision_id, metadata, bytes))
         self._install_mp_records(current_versionedfile, pending_file_records)
-        if target_revision is not None:
-            self._check_testament(target_revision, testament)
         return target_revision
-
-    def _check_testament(self, target_revision, testament):
-        t = _mod_testament.StrictTestament3.from_revision(self._repository,
-                                                          target_revision)
-        if testament != t.as_short_text():
-            raise errors.TestamentMismatch(target_revision, testament,
-                                           t.as_short_text())
 
     def _install_mp_records(self, versionedfile, records):
         if len(records) == 0:
