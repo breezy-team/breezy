@@ -205,7 +205,7 @@ class BundleWriteOperation(object):
     def write_revisions(self):
         inv_vf = self.repository.get_inventory_weave()
         revision_order = list(multiparent.topo_iter(inv_vf, self.revision_ids))
-        if self.target is not None:
+        if self.target is not None and self.target in self.revision_ids:
             revision_order.remove(self.target)
             revision_order.append(self.target)
         self.add_mp_records('inventory', None, inv_vf, revision_order)

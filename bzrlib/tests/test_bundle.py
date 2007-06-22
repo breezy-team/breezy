@@ -768,6 +768,14 @@ class BundleTester(object):
         self.assertContainsRe(self.get_raw(bundle_file), 'one')
         self.assertContainsRe(self.get_raw(bundle_file), 'three')
 
+    def test_bundle_same_basis(self):
+        """Ensure using the basis as the target doesn't cause an error"""
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.tree1.commit('add file', rev_id='a@cset-0-1')
+        bundle_file = StringIO()
+        rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-1',
+                               'a@cset-0-1', bundle_file)
+
     @staticmethod
     def get_raw(bundle_file):
         return bundle_file.getvalue()
