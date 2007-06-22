@@ -25,7 +25,6 @@ class BundleWriter(object):
         self._container = pack.ContainerWriter(self._write_encoded)
         self._fileobj = fileobj
         self._compressor = bz2.BZ2Compressor()
-        self._base64_buffer = ''
 
     def begin(self):
         self._fileobj.write(serializer._get_bundle_header('4alpha'))
@@ -33,17 +32,11 @@ class BundleWriter(object):
         self._container.begin()
 
     def _write_encoded(self, bytes):
-        self._base64_buffer += self._compressor.compress(bytes)
-        if len(self._base64_buffer) >=  BASE64_LINE_BYTES:
-            to_leave = len(self._base64_buffer) % BASE64_LINE_BYTES
-            self._fileobj.write(self._base64_buffer[:-to_leave].encode(
-                'base-64'))
-            self._base64_buffer = self._base64_buffer[-to_leave:]
+        self._fileobj.write(self._compressor.compress(bytes))
 
     def end(self):
         self._container.end()
-        tail = self._base64_buffer+self._compressor.flush()
-        self._fileobj.write(tail.encode('base-64'))
+        self._fileobj.write(self._compressor.flush())
 
     def add_multiparent_record(self, mp_bytes, sha1, parents, repo_kind,
                                revision_id, file_id):
@@ -85,7 +78,7 @@ class BundleReader(object):
             fileobj.readline()
         self.patch_lines = []
         self._container = pack.ContainerReader(
-            StringIO(fileobj.read().decode('base-64').decode('bz2')).read)
+            StringIO(fileobj.read().decode('bz2')).read)
 #            Have to use StringIO for perf, until ContainerReader fixed.
 #            iterablefile.IterableFile(self.iter_decode(fileobj)).read)
 
@@ -93,7 +86,7 @@ class BundleReader(object):
     def iter_decode(fileobj):
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
-            yield decompressor.decompress(line.decode('base-64'))
+            yield decompressor.decompress()
 
     @staticmethod
     def decode_name(name):

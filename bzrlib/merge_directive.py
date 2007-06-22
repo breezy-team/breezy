@@ -291,7 +291,6 @@ class MergeDirective(_BaseMergeDirective):
         message.set_payload(body)
         return message
 
-
     def install_revisions(self, target_repo):
         """Install revisions and return the target revision"""
         if not target_repo.has_revision(self.revision_id):
@@ -311,6 +310,7 @@ class MergeDirective(_BaseMergeDirective):
         bundle_serializer.write_bundle(repository, revision_id,
                                        ancestor_id, s, '0.9')
         return s.getvalue()
+
 
 class MergeDirective2(_BaseMergeDirective):
 
@@ -433,7 +433,7 @@ class MergeDirective2(_BaseMergeDirective):
                                              ancestor_id)
             if patch_type == 'bundle':
                 bundle = klass._generate_bundle(repository, revision_id,
-                                               ancestor_id)
+                                               ancestor_id).encode('base-64')
             else:
                 bundle = None
 

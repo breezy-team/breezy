@@ -1172,7 +1172,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4alpha'))
         bundle_txt.write('\n')
-        bundle_txt.write(new_text.encode('bz2').encode('base-64'))
+        bundle_txt.write(new_text.encode('bz2'))
         bundle_txt.seek(0)
         bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
@@ -1235,7 +1235,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         line = bundle_file.readline()
         line = bundle_file.readline()
         lines = bundle_file.readlines()
-        return ''.join(lines).decode('base-64').decode('bz2')
+        return ''.join(lines).decode('bz2')
 
     def test_copy_signatures(self):
         tree_a = self.make_branch_and_tree('tree_a')

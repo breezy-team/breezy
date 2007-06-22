@@ -188,7 +188,7 @@ class cmd_bundle_info(Command):
             bundle_file.seek(0)
             line = bundle_file.readline()
             line = bundle_file.readline()
-            content = bundle_file.read().decode('base-64').decode('bz2')
+            content = bundle_file.read().decode('bz2')
             print >> self.outf, "Decoded contents"
             self.outf.write(content)
             print >> self.outf
