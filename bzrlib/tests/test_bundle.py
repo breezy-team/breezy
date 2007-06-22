@@ -377,8 +377,6 @@ class BundleTester(object):
         rev = self.b1.repository.get_revision(rev_id)
         self.assertEqual(bundle_txt.readline().decode('utf-8'),
                          u'# message:\n')
-
-        open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
         return bundle_txt, rev_ids
 
@@ -549,12 +547,6 @@ class BundleTester(object):
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle(None, 'a@cset-0-1')
-        # FIXME: The current write_bundle api no longer supports
-        #        setting a custom summary message
-        #        We should re-introduce the ability, and update
-        #        the tests to make sure it works.
-        # bundle = self.get_valid_bundle(None, 'a@cset-0-1',
-        #         message='With a specialized message')
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
@@ -621,7 +613,8 @@ class BundleTester(object):
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/ pre space', 'ab').write('\r\nAdding some\r\nDOS format lines\r\n')
+        open('b1/sub/dir/ pre space', 'ab').write(
+             '\r\nAdding some\r\nDOS format lines\r\n')
         open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
         self.tree1.rename_one('sub/dir/ pre space', 
                               'sub/ start space')
@@ -686,7 +679,8 @@ class BundleTester(object):
         
         # Add
         tt.new_file('file', tt.root, '\x00\n\x00\r\x01\n\x02\r\xff', 'binary-1')
-        tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff', 'binary-2')
+        tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff',
+            'binary-2')
         tt.apply()
         self.tree1.commit('add binary', rev_id='b@cset-0-1')
         self.get_valid_bundle(None, 'b@cset-0-1')
@@ -1190,10 +1184,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         self.assertEqual(bundle_txt.readline(), 
                          '# Bazaar revision bundle v%s\n' % self.format)
         self.assertEqual(bundle_txt.readline(), '#\n')
-
         rev = self.b1.repository.get_revision(rev_id)
-
-        open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
         return bundle_txt, rev_ids
 
