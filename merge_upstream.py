@@ -43,6 +43,9 @@ def merge_upstream(tree, source, old_revision):
 
     The tree must have no uncommited changes.
 
+    If the specified old_revision is the tip of the tree's branch then
+    a fastforward is done, and will be committed.
+
     :param tree: The tree upon which to operate.
     :type tree: WorkingTree
     :param source: The filename tarball to import from.
@@ -58,11 +61,24 @@ def merge_upstream(tree, source, old_revision):
       raise BzrCommandError("%s does not exists" % source)
     current_revision = tree.last_revision()
     revno, rev_id = old_revision.in_branch(tree.branch)
-    tree.revert([], tree.branch.repository.revision_tree(rev_id))
-    tar_input = open(source, 'rb')
-    import_tar(tree, tar_input)
-    tree.set_parent_ids([rev_id])
-    tree.branch.set_last_revision_info(revno, rev_id)
-    tree.commit('import upstream from %s' % os.path.basename(source))
-    tree.merge_from_branch(tree.branch, to_revision=current_revision)
+    if rev_id != tree.branch.last_revision():
+      tree.revert([], tree.branch.repository.revision_tree(rev_id))
+      tar_input = open(source, 'rb')
+      try:
+        import_tar(tree, tar_input)
+      finally:
+        tar_input.close()
+      tree.set_parent_ids([rev_id])
+      tree.branch.set_last_revision_info(revno, rev_id)
+      tree.commit('import upstream from %s' % os.path.basename(source))
+      tree.merge_from_branch(tree.branch, to_revision=current_revision)
+    else:
+      # Fast forward the merge.
+      tar_input = open(source, 'rb')
+      try:
+        import_tar(tree, tar_input)
+      finally:
+        tar_input.close()
+      tree.commit('import upstream from %s' % os.path.basename(source))
+
 

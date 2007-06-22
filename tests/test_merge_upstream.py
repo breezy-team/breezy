@@ -151,6 +151,32 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.assertRaises(InvalidRevisionSpec, merge_upstream, self.wt,
                       self.upstream_tarball, make_revspec('NOTAREVID'))
 
+  def test_merge_upstream_handles_last_revision(self):
+    """Test handling of merging in to tip.
+
+    If the upstream revision is said to be at the latest revision in the
+    branch the code should do a fast-forward.
+    """
+    self.make_first_upstream_commit()
+    self.make_new_upstream_tarball()
+    revspec = make_revspec(self.wt.branch.last_revision())
+    merge_upstream(self.wt, self.upstream_tarball, revspec)
+    wt = self.wt
+    delta = wt.changes_from(wt.basis_tree(), want_unversioned=True,
+                            want_unchanged=True)
+    self.assertEqual(delta.unversioned, [])
+    self.assertEqual(len(delta.unchanged), 2)
+    self.assertEqual(delta.unchanged[0], ('CHANGELOG', 'CHANGELOG-id', 'file'))
+    self.assertEqual(delta.unchanged[1][0], 'README-NEW')
+    self.assertEqual(delta.unchanged[1][2], 'file')
+    self.assertEqual(wt.conflicts(), [])
+    rh = wt.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.assertEqual(rh[0], self.upstream_rev_id_1)
+    self.assertEqual(len(wt.get_parent_ids()), 1)
+    self.assertEqual(wt.get_parent_ids()[0], rh[1])
+
+
 class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
   """Test merge upstream with conflicts in the new version."""
 
