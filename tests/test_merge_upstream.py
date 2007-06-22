@@ -73,6 +73,18 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
       tar.close()
     shutil.rmtree('package-0.2')
 
+  def make_new_upstream_tarball_with_debian(self):
+    self.build_tree(['package-0.2/', 'package-0.2/README-NEW',
+                     'package-0.2/CHANGELOG', 'package-0.2/debian/',
+                     'package-0.2/debian/changelog'])
+    write_to_file('package-0.2/CHANGELOG', 'version 2\n')
+    tar = tarfile.open(self.upstream_tarball, 'w:gz')
+    try:
+      tar.add('package-0.2')
+    finally:
+      tar.close()
+    shutil.rmtree('package-0.2')
+
   def perform_upstream_merge(self):
     """Perform a simple upstream merge.
 
@@ -176,47 +188,18 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(len(wt.get_parent_ids()), 1)
     self.assertEqual(wt.get_parent_ids()[0], rh[1])
 
-
-class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
-  """Test merge upstream with conflicts in the new version."""
-
-  def perform_upstream_merge(self):
-    """Perform an upstream merge that causes conflicts.
-
-    :returns: the working tree after the merge.
-    :rtype: WorkingTree
-    """
-    wt = self.make_branch_and_tree('.')
-    # create the original upstream import
-    self.build_tree(['README', 'CHANGELOG'])
-    wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
-    wt.commit('upstream version 1', rev_id='upstream-1')
-    old_upstream_revision = wt.branch.last_revision()
-    # create the debian branch on top
-    self.build_tree(['debian/', 'debian/changelog'])
-    wt.add(['debian/', 'debian/changelog'],
-           ['debian-id', 'debian-changelog-id'])
+  def perform_conflicted_merge(self):
+    self.make_first_upstream_commit()
+    revspec = make_revspec(self.wt.branch.last_revision())
     write_to_file('CHANGELOG', 'debian version\n')
-    wt.commit('debian version 1-1', rev_id='debian-1-1')
-    # create the new upstream release to import
-    self.build_tree(['package-0.2/', 'package-0.2/README-NEW',
-                     'package-0.2/CHANGELOG', 'package-0.2/debian/',
-                     'package-0.2/debian/changelog'])
-    write_to_file('package-0.2/CHANGELOG', 'version 2\n')
-    tar = tarfile.open('package-0.2.tar.gz', 'w:gz')
-    try:
-      tar.add('package-0.2')
-    finally:
-      tar.close()
-    shutil.rmtree('package-0.2')
-    merge_upstream(wt, 'package-0.2.tar.gz',
-                   make_revspec(old_upstream_revision))
-    os.unlink('package-0.2.tar.gz')
-    return wt
+    self.make_first_debian_commit()
+    self.make_new_upstream_tarball_with_debian()
+    merge_upstream(self.wt, self.upstream_tarball, revspec)
+    return self.wt
 
-  def test_merge_upstream_gives_correct_tree(self):
-    """Check that a merge leaves the tree as expected."""
-    wt = self.perform_upstream_merge()
+  def test_merge_upstream_gives_correct_tree_on_conficts(self):
+    """Check that a merge leaves the tree as expected with conflicts."""
+    wt = self.perform_conflicted_merge()
     self.failUnlessExists('CHANGELOG')
     self.failUnlessExists('README-NEW')
     self.failIfExists('README')
@@ -230,7 +213,7 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
       f.close()
 
   def test_merge_upstream_gives_correct_status(self):
-    wt = self.perform_upstream_merge()
+    wt = self.perform_conflicted_merge()
     basis = wt.basis_tree()
     changes = wt.changes_from(basis, want_unchanged=True,
                               want_unversioned=True)
@@ -259,13 +242,13 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
                       ('CHANGELOG.THIS', None, 'file')])
 
   def test_merge_upstream_gives_correct_parents(self):
-    wt = self.perform_upstream_merge()
+    wt = self.perform_conflicted_merge()
     parents = wt.get_parent_ids()
     self.assertEqual(len(parents), 2)
     self.assertEqual(parents[1], 'debian-1-1')
 
   def test_merge_upstream_gives_correct_conflicts(self):
-    wt = self.perform_upstream_merge()
+    wt = self.perform_conflicted_merge()
     conflicts = wt.conflicts()
     self.assertEqual(len(conflicts), 2)
     self.assertEqual(conflicts[0].path, 'CHANGELOG')
@@ -277,7 +260,7 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(conflicts[1].typestring, 'duplicate')
 
   def test_merge_upstream_gives_correct_history(self):
-    wt = self.perform_upstream_merge()
+    wt = self.perform_conflicted_merge()
     rh = wt.branch.revision_history()
     self.assertEqual(len(rh), 2)
     self.assertEqual(rh[0], 'upstream-1')
