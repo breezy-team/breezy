@@ -103,7 +103,7 @@ class _BaseMergeDirective(object):
         used for the commit.
         """
         t_revision_id = revision_id
-        if revision_id == 'null:':
+        if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
         t = testament.StrictTestament3.from_revision(repository, t_revision_id)
         submit_branch = _mod_branch.Branch.open(target_branch)
@@ -421,38 +421,51 @@ class MergeDirective2(_BaseMergeDirective):
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        t_revision_id = revision_id
-        if revision_id == 'null:':
-            t_revision_id = None
-        t = testament.StrictTestament3.from_revision(repository, t_revision_id)
-        submit_branch = _mod_branch.Branch.open(target_branch)
-        if submit_branch.get_public_branch() is not None:
-            target_branch = submit_branch.get_public_branch()
-        if patch_type is None:
-            patch = None
-            bundle = None
-        else:
-            submit_revision_id = submit_branch.last_revision()
-            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
-            repository.fetch(submit_branch.repository, submit_revision_id)
-            graph = repository.get_graph()
-            ancestor_id = graph.find_unique_lca(revision_id,
-                                                submit_revision_id)
-            if patch_type in ('bundle', 'diff'):
-                patch = klass._generate_diff(repository, revision_id,
-                                             ancestor_id)
-            if patch_type == 'bundle':
-                bundle = klass._generate_bundle(repository, revision_id,
-                                               ancestor_id).encode('base-64')
-            else:
+        locked = []
+        try:
+            repository.lock_write()
+            locked.append(repository)
+            t_revision_id = revision_id
+            if revision_id == 'null:':
+                t_revision_id = None
+            t = testament.StrictTestament3.from_revision(repository,
+                t_revision_id)
+            submit_branch = _mod_branch.Branch.open(target_branch)
+            submit_branch.lock_read()
+            locked.append(submit_branch)
+            if submit_branch.get_public_branch() is not None:
+                target_branch = submit_branch.get_public_branch()
+            if patch_type is None:
+                patch = None
                 bundle = None
+            else:
+                submit_revision_id = submit_branch.last_revision()
+                submit_revision_id = _mod_revision.ensure_null(
+                    submit_revision_id)
+                repository.fetch(submit_branch.repository, submit_revision_id)
+                graph = repository.get_graph()
+                ancestor_id = graph.find_unique_lca(revision_id,
+                                                    submit_revision_id)
+                if patch_type in ('bundle', 'diff'):
+                    patch = klass._generate_diff(repository, revision_id,
+                                                 ancestor_id)
+                if patch_type == 'bundle':
+                    bundle = klass._generate_bundle(repository, revision_id,
+                        ancestor_id).encode('base-64')
+                else:
+                    bundle = None
 
-            if public_branch is not None and patch_type != 'bundle':
-                public_branch_obj = _mod_branch.Branch.open(public_branch)
-                if not public_branch_obj.repository.has_revision(revision_id):
-                    raise errors.PublicBranchOutOfDate(public_branch,
-                                                       revision_id)
-
+                if public_branch is not None and patch_type != 'bundle':
+                    public_branch_obj = _mod_branch.Branch.open(public_branch)
+                    public_branch_obj.lock_read
+                    locked.append(public_branch_obj)
+                    if not public_branch_obj.repository.has_revision(
+                        revision_id):
+                        raise errors.PublicBranchOutOfDate(public_branch,
+                                                           revision_id)
+        finally:
+            for entry in reversed(locked):
+                entry.unlock()
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
             patch, public_branch, message, bundle)
 
