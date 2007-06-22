@@ -22,6 +22,7 @@ import os
 import shutil
 import tarfile
 
+from bzrlib.errors import BzrCommandError
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tests import TestCaseWithTransport
 
@@ -114,6 +115,12 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(rh[0], 'upstream-1')
     self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
                      'import upstream from package-0.2.tar.gz')
+
+  def test_merge_upstream_requires_clean_tree(self):
+    wt = self.make_branch_and_tree('.')
+    self.build_tree(['file'])
+    wt.add(['file'])
+    self.assertRaises(BzrCommandError, merge_upstream, wt, 'source', 1)
 
 class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
   """Test merge upstream with conflicts in the new version."""
@@ -221,4 +228,5 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(rh[0], 'upstream-1')
     self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
                      'import upstream from package-0.2.tar.gz')
+
 

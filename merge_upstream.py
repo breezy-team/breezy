@@ -21,6 +21,7 @@
 
 import os
 
+from bzrlib.errors import BzrCommandError
 from bzrlib.plugins.bzrtools.upstream_import import import_tar
 
 # TODO: handle more input sources.
@@ -40,6 +41,8 @@ def merge_upstream(tree, source, old_revision):
     and the tree will be left with pending merges, and possibly any conflicts
     to fix up.
 
+    The tree must have no uncommited changes.
+
     :param tree: The tree upon which to operate.
     :type tree: WorkingTree
     :param source: The filename tarball to import from.
@@ -49,6 +52,8 @@ def merge_upstream(tree, source, old_revision):
     :type old_revision: RevisionSpec
     :return: None
     """
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise BzrCommandError("Working tree has uncommitted changes.")
     current_revision = tree.last_revision()
     revno, rev_id = old_revision.in_branch(tree.branch)
     tree.revert([], tree.branch.repository.revision_tree(rev_id))

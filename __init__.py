@@ -307,9 +307,6 @@ class cmd_merge_upstream(Command):
       raise BzrCommandError("Must specify a revision")
 
     tree, relpath = WorkingTree.open_containing('.')
-    if tree.changes_from(tree.basis_tree()).has_changed():
-      raise BzrCommandError("Working tree has uncommitted changes.")
-
     merge_upstream(tree, filename, revision)
 
 
