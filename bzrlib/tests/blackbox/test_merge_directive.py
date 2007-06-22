@@ -28,7 +28,7 @@ EMAIL1 = """To: pqm@example.com
 From: J. Random Hacker <jrandom@example.com>
 Subject: bar
 
-# Bazaar merge directive format 1
+# Bazaar merge directive format 2 \\(Bazaar 0.18\\)
 # revision_id: bar-id
 # target_branch: ../tree2
 # testament_sha1: .*
@@ -77,10 +77,10 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def test_patch_types(self):
         self.prepare_merge_directive()
         md_text = self.run_bzr('merge-directive', '../tree2')[0]
-        self.assertContainsRe(md_text, "Bazaar revision bundle")
+        self.assertContainsRe(md_text, "# Begin bundle")
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive', '../tree2', '--diff', '.')[0]
-        self.assertNotContainsRe(md_text, "Bazaar revision bundle")
+        self.assertNotContainsRe(md_text, "# Begin bundle")
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive', '--plain')[0]
         self.assertNotContainsRe(md_text, "\\+e")
