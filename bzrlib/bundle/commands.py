@@ -186,11 +186,8 @@ class cmd_bundle_info(Command):
         if verbose:
             print >> self.outf
             bundle_file.seek(0)
-            while True:
-                line = bundle_file.readline()
-                assert line != ''
-                if line.rstrip('\n') == '# End of patch':
-                    break
+            line = bundle_file.readline()
+            line = bundle_file.readline()
             content = bundle_file.read().decode('base-64').decode('bz2')
             print >> self.outf, "Decoded contents"
             self.outf.write(content)
