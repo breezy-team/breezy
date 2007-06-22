@@ -38,8 +38,38 @@ def write_to_file(filename, contents):
   finally:
     f.close()
 
+def make_revspec(rev_id):
+  """Turn the rev_id passed in to a revision spec."""
+  return RevisionSpec.from_string('revid:' + rev_id)
+
 class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
   """Test that builddeb can merge upstream in normal mode"""
+
+  upstream_rev_id_1 = 'upstream-1'
+  upstream_tarball = '../package-0.2.tar.gz'
+
+  def make_first_upstream_commit(self):
+    self.wt = self.make_branch_and_tree('.')
+    self.build_tree(['README', 'CHANGELOG'])
+    self.wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
+    self.wt.commit('upstream version 1', rev_id=self.upstream_rev_id_1)
+
+  def make_first_debian_commit(self):
+    self.build_tree(['debian/', 'debian/changelog'])
+    self.wt.add(['debian/', 'debian/changelog'],
+                ['debian-id', 'debian-changelog-id'])
+    self.wt.commit('debian version 1-1', rev_id='debian-1-1')
+
+  def make_new_upstream_tarball(self):
+    self.build_tree(['package-0.2/', 'package-0.2/README-NEW',
+                     'package-0.2/CHANGELOG'])
+    write_to_file('package-0.2/CHANGELOG', 'version 2\n')
+    tar = tarfile.open(self.upstream_tarball, 'w:gz')
+    try:
+      tar.add('package-0.2')
+    finally:
+      tar.close()
+    shutil.rmtree('package-0.2')
 
   def perform_upstream_merge(self):
     """Perform a simple upstream merge.
@@ -47,31 +77,14 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     :returns: the working tree after the merge.
     :rtype: WorkingTree
     """
-    wt = self.make_branch_and_tree('.')
-    # create the original upstream import
-    self.build_tree(['README', 'CHANGELOG'])
-    wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
-    wt.commit('upstream version 1', rev_id='upstream-1')
-    old_upstream_revision = wt.branch.last_revision()
-    # create the debian branch on top
-    self.build_tree(['debian/', 'debian/changelog'])
-    wt.add(['debian/', 'debian/changelog'],
-           ['debian-id', 'debian-changelog-id'])
-    wt.commit('debian version 1-1', rev_id='debian-1-1')
-    # create the new upstream release to import
-    self.build_tree(['package-0.2/', 'package-0.2/README-NEW',
-                     'package-0.2/CHANGELOG'])
-    write_to_file('package-0.2/CHANGELOG', 'version 2\n')
-    tar = tarfile.open('../package-0.2.tar.gz', 'w:gz')
-    try:
-      tar.add('package-0.2')
-    finally:
-      tar.close()
-    shutil.rmtree('package-0.2')
-    merge_upstream(wt, '../package-0.2.tar.gz',
-                   RevisionSpec.from_string("revid:" + old_upstream_revision))
-    os.unlink('../package-0.2.tar.gz')
-    return wt
+    self.make_first_upstream_commit()
+    old_upstream_revision = self.wt.branch.last_revision()
+    self.make_first_debian_commit()
+    self.make_new_upstream_tarball()
+    merge_upstream(self.wt, self.upstream_tarball,
+                   make_revspec(old_upstream_revision))
+    os.unlink(self.upstream_tarball)
+    return self.wt
 
   def test_merge_upstream_gives_correct_tree(self):
     """Check that a merge leaves the tree as expected."""
@@ -112,7 +125,7 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     wt = self.perform_upstream_merge()
     rh = wt.branch.revision_history()
     self.assertEqual(len(rh), 2)
-    self.assertEqual(rh[0], 'upstream-1')
+    self.assertEqual(rh[0], self.upstream_rev_id_1)
     self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
                      'import upstream from package-0.2.tar.gz')
 
@@ -121,6 +134,13 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.build_tree(['file'])
     wt.add(['file'])
     self.assertRaises(BzrCommandError, merge_upstream, wt, 'source', 1)
+
+  def test_merge_upstream_handles_no_source(self):
+    self.make_first_upstream_commit()
+    old_upstream_revision = self.wt.branch.last_revision()
+    self.make_first_debian_commit()
+    self.assertRaises(BzrCommandError, merge_upstream, self.wt, 'source',
+                      make_revspec(old_upstream_revision))
 
 class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
   """Test merge upstream with conflicts in the new version."""
@@ -155,7 +175,7 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
       tar.close()
     shutil.rmtree('package-0.2')
     merge_upstream(wt, 'package-0.2.tar.gz',
-                   RevisionSpec.from_string("revid:" + old_upstream_revision))
+                   make_revspec(old_upstream_revision))
     os.unlink('package-0.2.tar.gz')
     return wt
 

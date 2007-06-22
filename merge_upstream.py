@@ -54,6 +54,8 @@ def merge_upstream(tree, source, old_revision):
     """
     if tree.changes_from(tree.basis_tree()).has_changed():
       raise BzrCommandError("Working tree has uncommitted changes.")
+    if not os.path.exists(source):
+      raise BzrCommandError("%s does not exists" % source)
     current_revision = tree.last_revision()
     revno, rev_id = old_revision.in_branch(tree.branch)
     tree.revert([], tree.branch.repository.revision_tree(rev_id))
