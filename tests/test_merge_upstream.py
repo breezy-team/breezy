@@ -22,7 +22,9 @@ import os
 import shutil
 import tarfile
 
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import (BzrCommandError,
+                           InvalidRevisionSpec,
+                           )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tests import TestCaseWithTransport
 
@@ -141,6 +143,13 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.make_first_debian_commit()
     self.assertRaises(BzrCommandError, merge_upstream, self.wt, 'source',
                       make_revspec(old_upstream_revision))
+
+  def test_merge_upstream_handles_invalid_revision(self):
+    self.make_first_upstream_commit()
+    self.make_first_debian_commit()
+    self.make_new_upstream_tarball()
+    self.assertRaises(InvalidRevisionSpec, merge_upstream, self.wt,
+                      self.upstream_tarball, make_revspec('NOTAREVID'))
 
 class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
   """Test merge upstream with conflicts in the new version."""
