@@ -185,6 +185,7 @@ class TestMergeDirective(object):
             '^# Bazaar merge directive format ')
         self.assertEqual("Hi mom!", md3.message)
         md3.clear_payload()
+        self.assertIs(None, md3.get_raw_bundle())
         md4 = merge_directive.MergeDirective.from_lines(md3.to_lines())
         self.assertIs(None, md4.patch_type)
 
@@ -260,6 +261,19 @@ Subject: Commit of rev2a
 """
 
 
+EMAIL1_2 = """To: pqm@example.com
+From: J. Random Hacker <jrandom@example.com>
+Subject: Commit of rev2a
+
+# Bazaar merge directive format 2 \\(Bazaar 0.18\\)
+# revision_id: rev2a
+# target_branch: (.|\n)*
+# testament_sha1: .*
+# timestamp: 1970-01-01 00:08:56 \\+0001
+# source_branch: (.|\n)*
+"""
+
+
 EMAIL2 = """To: pqm@example.com
 From: J. Random Hacker <jrandom@example.com>
 Subject: Commit of rev2a with special message
@@ -273,6 +287,18 @@ Subject: Commit of rev2a with special message
 # message: Commit of rev2a with special message
 """
 
+EMAIL2_2 = """To: pqm@example.com
+From: J. Random Hacker <jrandom@example.com>
+Subject: Commit of rev2a with special message
+
+# Bazaar merge directive format 2 \\(Bazaar 0.18\\)
+# revision_id: rev2a
+# target_branch: (.|\n)*
+# testament_sha1: .*
+# timestamp: 1970-01-01 00:08:56 \\+0001
+# source_branch: (.|\n)*
+# message: Commit of rev2a with special message
+"""
 
 class TestMergeDirectiveBranch(object):
 
@@ -326,21 +352,19 @@ class TestMergeDirectiveBranch(object):
     def test_use_public_submit_branch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         branch_c.pull(tree_a.branch)
-        md = merge_directive.MergeDirective.from_objects(
-             tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
-             patch_type=None, public_branch=branch_c.base)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 144,
+            tree_b.branch.base, patch_type=None, public_branch=branch_c.base)
         self.assertEqual(md.target_branch, tree_b.branch.base)
         tree_b.branch.set_public_branch('http://example.com')
-        md2 = merge_directive.MergeDirective.from_objects(
+        md2 = self.from_objects(
               tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
               patch_type=None, public_branch=branch_c.base)
         self.assertEqual(md2.target_branch, 'http://example.com')
 
     def test_message(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md3 = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
-            patch_type=None, public_branch=branch_c.base,
+        md3 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+            tree_b.branch.base, patch_type=None, public_branch=branch_c.base,
             message='Merge message')
         md3.to_lines()
         self.assertIs(None, md3.patch)
@@ -348,10 +372,10 @@ class TestMergeDirectiveBranch(object):
 
     def test_generate_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md1 = self.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 120, tree_b.branch.base,
-            public_branch=branch_c.base)
-        self.assertContainsRe(md1.bundle, 'Bazaar revision bundle')
+        md1 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+            tree_b.branch.base, public_branch=branch_c.base)
+
+        self.assertContainsRe(md1.get_raw_bundle(), 'Bazaar revision bundle')
         self.assertContainsRe(md1.patch, '\\+content_c')
         self.assertNotContainsRe(md1.patch, '\\+content_a')
         self.assertContainsRe(md1.patch, '\\+content_c')
@@ -374,7 +398,7 @@ class TestMergeDirectiveBranch(object):
                 return self
             def gpg_signing_command(self):
                 return 'loopback'
-        md = merge_directive.MergeDirective('example:', 'sha', time, timezone,
+        md = self.make_merge_directive('example:', 'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
         old_strategy = gpg.GPGStrategy
@@ -389,20 +413,20 @@ class TestMergeDirectiveBranch(object):
 
     def test_email(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 476, 60, tree_b.branch.base,
-            patch_type=None, public_branch=tree_a.branch.base)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 476, 60,
+            tree_b.branch.base, patch_type=None,
+            public_branch=tree_a.branch.base)
         message = md.to_email('pqm@example.com', tree_a.branch)
-        self.assertContainsRe(message.as_string(), EMAIL1)
+        self.assertContainsRe(message.as_string(), self.EMAIL1)
         md.message = 'Commit of rev2a with special message'
         message = md.to_email('pqm@example.com', tree_a.branch)
-        self.assertContainsRe(message.as_string(), EMAIL2)
+        self.assertContainsRe(message.as_string(), self.EMAIL2)
 
     def test_install_revisions_branch(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
-            patch_type=None, public_branch=tree_a.branch.base)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type=None,
+            public_branch=tree_a.branch.base)
         self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
         revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
@@ -410,9 +434,9 @@ class TestMergeDirectiveBranch(object):
 
     def test_install_revisions_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
-            patch_type='bundle', public_branch=tree_a.branch.base)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type='bundle',
+            public_branch=tree_a.branch.base)
         self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
         revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
@@ -421,9 +445,9 @@ class TestMergeDirectiveBranch(object):
     def test_get_target_revision_nofetch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         tree_b.branch.fetch(tree_a.branch)
-        md = merge_directive.MergeDirective.from_objects(
-            tree_a.branch.repository, 'rev2a', 500, 36, tree_b.branch.base,
-            patch_type=None, public_branch=tree_a.branch.base)
+        md = self.from_objects( tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type=None,
+            public_branch=tree_a.branch.base)
         md.source_branch = '/dev/null'
         revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
@@ -432,6 +456,11 @@ class TestMergeDirectiveBranch(object):
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
     TestMergeDirectiveBranch):
     """Test merge directive format 1 with a branch"""
+
+    EMAIL1 = EMAIL1
+
+    EMAIL2 = EMAIL2
+
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
         public_branch=None, message=None):
@@ -439,10 +468,21 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
             repository, revision_id, time, timezone, target_branch,
             patch_type, local_target_branch, public_branch, message)
 
+    def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
+                 target_branch, patch=None, patch_type=None,
+                 source_branch=None, message=None):
+        return merge_directive.MergeDirective(revision_id, testament_sha1,
+                 time, timezone, target_branch, patch, patch_type,
+                 source_branch, message)
+
 
 class TestMergeDirective2Branch(tests.TestCaseWithTransport,
     TestMergeDirectiveBranch):
     """Test merge directive format 2 with a branch"""
+
+    EMAIL1 = EMAIL1_2
+
+    EMAIL2 = EMAIL2_2
 
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
@@ -450,3 +490,16 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         return merge_directive.MergeDirective2.from_objects(
             repository, revision_id, time, timezone, target_branch,
             patch_type, local_target_branch, public_branch, message)
+
+    def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
+                 target_branch, patch=None, patch_type=None,
+                 source_branch=None, message=None):
+        if patch_type == 'bundle':
+            bundle = patch
+            patch = None
+        else:
+            bundle = None
+        return merge_directive.MergeDirective2(revision_id, testament_sha1,
+            time, timezone, target_branch, patch, source_branch, message,
+            bundle)
+

@@ -148,6 +148,54 @@ class _BaseMergeDirective(object):
                                        ancestor_id, s)
         return s.getvalue()
 
+    def to_signed(self, branch):
+        """Serialize as a signed string.
+
+        :param branch: The source branch, to get the signing strategy
+        :return: a string
+        """
+        my_gpg = gpg.GPGStrategy(branch.get_config())
+        return my_gpg.sign(''.join(self.to_lines()))
+
+    def to_email(self, mail_to, branch, sign=False):
+        """Serialize as an email message.
+
+        :param mail_to: The address to mail the message to
+        :param branch: The source branch, to get the signing strategy and
+            source email address
+        :param sign: If True, gpg-sign the email
+        :return: an email message
+        """
+        mail_from = branch.get_config().username()
+        message = Message.Message()
+        message['To'] = mail_to
+        message['From'] = mail_from
+        if self.message is not None:
+            message['Subject'] = self.message
+        else:
+            revision = branch.repository.get_revision(self.revision_id)
+            message['Subject'] = revision.message
+        if sign:
+            body = self.to_signed(branch)
+        else:
+            body = ''.join(self.to_lines())
+        message.set_payload(body)
+        return message
+
+    def install_revisions(self, target_repo):
+        """Install revisions and return the target revision"""
+        if not target_repo.has_revision(self.revision_id):
+            if self.patch_type == 'bundle':
+                info = bundle_serializer.read_bundle(
+                    StringIO(self.get_raw_bundle()))
+                # We don't use the bundle's target revision, because
+                # MergeDirective.revision_id is authoritative.
+                info.install_revisions(target_repo)
+            else:
+                source_branch = _mod_branch.Branch.open(self.source_branch)
+                target_repo.fetch(source_branch.repository, self.revision_id)
+        return self.revision_id
+
 
 class MergeDirective(_BaseMergeDirective):
 
@@ -196,6 +244,9 @@ class MergeDirective(_BaseMergeDirective):
     def clear_payload(self):
         self.patch = None
         self.patch_type = None
+
+    def get_raw_bundle(self):
+        return self.bundle
 
     def _bundle(self):
         if self.patch_type == 'bundle':
@@ -257,53 +308,6 @@ class MergeDirective(_BaseMergeDirective):
             lines.extend(self.patch.splitlines(True))
         return lines
 
-    def to_signed(self, branch):
-        """Serialize as a signed string.
-
-        :param branch: The source branch, to get the signing strategy
-        :return: a string
-        """
-        my_gpg = gpg.GPGStrategy(branch.get_config())
-        return my_gpg.sign(''.join(self.to_lines()))
-
-    def to_email(self, mail_to, branch, sign=False):
-        """Serialize as an email message.
-
-        :param mail_to: The address to mail the message to
-        :param branch: The source branch, to get the signing strategy and
-            source email address
-        :param sign: If True, gpg-sign the email
-        :return: an email message
-        """
-        mail_from = branch.get_config().username()
-        message = Message.Message()
-        message['To'] = mail_to
-        message['From'] = mail_from
-        if self.message is not None:
-            message['Subject'] = self.message
-        else:
-            revision = branch.repository.get_revision(self.revision_id)
-            message['Subject'] = revision.message
-        if sign:
-            body = self.to_signed(branch)
-        else:
-            body = ''.join(self.to_lines())
-        message.set_payload(body)
-        return message
-
-    def install_revisions(self, target_repo):
-        """Install revisions and return the target revision"""
-        if not target_repo.has_revision(self.revision_id):
-            if self.patch_type == 'bundle':
-                info = bundle_serializer.read_bundle(StringIO(self.patch))
-                # We don't use the bundle's target revision, because
-                # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
-            else:
-                source_branch = _mod_branch.Branch.open(self.source_branch)
-                target_repo.fetch(source_branch.repository, self.revision_id)
-        return self.revision_id
-
     @staticmethod
     def _generate_bundle(repository, revision_id, ancestor_id):
         s = StringIO()
@@ -338,6 +342,12 @@ class MergeDirective2(_BaseMergeDirective):
     def clear_payload(self):
         self.patch = None
         self.bundle = None
+
+    def get_raw_bundle(self):
+        if self.bundle is None:
+            return None
+        else:
+            return self.bundle.decode('base-64')
 
     @classmethod
     def _from_lines(klass, line_iter):
