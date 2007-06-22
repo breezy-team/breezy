@@ -57,12 +57,25 @@ class TestBreakin(TestCase):
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
         proc.stdout.readline()
-        # another hit gives the default behaviour of terminating it
+        # break into the debugger
         os.kill(proc.pid, signal.SIGQUIT)
-        # wait for it to go into pdb
-        time.sleep(.5)
-        os.kill(proc.pid, signal.SIGQUIT)
-        proc.wait()
+        # now send a second sigquit, which should cause it to exit.  That
+        # won't happen until the original signal has been noticed by the
+        # child and it's run its signal handler.  We don't know quite how long
+        # this will take, but if it's more than 10s then it's probably not
+        # going to work.
+        for i in range(100):
+            time.sleep(0.1)
+            os.kill(proc.pid, signal.SIGQUIT)
+            # note: waitpid is different on win32, but this test only runs on
+            # unix
+            r = os.waitpid(proc.pid, os.WNOHANG)
+            if r != (0, 0):
+                # high bit says if core was dumped; we don't care
+                self.assertEquals(r[1] & 0x7f, signal.SIGQUIT)
+                break
+        else:
+            self.fail("subprocess wasn't terminated by repeated SIGQUIT")
 
     def test_breakin_disabled(self):
         proc = self.start_bzr_subprocess(self._test_process_args,

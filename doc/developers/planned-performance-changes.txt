@@ -93,7 +93,7 @@ Interoperable disk changes
  * New container format to allow single-file description of multiple named
    objects. This will provide the basis for transmission of revisions over the
    network, the new bundle format, and possibly a new repository format as
-   well.
+   well. [Core implemented] 
 
  * Separate the annotation cache from the storage of actual file texts and make
    the annotation style, and when to do it, configurable. This will reduce data

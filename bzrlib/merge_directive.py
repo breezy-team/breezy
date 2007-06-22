@@ -203,7 +203,10 @@ class MergeDirective(object):
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        t = testament.StrictTestament3.from_revision(repository, revision_id)
+        t_revision_id = revision_id
+        if revision_id == 'null:':
+            t_revision_id = None
+        t = testament.StrictTestament3.from_revision(repository, t_revision_id)
         submit_branch = _mod_branch.Branch.open(target_branch)
         if submit_branch.get_public_branch() is not None:
             target_branch = submit_branch.get_public_branch()
@@ -211,10 +214,11 @@ class MergeDirective(object):
             patch = None
         else:
             submit_revision_id = submit_branch.last_revision()
+            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
             repository.fetch(submit_branch.repository, submit_revision_id)
-            ancestor_id = _mod_revision.common_ancestor(revision_id,
-                                                        submit_revision_id,
-                                                        repository)
+            graph = repository.get_graph()
+            ancestor_id = graph.find_unique_lca(revision_id,
+                                                submit_revision_id)
             type_handler = {'bundle': klass._generate_bundle,
                             'diff': klass._generate_diff,
                             None: lambda x, y, z: None }

@@ -119,7 +119,8 @@ def _get_history(branch, progress, label, step):
 def _get_ancestry(repository, progress, label, step, rev_history):
     progress.update('%s ancestry' % label, step, 5)
     if len(rev_history) > 0:
-        ancestry = set(repository.get_ancestry(rev_history[-1]))
+        ancestry = set(repository.get_ancestry(rev_history[-1],
+                       topo_sorted=False))
     else:
         ancestry = set()
     return ancestry

@@ -109,15 +109,9 @@ class ReportCommitToLog(NullCommitReporter):
     def _note(self, format, *args):
         """Output a message.
 
-        Messages are output by writing directly to stderr instead of
-        using bzrlib.trace.note(). The latter constantly updates the
-        log file as we go causing an unnecessary performance hit.
-
-        Subclasses may choose to override this method but need to be aware
-        of its potential impact on performance.
+        Subclasses may choose to override this method.
         """
-        bzrlib.ui.ui_factory.clear_term()
-        sys.stderr.write((format + "\n") % args)
+        note(format, *args)
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
@@ -279,35 +273,41 @@ class Commit(object):
                 tree.find_ids_across_trees(specific_files,
                                            [self.basis_tree, self.work_tree])
 
-            # Setup the progress bar ...
-            # one to finish, one for rev and inventory, and one for each
-            # inventory entry, and the same for the new inventory.
-            # note that this estimate is too long when we do a partial tree
-            # commit which excludes some new files from being considered.
-            # The estimate is corrected when we populate the new inv.
-            self.pb_total = len(self.work_inv) + 5
-            self.pb_count = 0
+            # Setup the progress bar. As the number of files that need to be
+            # committed in unknown, progress is reported as stages.
+            # We keep track of entries separately though and include that
+            # information in the progress bar during the relevant stages.
+            self.pb_stage_name = ""
+            self.pb_stage_count = 0
+            self.pb_stage_total = 4
+            if self.bound_branch:
+                self.pb_stage_total += 1
+            self.pb.show_pct = False
+            self.pb.show_spinner = False
+            self.pb.show_eta = False
+            self.pb.show_count = True
+            self.pb.show_bar = False
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             
             # Build the new inventory
+            self._emit_progress_set_stage("Collecting changes", show_entries=True)
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             self._remove_deleted()
             self._populate_new_inv()
             self._report_deletes()
             self._check_pointless()
-            self._emit_progress_update()
 
             # TODO: Now the new inventory is known, check for conflicts and
             # prompt the user for a commit message.
             # ADHB 2006-08-08: If this is done, populate_new_inv should not add
             # weave lines, because nothing should be recorded until it is known
             # that commit will succeed.
+            self._emit_progress_set_stage("Saving data locally")
             self.builder.finish_inventory()
-            self._emit_progress_update()
             message = message_callback(self)
             assert isinstance(message, unicode), type(message)
             self.message = message
@@ -315,11 +315,11 @@ class Commit(object):
 
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
-            self._emit_progress_update()
             
-            # upload revision data to the master.
+            # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
+                self._emit_progress_set_stage("Uploading data to master branch")
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
                 # now the master has the revision data
@@ -332,13 +332,14 @@ class Commit(object):
             self.branch.set_last_revision_info(new_revno, self.rev_id)
 
             # Make the working tree up to date with the branch
+            self._emit_progress_set_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
 
             # Process the post commit hooks, if any
+            self._emit_progress_set_stage("Running post commit hooks")
             self._process_hooks(old_revno, new_revno)
-            self._emit_progress_update()
         finally:
             self._cleanup()
         return self.rev_id
@@ -611,9 +612,9 @@ class Commit(object):
                 stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             entries.next()
-            self._emit_progress_update()
+        self.pb_entries_total = len(self.work_inv)
         for path, new_ie in entries:
-            self._emit_progress_update()
+            self._emit_progress_next_entry()
             file_id = new_ie.file_id
             try:
                 kind = self.work_tree.kind(file_id)
@@ -690,14 +691,31 @@ class Commit(object):
             self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                self.basis_tree)
 
-    def _emit_progress_update(self):
-        """Emit an update to the progress bar."""
-        self.pb.update("Committing", self.pb_count, self.pb_total)
-        self.pb_count += 1
+    def _emit_progress_set_stage(self, name, show_entries=False):
+        """Set the progress stage and emit an update to the progress bar."""
+        self.pb_stage_name = name
+        self.pb_stage_count += 1
+        self.pb_entries_show = show_entries
+        if show_entries:
+            self.pb_entries_count = 0
+            self.pb_entries_total = '?'
+        self._emit_progress()
+
+    def _emit_progress_next_entry(self):
+        """Emit an update to the progress bar and increment the file count."""
+        self.pb_entries_count += 1
+        self._emit_progress()
+
+    def _emit_progress(self):
+        if self.pb_entries_show:
+            text = "%s [Entry %d/%s] - Stage" % (self.pb_stage_name,
+                self.pb_entries_count,str(self.pb_entries_total))
+        else:
+            text = "%s - Stage" % (self.pb_stage_name)
+        self.pb.update(text, self.pb_stage_count, self.pb_stage_total)
 
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
-
 
