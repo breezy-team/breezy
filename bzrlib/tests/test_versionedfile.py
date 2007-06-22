@@ -247,14 +247,15 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
         #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
 
-    def test_make_mpdiff(self):
+    def test_make_mpdiffs(self):
         from bzrlib import multiparent
         vf = self.get_file('foo')
         sha1s = self._setup_for_deltas(vf)
         new_vf = self.get_file('bar')
         for version in multiparent.topo_iter(vf):
-            mpdiff = vf.make_mpdiff(version)
-            new_vf.add_mpdiff(version, vf.get_parents(version), mpdiff)
+            mpdiff = vf.make_mpdiffs([version])[0]
+            new_vf.add_mpdiffs([(version, vf.get_parents(version),
+                                 vf.get_sha1(version), mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 

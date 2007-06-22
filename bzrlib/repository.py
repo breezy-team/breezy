@@ -838,7 +838,7 @@ class Repository(object):
         
         This is topologically sorted.
         """
-        if revision_id is None or revision_id == NULL_REVISION:
+        if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             return [None]
         revision_id = osutils.safe_revision_id(revision_id)
         if not self.has_revision(revision_id):
