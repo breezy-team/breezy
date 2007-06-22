@@ -534,14 +534,13 @@ def apply_profiled(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    import cPickle
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
         stats.save(filename)
-        print 'Profile data written to %r.' % filename
+        trace.note('Profile data written to "%s".', filename)
     return ret
 
 
