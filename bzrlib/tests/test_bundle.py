@@ -903,7 +903,7 @@ class BundleTester(object):
         self.b1 = self.tree1.branch
         self.tree1.commit('message', rev_id='revid1')
         bundle = self.get_valid_bundle(None, 'revid1')
-        tree = bundle.revision_tree(self.b1.repository, 'revid1')
+        tree = self.get_bundle_tree(bundle, 'revid1')
         self.assertEqual('revid1', tree.inventory.root.revision)
 
     def test_install_revisions(self):
@@ -1011,6 +1011,10 @@ class V08BundleTester(BundleTester, TestCaseWithTransport):
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)
+
+    def get_bundle_tree(self, bundle, revision_id):
+        repository = self.make_repository('repo')
+        return bundle.revision_tree(repository, 'revid1')
 
     def test_bundle_empty_property_alt(self):
         """Test serializing revision properties with an empty value.
@@ -1193,6 +1197,11 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         bundle_txt.seek(0)
         return bundle_txt, rev_ids
 
+    def get_bundle_tree(self, bundle, revision_id):
+        repository = self.make_repository('repo')
+        bundle.install_revisions(repository)
+        return repository.revision_tree(revision_id)
+
     def test_creation(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'contents1\nstatic\n')])
@@ -1272,7 +1281,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
                          repo_a.get_signature_text('B'))
 
 
-class MungedBundleTester(TestCaseWithTransport):
+class MungedBundleTester(object):
 
     def build_test_bundle(self):
         wt = self.make_branch_and_tree('b1')
@@ -1287,8 +1296,8 @@ class MungedBundleTester(TestCaseWithTransport):
 
         bundle_txt = StringIO()
         rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
-                               'a@cset-0-1', bundle_txt)
-        self.assertEqual(['a@cset-0-2'], rev_ids)
+                               'a@cset-0-1', bundle_txt, self.format)
+        self.assertEqual(set(['a@cset-0-2']), set(rev_ids))
         bundle_txt.seek(0, 0)
         return bundle_txt
 
@@ -1323,6 +1332,11 @@ class MungedBundleTester(TestCaseWithTransport):
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
 
+
+class MungedBundleTesterV09(TestCaseWithTransport, MungedBundleTester):
+
+    format = '0.9'
+
     def test_missing_trailing_whitespace(self):
         bundle_txt = self.build_test_bundle()
 
@@ -1355,6 +1369,11 @@ class MungedBundleTester(TestCaseWithTransport):
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
+
+
+class MungedBundleTesterV4(TestCaseWithTransport, MungedBundleTester):
+
+    format = '4alpha'
 
 
 class TestBundleWriterReader(TestCase):
