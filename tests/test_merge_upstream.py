@@ -50,7 +50,7 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     # create the original upstream import
     self.build_tree(['README', 'CHANGELOG'])
     wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
-    wt.commit('upstream version 1')
+    wt.commit('upstream version 1', rev_id='upstream-1')
     old_upstream_revision = wt.branch.last_revision()
     # create the debian branch on top
     self.build_tree(['debian/', 'debian/changelog'])
@@ -61,15 +61,15 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     self.build_tree(['package-0.2/', 'package-0.2/README-NEW',
                      'package-0.2/CHANGELOG'])
     write_to_file('package-0.2/CHANGELOG', 'version 2\n')
-    tar = tarfile.open('package-0.2.tar.gz', 'w:gz')
+    tar = tarfile.open('../package-0.2.tar.gz', 'w:gz')
     try:
       tar.add('package-0.2')
     finally:
       tar.close()
     shutil.rmtree('package-0.2')
-    merge_upstream(wt, 'package-0.2.tar.gz',
+    merge_upstream(wt, '../package-0.2.tar.gz',
                    RevisionSpec.from_string("revid:" + old_upstream_revision))
-    os.unlink('package-0.2.tar.gz')
+    os.unlink('../package-0.2.tar.gz')
     return wt
 
   def test_merge_upstream_gives_correct_tree(self):
@@ -105,6 +105,15 @@ class TestSimpleMergeUpstreamNormal(TestCaseWithTransport):
     parents = wt.get_parent_ids()
     self.assertEqual(len(parents), 2)
     self.assertEqual(parents[1], 'debian-1-1')
+    self.assertEqual(wt.conflicts(), [])
+
+  def test_merge_upstream_gives_correct_history(self):
+    wt = self.perform_upstream_merge()
+    rh = wt.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.assertEqual(rh[0], 'upstream-1')
+    self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
+                     'import upstream from package-0.2.tar.gz')
 
 class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
   """Test merge upstream with conflicts in the new version."""
@@ -119,7 +128,7 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
     # create the original upstream import
     self.build_tree(['README', 'CHANGELOG'])
     wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
-    wt.commit('upstream version 1')
+    wt.commit('upstream version 1', rev_id='upstream-1')
     old_upstream_revision = wt.branch.last_revision()
     # create the debian branch on top
     self.build_tree(['debian/', 'debian/changelog'])
@@ -186,9 +195,15 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
                      [('CHANGELOG.BASE', None, 'file'),
                       ('CHANGELOG.OTHER', None, 'file'),
                       ('CHANGELOG.THIS', None, 'file')])
+
+  def test_merge_upstream_gives_correct_parents(self):
+    wt = self.perform_upstream_merge()
     parents = wt.get_parent_ids()
     self.assertEqual(len(parents), 2)
     self.assertEqual(parents[1], 'debian-1-1')
+
+  def test_merge_upstream_gives_correct_conflicts(self):
+    wt = self.perform_upstream_merge()
     conflicts = wt.conflicts()
     self.assertEqual(len(conflicts), 2)
     self.assertEqual(conflicts[0].path, 'CHANGELOG')
@@ -198,4 +213,12 @@ class TestConflictMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(conflicts[1].conflict_path, 'debian')
     self.assertEqual(conflicts[1].conflict_file_id, 'debian-id')
     self.assertEqual(conflicts[1].typestring, 'duplicate')
+
+  def test_merge_upstream_gives_correct_history(self):
+    wt = self.perform_upstream_merge()
+    rh = wt.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    self.assertEqual(rh[0], 'upstream-1')
+    self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
+                     'import upstream from package-0.2.tar.gz')
 
