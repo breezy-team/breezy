@@ -244,9 +244,9 @@ class BundleWriteOperation(object):
     def add_mp_records(self, repo_kind, file_id, vf, revision_ids):
         revision_ids = list(multiparent.topo_iter(vf, revision_ids))
         mpdiffs = vf.make_mpdiffs(revision_ids)
-        for mpdiff, revision_id in zip(mpdiffs, revision_ids):
+        sha1s = vf.get_sha1s(revision_ids)
+        for mpdiff, revision_id, sha1, in zip(mpdiffs, revision_ids, sha1s):
             parents = vf.get_parents(revision_id)
-            sha1 = vf.get_sha1(revision_id)
             text = ''.join(mpdiff.to_patch())
             self.bundle.add_multiparent_record(text, sha1, parents, repo_kind,
                                                revision_id, file_id)

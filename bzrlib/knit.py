@@ -586,11 +586,14 @@ class KnitVersionedFile(VersionedFile):
         return dict(graph_items)
 
     def get_sha1(self, version_id):
+        return get_sha1s([version_id])[0]
+
+    def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1()."""
-        version_id = osutils.safe_revision_id(version_id)
-        record_map = self._get_record_map([version_id])
-        method, content, digest, next = record_map[version_id]
-        return digest 
+        version_ids = [osutils.safe_revision_id(v) for v in version_ids]
+        record_map = self._get_record_map(version_ids)
+        # record entry 2 is the 'digest'.
+        return [record_map[v][2] for v in version_ids]
 
     @staticmethod
     def get_suffixes():
