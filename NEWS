@@ -38,6 +38,9 @@ IN DEVELOPMENT
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
 
+    * The lsprof filename note is emitted via trace.note(), not standard
+      output.  (Aaron Bentley)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
