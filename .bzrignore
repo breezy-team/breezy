@@ -35,3 +35,4 @@ build
 ./pretty_docs
 ./api
 doc/**/*.htm
+doc/developers/performance.png

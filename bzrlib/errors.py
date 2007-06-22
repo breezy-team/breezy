@@ -48,8 +48,8 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar internal_error: if true (or absent) this was probably caused by a
-    bzr bug and should be displayed with a traceback; if False this was
+    :cvar internal_error: if True this was probably caused by a bzr bug and
+    should be displayed with a traceback; if False (or absent) this was
     probably a user or environment error and they don't need the gory details.
     (That can be overridden by -Derror on the command line.)
 
@@ -845,6 +845,16 @@ class PointlessCommit(BzrError):
     _fmt = "No changes to commit"
 
 
+class CannotCommitSelectedFileMerge(BzrError):
+
+    _fmt = 'Selected-file commit of merges is not supported yet:'\
+        ' files %(files_str)s'
+
+    def __init__(self, files):
+        files_str = ', '.join(files)
+        BzrError.__init__(self, files=files, files_str=files_str)
+
+
 class UpgradeReadonly(BzrError):
 
     _fmt = "Upgrade URL cannot work with readonly URLs."
@@ -1568,6 +1578,8 @@ class NoFinalPath(BzrError):
 class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
+
+    internal_error = True
 
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
