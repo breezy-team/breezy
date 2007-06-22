@@ -15,9 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import tests
+from bzrlib.tests import test_lsprof
 
 
 class TestLSProf(tests.TestCaseInTempDir):
+
+    _test_needs_features = [test_lsprof.LSProfFeature]
 
     def test_file(self):
         out, err = self.run_bzr('--lsprof-file', 'output.callgrind', 'rocks')
