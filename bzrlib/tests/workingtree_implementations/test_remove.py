@@ -34,11 +34,9 @@ class TestRemove(TestCaseWithWorkingTree):
         self.build_tree(TestRemove.files)
         return tree
 
-    def _assertRemoveErrorContainsRe(self, e, file_detail_re):
-        # since assertContainsRe can't take a DOTALL parameter like
-        # normal re.match, use the following to disregard newlines
-        err = ' '.join(str(e).split())
-        self.assertContainsRe(err, 'Can\'t remove changed or unknown'
+    def _assertRemoveErrorContainsRe(self, exception, file_detail_re):
+        self.assertContainsRe(str(exception),
+            '(?s)Can\'t remove changed or unknown'
             ' files:.*' + file_detail_re)
 
     def test_remove_keep(self):
