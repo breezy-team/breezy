@@ -1274,6 +1274,12 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
                          repo_a.get_signature_text('B'))
 
 
+class V4WeaveBundleTester(V4BundleTester):
+
+    def bzrdir_format(self):
+        return 'weave'
+
+
 class MungedBundleTester(object):
 
     def build_test_bundle(self):

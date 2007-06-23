@@ -35,6 +35,8 @@ from bzrlib import (
 from bzrlib.transport.memory import MemoryTransport
 """)
 
+from cStringIO import StringIO
+
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -272,7 +274,8 @@ class VersionedFile(object):
         for version_id in version_ids:
             knit_versions.add(version_id)
             knit_versions.update(self.get_parents(version_id))
-        lines = dict(zip(knit_versions, self._get_line_list(knit_versions)))
+        lines = dict(zip(knit_versions,
+            self._get_lf_split_line_list(knit_versions)))
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]
@@ -294,7 +297,7 @@ class VersionedFile(object):
         for version, parents, expected_sha1, mpdiff in records:
             mpvf = multiparent.MultiMemoryVersionedFile()
             needed_parents = [p for p in parents if not mpvf.has_version(p)]
-            parent_lines = self._get_line_list(needed_parents)
+            parent_lines = self._get_lf_split_line_list(needed_parents)
             for parent_id, lines in zip(needed_parents, parent_lines):
                 mpvf.add_version(lines, parent_id, [])
             mpvf.add_diff(mpdiff, version, parents)
@@ -348,8 +351,8 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_lines)
 
-    def _get_line_list(self, version_ids):
-        return [t.splitlines(True) for t in self.get_texts(version_ids)]
+    def _get_lf_split_line_list(self, version_ids):
+        return [StringIO(t).readlines() for t in self.get_texts(version_ids)]
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This

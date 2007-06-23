@@ -847,7 +847,7 @@ class KnitVersionedFile(VersionedFile):
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
 
-    _get_line_list = get_line_list
+    _get_lf_split_line_list = get_line_list
 
     def _get_content_maps(self, version_ids):
         """Produce maps of text and KnitContents
