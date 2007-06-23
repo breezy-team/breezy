@@ -592,3 +592,13 @@ class TestWin32LocalTransport(TestCase):
         # make sure we reach the root
         t = t.clone('..')
         self.assertEquals(t.base, 'file://HOST/')
+
+
+def get_test_permutations():
+    """Return transport permutations to be used in testing.
+
+    This module registers some transports, but they're only for testing
+    registration.  We don't really want to run all the transport tests against
+    them.
+    """
+    return []

@@ -106,32 +106,34 @@ class NullCommitReporter(object):
 
 class ReportCommitToLog(NullCommitReporter):
 
-    # this may be more useful if 'note' was replaced by an overridable
-    # method on self, which would allow more trivial subclassing.
-    # alternative, a callable could be passed in, allowing really trivial
-    # reuse for some uis. RBC 20060511
+    def _note(self, format, *args):
+        """Output a message.
+
+        Subclasses may choose to override this method.
+        """
+        note(format, *args)
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
             return
         if change == 'added' and path == '':
             return
-        note("%s %s", change, path)
+        self._note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
-        note('Committed revision %d.', revno)
+        self._note('Committed revision %d.', revno)
     
     def deleted(self, file_id):
-        note('deleted %s', file_id)
+        self._note('deleted %s', file_id)
 
     def escaped(self, escape_count, message):
-        note("replaced %d control characters in message", escape_count)
+        self._note("replaced %d control characters in message", escape_count)
 
     def missing(self, path):
-        note('missing %s', path)
+        self._note('missing %s', path)
 
     def renamed(self, change, old_path, new_path):
-        note('%s %s => %s', change, old_path, new_path)
+        self._note('%s %s => %s', change, old_path, new_path)
 
 
 class Commit(object):
@@ -153,10 +155,7 @@ class Commit(object):
             self.reporter = reporter
         else:
             self.reporter = NullCommitReporter()
-        if config is not None:
-            self.config = config
-        else:
-            self.config = None
+        self.config = config
         
     def commit(self,
                message=None,
@@ -177,26 +176,26 @@ class Commit(object):
                recursive='down'):
         """Commit working copy as a new revision.
 
-        message -- the commit message (it or message_callback is required)
+        :param message: the commit message (it or message_callback is required)
 
-        timestamp -- if not None, seconds-since-epoch for a
-             postdated/predated commit.
+        :param timestamp: if not None, seconds-since-epoch for a
+            postdated/predated commit.
 
-        specific_files -- If true, commit only those files.
+        :param specific_files: If true, commit only those files.
 
-        rev_id -- If set, use this as the new revision id.
+        :param rev_id: If set, use this as the new revision id.
             Useful for test or import commands that need to tightly
             control what revisions are assigned.  If you duplicate
             a revision id that exists elsewhere it is your own fault.
             If null (default), a time/random revision id is generated.
 
-        allow_pointless -- If true (default), commit even if nothing
+        :param allow_pointless: If true (default), commit even if nothing
             has changed and no merges are recorded.
 
-        strict -- If true, don't allow a commit if the working tree
+        :param strict: If true, don't allow a commit if the working tree
             contains unknown files.
 
-        revprops -- Properties for new revision
+        :param revprops: Properties for new revision
         :param local: Perform a local only commit.
         :param recursive: If set to 'down', commit in any subtrees that have
             pending changes of any sort during this commit.
@@ -233,10 +232,8 @@ class Commit(object):
         self.timestamp = timestamp
         self.timezone = timezone
         self.committer = committer
-        self.specific_files = specific_files
         self.strict = strict
         self.verbose = verbose
-        self.local = local
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -249,30 +246,15 @@ class Commit(object):
         self.basis_tree.lock_read()
         try:
             # Cannot commit with conflicts present.
-            if len(self.work_tree.conflicts())>0:
+            if len(self.work_tree.conflicts()) > 0:
                 raise ConflictsInTree
 
-            # setup the bound branch variables as needed.
+            # Setup the bound branch variables as needed.
             self._check_bound_branch()
 
-            # check for out of date working trees
-            try:
-                first_tree_parent = self.work_tree.get_parent_ids()[0]
-            except IndexError:
-                # if there are no parents, treat our parent as 'None'
-                # this is so that we still consier the master branch
-                # - in a checkout scenario the tree may have no
-                # parents but the branch may do.
-                first_tree_parent = bzrlib.revision.NULL_REVISION
-            old_revno, master_last = self.master_branch.last_revision_info()
-            if master_last != first_tree_parent:
-                if master_last != bzrlib.revision.NULL_REVISION:
-                    raise errors.OutOfDateTree(self.work_tree)
-            if self.branch.repository.has_revision(first_tree_parent):
-                new_revno = old_revno + 1
-            else:
-                # ghost parents never appear in revision history.
-                new_revno = 1
+            # Check that the working tree is up to date
+            old_revno,new_revno = self._check_out_of_date_tree()
+
             if strict:
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
@@ -290,92 +272,74 @@ class Commit(object):
                 # cheaply?
                 tree.find_ids_across_trees(specific_files,
                                            [self.basis_tree, self.work_tree])
-            # one to finish, one for rev and inventory, and one for each
-            # inventory entry, and the same for the new inventory.
-            # note that this estimate is too long when we do a partial tree
-            # commit which excludes some new files from being considered.
-            # The estimate is corrected when we populate the new inv.
-            self.pb_total = len(self.work_inv) + 5
-            self.pb_count = 0
+
+            # Setup the progress bar. As the number of files that need to be
+            # committed in unknown, progress is reported as stages.
+            # We keep track of entries separately though and include that
+            # information in the progress bar during the relevant stages.
+            self.pb_stage_name = ""
+            self.pb_stage_count = 0
+            self.pb_stage_total = 4
+            if self.bound_branch:
+                self.pb_stage_total += 1
+            self.pb.show_pct = False
+            self.pb.show_spinner = False
+            self.pb.show_eta = False
+            self.pb.show_count = True
+            self.pb.show_bar = False
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
-                raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
-                        self.specific_files)
+                raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             
+            # Build the new inventory
+            self._emit_progress_set_stage("Collecting changes", show_entries=True)
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            
             self._remove_deleted()
             self._populate_new_inv()
             self._report_deletes()
-
             self._check_pointless()
 
-            self._emit_progress_update()
             # TODO: Now the new inventory is known, check for conflicts and
             # prompt the user for a commit message.
             # ADHB 2006-08-08: If this is done, populate_new_inv should not add
             # weave lines, because nothing should be recorded until it is known
             # that commit will succeed.
+            self._emit_progress_set_stage("Saving data locally")
             self.builder.finish_inventory()
-            self._emit_progress_update()
             message = message_callback(self)
             assert isinstance(message, unicode), type(message)
             self.message = message
             self._escape_commit_message()
 
+            # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
-            self._emit_progress_update()
-            # revision data is in the local branch now.
             
-            # upload revision data to the master.
+            # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
+                self._emit_progress_set_stage("Uploading data to master branch")
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
                 # now the master has the revision data
-                # 'commit' to the master first so a timeout here causes the local
-                # branch to be out of date
+                # 'commit' to the master first so a timeout here causes the
+                # local branch to be out of date
                 self.master_branch.set_last_revision_info(new_revno,
                                                           self.rev_id)
 
             # and now do the commit locally.
             self.branch.set_last_revision_info(new_revno, self.rev_id)
 
+            # Make the working tree up to date with the branch
+            self._emit_progress_set_stage("Updating the working tree")
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
-            # now the work tree is up to date with the branch
-            
             self.reporter.completed(new_revno, self.rev_id)
-            # old style commit hooks - should be deprecated ? (obsoleted in
-            # 0.15)
-            if self.config.post_commit() is not None:
-                hooks = self.config.post_commit().split(' ')
-                # this would be nicer with twisted.python.reflect.namedAny
-                for hook in hooks:
-                    result = eval(hook + '(branch, rev_id)',
-                                  {'branch':self.branch,
-                                   'bzrlib':bzrlib,
-                                   'rev_id':self.rev_id})
-            # new style commit hooks:
-            if not self.bound_branch:
-                hook_master = self.branch
-                hook_local = None
-            else:
-                hook_master = self.master_branch
-                hook_local = self.branch
-            # With bound branches, when the master is behind the local branch,
-            # the 'old_revno' and old_revid values here are incorrect.
-            # XXX: FIXME ^. RBC 20060206
-            if self.parents:
-                old_revid = self.parents[0]
-            else:
-                old_revid = bzrlib.revision.NULL_REVISION
-            for hook in Branch.hooks['post_commit']:
-                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
-                    self.rev_id)
-            self._emit_progress_update()
+
+            # Process the post commit hooks, if any
+            self._emit_progress_set_stage("Running post commit hooks")
+            self._process_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
         return self.rev_id
@@ -476,6 +440,60 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
+
+    def _check_out_of_date_tree(self):
+        """Check that the working tree is up to date.
+
+        :return: old_revision_number,new_revision_number tuple
+        """
+        try:
+            first_tree_parent = self.work_tree.get_parent_ids()[0]
+        except IndexError:
+            # if there are no parents, treat our parent as 'None'
+            # this is so that we still consider the master branch
+            # - in a checkout scenario the tree may have no
+            # parents but the branch may do.
+            first_tree_parent = bzrlib.revision.NULL_REVISION
+        old_revno, master_last = self.master_branch.last_revision_info()
+        if master_last != first_tree_parent:
+            if master_last != bzrlib.revision.NULL_REVISION:
+                raise errors.OutOfDateTree(self.work_tree)
+        if self.branch.repository.has_revision(first_tree_parent):
+            new_revno = old_revno + 1
+        else:
+            # ghost parents never appear in revision history.
+            new_revno = 1
+        return old_revno,new_revno
+
+    def _process_hooks(self, old_revno, new_revno):
+        """Process any registered commit hooks."""
+        # old style commit hooks - should be deprecated ? (obsoleted in
+        # 0.15)
+        if self.config.post_commit() is not None:
+            hooks = self.config.post_commit().split(' ')
+            # this would be nicer with twisted.python.reflect.namedAny
+            for hook in hooks:
+                result = eval(hook + '(branch, rev_id)',
+                              {'branch':self.branch,
+                               'bzrlib':bzrlib,
+                               'rev_id':self.rev_id})
+        # new style commit hooks:
+        if not self.bound_branch:
+            hook_master = self.branch
+            hook_local = None
+        else:
+            hook_master = self.master_branch
+            hook_local = self.branch
+        # With bound branches, when the master is behind the local branch,
+        # the 'old_revno' and old_revid values here are incorrect.
+        # XXX: FIXME ^. RBC 20060206
+        if self.parents:
+            old_revid = self.parents[0]
+        else:
+            old_revid = bzrlib.revision.NULL_REVISION
+        for hook in Branch.hooks['post_commit']:
+            hook(hook_local, hook_master, old_revno, old_revid, new_revno,
+                self.rev_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -594,9 +612,9 @@ class Commit(object):
                 stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             entries.next()
-            self._emit_progress_update()
+        self.pb_entries_total = len(self.work_inv)
         for path, new_ie in entries:
-            self._emit_progress_update()
+            self._emit_progress_next_entry()
             file_id = new_ie.file_id
             try:
                 kind = self.work_tree.kind(file_id)
@@ -673,14 +691,31 @@ class Commit(object):
             self.builder.record_entry_contents(ie, self.parent_invs, path,
                                                self.basis_tree)
 
-    def _emit_progress_update(self):
-        """Emit an update to the progress bar."""
-        self.pb.update("Committing", self.pb_count, self.pb_total)
-        self.pb_count += 1
+    def _emit_progress_set_stage(self, name, show_entries=False):
+        """Set the progress stage and emit an update to the progress bar."""
+        self.pb_stage_name = name
+        self.pb_stage_count += 1
+        self.pb_entries_show = show_entries
+        if show_entries:
+            self.pb_entries_count = 0
+            self.pb_entries_total = '?'
+        self._emit_progress()
+
+    def _emit_progress_next_entry(self):
+        """Emit an update to the progress bar and increment the file count."""
+        self.pb_entries_count += 1
+        self._emit_progress()
+
+    def _emit_progress(self):
+        if self.pb_entries_show:
+            text = "%s [Entry %d/%s] - Stage" % (self.pb_stage_name,
+                self.pb_entries_count,str(self.pb_entries_total))
+        else:
+            text = "%s - Stage" % (self.pb_stage_name)
+        self.pb.update(text, self.pb_stage_count, self.pb_stage_total)
 
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
-
 

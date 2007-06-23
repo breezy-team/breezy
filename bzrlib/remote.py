@@ -19,8 +19,13 @@
 
 from cStringIO import StringIO
 
-from bzrlib import branch, errors, lockdir, repository
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib import (
+    branch,
+    errors,
+    lockdir,
+    repository,
+)
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -294,6 +299,10 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
+    def get_graph(self, other_repository=None):
+        """Return the graph for this repository format"""
+        return self._real_repository.get_graph(other_repository)
+
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -524,9 +533,9 @@ class RemoteRepository(object):
         return self._real_repository.control_weaves
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id)
+        return self._real_repository.get_ancestry(revision_id, topo_sorted)
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -764,6 +773,11 @@ class RemoteBranch(branch.Branch):
         self._lock_count = 0
         self._leave_lock = False
 
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
+
     def _ensure_real(self):
         """Ensure that there is a _real_branch set.
 
@@ -991,16 +1005,24 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.append_revision(*revision_ids)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             **kwargs):
+        # FIXME: This asks the real branch to run the hooks, which means
+        # they're called with the wrong target branch parameter. 
+        # The test suite specifically allows this at present but it should be
+        # fixed.  It should get a _override_hook_target branch,
+        # as push does.  -- mbp 20070405
         self._ensure_real()
         self._real_branch.pull(
-            source, overwrite=overwrite, stop_revision=stop_revision)
+            source, overwrite=overwrite, stop_revision=stop_revision,
+            **kwargs)
 
     @needs_read_lock
     def push(self, target, overwrite=False, stop_revision=None):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision)
+            target, overwrite=overwrite, stop_revision=stop_revision,
+            _override_hook_source_branch=self)
 
     def is_locked(self):
         return self._lock_count >= 1

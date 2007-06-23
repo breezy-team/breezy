@@ -813,7 +813,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 to_revision = osutils.safe_revision_id(to_revision)
             merger.other_rev_id = to_revision
             if merger.other_rev_id is None:
-                raise error.NoCommits(branch)
+                raise errors.NoCommits(branch)
             self.branch.fetch(branch, last_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(
@@ -932,20 +932,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             transport = self.branch.bzrdir.root_transport
             for name in segments:
                 transport = transport.clone(name)
-                try:
-                    transport.mkdir('.')
-                except errors.FileExists:
-                    pass
+                transport.ensure_base()
             return transport
             
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        try:
-            branch_transport.mkdir('.')
-        except errors.FileExists:
-            pass
+        branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:
             repo = branch_bzrdir.find_repository()
@@ -1781,7 +1775,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if isinstance(files, basestring):
             files = [files]
 
-        inv = self.inventory
+        inv_delta = []
 
         new_files=set()
         unknown_files_in_directory=set()
@@ -1789,22 +1783,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         def recurse_directory_to_add_files(directory):
             # recurse directory and add all files
             # so we can check if they have changed.
-            for contained_dir_info in self.walkdirs(directory):
-                for file_info in contained_dir_info[1]:
-                    if file_info[2] == 'file':
-                        relpath = self.relpath(file_info[0])
-                        if file_info[4]: #is it versioned?
+            for parent_info, file_infos in\
+                osutils.walkdirs(self.abspath(directory),
+                    directory):
+                for relpath, basename, kind, lstat, abspath in file_infos:
+                    if kind == 'file':
+                        if self.path2id(relpath): #is it versioned?
                             new_files.add(relpath)
                         else:
                             unknown_files_in_directory.add(
-                                (relpath, None, file_info[2]))
+                                (relpath, None, kind))
 
         for filename in files:
             # Get file name into canonical form.
-            filename = self.relpath(self.abspath(filename))
+            abspath = self.abspath(filename)
+            filename = self.relpath(abspath)
             if len(filename) > 0:
                 new_files.add(filename)
-                if osutils.isdir(filename) and len(os.listdir(filename)) > 0:
+                if osutils.isdir(abspath):
                     recurse_directory_to_add_files(filename)
         files = [f for f in new_files]
 
@@ -1836,7 +1832,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # do this before any modifications
         for f in files:
-            fid = inv.path2id(f)
+            fid = self.path2id(f)
             message=None
             if not fid:
                 message="%s is not versioned." % (f,)
@@ -1847,10 +1843,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, inv[fid].kind, f,
+                    textui.show_status(new_status, self.kind(fid), f,
                                        to_file=to_file)
                 # unversion file
-                del inv[fid]
+                inv_delta.append((f, None, fid, None))
                 message="removed %s" % (f,)
 
             if not keep_files:
@@ -1870,7 +1866,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # print only one message (if any) per file.
             if message is not None:
                 note(message)
-        self._write_inventory(inv)
+        self.apply_inventory_delta(inv_delta)
 
     @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
@@ -2101,13 +2097,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             #       inventory and calls tree._write_inventory(). Ultimately we
             #       should be able to remove this extra flush.
             self.flush()
-            from bzrlib.revision import common_ancestor
-            try:
-                base_rev_id = common_ancestor(self.branch.last_revision(),
-                                              old_tip,
-                                              self.branch.repository)
-            except errors.NoCommonAncestor:
-                base_rev_id = None
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             result += merge.merge_inner(

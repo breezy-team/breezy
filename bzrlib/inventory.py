@@ -181,7 +181,7 @@ class InventoryEntry(object):
         :param entry_vf: The entry versioned file, if its already available.
         """
         def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision))
+            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
         # revision:ie mapping for each ie found in previous_inventories.
         candidates = {}
         # revision:ie mapping with one revision for each head.

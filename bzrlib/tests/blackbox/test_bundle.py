@@ -21,10 +21,10 @@ from StringIO import StringIO
 
 from bzrlib.bundle.serializer import read_bundle
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import tests
 
 
-class TestBundle(TestCaseInTempDir):
+class TestBundle(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
@@ -92,3 +92,9 @@ class TestBundle(TestCaseInTempDir):
         stdout = self.run_bzr_subprocess('bundle')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
+
+    def test_no_common_ancestor(self):
+        foo = self.make_branch_and_tree('foo')
+        bar = self.make_branch_and_tree('bar')
+        os.chdir('foo')
+        self.run_bzr('bundle', '../bar')

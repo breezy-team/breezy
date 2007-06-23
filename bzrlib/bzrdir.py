@@ -155,8 +155,23 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
-        self._make_tail(url)
-        result = self._format.initialize(url)
+        return self.clone_on_transport(get_transport(url),
+                                       revision_id=revision_id,
+                                       force_new_repo=force_new_repo)
+
+    def clone_on_transport(self, transport, revision_id=None,
+                           force_new_repo=False):
+        """Clone this bzrdir and its contents to transport verbatim.
+
+        If the target directory does not exist, it will be created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target 
+                               even if one is available.
+        """
+        transport.ensure_base()
+        result = self._format.initialize_on_transport(transport)
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -195,13 +210,8 @@ class BzrDir(object):
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
     def _make_tail(self, url):
-        head, tail = urlutils.split(url)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
+        t = get_transport(url)
+        t.ensure_base()
 
     # TODO: Should take a Transport
     @classmethod
@@ -217,13 +227,8 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default"
                 " format, not one of %r" % cls)
-        head, tail = urlutils.split(base)
-        if tail and tail != '.':
-            t = get_transport(head)
-            try:
-                t.mkdir(tail)
-            except errors.FileExists:
-                pass
+        t = get_transport(base)
+        t.ensure_base()
         if format is None:
             format = BzrDirFormat.get_default_format()
         return format.initialize(safe_unicode(base))
@@ -756,9 +761,10 @@ class BzrDir(object):
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
         """
-        self._make_tail(url)
+        target_transport = get_transport(url)
+        target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
-        result = cloning_format.initialize(url)
+        result = cloning_format.initialize_on_transport(target_transport)
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
