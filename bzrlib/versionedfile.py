@@ -311,6 +311,14 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_sha1)
 
+    def get_sha1s(self, version_ids):
+        """Get the stored sha1 sums for the given revisions.
+
+        :param version_ids: The names of the versions to lookup
+        :return: a list of sha1s in order according to the version_ids
+        """
+        raise NotImplementedError(self.get_sha1)
+
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
         raise NotImplementedError(self.get_suffixes)

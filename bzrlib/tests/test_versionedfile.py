@@ -788,6 +788,11 @@ class VersionedFileTestMixIn(object):
             '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
         self.assertEqual(
             '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
+
+        self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
+                          '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+                          '3f786850e387550fdab836ed7e6dc881de23001b'],
+                          vf.get_sha1s(['a', 'c', 'b']))
         
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):

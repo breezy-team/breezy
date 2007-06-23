@@ -586,7 +586,7 @@ class KnitVersionedFile(VersionedFile):
         return dict(graph_items)
 
     def get_sha1(self, version_id):
-        return get_sha1s([version_id])[0]
+        return self.get_sha1s([version_id])[0]
 
     def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1()."""
