@@ -26,6 +26,7 @@ import zipfile
 
 from bzrlib.errors import (NoSuchFile,
                            FileExists,
+                           BzrCommandError,
                            )
 
 
@@ -79,6 +80,7 @@ def repack_tarball(orig_name, new_name):
           new_tar.close()
       finally:
         old_tar.close()
+    else:
+      raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
   # TODO: handle zip files.
-  # TODO: complain on unrecognised formats and test for that.
 
