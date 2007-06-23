@@ -23,6 +23,7 @@ import shutil
 
 from bzrlib.errors import (BzrCommandError,
                            InvalidRevisionSpec,
+                           NoSuchFile,
                            )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tests import TestCaseWithTransport
@@ -101,7 +102,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.make_first_upstream_commit()
     old_upstream_revision = self.wt.branch.last_revision()
     self.make_first_debian_commit()
-    self.assertRaises(BzrCommandError, merge_upstream, self.wt, 'source',
+    self.assertRaises(NoSuchFile, merge_upstream, self.wt, 'source',
                       make_revspec(old_upstream_revision))
 
   def test_merge_upstream_handles_invalid_revision(self):

@@ -1,4 +1,4 @@
-#    test_util.py -- Testsuite for builddeb builder.py
+#    test_builder.py -- Testsuite for builddeb builder.py
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.

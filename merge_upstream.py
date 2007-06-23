@@ -24,13 +24,14 @@ from bz2 import BZ2File
 import os
 from StringIO import StringIO
 
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import (BzrCommandError,
+                           NoSuchFile,
+                           )
 from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_dir,
                                                      import_zip,
                                                      )
 
-# TODO: rename/repack tarball in to place.
 # TODO: drop requirement for revision of last upstream, use tags or something
 #       instead.
 # TODO: support using an explicit standalone upstream branch.
@@ -63,7 +64,7 @@ def merge_upstream(tree, source, old_revision):
     if tree.changes_from(tree.basis_tree()).has_changed():
       raise BzrCommandError("Working tree has uncommitted changes.")
     if not os.path.exists(source):
-      raise BzrCommandError("%s does not exists" % source)
+      raise NoSuchFile(source)
     current_revision = tree.last_revision()
     revno, rev_id = old_revision.in_branch(tree.branch)
     if rev_id != tree.branch.last_revision():

@@ -71,6 +71,16 @@ def make_new_upstream_tarball_zip(tarball):
     shutil.rmtree('package-0.2')
   return _make_upstream_tarball
 
+def make_new_upstream_tarball_bare(tarball):
+  def _make_upstream_tarball():
+    tar = tarfile.open(tarball, 'w')
+    try:
+      tar.add('package-0.2')
+    finally:
+      tar.close()
+    shutil.rmtree('package-0.2')
+  return _make_upstream_tarball
+
 tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                      ('.tar.gz', make_new_upstream_tarball,
                       '../package-0.2.tar.gz'),
@@ -78,6 +88,8 @@ tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                       '../package-0.2.tar.bz2'),
                      ('.zip', make_new_upstream_tarball_zip,
                       '../package-0.2.zip'),
+                     ('.tar', make_new_upstream_tarball_bare,
+                      '../package-0.2.tar'),
                      ]
 
 
@@ -89,6 +101,26 @@ class MergeUpstreamAdaptor(object):
       new_test = deepcopy(test)
       new_test.build_tarball = function(source)
       new_test.upstream_tarball = source
+      def make_new_id():
+        new_id = '%s(%s)' % (test.id(), name)
+        return lambda: new_id
+      new_test.id = make_new_id()
+      result.addTest(new_test)
+    return result
+
+
+class RepackTarballAdaptor(object):
+
+  def adapt(self, test):
+    result = TestSuite()
+    for (name, function, source) in tarball_functions:
+      # XXX: Zip files are horrible, but work out how to repack them.
+      if name == '.zip':
+        continue
+      new_test = deepcopy(test)
+      source = os.path.basename(source)
+      new_test.build_tarball = function(source)
+      new_test.old_tarball = source
       def make_new_id():
         new_id = '%s(%s)' % (test.id(), name)
         return lambda: new_id
@@ -117,6 +149,8 @@ def test_suite():
 
     adapt_modules(['%s.test_merge_upstream' % __name__],
                   MergeUpstreamAdaptor(), loader, suite)
+    adapt_modules(['%s.test_repack_tarball' % __name__],
+                  RepackTarballAdaptor(), loader, suite)
 
     return suite
 
