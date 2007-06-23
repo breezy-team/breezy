@@ -18,17 +18,18 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import changes
+import config
+import shutil
+import tarfile
+import zipfile
+
 from copy import deepcopy
 import doctest
 import os
 from unittest import TestSuite
 
 from bzrlib.tests import TestUtil, adapt_modules
-
-import changes
-import config
-import shutil
-import tarfile
 
 def make_new_upstream_dir(dir):
   def _make_upstream_dir():
@@ -55,11 +56,28 @@ def make_new_upstream_tarball_bz2(tarball):
     shutil.rmtree('package-0.2')
   return _make_upstream_tarball
 
+def make_new_upstream_tarball_zip(tarball):
+  def _make_upstream_tarball():
+    zip = zipfile.ZipFile(tarball, 'w')
+    try:
+      zip.writestr('package-0.2/', '')
+      for (dirpath, dirnames, names) in os.walk('package-0.2'):
+        for dir in dirnames:
+          zip.writestr(os.path.join(dirpath, dir, ''), '')
+        for name in names:
+          zip.write(os.path.join(dirpath, name))
+    finally:
+      zip.close()
+    shutil.rmtree('package-0.2')
+  return _make_upstream_tarball
+
 tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                      ('.tar.gz', make_new_upstream_tarball,
                       '../package-0.2.tar.gz'),
                      ('.tar.bz2', make_new_upstream_tarball_bz2,
                       '../package-0.2.tar.bz2'),
+                     ('.zip', make_new_upstream_tarball_zip,
+                      '../package-0.2.zip'),
                      ]
 
 

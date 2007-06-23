@@ -1,6 +1,7 @@
 #    merge_upstream.py -- Merge new upstream versions of packages.
 #    Copyright (C) 2007 Reinhard Tartler <siretart@tauware.de>
 #                  2007 James Westby <jw+debian@jameswestby.net>
+#                  2007 Aaron Bentley <aaron.bentley@utoronto.ca>
 #
 #    This file is part of bzr-builddeb.
 #
@@ -26,9 +27,9 @@ from StringIO import StringIO
 from bzrlib.errors import BzrCommandError
 from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_dir,
+                                                     import_zip,
                                                      )
 
-# TODO: handle more input sources.
 # TODO: rename/repack tarball in to place.
 # TODO: drop requirement for revision of last upstream, use tags or something
 #       instead.
@@ -83,6 +84,8 @@ def merge_upstream(tree, source, old_revision):
             import_tar(tree, tar_input)
           finally:
             tar_input.close()
+        elif source.endswith('.zip'):
+            import_zip(tree, open(source, 'rb'))
       tree.set_parent_ids([rev_id])
       tree.branch.set_last_revision_info(revno, rev_id)
       tree.commit('import upstream from %s' % os.path.basename(source))
@@ -105,5 +108,7 @@ def merge_upstream(tree, source, old_revision):
             import_tar(tree, tar_input)
           finally:
             tar_input.close()
+        elif source.endswith('.zip'):
+            import_zip(tree, open(source, 'rb'))
       tree.commit('import upstream from %s' % os.path.basename(source))
 
