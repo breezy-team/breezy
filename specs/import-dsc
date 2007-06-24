@@ -1,0 +1,71 @@
+Building a remote branch
+========================
+
+Status: Draft
+
+Aim
+---
+
+When a package has not been maintained in a VCS before the history information
+is in the source packages. There will generally be a series of these for each
+package.
+
+The plugin should support creating a branch from these files.
+
+It would also be good if the past versions could be obtained from
+snapshot.debian.net or similar.
+
+Design
+------
+
+If there are multiple .dscs provided then they should be sorted in to ascending
+version number. Then for each it should be imported. If it has an
+.orig.tar.gz then it should be imported first on to the upstream branch,
+adding a tag for use with new-upstream-release-handling. Then the .diff.gz
+should be applied, and the result commited on the packaging branch as a merge
+with the upstream.
+
+If there is no .orig.tar.gz the tree should be set at the corresponding
+upstream import and the diff applied on to the tree. However the commit should
+have a single parent of the last commit on the packaging branch.
+
+Each revision on the packaging branch should be tagged to match the tag
+scheme used for uploads.
+
+The revision graph will evolve like this, starting from an empty branch.
+
+  upstream
+
+  packaging
+
+Import the first upstream
+
+  upstream  ---1
+
+  packaging
+
+Add the packaging diff
+
+  upstream  ---1
+                \
+  packaging      1.1
+
+Add the next packaging diff.
+
+  upstream  ---1
+                \
+  packaging      1.1---1.2
+
+Then import the next upstream, using the diff to provide the merge commit.
+
+  upstream  ---1-----------2
+                \           \
+  packaging      1.1---1.2---2.1
+
+and continue on like that until all is imported.
+
+There should be no conflicts, as the merge commits aren't done as merges,
+the second parent (along the packaging branch) is just added to represent the
+history. In reality the tree of that commit is just the result of applying the
+.diff.gz to the .orig.tar.gz, i.e. the package.
+

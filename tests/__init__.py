@@ -135,6 +135,7 @@ def test_suite():
     testmod_names = [
             'test_builder',
             'test_config',
+            'test_import_dsc',
             'test_repack_tarball_extra',
             'test_util',
             ]
