@@ -120,7 +120,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            branches = source_repos.find_branches(pb=pb)
+            branches = source_repos.find_branches(scheme, pb=pb)
             existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
         finally:
@@ -134,7 +134,8 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                 if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
                     continue
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
-                revid = source_repos.generate_revision_id(revnum, branch)
+                revid = source_repos.generate_revision_id(revnum, branch, 
+                                                          str(scheme))
 
                 target_dir = get_dir(branch)
                 if not create_shared_repo:

@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Branching scheme implementations."""
 
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, BzrError
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -56,16 +56,16 @@ class BranchingScheme:
         if name == "trunk":
             return TrunkBranchingScheme()
 
-        if name.startswith("trunk-"):
+        if name.startswith("trunk"):
             try:
-                return TrunkBranchingScheme(level=int(name[len("trunk-"):]))
+                return TrunkBranchingScheme(level=int(name[len("trunk"):]))
             except ValueError:
-                return None
+                raise UnknownBranchingScheme(name)
 
         if name == "none":
             return NoBranchingScheme()
 
-        return None
+        raise UnknownBranchingScheme(name)
 
     def is_branch_parent(self, path):
         """Check whether the specified path is the parent directory of branches.
@@ -144,6 +144,7 @@ class TrunkBranchingScheme(BranchingScheme):
         parts = path.strip("/").split("/")
         return self.is_tag(path+"/aname")
 
+
 class NoBranchingScheme(BranchingScheme):
     """Describes a scheme where there is just one branch, the 
     root of the repository."""
@@ -159,7 +160,7 @@ class NoBranchingScheme(BranchingScheme):
         return ("", path.strip("/"))
 
     def __str__(self):
-        return "null"
+        return "none"
 
     def is_branch_parent(self, path):
         return False
@@ -195,3 +196,8 @@ class ListBranchingScheme(BranchingScheme):
 
         raise NotBranchError(path=path)
 
+class UnknownBranchingScheme(BzrError):
+    _fmt = "Branching scheme could not be found: %(name)s"
+
+    def __init__(self, name):
+        self.name = name

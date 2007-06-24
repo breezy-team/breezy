@@ -35,7 +35,7 @@ class MockRepo:
 
     def lookup_revision_id(self, revid):
         ret = parse_svn_revision_id(revid)
-        return ret[1], ret[2]
+        return ret[1], ret[2], ret[3]
 
 
 class TestComplexFileids(TestCaseWithSubversionRepository):
@@ -61,9 +61,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+"+repos_url)
 
         inv1 = repository.get_inventory(
-                repository.generate_revision_id(1, ""))
+                repository.generate_revision_id(1, "", "none"))
         inv2 = repository.get_inventory(
-                repository.generate_revision_id(2, ""))
+                repository.generate_revision_id(2, "", "none"))
         mutter('inv1: %r' % inv1.entries())
         mutter('inv2: %r' % inv2.entries())
         if RENAMES:
@@ -88,9 +88,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                repository.generate_revision_id(1, ""))
+                repository.generate_revision_id(1, "", "none"))
         inv2 = repository.get_inventory(
-                repository.generate_revision_id(2, ""))
+                repository.generate_revision_id(2, "", "none"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("blie"))
         self.assertIs(None, inv1.path2id("bar"))
@@ -108,9 +108,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                repository.generate_revision_id(1, ""))
+                repository.generate_revision_id(1, "", "none"))
         inv2 = repository.get_inventory(
-                repository.generate_revision_id(2, ""))
+                repository.generate_revision_id(2, "", "none"))
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
 
@@ -128,12 +128,13 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                repository.generate_revision_id(1, ""))
+                repository.generate_revision_id(1, "", "none"))
         inv2 = repository.get_inventory(
-                repository.generate_revision_id(2, ""))
+                repository.generate_revision_id(2, "", "none"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("foo"))
 
     def test_copy_branch(self):
+        scheme = TrunkBranchingScheme()
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/trunk/dir/file': "data", 'dc/branches': None})
         self.client_add("dc/trunk")
@@ -146,16 +147,16 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                repository.generate_revision_id(1, "trunk"))
+                repository.generate_revision_id(1, "trunk", "trunk0"))
         inv2 = repository.get_inventory(
-                repository.generate_revision_id(2, "branches/mybranch"))
+                repository.generate_revision_id(2, "branches/mybranch", "trunk0"))
         self.assertEqual(inv1.path2id("dir"), inv2.path2id("dir"))
         self.assertEqual(inv1.path2id("dir/file"), inv2.path2id("dir/file"))
 
         fileid, revid = repository.get_fileid_map(2, 
-                            "branches/mybranch")["dir/file"]
+                            "branches/mybranch", scheme)["dir/file"]
         self.assertEqual(fileid, inv1.path2id("dir/file"))
-        self.assertEqual(repository.generate_revision_id(1, "trunk"), revid)
+        self.assertEqual(repository.generate_revision_id(1, "trunk", "trunk0"), revid)
 
 def sha1(text):
     return sha.new(text).hexdigest()
@@ -166,24 +167,24 @@ class TestFileIdGenerator(TestCase):
         self.repos = MockRepo()
 
     def test_generate_file_id_root(self):
-        self.assertEqual("2@uuid:bp:", generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), ""))
+        self.assertEqual("2@uuid:bp:", generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), ""))
 
     def test_generate_file_id_path(self):
         self.assertEqual("2@uuid:bp:mypath", 
-                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), "mypath"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), "mypath"))
 
     def test_generate_file_id_long(self):
         dir = "this/is/a" + ("/very"*40) + "/long/path/"
         self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
-                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), dir+"filename"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), dir+"filename"))
 
     def test_generate_revid_special_char_ascii(self):
         self.assertEqual("2@uuid:bp:mypath%2C%8A", 
-                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))
+                generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp", "bla"), "mypath\x2c\x8a"))
 
     def test_generate_file_id_special_char(self):
         self.assertEqual("2@uuid:bp:mypath%2C%C2%8A",
-                         generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
+                         generate_file_id(self.repos, generate_svn_revision_id("uuid", 2, "bp","bla"), u"mypath\x2c\x8a"))
 
     def test_generate_svn_file_id(self):
         self.assertEqual("2@uuid:bp:path", 
@@ -213,16 +214,16 @@ class TestFileMapping(TestCase):
         return map
 
     def test_simple(self):
-        map = self.apply_mappings({generate_svn_revision_id("uuid", 1, ""): {"foo": ('A', None, None)}})
+        map = self.apply_mappings({generate_svn_revision_id("uuid", 1, "", "bla"): {"foo": ('A', None, None)}})
         self.assertEqual({ 'foo': ("1@uuid::foo",
-                                       generate_svn_revision_id("uuid", 1, ""))
+                                       generate_svn_revision_id("uuid", 1, "", "bla"))
                          }, map)
 
     def test_simple_add(self):
-        map = self.apply_mappings({generate_svn_revision_id("uuid", 1, ""): {"": ('A', None, None), "foo": ('A', None, None)}})
-        self.assertEqual({'': ('1@uuid::', generate_svn_revision_id("uuid", 1, "")),
+        map = self.apply_mappings({generate_svn_revision_id("uuid", 1, "", "bla"): {"": ('A', None, None), "foo": ('A', None, None)}})
+        self.assertEqual({'': ('1@uuid::', generate_svn_revision_id("uuid", 1, "", "bla")),
             'foo': ("1@uuid::foo", 
-                                       generate_svn_revision_id("uuid", 1, ""))
+                                       generate_svn_revision_id("uuid", 1, "", "bla"))
                          }, map)
 
     def test_copy(self):
@@ -231,11 +232,11 @@ class TestFileMapping(TestCase):
                 yield "foo/blie"
                 yield "foo/bla"
         map = self.apply_mappings(
-                {generate_svn_revision_id("uuid", 1, ""): {
+                {generate_svn_revision_id("uuid", 1, "", "bla"): {
                                    "foo": ('A', None, None), 
                                    "foo/blie": ('A', None, None),
                                    "foo/bla": ('A', None, None)},
-                generate_svn_revision_id("uuid", 2, ""): {
+                generate_svn_revision_id("uuid", 2, "", "bla"): {
                                    "foob": ('A', 'foo', 1), 
                                    "foob/bla": ('M', None, None)}
                 }, find_children)
@@ -244,37 +245,39 @@ class TestFileMapping(TestCase):
 
     def test_touchparent(self):
         map = self.apply_mappings(
-                {generate_svn_revision_id("uuid", 1, ""): {
+                {generate_svn_revision_id("uuid", 1, "", "bla"): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 generate_svn_revision_id("uuid", 2, ""): {
+                 generate_svn_revision_id("uuid", 2, "", "bla"): {
                                    "foo/bla": ('M', None, None)}
                 })
-        self.assertEqual(generate_svn_revision_id("uuid", 1, ""), map["foo"][1])
-        self.assertEqual(generate_svn_revision_id("uuid", 1, ""), map["foo/bla"][1])
+        self.assertEqual(generate_svn_revision_id("uuid", 1, "", "bla"), 
+                         map["foo"][1])
+        self.assertEqual(generate_svn_revision_id("uuid", 1, "", "bla"), 
+                         map["foo/bla"][1])
 
     def test_usemap(self):
         map = self.apply_mappings(
-                {generate_svn_revision_id("uuid", 1, ""): {
+                {generate_svn_revision_id("uuid", 1, "", "bla"): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 generate_svn_revision_id("uuid", 2, ""): {
+                 generate_svn_revision_id("uuid", 2, "", "bla"): {
                                    "foo/bla": ('M', None, None)}
                  }, 
-                renames={generate_svn_revision_id("uuid", 1, ""): {"foo": "myid"}})
+                renames={generate_svn_revision_id("uuid", 1, "", "bla"): {"foo": "myid"}})
         self.assertEqual("myid", map["foo"][0])
 
     def test_usemap_later(self):
         map = self.apply_mappings(
-                {generate_svn_revision_id("uuid", 1, ""): {
+                {generate_svn_revision_id("uuid", 1, "", "bla"): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 generate_svn_revision_id("uuid", 2, ""): {
+                 generate_svn_revision_id("uuid", 2, "", "bla"): {
                                    "foo/bla": ('M', None, None)}
                  }, 
-                renames={generate_svn_revision_id("uuid", 2, ""): {"foo": "myid"}})
+                renames={generate_svn_revision_id("uuid", 2, "", "bla"): {"foo": "myid"}})
         self.assertEqual("1@uuid::foo", map["foo"][0])
-        self.assertEqual(generate_svn_revision_id("uuid", 1, ""), map["foo"][1])
+        self.assertEqual(generate_svn_revision_id("uuid", 1, "", "bla"), map["foo"][1])
 
 class GetMapTests(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -283,28 +286,30 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.repos = Repository.open(self.repos_url)
 
     def test_empty(self):
-        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 0, "", ""), self.repos.generate_revision_id(0, ""))}, 
-                         self.repos.get_fileid_map(0, ""))
+        scheme = TrunkBranchingScheme()
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 0, "", ""), self.repos.generate_revision_id(0, "", "trunk0"))}, 
+                         self.repos.get_fileid_map(0, "", scheme))
 
     def test_empty_trunk(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(1, "trunk"))}, self.repos.get_fileid_map(1, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(1, "trunk", "trunk0"))}, 
+                self.repos.get_fileid_map(1, "trunk", scheme))
 
     def test_change_parent(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'data'})
         self.client_add("dc/trunk/file")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(2, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(2, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk", "trunk0"))}, self.repos.get_fileid_map(2, "trunk", scheme))
 
     def test_change_updates(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -313,10 +318,10 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
 
     def test_sibling_unrelated(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -326,10 +331,10 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk", "trunk0")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), self.repos.generate_revision_id(2, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
 
     def test_copy(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -339,11 +344,12 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_copy("dc/trunk/file", "dc/trunk/bar")
         self.client_commit("dc", "Msg")
         self.assertEqual({
-            "": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk")), 
-            "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
+            "": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), self.repos.generate_revision_id(3, "trunk", "trunk0")), 
+            "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), self.repos.generate_revision_id(3, "trunk", "trunk0")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
 
     def test_copy_nested_modified(self):
-        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(scheme)
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -355,13 +361,13 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.assertEqual({
           "": (generate_svn_file_id(self.repos.uuid, 1, "trunk", ""), 
-            self.repos.generate_revision_id(3, "trunk")), 
+            self.repos.generate_revision_id(3, "trunk", "trunk0")), 
           "dir": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "dir"), 
-                self.repos.generate_revision_id(2, "trunk")),
+                self.repos.generate_revision_id(2, "trunk", "trunk0")),
           "dir/file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "dir/file"), 
-              self.repos.generate_revision_id(2, "trunk")),
+              self.repos.generate_revision_id(2, "trunk", "trunk0")),
           "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), 
-              self.repos.generate_revision_id(3, "trunk")),
+              self.repos.generate_revision_id(3, "trunk", "trunk0")),
           "bar/file": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar/file"), 
-              self.repos.generate_revision_id(3, "trunk"))},
-            self.repos.get_fileid_map(3, "trunk"))
+              self.repos.generate_revision_id(3, "trunk", "trunk0"))},
+            self.repos.get_fileid_map(3, "trunk", scheme))

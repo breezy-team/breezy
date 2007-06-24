@@ -42,7 +42,7 @@ def generate_svn_file_id(uuid, revnum, branch, path):
 
 
 def generate_file_id(repos, revid, path):
-    (branch, revnum) = repos.lookup_revision_id(revid)
+    (branch, revnum, _) = repos.lookup_revision_id(revid)
     return generate_svn_file_id(repos.uuid, revnum, branch, path)
 
 
@@ -61,7 +61,8 @@ def get_local_changes(paths, scheme, generate_revid, get_children=None):
                 if (crp == "" and new_p == ""):
                     data = ('M', None, None)
                 else:
-                    data = (data[0], crp, generate_revid(data[2], cbp))
+                    data = (data[0], crp, generate_revid(data[2], cbp, 
+                                                         str(scheme)))
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
@@ -106,25 +107,27 @@ class FileIdMap(object):
         return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, 
-                      renames, find_children=None):
+                      renames, scheme, find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
         :param revnum: Revno for revision in which changes happened
         :param branch: Branch path where changes happened
         :param global_changes: Dict with global changes that happened
+        :param renames: List of renames
+        :param scheme: Branching scheme
         """
-        changes = get_local_changes(global_changes, self.repos.scheme,
+        changes = get_local_changes(global_changes, scheme,
                     self.repos.generate_revision_id, find_children)
         if find_children is not None:
             def get_children(path, revid):
-                (bp, revnum) = self.repos.lookup_revision_id(revid)
+                (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
                 for p in find_children(bp+"/"+path, revnum):
-                    yield self.repos.scheme.unprefix(p)[1]
+                    yield scheme.unprefix(p)[1]
         else:
             get_children = None
 
-        revid = self.repos.generate_revision_id(revnum, branch)
+        revid = self.repos.generate_revision_id(revnum, branch, scheme)
 
         def new_file_id(x):
             if renames.has_key(x):
@@ -133,7 +136,7 @@ class FileIdMap(object):
          
         return self._apply_changes(new_file_id, changes, get_children)
 
-    def get_map(self, uuid, revnum, branch, renames_cb):
+    def get_map(self, uuid, revnum, branch, renames_cb, scheme):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         todo = []
@@ -141,11 +144,12 @@ class FileIdMap(object):
         if revnum == 0:
             assert branch == ""
             return {"": (generate_svn_file_id(uuid, revnum, branch, ""), 
-                    self.repos.generate_revision_id(revnum, branch))}
+              self.repos.generate_revision_id(revnum, branch, scheme))}
 
         # No history -> empty map
-        for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
-            revid = self.repos.generate_revision_id(rev, bp)
+        for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
+                                             revnum, scheme):
+            revid = self.repos.generate_revision_id(rev, bp, scheme)
             map = self.load(revid)
             if map != {}:
                 # found the nearest cached map
@@ -158,7 +162,7 @@ class FileIdMap(object):
             return map
 
         if len(next_parent_revs) == 0:
-            if self.repos.scheme.is_branch(""):
+            if scheme.is_branch(""):
                 map = {"": (generate_svn_file_id(uuid, 0, "", ""), NULL_REVISION)}
             else:
                 map = {}
@@ -170,15 +174,15 @@ class FileIdMap(object):
         try:
             i = 1
             for (revid, global_changes) in todo:
-                changes = get_local_changes(global_changes, self.repos.scheme,
+                changes = get_local_changes(global_changes, scheme,
                                             self.repos.generate_revision_id, 
                                             self.repos._log.find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
-                    (bp, revnum) = self.repos.lookup_revision_id(revid)
+                    (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
                     for p in self.repos._log.find_children(bp+"/"+path, revnum):
-                        yield self.repos.scheme.unprefix(p)[1]
+                        yield scheme.unprefix(p)[1]
 
                 parent_revs = next_parent_revs
 

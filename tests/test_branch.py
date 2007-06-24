@@ -79,7 +79,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = bzrdir.open_branch()
         repos = bzrdir.find_repository()
 
-        self.assertEqual(repos.generate_revision_id(1, ""), 
+        self.assertEqual(repos.generate_revision_id(1, "", "none"), 
                 branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
@@ -88,7 +88,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                 branch.last_revision())
 
     def test_set_revision_history(self):
@@ -153,14 +153,15 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID, "42 mycommit\n")
+        self.client_set_prop("dc", SVN_PROP_BZR_REVISION_ID+"none", 
+                "42 mycommit\n")
         self.client_commit("dc", "My Message")
         
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual([repos.generate_revision_id(0, ""), 
-                    repos.generate_revision_id(1, "")], 
+        self.assertEqual([repos.generate_revision_id(0, "", "none"), 
+                    repos.generate_revision_id(1, "", "none")], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -170,9 +171,9 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
-            repos.generate_revision_id(0, ""),
+            repos.generate_revision_id(0, "", "none"),
             "mycommit",
-            repos.generate_revision_id(2, "")],
+            repos.generate_revision_id(2, "", "none")],
             branch.revision_history())
 
     def test_revision_id_to_revno_none(self):
@@ -192,7 +193,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -202,11 +203,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "someotherdata"})
-        self.client_set_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 
                             "2 myrevid\n3 mysecondrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -482,12 +483,13 @@ foohosts""")
 
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         tree = newbranch.repository.revision_tree(
-                generate_svn_revision_id(uuid, 7, "branches/foobranch"))
+                generate_svn_revision_id(uuid, 7, "branches/foobranch", 
+                "trunk0"))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
         self.assertEqual([
-            generate_svn_revision_id(uuid, 6, "branches/foobranch"),
-            generate_svn_revision_id(uuid, 7, "branches/foobranch")],
+            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
+            generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")],
                           weave.versions())
  
 
@@ -527,14 +529,14 @@ foohosts""")
 
         uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
-                generate_svn_revision_id(uuid, 6, "branches/foobranch"))
+             generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
         self.assertEqual([
-            generate_svn_revision_id(uuid, 1, "trunk"),
-            generate_svn_revision_id(uuid, 2, "trunk"),
-            generate_svn_revision_id(uuid, 3, "trunk"),
-            generate_svn_revision_id(uuid, 6, "branches/foobranch")],
+            generate_svn_revision_id(uuid, 1, "trunk", "trunk0"),
+            generate_svn_revision_id(uuid, 2, "trunk", "trunk0"),
+            generate_svn_revision_id(uuid, 3, "trunk", "trunk0"),
+            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0")],
                           weave.versions())
 
     def test_check(self):
@@ -549,7 +551,7 @@ foohosts""")
         self.client_add("dc/bla")
         self.client_commit("dc", "bla")
         branch = Branch.open('d')
-        self.assertEqual("svn-v%d-undefined:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
+        self.assertEqual("svn-v%d-none:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
 
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')

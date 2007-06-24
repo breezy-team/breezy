@@ -6,6 +6,7 @@ Updated October 2006.
 Updated December 2006.
 Updated January 2007.
 Updated February 2007.
+Updated June 2007.
 
 ============
 Branch paths
@@ -74,7 +75,8 @@ of the mappings.
 
 To override the revision id this way, set the revision property:
 
-bzr:revision-id-v%d (where %d is the current mapping version) 
+bzr:revision-id-v%d:%s (where %d is the current mapping version and %s is 
+					    the name of the branching scheme in use) 
 
 to the bzr revision number following by a space and the revision id. This o
 property should only be honored for the revision in which it was set, as 
@@ -210,7 +212,7 @@ contents.
 Revision 3 changed the file id format, changed the urlencoding to be 
 uppercased, changed the separator between uuids and branch paths in the 
 revision id from "-" to ":", added the branching scheme to the revision id 
-and added the bzr:revision-id-vX property.
+and added the bzr:revision-id-vX:YY property.
 
 Revision 3 uses real file ids for the tree root rather than the hardcoded 
 "TREE_ROOT" and adds the file id map.

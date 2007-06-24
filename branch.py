@@ -27,6 +27,7 @@ import svn.client, svn.core
 from commit import push
 from format import get_rich_root_format
 from repository import SvnRepository
+from scheme import BranchingScheme
 from transport import bzr_to_svn_url, svn_config
 
 
@@ -62,6 +63,7 @@ class SvnBranch(Branch):
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
         self._revision_history = None
+        self.scheme = BranchingScheme.guess_scheme(branch_path)
 
     def check(self):
         """See Branch.Check.
@@ -88,7 +90,7 @@ class SvnBranch(Branch):
         :return: Revision number on the branch. 
         :raises NoSuchRevision: If the revision id was not found.
         """
-        (bp, revnum) = self.repository.lookup_revision_id(revid)
+        (bp, revnum, scheme) = self.repository.lookup_revision_id(revid)
         assert bp.strip("/") == self.branch_path.strip("/"), \
                 "Got %r, expected %r" % (bp, self.branch_path)
         return revnum
@@ -123,15 +125,16 @@ class SvnBranch(Branch):
         """Generate a new revision id for a revision on this branch."""
         assert isinstance(revnum, int)
         # FIXME: What if this branch had a different name in the past?
-        return self.repository.generate_revision_id(revnum, self.branch_path)
+        return self.repository.generate_revision_id(revnum, self.branch_path, 
+                                                    str(self.scheme))
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
         self._revision_history = []
         for (branch, rev) in self.repository.follow_branch(
-                self.branch_path, last_revnum):
+                self.branch_path, last_revnum, self.scheme):
             self._revision_history.append(
-                    self.repository.generate_revision_id(rev, branch))
+                self.repository.generate_revision_id(rev, branch, str(self.scheme)))
         self._revision_history.reverse()
         self.repository.revmap.insert_revision_history(self._revision_history)
 
@@ -192,8 +195,9 @@ class SvnBranch(Branch):
         # on large branches.
         if self._revision_history is None:
             for (branch, rev) in self.repository.follow_branch(
-                self.branch_path, self.repository._latest_revnum):
-                return self.repository.generate_revision_id(rev, branch)
+                self.branch_path, self.repository._latest_revnum, self.scheme):
+                return self.repository.generate_revision_id(rev, branch, 
+                                                            self.scheme)
             return None
 
         ph = self._revision_history

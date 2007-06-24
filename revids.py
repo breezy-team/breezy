@@ -35,7 +35,7 @@ def parse_svn_revision_id(revid):
 
     :param revid: The revision id.
     :raises: InvalidRevisionId
-    :return: Tuple with uuid, branch path and revision number.
+    :return: Tuple with uuid, branch path, revision number and scheme.
     """
 
     assert revid is not None
@@ -45,16 +45,19 @@ def parse_svn_revision_id(revid):
         raise InvalidRevisionId(revid, "")
 
     try:
-        (version, uuid, branch_path, srevnum)= revid.split(":")
+        (version, uuid, branch_path, srevnum) = revid.split(":")
     except ValueError:
         raise InvalidRevisionId(revid, "")
 
-    revid = revid[len(REVISION_ID_PREFIX):]
+    if not version.startswith(REVISION_ID_PREFIX):
+        raise InvalidRevisionId(revid, "")
 
-    return (uuid, unescape_svn_path(branch_path), int(srevnum))
+    scheme = version[len(REVISION_ID_PREFIX):]
+
+    return (uuid, unescape_svn_path(branch_path), int(srevnum), scheme)
 
 
-def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
+def generate_svn_revision_id(uuid, revnum, path, scheme):
     """Generate a unambiguous revision id. 
     
     :param uuid: UUID of the repository.
@@ -100,11 +103,11 @@ class RevidMap(object):
             raise NoSuchRevision(self, revid)
         return (str(ret[0]), ret[1], ret[2], ret[3])
 
-    def lookup_branch_revnum(self, revnum, path):
+    def lookup_branch_revnum(self, revnum, path, scheme):
         mutter('lookup branch revnum %r, %r' % (revnum, path))
         # FIXME: SCHEME MISSING
         revid = self.cachedb.execute(
-                "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s'" % (revnum, path)).fetchone()
+                "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
         if revid is not None:
             return str(revid[0])
         return None
@@ -112,6 +115,7 @@ class RevidMap(object):
     def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme, 
                      dist_to_origin=None):
         assert revid is not None and revid != ""
+        assert isinstance(scheme, basestring)
         self.cachedb.execute(
             "insert into revmap (revid, path, min_revnum, max_revnum, scheme) VALUES (?, ?, ?, ?, ?)", 
             (revid, branch, min_revnum, max_revnum, scheme))

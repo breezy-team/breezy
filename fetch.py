@@ -329,11 +329,12 @@ class InterFromSvnRepository(InterRepository):
         needed = []
         parents = {}
         for (branch, revnum) in self.source.follow_history(
-                                                self.source._latest_revnum):
-            mutter('br, revnum: %r, %r' % (branch, revnum))
-            revid = self.source.generate_revision_id(revnum, branch)
+                                                self.source._latest_revnum, 
+                                                self.source.scheme):
+            revid = self.source.generate_revision_id(revnum, branch, 
+                                               self.source.scheme)
             parents[revid] = self.source._mainline_revision_parent(branch, 
-                                                                   revnum)
+                                               revnum, self.source.scheme)
 
             if not self.target.has_revision(revid):
                 needed.append(revid)
@@ -342,12 +343,13 @@ class InterFromSvnRepository(InterRepository):
     def _find_until(self, revision_id):
         needed = []
         parents = {}
-        (path, until_revnum) = self.source.lookup_revision_id(revision_id)
+        (path, until_revnum, scheme) = self.source.lookup_revision_id(
+                                                                    revision_id)
 
         prev_revid = None
         for (branch, revnum) in self.source.follow_branch(path, 
-                                                          until_revnum):
-            revid = self.source.generate_revision_id(revnum, branch)
+                                                          until_revnum, scheme):
+            revid = self.source.generate_revision_id(revnum, branch, scheme)
 
             if prev_revid is not None:
                 parents[prev_revid] = revid
@@ -398,7 +400,7 @@ class InterFromSvnRepository(InterRepository):
         prev_inv = None
         try:
             for revid in needed:
-                (branch, revnum) = self.source.lookup_revision_id(revid)
+                (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
                 parent_revid = parents[revid]
@@ -414,7 +416,7 @@ class InterFromSvnRepository(InterRepository):
                 changes = self.source._log.get_revision_paths(revnum, branch)
                 renames = self.source.revision_fileid_renames(revid)
                 id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                            revnum, branch, changes, renames)
+                                      revnum, branch, changes, renames, scheme)
 
                 editor = RevisionBuildEditor(self.source, self.target, branch, 
                              parent_inv, revid, 
@@ -432,7 +434,7 @@ class InterFromSvnRepository(InterRepository):
                     # Report status of existing paths
                     reporter.set_path("", revnum, True, None, pool)
                 else:
-                    (parent_branch, parent_revnum) = \
+                    (parent_branch, parent_revnum, scheme) = \
                             self.source.lookup_revision_id(parent_revid)
                     transport.reparent("%s/%s" % (repos_root, parent_branch))
 

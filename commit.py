@@ -66,7 +66,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if len(self.merges) > 0:
             # Bazaar Parents
             if branch.last_revision():
-                (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
+                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
                 old = repository.branchprop_list.get_property(bp, revnum, SVN_PROP_BZR_MERGE, "")
             else:
                 old = ""
@@ -91,13 +91,13 @@ class SvnCommitBuilder(RootCommitBuilder):
         if revision_id is not None:
             (previous_revno, previous_revid) = branch.last_revision_info()
             if previous_revid is not None:
-                (bp, revnum) = repository.lookup_revision_id(branch.last_revision())
+                (bp, revnum, scheme) = repository.lookup_revision_id(branch.last_revision())
                 old = repository.branchprop_list.get_property(bp, revnum, 
-                            SVN_PROP_BZR_REVISION_ID, "")
+                            SVN_PROP_BZR_REVISION_ID+str(scheme), "")
             else:
                 old = ""
 
-            self._svnprops[SVN_PROP_BZR_REVISION_ID] = old + \
+            self._svnprops[SVN_PROP_BZR_REVISION_ID+str(scheme)] = old + \
                     "%d %s\n" % (previous_revno+1, revision_id)
 
         # At least one of the parents has to be the last revision on the 
@@ -542,7 +542,7 @@ class InterToSvnRepository(InterRepository):
             parent_revid = self.source.revision_parents(revision_id)[0]
             new_tree = self.source.revision_tree(parent_revid)
 
-            (bp, _) = self.target.lookup_revision_id(parent_revid)
+            (bp, _, scheme) = self.target.lookup_revision_id(parent_revid)
             target_branch = Branch.open("%s/%s" % (self.target.base, bp))
 
             builder = SvnCommitBuilder(self.target, target_branch, 

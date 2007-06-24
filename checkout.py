@@ -88,7 +88,7 @@ class SvnWorkingTree(WorkingTree):
         self.base_revnum = status.max_rev
         self.base_tree = SvnBasisTree(self)
         self.base_revid = branch.repository.generate_revision_id(
-                    self.base_revnum, branch.branch_path)
+                    self.base_revnum, branch.branch_path, bzrdir.scheme)
 
         self.read_working_inventory()
 
@@ -227,7 +227,7 @@ class SvnWorkingTree(WorkingTree):
         assert isinstance(revnum, int) and revnum >= 0
         assert isinstance(path, basestring)
 
-        (_, rp) = self.branch.repository.scheme.unprefix(path)
+        (_, rp) = self.branch.scheme.unprefix(path)
         entry = self.base_tree.id_map[rp]
         assert entry[0] is not None
         assert isinstance(entry[0], str), "fileid %r for %r is not a string" % (entry[0], path)
@@ -433,7 +433,7 @@ class SvnWorkingTree(WorkingTree):
             extra = ""
         wc = self._get_wc(write_lock=True)
         try:
-            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), 
                              self._get_bzr_revids() + extra,
                              self.basedir, wc)
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
@@ -452,7 +452,7 @@ class SvnWorkingTree(WorkingTree):
             # Reset properties so the next subversion commit won't 
             # accidently set these properties.
             wc = self._get_wc(write_lock=True)
-            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID, 
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), 
                              self._get_bzr_revids(), self.basedir, wc)
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
                 self.branch.repository.branchprop_list.get_property(
@@ -573,7 +573,7 @@ class SvnWorkingTree(WorkingTree):
     def _get_bzr_revids(self):
         return self.branch.repository.branchprop_list.get_property(
                 self.branch.branch_path, self.base_revnum, 
-                SVN_PROP_BZR_REVISION_ID, "")
+                SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), "")
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(

@@ -1,22 +1,20 @@
 - simplify find_branches by using Transport.list_dir() ?
-- replace 'undefined' by scheme name in revision ids
 - fix autorealm repository
-- handle parent directories of branches being moved correctly
-- faster "bzr status" in lightweight checkouts
-- when committing specific files in a lightweight checkout, make sure to 
-  also commit the file property changes for the tree root (except 
-  for pending merges).														   
-- custom implementation of WorkingTree.revert() / WorkingTree.merge()
-- don't update all entries to the same revnum when opening working tree
 - avoid extra connect in logwalker?
 - make ListBranchingScheme() support wildcards
- - rewrite TrunkBranchingScheme() and ListBranchingScheme() as subclasses of 
-   ListBranchingScheme()
 - free memory!
 - implement BzrDirFormat.get_converter()
 - report changes to delta editor in Branch.pull()
-- add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - more blackbox tests
 - split fetch tests out of test_repos
+- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY ?
+
+Working trees:
+- custom implementation of WorkingTree.revert() / WorkingTree.merge()
+- add tests for objects returned by WorkingTree.pull(), Branch.pull()
 - what happened to WorkingTree.add() ?
-- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXX ?
+- don't update all entries to the same revnum when opening working tree
+- when committing specific files in a lightweight checkout, make sure to 
+  also commit the file property changes for the tree root (except 
+  for pending merges).														   
+- faster "bzr status" in lightweight checkouts

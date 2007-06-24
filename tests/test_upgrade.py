@@ -37,15 +37,15 @@ class TestUpgradeChangesContent(TestCase):
 
 class ParserTests(TestCase):
     def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, 3), 
+        self.assertEqual(("uuid", "trunk", 1, "undefined", 3), 
                 parse_legacy_revision_id("svn-v3-undefined:uuid:trunk:1"))
 
     def test_legacy2(self):
-        self.assertEqual(("uuid", "trunk", 1, 2), 
+        self.assertEqual(("uuid", "trunk", 1, None, 2), 
                          parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
 
     def test_legacy(self):
-        self.assertEqual(("uuid", "trunk", 1, 1), 
+        self.assertEqual(("uuid", "trunk", 1, None, 1), 
                          parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
 
     def test_except(self):
@@ -107,7 +107,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         upgrade_repository(newrepos, oldrepos, allow_change=True)
 
-        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
 
     def test_single_custom(self):
         repos_url = self.make_client("a", "dc")
@@ -129,9 +129,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         upgrade_repository(newrepos, oldrepos, allow_change=True)
 
-        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "")],
+        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
     def test_single_keep_parent_fileid(self):
@@ -192,9 +192,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         upgrade_repository(newrepos, oldrepos, allow_change=True)
 
-        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "")],
+        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
     def test_more_custom(self):
@@ -218,15 +218,15 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         renames = upgrade_repository(newrepos, oldrepos, allow_change=True)
         self.assertEqual({
-            "svn-v1:1@%s-" % oldrepos.uuid: oldrepos.generate_revision_id(1, ""),
+            "svn-v1:1@%s-" % oldrepos.uuid: oldrepos.generate_revision_id(1, "", "none"),
             "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
             "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
             renames)
 
-        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue([oldrepos.generate_revision_id(1, "")],
+        self.assertTrue([oldrepos.generate_revision_id(1, "", "none")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(["customrev-svn%d-upgrade" % MAPPING_VERSION],
                         newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
@@ -251,8 +251,8 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message='fix it again', rev_id="anotherrev")
 
         upgrade_branch(b, oldrepos, allow_change=True)
-        self.assertEqual([oldrepos.generate_revision_id(0, ""),
-                          oldrepos.generate_revision_id(1, ""),
+        self.assertEqual([oldrepos.generate_revision_id(0, "", "none"),
+                          oldrepos.generate_revision_id(1, "", "none"),
                           "customrev-svn%d-upgrade" % MAPPING_VERSION,
                           "anotherrev-svn%d-upgrade" % MAPPING_VERSION
                           ], b.revision_history())

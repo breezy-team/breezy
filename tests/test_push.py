@@ -84,15 +84,16 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                          inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
-          repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+          repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.svndir.open_branch().last_revision())
         self.assertEqual("other data", 
-            repos.revision_tree(repos.generate_revision_id(2, "")).get_file_text( inv.path2id("foo/bla")))
+            repos.revision_tree(repos.generate_revision_id(2, "", 
+                                "none")).get_file_text(inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -103,11 +104,11 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+                repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.svndir.open_branch().last_revision())
 
     def test_empty_file(self):
@@ -119,11 +120,11 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+                repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.svndir.open_branch().last_revision())
 
     def test_pull_after_push(self):
@@ -135,16 +136,16 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                         repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+                         repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.svndir.open_branch().last_revision())
 
         self.bzrdir.open_branch().pull(self.svndir.open_branch())
 
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.bzrdir.open_branch().last_revision())
 
     def test_branch_after_push(self):
@@ -171,7 +172,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.svndir.find_repository()
         self.assertEqual("Commit from Bzr",
-            repos.get_revision(repos.generate_revision_id(2, "")).message)
+          repos.get_revision(repos.generate_revision_id(2, "", "none")).message)
 
     def test_commit_set_revid(self):
         self.build_tree({'dc/file': 'data'})
@@ -183,7 +184,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.client_update("sc")
         self.assertEqual("3 some-rid\n", 
-                self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID))
+                self.client_get_prop("sc", SVN_PROP_BZR_REVISION_ID+"none"))
 
     def test_commit_check_rev_equal(self):
         self.build_tree({'dc/file': 'data'})
@@ -220,16 +221,16 @@ class TestPush(TestCaseWithSubversionRepository):
         repos = self.svndir.find_repository()
 
         self.assertEqual(
-           generate_svn_revision_id(self.svndir.find_repository().uuid, 2, ""), 
+           generate_svn_revision_id(self.svndir.find_repository().uuid, 2, "", "none"), 
                         self.svndir.open_branch().last_revision())
 
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(inv.has_filename('adir'))
 
-        self.assertEqual([repos.generate_revision_id(1, ""), 
+        self.assertEqual([repos.generate_revision_id(1, "", "none"), 
             self.bzrdir.open_branch().last_revision()],
-                repos.revision_parents(repos.generate_revision_id(2, "")))
+              repos.revision_parents(repos.generate_revision_id(2, "", "none")))
 
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})
@@ -245,14 +246,14 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.svndir.find_repository()
 
-        self.assertEqual(repos.generate_revision_id(3, ""), 
+        self.assertEqual(repos.generate_revision_id(3, "", "none"), 
                         self.svndir.open_branch().last_revision())
 
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertFalse(inv.has_filename('adir'))
 
-        inv = repos.get_inventory(repos.generate_revision_id(3, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(3, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(inv.has_filename('adir'))
 
@@ -260,7 +261,7 @@ class TestPush(TestCaseWithSubversionRepository):
                          self.bzrdir.open_branch().revision_history())
 
         self.assertEqual(wt.branch.last_revision(), 
-                repos.generate_revision_id(3, ""))
+                repos.generate_revision_id(3, "", "none"))
         self.assertEqual(
                 wt.branch.repository.get_ancestry(wt.branch.last_revision()), 
                 repos.get_ancestry(wt.branch.last_revision()))

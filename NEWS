@@ -22,6 +22,10 @@ bzr-svn 0.4	UNRELEASED
    
    * Use shared repositories by default in svn-import command.
 
+   * Put branching schemes in revision ids.
+
+   * Support using custom branching schemes.
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

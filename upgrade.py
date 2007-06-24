@@ -22,6 +22,7 @@ import bzrlib.ui as ui
 
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
+from scheme import BranchingScheme
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
@@ -120,7 +121,7 @@ def parse_legacy_revision_id(revid):
     """Try to parse a legacy Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, revision number, mapping version)
+    :return: tuple with (uuid, branch_path, revision number, scheme, mapping version)
     """
     if revid.startswith("svn-v1:"):
         revid = revid[len("svn-v1:"):]
@@ -130,7 +131,7 @@ def parse_legacy_revision_id(revid):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, 1)
+        return (uuid, branch_path, revnum, None, 1)
     elif revid.startswith("svn-v2:"):
         revid = revid[len("svn-v2:"):]
         at = revid.index("@")
@@ -139,10 +140,10 @@ def parse_legacy_revision_id(revid):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, 2)
+        return (uuid, branch_path, revnum, None, 2)
     elif revid.startswith("svn-v3-"):
-        (uuid, bp, rev) = parse_svn_revision_id(revid)
-        return (uuid, bp, rev, 3)
+        (uuid, bp, rev, scheme) = parse_svn_revision_id(revid)
+        return (uuid, bp, rev, scheme, 3)
 
     raise InvalidRevisionId(revid, None)
 
@@ -222,8 +223,10 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 pb.update('gather revision information', i, len(graph))
                 i += 1
                 try:
-                    (uuid, bp, rev, _) = parse_legacy_revision_id(revid)
-                    newrevid = generate_svn_revision_id(uuid, rev, bp)
+                    (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
+                    if scheme is None:
+                        scheme = BranchingScheme.guess_scheme(bp)
+                    newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
                     if svn_repository.has_revision(newrevid):
                         rename_map[revid] = newrevid
                         if not repository.has_revision(newrevid):
@@ -239,8 +242,11 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 new_parents[revid] = []
                 for parent in graph[revid]:
                     try:
-                        (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
-                        new_parent = generate_svn_revision_id(uuid, rev, bp)
+                        (uuid, bp, rev, scheme, version) = parse_legacy_revision_id(parent)
+
+                        if scheme is None:
+                            scheme = BranchingScheme.guess_scheme(bp)
+                        new_parent = generate_svn_revision_id(uuid, rev, bp, scheme)
                         if new_parent != parent:
                             if not repository.has_revision(revid):
                                 needed_revs.append(new_parent)

@@ -146,7 +146,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
@@ -168,7 +168,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id-v%d" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id-v%d:none" % MAPPING_VERSION, 2))
 
         self.assertEqual("timestamp: Thu 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n", 
                 self.client_get_prop("dc", "bzr:revision-info", 2))
@@ -267,15 +267,15 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                          inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
-          repos.generate_revision_id(2, ""))
+          repos.generate_revision_id(2, "", "none"))
         self.assertEqual(wt.branch.last_revision(),
                         self.olddir.open_branch().last_revision())
         self.assertEqual("other data", 
-            repos.revision_tree(repos.generate_revision_id(2, "")).get_file_text( inv.path2id("foo/bla")))
+            repos.revision_tree(repos.generate_revision_id(2, "", "none")).get_file_text( inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -286,11 +286,11 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEqual(wt.branch.last_revision(), 
-                repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
+                repos.generate_revision_id(2, "", "none"))
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.olddir.open_branch().last_revision())
 
     def test_pull_after_push(self):
@@ -302,17 +302,17 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(), 
-                         repos.generate_revision_id(2, ""))
+                         repos.generate_revision_id(2, "", "none"))
 
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.olddir.open_branch().last_revision())
 
         self.newdir.open_branch().pull(self.olddir.open_branch())
 
-        self.assertEqual(repos.generate_revision_id(2, ""),
+        self.assertEqual(repos.generate_revision_id(2, "", "none"),
                         self.newdir.open_branch().last_revision())
 
     def test_message(self):
@@ -325,7 +325,8 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.olddir.find_repository()
         self.assertEqual("Commit from Bzr",
-            repos.get_revision(repos.generate_revision_id(2, "")).message)
+            repos.get_revision(
+                repos.generate_revision_id(2, "", "none")).message)
 
     def test_message_nordic(self):
         self.build_tree({'dc/file': 'data'})
@@ -336,8 +337,8 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        self.assertEqual(u"\xe6\xf8\xe5",
-            repos.get_revision(repos.generate_revision_id(2, "")).message.decode("utf-8"))
+        self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
+            repos.generate_revision_id(2, "", "none")).message.decode("utf-8"))
 
 
 class TestPushNested(TestCaseWithSubversionRepository):

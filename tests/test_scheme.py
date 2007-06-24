@@ -16,11 +16,12 @@
 
 """Branching scheme tests."""
 
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, BzrError
 
 from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
-                    BranchingScheme, TrunkBranchingScheme)
+                    BranchingScheme, TrunkBranchingScheme, 
+                    UnknownBranchingScheme)
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
@@ -54,7 +55,7 @@ class BranchingSchemeTest(TestCase):
                               NoBranchingScheme)
 
     def test_find_scheme_invalid(self):
-        self.assertIs(None, BranchingScheme.find_scheme("foo"))
+        self.assertRaises(BzrError, lambda: BranchingScheme.find_scheme("foo"))
 
     def test_find_scheme_trunk(self):
         scheme = BranchingScheme.find_scheme("trunk")
@@ -62,23 +63,27 @@ class BranchingSchemeTest(TestCase):
         self.assertEqual(0, scheme.level)
 
     def test_find_scheme_trunk_0(self):
-        scheme = BranchingScheme.find_scheme("trunk-0")
+        scheme = BranchingScheme.find_scheme("trunk0")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(0, scheme.level)
 
     def test_find_scheme_trunk_2(self):
-        scheme = BranchingScheme.find_scheme("trunk-2")
+        scheme = BranchingScheme.find_scheme("trunk2")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(2, scheme.level)
 
     def test_find_scheme_trunk_invalid(self):
-        scheme = BranchingScheme.find_scheme("trunk-invalid")
-        self.assertIs(None, scheme)
+        self.assertRaises(BzrError, 
+                          lambda: BranchingScheme.find_scheme("trunkinvalid"))
+
+    def test_unknownscheme(self):
+        e = UnknownBranchingScheme("foo")
+        self.assertEquals("Branching scheme could not be found: foo", str(e))
 
 
 class NoScheme(TestCase):
     def test_str(self):
-        self.assertEqual("null", NoBranchingScheme().__str__())
+        self.assertEqual("none", NoBranchingScheme().__str__())
 
     def test_is_branch_empty(self):
         self.assertTrue(NoBranchingScheme().is_branch(""))
