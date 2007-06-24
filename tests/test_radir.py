@@ -16,12 +16,13 @@
 
 """Remote access tests."""
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
                            NoWorkingTree)
 
 import svn
 
+from format import SvnFormat
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
@@ -104,3 +105,19 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
         x = BzrDir.open(repos_url+"/trunk")
         self.assertRaises(NoRepositoryPresent, x.open_repository)
+
+    def test_needs_format_upgrade_other(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        self.assertTrue(x.needs_format_conversion(format_registry.make_bzrdir("dirstate-with-subtree")))
+
+    def test_needs_format_upgrade_default(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        self.assertTrue(x.needs_format_conversion())
+
+    def test_needs_format_upgrade_self(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url+"/trunk")
+        self.assertTrue(x.needs_format_conversion(SvnFormat()))
+

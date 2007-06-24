@@ -132,6 +132,14 @@ class SvnRemoteAccess(BzrDir):
         """
         raise NotLocalUrl(self.root_transport.base)
 
+    def needs_format_conversion(self, format=None):
+        """See BzrDir.needs_format_conversion()."""
+        # if the format is not the same as the system default,
+        # an upgrade is needed.
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return not isinstance(self._format, format.__class__)
+
     def create_branch(self):
         """See BzrDir.create_branch()."""
         from branch import SvnBranch
@@ -159,6 +167,9 @@ class SvnRemoteAccess(BzrDir):
 class SvnFormat(BzrDirFormat):
     """Format for the Subversion smart server."""
     _lock_class = TransportLock
+
+    def __init__(self):
+        super(SvnFormat, self).__init__()
 
     @classmethod
     def probe_transport(klass, transport):
