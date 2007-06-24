@@ -18,9 +18,9 @@
 
 from config import SvnRepositoryConfig
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCaseInTempDir
 
-class ReposConfigTests(TestCase):
+class ReposConfigTests(TestCaseInTempDir):
     def test_create(self):
         SvnRepositoryConfig("blabla")
 
