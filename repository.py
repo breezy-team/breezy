@@ -148,8 +148,6 @@ class SvnRepositoryFormat(RepositoryFormat):
 
     def __init__(self):
         super(SvnRepositoryFormat, self).__init__()
-        from format import SvnFormat
-        self._matchingbzrdir = SvnFormat()
 
     def get_format_description(self):
         return "Subversion Repository"
@@ -157,6 +155,9 @@ class SvnRepositoryFormat(RepositoryFormat):
     def initialize(self, url, shared=False, _internal=False):
         """Svn repositories cannot be created (yet)."""
         raise UninitializableFormat(self)
+
+    def check_conversion_target(self, target_repo_format):
+        return target_repo_format.rich_root_data
 
 cachedbs = {}
 

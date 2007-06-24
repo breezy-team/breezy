@@ -17,7 +17,7 @@
 """Subversion repository tests."""
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
@@ -1053,6 +1053,18 @@ class SvnRepositoryFormatTests(TestCase):
     def test_get_format_description(self):
         self.assertEqual("Subversion Repository", 
                          self.format.get_format_description())
+
+    def test_conversion_target_self(self):
+        self.assertTrue(self.format.check_conversion_target(self.format))
+
+    def test_conversion_target_incompatible(self):
+        self.assertFalse(self.format.check_conversion_target(
+              format_registry.make_bzrdir('weave').repository_format))
+
+    def test_conversion_target_compatible(self):
+        self.assertTrue(self.format.check_conversion_target(
+          format_registry.make_bzrdir('dirstate-with-subtree').repository_format))
+
 
 class MetadataMarshallerTests(TestCase):
     def test_generate_revision_metadata_none(self):

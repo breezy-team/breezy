@@ -170,6 +170,8 @@ class SvnFormat(BzrDirFormat):
 
     def __init__(self):
         super(SvnFormat, self).__init__()
+        from repository import SvnRepositoryFormat
+        self.repository_format = SvnRepositoryFormat()
 
     @classmethod
     def probe_transport(klass, transport):
