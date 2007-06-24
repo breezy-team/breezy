@@ -17,12 +17,14 @@
 
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, PullResult
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, DivergedBranches, NoSuchRevision
+from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
+                           NotBranchError)
 from bzrlib.inventory import (Inventory)
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
+from svn.core import SubversionException
 
 from commit import push
 from format import get_rich_root_format
@@ -48,7 +50,7 @@ class FakeControlFiles(object):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, base, repository, branch_path):
+    def __init__(self, base, repository, branch_path, revnum=None):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
@@ -64,6 +66,20 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         self._revision_history = None
         self.scheme = BranchingScheme.guess_scheme(branch_path)
+        self.revnum = revnum
+        try:
+            if self.repository.transport.check_path(self.branch_path.strip("/"), self.get_revnum()) != \
+                    svn.core.svn_node_dir:
+                raise NotBranchError(self.base)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NotBranchError(self.base)
+            raise
+
+    def get_revnum(self):
+        if self.revnum is None:
+            return self.repository._latest_revnum
+        return self.revnum
 
     def check(self):
         """See Branch.Check.
@@ -90,7 +106,8 @@ class SvnBranch(Branch):
         :return: Revision number on the branch. 
         :raises NoSuchRevision: If the revision id was not found.
         """
-        (bp, revnum, scheme) = self.repository.lookup_revision_id(revid)
+        (bp, revnum, scheme) = self.repository.lookup_revision_id(revid, 
+                                                             scheme=self.scheme)
         assert bp.strip("/") == self.branch_path.strip("/"), \
                 "Got %r, expected %r" % (bp, self.branch_path)
         return revnum
@@ -187,7 +204,7 @@ class SvnBranch(Branch):
 
     def revision_history(self):
         if self._revision_history is None:
-            self._generate_revision_history(self.repository._latest_revnum)
+            self._generate_revision_history(self.get_revnum())
         return self._revision_history
 
     def last_revision(self):
@@ -195,7 +212,7 @@ class SvnBranch(Branch):
         # on large branches.
         if self._revision_history is None:
             for (branch, rev) in self.repository.follow_branch(
-                self.branch_path, self.repository._latest_revnum, self.scheme):
+                self.branch_path, self.get_revnum(), self.scheme):
                 return self.repository.generate_revision_id(rev, branch, 
                                                             self.scheme)
             return None

@@ -234,10 +234,12 @@ class SvnRepository(Repository):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
                                              renames, scheme)
 
-    def all_revision_ids(self):
+    def all_revision_ids(self, scheme=None):
+        if scheme is None:
+            scheme = self.scheme
         for (bp, rev) in self.follow_history(
-                self.transport.get_latest_revnum(), self.scheme):
-            yield self.generate_revision_id(rev, bp, str(self.scheme))
+                self.transport.get_latest_revnum(), scheme):
+            yield self.generate_revision_id(rev, bp, str(scheme))
 
     def get_inventory_weave(self):
         raise NotImplementedError(self.get_inventory_weave)
@@ -289,7 +291,7 @@ class SvnRepository(Repository):
             return False
 
         try:
-            return (svn.core.svn_node_none != self.transport.check_path(path.encode('utf8'), revnum))
+            return (svn.core.svn_node_none != self.transport.check_path(path, revnum))
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 return False
@@ -463,20 +465,22 @@ class SvnRepository(Repository):
 
         return revid
 
-    def lookup_revision_id(self, revid):
+    def lookup_revision_id(self, revid, scheme=None):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
+        :param scheme: Optional branching scheme to use when searching for 
+                       revisions
         :raises: NoSuchRevision
         :return: Tuple with branch path, revision number and scheme.
         """
 
         # Try a simple parse
         try:
-            (uuid, branch_path, revnum, scheme) = parse_svn_revision_id(revid)
+            (uuid, branch_path, revnum, schemen) = parse_svn_revision_id(revid)
             assert isinstance(branch_path, str)
             if uuid == self.uuid:
-                return (branch_path, revnum, self.get_scheme(scheme))
+                return (branch_path, revnum, self.get_scheme(schemen))
             # If the UUID doesn't match, this may still be a valid revision
             # id; a revision from another SVN repository may be pushed into 
             # this one.
@@ -493,11 +497,13 @@ class SvnRepository(Repository):
                 return (branch_path, min_revnum, self.get_scheme(scheme))
         except NoSuchRevision:
             # If there is no entry in the map, walk over all branches:
-            for (branch, revno, exists) in self.find_branches(self.scheme):
+            if scheme is None:
+                scheme = self.scheme # FIXME
+            for (branch, revno, exists) in self.find_branches(scheme):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 for line in self.branchprop_list.get_property(branch, revno, 
-                        SVN_PROP_BZR_REVISION_ID+str(self.scheme), "").splitlines():
+                        SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
                     try:
                         revids.append(parse_revid_property(line))
                     except errors.InvalidPropertyValue, e:
@@ -507,7 +513,7 @@ class SvnRepository(Repository):
                 # add them
                 for (entry_revno, entry_revid) in revids:
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
-                            str(self.scheme), entry_revno)
+                            str(scheme), entry_revno)
 
                 if revid in revids:
                     break
@@ -518,7 +524,8 @@ class SvnRepository(Repository):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
         i = min_revnum
-        for (bp, rev) in self.follow_branch(branch_path, max_revnum, self.get_scheme(scheme)):
+        for (bp, rev) in self.follow_branch(branch_path, max_revnum, 
+                                            self.get_scheme(scheme)):
             try:
                 (entry_revno, entry_revid) = parse_revid_property(
                  self.branchprop_list.get_property_diff(bp, rev, 
@@ -564,6 +571,7 @@ class SvnRepository(Repository):
         :param revnum: Revision number up to which to search.
         :return: iterator over branches in the range 0..revnum
         """
+        assert scheme is not None
 
         while revnum >= 0:
             yielded_paths = []
@@ -712,7 +720,7 @@ class SvnRepository(Repository):
             return {}
 
         if revision_id is None:
-            return self._full_revision_graph(self.scheme)
+            return self._full_revision_graph(self.scheme) # FIXME
 
         (path, revnum, scheme) = self.lookup_revision_id(revision_id)
 

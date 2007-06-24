@@ -138,7 +138,8 @@ class SvnRemoteAccess(BzrDir):
         repos = self.find_repository()
 
         if self.branch_path != "":
-            self.root_transport.mkdir(".")
+            repos.transport.mkdir(self.branch_path)
+            repos._latest_revnum = repos.transport.get_latest_revnum()
         else:
             # TODO: Check if there are any revisions in this repository yet
             pass
@@ -149,11 +150,6 @@ class SvnRemoteAccess(BzrDir):
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
         from branch import SvnBranch
-
-        if not self.scheme.is_branch(self.branch_path) and \
-           not self.scheme.is_tag(self.branch_path):
-            raise NotBranchError(path=self.root_transport.base)
-
         repos = self.find_repository()
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         branch.bzrdir = self

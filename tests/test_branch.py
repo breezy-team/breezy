@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, NoSuchRevision
+from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
@@ -37,6 +37,10 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open(repos_url)
         branch.revision_history()
         self.assertEqual(branch.generate_revision_id(0), branch.last_revision())
+
+    def test_open_nonexistant(self):
+        repos_url = self.make_client("a", "dc")
+        self.assertRaises(NotBranchError, Branch.open, repos_url + "/trunk")
 
     def test_last_rev_rev_info(self):
         repos_url = self.make_client("a", "dc")
@@ -228,7 +232,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_nick_path(self):
         repos_url = self.make_client('a', 'dc')
 
-        self.build_tree({'dc/trunk': "data"})
+        self.build_tree({'dc/trunk': None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message")
 

@@ -243,7 +243,7 @@ class SvnRaTransport(Transport):
     def check_path(self, path, revnum, *args, **kwargs):
         assert len(path) == 0 or path[0] != "/"
         mutter("svn check_path -r%d %s" % (revnum, path))
-        return svn.ra.check_path(self._ra, path, revnum, *args, **kwargs)
+        return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
 
     @need_lock
     @convert_svn_error

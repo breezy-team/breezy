@@ -326,18 +326,13 @@ class InterFromSvnRepository(InterRepository):
         return None
 
     def _find_all(self):
-        needed = []
         parents = {}
-        for (branch, revnum) in self.source.follow_history(
-                                                self.source._latest_revnum, 
-                                                self.source.scheme):
-            revid = self.source.generate_revision_id(revnum, branch, 
-                                               self.source.scheme)
+        needed = filter(lambda x: not self.target.has_revision(x), 
+                        self.source.all_revision_ids())
+        for revid in needed:
+            (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
             parents[revid] = self.source._mainline_revision_parent(branch, 
-                                               revnum, self.source.scheme)
-
-            if not self.target.has_revision(revid):
-                needed.append(revid)
+                                               revnum, scheme)
         return (needed, parents)
 
     def _find_until(self, revision_id):
@@ -370,8 +365,6 @@ class InterFromSvnRepository(InterRepository):
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
-        needed = []
-        parents = {}
         self.target.lock_read()
         try:
             if revision_id is None:
