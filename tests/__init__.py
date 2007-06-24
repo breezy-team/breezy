@@ -261,6 +261,7 @@ def test_suite():
             'test_config',
             'test_convert',
             'test_errors',
+            'test_fetch',
             'test_fileids', 
             'test_logwalker',
             'test_push',
