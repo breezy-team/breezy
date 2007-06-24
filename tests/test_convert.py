@@ -74,7 +74,8 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_commit("dc", "change")
 
     def test_sets_parent_urls(self):
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
+        convert_repository(Repository.open(self.repos_url), "e", 
+                           TrunkBranchingScheme(), 
                            all=False, create_shared_repo=True)
         self.assertEquals(self.repos_url+"/trunk", 
                 Branch.open("e/trunk").get_parent())
@@ -87,9 +88,10 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_commit("dc", "add a branch")
         self.client_delete("dc/branches/somebranch")
         self.client_commit("dc", "remove branch")
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
-                           all=False, create_shared_repo=True)
         oldrepos = Repository.open(self.repos_url)
+        convert_repository(oldrepos, "e", 
+                           TrunkBranchingScheme(), 
+                           all=False, create_shared_repo=True)
         newrepos = Repository.open("e")
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", "trunk0")))
 
@@ -97,8 +99,8 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/branches/somebranch': 'data'})
         self.client_add("dc/branches/somebranch")
         self.client_commit("dc", "add a branch")
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme())
         oldrepos = Repository.open(self.repos_url)
+        convert_repository(oldrepos, "e", TrunkBranchingScheme())
         newrepos = Repository.open("e")
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", "trunk0")))
 
@@ -108,9 +110,9 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_commit("dc", "add a branch")
         self.client_delete("dc/branches/somebranch")
         self.client_commit("dc", "remove branch")
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
-                           all=True, create_shared_repo=True)
         oldrepos = Repository.open(self.repos_url)
+        convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
+                           all=True, create_shared_repo=True)
         newrepos = Repository.open("e")
         self.assertTrue(newrepos.has_revision(
             oldrepos.generate_revision_id(3, "branches/somebranch", "trunk0")))
@@ -119,38 +121,40 @@ class TestConversion(TestCaseWithSubversionRepository):
         BzrDir.create_repository("e", shared=True, 
                 format=get_rich_root_format())
 
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True)
 
         self.assertTrue(Repository.open("e").is_shared())
 
     def test_shared_import_continue_remove(self):
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), True)
+        convert_repository(Repository.open(self.repos_url), "e", 
+                TrunkBranchingScheme(), True)
         self.client_update("dc")
         self.client_delete("dc/trunk")
         self.client_commit("dc", "blafoo")
         self.build_tree({'dc/trunk/file': 'otherdata'})
         self.client_add("dc/trunk")
         self.client_commit("dc", "change")
-        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), True)
+        convert_repository(Repository.open(self.repos_url), "e", 
+                           TrunkBranchingScheme(), True)
 
     def test_shared_import_continue_with_wt(self):
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), working_trees=True)
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), working_trees=True)
 
     def test_shared_import_nonescheme_empty(self):
         BzrDir.create_repository("e", shared=True, format=get_rich_root_format())
 
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 NoBranchingScheme(), True)
 
     def test_shared_import_with_wt(self):
         BzrDir.create_repository("e", shared=True, 
                 format=get_rich_root_format())
 
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True, True)
 
         self.assertTrue(os.path.isfile(os.path.join(
@@ -160,7 +164,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         BzrDir.create_repository("e", shared=True, 
                 format=get_rich_root_format())
 
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True, False)
 
         self.assertFalse(os.path.isfile(os.path.join(
@@ -171,11 +175,11 @@ class TestConversion(TestCaseWithSubversionRepository):
                 format=format_registry.make_bzrdir('knit'))
 
         self.assertRaises(IncompatibleRepositories, 
-            lambda: convert_repository("svn+"+self.repos_url, "e", 
+            lambda: convert_repository(Repository.open(self.repos_url), "e", 
                 TrunkBranchingScheme(), True, False))
 
     def test_shared_import_continue_branch(self):
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True)
 
         self.build_tree({'dc/trunk/file': 'foodata'})
@@ -185,7 +189,7 @@ class TestConversion(TestCaseWithSubversionRepository):
                 Repository.open(self.repos_url).generate_revision_id(2, "trunk", "trunk0"), 
                 Branch.open("e/trunk").last_revision())
 
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True)
 
         self.assertEqual(Repository.open(self.repos_url).generate_revision_id(3, "trunk", "trunk0"), 
@@ -193,22 +197,22 @@ class TestConversion(TestCaseWithSubversionRepository):
 
  
     def test_shared_import(self):
-        convert_repository("svn+"+self.repos_url, "e", 
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True)
 
         self.assertTrue(Repository.open("e").is_shared())
     
     def test_simple(self):
-        convert_repository("svn+"+self.repos_url, os.path.join(self.test_dir, "e"), TrunkBranchingScheme())
+        convert_repository(Repository.open("svn+"+self.repos_url), os.path.join(self.test_dir, "e"), TrunkBranchingScheme())
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "trunk")))
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
 
     def test_convert_to_nonexistant(self):
-        self.assertRaises(NoSuchFile, convert_repository,"svn+"+self.repos_url, os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
+        self.assertRaises(NoSuchFile, convert_repository,Repository.open("svn+"+self.repos_url), os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
 
     def test_notshared_import(self):
-        convert_repository("svn+"+self.repos_url, "e", TrunkBranchingScheme(), 
-                           False)
+        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
+                           TrunkBranchingScheme(), False)
 
         self.assertRaises(NotBranchError, Repository.open, "e")
 
@@ -231,10 +235,15 @@ V 27
 PROPS-END
 """)
         branch_path = os.path.join(self.test_dir, "f")
-        convert_repository(dumpfile, branch_path, NoBranchingScheme())
+        repos = self.load_dumpfile(dumpfile, 'g')
+        convert_repository(repos, branch_path, NoBranchingScheme())
         branch = Repository.open(branch_path)
         self.assertEqual(['svn-v3-none:6987ef2d-cd6b-461f-9991-6f1abef3bd59::0'], branch.all_revision_ids())
         Branch.open(branch_path)
+
+    def load_dumpfile(self, dumpfile, target_path):
+        load_dumpfile(dumpfile, target_path)
+        return Repository.open(target_path)
 
     def test_dumpfile_open_empty_trunk(self):
         dumpfile = os.path.join(self.test_dir, "dumpfile")
@@ -254,7 +263,8 @@ V 27
 PROPS-END
 """)
         branch_path = os.path.join(self.test_dir, "f")
-        convert_repository(dumpfile, branch_path, TrunkBranchingScheme())
+        repos = self.load_dumpfile(dumpfile, 'g')
+        convert_repository(repos, branch_path, TrunkBranchingScheme())
         repository = Repository.open(branch_path)
         self.assertEqual([], repository.all_revision_ids())
         self.assertRaises(NotBranchError, Branch.open, branch_path)
@@ -316,10 +326,10 @@ data
 
 
 """)
-        convert_repository(filename, os.path.join(self.test_dir, "e"), 
+        repos = self.load_dumpfile(filename, 'g')
+        convert_repository(repos, os.path.join(self.test_dir, "e"), 
                            TrunkBranchingScheme())
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
         self.assertEqual(generate_svn_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk', "trunk0"), branch.last_revision())
-
 

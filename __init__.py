@@ -133,8 +133,20 @@ class cmd_svn_import(Command):
 
         if all:
             standalone = False
+
+        if os.path.isfile(from_location):
+            tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
+            mutter('loading dumpfile %r to %r' % (from_location, tmp_repos))
+            load_dumpfile(from_location, tmp_repos)
+            from_location = tmp_repos
+        else:
+            tmp_repos = None
+
         convert_repository(from_location, to_location, scheme, not standalone, 
                 trees, all)
+
+        if tmp_repos is not None:
+            osutils.rmtree(tmp_repos)
 
 
 register_command(cmd_svn_import)

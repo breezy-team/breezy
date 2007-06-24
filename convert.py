@@ -17,9 +17,6 @@
 import os
 import tempfile
 
-from bzrlib.plugin import load_plugins
-load_plugins()
-
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, Converter
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, NotBranchError, NoSuchFile, 
@@ -68,29 +65,25 @@ def load_dumpfile(dumpfile, outputdir):
     return repos
 
 
-def convert_repository(url, output_url, scheme, create_shared_repo=True, 
-                       working_trees=False, all=False):
+def convert_repository(source_repos, output_url, scheme=None, 
+                       create_shared_repo=True, working_trees=False, all=False,
+                       format=None, pb=None):
     """Convert a Subversion repository and its' branches to a 
     Bazaar repository.
 
-    :param url: URL of the Subversion repository
+    :param source_repos: Subversion repository
     :param output_url: URL to write Bazaar repository to.
     :param scheme: Branching scheme (object) to use
     :param create_shared_repo: Whether to create a shared Bazaar repository
     :param working_trees: Whether to create working trees
     :param all: Whether old revisions, even those not part of any existing 
         branches, should be imported
+    :param format: Format to use
+    :param pb: Progress bar to use
     """
     assert not all or create_shared_repo
-
-    if os.path.isfile(url):
-        tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-        mutter('loading dumpfile %r to %r' % (url, tmp_repos))
-        load_dumpfile(url, tmp_repos)
-        url = tmp_repos
-    else:
-        tmp_repos = None
-
+    if format is None:
+        format = get_rich_root_format()
     dirs = {}
     to_transport = get_transport(output_url)
     def get_dir(path):
@@ -101,80 +94,74 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
             dirs[path] = BzrDir.open_from_transport(nt)
         except NotBranchError:
             transport_makedirs(to_transport, urlutils.join(to_transport.base, path))
-            dirs[path] = get_rich_root_format().initialize_on_transport(nt)
+            dirs[path] = format.initialize_on_transport(nt)
         return dirs[path]
 
+    source_repos.set_branching_scheme(scheme)
+
+    if create_shared_repo:
+        try:
+            target_repos = get_dir("").open_repository()
+            assert scheme.is_branch("") or scheme.is_tag("") or target_repos.is_shared()
+        except NoRepositoryPresent:
+            target_repos = get_dir("").create_repository(shared=True)
+        target_repos.set_make_working_trees(working_trees)
+        if all:
+            source_repos.copy_content_into(target_repos)
+
+    pb = ui.ui_factory.nested_progress_bar()
     try:
-        source_repos = SvnRepository.open(url)
-        source_repos.set_branching_scheme(scheme)
-
-        if create_shared_repo:
-            try:
-                target_repos = get_dir("").open_repository()
-                assert scheme.is_branch("") or scheme.is_tag("") or target_repos.is_shared()
-            except NoRepositoryPresent:
-                target_repos = get_dir("").create_repository(shared=True)
-            target_repos.set_make_working_trees(working_trees)
-            if all:
-                source_repos.copy_content_into(target_repos)
-
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            branches = source_repos.find_branches(scheme, pb=pb)
-            existing_branches = filter(lambda (bp, revnum, exists): exists, 
-                                   branches)
-        finally:
-            pb.finished()
-
-        pb = ui.ui_factory.nested_progress_bar()
-                       
-        try:
-            i = 0
-            for (branch, revnum, _) in existing_branches:
-                if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
-                    continue
-                pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
-                revid = source_repos.generate_revision_id(revnum, branch, 
-                                                          str(scheme))
-
-                target_dir = get_dir(branch)
-                if not create_shared_repo:
-                    try:
-                        target_dir.open_repository()
-                    except NoRepositoryPresent:
-                        target_dir.create_repository()
-                source_branch_url = urlutils.join(url, branch)
-                try:
-                    target_branch = target_dir.open_branch()
-                except NotBranchError:
-                    target_branch = target_dir.create_branch()
-                    target_branch.set_parent(source_branch_url)
-                if revid != target_branch.last_revision():
-                    source_branch = Branch.open(source_branch_url)
-                    # Check if target_branch contains a subset of 
-                    # source_branch. If that is not the case, 
-                    # assume that source_branch has been replaced 
-                    # and remove target_branch
-                    try:
-                        source_branch.revision_id_to_revno(
-                                target_branch.last_revision())
-                    except NoSuchRevision:
-                        target_branch.set_revision_history([])
-                    target_branch.pull(source_branch)
-                if working_trees and not target_dir.has_workingtree():
-                    target_dir.create_workingtree()
-                i += 1
-        finally:
-            pb.finished()
+        branches = source_repos.find_branches(scheme, pb=pb)
+        existing_branches = filter(lambda (bp, revnum, exists): exists, 
+                               branches)
     finally:
-        if tmp_repos:
-            osutils.rmtree(tmp_repos)
+        pb.finished()
 
+    pb = ui.ui_factory.nested_progress_bar()
+                   
+    try:
+        i = 0
+        for (branch, revnum, _) in existing_branches:
+            if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
+                continue
+            pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
+            revid = source_repos.generate_revision_id(revnum, branch, 
+                                                      str(scheme))
+
+            target_dir = get_dir(branch)
+            if not create_shared_repo:
+                try:
+                    target_dir.open_repository()
+                except NoRepositoryPresent:
+                    target_dir.create_repository()
+            source_branch_url = urlutils.join(source_repos.base, branch)
+            try:
+                target_branch = target_dir.open_branch()
+            except NotBranchError:
+                target_branch = target_dir.create_branch()
+                target_branch.set_parent(source_branch_url)
+            if revid != target_branch.last_revision():
+                source_branch = Branch.open(source_branch_url)
+                # Check if target_branch contains a subset of 
+                # source_branch. If that is not the case, 
+                # assume that source_branch has been replaced 
+                # and remove target_branch
+                try:
+                    source_branch.revision_id_to_revno(
+                            target_branch.last_revision())
+                except NoSuchRevision:
+                    target_branch.set_revision_history([])
+                target_branch.pull(source_branch)
+            if working_trees and not target_dir.has_workingtree():
+                target_dir.create_workingtree()
+            i += 1
+    finally:
+        pb.finished()
+    
 
 class SvnConverter(Converter):
-    """Converts from a Subversion dir to another dir."""
-    def __init__(self, target_format):
-        self.target_format = target_format
+    """Converts from a Subversion directory to a bzr dir."""
 
     def convert(self, to_convert, pb):
-        pass
+        convert_repository(to_convert.open_repository(), to_convert.base, 
+                           format=self.target_format, all=True, pb=pb)
