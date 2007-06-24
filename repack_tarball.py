@@ -53,6 +53,11 @@ def repack_tarball(orig_name, new_name, target_dir=None):
   :type target_dir: string
   :return: None
   :warning: .zip files are currently unsupported.
+  :throws NoSuchFile: if orig_name doesn't exist.
+  :throws NotADirectory: if target_dir exists and is not a directory.
+  :throws FileExists: if the target filename (after considering target_dir
+                      exists.
+  :throes BzrCommandError: if the source isn't supported for repacking.
   """
   if not os.path.exists(orig_name):
     raise NoSuchFile(orig_name)
