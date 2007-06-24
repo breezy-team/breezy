@@ -36,6 +36,7 @@ import os
 
 from branchprops import BranchPropertyList
 from cache import create_cache_dir, sqlite3
+from config import SvnRepositoryConfig
 import errors
 import logwalker
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
@@ -181,6 +182,8 @@ class SvnRepository(Repository):
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
         self.pool = Pool()
+        self.config = SvnRepositoryConfig(self.uuid)
+        self.config.add_location(self.base)
 
         assert self.base
         assert self.uuid
@@ -202,6 +205,7 @@ class SvnRepository(Repository):
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
+        self.config.set_branching_scheme(str(scheme))
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated

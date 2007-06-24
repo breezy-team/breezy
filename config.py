@@ -16,7 +16,9 @@
 """Stores per-repository settings."""
 
 from bzrlib import osutils, urlutils
-from bzrlib.config import IniBasedConfig, config_dir
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists
+
+import os
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -57,6 +59,8 @@ class SvnRepositoryConfig(IniBasedConfig):
         self.set_user_option('locations', ";".join(list(locations)))
 
     def set_user_option(self, name, value):
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
         self._get_parser()[self.uuid][name] = value
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)

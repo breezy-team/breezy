@@ -18,7 +18,7 @@
 
 from config import SvnRepositoryConfig
 
-from unittest import TestCase
+from bzrlib.tests import TestCase
 
 class ReposConfigTests(TestCase):
     def test_create(self):
