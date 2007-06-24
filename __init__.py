@@ -291,25 +291,40 @@ class cmd_builddeb(Command):
 register_command(cmd_builddeb)
 
 class cmd_merge_upstream(Command):
-  """ merges a new upstream version into the current branch
+  """Merges a new upstream version into the current branch.
 
-  you need to specify the revision of the last upstream import at the
-  moment
+  Takes a new upstream version and merges it in to your branch, so that your
+  packaging changes are applied to the new version.
 
+  You must supply the source to import from, and the version number of the
+  new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
+  archive, or a directory.
   """
-  takes_args = ['filename']
-  takes_options = ['revision']
+  takes_args = ['filename', 'version']
   aliases = ['mu']
 
-  def run(self, filename=None, revision=None):
+  def run(self, filename, version):
 
     from merge_upstream import merge_upstream
-
-    if not revision:
-      raise BzrCommandError("Must specify a revision")
+    from bzrlib.errors import (NoSuchTag,
+                               TagAlreadyExists,
+                               )
 
     tree, relpath = WorkingTree.open_containing('.')
-    merge_upstream(tree, filename, revision)
+    try:
+      merge_upstream(tree, filename, version)
+    # TODO: tidy all of this up, and be more precise in what is wrong and
+    #       what can be done.
+    except NoSuchTag:
+      raise BzrCommandError("The tag of the last upstream import can not be "
+                            "found. You should tag the revision that matches "
+                            "the last upstream version")
+    except TagAlreadyExists:
+      raise BzrCommandError("It appears as though this merge has already "
+                            "been performed, as there is already a tag "
+                            "for this upstream version. If that is not the "
+                            "case then delete that tag and try again.")
+    # TODO: also repack the tarball.
 
 
 register_command(cmd_merge_upstream)

@@ -24,49 +24,91 @@ from bz2 import BZ2File
 import os
 from StringIO import StringIO
 
+from debian_bundle.changelog import Changelog
+
 from bzrlib.errors import (BzrCommandError,
                            NoSuchFile,
+                           NoSuchTag,
+                           TagAlreadyExists,
                            )
 from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_dir,
                                                      import_zip,
                                                      )
 
-# TODO: drop requirement for revision of last upstream, use tags or something
-#       instead.
+from errors import AddChangelogError
+
+# TODO: way of working out new version number.
 # TODO: support using an explicit standalone upstream branch.
 
-def merge_upstream(tree, source, old_revision):
+def make_upstream_tag(version):
+  """Make the name of the tag corresponding to the given version."""
+  return "upstream-%s" % str(version)
+
+
+def lookup_tag(tree):
+   """Look up the last upstream tag in the branch.
+
+   The upstream version of the last entry in debian/changelog in the tree
+   is used in the name of the tag, format 'upstream-<version>'. This tag is
+   then looked up in the branch. The return will be the revision_id that the
+   tag corresponds to.
+
+   :param tree: The tree to read debian/changelog from, and to have it's
+                branch used for the tag lookup.
+   :type tree: WorkingTree
+   :returns: The revision_id corresponding to the tag.
+   :rtype: string
+   :throws: NoSuchTag if the tag is not present.
+   """
+   cl_id = tree.path2id('debian/changelog')
+   if cl_id is None:
+     raise AddChangelogError('debian/changelog')
+   cl = Changelog(tree.get_file_text(cl_id))
+   upstream_version = cl.upstream_version
+   tag = make_upstream_tag(upstream_version)
+   return tree.branch.tags.lookup_tag(tag)
+
+
+def merge_upstream(tree, source, version_number):
     """Merge a new upstream release.
 
     A new upstream release will be extracted and imported in to the branch,
     and then the packaging specific changes merged in to this.
 
-    The revision of the last commit on the upstream "branch", upon which the
-    new upstream will be created. The merge will then be done in to this,
-    and the tree will be left with pending merges, and possibly any conflicts
-    to fix up.
+    The debian/changelog will be opened in the tree for the last upstream
+    version. Then a tag named 'upstream-<version>' will be looked up in the
+    branch and that revision will be used as the last import of upstream. The
+    new version will then be imported on top of this and a new tag will be
+    created using the specified version number. The merge will then be done
+    in to this, and the tree will be left with pending merges, and possibly
+    any conflicts to fix up.
 
     The tree must have no uncommited changes.
 
-    If the specified old_revision is the tip of the tree's branch then
-    a fastforward is done, and will be committed.
+    If the found tag is the tip of the tree's branch then a fastforward is
+    done, and will be committed.
 
     :param tree: The tree upon which to operate.
     :type tree: WorkingTree
     :param source: The filename tarball to import from.
     :type source: string
-    :param old_revision: The revision of the last commit on the upstream
-                         branch.
-    :type old_revision: RevisionSpec
+    :param version_number: The version number of the new upstream.
+    :type version_number: string
     :return: None
+    :throws NoSuchTag: if the tag for the last upstream version is not found.
     """
     if tree.changes_from(tree.basis_tree()).has_changed():
       raise BzrCommandError("Working tree has uncommitted changes.")
     if not os.path.exists(source):
       raise NoSuchFile(source)
+    try:
+      tree.branch.tags.lookup_tag(make_upstream_tag(version_number))
+      raise TagAlreadyExists(make_upstream_tag(version_number))
+    except NoSuchTag:
+      pass
     current_revision = tree.last_revision()
-    revno, rev_id = old_revision.in_branch(tree.branch)
+    rev_id = lookup_tag(tree)
     if rev_id != tree.branch.last_revision():
       tree.revert([], tree.branch.repository.revision_tree(rev_id))
       if os.path.isdir(source):
@@ -88,8 +130,11 @@ def merge_upstream(tree, source, old_revision):
         elif source.endswith('.zip'):
             import_zip(tree, open(source, 'rb'))
       tree.set_parent_ids([rev_id])
-      tree.branch.set_last_revision_info(revno, rev_id)
+      tree.branch.set_last_revision_info(
+                     tree.branch.revision_id_to_revno(rev_id), rev_id)
       tree.commit('import upstream from %s' % os.path.basename(source))
+      tree.branch.tags.set_tag(make_upstream_tag(version_number),
+                               tree.branch.last_revision())
       tree.merge_from_branch(tree.branch, to_revision=current_revision)
     else:
       # Fast forward the merge.

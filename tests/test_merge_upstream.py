@@ -21,9 +21,13 @@
 import os
 import shutil
 
+from debian_bundle.changelog import Changelog, Version
+
 from bzrlib.errors import (BzrCommandError,
                            InvalidRevisionSpec,
                            NoSuchFile,
+                           NoSuchTag,
+                           TagAlreadyExists,
                            )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tests import TestCaseWithTransport
@@ -40,9 +44,6 @@ def write_to_file(filename, contents):
   finally:
     f.close()
 
-def make_revspec(rev_id):
-  """Turn the rev_id passed in to a revision spec."""
-  return RevisionSpec.from_string('revid:' + rev_id)
 
 class TestMergeUpstreamNormal(TestCaseWithTransport):
   """Test that builddeb can merge upstream in normal mode"""
@@ -56,13 +57,29 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.build_tarball()
 
   def make_first_upstream_commit(self):
-    self.wt = self.make_branch_and_tree('.')
+    self.wt = self.make_branch_and_tree('.', format='dirstate-tags')
     self.build_tree(['README', 'CHANGELOG'])
     self.wt.add(['README', 'CHANGELOG'], ['README-id', 'CHANGELOG-id'])
     self.wt.commit('upstream version 1', rev_id=self.upstream_rev_id_1)
 
   def make_first_debian_commit(self):
-    self.build_tree(['debian/', 'debian/changelog'])
+    self.build_tree(['debian/'])
+    cl = Changelog()
+    cl.new_block(package='package',
+                 version=Version('0.1-1'),
+                 distributions='unstable',
+                 urgency='low',
+                 author='James Westby <jw+debian@jameswestby.net',
+                 date='Thu,  3 Aug 2006 19:16:22 +0100',
+                 )
+    cl.add_change('');
+    cl.add_change('  * Initial packaging.');
+    cl.add_change('');
+    f = open('debian/changelog', 'wb')
+    try:
+      cl.write_to_open_file(f)
+    finally:
+      f.close()
     self.wt.add(['debian/', 'debian/changelog'],
                 ['debian-id', 'debian-changelog-id'])
     self.wt.commit('debian version 1-1', rev_id='debian-1-1')
@@ -81,11 +98,10 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     :rtype: WorkingTree
     """
     self.make_first_upstream_commit()
-    old_upstream_revision = self.wt.branch.last_revision()
+    self.wt.branch.tags.set_tag('upstream-0.1', self.wt.branch.last_revision())
     self.make_first_debian_commit()
     self.make_new_upstream()
-    merge_upstream(self.wt, self.upstream_tarball,
-                   make_revspec(old_upstream_revision))
+    merge_upstream(self.wt, self.upstream_tarball, '0.2')
     return self.wt
 
   def test_merge_upstream(self):
@@ -93,24 +109,23 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.check_simple_merge_results()
 
   def test_merge_upstream_requires_clean_tree(self):
-    wt = self.make_branch_and_tree('.')
+    wt = self.make_branch_and_tree('.', format='dirstate-tags')
     self.build_tree(['file'])
     wt.add(['file'])
     self.assertRaises(BzrCommandError, merge_upstream, wt, 'source', 1)
 
   def test_merge_upstream_handles_no_source(self):
     self.make_first_upstream_commit()
-    old_upstream_revision = self.wt.branch.last_revision()
+    self.wt.branch.tags.set_tag('upstream-0.1', self.wt.branch.last_revision())
     self.make_first_debian_commit()
-    self.assertRaises(NoSuchFile, merge_upstream, self.wt, 'source',
-                      make_revspec(old_upstream_revision))
+    self.assertRaises(NoSuchFile, merge_upstream, self.wt, 'source', '0.2')
 
   def test_merge_upstream_handles_invalid_revision(self):
     self.make_first_upstream_commit()
     self.make_first_debian_commit()
     self.make_new_upstream()
-    self.assertRaises(InvalidRevisionSpec, merge_upstream, self.wt,
-                      self.upstream_tarball, make_revspec('NOTAREVID'))
+    self.assertRaises(NoSuchTag, merge_upstream, self.wt,
+                      self.upstream_tarball, '0.2')
 
   def test_merge_upstream_handles_last_revision(self):
     """Test handling of merging in to tip.
@@ -118,10 +133,31 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     If the upstream revision is said to be at the latest revision in the
     branch the code should do a fast-forward.
     """
-    self.make_first_upstream_commit()
+    self.wt = self.make_branch_and_tree('.', format='dirstate-tags')
+    self.build_tree(['README', 'CHANGELOG', 'debian/'])
+    cl = Changelog()
+    cl.new_block(package='package',
+                 version=Version('0.1-1'),
+                 distributions='unstable',
+                 urgency='low',
+                 author='James Westby <jw+debian@jameswestby.net',
+                 date='Thu,  3 Aug 2006 19:16:22 +0100',
+                 )
+    cl.add_change('');
+    cl.add_change('  * Initial packaging.');
+    cl.add_change('');
+    f = open('debian/changelog', 'wb')
+    try:
+      cl.write_to_open_file(f)
+    finally:
+      f.close()
+    self.wt.add(['README', 'CHANGELOG', 'debian', 'debian/changelog'],
+                ['README-id', 'CHANGELOG-id', 'debian-id',
+                 'debian-changelog-id'])
+    self.wt.commit('upstream version 1', rev_id=self.upstream_rev_id_1)
+    self.wt.branch.tags.set_tag('upstream-0.1', self.wt.branch.last_revision())
     self.make_new_upstream()
-    revspec = make_revspec(self.wt.branch.last_revision())
-    merge_upstream(self.wt, self.upstream_tarball, revspec)
+    merge_upstream(self.wt, self.upstream_tarball, '0.2')
     wt = self.wt
     delta = wt.changes_from(wt.basis_tree(), want_unversioned=True,
                             want_unchanged=True)
@@ -141,13 +177,22 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                      'import upstream from %s' % \
                      os.path.basename(self.upstream_tarball))
 
+  def test_merge_upstream_new_tag_extant(self):
+    self.make_first_upstream_commit()
+    self.wt.branch.tags.set_tag('upstream-0.1', self.wt.branch.last_revision())
+    self.make_first_debian_commit()
+    self.make_new_upstream()
+    self.wt.branch.tags.set_tag('upstream-0.2', self.wt.branch.last_revision())
+    self.assertRaises(TagAlreadyExists, merge_upstream, self.wt,
+                      self.upstream_tarball, '0.2')
+
   def perform_conflicted_merge(self):
     self.make_first_upstream_commit()
-    revspec = make_revspec(self.wt.branch.last_revision())
+    self.wt.branch.tags.set_tag('upstream-0.1', self.wt.branch.last_revision())
     write_to_file('CHANGELOG', 'debian version\n')
     self.make_first_debian_commit()
     self.make_new_upstream_with_debian()
-    merge_upstream(self.wt, self.upstream_tarball, revspec)
+    merge_upstream(self.wt, self.upstream_tarball, '0.2')
     return self.wt
 
   def test_merge_upstream_gives_correct_tree_on_conficts(self):
@@ -221,6 +266,11 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                      'import upstream from %s' % \
                      os.path.basename(self.upstream_tarball))
 
+  def test_merge_upstream_tags_new_version(self):
+    wt = self.perform_conflicted_merge()
+    rh = wt.branch.revision_history()
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'), rh[1])
+
   def check_simple_merge_results(self):
     wt = self.wt
     basis = wt.basis_tree()
@@ -248,4 +298,5 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(wt.branch.repository.get_revision(rh[1]).message,
                      'import upstream from %s' % \
                      os.path.basename(self.upstream_tarball))
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'), rh[1])
 
