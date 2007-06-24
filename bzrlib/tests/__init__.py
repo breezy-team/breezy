@@ -1489,7 +1489,7 @@ class TestCase(unittest.TestCase):
         shape = list(shape)             # copy
         for path, ie in inv.entries():
             name = path.replace('\\', '/')
-            if ie.kind == 'dir':
+            if ie.kind == 'directory':
                 name = name + '/'
             if name in shape:
                 shape.remove(name)
