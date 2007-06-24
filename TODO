@@ -8,6 +8,7 @@
 - more blackbox tests
 - split fetch tests out of test_repos
 - integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY ?
+- cache per-repository branching scheme
 
 Working trees:
 - custom implementation of WorkingTree.revert() / WorkingTree.merge()

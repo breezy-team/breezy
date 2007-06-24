@@ -258,6 +258,7 @@ def test_suite():
             'test_branchprops', 
             'test_checkout',
             'test_commit',
+            'test_config',
             'test_convert',
             'test_errors',
             'test_fileids', 
