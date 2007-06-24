@@ -38,18 +38,20 @@ bzr-svn 0.4	UNRELEASED
 
    * Implement SvnRemoteAccess.create_branch().
 
-bzr-svn 0.3.4	UNRELEASED
+bzr-svn 0.3.4	2007-06-15
 
   BUG FIXES
 
   * Check for a working pysqlite, rather than checking that the 
     first one found works. (#115026)
 
+  * Fix compatibility with Bazaar 0.17.
+
 bzr-svn 0.3.3	2007-04-29
 
   IMPROVEMENTS
 
-  * Fix compatibility with 0.16 (#110164)
+  * Fix compatibility with Bazaar 0.16 (#110164)
 
   * Don't do extra checkout before push if possible. (#91885)
 

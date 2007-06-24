@@ -113,15 +113,15 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def get_ignore_list(self):
-        ignores = [svn.wc.get_adm_dir()] + \
-                   svn.wc.get_default_ignores(svn_config)
+        ignores = set([svn.wc.get_adm_dir()])
+        ignores.update(svn.wc.get_default_ignores(svn_config))
 
         def dir_add(wc, prefix):
             ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
-                    ignores.append("./"+os.path.join(prefix, pat))
+                    ignores.add("./"+os.path.join(prefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
