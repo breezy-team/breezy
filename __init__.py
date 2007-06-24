@@ -43,7 +43,9 @@ from config import DebBuildConfig
 from errors import (ChangedError,
                     StopBuild,
                     )
+from merge_upstream import merge_upstream
 from properties import BuildProperties
+from repack_tarball import repack_tarball
 from util import goto_branch, find_changelog, is_clean
 
 dont_purge_opt = Option('dont-purge',
@@ -311,6 +313,7 @@ class cmd_merge_upstream(Command):
 
 
 register_command(cmd_merge_upstream)
+
 
 def test_suite():
     from unittest import TestSuite

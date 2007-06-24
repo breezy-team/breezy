@@ -27,27 +27,42 @@ import zipfile
 from bzrlib.errors import (NoSuchFile,
                            FileExists,
                            BzrCommandError,
+                           NotADirectory,
                            )
 
 
-def repack_tarball(orig_name, new_name):
+def repack_tarball(orig_name, new_name, target_dir=None):
   """Repack the file/dir named to a .tar.gz with the chosen name.
 
   This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
   or .zip type, or a directory, and creates the file named in the second
   argument in .tar.gz format.
 
-  The source must exist, and the target cannot exist.
+  If target_dir is specified then that directory will be created if it
+  doesn't exist, and the new_name will be interpreted relative to that
+  directory.
   
+  The source must exist, and the target cannot exist.
+
   :param orig_name: the curent name of the file/dir
   :type orig_name: string
   :param new_name: the desired name of the tarball
   :type new_name: string
+  :keyword target_dir: the directory to consider new_name relative to, and
+                       will be created if non-extant.
+  :type target_dir: string
   :return: None
   :warning: .zip files are currently unsupported.
   """
   if not os.path.exists(orig_name):
     raise NoSuchFile(orig_name)
+  if target_dir is not None:
+    if not os.path.exists(target_dir):
+      os.mkdir(target_dir)
+    else:
+      if not os.path.isdir(target_dir):
+        raise NotADirectory(target_dir)
+    new_name = os.path.join(target_dir, new_name)
   if os.path.exists(new_name):
     raise FileExists(new_name)
   if os.path.isdir(orig_name):

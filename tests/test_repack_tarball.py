@@ -23,6 +23,7 @@ import tarfile
 
 from bzrlib.errors import (NoSuchFile,
                            FileExists,
+                           NotADirectory,
                            )
 from bzrlib.tests import TestCaseInTempDir
 
@@ -91,4 +92,33 @@ class TestRepackTarball(TestCaseInTempDir):
     self.assertEqual(members,
                      [self.basedir] +
                      [os.path.join(self.basedir, file) for file in self.files])
+
+  def test_repack_tarball_with_target_dir(self):
+    self.create_old_tarball()
+    target_dir = 'tarballs'
+    repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
+    self.failUnlessExists(target_dir)
+    self.failUnlessExists(os.path.join(target_dir, self.new_tarball))
+    self.failUnlessExists(self.old_tarball)
+
+  def test_repack_tarball_with_target_dir_exists(self):
+    self.create_old_tarball()
+    target_dir = 'tarballs'
+    os.mkdir(target_dir)
+    repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
+    self.failUnlessExists(target_dir)
+    self.failUnlessExists(os.path.join(target_dir, self.new_tarball))
+    self.failUnlessExists(self.old_tarball)
+    self.failIfExists(self.new_tarball)
+
+  def test_repack_tarball_with_target_dir_not_dir(self):
+    self.create_old_tarball()
+    target_dir = 'tarballs'
+    touch(target_dir)
+    self.assertRaises(NotADirectory, repack_tarball, self.old_tarball,
+                      self.new_tarball, target_dir=target_dir)
+    self.failUnlessExists(self.old_tarball)
+    self.failIfExists(self.new_tarball)
+    self.failIfExists(os.path.join(target_dir, self.new_tarball))
+    self.failUnlessExists(target_dir)
 
