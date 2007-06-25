@@ -107,7 +107,10 @@ class TestMulti(TestCase):
         multiparent.MultiParent.from_patch(''.join(patch))
 
     def test_make_patch_from_binary(self):
-        patch = multiparent.MultiParent.from_text(LF_SPLIT_LINES).to_patch()
+        patch = multiparent.MultiParent.from_texts(''.join(LF_SPLIT_LINES))
+        expected = multiparent.MultiParent([
+            multiparent.NewText(LF_SPLIT_LINES)])
+        self.assertEqual(expected, patch)
 
     def test_num_lines(self):
         mp = multiparent.MultiParent([multiparent.NewText(['a\n'])])

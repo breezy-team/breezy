@@ -138,8 +138,8 @@ class MultiParent(object):
     @classmethod
     def from_texts(cls, text, parents=()):
         """Produce a MultiParent from a text and list of parent text"""
-        return cls.from_lines(text.splitlines(True),
-                              [p.splitlines(True) for p in parents])
+        return cls.from_lines(StringIO(text).readlines(),
+                              [StringIO(p).readlines() for p in parents])
 
     def to_patch(self):
         """Yield text lines for a patch"""
