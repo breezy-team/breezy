@@ -41,6 +41,10 @@ IN DEVELOPMENT
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
+  INTERNALS:
+
+    * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test

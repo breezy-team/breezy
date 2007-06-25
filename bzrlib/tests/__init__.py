@@ -2299,6 +2299,7 @@ def test_suite():
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
+                   'bzrlib.tests.test_smtp_connection',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_ssh_transport',
                    'bzrlib.tests.test_status',
