@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  BUGFIXES:
+
+    * Do not suppress pipe errors, etc. in non-display commands
+      (Alexander Belchenko, #87178)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling

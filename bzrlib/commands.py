@@ -712,11 +712,7 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
