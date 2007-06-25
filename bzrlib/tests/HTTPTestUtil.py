@@ -393,7 +393,8 @@ class DigestAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="%s", algorithm=%s, qop=auth' % (tcs.auth_nonce, 'MD5')
+        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+                                                              'MD5')
         self.send_header(tcs.auth_header_sent,header)
 
 

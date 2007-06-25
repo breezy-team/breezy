@@ -2472,9 +2472,9 @@ class cmd_selftest(Command):
             clean_selftest_output()
             return 0
         if keep_output:
-            trace.warning("notice: selftest --keep-output "
-                          "is no longer supported; "
-                          "test output is always removed")
+            warning("notice: selftest --keep-output "
+                    "is no longer supported; "
+                    "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
