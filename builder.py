@@ -246,6 +246,8 @@ class DebMergeBuild(DebBuild):
       export(tree,export_dir,None,None)
     finally:
       tree.unlock()
+    if os.path.exists(os.path.join(source_dir, 'debian')):
+      shutil.rmtree(os.path.join(source_dir, 'debian'))
     recursive_copy(tempdir, source_dir)
     shutil.rmtree(basetempdir)
     remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
