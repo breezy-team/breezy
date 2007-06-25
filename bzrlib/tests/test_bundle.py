@@ -1277,7 +1277,7 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
 class V4WeaveBundleTester(V4BundleTester):
 
     def bzrdir_format(self):
-        return 'weave'
+        return 'metaweave'
 
 
 class MungedBundleTester(object):
