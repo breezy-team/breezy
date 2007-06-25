@@ -457,7 +457,7 @@ class MergeDirective2(_BaseMergeDirective):
 
                 if public_branch is not None and patch_type != 'bundle':
                     public_branch_obj = _mod_branch.Branch.open(public_branch)
-                    public_branch_obj.lock_read
+                    public_branch_obj.lock_read()
                     locked.append(public_branch_obj)
                     if not public_branch_obj.repository.has_revision(
                         revision_id):
