@@ -67,10 +67,11 @@ This section is identical to the corresponding section in Format 1 merge
 directives, except as noted below.  It is mandatory.  It is terminated by a
 line reading ``#`` that is not preceeded by a line ending with ``\``.
 
-This format adds a new piece of information, the ``base_revision_id``.  This is
-a suggested base revision for merging.  It may be supplied by the user.  If
-not, it is calculated using the standard merge base algorithm, with the
-``revision_id`` and target branch's ``last_revision`` as its inputs.
+In order to support cherry-picking and patch comparison, this format adds a new
+piece of information, the ``base_revision_id``.  This is a suggested base
+revision for merging.  It may be supplied by the user.  If not, it is
+calculated using the standard merge base algorithm, with the ``revision_id``
+and target branch's ``last_revision`` as its inputs.
 
 When merging, clients should use the ``base_revision_id`` when it is not
 already present in the ancestry of the ``last_revision`` of the target branch.
@@ -242,3 +243,30 @@ whose root directory revision-id does not match the inventory revision id.
 When installing from a bundle that does not support rich roots to a repository
 that does, additional knits should be added for the root directory, with a
 revision for each inventory revision.
+
+Validating preview patches
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+When applying a merge directive that includes a preview, clients should
+verify that the preview matches the changes requested by the merge directive.
+
+In order to do this, the client should generate a diff from the
+``base_revision_id`` to the ``revision_id``.  This diff should be compared
+against the preview patch, making allowances for the fact that whitespace
+munging may have occurred.
+
+One form of whitespace munging that has been observed is line-ending
+conversion.  Certain mail clients such as Evolution do not respect the
+line-endings of text attachments.  Since line-ending conversion is unlikely to
+alter the meaning of a patch, it seems safe to ignore line endings when
+comparing the preview patch.
+
+Another form of whitespace munging that has been observed is
+trailing-whitespace stripping.  Again, it seems unlikely that stripping
+trailing whitespace could alter the meaning of a patch.  Such a distinction
+is also invisible to readers, so ignoring it does not create a new threat.  So
+it seems reasonable to ignore trailing whitespace when comparing the patches.
+
+Other mungings are possible, but it is recommended not to implement support
+for them until they have been observed.  Each of these changes makes the
+comparison more approximate, and the more approximate it becomes, the easier it
+is to provide a preview patch that does not match the requested changes.
