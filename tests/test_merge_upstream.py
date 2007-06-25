@@ -176,6 +176,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(revision.message,
                      'import upstream from %s' % \
                      os.path.basename(self.upstream_tarball))
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'), rh[1])
 
   def test_merge_upstream_new_tag_extant(self):
     self.make_first_upstream_commit()
@@ -299,4 +300,22 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
                      'import upstream from %s' % \
                      os.path.basename(self.upstream_tarball))
     self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'), rh[1])
+
+  def test_merge_upstream_to_empty_branch(self):
+    self.wt = self.make_branch_and_tree('.', format='dirstate-tags')
+    self.make_new_upstream()
+    merge_upstream(self.wt, self.upstream_tarball, '0.2')
+    wt = self.wt
+    basis = wt.basis_tree()
+    self.assertEqual(wt.changes_from(basis).has_changed(), False)
+    parents = wt.get_parent_ids()
+    self.assertEqual(len(parents), 1)
+    self.assertEqual(wt.conflicts(), [])
+    rh = wt.branch.revision_history()
+    self.assertEqual(len(rh), 1)
+    self.assertEqual(rh[0], parents[0])
+    self.assertEqual(wt.branch.repository.get_revision(rh[0]).message,
+                     'import upstream from %s' % \
+                     os.path.basename(self.upstream_tarball))
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'), rh[0])
 

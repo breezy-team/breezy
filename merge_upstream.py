@@ -102,59 +102,63 @@ def merge_upstream(tree, source, version_number):
       raise BzrCommandError("Working tree has uncommitted changes.")
     if not os.path.exists(source):
       raise NoSuchFile(source)
-    try:
-      tree.branch.tags.lookup_tag(make_upstream_tag(version_number))
-      raise TagAlreadyExists(make_upstream_tag(version_number))
-    except NoSuchTag:
-      pass
-    current_revision = tree.last_revision()
-    rev_id = lookup_tag(tree)
-    if rev_id != tree.branch.last_revision():
-      tree.revert([], tree.branch.repository.revision_tree(rev_id))
-      if os.path.isdir(source):
-        s = StringIO(source)
-        s.seek(0)
-        import_dir(tree, s)
-      else:
-        if (source.endswith('.tar') or source.endswith('.tar.gz') or
-            source.endswith('.tar.bz2') or source.endswith('.tgz')):
-          if source.endswith('.bz2'):
-            tar_input = BZ2File(source, 'r')
-            tar_input = StringIO(tar_input.read())
-          else:
-            tar_input = open(source, 'rb')
-          try:
-            import_tar(tree, tar_input)
-          finally:
-            tar_input.close()
-        elif source.endswith('.zip'):
-            import_zip(tree, open(source, 'rb'))
-      tree.set_parent_ids([rev_id])
-      tree.branch.set_last_revision_info(
-                     tree.branch.revision_id_to_revno(rev_id), rev_id)
-      tree.commit('import upstream from %s' % os.path.basename(source))
-      tree.branch.tags.set_tag(make_upstream_tag(version_number),
-                               tree.branch.last_revision())
-      tree.merge_from_branch(tree.branch, to_revision=current_revision)
+    empty_branch = len(tree.branch.revision_history()) == 0
+    if not empty_branch:
+      try:
+        tree.branch.tags.lookup_tag(make_upstream_tag(version_number))
+        raise TagAlreadyExists(make_upstream_tag(version_number))
+      except NoSuchTag:
+        pass
+      current_revision = tree.last_revision()
+      rev_id = lookup_tag(tree)
+      if rev_id != tree.branch.last_revision():
+        tree.revert([], tree.branch.repository.revision_tree(rev_id))
+        if os.path.isdir(source):
+          s = StringIO(source)
+          s.seek(0)
+          import_dir(tree, s)
+        else:
+          if (source.endswith('.tar') or source.endswith('.tar.gz') or
+              source.endswith('.tar.bz2') or source.endswith('.tgz')):
+            if source.endswith('.bz2'):
+              tar_input = BZ2File(source, 'r')
+              tar_input = StringIO(tar_input.read())
+            else:
+              tar_input = open(source, 'rb')
+            try:
+              import_tar(tree, tar_input)
+            finally:
+              tar_input.close()
+          elif source.endswith('.zip'):
+              import_zip(tree, open(source, 'rb'))
+        tree.set_parent_ids([rev_id])
+        tree.branch.set_last_revision_info(
+                       tree.branch.revision_id_to_revno(rev_id), rev_id)
+        tree.commit('import upstream from %s' % os.path.basename(source))
+        tree.branch.tags.set_tag(make_upstream_tag(version_number),
+                                 tree.branch.last_revision())
+        tree.merge_from_branch(tree.branch, to_revision=current_revision)
+        return
+    # Fast forward the merge.
+    if os.path.isdir(source):
+      s = StringIO(source)
+      s.seek(0)
+      import_dir(tree, s)
     else:
-      # Fast forward the merge.
-      if os.path.isdir(source):
-        s = StringIO(source)
-        s.seek(0)
-        import_dir(tree, s)
-      else:
-        if (source.endswith('.tar') or source.endswith('.tar.gz') or
-            source.endswith('.tar.bz2') or source.endswith('.tgz')):
-          if source.endswith('.bz2'):
-            tar_input = BZ2File(source, 'r')
-            tar_input = StringIO(tar_input.read())
-          else:
-            tar_input = open(source, 'rb')
-          try:
-            import_tar(tree, tar_input)
-          finally:
-            tar_input.close()
-        elif source.endswith('.zip'):
-            import_zip(tree, open(source, 'rb'))
-      tree.commit('import upstream from %s' % os.path.basename(source))
+      if (source.endswith('.tar') or source.endswith('.tar.gz') or
+          source.endswith('.tar.bz2') or source.endswith('.tgz')):
+        if source.endswith('.bz2'):
+          tar_input = BZ2File(source, 'r')
+          tar_input = StringIO(tar_input.read())
+        else:
+          tar_input = open(source, 'rb')
+        try:
+          import_tar(tree, tar_input)
+        finally:
+          tar_input.close()
+      elif source.endswith('.zip'):
+          import_zip(tree, open(source, 'rb'))
+    tree.commit('import upstream from %s' % os.path.basename(source))
+    tree.branch.tags.set_tag(make_upstream_tag(version_number),
+                             tree.branch.last_revision())
 
