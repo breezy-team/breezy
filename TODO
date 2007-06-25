@@ -3,10 +3,9 @@
 - avoid extra connect in logwalker?
 - make ListBranchingScheme() support wildcards
 - free memory!
-- implement BzrDirFormat.get_converter()
 - report changes to delta editor in Branch.pull()
 - more blackbox tests
-- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY ?
+- integrate bzr:merge into bzr:revision-info or rename to bzr:merge-vXXYY
 
 Working trees:
 - custom implementation of WorkingTree.revert() / WorkingTree.merge()

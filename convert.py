@@ -161,6 +161,11 @@ def convert_repository(source_repos, output_url, scheme=None,
 
 class SvnConverter(Converter):
     """Converts from a Subversion directory to a bzr dir."""
+    def __init__(self, target_format):
+        """Create a CopyConverter.
+        :param target_format: The format the resulting repository should be.
+        """
+        self.target_format = target_format
 
     def convert(self, to_convert, pb):
         convert_repository(to_convert.open_repository(), to_convert.base, 
