@@ -39,7 +39,21 @@ from bzrlib.tests import (
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
+
+
+class TestCaseWithRepository(TestCaseWithBzrDir):
+
+    def make_repository(self, relpath, format=None):
+        if format is None:
+            # Create a repository of the type we are trying to test.
+            made_control = self.make_bzrdir(relpath)
+            return self.repository_format.initialize(made_control)
+        else:
+            return super(TestCaseWithRepository, self).make_repository(
+                relpath, format)
+
 
 
 def test_suite():
