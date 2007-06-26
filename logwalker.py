@@ -80,6 +80,7 @@ class LogWalker(object):
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
           create index if not exists path_rev on changed_path(rev);
           create index if not exists path_rev_path on changed_path(rev, path);
+          create index if not exists path_rev_path_action on changed_path(rev, path, action);
         """)
         self.db.commit()
         self.saved_revnum = self.db.execute("SELECT MAX(revno) FROM revision").fetchone()[0]

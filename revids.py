@@ -90,8 +90,10 @@ class RevidMap(object):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
-        create table if not exists revno_cache (revid text, dist_to_origin integer);
         create unique index if not exists revid on revmap (revid);
+        create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
+        create table if not exists revno_cache (revid text, dist_to_origin integer);
+        create index if not exists revid on revno_cache (revid);
         """)
         self.cachedb.commit()
     
