@@ -1237,6 +1237,12 @@ class TestCase(unittest.TestCase):
         :param stdin: A string to be used as stdin for the command.
         :param working_dir: Change to this directory before running
         """
+        return self._run_bzr_autosplit(argv, retcode=retcode,
+                encoding=encoding, stdin=stdin, working_dir=working_dir,
+                )
+
+    def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
+            working_dir):
         if encoding is None:
             encoding = bzrlib.user_encoding
         stdout = StringIOWrapper()
@@ -1244,13 +1250,13 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
-        if isinstance(argv, basestring):
-            argv = shlex.split(argv)
-        elif isinstance(argv, tuple):
-            if len(argv) == 1 and isinstance(argv[0], basestring):
-                argv = shlex.split(argv[0])
+        if isinstance(args, basestring):
+            args = shlex.split(args)
+        elif isinstance(args, tuple):
+            if len(args) == 1 and isinstance(args[0], basestring):
+                args = shlex.split(args[0])
 
-        self.log('run bzr: %r', argv)
+        self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setLevel(logging.INFO)
@@ -1269,9 +1275,9 @@ class TestCase(unittest.TestCase):
             debug.debug_flags.clear()
             try:
                 result = self.apply_redirected(ui.ui_factory.stdin,
-                                               stdout, stderr,
-                                               bzrlib.commands.run_bzr_catch_errors,
-                                               argv)
+                    stdout, stderr,
+                    bzrlib.commands.run_bzr_catch_errors,
+                    args)
             finally:
                 debug.debug_flags.update(saved_debug_flags)
         finally:
@@ -1294,13 +1300,30 @@ class TestCase(unittest.TestCase):
     def run_bzr(self, *args, **kwargs):
         """Invoke bzr, as if it were run from the command line.
 
+        The argument list should not include the bzr program name - the
+        first argument is normally the bzr command.  Arguments may be
+        passed in three ways:
+
+        1- A list of strings, eg ["commit", "a"].  This is recommended
+        when the command contains whitespace or metacharacters, or 
+        is built up at run time.
+
+        2- A single string, eg "add a".  This is the most convenient 
+        for hardcoded commands.
+
+        3- Several varargs parameters, eg run_bzr("add", "a").  
+        This is deprecated.
+
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
         or a functional test of the library.)
 
         :param stdin: A string to be used as stdin for the command.
-        :param retcode: The status code the command should return
+        :param retcode: The status code the command should return; 
+            default 0.
         :param working_dir: The directory to run the command in
+        :param error_regexes: A list of expected error messages.  If 
+        specified they must be seen in the error output of the command.
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1308,14 +1331,18 @@ class TestCase(unittest.TestCase):
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
 
-        if len(args) != 1:
+        if len(args) == 1:
+            if isinstance(args[0], (list, basestring)):
+                args = args[0]
+        else:
             warnings.warn("passing varargs to run_bzr is deprecated "
                     "from bzr 0.18 onwards; please pass a list or "
                     "string instead")
 
-        out, err = self.run_bzr_captured(retcode=retcode,
+        out, err = self._run_bzr_autosplit(args=args,
+            retcode=retcode,
             encoding=encoding, stdin=stdin, working_dir=working_dir,
-            argv=args)
+            )
 
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
