@@ -52,28 +52,48 @@ def _dsc_sorter(dscname1, dscname2):
     f2.close()
   v1 = Version(dsc1['Version'])
   v2 = Version(dsc2['Version'])
-  return v1 > v2
+  if v1 == v2:
+    return 0
+  if v1 > v2:
+    return 1
+  return -1
 
 
-def import_orig(tree, origname, version):
+def import_orig(tree, origname, version, last_upstream=None):
   f = open(origname, 'rb')
   try:
+    dangling_revid = None
+    if last_upstream is not None:
+      dangling_revid = tree.branch.last_revision()
+      old_upstream_revid = tree.branch.tags.lookup_tag(
+                               make_upstream_tag(last_upstream))
+      tree.revert([], tree.branch.repository.revision_tree(old_upstream_revid))
     import_tar(tree, f)
+    if last_upstream is not None:
+      tree.set_parent_ids([old_upstream_revid])
+      revno = tree.branch.revision_id_to_revno(old_upstream_revid)
+      tree.branch.set_last_revision_info(revno, old_upstream_revid)
     tree.commit('import upstream from %s' % (os.path.basename(origname)))
+    if last_upstream is not None:
+      tree.merge_from_branch(tree.branch, to_revision=dangling_revid)
     upstream_version = version.upstream_version
     tree.branch.tags.set_tag(make_upstream_tag(upstream_version),
                              tree.branch.last_revision())
   finally:
     f.close()
+  return dangling_revid
 
 
-def import_diff(tree, diffname, version):
+def import_diff(tree, diffname, version, dangling_revid=None):
   upstream_version = version.upstream_version
   up_revid = tree.branch.tags.lookup_tag(make_upstream_tag(upstream_version))
   up_tree = tree.branch.repository.revision_tree(up_revid)
-  current_revid = tree.branch.last_revision()
+  if dangling_revid is None:
+    current_revid = tree.branch.last_revision()
+  else:
+    current_revid = dangling_revid
   current_tree = tree.branch.repository.revision_tree(current_revid)
-  tree.revert([], tree.branch.repository.revision_tree(up_revid))
+  tree.revert(['.'], tree.branch.repository.revision_tree(up_revid))
   f = gzip.GzipFile(diffname, 'rb')
   try:
     cmd = ['patch', '--strip', '1', '--quiet', '--directory', tree.basedir]
@@ -128,7 +148,6 @@ def import_diff(tree, diffname, version):
           tree.add([path])
         else:
           tree.add([path], [file_id])
-    tree.set_parent_ids([current_revid])
     tree.commit('merge packaging changes from %s' % \
                 (os.path.basename(diffname)))
   finally:
@@ -146,6 +165,7 @@ def import_dsc(target_dir, dsc_files):
   tree.lock_write()
   try:
     dsc_files.sort(cmp=_dsc_sorter)
+    last_upstream = None
     for dscname in dsc_files:
       f = open(dscname)
       try:
@@ -166,9 +186,12 @@ def import_dsc(target_dir, dsc_files):
                                    "package which doesn't have a single " \
                                    ".diff.gz file."
       version = Version(dsc['Version'])
+      dangling_revid = None
       if len(orig_files) == 1:
-        import_orig(tree, orig_files[0], version)
-      import_diff(tree, diff_files[0], version)
+        dangling_revid = import_orig(tree, orig_files[0], version,
+                                     last_upstream=last_upstream)
+        last_upstream = version.upstream_version
+      import_diff(tree, diff_files[0], version, dangling_revid=dangling_revid)
   finally:
     tree.unlock()
 
