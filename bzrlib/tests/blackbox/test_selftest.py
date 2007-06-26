@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +34,9 @@ from bzrlib.tests import (
                           TestUIFactory,
                           TestSkipped,
                           )
+from bzrlib.symbol_versioning import (
+    zero_eighteen,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -91,7 +94,7 @@ class TestOptions(TestCase):
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
+    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
         """Override run_bzr_captured to test how it is invoked by run_bzr.
 
@@ -101,7 +104,7 @@ class TestRunBzr(ExternalBase):
         Here we only need to test that it is run_bzr passes the right
         parameters to run_bzr_captured.
         """
-        self.argv = argv
+        self.argv = list(argv)
         self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
@@ -110,37 +113,41 @@ class TestRunBzr(ExternalBase):
 
     def test_args(self):
         """Test that run_bzr passes args correctly to run_bzr_captured"""
+        ## self.callDeprecated(
+        ##         ['passing varargs to run_bzr was deprecated in version 0.18.'],
+        ##         self.run_bzr,
+        ##         'arg1', 'arg2', 'arg3', retcode=1)
         self.run_bzr('arg1', 'arg2', 'arg3', retcode=1)
-        self.assertEqual(('arg1', 'arg2', 'arg3'), self.argv)
+        self.assertEqual(['arg1', 'arg2', 'arg3'], self.argv)
 
     def test_encoding(self):
         """Test that run_bzr passes encoding to run_bzr_captured"""
-        self.run_bzr('foo', 'bar')
+        self.run_bzr('foo bar')
         self.assertEqual(None, self.encoding)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', encoding='baz')
+        self.run_bzr('foo bar', encoding='baz')
         self.assertEqual('baz', self.encoding)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_retcode(self):
         """Test that run_bzr passes retcode to run_bzr_captured"""
         # Default is retcode == 0
-        self.run_bzr('foo', 'bar')
+        self.run_bzr('foo bar')
         self.assertEqual(0, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=1)
+        self.run_bzr('foo bar', retcode=1)
         self.assertEqual(1, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=None)
+        self.run_bzr('foo bar', retcode=None)
         self.assertEqual(None, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', retcode=3)
+        self.run_bzr(['foo', 'bar'], retcode=3)
         self.assertEqual(3, self.retcode)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_stdin(self):
         # test that the stdin keyword to run_bzr is passed through to
@@ -148,23 +155,23 @@ class TestRunBzr(ExternalBase):
         # run_bzr_captured in this class, and then calling run_bzr,
         # which is a convenience function for run_bzr_captured, so 
         # should invoke it.
-        self.run_bzr('foo', 'bar', stdin='gam')
+        self.run_bzr('foo bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', stdin='zippy')
+        self.run_bzr('foo bar', stdin='zippy')
         self.assertEqual('zippy', self.stdin)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_working_dir(self):
         """Test that run_bzr passes working_dir to run_bzr_captured"""
-        self.run_bzr('foo', 'bar')
+        self.run_bzr('foo bar')
         self.assertEqual(None, self.working_dir)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
-        self.run_bzr('foo', 'bar', working_dir='baz')
+        self.run_bzr('foo bar', working_dir='baz')
         self.assertEqual('baz', self.working_dir)
-        self.assertEqual(('foo', 'bar'), self.argv)
+        self.assertEqual(['foo', 'bar'], self.argv)
 
 
 class TestBenchmarkTests(TestCaseWithTransport):
@@ -176,7 +183,8 @@ class TestBenchmarkTests(TestCaseWithTransport):
         old_root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
-            out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
+            out, err = self.run_bzr(['selftest', '--benchmark',
+                'workingtree_implementations'])
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
@@ -454,11 +462,11 @@ class TestBzrSubprocess(TestCaseWithTransport):
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
+        out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=0)
         self.assertEqual(out, 'It sure does!\n')
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
-                                      'file-id', 'foobarbaz')
+                                      ['file-id', 'foobarbaz'])
 
 
 class TestSelftestCleanOutput(TestCaseInTempDir):

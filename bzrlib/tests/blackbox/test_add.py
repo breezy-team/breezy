@@ -64,19 +64,19 @@ class TestAdd(ExternalBase):
         self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic\n')
-        self.run_bzr('add', 'inertiatic/esp')
+        self.run_bzr('add inertiatic/esp')
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
         # Multiple unversioned parents
         self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'veil\n')
-        self.run_bzr('add', 'veil/cerpin/taxt')
+        self.run_bzr('add veil/cerpin/taxt')
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
         # Check whacky paths work
         self.build_tree(['cicatriz/', 'cicatriz/esp'])
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'cicatriz\n')
-        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
+        self.run_bzr('add inertiatic/../cicatriz/esp')
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
     def test_add_in_versioned(self):
@@ -87,9 +87,9 @@ class TestAdd(ExternalBase):
         self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic\n')
-        self.run_bzr('add', '--no-recurse', 'inertiatic')
+        self.run_bzr('add --no-recurse inertiatic')
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic/esp\n')
-        self.run_bzr('add', 'inertiatic/esp')
+        self.run_bzr('add inertiatic/esp')
         self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
     def test_subdir_add(self):
@@ -107,7 +107,7 @@ class TestAdd(ExternalBase):
         eq(sorted(t.unknowns()),
            ['README', 'src'])
         
-        self.run_bzr('add', 'src')
+        self.run_bzr('add src')
         
         self.build_tree(['src/foo.c'])
         
@@ -131,7 +131,7 @@ class TestAdd(ExternalBase):
     def test_add_missing(self):
         """bzr add foo where foo is missing should error."""
         self.make_branch_and_tree('.')
-        self.run_bzr('add', 'missing-file', retcode=3)
+        self.run_bzr('add missing-file', retcode=3)
 
     def test_add_from(self):
         base_tree = self.make_branch_and_tree('base')
@@ -143,7 +143,7 @@ class TestAdd(ExternalBase):
         self.build_tree(['new/a', 'new/b/', 'new/b/c', 'd'])
 
         os.chdir('new')
-        out, err = self.run_bzr('add', '--file-ids-from', '../base')
+        out, err = self.run_bzr('add --file-ids-from ../base')
         self.assertEqual('', err)
         self.assertEqualDiff('added a w/ file id from a\n'
                              'added b w/ file id from b\n'
@@ -164,7 +164,7 @@ class TestAdd(ExternalBase):
         self.build_tree(['new/c', 'new/d'])
 
         os.chdir('new')
-        out, err = self.run_bzr('add', '--file-ids-from', '../base/b')
+        out, err = self.run_bzr('add --file-ids-from ../base/b')
         self.assertEqual('', err)
         self.assertEqualDiff('added c w/ file id from b/c\n'
                              'added d w/ file id from b/d\n',
@@ -186,10 +186,10 @@ class TestAdd(ExternalBase):
     def test_add_control_dir(self):
         """The control dir and its content should be refused."""
         self.make_branch_and_tree('.')
-        err = self.run_bzr('add', '.bzr', retcode=3)[1]
+        err = self.run_bzr('add .bzr', retcode=3)[1]
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
-        err = self.run_bzr('add', '.bzr/README', retcode=3)[1]
+        err = self.run_bzr('add .bzr/README', retcode=3)[1]
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
         self.build_tree(['.bzr/crescent'])
-        err = self.run_bzr('add', '.bzr/crescent', retcode=3)[1]
+        err = self.run_bzr('add .bzr/crescent', retcode=3)[1]
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')

@@ -989,6 +989,9 @@ class TestCase(unittest.TestCase):
     def applyDeprecated(self, deprecation_format, a_callable, *args, **kwargs):
         """Call a deprecated callable without warning the user.
 
+        Note that this only captures warnings raised by symbol_versioning.warn,
+        not other callers that go direct to the warning module.
+
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the 
             parameter to deprecated_method/deprecated_function. If the 
@@ -1017,6 +1020,9 @@ class TestCase(unittest.TestCase):
         applyDeprecated helper function is probably more suited for most tests
         as it allows you to simply specify the deprecation format being used
         and will ensure that that is issued for the function being called.
+
+        Note that this only captures warnings raised by symbol_versioning.warn,
+        not other callers that go direct to the warning module.
 
         :param expected: a list of the deprecation warnings expected, in order
         :param callable: The callable to call
@@ -1243,18 +1249,21 @@ class TestCase(unittest.TestCase):
 
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
+        """Run bazaar command line, splitting up a string command line."""
+        if isinstance(args, basestring):
+            args = list(shlex.split(args))
+        return self._run_bzr_core(args, retcode=retcode,
+                encoding=encoding, stdin=stdin, working_dir=working_dir,
+                )
+
+    def _run_bzr_core(self, args, retcode, encoding, stdin,
+            working_dir):
         if encoding is None:
             encoding = bzrlib.user_encoding
         stdout = StringIOWrapper()
         stderr = StringIOWrapper()
         stdout.encoding = encoding
         stderr.encoding = encoding
-
-        if isinstance(args, basestring):
-            args = shlex.split(args)
-        elif isinstance(args, tuple):
-            if len(args) == 1 and isinstance(args[0], basestring):
-                args = shlex.split(args[0])
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
@@ -1312,7 +1321,7 @@ class TestCase(unittest.TestCase):
         for hardcoded commands.
 
         3- Several varargs parameters, eg run_bzr("add", "a").  
-        This is deprecated.
+        This is not recommended for new code.
 
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
@@ -1335,9 +1344,11 @@ class TestCase(unittest.TestCase):
             if isinstance(args[0], (list, basestring)):
                 args = args[0]
         else:
-            warnings.warn("passing varargs to run_bzr is deprecated "
-                    "from bzr 0.18 onwards; please pass a list or "
-                    "string instead")
+            ## symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
+            ##         DeprecationWarning, stacklevel=2)
+            # not done yet, because too many tests would need to  be updated -
+            # but please don't do this in new code.  -- mbp 20070626
+            pass
 
         out, err = self._run_bzr_autosplit(args=args,
             retcode=retcode,
@@ -1574,23 +1585,6 @@ class TestCase(unittest.TestCase):
             sys.stdout = real_stdout
             sys.stderr = real_stderr
             sys.stdin = real_stdin
-
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
-    def merge(self, branch_from, wt_to):
-        """A helper for tests to do a ui-less merge.
-
-        This should move to the main library when someone has time to integrate
-        it in.
-        """
-        # minimal ui-less merge.
-        wt_to.branch.fetch(branch_from)
-        base_rev = common_ancestor(branch_from.last_revision(),
-                                   wt_to.branch.last_revision(),
-                                   wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(),
-                    wt_to.branch.repository.revision_tree(base_rev),
-                    this_tree=wt_to)
-        wt_to.add_parent_tree_id(branch_from.last_revision())
 
     def reduceLockdirTimeout(self):
         """Reduce the default lock timeout for the duration of the test, so that
