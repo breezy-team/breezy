@@ -205,4 +205,4 @@ class TestUpdate(ExternalBase):
         checkout = readonly_branch.create_checkout('checkout',
                                                    lightweight=True)
         tree.commit('empty commit')
-        self.run_bzr_captured(['update', 'checkout'])
+        self.run_bzr(['update', 'checkout'])

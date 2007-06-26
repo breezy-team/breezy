@@ -148,7 +148,7 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.run_bzr_captured('help commands')[0].splitlines():
+        for line in self.run_bzr('help commands')[0].splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -185,7 +185,7 @@ class TestPluginHelp(TestCaseInTempDir):
             # Check its help
             bzrlib.plugin.load_from_path(['plugin_test'])
             bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
-            help = self.run_bzr_captured('help myplug')[0]
+            help = self.run_bzr('help myplug')[0]
             self.assertContainsRe(help, 'From plugin "myplug"')
             help = self.split_help_commands()['myplug']
             self.assertContainsRe(help, '\[myplug\]')

@@ -116,13 +116,13 @@ class TestCommands(ExternalBase):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        output = self.run_bzr_captured(['version'])[0]
+        output = self.run_bzr(['version'])[0]
         self.log('bzr version output:')
         self.log(output)
         self.assert_(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
-        tmp_output = self.run_bzr_captured(['--version'])[0]
+        tmp_output = self.run_bzr(['--version'])[0]
         self.assertEquals(output, tmp_output)
 
     def example_branch(test):
@@ -147,7 +147,7 @@ class TestCommands(ExternalBase):
         os.chdir('b')
         open('b', 'wb').write('else\n')
         self.run_bzr('add b')
-        self.run_bzr_captured(['commit', '-m', 'added b'])
+        self.run_bzr(['commit', '-m', 'added b'])
 
         os.chdir('../a')
         out = self.run_bzr('pull --verbose ../b')[0]
@@ -205,7 +205,7 @@ class TestCommands(ExternalBase):
         
     def test_unknown_command(self):
         """Handling of unknown command."""
-        out, err = self.run_bzr_captured(['fluffy-badger'],
+        out, err = self.run_bzr(['fluffy-badger'],
                                          retcode=3)
         self.assertEquals(out, '')
         err.index('unknown command')
@@ -245,7 +245,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('commit --unchanged --message pumpkin')
         os.chdir('../branch3')
         self.run_bzr('merge ../branch2')
-        message = self.run_bzr_captured('status')[0]
+        message = self.run_bzr('status')[0]
 
 
     def test_conflicts(self):
@@ -387,7 +387,7 @@ class OldTests(ExternalBase):
         chdir('branch1')
         self.run_bzr('init')
 
-        self.assertEquals(self.run_bzr_captured('root')[0].rstrip(),
+        self.assertEquals(self.run_bzr('root')[0].rstrip(),
                           pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
@@ -396,28 +396,28 @@ class OldTests(ExternalBase):
         f.write('hello world!\n')
         f.close()
 
-        self.assertEquals(self.run_bzr_captured('unknowns')[0], 'test.txt\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'test.txt\n')
 
-        out = self.run_bzr_captured("status")[0]
+        out = self.run_bzr("status")[0]
         self.assertEquals(out, 'unknown:\n  test.txt\n')
 
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
 
-        out = self.run_bzr_captured("status test.txt")[0]
+        out = self.run_bzr("status test.txt")[0]
         self.assertEquals(out, "unknown:\n  test.txt\n")
 
-        out = self.run_bzr_captured("status")[0]
+        out = self.run_bzr("status")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n" "  test2.txt\n"))
 
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = self.run_bzr_captured("st")[0]
+        out = self.run_bzr("st")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
-        out = self.run_bzr_captured("stat")[0]
+        out = self.run_bzr("stat")[0]
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
         progress("command help")
@@ -426,7 +426,7 @@ class OldTests(ExternalBase):
         self.run_bzr("help commands")
         self.run_bzr("help slartibartfast", retcode=3)
 
-        out = self.run_bzr_captured("help ci")[0]
+        out = self.run_bzr("help ci")[0]
         out.index('aliases: ci, checkin\n')
 
         f = file('hello.txt', 'wt')
@@ -441,7 +441,7 @@ class OldTests(ExternalBase):
 
         self.run_bzr('commit -F msg.tmp')
 
-        self.assertEquals(self.run_bzr_captured('revno')[0], '1\n')
+        self.assertEquals(self.run_bzr('revno')[0], '1\n')
         self.run_bzr('export -r 1 export-1.tmp')
         self.run_bzr('export export.tmp')
 
@@ -449,13 +449,13 @@ class OldTests(ExternalBase):
         self.run_bzr('log -v')
         self.run_bzr('log -v --forward')
         self.run_bzr('log -m', retcode=3)
-        log_out = self.run_bzr_captured('log -m commit')[0]
+        log_out = self.run_bzr('log -m commit')[0]
         self.assert_("this is my new commit\n  and" in log_out)
         self.assert_("rename nested" not in log_out)
         self.assert_('revision-id' not in log_out)
-        self.assert_('revision-id' in self.run_bzr_captured('log --show-ids -m commit')[0])
+        self.assert_('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
 
-        log_out = self.run_bzr_captured('log --line')[0]
+        log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
         max_width = terminal_width() - 1
         for line in log_out.splitlines():
@@ -483,20 +483,20 @@ class OldTests(ExternalBase):
             self.run_bzr('init')
             os.symlink("NOWHERE1", "link1")
             self.run_bzr('add link1')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], '')
-            self.run_bzr_captured(['commit', '-m', '1: added symlink link1'])
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
+            self.run_bzr(['commit', '-m', '1: added symlink link1'])
     
             mkdir('d1')
             self.run_bzr('add d1')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], '')
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
             os.symlink("NOWHERE2", "d1/link2")
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], 'd1/link2\n')
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd1/link2\n')
             # is d1/link2 found when adding d1
             self.run_bzr('add d1')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], '')
+            self.assertEquals(self.run_bzr('unknowns')[0], '')
             os.symlink("NOWHERE3", "d1/link3")
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], 'd1/link3\n')
-            self.run_bzr_captured(['commit', '-m', '2: added dir, symlink'])
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd1/link3\n')
+            self.run_bzr(['commit', '-m', '2: added dir, symlink'])
     
             self.run_bzr('rename d1 d2')
             self.run_bzr('move d2/link2 .')
@@ -505,46 +505,46 @@ class OldTests(ExternalBase):
             self.assertEquals(os.readlink("d2/link1"), "NOWHERE1")
             self.run_bzr('add d2/link3')
             self.run_bzr('diff', retcode=1)
-            self.run_bzr_captured(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
+            self.run_bzr(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
     
             os.unlink("link2")
             os.symlink("TARGET 2", "link2")
             os.unlink("d2/link1")
             os.symlink("TARGET 1", "d2/link1")
             self.run_bzr('diff', retcode=1)
-            self.assertEquals(self.run_bzr_captured("relpath d2/link1")[0], "d2/link1\n")
-            self.run_bzr_captured(['commit', '-m', '4: retarget of two links'])
+            self.assertEquals(self.run_bzr("relpath d2/link1")[0], "d2/link1\n")
+            self.run_bzr(['commit', '-m', '4: retarget of two links'])
     
             self.run_bzr('remove --keep d2/link1')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], 'd2/link1\n')
-            self.run_bzr_captured(['commit', '-m', '5: remove d2/link1'])
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m', '5: remove d2/link1'])
             # try with the rm alias
             self.run_bzr('add d2/link1')
-            self.run_bzr_captured(['commit', '-m', '6: add d2/link1'])
+            self.run_bzr(['commit', '-m', '6: add d2/link1'])
             self.run_bzr('rm --keep d2/link1')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], 'd2/link1\n')
-            self.run_bzr_captured(['commit', '-m', '7: remove d2/link1'])
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m', '7: remove d2/link1'])
     
             os.mkdir("d1")
             self.run_bzr('add d1')
             self.run_bzr('rename d2/link3 d1/link3new')
-            self.assertEquals(self.run_bzr_captured('unknowns')[0], 'd2/link1\n')
-            self.run_bzr_captured(['commit', '-m', '8: remove d2/link1, move/rename link3'])
+            self.assertEquals(self.run_bzr('unknowns')[0], 'd2/link1\n')
+            self.run_bzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
             
-            self.run_bzr_captured(['check'])
+            self.run_bzr(['check'])
             
-            self.run_bzr_captured(['export', '-r', '1', 'exp1.tmp'])
+            self.run_bzr(['export', '-r', '1', 'exp1.tmp'])
             chdir("exp1.tmp")
             self.assertEquals(listdir_sorted("."), [ "link1" ])
             self.assertEquals(os.readlink("link1"), "NOWHERE1")
             chdir("..")
             
-            self.run_bzr_captured(['export', '-r', '2', 'exp2.tmp'])
+            self.run_bzr(['export', '-r', '2', 'exp2.tmp'])
             chdir("exp2.tmp")
             self.assertEquals(listdir_sorted("."), [ "d1", "link1" ])
             chdir("..")
             
-            self.run_bzr_captured(['export', '-r', '3', 'exp3.tmp'])
+            self.run_bzr(['export', '-r', '3', 'exp3.tmp'])
             chdir("exp3.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
@@ -552,7 +552,7 @@ class OldTests(ExternalBase):
             self.assertEquals(os.readlink("link2")   , "NOWHERE2")
             chdir("..")
             
-            self.run_bzr_captured(['export', '-r', '4', 'exp4.tmp'])
+            self.run_bzr(['export', '-r', '4', 'exp4.tmp'])
             chdir("exp4.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assertEquals(os.readlink("d2/link1"), "TARGET 1")
@@ -560,14 +560,14 @@ class OldTests(ExternalBase):
             self.assertEquals(listdir_sorted("d2"), [ "link1", "link3" ])
             chdir("..")
             
-            self.run_bzr_captured(['export', '-r', '5', 'exp5.tmp'])
+            self.run_bzr(['export', '-r', '5', 'exp5.tmp'])
             chdir("exp5.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
             self.assert_(os.path.islink("link2"))
             self.assert_(listdir_sorted("d2")== [ "link3" ])
             chdir("..")
             
-            self.run_bzr_captured(['export', '-r', '8', 'exp6.tmp'])
+            self.run_bzr(['export', '-r', '8', 'exp6.tmp'])
             chdir("exp6.tmp")
             self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             self.assertEquals(listdir_sorted("d1"), [ "link3new" ])
@@ -595,18 +595,18 @@ class RemoteTests(object):
 
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
-        self.run_bzr_captured('init branch')[0]
-        self.run_bzr_captured('add branch/file')[0]
-        self.run_bzr_captured('commit -m foo branch')[0]
+        self.run_bzr('init branch')[0]
+        self.run_bzr('add branch/file')[0]
+        self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/file')
-        output = self.run_bzr_captured('log %s' % url)[0]
+        output = self.run_bzr('log %s' % url)[0]
         self.assertEqual(8, len(output.split('\n')))
         
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
-        self.run_bzr_captured('init branch')[0]
-        self.run_bzr_captured('add branch/file')[0]
-        self.run_bzr_captured('commit -m foo branch')[0]
+        self.run_bzr('init branch')[0]
+        self.run_bzr('add branch/file')[0]
+        self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
         self.run_bzr('check', url)
     

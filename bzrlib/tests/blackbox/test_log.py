@@ -29,9 +29,9 @@ class TestLog(ExternalBase):
 
     def _prepare(self, format=None):
         if format:
-            self.run_bzr_captured(["init", "--format="+format])
+            self.run_bzr(["init", "--format="+format])
         else:
-            self.run_bzr_captured("init")
+            self.run_bzr("init")
         self.build_tree(['hello.txt', 'goodbye.txt', 'meep.txt'])
         self.run_bzr("add hello.txt")
         self.run_bzr("commit -m message1 hello.txt")

@@ -29,11 +29,11 @@ class TestNick(ExternalBase):
         os.mkdir('me.dev')
         os.chdir('me.dev')
         self.run_bzr('init')
-        nick = self.run_bzr_captured(['nick'])[0]
+        nick = self.run_bzr(['nick'])[0]
         self.assertEqual(nick, 'me.dev\n')
         # set the nickname
         self.run_bzr("nick moo")
-        nick = self.run_bzr_captured(['nick'])[0]
+        nick = self.run_bzr(['nick'])[0]
         self.assertEqual(nick, 'moo\n')
 
     def test_autonick_urlencoded(self):
@@ -42,5 +42,5 @@ class TestNick(ExternalBase):
         os.mkdir('!repo')
         os.chdir('!repo')
         self.run_bzr('init')
-        nick = self.run_bzr_captured(['nick'])[0]
+        nick = self.run_bzr(['nick'])[0]
         self.assertEqual(nick, '!repo\n')

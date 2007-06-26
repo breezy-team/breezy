@@ -57,7 +57,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('branch a b')
         os.chdir('b')
         file('goodbye', 'wt').write('quux')
-        self.run_bzr_captured(['commit',  '-m',  "more u's are always good"])
+        self.run_bzr(['commit',  '-m',  "more u's are always good"])
 
         os.chdir('../a')
         file('hello', 'wt').write('quuux')
@@ -106,22 +106,22 @@ class TestMerge(ExternalBase):
         print >> file('sub/c.txt', 'wb'), "hello"
         self.run_bzr('init')
         self.run_bzr('add')
-        self.run_bzr_captured(['commit', '-m', 'added a'])
+        self.run_bzr(['commit', '-m', 'added a'])
         self.run_bzr('branch . ../b')
         print >> file('sub/a.txt', 'ab'), "there"
         print >> file('b.txt', 'ab'), "there"
         print >> file('sub/c.txt', 'ab'), "there"
-        self.run_bzr_captured(['commit', '-m', 'Added there'])
+        self.run_bzr(['commit', '-m', 'Added there'])
         os.unlink('sub/a.txt')
         os.unlink('sub/c.txt')
         os.rmdir('sub')
         os.unlink('b.txt')
-        self.run_bzr_captured(['commit', '-m', 'Removed a.txt'])
+        self.run_bzr(['commit', '-m', 'Removed a.txt'])
         os.chdir('../b')
         print >> file('sub/a.txt', 'ab'), "something"
         print >> file('b.txt', 'ab'), "something"
         print >> file('sub/c.txt', 'ab'), "something"
-        self.run_bzr_captured(['commit', '-m', 'Modified a.txt'])
+        self.run_bzr(['commit', '-m', 'Modified a.txt'])
         self.run_bzr('merge ../a/', retcode=1)
         self.assert_(os.path.exists('sub/a.txt.THIS'))
         self.assert_(os.path.exists('sub/a.txt.BASE'))
@@ -249,7 +249,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('branch a b')
         os.chdir('b')
         file('goodbye', 'wt').write('quux')
-        self.run_bzr_captured(['commit', '-m', "mode u's are always good"])
+        self.run_bzr(['commit', '-m', "mode u's are always good"])
         os.chdir('../a')
 
     def pullable_branch(self):

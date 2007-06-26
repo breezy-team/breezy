@@ -126,7 +126,7 @@ class ExternalBase(TestCaseWithTransport):
     def runbzr(self, args, retcode=0):
         if isinstance(args, basestring):
             args = args.split()
-        return self.run_bzr_captured(args, retcode=retcode)
+        return self.run_bzr(args, retcode=retcode)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
@@ -134,4 +134,4 @@ class ExternalBase(TestCaseWithTransport):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr_captured(args)[0], output)
+        self.assertEquals(self.run_bzr(*args)[0], output)

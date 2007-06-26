@@ -34,7 +34,7 @@ class TestRevisionHistory(TestCaseWithTransport):
         return tree
 
     def _check_revision_history(self, location=''):
-        rh = self.run_bzr_captured(['revision-history', location])[0]
+        rh = self.run_bzr(['revision-history', location])[0]
         self.assertEqual(rh, 'revision_1\nrevision_2\nrevision_3\n')
 
     def test_revision_history(self):

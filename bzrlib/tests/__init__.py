@@ -1217,23 +1217,12 @@ class TestCase(unittest.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
+    @deprecated_method(zero_eighteen)
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
         """Invoke bzr and return (stdout, stderr).
 
-        Useful for code that wants to check the contents of the
-        output, the way error messages are presented, etc.
-
-        This should be the main method for tests that want to exercise the
-        overall behavior of the bzr application (rather than a unit test
-        or a functional test of the library.)
-
-        Much of the old code runs bzr by forking a new copy of Python, but
-        that is slower, harder to debug, and generally not necessary.
-
-        This runs bzr through the interface that catches and reports
-        errors, and with logging set to something approximating the
-        default, so that error reporting can be checked.
+        Don't call this method, just use run_bzr() which is equivalent.
 
         :param argv: Arguments to invoke bzr.  This may be either a 
             single string, in which case it is split by shlex into words, 
@@ -1322,6 +1311,10 @@ class TestCase(unittest.TestCase):
 
         3- Several varargs parameters, eg run_bzr("add", "a").  
         This is not recommended for new code.
+
+        This runs bzr through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
 
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test

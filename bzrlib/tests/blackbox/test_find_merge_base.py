@@ -26,10 +26,10 @@ class TestFindMergeBase(ExternalBase):
         self.run_bzr('init')
         self.run_bzr('commit -m foo --unchanged')
         self.run_bzr('branch . ../b')
-        q = self.run_bzr_captured(['find-merge-base', '.', '../b'])[0]
+        q = self.run_bzr(['find-merge-base', '.', '../b'])[0]
         self.run_bzr('commit -m bar --unchanged')
         os.chdir('../b')
         self.run_bzr('commit -m baz --unchanged')
-        r = self.run_bzr_captured(['find-merge-base', '.', '../a'])[0]
+        r = self.run_bzr(['find-merge-base', '.', '../a'])[0]
         self.assertEqual(q, r)
         
