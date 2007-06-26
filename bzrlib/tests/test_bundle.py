@@ -997,6 +997,35 @@ class BundleTester(object):
         bundle.install_revisions(repo)
         inv_text = repo.get_inventory_xml('rev2')
         self.assertNotContainsRe(inv_text, 'format="5"')
+        self.assertContainsRe(inv_text, 'format="7"')
+
+    def test_across_models(self):
+        tree = self.make_simple_tree('knit')
+        tree.commit('hello', rev_id='rev1')
+        tree.commit('hello', rev_id='rev2')
+        bundle = read_bundle(self.create_bundle_text(None, 'rev2')[0])
+        repo = self.make_repository('repo', format='dirstate-with-subtree')
+        bundle.install_revisions(repo)
+        inv = repo.get_inventory('rev2')
+        self.assertEqual('rev2', inv.root.revision)
+        root_vf = repo.weave_store.get_weave(inv.root.file_id,
+                                             repo.get_transaction())
+        self.assertEqual(root_vf.versions(), ['rev1', 'rev2'])
+
+    def test_across_models_incompatible(self):
+        tree = self.make_simple_tree('dirstate-with-subtree')
+        tree.commit('hello', rev_id='rev1')
+        tree.commit('hello', rev_id='rev2')
+        try:
+            bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
+        except errors.IncompatibleBundleFormat:
+            raise TestSkipped("Format 0.8 doesn't work with knit3")
+        repo = self.make_repository('repo', format='knit')
+        bundle.install_revisions(repo)
+
+        bundle = read_bundle(self.create_bundle_text(None, 'rev2')[0])
+        self.assertRaises(errors.IncompatibleRevision,
+                          bundle.install_revisions, repo)
 
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
