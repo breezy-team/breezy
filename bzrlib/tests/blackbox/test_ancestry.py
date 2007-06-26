@@ -39,7 +39,7 @@ class TestAncestry(TestCaseWithTransport):
         a_wt.commit('merged B into A',rev_id='A3')
 
     def _check_ancestry(self, location='', result=None):
-        out = self.capture('ancestry ' + location)
+        out = self.run_bzr_captured(['ancestry', location])[0]
         if result is None:
             result = "A1\nB1\nA2\nA3\n"
         self.assertEqualDiff(out, result)

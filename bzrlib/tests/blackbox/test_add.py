@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ class TestAdd(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        self.runbzr('init')
+        self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
@@ -49,7 +49,7 @@ class TestAdd(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        self.runbzr('init')
+        self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
         # the ordering is not defined at the moment
@@ -61,36 +61,36 @@ class TestAdd(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        self.runbzr('init')
+        self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic\n')
         self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
         # Multiple unversioned parents
         self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        self.assertEquals(self.capture('unknowns'), 'veil\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'veil\n')
         self.run_bzr('add', 'veil/cerpin/taxt')
-        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
         # Check whacky paths work
         self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        self.assertEquals(self.capture('unknowns'), 'cicatriz\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'cicatriz\n')
         self.run_bzr('add', 'inertiatic/../cicatriz/esp')
-        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
 
         "bzr add" should do this happily.
         """
-        self.runbzr('init')
+        self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic\n')
         self.run_bzr('add', '--no-recurse', 'inertiatic')
-        self.assertEquals(self.capture('unknowns'), 'inertiatic/esp\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'inertiatic/esp\n')
         self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
@@ -115,7 +115,7 @@ class TestAdd(ExternalBase):
         # subdirectory
         chdir('src')
         self.run_bzr('add')
-        self.assertEquals(self.capture('unknowns'), 'README\n')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], 'README\n')
         # reopen to see the new changes
         t = t.bzrdir.open_workingtree()
         versioned = [path for path, entry in t.iter_entries_by_dir()]
@@ -125,7 +125,7 @@ class TestAdd(ExternalBase):
         # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')
-        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(self.run_bzr_captured(['unknowns'])[0], '')
         self.run_bzr('check')
 
     def test_add_missing(self):

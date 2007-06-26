@@ -47,11 +47,11 @@ class TestCommit(ExternalBase):
         """Successful commit should not leave behind a bzr-commit-* file"""
         self.run_bzr("init")
         self.run_bzr("commit", "--unchanged", "-m", "message")
-        self.assertEqual('', self.capture('unknowns'))
+        self.assertEqual('', self.run_bzr_captured(['unknowns'])[0])
 
         # same for unicode messages
         self.run_bzr("commit", "--unchanged", "-m", u'foo\xb5')
-        self.assertEqual('', self.capture('unknowns'))
+        self.assertEqual('', self.run_bzr_captured(['unknowns'])[0])
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -76,9 +76,9 @@ class TestCommit(ExternalBase):
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("add hello.txt")
+        self.run_bzr("add hello.txt")
         out,err = self.run_bzr("commit", "-m", "added")
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -141,11 +141,11 @@ class TestCommit(ExternalBase):
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt', 'unchanged.txt'])
-        self.runbzr('add unchanged.txt')
-        self.runbzr('commit -m unchanged unchanged.txt')
-        self.runbzr("add hello.txt")
+        self.run_bzr('add unchanged.txt')
+        self.run_bzr('commit -m unchanged unchanged.txt')
+        self.run_bzr("add hello.txt")
         out,err = self.run_bzr("commit", "-m", "added")
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'
@@ -219,42 +219,42 @@ class TestCommit(ExternalBase):
             err)
 
     def test_empty_commit_message(self):
-        self.runbzr("init")
+        self.run_bzr("init")
         file('foo.c', 'wt').write('int main() {}')
-        self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=3)
+        self.run_bzr('add foo.c')
+        self.run_bzr('commit -m ""', retcode=3)
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
         os.mkdir('empty_branch')
         os.chdir('empty_branch')
-        self.runbzr('init')
+        self.run_bzr('init')
         os.mkdir('branch')
         os.chdir('branch')
-        self.runbzr('init')
+        self.run_bzr('init')
         file('foo.c', 'wt').write('int main() {}')
         file('bar.c', 'wt').write('int main() {}')
         os.chdir('..')
-        self.runbzr(['add', 'branch/foo.c'])
-        self.runbzr(['add', 'branch'])
+        self.run_bzr_captured(['add', 'branch/foo.c'])
+        self.run_bzr_captured(['add', 'branch'])
         # can't commit files in different trees; sane error
-        self.runbzr('commit -m newstuff branch/foo.c .', retcode=3)
-        self.runbzr('commit -m newstuff branch/foo.c')
-        self.runbzr('commit -m newstuff branch')
-        self.runbzr('commit -m newstuff branch', retcode=3)
+        self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
+        self.run_bzr('commit -m newstuff branch/foo.c')
+        self.run_bzr('commit -m newstuff branch')
+        self.run_bzr('commit -m newstuff branch', retcode=3)
 
     def test_out_of_date_tree_commit(self):
         # check we get an error code and a clear message committing with an out
         # of date checkout
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout --lightweight branch checkout')
+        self.run_bzr('checkout --lightweight branch checkout')
         # commit to the original branch to make the checkout out of date
-        self.runbzr('commit --unchanged -m message branch')
+        self.run_bzr('commit --unchanged -m message branch')
         # now commit to the checkout should emit
         # ERROR: Out of date with the branch, 'bzr update' is suggested
-        output = self.runbzr('commit --unchanged -m checkout_message '
+        output = self.run_bzr('commit --unchanged -m checkout_message '
                              'checkout', retcode=3)
         self.assertEqual(output,
                          ('',

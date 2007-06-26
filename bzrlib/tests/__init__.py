@@ -37,6 +37,7 @@ import os
 from pprint import pformat
 import random
 import re
+import shlex
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -76,6 +77,10 @@ import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eighteen,
+    )
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -1193,6 +1198,7 @@ class TestCase(unittest.TestCase):
         else:
             return "DELETED log file to reduce memory footprint"
 
+    @deprecated_method(zero_eighteen)
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
@@ -1223,9 +1229,11 @@ class TestCase(unittest.TestCase):
         errors, and with logging set to something approximating the
         default, so that error reporting can be checked.
 
-        :param argv: arguments to invoke bzr
-        :param retcode: expected return code, or None for don't-care.
-        :param encoding: encoding for sys.stdout and sys.stderr
+        :param argv: Arguments to invoke bzr.  This may be either a 
+            single string, in which case it is split by shlex into words, 
+            or a list of arguments.
+        :param retcode: Expected return code, or None for don't-care.
+        :param encoding: Encoding for sys.stdout and sys.stderr
         :param stdin: A string to be used as stdin for the command.
         :param working_dir: Change to this directory before running
         """
@@ -1235,6 +1243,12 @@ class TestCase(unittest.TestCase):
         stderr = StringIOWrapper()
         stdout.encoding = encoding
         stderr.encoding = encoding
+
+        if isinstance(argv, basestring):
+            argv = shlex.split(argv)
+        elif isinstance(argv, tuple):
+            if len(argv) == 1 and isinstance(argv[0], basestring):
+                argv = shlex.split(argv[0])
 
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
@@ -1284,9 +1298,6 @@ class TestCase(unittest.TestCase):
         overall behavior of the bzr application (rather than a unit test
         or a functional test of the library.)
 
-        This sends the stdout/stderr results into the test's log,
-        where it may be useful for debugging.  See also run_captured.
-
         :param stdin: A string to be used as stdin for the command.
         :param retcode: The status code the command should return
         :param working_dir: The directory to run the command in
@@ -1297,13 +1308,18 @@ class TestCase(unittest.TestCase):
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
 
-        out, err = self.run_bzr_captured(args, retcode=retcode,
-            encoding=encoding, stdin=stdin, working_dir=working_dir)
+        if len(args) != 1:
+            warnings.warn("passing varargs to run_bzr is deprecated "
+                    "from bzr 0.18 onwards; please pass a list or "
+                    "string instead")
+
+        out, err = self.run_bzr_captured(retcode=retcode,
+            encoding=encoding, stdin=stdin, working_dir=working_dir,
+            argv=args)
 
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
-
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:

@@ -73,13 +73,14 @@ class TestOptions(TestCase):
         TestCaseWithMemoryTransport.TEST_ROOT = None
         try:
             TestOptions.current_test = "test_transport_set_to_sftp"
-            stdout = self.capture('selftest --transport=sftp test_transport_set_to_sftp')
-            
+            stdout = self.run_bzr_captured(
+                'selftest --transport=sftp test_transport_set_to_sftp')[0]
             self.assertContainsRe(stdout, 'Ran 1 test')
             self.assertEqual(old_transport, bzrlib.tests.default_transport)
 
             TestOptions.current_test = "test_transport_set_to_memory"
-            stdout = self.capture('selftest --transport=memory test_transport_set_to_memory')
+            stdout = self.run_bzr_captured(
+                'selftest --transport=memory test_transport_set_to_memory')[0]
             self.assertContainsRe(stdout, 'Ran 1 test')
             self.assertEqual(old_transport, bzrlib.tests.default_transport)
         finally:
@@ -93,6 +94,8 @@ class TestRunBzr(ExternalBase):
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
         """Override run_bzr_captured to test how it is invoked by run_bzr.
+
+        Attempts to run bzr from inside this class don't actually run it.
 
         We test how run_bzr_captured actually invokes bzr in another location.
         Here we only need to test that it is run_bzr passes the right

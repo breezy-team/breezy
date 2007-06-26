@@ -115,7 +115,7 @@ class TestSmartAdd(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(wt.unknowns()), ['inertiatic'])
-        self.capture('add --dry-run .')
+        self.run_bzr_captured('add --dry-run .')
         eq(list(wt.unknowns()), ['inertiatic'])
 
     def test_add_non_existant(self):
