@@ -1,2 +1,24 @@
 This plugin provides a 'bzr rebase' command, in the same fashion of the 
 famous git-rebase.
+
+
+How it works
+============
+The plugin will start off by writing a plan for the rebase, which it 
+will write to .bzr/checkout/rebase-state. If the rebase is interrupted and 
+needs to be continued or aborted, it will read this file to see what needs 
+(still) needs to be done.
+
+The rebase-state file contains the following information:
+ * last-revision-info when the rebase was started
+ * map of revisions that need to be replaced. In simple situations, 
+   this would just be one revision. In more complex situations 
+   (upgrading from one bzr-svn mapping version to another), it 
+   could be a longer list.
+
+   The map is from old to new revids.
+ * map of revisions that need to be rewritten. In simple situations, 
+   this would be the set of revisions between the upstream head and the 
+   local working tree head.
+
+   The map is from old to (planned) new revids.
