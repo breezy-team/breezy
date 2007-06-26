@@ -84,6 +84,7 @@ from bzrlib.errors import (
     KnitError,
     InvalidRevisionId,
     KnitCorrupt,
+    KnitDataStreamIncompatible,
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
@@ -650,6 +651,47 @@ class KnitVersionedFile(VersionedFile):
                     if parent == version_id:
                         return True
         return False
+
+    def insert_data_stream(self, (format, data_list, reader_callable)):
+        """Insert knit records from a data stream into this knit.
+
+        Existing versions will be ...
+        
+        :seealso: get_data_stream
+        """
+        if format != self.get_format_signature():
+            raise KnitDataStreamIncompatible(
+                format, self.get_format_signature())
+        for version_id, options, length, parents in data_list:
+            # do we have this version_id:
+            #  * yes: consistency check
+            #  * no: plan to insert it
+            raw_data = reader_callable(length)
+            if self.has_version(version_id):
+                # Make sure that if we've already seen this version_id, that it has
+                # the same content.
+                # First, check the list of parents.
+                my_parents = self.get_parents_with_ghosts(version_id)
+                if my_parents != parents:
+                    raise KnitCorrupt(
+                        self.filename,
+                        'parents list %r from data stream does not match '
+                        'already recorded parents %r for %s'
+                        % (parents, my_parents, version_id))
+
+                # Also check the SHA-1 of the fulltext this content will
+                # produce.
+                my_fulltext_sha1 = self.get_sha1(version_id)
+                df, rec = self._data._parse_record_header(version_id, raw_data)
+                stream_fulltext_sha1 = rec[3]
+                if my_fulltext_sha1 != stream_fulltext_sha1:
+                    # Actually, we don't know if it's this knit that's corrupt,
+                    # or the data stream we're trying to insert.
+                    raise KnitCorrupt(
+                        self.filename, 'sha-1 does not match %s' % version_id)
+            else:
+                # We don't have this record.  Insert it.
+                self._add_raw_records([(version_id, options, parents, length)], raw_data)
 
     def versions(self):
         """See VersionedFile.versions."""

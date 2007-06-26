@@ -675,12 +675,12 @@ class LowLevelKnitIndexTests(TestCase):
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
-    def make_test_knit(self, annotate=False, delay_create=False):
+    def make_test_knit(self, annotate=False, delay_create=False, name='test'):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile('test', get_transport('.'), access_mode='w',
+        return KnitVersionedFile(name, get_transport('.'), access_mode='w',
                                  factory=factory, create=True,
                                  delay_create=delay_create)
 
@@ -1233,17 +1233,150 @@ class BasicKnitTests(KnitTests):
             bytes = reader_callable(length)
             self.assertRecordContentEqual(k1, version_id, bytes)
 
-    # permutations left to test:
+    # permutations left to explicitly test:
     #  * getting a version where all its parents are ghosts
     #  * reader_func edge-cases:
     #    * read too little
     #    * read too much
     #    * multiple read calls
     #    * read(None)
+    #  * reading records with other data interspersed skips interspersed data.
+    #     insert [A [], B [A], C [A]], read [A, C].
+
     #
     # after that:
     #  * move callable into own class (see XXX in get_data_stream)
     #  * insert data stream into knits
+
+    def assertKnitFilesEqual(self, knit1, knit2):
+        """Assert that the contents of the index and data files of two knits are
+        equal.
+        """
+        self.assertEqual(
+            knit1.transport.get_bytes(knit1._data._filename),
+            knit2.transport.get_bytes(knit2._data._filename))
+        self.assertEqual(
+            knit1.transport.get_bytes(knit1._index._filename),
+            knit2.transport.get_bytes(knit2._index._filename))
+
+    def test_insert_data_stream_empty(self):
+        """Inserting a data stream with no records should not put any data into
+        the knit.
+        """
+        k1 = self.make_test_knit()
+        k1.insert_data_stream(
+            (k1.get_format_signature(), [], lambda ignored: ''))
+        self.assertEqual('', k1.transport.get_bytes(k1._data._filename),
+                         "The .knit should be completely empty.")
+        self.assertEqual(k1._index.HEADER,
+                         k1.transport.get_bytes(k1._index._filename),
+                         "The .kndx should have nothing apart from the header.")
+
+    def test_insert_data_stream_one_record(self):
+        """Inserting a data stream with one record from a knit with one record
+        results in byte-identical files.
+        """
+        source = self.make_test_knit(name='source')
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        data_stream = source.get_data_stream(['text-a'])
+        
+        target = self.make_test_knit(name='target')
+        target.insert_data_stream(data_stream)
+        
+        self.assertKnitFilesEqual(source, target)
+
+    def test_insert_data_stream_records_already_present(self):
+        """Insert a data stream where some records are alreday present in the
+        target, and some not.  Only the new records are inserted.
+        """
+        source = self.make_test_knit(name='source')
+        target = self.make_test_knit(name='target')
+        # Insert 'text-a' into both source and target
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        target.insert_data_stream(source.get_data_stream(['text-a']))
+        # Insert 'text-b' into just the source.
+        source.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
+        # Get a data stream of both text-a and text-b, and insert it.
+        data_stream = source.get_data_stream(['text-a', 'text-b'])
+        target.insert_data_stream(data_stream)
+        # The source and target will now be identical.  This means the text-a
+        # record was not added a second time.
+        self.assertKnitFilesEqual(source, target)
+
+    def test_insert_data_stream_multiple_records(self):
+        """Inserting a data stream of all records from a knit with multiple
+        records results in byte-identical files.
+        """
+        source = self.make_test_knit(name='source')
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        source.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
+        source.add_lines('text-c', [], split_lines(TEXT_1))
+        data_stream = source.get_data_stream(['text-a', 'text-b', 'text-c'])
+        
+        target = self.make_test_knit(name='target')
+        target.insert_data_stream(data_stream)
+        
+        self.assertKnitFilesEqual(source, target)
+
+    def test_insert_data_stream_ghost_parent(self):
+        """Insert a data stream with a record that has a ghost parent."""
+        # Make a knit with a record, text-a, that has a ghost parent.
+        source = self.make_test_knit(name='source')
+        source.add_lines_with_ghosts('text-a', ['text-ghost'],
+                                     split_lines(TEXT_1))
+        data_stream = source.get_data_stream(['text-a'])
+
+        target = self.make_test_knit(name='target')
+        target.insert_data_stream(data_stream)
+
+        self.assertKnitFilesEqual(source, target)
+
+        # The target knit object is in a consistent state, i.e. the record we
+        # just added is immediately visible.
+        self.assertTrue(target.has_version('text-a'))
+        self.assertTrue(target.has_ghost('text-ghost'))
+        self.assertEqual(split_lines(TEXT_1), target.get_lines('text-a'))
+
+    def test_insert_data_stream_inconsistent_version_lines(self):
+        """Inserting a data stream which has different content for a version_id
+        than already exists in the knit will raise KnitCorrupt.
+        """
+        source = self.make_test_knit(name='source')
+        target = self.make_test_knit(name='target')
+        # Insert a different 'text-a' into both source and target
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        target.add_lines('text-a', [], split_lines(TEXT_2))
+        # Insert a data stream with conflicting content into the target
+        data_stream = source.get_data_stream(['text-a'])
+        self.assertRaises(
+            errors.KnitCorrupt, target.insert_data_stream, data_stream)
+
+    def test_insert_data_stream_inconsistent_version_parents(self):
+        """Inserting a data stream which has different parents for a version_id
+        than already exists in the knit will raise KnitCorrupt.
+        """
+        source = self.make_test_knit(name='source')
+        target = self.make_test_knit(name='target')
+        # Insert a different 'text-a' into both source and target.  They differ
+        # only by the parents list, the content is the same.
+        source.add_lines_with_ghosts('text-a', [], split_lines(TEXT_1))
+        target.add_lines_with_ghosts('text-a', ['a-ghost'], split_lines(TEXT_1))
+        # Insert a data stream with conflicting content into the target
+        data_stream = source.get_data_stream(['text-a'])
+        self.assertRaises(
+            errors.KnitCorrupt, target.insert_data_stream, data_stream)
+
+    def test_insert_data_stream_incompatible_format(self):
+        """A data stream in a different format to the target knit cannot be
+        inserted.
+
+        It will raise KnitDataStreamIncompatible.
+        """
+        data_stream = ('fake-format-signature', [], lambda _: '')
+        target = self.make_test_knit(name='target')
+        self.assertRaises(
+            errors.KnitDataStreamIncompatible,
+            target.insert_data_stream, data_stream)
 
 
 TEXT_1 = """\
