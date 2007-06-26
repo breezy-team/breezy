@@ -43,7 +43,7 @@ class TestRevert(ExternalBase):
         f.close()
 
         # check status
-        self.assertEquals('modified:\n  dir/file\n', self.run_bzr(['status'])[0])
+        self.assertEquals('modified:\n  dir/file\n', self.run_bzr('status')[0])
 
     def _prepare_rename_mod_tree(self):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
@@ -66,7 +66,7 @@ class TestRevert(ExternalBase):
         os.chdir('dir')
         mutter('cd dir\n')
 
-        self.assertEquals('1\n', self.run_bzr(['revno'])[0])
+        self.assertEquals('1\n', self.run_bzr('revno')[0])
         self.run_bzr('revert %s file' % param)
         self.assertEquals('spam', open('file', 'rb').read())
 
@@ -85,9 +85,9 @@ class TestRevert(ExternalBase):
         self.run_bzr('checkout --lightweight . ../sprach')
         self.run_bzr('commit -m more')
         os.chdir('../sprach')
-        self.assertEqual('', self.run_bzr(['status'])[0])
+        self.assertEqual('', self.run_bzr('status')[0])
         self.run_bzr('revert')
-        self.assertEqual('', self.run_bzr(['status'])[0])
+        self.assertEqual('', self.run_bzr('status')[0])
 
     def test_revert_dirname(self):
         """Test that revert DIRECTORY does what's expected"""

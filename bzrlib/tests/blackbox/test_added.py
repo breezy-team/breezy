@@ -30,7 +30,7 @@ class TestAdded(TestCaseInTempDir):
         """Test that 'added' command reports added files"""
 
         def check_added(expected):
-            out, err = self.run_bzr(['added'])
+            out, err = self.run_bzr('added')
             self.assertEquals(out, expected)
             self.assertEquals(err, '')
 

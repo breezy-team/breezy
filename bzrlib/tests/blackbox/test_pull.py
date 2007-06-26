@@ -143,7 +143,7 @@ class TestPull(ExternalBase):
         bzr = self.run_bzr
 
         def get_rh(expected_len):
-            rh = self.run_bzr(['revision-history'])[0]
+            rh = self.run_bzr('revision-history')[0]
             # Make sure we don't have trailing empty revisions
             rh = rh.strip().split('\n')
             self.assertEqual(len(rh), expected_len)
@@ -185,7 +185,7 @@ class TestPull(ExternalBase):
         bzr = self.run_bzr
 
         def get_rh(expected_len):
-            rh = self.run_bzr(['revision-history'])[0]
+            rh = self.run_bzr('revision-history')[0]
             # Make sure we don't have trailing empty revisions
             rh = rh.strip().split('\n')
             self.assertEqual(len(rh), expected_len)

@@ -29,7 +29,7 @@ class TestAdd(ExternalBase):
         self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
-        out = self.run_bzr(['add'], retcode=0)[0]
+        out = self.run_bzr('add', retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
@@ -40,7 +40,7 @@ class TestAdd(ExternalBase):
                            'added top.txt',
                            'ignored 1 file(s).'],
                           results)
-        out = self.run_bzr(['add', '-v'], retcode=0)[0]
+        out = self.run_bzr('add -v', retcode=0)[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
@@ -51,7 +51,7 @@ class TestAdd(ExternalBase):
         """add -q does not print the names of added files."""
         self.run_bzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr(['add', '-q'], retcode=0)[0]
+        out = self.run_bzr('add -q', retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals([''], results)
@@ -63,21 +63,21 @@ class TestAdd(ExternalBase):
         """
         self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'inertiatic\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add inertiatic/esp')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
         # Multiple unversioned parents
         self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'veil\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'veil\n')
         self.run_bzr('add veil/cerpin/taxt')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
         # Check whacky paths work
         self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'cicatriz\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'cicatriz\n')
         self.run_bzr('add inertiatic/../cicatriz/esp')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
@@ -86,11 +86,11 @@ class TestAdd(ExternalBase):
         """
         self.run_bzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'inertiatic\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add --no-recurse inertiatic')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'inertiatic/esp\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic/esp\n')
         self.run_bzr('add inertiatic/esp')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
@@ -115,7 +115,7 @@ class TestAdd(ExternalBase):
         # subdirectory
         chdir('src')
         self.run_bzr('add')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], 'README\n')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'README\n')
         # reopen to see the new changes
         t = t.bzrdir.open_workingtree()
         versioned = [path for path, entry in t.iter_entries_by_dir()]
@@ -125,7 +125,7 @@ class TestAdd(ExternalBase):
         # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')
-        self.assertEquals(self.run_bzr(['unknowns'])[0], '')
+        self.assertEquals(self.run_bzr('unknowns')[0], '')
         self.run_bzr('check')
 
     def test_add_missing(self):
@@ -178,9 +178,9 @@ class TestAdd(ExternalBase):
         # ensure that --dry-run actually don't add anything
         base_tree = self.make_branch_and_tree('.')
         self.build_tree(['spam'])
-        out = self.run_bzr(['add', '--dry-run'], retcode=0)[0]
+        out = self.run_bzr('add --dry-run', retcode=0)[0]
         self.assertEquals('added spam\n', out)
-        out = self.run_bzr(['added'], retcode=0)[0]
+        out = self.run_bzr('added', retcode=0)[0]
         self.assertEquals('', out)
 
     def test_add_control_dir(self):

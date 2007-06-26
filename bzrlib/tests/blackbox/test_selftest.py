@@ -184,7 +184,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
             out, err = self.run_bzr(['selftest', '--benchmark',
-                'workingtree_implementations'])
+                                     'workingtree_implementations'])
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
@@ -491,8 +491,8 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
                            'test9999.tmp','tests'],
                            before)
 
-        out, err = self.run_bzr(['selftest','--clean-output'],
-                                        working_dir=root)
+        out, err = self.run_bzr('selftest --clean-output',
+                                working_dir=root)
 
         self.assertEquals(['delete directory: test0000.tmp',
                           'delete directory: test0001.tmp'],
@@ -540,8 +540,7 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only(self):
         # check that bzr selftest --list-only works correctly
-        out,err = self.run_bzr(['selftest', 'selftest',
-            '--list-only'])
+        out,err = self.run_bzr('selftest selftest --list-only')
         self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
         num_tests = len(body)
@@ -549,14 +548,13 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only_filtered(self):
         # check that a filtered --list-only works, both include and exclude
-        out_all,err_all = self.run_bzr(['selftest', '--list-only'])
+        out_all,err_all = self.run_bzr('selftest --list-only')
         tests_all = self._parse_test_list(out_all.splitlines())[1]
-        out_incl,err_incl = self.run_bzr(['selftest', '--list-only',
-          'selftest'])
+        out_incl,err_incl = self.run_bzr('selftest --list-only selftest')
         tests_incl = self._parse_test_list(out_incl.splitlines())[1]
         self.assertSubset(tests_incl, tests_all)
         out_excl,err_excl = self.run_bzr(['selftest', '--list-only',
-          '--exclude', 'selftest'])
+                                          '--exclude', 'selftest'])
         tests_excl = self._parse_test_list(out_excl.splitlines())[1]
         self.assertSubset(tests_excl, tests_all)
         set_incl = set(tests_incl)
@@ -567,15 +565,14 @@ class TestSelftestListOnly(TestCase):
 
     def test_list_only_random(self):
         # check that --randomize works correctly
-        out_all,err_all = self.run_bzr(['selftest', '--list-only',
-            'selftest'])
+        out_all,err_all = self.run_bzr('selftest --list-only selftest')
         tests_all = self._parse_test_list(out_all.splitlines())[1]
         # XXX: It looks like there are some orders for generating tests that
         # fail as of 20070504 - maybe because of import order dependencies.
         # So unfortunately this will rarely intermittently fail at the moment.
         # -- mbp 20070504
         out_rand,err_rand = self.run_bzr(['selftest', '--list-only',
-            'selftest', '--randomize', 'now'])
+                                          'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
             out_rand.splitlines(), 2)
         self.assertNotEqual(tests_all, tests_rand)
@@ -585,7 +582,7 @@ class TestSelftestListOnly(TestCase):
         match_obj = seed_re.search(header_rand[-1])
         seed = match_obj.group(1)
         out_rand2,err_rand2 = self.run_bzr(['selftest', '--list-only',
-            'selftest', '--randomize', seed])
+                                            'selftest', '--randomize', seed])
         (header_rand2,tests_rand2,dummy) = self._parse_test_list(
             out_rand2.splitlines(), 2)
         self.assertEqual(tests_rand, tests_rand2)

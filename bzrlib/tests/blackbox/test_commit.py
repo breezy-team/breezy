@@ -47,11 +47,11 @@ class TestCommit(ExternalBase):
         """Successful commit should not leave behind a bzr-commit-* file"""
         self.run_bzr("init")
         self.run_bzr("commit", "--unchanged", "-m", "message")
-        self.assertEqual('', self.run_bzr(['unknowns'])[0])
+        self.assertEqual('', self.run_bzr('unknowns')[0])
 
         # same for unicode messages
         self.run_bzr("commit", "--unchanged", "-m", u'foo\xb5')
-        self.assertEqual('', self.run_bzr(['unknowns'])[0])
+        self.assertEqual('', self.run_bzr('unknowns')[0])
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -236,8 +236,8 @@ class TestCommit(ExternalBase):
         file('foo.c', 'wt').write('int main() {}')
         file('bar.c', 'wt').write('int main() {}')
         os.chdir('..')
-        self.run_bzr(['add', 'branch/foo.c'])
-        self.run_bzr(['add', 'branch'])
+        self.run_bzr('add branch/foo.c')
+        self.run_bzr('add branch')
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
         self.run_bzr('commit -m newstuff branch/foo.c')
