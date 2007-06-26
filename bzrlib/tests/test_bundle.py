@@ -991,10 +991,11 @@ class BundleTester(object):
     def test_across_serializers(self):
         tree = self.make_simple_tree('knit')
         tree.commit('hello', rev_id='rev1')
-        bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
+        tree.commit('hello', rev_id='rev2')
+        bundle = read_bundle(self.create_bundle_text(None, 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo.get_inventory_xml('rev1')
+        inv_text = repo.get_inventory_xml('rev2')
         self.assertNotContainsRe(inv_text, 'format="5"')
 
 

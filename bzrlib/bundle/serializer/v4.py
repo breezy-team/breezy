@@ -389,11 +389,11 @@ class RevisionInstaller(object):
                                                   text)])
         parents = [self._repository.get_inventory(p)
                    for p in metadata['parents']]
-        parent_texts = [self.source_serializer.write_inventory_to_string(p)
+        parent_texts = [self._source_serializer.write_inventory_to_string(p)
                         for p in parents]
         mpvf = multiparent.MultiMemoryVersionedFile()
         for parent, ptext in zip(metadata['parents'], parent_texts):
-            mpvf.add_version(StringIO(ptext).readlines(), [])
+            mpvf.add_version(StringIO(ptext).readlines(), parent, [])
         mpvf.add_diff(multiparent.MultiParent.from_patch(text), revision_id,
                       metadata['parents'])
         target_lines = mpvf.get_line_list([revision_id])[0]
