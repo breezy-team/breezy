@@ -308,11 +308,11 @@ class BundleInfoV4(object):
         if self.__real_revisions is None:
             self.__real_revisions = []
             bundle_reader = self.get_bundle_reader()
-            for bytes, parents, repo_kind, revision_id, file_id in \
+            for bytes, metadata, repo_kind, revision_id, file_id in \
                 bundle_reader.iter_records():
                 if repo_kind == 'info':
                     serializer =\
-                        self._serializer.get_source_serializer(parents)
+                        self._serializer.get_source_serializer(metadata)
                 if repo_kind == 'revision':
                     rev = serializer.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)
