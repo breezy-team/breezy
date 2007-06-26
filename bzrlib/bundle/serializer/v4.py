@@ -65,23 +65,35 @@ class BundleWriter(object):
         self._add_record(bytes, {'parents': parents,
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
+    def add_info_record(self, **kwargs):
+        kwargs['storage_kind'] = 'header'
+        self._add_record(None, kwargs, 'info', None, None)
+
     @staticmethod
     def encode_name(content_kind, revision_id, file_id=None):
-        assert content_kind in ('revision', 'file', 'inventory', 'signature')
-        if content_kind in ('revision', 'inventory', 'signature'):
+        assert content_kind in ('revision', 'file', 'inventory', 'signature',
+                                'info')
+        if content_kind in ('revision', 'inventory', 'signature', 'info'):
             assert file_id is None
         else:
             assert file_id is not None
-        names = [content_kind, revision_id]
-        if file_id is not None:
-            names.append(file_id)
+        if content_kind == 'info':
+            assert revision_id is None
+        else:
+            assert revision_id is not None
+        names = [content_kind]
+        if revision_id is not None:
+            names.append(revision_id)
+            if file_id is not None:
+                names.append(file_id)
         return '/'.join(names)
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
         name = self.encode_name(repo_kind, revision_id, file_id)
-        metadata = bencode.bencode(metadata)
-        self._container.add_bytes_record(metadata, [name])
-        self._container.add_bytes_record(bytes, [])
+        encoded_metadata = bencode.bencode(metadata)
+        self._container.add_bytes_record(encoded_metadata, [name])
+        if metadata['storage_kind'] != 'header':
+            self._container.add_bytes_record(bytes, [])
 
 
 class BundleReader(object):
@@ -105,19 +117,25 @@ class BundleReader(object):
     @staticmethod
     def decode_name(name):
         names = name.split('/')
-        content_kind, revision_id = names[:2]
+        content_kind = names[0]
+        revision_id = None
+        file_id = None
+        if len(names) > 1:
+            revision_id = names[1]
         if len(names) > 2:
             file_id = names[2]
-        else:
-            file_id = None
         return content_kind, revision_id, file_id
 
     def iter_records(self):
         iterator = self._container.iter_records()
         for (name,), meta_bytes in iterator:
             metadata = bencode.bdecode(meta_bytes(None))
-            _unused, bytes = iterator.next()
-            yield (bytes(None), metadata) + self.decode_name(name)
+            if metadata['storage_kind'] == 'header':
+                bytes = None
+            else:
+                _unused, bytes = iterator.next()
+                bytes = bytes(None)
+            yield (bytes, metadata) + self.decode_name(name)
 
 
 class BundleSerializerV4(serializer.BundleSerializer):

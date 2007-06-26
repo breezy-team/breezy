@@ -1219,18 +1219,6 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         self.assertEqual('changed file',
                          target_repo.get_revision('rev2').message)
 
-    def test_name_encode(self):
-        self.assertEqual('revision/rev1',
-            v4.BundleWriter.encode_name('revision', 'rev1'))
-        self.assertEqual('file/rev1/file-id-1',
-            v4.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
-
-    def test_name_decode(self):
-        self.assertEqual(('revision', 'rev1', None),
-            v4.BundleReader.decode_name('revision/rev1'))
-        self.assertEqual(('file', 'rev1', 'file-id-1'),
-            v4.BundleReader.decode_name('file/rev1/file-id-1'))
-
     @staticmethod
     def get_raw(bundle_file):
         bundle_file.seek(0)
@@ -1381,11 +1369,32 @@ class TestBundleWriterReader(TestCase):
         fileobj = StringIO()
         writer = v4.BundleWriter(fileobj)
         writer.begin()
-        writer._add_record("Record body", {'parents': ['1', '3']},
-                           'file', 'revid', 'fileid')
+        writer.add_info_record(foo='bar')
+        writer._add_record("Record body", {'parents': ['1', '3'],
+            'storage_kind':'fulltext'}, 'file', 'revid', 'fileid')
         writer.end()
         fileobj.seek(0)
-        reader = v4.BundleReader(fileobj)
-        record = reader.iter_records().next()
-        self.assertEqual(("Record body", {'parents': ['1', '3']}, 'file',
-                          'revid', 'fileid'), record)
+        record_iter = v4.BundleReader(fileobj).iter_records()
+        record = record_iter.next()
+        self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
+            'info', None, None), record)
+        record = record_iter.next()
+        self.assertEqual(("Record body", {'storage_kind': 'fulltext',
+                          'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
+                          record)
+
+    def test_name_encode(self):
+        self.assertEqual('revision/rev1',
+            v4.BundleWriter.encode_name('revision', 'rev1'))
+        self.assertEqual('file/rev1/file-id-1',
+            v4.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
+        self.assertEqual('info',
+            v4.BundleWriter.encode_name('info', None, None))
+
+    def test_name_decode(self):
+        self.assertEqual(('revision', 'rev1', None),
+            v4.BundleReader.decode_name('revision/rev1'))
+        self.assertEqual(('file', 'rev1', 'file-id-1'),
+            v4.BundleReader.decode_name('file/rev1/file-id-1'))
+        self.assertEqual(('info', None, None),
+                         v4.BundleReader.decode_name('info'))
