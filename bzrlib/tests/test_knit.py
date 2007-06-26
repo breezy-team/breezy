@@ -1078,6 +1078,173 @@ class BasicKnitTests(KnitTests):
         for plan_line, expected_line in zip(plan, AB_MERGE):
             self.assertEqual(plan_line, expected_line)
 
+    def assertRecordContentEqual(self, knit, version_id, candidate_content):
+        """Assert that some raw record content matches the raw record content
+        for a particular version_id in the given knit.
+        """
+        data_pos, data_size = knit._index.get_position(version_id)
+        record = (version_id, data_pos, data_size)
+        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
+        self.assertEqual(expected_content, candidate_content)
+
+    def test_get_stream_empty(self):
+        """Get a data stream for an empty knit file."""
+        k1 = self.make_test_knit()
+        format, data_list, reader_callable = k1.get_data_stream([])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual([], data_list)
+        content = reader_callable(None)
+        self.assertEqual('', content)
+        self.assertIsInstance(content, str)
+
+    def test_get_stream_one_version(self):
+        """Get a data stream for a single record out of a knit containing just
+        one record.
+        """
+        k1 = self.make_test_knit()
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ]
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-a', ['fulltext'], 122, []),
+           ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        format, data_list, reader_callable = k1.get_data_stream(['text-a'])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        # There's only one record in the knit, so the content should be the
+        # entire knit data file's contents.
+        self.assertEqual(k1.transport.get_bytes(k1._data._filename),
+                         reader_callable(None))
+        
+    def test_get_stream_get_one_version_of_many(self):
+        """Get a data stream for just one version out of a knit containing many
+        versions.
+        """
+        k1 = self.make_test_knit()
+        # Insert the same data as test_knit_join, as they seem to cover a range
+        # of cases (no parents, one parent, multiple parents).
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+            ]
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        format, data_list, reader_callable = k1.get_data_stream(['text-m'])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        self.assertRecordContentEqual(k1, 'text-m', reader_callable(None))
+        
+    def test_get_stream_ghost_parent(self):
+        """Get a data stream for a version with a ghost parent."""
+        k1 = self.make_test_knit()
+        # Test data
+        k1.add_lines('text-a', [], split_lines(TEXT_1))
+        k1.add_lines_with_ghosts('text-b', ['text-a', 'text-ghost'],
+                                 split_lines(TEXT_1))
+        # Expected data
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-b', ['line-delta'], 84, ['text-a', 'text-ghost']),
+            ]
+        
+        format, data_list, reader_callable = k1.get_data_stream(['text-b'])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        self.assertRecordContentEqual(k1, 'text-b', reader_callable(None))
+    
+    def test_get_stream_get_multiple_records(self):
+        """Get a stream for multiple records of a knit."""
+        k1 = self.make_test_knit()
+        # Insert the same data as test_knit_join, as they seem to cover a range
+        # of cases (no parents, one parent, multiple parents).
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+            ]
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-d', ['line-delta'], 84, ['text-c']),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        # Note that even though we request the revision IDs in a particular
+        # order, the data stream may return them in any order it likes.  In this
+        # case, they'll be in the order they were inserted into the knit.
+        format, data_list, reader_callable = k1.get_data_stream(
+            ['text-d', 'text-b'])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
+        self.assertRecordContentEqual(k1, 'text-d', reader_callable(84))
+        self.assertEqual('', reader_callable(None),
+                         "There should be no more bytes left to read.")
+
+    def test_get_stream_all(self):
+        """Get a data stream for all the records in a knit.
+
+        This exercises fulltext records, line-delta records, records with
+        various numbers of parents, and reading multiple records out of the
+        callable.  These cases ought to all be exercised individually by the
+        other test_get_stream_* tests; this test is basically just paranoia.
+        """
+        k1 = self.make_test_knit()
+        # Insert the same data as test_knit_join, as they seem to cover a range
+        # of cases (no parents, one parent, multiple parents).
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+           ]
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-a', ['fulltext'], 122, []),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-c', ['fulltext'], 121, []),
+            ('text-d', ['line-delta'], 84, ['text-c']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        format, data_list, reader_callable = k1.get_data_stream(
+            ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
+        self.assertEqual('knit-delta-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        for version_id, options, length, parents in expected_data_list:
+            bytes = reader_callable(length)
+            self.assertRecordContentEqual(k1, version_id, bytes)
+
+    # permutations left to test:
+    #  * getting a version where all its parents are ghosts
+    #  * reader_func edge-cases:
+    #    * read too little
+    #    * read too much
+    #    * multiple read calls
+    #    * read(None)
+    #
+    # after that:
+    #  * move callable into own class (see XXX in get_data_stream)
+    #  * insert data stream into knits
+
 
 TEXT_1 = """\
 Banana cup cakes:

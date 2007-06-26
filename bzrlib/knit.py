@@ -519,6 +519,65 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def get_data_stream(self, required_versions):
+        """Get a data stream for the specified versions.
+
+        Versions may be returned in any order, not necessarily the order
+        specified.
+
+        :param required_versions: the exact set of versions to be returned, i.e.
+            not a transitive closure.
+        
+        :returns: format_signature, list of (version, options, length, parents),
+            reader_callable.
+        """
+        required_versions = set([osutils.safe_revision_id(v) for v in
+            required_versions])
+        # we don't care about inclusions, the caller cares.
+        # but we need to setup a list of records to visit.
+        for version_id in required_versions:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+        # Pick the desired versions out of the index in oldest-to-newest order
+        version_list = []
+        for version_id in self.versions():
+            if version_id in required_versions:
+                version_list.append(version_id)
+
+        # create the list of version information for the result
+        copy_queue_records = []
+        copy_set = set()
+        result_version_list = []
+        for version_id in version_list:
+            options = self._index.get_options(version_id)
+            parents = self._index.get_parents_with_ghosts(version_id)
+            data_pos, data_size = self._index.get_position(version_id)
+            copy_queue_records.append((version_id, data_pos, data_size))
+            copy_set.add(version_id)
+            # version, options, length, parents
+            result_version_list.append((version_id, options, data_size,
+                parents))
+
+        # Read the compressed record data.
+        # XXX:
+        # From here down to the return should really be logic in the returned
+        # callable -- in a class that adaptes read_records_iter_raw to read
+        # requests.
+        raw_datum = []
+        for (version_id, raw_data), \
+            (version_id2, options, _, parents) in \
+            izip(self._data.read_records_iter_raw(copy_queue_records),
+                 result_version_list):
+            assert version_id == version_id2, 'logic error, inconsistent results'
+            raw_datum.append(raw_data)
+        pseudo_file = StringIO(''.join(raw_datum))
+        def read(length):
+            if length is None:
+                return pseudo_file.read()
+            else:
+                return pseudo_file.read(length)
+        return (self.get_format_signature(), result_version_list, read)
+
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
         version_id = osutils.safe_revision_id(version_id)
