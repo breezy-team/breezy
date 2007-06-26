@@ -26,6 +26,7 @@ from bzrlib import (
     pack,
     revision as _mod_revision,
     trace,
+    xml_serializer,
     )
 from bzrlib.bundle import bundle_data, serializer
 from bzrlib.util import bencode
@@ -149,6 +150,10 @@ class BundleSerializerV4(serializer.BundleSerializer):
     def read(self, file):
         bundle = BundleInfoV4(file, self)
         return bundle
+
+    @staticmethod
+    def get_source_serializer(info):
+        return xml_serializer.format_registry.get(info['serializer'])
 
 
 class BundleWriteOperation(object):
@@ -300,14 +305,16 @@ class BundleInfoV4(object):
         return BundleReader(self._fileobj)
 
     def _get_real_revisions(self):
-        from bzrlib import xml7
         if self.__real_revisions is None:
             self.__real_revisions = []
             bundle_reader = self.get_bundle_reader()
             for bytes, parents, repo_kind, revision_id, file_id in \
                 bundle_reader.iter_records():
+                if repo_kind == 'info':
+                    serializer =\
+                        self._serializer.get_source_serializer(parents)
                 if repo_kind == 'revision':
-                    rev = xml7.serializer_v7.read_revision_from_string(bytes)
+                    rev = serializer.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)
         return self.__real_revisions
     real_revisions = property(_get_real_revisions)
@@ -338,12 +345,7 @@ class RevisionInstaller(object):
 
     def handle_info(self, info):
         self._info = info
-        if info['serializer'] == '5':
-            from bzrlib import xml5
-            self._source_serializer = xml5.serializer_v5
-        else:
-            from bzrlib import xml7
-            self._source_serializer = xml7.serializer_v7
+        self._source_serializer = self._serializer.get_source_serializer(info)
         if (info['supports_rich_root'] == 0 and
             self._repository.supports_rich_root()):
             self.update_root = True
