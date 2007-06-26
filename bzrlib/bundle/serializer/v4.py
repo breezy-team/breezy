@@ -22,6 +22,7 @@ from bzrlib import (
     errors,
     iterablefile,
     multiparent,
+    osutils,
     pack,
     revision as _mod_revision,
     trace,
@@ -176,10 +177,15 @@ class BundleWriteOperation(object):
 
     def do_write(self):
         self.bundle.begin()
+        self.write_info()
         self.write_files()
         self.write_revisions()
         self.bundle.end()
         return self.revision_ids
+
+    def write_info(self):
+        serializer_name = self.repository._serializer.format_num
+        self.bundle.add_info_record(serializer=serializer_name)
 
     def iter_file_revisions(self):
         """This is the correct approach, but not compatible.
@@ -325,6 +331,9 @@ class RevisionInstaller(object):
         self._container = container
         self._serializer = serializer
         self._repository = repository
+        self._info = None
+        from bzrlib import xml5
+        self._source_serializer = xml5.serializer_v5
 
     def install(self):
         current_file = None
@@ -334,7 +343,10 @@ class RevisionInstaller(object):
         target_revision = None
         for bytes, metadata, repo_kind, revision_id, file_id in\
             self._container.iter_records():
-            if  repo_kind != 'file':
+            if repo_kind == 'info':
+                assert self._info is None
+                self._info = metadata
+            if repo_kind != 'file':
                 self._install_mp_records(current_versionedfile,
                     pending_file_records)
                 current_file = None
@@ -372,7 +384,27 @@ class RevisionInstaller(object):
 
     def _install_inventory(self, revision_id, metadata, text):
         vf = self._repository.get_inventory_weave()
-        return self._install_mp_records(vf, [(revision_id, metadata, text)])
+        if self._info['serializer'] == self._repository._serializer.format_num:
+            return self._install_mp_records(vf, [(revision_id, metadata,
+                                                  text)])
+        parents = [self._repository.get_inventory(p)
+                   for p in metadata['parents']]
+        parent_texts = [self.source_serializer.write_inventory_to_string(p)
+                        for p in parents]
+        mpvf = multiparent.MultiMemoryVersionedFile()
+        for parent, ptext in zip(metadata['parents'], parent_texts):
+            mpvf.add_version(StringIO(ptext).readlines(), [])
+        mpvf.add_diff(multiparent.MultiParent.from_patch(text), revision_id,
+                      metadata['parents'])
+        target_lines = mpvf.get_line_list([revision_id])[0]
+        sha1 = osutils.sha_strings(target_lines)
+        if sha1 != metadata['sha1']:
+            raise BadBundle("Can't convert to target format")
+        target_inv = self._source_serializer.read_inventory_from_string(
+            ''.join(target_lines))
+        target_inv.root.revision = revision_id
+        self._repository.add_inventory(revision_id, target_inv,
+                                       metadata['parents'])
 
     def _install_revision(self, revision_id, metadata, text):
         if self._repository.has_revision(revision_id):

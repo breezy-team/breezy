@@ -981,6 +981,22 @@ class BundleTester(object):
         tree.commit('rev2', rev_id='rev2')
         bundle = self.get_valid_bundle(None, 'rev2')
 
+    def make_simple_tree(self, format=None):
+        tree = self.make_branch_and_tree('b1', format=format)
+        self.b1 = tree.branch
+        self.build_tree(['b1/file'])
+        tree.add('file')
+        return tree
+
+    def test_across_serializers(self):
+        tree = self.make_simple_tree('knit')
+        tree.commit('hello', rev_id='rev1')
+        bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
+        repo = self.make_repository('repo', format='dirstate-with-subtree')
+        bundle.install_revisions(repo)
+        inv_text = repo.get_inventory_xml('rev1')
+        self.assertNotContainsRe(inv_text, 'format="5"')
+
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
 
