@@ -202,11 +202,12 @@ class Request(urllib2.Request):
         return self.method
 
     def set_proxy(self, proxy, type):
+        """Set the proxy and remember the proxied host."""
         self.proxied_host = self.get_host()
         urllib2.Request.set_proxy(self, proxy, type)
 
 
-class ConnectRequest(Request):
+class _ConnectRequest(Request):
 
     def __init__(self, request):
         """Constructor
@@ -225,8 +226,15 @@ class ConnectRequest(Request):
         return self.proxied_host
 
     def set_proxy(self, proxy, type):
-        # XXX: somthing is wrong here, we should be more precise on when this
-        # is needed.
+        """Set the proxy without remembering the proxied host.
+
+        We already know the proxied host by definition, the CONNECT request
+        occurs only when the connection goes through a proxy. The usual
+        processing (masquerade the request so that the connection is done to
+        the proxy while the request is targeted at another host) does not apply
+        here. In fact, the connection is already established with proxy and we
+        just want to enable the SSL tunneling.
+        """
         urllib2.Request.set_proxy(self, proxy, type)
 
 
@@ -269,10 +277,9 @@ def extract_authentication_uri(url):
     return '%s://%s' % (scheme, host)
 
 
-# The urlib2.xxxAuthHandler handle the authentication of the
-# requests, to do that, they need an urllib2 PasswordManager *at
-# build time*. We also need one to reuse the passwords entered by
-# the user.
+# The AuthHandler classes handle the authentication of the requests, to do
+# that, they need a PasswordManager *at build time*. We also need one to reuse
+# the passwords entered by the user.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
 
     def __init__(self):
@@ -425,12 +432,11 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 else:
                     # All other exception are considered connection related.
 
-                    # httplib.HTTPException should indicate a bug
-                    # in the urllib implementation, somewhow the
-                    # httplib pipeline is in an incorrect state,
-                    # we retry in hope that this will correct the
-                    # problem but that may need investigation
-                    # (note that no such bug is known as of
+                    # httplib.HTTPException should indicate a bug in our
+                    # urllib-based implementation, somewhow the httplib
+                    # pipeline is in an incorrect state, we retry in hope that
+                    # this will correct the problem but that may need
+                    # investigation (note that no such bug is known as of
                     # 20061005 --vila).
 
                     # socket errors generally occurs for reasons
@@ -441,7 +447,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     # FIXME: and then there is HTTPError raised by:
                     # - HTTPDefaultErrorHandler (we define our own)
                     # - HTTPRedirectHandler.redirect_request 
-                    # - AbstractDigestAuthHandler.http_error_auth_reqed
 
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
@@ -560,23 +565,29 @@ class HTTPSHandler(AbstractHTTPHandler):
 
     def https_open(self, request):
         connection = request.connection
+        assert isinstance(connection, HTTPSConnection)
         if connection.sock is None and \
                 connection.proxied_host is not None and \
                 request.get_method() != 'CONNECT' : # Don't loop
-            # FIXME: We need a gazillion connection tests here:
+            # FIXME: We need a gazillion connection tests here, but we still
+            # miss a https server :-( :
             # - with and without proxy
-            # - with an without authentication
+            # - with and without certificate
+            # - with self-signed certificate
+            # - with and without authentication
+            # - with good and bad credentials (especially the proxy auth aound
+            #   CONNECT)
             # - with basic and digest schemes
             # - reconnection on errors
             # - connection persistence behaviour (including reconnection)
 
             # We are about to connect for the first time via a proxy, we must
             # issue a CONNECT request first to establish the encrypted link
-            connect = ConnectRequest(request)
+            connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                # FIXME: mention hosts involved
-                raise ConnectionError("Can't connect via proxy")
+                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                        connect.proxied_host, self.host))
             # Housekeeping
             connection.fake_close()
             # Establish the connection encryption 
@@ -706,17 +717,18 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 class ProxyHandler(urllib2.ProxyHandler):
     """Handles proxy setting.
 
-    Copied and modified from urllib2 to be able to modify the
-    request during the request pre-processing instead of
-    modifying it at _open time. As we capture (or create) the
-    connection object during request processing, _open time was
-    too late.
+    Copied and modified from urllib2 to be able to modify the request during
+    the request pre-processing instead of modifying it at _open time. As we
+    capture (or create) the connection object during request processing, _open
+    time was too late.
 
-    Note that the proxy handling *may* modify the protocol used;
-    the request may be against an https server proxied through an
-    http proxy. So, https_request will be called, but later it's
-    really http_open that will be called. This explain why we
-    don't have to call self.parent.open as the urllib2 did.
+    The main task is to modify the request so that the connection is done to
+    the proxy while the request still refers to the destination host.
+
+    Note: the proxy handling *may* modify the protocol used; the request may be
+    against an https server proxied through an http proxy. So, https_request
+    will be called, but later it's really http_open that will be called. This
+    explain why we don't have to call self.parent.open as the urllib2 did.
     """
 
     # Proxies must be in front
@@ -796,6 +808,10 @@ class ProxyHandler(urllib2.ProxyHandler):
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
+        # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
+        # grok user:password@host:port as well as
+        # http://user:password@host:port
+
         # Extract credentials from the url and store them in the
         # password manager so that the proxy AuthHandler can use
         # them later.
@@ -864,6 +880,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    _max_retry = 3
+    """We don't want to retry authenticating endlessly"""
+
     # The following attributes should be defined by daughter
     # classes:
     # - auth_required_header:  the header received from the server
@@ -873,6 +892,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         self.password_manager = password_manager
         self.find_user_password = password_manager.find_user_password
         self.add_password = password_manager.add_password
+        self._retry_count = None
 
     def update_auth(self, auth, key, value):
         """Update a value in auth marking the auth as modified if needed"""
@@ -888,6 +908,16 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         :param headers: The headers for the authentication error response.
         :return: None or the response for the authenticated request.
         """
+        # Don't try  to authenticate endlessly
+        if self._retry_count is None:
+            # The retry being recusrsive calls, None identify the first try
+            self._retry_count = 1
+        else:
+            self._retry_count += 1
+            if self._retry_count > self._max_retry:
+                # Let's be ready for next round
+                self._retry_count = None
+                return None
         server_header = headers.get(self.auth_required_header, None)
         if server_header is None:
             # The http error MUST have the associated
@@ -963,7 +993,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         :param request: The succesfully authenticated request.
         :param response: The server response (may contain auth info).
         """
-        pass
+        # It may happen that we need to reconnect later, let's be ready
+        self._retry_count = None
 
     def get_password(self, user, authuri, realm=None):
         """Ask user for a password if none is already available."""

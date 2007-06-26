@@ -42,6 +42,12 @@ IN DEVELOPMENT
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
 
+  BUGFIXES:
+
+    * Issue a CONNECT request when connecting to an https server
+      via a proxy to enable SSL tunneling.
+     (Vincent Ladeuil, #120678)
+
 
 bzr 0.17  2007-06-18
 
