@@ -21,10 +21,8 @@ Tests for particular parts of the library interface should be in specific
 relevant test modules.
 """
 
-import os
-import sys
-
 import bzrlib
+import bzrlib.api
 from bzrlib.tests import TestCase
 
 class APITests(TestCase):
@@ -35,3 +33,39 @@ class APITests(TestCase):
         self.assert_(isinstance(bzrlib.version_string, str))
         self.assert_(isinstance(bzrlib.version_info, tuple))
         self.assertEqual(len(bzrlib.version_info), 5)
+
+
+class TrivialObject(object):
+    """This class allows assignment to any attribute."""
+
+
+class TestAPIVersioning(TestCase):
+
+    def test_get_minimum_api_version_reads_api_minimum_version(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (0, 1, 2)
+        self.assertEqual((0, 1, 2),
+            bzrlib.api.get_minimum_api_version(an_object))
+
+    def test_get_minimum_api_version_fallsback_to_bzr_minimum_version(self):
+        an_object = TrivialObject()
+        self.assertEqual(bzrlib.api_minimum_version,
+            bzrlib.api.get_minimum_api_version(an_object))
+
+    def test_get_current_api_version_reads_api_current_version(self):
+        an_object = TrivialObject()
+        an_object.api_current_version = (3, 2, 1)
+        an_object.version_info = (1, 2, 3, "final", 0)
+        self.assertEqual((3, 2, 1),
+            bzrlib.api.get_current_api_version(an_object))
+
+    def test_get_current_api_version_fallsback_to_version_info(self):
+        an_object = TrivialObject()
+        an_object.version_info = (1, 2, 3, "final", 0)
+        self.assertEqual((1, 2, 3),
+            bzrlib.api.get_current_api_version(an_object))
+
+    def test_get_current_api_version_fallsback_to_bzrlib_version_info(self):
+        an_object = TrivialObject()
+        self.assertEqual(bzrlib.version_info[0:3],
+            bzrlib.api.get_current_api_version(an_object))

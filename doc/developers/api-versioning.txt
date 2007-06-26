@@ -47,12 +47,18 @@ with which the current version is compatible, a range is easier to
 express, and easier for a human to look at and understand, and finally
 easier to manage. The oldest version with which the API for a python
 object is compatible is obtained by looking up the ``api_minimum_version``
-attribute on the python object handed to ``require_api``. The current
-version of the API is obtained by looking for an ``api_current_version``
-attribute, and if that is not found, an ``version_info`` attribute (of
-which the first 3 elements are used). If no current version can be found,
-the bzrlib ``version_info`` attribute is used to generate a current API
-version. API versions are compared lexically to answer the question 'is
+attribute on the python object handed to ``require_api``, and failing that
+the bzrlib ``api_minimum_version`` is returned. The current version of the
+API is obtained by looking for an ``api_current_version`` attribute, and
+if that is not found, an ``version_info`` attribute (of which the first 3
+elements are used). If no current version can be found, the bzrlib
+``version_info`` attribute is used to generate a current API version.
+This lookup sequence allows users with simple setups (and no python style
+``version_info`` tuple) to still export an API version, and for new API's
+to be managed more granularly later on with a smooth transition -
+everything starts off in lockstep with bzrlib's master version.
+
+API versions are compared lexically to answer the question 'is
 the requested version X <= the current version, and >= the minimum
 version'.
 
