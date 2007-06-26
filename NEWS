@@ -23,6 +23,11 @@ IN DEVELOPMENT
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
 
+    * Clean up many of the APIs for blackbox testing of Bazaar.  The standard 
+      interface is now self.run_bzr.  The command to run can be passed as
+      either a list of parameters, a string containing the command line, or
+      (deprecated) varargs parameters.  (Martin Pool)
+
 bzr 0.17rc1  2007-06-12
 
   NOTES WHEN UPGRADING:
