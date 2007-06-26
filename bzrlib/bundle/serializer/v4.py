@@ -442,5 +442,9 @@ class RevisionInstaller(object):
         self._repository._add_revision_text(revision_id, text)
 
     def _install_signature(self, revision_id, metadata, text):
+        transaction = self._repository.get_transaction()
+        if self._repository._revision_store.has_signature(revision_id,
+                                                          transaction):
+            return
         self._repository._revision_store.add_revision_signature_text(
-            revision_id, text, self._repository.get_transaction())
+            revision_id, text, transaction)

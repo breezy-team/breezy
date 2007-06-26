@@ -1306,6 +1306,9 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         self.assertTrue(repo_b.has_signature_for_revision_id('B'))
         self.assertEqual(repo_b.get_signature_text('B'),
                          repo_a.get_signature_text('B'))
+        s.seek(0)
+        # ensure repeat installs are harmless
+        install_bundle(repo_b, serializer.read(s))
 
 
 class V4WeaveBundleTester(V4BundleTester):
