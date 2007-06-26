@@ -17,10 +17,6 @@
 from cStringIO import StringIO
 import bz2
 
-# The number of bytes per base64-encoded line.  We could use less, but it would
-# be ugly
-BASE64_LINE_BYTES = 57
-
 from bzrlib import (
     diff,
     errors,
