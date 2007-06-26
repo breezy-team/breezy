@@ -98,7 +98,6 @@ class RevidMap(object):
         self.cachedb.commit()
     
     def lookup_revid(self, revid):
-        mutter('lookup branch revid %r' % revid)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
@@ -106,7 +105,6 @@ class RevidMap(object):
         return (str(ret[0]), ret[1], ret[2], ret[3])
 
     def lookup_branch_revnum(self, revnum, path, scheme):
-        mutter('lookup branch revnum %r, %r' % (revnum, path))
         # FIXME: SCHEME MISSING
         revid = self.cachedb.execute(
                 "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
