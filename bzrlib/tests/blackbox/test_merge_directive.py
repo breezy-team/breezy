@@ -232,3 +232,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('foo')
         self.run_bzr_error(('No revisions to bundle.', ),
                             'merge-directive', '../bar')
+
+    def test_encoding_exact(self):
+        tree1, tree2 = self.prepare_merge_directive()
+        tree1.commit(u'messag\xe9')
+        self.run_bzr('merge-directive', '../tree2') # no exception raised
