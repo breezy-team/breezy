@@ -1,7 +1,7 @@
 Building a remote branch
 ========================
 
-Status: Draft
+Status: Part Implementation.
 
 Aim
 ---
@@ -12,8 +12,9 @@ package.
 
 The plugin should support creating a branch from these files.
 
-It would also be good if the past versions could be obtained from
-snapshot.debian.net or similar.
+Services like snapshot.debian.net can be used to get old versions of a package,
+and providing a way to import from them automatically will be a great aid to
+maintainers without copies of all of their uploaded packages.
 
 Design
 ------
@@ -68,4 +69,19 @@ There should be no conflicts, as the merge commits aren't done as merges,
 the second parent (along the packaging branch) is just added to represent the
 history. In reality the tree of that commit is just the result of applying the
 .diff.gz to the .orig.tar.gz, i.e. the package.
+
+Implementation
+--------------
+
+Currently there is code that implements the above strategy, but it needs some
+more testing and a cleanup. It is also not directly exposed at the UI layer,
+but that shouldn't be too hard to do.
+
+There is a tentative import-snapshot command for importing from
+snapshot.debian.net, but it is more for testing and will probably become an
+option of import-dsc.
+
+Also left to do is implementations for other modes, especially native. Merge
+mode is complicated by the fact that the old packages may have changes outside
+debian/.
 
