@@ -142,7 +142,9 @@ class cmd_svn_import(Command):
         else:
             tmp_repos = None
 
-        convert_repository(from_location, to_location, scheme, not standalone, 
+        from_repos = Repository.open(from_location)
+
+        convert_repository(from_repos, to_location, scheme, not standalone, 
                 trees, all)
 
         if tmp_repos is not None:
