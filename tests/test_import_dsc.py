@@ -122,9 +122,10 @@ class TestImportDsc(TestCaseWithTransport):
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_2))
 
-  def make_dsc(self, filename, version, file1, extra_files=[]):
+  def make_dsc(self, filename, version, file1, extra_files=[],
+               package='package'):
     write_to_file(filename, """Format: 1.0
-Source: package
+Source: %s
 Version: %s
 Binary: package
 Maintainer: maintainer <maint@maint.org>
@@ -133,7 +134,7 @@ Standards-Version: 3.7.2
 Build-Depends: debhelper (>= 5.0.0)
 Files:
  8636a3e8ae81664bac70158503aaf53a 1328218 %s
-""" % (version, file1))
+""" % (package, version, file1))
     i = 1
     for extra_file in extra_files:
       append_to_file(filename,
@@ -149,6 +150,10 @@ Files:
   def make_dsc_1b(self):
     self.make_diff_1b()
     self.make_dsc(self.dsc_1b, '0.1-2', self.diff_1b)
+
+  def make_dsc_1b_repeated_orig(self):
+    self.make_diff_1b()
+    self.make_dsc(self.dsc_1b, '0.1-2', self.orig_1, [self.diff_1b])
 
   def make_dsc_1c(self):
     self.make_diff_1c()
@@ -168,6 +173,11 @@ Files:
     self.make_dsc_1b()
     import_dsc(self.target, [self.dsc_1, self.dsc_1b])
 
+  def import_dsc_1b_repeated_diff(self):
+    self.make_dsc_1()
+    self.make_dsc_1b()
+    import_dsc(self.target, [self.dsc_1, self.dsc_1b, self.dsc_1b])
+
   def import_dsc_1c(self):
     self.make_dsc_1()
     self.make_dsc_1b()
@@ -177,6 +187,14 @@ Files:
   def import_dsc_2(self):
     self.make_dsc_1()
     self.make_dsc_1b()
+    self.make_dsc_1c()
+    self.make_dsc_2()
+    import_dsc(self.target,
+               [self.dsc_1, self.dsc_1b, self.dsc_1c, self.dsc_2])
+
+  def import_dsc_2_repeated_orig(self):
+    self.make_dsc_1()
+    self.make_dsc_1b_repeated_orig()
     self.make_dsc_1c()
     self.make_dsc_2()
     import_dsc(self.target,
@@ -274,6 +292,33 @@ Files:
 
   def test_import_two_dsc_one_upstream_history(self):
     self.import_dsc_1b()
+    tree = WorkingTree.open(self.target)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 3)
+    msg = tree.branch.repository.get_revision(rh[0]).message
+    self.assertEqual(msg, 'import upstream from %s' % self.orig_1)
+    msg = tree.branch.repository.get_revision(rh[1]).message
+    self.assertEqual(msg, 'merge packaging changes from %s' % self.diff_1)
+    msg = tree.branch.repository.get_revision(rh[2]).message
+    self.assertEqual(msg, 'merge packaging changes from %s' % self.diff_1b)
+    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
+    added = changes.added
+    self.assertEqual(len(added), 1, str(added))
+    self.assertEqual(added[0][0], 'debian/control')
+    self.assertEqual(added[0][2], 'file')
+    self.assertEqual(len(changes.removed), 1)
+    self.assertEqual(changes.removed[0][0], 'debian/install')
+    self.assertEqual(changes.removed[0][2], 'file')
+    self.assertEqual(len(changes.renamed), 0)
+    modified = changes.modified
+    self.assertEqual(len(modified), 1)
+    self.assertEqual(modified[0][0], 'debian/changelog')
+    self.assertEqual(modified[0][2], 'file')
+    self.assertEqual(modified[0][3], True)
+    self.assertEqual(modified[0][4], False)
+
+  def test_import_two_dsc_one_upstream_history_repeated_diff(self):
+    self.import_dsc_1b_repeated_diff()
     tree = WorkingTree.open(self.target)
     rh = tree.branch.revision_history()
     self.assertEqual(len(rh), 3)
@@ -436,4 +481,51 @@ Files:
     self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
     self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.orig_1, self.diff_1])
     self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1])
+    self.make_dsc(self.dsc_1b, '0.1-2', self.diff_1b, package='otherpackage')
+    self.assertRaises(ImportError, import_dsc, self.target,
+                      [self.dsc_1, self.dsc_1b])
+
+  def test_import_four_dsc_two_upstream_history_repeated_orig(self):
+    self.import_dsc_2_repeated_orig()
+    tree = WorkingTree.open(self.target)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 3)
+    msg = tree.branch.repository.get_revision(rh[0]).message
+    self.assertEqual(msg, 'import upstream from %s' % self.orig_1)
+    msg = tree.branch.repository.get_revision(rh[1]).message
+    self.assertEqual(msg, 'import upstream from %s' % self.orig_2)
+    msg = tree.branch.repository.get_revision(rh[2]).message
+    self.assertEqual(msg, 'merge packaging changes from %s' % self.diff_2)
+    parents = tree.branch.repository.revision_tree(rh[1]).get_parent_ids()
+    self.assertEqual(parents, [rh[0]], rh)
+    parents = tree.branch.repository.revision_tree(rh[2]).get_parent_ids()
+    self.assertEqual(len(parents), 2)
+    self.assertEqual(parents[0], rh[1], rh)
+    self.assertEqual(tree.branch.repository.get_revision(parents[1]).message,
+                     'merge packaging changes from %s' % self.diff_1c)
+    # Check the diff against upstream.
+    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[1]))
+    added = changes.added
+    self.assertEqual(len(added), 3, str(added))
+    self.assertEqual(added[0][0], 'debian')
+    self.assertEqual(added[0][2], 'directory')
+    self.assertEqual(added[1][0], 'debian/changelog')
+    self.assertEqual(added[1][2], 'file')
+    self.assertEqual(added[2][0], 'debian/install')
+    self.assertEqual(added[2][2], 'file')
+    self.assertEqual(changes.removed, [])
+    self.assertEqual(changes.modified, [])
+    # Check the diff against last packaging version
+    changes = tree.changes_from(
+                 tree.branch.repository.revision_tree(parents[1]))
+    self.assertEqual(len(changes.added), 1)
+    self.assertEqual(changes.added[0][0], 'NEWS')
+    self.assertEqual(changes.added[0][2], 'file')
+    self.assertEqual(len(changes.removed), 1)
+    self.assertEqual(changes.removed[0][0], 'debian/control')
+    self.assertEqual(changes.removed[0][2], 'file')
+    self.assertEqual(len(changes.modified), 1)
+    self.assertEqual(changes.modified[0][0], 'debian/changelog')
+    self.assertEqual(changes.modified[0][2], 'file')
 

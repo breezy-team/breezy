@@ -330,6 +330,21 @@ class cmd_merge_upstream(Command):
 register_command(cmd_merge_upstream)
 
 
+class cmd_import_snapshot(Command):
+
+  takes_args = ['package', 'directory?']
+
+  def run(self, package, directory=None):
+    from import_dsc import SnapshotImporter
+    if directory is None:
+      directory = package
+    importer = SnapshotImporter(package)
+    importer.do_import(directory)
+
+
+register_command(cmd_import_snapshot)
+
+
 def test_suite():
     from unittest import TestSuite
     import tests
