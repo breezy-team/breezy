@@ -46,8 +46,8 @@ IN DEVELOPMENT
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
-    * Bzrlib now exports explicit API compatibility information to assist
-      library users and plugins. See the `bzrlib.api` module for details.
+    * ``bzrlib`` now exports explicit API compatibility information to assist
+      library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
   INTERNALS:
