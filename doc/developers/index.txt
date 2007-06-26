@@ -27,6 +27,10 @@ Plans
 Specifications
 ==============
 
+* `API versioning <api-versioning.htm>`_
+
+  bzrlib API versioning.
+
 * `Bundles <bundles.htm>`_
 
   All about bzr bundles.
