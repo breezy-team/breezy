@@ -588,7 +588,7 @@ class RemoteTests(object):
         branch = wt.branch
         wt.commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_readonly_url('from')
-        self.run_bzr('branch', url, 'to')
+        self.run_bzr(['branch', url, 'to'])
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
         # the branch should be set in to to from
@@ -609,7 +609,7 @@ class RemoteTests(object):
         self.run_bzr('add branch/file')[0]
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
-        self.run_bzr('check', url)
+        self.run_bzr(['check', url])
     
     def test_push(self):
         # create a source branch
@@ -617,11 +617,11 @@ class RemoteTests(object):
         os.chdir('my-branch')
         self.run_bzr('init')
         file('hello', 'wt').write('foo')
-        self.run_bzr('add', 'hello')
-        self.run_bzr('commit', '-m', 'setup')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup')
 
         # with an explicit target work
-        self.run_bzr('push', self.get_url('output-branch'))
+        self.run_bzr(['push', self.get_url('output-branch')])
 
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):

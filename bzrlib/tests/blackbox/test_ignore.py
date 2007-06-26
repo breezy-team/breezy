@@ -48,7 +48,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('init')
         self.run_bzr_error(('bzr: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
-                           'ignore','/crud')
+                           'ignore /crud')
         
     def test_ignore_directories(self):
         """ignoring a directory should ignore directory tree.
@@ -113,7 +113,7 @@ class TestCommands(ExternalBase):
                            'ignore')
 
     def test_ignore_old_defaults(self):
-        out, err = self.run_bzr('ignore', '--old-default-rules')
+        out, err = self.run_bzr('ignore --old-default-rules')
         self.assertContainsRe(out, 'CVS')
         self.assertEqual('', err)
 

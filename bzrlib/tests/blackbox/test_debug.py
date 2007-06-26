@@ -28,8 +28,8 @@ class TestDebugOption(TestCase):
 
     def test_dash_derror(self):
         """With -Derror, tracebacks are shown even for user errors"""
-        out, err = self.run_bzr("-Derror", "branch", "nonexistent-location",
-                retcode=3)
+        out, err = self.run_bzr("-Derror branch nonexistent-location",
+                                retcode=3)
         # error output should contain a traceback; we used to look for code in
         # here but it may be missing if the source is not in sync with the
         # pyc file.

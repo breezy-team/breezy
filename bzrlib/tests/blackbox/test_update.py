@@ -49,8 +49,8 @@ class TestUpdate(ExternalBase):
 
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
-        self.run_bzr('checkout', 'branch', 'checkout')
-        out, err = self.run_bzr('update', 'checkout')
+        self.run_bzr('checkout branch checkout')
+        out, err = self.run_bzr('update checkout')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
@@ -115,11 +115,11 @@ class TestUpdate(ExternalBase):
         # branch with local commits.
         master = self.make_branch_and_tree('master')
         # make a bound branch
-        self.run_bzr('checkout', 'master', 'child')
+        self.run_bzr('checkout master child')
         # get an object form of child
         child = WorkingTree.open('child')
         # check that out
-        self.run_bzr('checkout', '--lightweight', 'child', 'checkout')
+        self.run_bzr('checkout --lightweight child checkout')
         # get an object form of the checkout to manipulate
         wt = WorkingTree.open('checkout')
         # change master
@@ -142,7 +142,7 @@ class TestUpdate(ExternalBase):
 
         # now, update checkout ->
         # get all three files and a pending merge.
-        out, err = self.run_bzr('update', 'checkout')
+        out, err = self.run_bzr('update checkout')
         self.assertEqual('', out)
         self.assertContainsRe(err, 'Updated to revision 1.\n'
                                    'Your local commits will now show as'
@@ -180,13 +180,13 @@ class TestUpdate(ExternalBase):
 
         # Merge the other branch into checkout
         os.chdir('checkout1')
-        self.run_bzr('merge', '../other')
+        self.run_bzr('merge ../other')
 
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
         # At this point, 'commit' should fail, because we are out of date
         self.run_bzr_error(["please run 'bzr update'"],
-                           'commit', '-m', 'merged')
+                           'commit -m merged')
 
         # This should not report about local commits being pending
         # merges, because they were real merges

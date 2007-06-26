@@ -1337,11 +1337,8 @@ class TestCase(unittest.TestCase):
             if isinstance(args[0], (list, basestring)):
                 args = args[0]
         else:
-            ## symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
-            ##         DeprecationWarning, stacklevel=2)
-            # not done yet, because too many tests would need to  be updated -
-            # but please don't do this in new code.  -- mbp 20070626
-            pass
+            symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
+                                   DeprecationWarning, stacklevel=3)
 
         out, err = self._run_bzr_autosplit(args=args,
             retcode=retcode,
@@ -1369,8 +1366,8 @@ class TestCase(unittest.TestCase):
         :param kwargs: Keyword arguments which are interpreted by run_bzr
             This function changes the default value of retcode to be 3,
             since in most cases this is run when you expect bzr to fail.
-        :return: (out, err) The actual output of running the command (in case you
-                 want to do more inspection)
+        :return: (out, err) The actual output of running the command (in case
+            you want to do more inspection)
 
         Examples of use:
             # Make sure that commit is failing because there is nothing to do
@@ -1383,7 +1380,8 @@ class TestCase(unittest.TestCase):
                                'commit', '--strict', '-m', 'my commit comment')
         """
         kwargs.setdefault('retcode', 3)
-        out, err = self.run_bzr(error_regexes=error_regexes, *args, **kwargs)
+        kwargs['error_regexes'] = error_regexes
+        out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):

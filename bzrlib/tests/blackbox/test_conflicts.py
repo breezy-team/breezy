@@ -59,7 +59,7 @@ class TestConflicts(ExternalBase):
         self.assertEqual(3, len(conflicts.splitlines()))
 
     def test_conflicts_text(self):
-        conflicts = self.run_bzr('conflicts', '--text')[0].splitlines()
+        conflicts = self.run_bzr('conflicts --text')[0].splitlines()
         self.assertEqual(['my_other_file', 'myfile'], conflicts)
 
     def test_resolve(self):

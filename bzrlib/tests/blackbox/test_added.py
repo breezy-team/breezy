@@ -48,9 +48,9 @@ class TestAdded(TestCaseInTempDir):
         # after add, shows up in list
         # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
         # NameError
-        bzr('add', 'a')
+        bzr('add a')
         check_added('a\n')
 
         # after commit, now no longer listed
-        bzr('commit', '-m', 'add a')
+        bzr('commit -m add_a')
         check_added('')

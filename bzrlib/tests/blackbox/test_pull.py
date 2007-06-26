@@ -153,28 +153,28 @@ class TestPull(ExternalBase):
         os.chdir('a')
         bzr('init')
         open('foo', 'wb').write('original\n')
-        bzr('add', 'foo')
-        bzr('commit', '-m', 'initial commit')
+        bzr('add foo')
+        bzr('commit -m initial_commit')
 
         os.chdir('..')
-        bzr('branch', 'a', 'b')
+        bzr('branch a b')
 
         os.chdir('a')
         open('foo', 'wb').write('changed\n')
-        bzr('commit', '-m', 'later change')
+        bzr('commit -m later_change')
 
         open('foo', 'wb').write('another\n')
-        bzr('commit', '-m', 'a third change')
+        bzr('commit -m a_third_change')
 
         rev_history_a = get_rh(3)
 
         os.chdir('../b')
-        bzr('merge', '../a')
-        bzr('commit', '-m', 'merge')
+        bzr('merge ../a')
+        bzr('commit -m merge')
 
         rev_history_b = get_rh(2)
 
-        bzr('pull', '--overwrite', '../a')
+        bzr('pull --overwrite ../a')
         rev_history_b = get_rh(3)
 
         self.assertEqual(rev_history_b, rev_history_a)
@@ -195,37 +195,37 @@ class TestPull(ExternalBase):
         os.chdir('a')
         bzr('init')
         open('foo', 'wb').write('original\n')
-        bzr('add', 'foo')
-        bzr('commit', '-m', 'initial commit')
+        bzr('add foo')
+        bzr('commit -m initial_commit')
 
         os.chdir('..')
-        bzr('branch', 'a', 'b')
+        bzr('branch a b')
 
         os.chdir('a')
         open('foo', 'wb').write('changed\n')
-        bzr('commit', '-m', 'later change')
+        bzr('commit -m later_change')
 
         open('foo', 'wb').write('another\n')
-        bzr('commit', '-m', 'a third change')
+        bzr('commit -m a_third_change')
 
         rev_history_a = get_rh(3)
 
         os.chdir('../b')
-        bzr('merge', '../a')
-        bzr('commit', '-m', 'merge')
+        bzr('merge ../a')
+        bzr('commit -m merge')
 
         rev_history_b = get_rh(2)
 
         os.chdir('../a')
         open('foo', 'wb').write('a fourth change\n')
-        bzr('commit', '-m', 'a fourth change')
+        bzr('commit -m a_fourth_change')
 
         rev_history_a = get_rh(4)
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history
         os.chdir('../b')
-        bzr('pull', '--overwrite', '../a')
+        bzr('pull --overwrite ../a')
         rev_history_b = get_rh(4)
 
         self.assertEqual(rev_history_b, rev_history_a)
@@ -294,11 +294,11 @@ class TestPull(ExternalBase):
         # Create the bundle for 'b' to pull
         os.chdir('branch_a')
         bundle_file = open('../bundle', 'wb')
-        bundle_file.write(self.run_bzr('bundle', '../branch_b')[0])
+        bundle_file.write(self.run_bzr('bundle ../branch_b')[0])
         bundle_file.close()
 
         os.chdir('../branch_b')
-        out, err = self.run_bzr('pull', '../bundle')
+        out, err = self.run_bzr('pull ../bundle')
         self.assertEqual(out,
                          'Now on revision 2.\n')
         self.assertEqual(err,
@@ -315,6 +315,6 @@ class TestPull(ExternalBase):
                              testament_b.as_text())
 
         # it is legal to attempt to pull an already-merged bundle
-        out, err = self.run_bzr('pull', '../bundle')
+        out, err = self.run_bzr('pull ../bundle')
         self.assertEqual(err, '')
         self.assertEqual(out, 'No revisions to pull.\n')
