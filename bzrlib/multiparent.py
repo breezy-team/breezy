@@ -135,6 +135,14 @@ class MultiParent(object):
             diff.hunks.append(new_text)
         return diff
 
+    def to_lines(self, parents=()):
+        """Contruct a fulltext from this diff and its parents"""
+        mpvf = MultiMemoryVersionedFile()
+        for num, parent in enumerate(parents):
+            mpvf.add_version(StringIO(parent).readlines(), num, [])
+        mpvf.add_diff(self, 'a', range(len(parents)))
+        return mpvf.get_line_list(['a'])[0]
+
     @classmethod
     def from_texts(cls, text, parents=()):
         """Produce a MultiParent from a text and list of parent text"""

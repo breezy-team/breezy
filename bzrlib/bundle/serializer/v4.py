@@ -411,12 +411,8 @@ class RevisionInstaller(object):
                    for p in parent_ids]
         parent_texts = [self._source_serializer.write_inventory_to_string(p)
                         for p in parents]
-        mpvf = multiparent.MultiMemoryVersionedFile()
-        for parent, ptext in zip(parent_ids, parent_texts):
-            mpvf.add_version(StringIO(ptext).readlines(), parent, [])
-        mpvf.add_diff(multiparent.MultiParent.from_patch(text), revision_id,
-                      parent_ids)
-        target_lines = mpvf.get_line_list([revision_id])[0]
+        target_lines = multiparent.MultiParent.from_patch(text).to_lines(
+            parent_texts)
         sha1 = osutils.sha_strings(target_lines)
         if sha1 != metadata['sha1']:
             raise BadBundle("Can't convert to target format")

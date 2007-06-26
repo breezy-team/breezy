@@ -122,6 +122,11 @@ class TestMulti(TestCase):
         mp.hunks.append(multiparent.NewText(['f\n', 'g\n']))
         self.assertEqual(7, mp.num_lines())
 
+    def test_to_lines(self):
+        mpdiff = multiparent.MultiParent.from_texts('a\nb\nc\n', ('b\nc\n',))
+        lines = mpdiff.to_lines(('b\ne\n',))
+        self.assertEqual(['a\n', 'b\n', 'e\n'], lines)
+
 
 class TestNewText(TestCase):
 
