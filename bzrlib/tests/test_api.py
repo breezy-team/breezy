@@ -23,6 +23,7 @@ relevant test modules.
 
 import bzrlib
 import bzrlib.api
+from bzrlib.errors import IncompatibleAPI
 from bzrlib.tests import TestCase
 
 class APITests(TestCase):
@@ -69,3 +70,49 @@ class TestAPIVersioning(TestCase):
         an_object = TrivialObject()
         self.assertEqual(bzrlib.version_info[0:3],
             bzrlib.api.get_current_api_version(an_object))
+
+    def test_require_api_wanted_is_minimum_is_ok(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_api(an_object, (1, 2, 3))
+
+    def test_require_api_wanted_is_current_is_ok(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_api(an_object, (4, 5, 6))
+
+    def test_require_api_wanted_is_above_minimum_is_ok(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_api(an_object, (1, 2, 4))
+
+    def test_require_api_wanted_is_below_current_is_ok(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_api(an_object, (4, 5, 5))
+
+    def test_require_api_wanted_is_below_minimum_raises(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        err = self.assertRaises(IncompatibleAPI,
+            bzrlib.api.require_api, an_object, (1, 2, 2))
+        self.assertEqual(err.api, an_object)
+        self.assertEqual(err.wanted, (1, 2, 2))
+        self.assertEqual(err.minimum, (1, 2, 3))
+        self.assertEqual(err.current, (4, 5, 6))
+
+    def test_require_api_wanted_is_above_current_raises(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        err = self.assertRaises(IncompatibleAPI,
+            bzrlib.api.require_api, an_object, (4, 5, 7))
+        self.assertEqual(err.api, an_object)
+        self.assertEqual(err.wanted, (4, 5, 7))
+        self.assertEqual(err.minimum, (1, 2, 3))
+        self.assertEqual(err.current, (4, 5, 6))
