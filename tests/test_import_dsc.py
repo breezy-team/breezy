@@ -26,6 +26,7 @@ from bzrlib.errors import FileExists
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
+from errors import ImportError
 from import_dsc import import_dsc
 
 def write_to_file(filename, contents):
@@ -121,7 +122,7 @@ class TestImportDsc(TestCaseWithTransport):
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_2))
 
-  def make_dsc(self, filename, version, file1, file2=None):
+  def make_dsc(self, filename, version, file1, extra_files=[]):
     write_to_file(filename, """Format: 1.0
 Source: package
 Version: %s
@@ -133,14 +134,17 @@ Build-Depends: debhelper (>= 5.0.0)
 Files:
  8636a3e8ae81664bac70158503aaf53a 1328218 %s
 """ % (version, file1))
-    if file2 is not None:
+    i = 1
+    for extra_file in extra_files:
       append_to_file(filename,
-                     " 1acd97ad70445afd5f2a64858296f21c 20709 %s" % file2)
+                     " 1acd97ad70445afd5f2a64858296f21%d 20709 %s\n" % \
+                     (i, extra_file))
+      i += 1
 
   def make_dsc_1(self):
     self.make_orig_1()
     self.make_diff_1()
-    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, self.diff_1)
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1])
 
   def make_dsc_1b(self):
     self.make_diff_1b()
@@ -153,7 +157,7 @@ Files:
   def make_dsc_2(self):
     self.make_orig_2()
     self.make_diff_2()
-    self.make_dsc(self.dsc_2, '0.2-1', self.orig_2, self.diff_2)
+    self.make_dsc(self.dsc_2, '0.2-1', self.orig_2, [self.diff_2])
 
   def import_dsc_1(self):
     self.make_dsc_1()
@@ -421,4 +425,15 @@ Files:
     self.assertEqual(len(changes.modified), 1)
     self.assertEqual(changes.modified[0][0], 'debian/changelog')
     self.assertEqual(changes.modified[0][2], 'file')
+
+  def test_import_dsc_restrictions_on_dscs(self):
+    """Test that errors are raised for confusing sets of .dsc files."""
+    self.make_dsc(self.dsc_1, '0.1-1', self.diff_1)
+    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1)
+    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1, self.diff_1])
+    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.orig_1, self.diff_1])
+    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
 

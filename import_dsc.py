@@ -36,27 +36,45 @@ from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      common_directory,
                                                      )
 
+from errors import ImportError
 from merge_upstream import make_upstream_tag
 import patches
 
-def _dsc_sorter(dscname1, dscname2):
-  f1 = open(dscname1)
-  try:
-    dsc1 = deb822.Dsc(f1)
-  finally:
-    f1.close()
-  f2 = open(dscname2)
-  try:
-    dsc2 = deb822.Dsc(f2)
-  finally:
-    f2.close()
-  v1 = Version(dsc1['Version'])
-  v2 = Version(dsc2['Version'])
-  if v1 == v2:
-    return 0
-  if v1 > v2:
-    return 1
-  return -1
+# TODO: support native packages (should be easy).
+# TODO: Use a transport to retrieve the files, so that they can be got remotely
+
+class DscCache(object):
+
+  def __init__(self):
+    self.cache = {}
+
+  def get_dsc(self, name):
+    if name in self.cache:
+      dsc1 = self.cache[name]
+    else:
+      f1 = open(name)
+      try:
+        dsc1 = deb822.Dsc(f1)
+      finally:
+        f1.close()
+      self.cache[name] = dsc1
+    return dsc1
+
+class DscComp(object):
+
+  def __init__(self, cache):
+    self.cache = cache
+
+  def cmp(self, dscname1, dscname2):
+    dsc1 = self.cache.get_dsc(dscname1)
+    dsc2 = self.cache.get_dsc(dscname2)
+    v1 = Version(dsc1['Version'])
+    v2 = Version(dsc2['Version'])
+    if v1 == v2:
+      return 0
+    if v1 > v2:
+      return 1
+    return -1
 
 
 def import_orig(tree, origname, version, last_upstream=None):
@@ -157,6 +175,38 @@ def import_diff(tree, diffname, version, dangling_revid=None):
 def import_dsc(target_dir, dsc_files):
   if os.path.exists(target_dir):
     raise FileExists(target_dir)
+  cache = DscCache()
+  dsc_files.sort(cmp=DscComp(cache).cmp)
+  safe_files = []
+  for dscname in dsc_files:
+    dsc = cache.get_dsc(dscname)
+    orig_file = None
+    diff_file = None
+    for file_details in dsc['files']:
+      name = file_details['name']
+      if name.endswith('.orig.tar.gz'):
+        if orig_file is not None:
+          raise ImportError("%s contains more than one .orig.tar.gz" % dscname)
+        orig_file = name
+      elif name.endswith('.diff.gz'):
+        if diff_file is not None:
+          raise ImportError("%s contains more than one .diff.gz" % dscname)
+        diff_file = name
+    if diff_file is None:
+      raise ImportError("%s contains only a .orig.tar.gz, it must contain a "
+                        ".diff.gz as well" % dscname)
+    version = Version(dsc['Version'])
+    if orig_file is not None:
+      safe_files.append((orig_file, version, 'orig'))
+    found = False
+    for safe_file in safe_files:
+      if safe_file[0].endswith("_%s.orig.tar.gz" % version.upstream_version):
+        found = True
+        break
+    if found == False:
+      raise ImportError("There is no upstream version corresponding to %s" % \
+                          diff_file)
+    safe_files.append((diff_file, version, 'diff'))
   os.mkdir(target_dir)
   format = bzrdir.format_registry.make_bzrdir('dirstate-tags')
   branch  = bzrdir.BzrDir.create_branch_convenience(target_dir,
@@ -164,34 +214,16 @@ def import_dsc(target_dir, dsc_files):
   tree = branch.bzrdir.open_workingtree()
   tree.lock_write()
   try:
-    dsc_files.sort(cmp=_dsc_sorter)
     last_upstream = None
-    for dscname in dsc_files:
-      f = open(dscname)
-      try:
-        dsc = deb822.Dsc(f)
-      finally:
-        f.close()
-      orig_files = []
-      diff_files = []
-      for file_details in dsc['files']:
-        name = file_details['name']
-        if name.endswith('.orig.tar.gz'):
-          orig_files.append(name)
-        elif name.endswith('.diff.gz'):
-          diff_files.append(name)
-      assert len(orig_files) < 2, "I don't know how to import a source " \
-                                  "package with multiple .orig.tar.gz files."
-      assert len(diff_files) == 1, "I don't know how to import a source " \
-                                   "package which doesn't have a single " \
-                                   ".diff.gz file."
-      version = Version(dsc['Version'])
-      dangling_revid = None
-      if len(orig_files) == 1:
-        dangling_revid = import_orig(tree, orig_files[0], version,
+    dangling_revid = None
+    for (filename, version, type) in safe_files:
+      if type == 'orig':
+        dangling_revid = import_orig(tree, filename, version,
                                      last_upstream=last_upstream)
         last_upstream = version.upstream_version
-      import_diff(tree, diff_files[0], version, dangling_revid=dangling_revid)
+      elif type == 'diff':
+        import_diff(tree, filename, version, dangling_revid=dangling_revid)
+        dangling_revid = None
   finally:
     tree.unlock()
 

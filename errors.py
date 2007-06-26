@@ -70,3 +70,10 @@ class AddChangelogError(DebianError):
     BzrError.__init__(self)
     self.changelog = changelog
 
+class ImportError(DebianError):
+  _fmt = """The files could not be imported: %(reason)s"""
+
+  def __init__(self, reason):
+    BzrError.__init__(self)
+    self.reason = reason
+
