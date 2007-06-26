@@ -1,0 +1,2 @@
+This plugin provides a 'bzr rebase' command, in the same fashion of the 
+famous git-rebase.
