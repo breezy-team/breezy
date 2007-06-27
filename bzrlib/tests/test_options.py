@@ -51,24 +51,24 @@ class OptionTests(TestCase):
 
     def test_option_help(self):
         """Options have help strings."""
-        out, err = self.run_bzr_captured(['commit', '--help'])
+        out, err = self.run_bzr(['commit', '--help'])
         self.assertContainsRe(out, r'--file(.|\n)*file containing commit'
                                    ' message')
         self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
         """Global options have help strings."""
-        out, err = self.run_bzr_captured(['help', 'status'])
+        out, err = self.run_bzr(['help', 'status'])
         self.assertContainsRe(out, r'--show-ids.*show internal object')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
-        out, err = self.run_bzr_captured(['help', 'commit'])
+        out, err = self.run_bzr(['help', 'commit'])
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
     def test_unknown_short_opt(self):
-        out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
+        out, err = self.run_bzr(['help', '-r'], retcode=3)
         self.assertContainsRe(err, r'no such option')
 
     def test_get_short_name(self):

@@ -186,6 +186,18 @@ class DisabledMethod(BzrError):
         self.class_name = class_name
 
 
+class IncompatibleAPI(BzrError):
+
+    _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
+        'It supports versions "%(minimum)s" to "%(current)s".'
+
+    def __init__(self, api, wanted, minimum, current):
+        self.api = api
+        self.wanted = wanted
+        self.minimum = minimum
+        self.current = current
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -2136,3 +2148,18 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class NoDestinationAddress(BzrError):
+
+    _fmt = "Message does not have a destination address."
+
+    internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error

@@ -46,6 +46,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
 
+    def test_incompatibleAPI(self):
+        error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
+        self.assertEqualDiff(
+            'The API for "module" is not compatible with "(1, 2, 3)". '
+            'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "

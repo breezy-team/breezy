@@ -31,16 +31,6 @@ files=(a, b, c, d)
 
 class TestRemove(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
-
-        # magically convert commands like 'remove abc' to ['remove', 'abc']
-        if (isinstance(argv, tuple) and len(argv) == 1 and
-            isinstance(argv[0], basestring)):
-            argv = shlex.split(argv[0])
-        return ExternalBase.run_bzr_captured(self, argv, retcode, encoding,
-            stdin, working_dir)
-
     def _make_add_and_assert_tree(self, files):
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
