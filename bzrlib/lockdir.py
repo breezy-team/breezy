@@ -223,7 +223,10 @@ class LockDir(object):
 
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
-            self.confirm()
+            # we used to do self.confirm() at this point, but it's really
+            # unnecessary, we have no substantial chance of having it broken
+            # just as it's acquired, and we believe that this lock design is
+            # safe on all platforms.
             # FIXME: we should remove the pending lock if we fail, 
             # https://bugs.launchpad.net/bzr/+bug/109169
         except errors.PermissionDenied:
