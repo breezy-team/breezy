@@ -820,8 +820,8 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        raise AssertionError(message + 
-                             self._ndiff_strings(a, b))      
+        raise AssertionError(message +
+                             self._ndiff_strings(a, b))
         
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,6 +99,7 @@ import time
 from cStringIO import StringIO
 
 from bzrlib import (
+    debug,
     errors,
     )
 import bzrlib.config
@@ -197,6 +198,8 @@ class LockDir(object):
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
         try:
+            self._trace("lock_write...")
+            start_time = time.time()
             tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
             try:
                 self.transport.mkdir(tmpname)
@@ -221,11 +224,16 @@ class LockDir(object):
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
+            # FIXME: we should remove the pending lock if we fail, 
+            # https://bugs.launchpad.net/bzr/+bug/109169
         except errors.PermissionDenied:
+            self._trace("... lock failed, permission denied")
             raise
         except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
-            mutter("contention on %r: %s", self, e)
+            self._trace("... contention, %s", e)
             raise LockContention(self)
+        self._trace("... lock succeeded after %dms",
+                (time.time() - start_time) * 1000)
 
     def unlock(self):
         """Release a held lock
@@ -241,6 +249,8 @@ class LockDir(object):
         else:
             # rename before deleting, because we can't atomically remove the
             # whole tree
+            start_time = time.time()
+            self._trace("unlocking")
             tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
             # gotta own it to unlock
             self.confirm()
@@ -248,6 +258,8 @@ class LockDir(object):
             self._lock_held = False
             self.transport.delete(tmpname + self.__INFO_NAME)
             self.transport.rmdir(tmpname)
+            self._trace("... unlock succeeded after %dms",
+                    (time.time() - start_time) * 1000)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -341,11 +353,12 @@ class LockDir(object):
         """
         try:
             info = self._read_info_file(self._held_info_path)
+            self._trace("peek -> held")
             assert isinstance(info, dict), \
                     "bad parse result %r" % info
             return info
         except NoSuchFile, e:
-            return None
+            self._trace("peek -> not held")
 
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
@@ -394,7 +407,7 @@ class LockDir(object):
             except LockContention:
                 pass
             new_info = self.peek()
-            mutter('last_info: %s, new info: %s', last_info, new_info)
+            self._trace('last_info: %s, new info: %s', last_info, new_info)
             if new_info is not None and new_info != last_info:
                 if last_info is None:
                     start = 'Unable to obtain'
@@ -477,8 +490,10 @@ class LockDir(object):
             if self.peek():
                 return
             if time.time() + poll < deadline:
+                self._trace("Waiting %ss", poll)
                 time.sleep(poll)
             else:
+                self._trace("Timeout after waiting %ss", timeout)
                 raise LockContention(self)
 
     def _format_lock_info(self, info):
@@ -501,4 +516,10 @@ class LockDir(object):
                 lock_token = info.get('nonce')
             if token != lock_token:
                 raise errors.TokenMismatch(token, lock_token)
+            else:
+                self._trace("Revalidated by token %r", token)
 
+    def _trace(self, format, *args):
+        if 'lock' not in debug.debug_flags:
+            return
+        mutter(str(self) + ": " + (format % args))
