@@ -231,7 +231,6 @@ class LockDir(object):
             # safe on all platforms.
             # FIXME: we should remove the pending lock if we fail, 
             # https://bugs.launchpad.net/bzr/+bug/109169
-            return self.nonce
         except errors.PermissionDenied:
             self._trace("... lock failed, permission denied")
             raise
@@ -240,6 +239,7 @@ class LockDir(object):
             raise LockContention(self)
         self._trace("... lock succeeded after %dms",
                 (time.time() - start_time) * 1000)
+        return self.nonce
 
     def unlock(self):
         """Release a held lock
