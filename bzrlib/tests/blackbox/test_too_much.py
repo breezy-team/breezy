@@ -205,7 +205,7 @@ class TestCommands(ExternalBase):
         
     def test_unknown_command(self):
         """Handling of unknown command."""
-        out, err = self.run_bzr(['fluffy-badger'], retcode=3)
+        out, err = self.run_bzr('fluffy-badger', retcode=3)
         self.assertEquals(out, '')
         err.index('unknown command')
 

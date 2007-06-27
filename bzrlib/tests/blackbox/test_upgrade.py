@@ -80,7 +80,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # date
         (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=3)
         self.assertEqual("This is a checkout. The branch (%s) needs to be "
-                         "upgraded separately.\n" 
+                         "upgraded separately.\n"
                          % get_transport(self.get_url('current_format_branch')).base,
                          out)
         self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "

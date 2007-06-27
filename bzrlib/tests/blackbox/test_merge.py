@@ -106,22 +106,22 @@ class TestMerge(ExternalBase):
         print >> file('sub/c.txt', 'wb'), "hello"
         self.run_bzr('init')
         self.run_bzr('add')
-        self.run_bzr('commit -m added_a')
+        self.run_bzr(['commit', '-m', 'added a'])
         self.run_bzr('branch . ../b')
         print >> file('sub/a.txt', 'ab'), "there"
         print >> file('b.txt', 'ab'), "there"
         print >> file('sub/c.txt', 'ab'), "there"
-        self.run_bzr('commit -m Added_there')
+        self.run_bzr(['commit', '-m', 'Added there'])
         os.unlink('sub/a.txt')
         os.unlink('sub/c.txt')
         os.rmdir('sub')
         os.unlink('b.txt')
-        self.run_bzr('commit -m Removed_a.txt')
+        self.run_bzr(['commit', '-m', 'Removed a.txt'])
         os.chdir('../b')
         print >> file('sub/a.txt', 'ab'), "something"
         print >> file('b.txt', 'ab'), "something"
         print >> file('sub/c.txt', 'ab'), "something"
-        self.run_bzr('commit -m Modified_a.txt')
+        self.run_bzr(['commit', '-m', 'Modified a.txt'])
         self.run_bzr('merge ../a/', retcode=1)
         self.assert_(os.path.exists('sub/a.txt.THIS'))
         self.assert_(os.path.exists('sub/a.txt.BASE'))

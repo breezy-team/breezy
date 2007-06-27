@@ -44,8 +44,10 @@ class TestOutsideWT(ChrootedTestCase):
     def test_diff_ouside_tree(self):
         os.chdir(tempfile.mkdtemp())
         self.run_bzr('init branch1')
-        self.run_bzr('commit -m nothing --unchanged branch1')
-        self.run_bzr('commit -m nothing --unchanged branch1')
+        self.run_bzr(['commit', '-m', 'nothing',
+                               '--unchanged', 'branch1'])
+        self.run_bzr(['commit', '-m', 'nothing',
+                               '--unchanged', 'branch1'])
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3)
         self.assertEquals('', out)
