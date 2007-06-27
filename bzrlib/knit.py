@@ -652,25 +652,47 @@ class KnitVersionedFile(VersionedFile):
                         return True
         return False
 
-    def insert_data_stream(self, (format, data_list, reader_callable)):
+    def insert_data_stream(self, (format, data_list, reader_callable),
+                           buffer_size=64*1024):
         """Insert knit records from a data stream into this knit.
 
-        Existing versions will be ...
+        If a version in the stream is already present in this knit, it will not
+        be inserted a second time.  It will be checked for consistency with the
+        stored version however, and may cause a KnitCorrupt error to be raised
+        if the data in the stream disagrees with the already stored data.
         
+        :param buffer_size: maximum size of record content to batch together to
+            improve performance.  Default is 64k.
+
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
             raise KnitDataStreamIncompatible(
                 format, self.get_format_signature())
+        # To avoid lots of small writes (and small reads from the
+        # reader_callable), we batch up the records to insert as we process the
+        # stream, rather than inserting them one-by-one.  This means in the
+        # worst case we may need to hold the entire knit contents in memory, but
+        # this is no worse than the existing logic in join.  We also take care
+        # to avoid empty writes.
+        records_to_insert = []
+        bytes_to_read = 0
         for version_id, options, length, parents in data_list:
             # do we have this version_id:
-            #  * yes: consistency check
-            #  * no: plan to insert it
-            raw_data = reader_callable(length)
+            #  * yes: check its consistent with the data we've already got
+            #         stored for that version_id.
+            #  * no: arrange to insert this record.
             if self.has_version(version_id):
-                # Make sure that if we've already seen this version_id, that it has
-                # the same content.
-                # First, check the list of parents.
+                # Make sure that if we've already got this version_id, that the
+                # stream agrees with what's stored.
+                # First we flush the records to insert, because we'll need to
+                # read from the reader_callable to inspect the data.
+                if records_to_insert:
+                    self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
+                    records_to_insert = []
+                    bytes_to_read = 0
+                
+                # First check: the list of parents.
                 my_parents = self.get_parents_with_ghosts(version_id)
                 if my_parents != parents:
                     raise KnitCorrupt(
@@ -681,6 +703,7 @@ class KnitVersionedFile(VersionedFile):
 
                 # Also check the SHA-1 of the fulltext this content will
                 # produce.
+                raw_data = reader_callable(length)
                 my_fulltext_sha1 = self.get_sha1(version_id)
                 df, rec = self._data._parse_record_header(version_id, raw_data)
                 stream_fulltext_sha1 = rec[3]
@@ -690,8 +713,18 @@ class KnitVersionedFile(VersionedFile):
                     raise KnitCorrupt(
                         self.filename, 'sha-1 does not match %s' % version_id)
             else:
-                # We don't have this record.  Insert it.
-                self._add_raw_records([(version_id, options, parents, length)], raw_data)
+                # We don't have this record.  Queue it for insertion.
+                if records_to_insert and bytes_to_read + length > buffer_size:
+                    # This record will overflow the buffer, so flush first.
+                    self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
+                    records_to_insert = []
+                    bytes_to_read = 0
+
+                records_to_insert.append((version_id, options, parents, length))
+                bytes_to_read += length
+        # Write any unflushed records.
+        if records_to_insert:
+            self._add_raw_records(records_to_insert, reader_callable(bytes_to_read))
 
     def versions(self):
         """See VersionedFile.versions."""
