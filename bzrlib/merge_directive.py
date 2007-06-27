@@ -17,6 +17,7 @@
 
 from email import Message
 from StringIO import StringIO
+import re
 
 from bzrlib import (
     branch as _mod_branch,
@@ -60,7 +61,7 @@ class _BaseMergeDirective(object):
         self.source_branch = source_branch
         self.message = message
 
-    def _to_lines(self):
+    def _to_lines(self, base_revision=False):
         """Serialize as a list of lines
 
         :return: a list of lines
@@ -72,6 +73,8 @@ class _BaseMergeDirective(object):
         for key in ('source_branch', 'message'):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
+        if base_revision:
+            stanza.add('base_revision_id', self.base_revision_id)
         lines = ['# ' + self._format_string + '\n']
         lines.extend(rio.to_patch_lines(stanza))
         lines.append('# \n')
@@ -194,6 +197,8 @@ class _BaseMergeDirective(object):
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
+        if self.patch is not None:
+            self._verify_patch(target_repo)
         return self.revision_id
 
 
@@ -247,6 +252,9 @@ class MergeDirective(_BaseMergeDirective):
 
     def get_raw_bundle(self):
         return self.bundle
+
+    def _verify_patch(self, repository):
+        pass
 
     def _bundle(self):
         if self.patch_type == 'bundle':
@@ -322,12 +330,13 @@ class MergeDirective2(_BaseMergeDirective):
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
-                 bundle=None):
+                 bundle=None, base_revision_id=None):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
         self.bundle = bundle
+        self.base_revision_id = base_revision_id
 
     def _patch_type(self):
         if self.bundle is not None:
@@ -377,17 +386,19 @@ class MergeDirective2(_BaseMergeDirective):
         time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
-                    'source_branch', 'message'):
+                    'source_branch', 'message', 'base_revision_id'):
             try:
                 kwargs[key] = stanza.get(key)
             except KeyError:
                 pass
         kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
+        kwargs['base_revision_id'] =\
+            kwargs['base_revision_id'].encode('utf-8')
         return klass(time=time, timezone=timezone, patch=patch, bundle=bundle,
                      **kwargs)
 
     def to_lines(self):
-        lines = self._to_lines()
+        lines = self._to_lines(base_revision=True)
         if self.patch is not None:
             lines.append('# Begin patch\n')
             lines.extend(self.patch.splitlines(True))
@@ -435,17 +446,16 @@ class MergeDirective2(_BaseMergeDirective):
             locked.append(submit_branch)
             if submit_branch.get_public_branch() is not None:
                 target_branch = submit_branch.get_public_branch()
+            submit_revision_id = submit_branch.last_revision()
+            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
+            graph = repository.get_graph(submit_branch.repository)
+            ancestor_id = graph.find_unique_lca(revision_id,
+                                                submit_revision_id)
             if patch_type is None:
                 patch = None
                 bundle = None
             else:
-                submit_revision_id = submit_branch.last_revision()
-                submit_revision_id = _mod_revision.ensure_null(
-                    submit_revision_id)
                 repository.fetch(submit_branch.repository, submit_revision_id)
-                graph = repository.get_graph()
-                ancestor_id = graph.find_unique_lca(revision_id,
-                                                    submit_revision_id)
                 if patch_type in ('bundle', 'diff'):
                     patch = klass._generate_diff(repository, revision_id,
                                                  ancestor_id)
@@ -467,7 +477,19 @@ class MergeDirective2(_BaseMergeDirective):
             for entry in reversed(locked):
                 entry.unlock()
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, public_branch, message, bundle)
+            patch, public_branch, message, bundle, ancestor_id)
+
+    def _verify_patch(self, repository):
+        calculated_patch = self._generate_diff(repository, self.revision_id,
+                                               self.base_revision_id)
+        # Convert line-endings to UNIX
+        stored_patch = re.sub('\r\n?', '\n', self.patch)
+        # Strip trailing whitespace
+        calculated_patch = re.sub(' *\n', '\n', calculated_patch)
+        stored_patch = re.sub(' *\n', '\n', stored_patch)
+        if calculated_patch != stored_patch:
+            raise errors.PatchVerificationFailed()
+
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 

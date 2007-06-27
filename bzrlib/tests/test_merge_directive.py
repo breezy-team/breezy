@@ -36,6 +36,7 @@ OUTPUT1_2 = """# Bazaar merge directive format 2 (Bazaar 0.18)
 # target_branch: http://example.com
 # testament_sha1: sha
 # timestamp: 1970-01-01 00:09:33 +0002
+# base_revision_id: null:
 #\x20
 # Begin bundle
 booga"""
@@ -57,6 +58,7 @@ OUTPUT2_2 = """# Bazaar merge directive format 2 (Bazaar 0.18)
 # timestamp: 1970-01-01 00:09:33 +0002
 # source_branch: http://example.org
 # message: Hi mom!
+# base_revision_id: null:
 #\x20
 # Begin patch
 booga"""
@@ -100,6 +102,7 @@ Aaron
 # testament_sha1: sha
 # timestamp: 1970-01-01 00:09:33 +0002
 # source_branch: http://example.org
+# base_revision_id: null:
 # message: Hi mom!
 #\x20
 # Begin patch
@@ -233,7 +236,7 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None):
+                 source_branch=None, message=None, base_revision_id='null:'):
         if patch_type == 'bundle':
             bundle = patch
             patch = None
@@ -241,7 +244,7 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
             bundle = None
         return merge_directive.MergeDirective2(revision_id, testament_sha1,
             time, timezone, target_branch, patch, source_branch, message,
-            bundle)
+            bundle, base_revision_id)
 
     @staticmethod
     def set_bundle(md, value):
@@ -312,7 +315,7 @@ class TestMergeDirectiveBranch(object):
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
-        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c\n')])
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n')])
         tree_a.commit('Commit of rev2a', rev_id='rev2a')
         return tree_a, tree_b, branch_c
 
@@ -493,7 +496,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None):
+                 source_branch=None, message=None, base_revision_id='null:'):
         if patch_type == 'bundle':
             bundle = patch
             patch = None
@@ -501,5 +504,37 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
             bundle = None
         return merge_directive.MergeDirective2(revision_id, testament_sha1,
             time, timezone, target_branch, patch, source_branch, message,
-            bundle)
+            bundle, base_revision_id)
 
+    def test_base_revision(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 60,
+            tree_b.branch.base, patch_type='bundle',
+            public_branch=tree_a.branch.base)
+        self.assertEqual('rev1', md.base_revision_id)
+        lines = md.to_lines()
+        md2 = merge_directive.MergeDirective.from_lines(lines)
+        self.assertEqual(md2.base_revision_id, md.base_revision_id)
+
+    def test_patch_verification(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 60,
+            tree_b.branch.base, patch_type='bundle',
+            public_branch=tree_a.branch.base)
+        lines = md.to_lines()
+        md2 = merge_directive.MergeDirective.from_lines(lines)
+        md2._verify_patch(tree_a.branch.repository)
+        # Stript trailing whitespace
+        md2.patch = md2.patch.replace(' \n', '\n')
+        md2._verify_patch(tree_a.branch.repository)
+        # Convert to Mac line-endings
+        md2.patch = md2.patch.replace('\n', '\r')
+        md2._verify_patch(tree_a.branch.repository)
+        # Convert to DOS line-endings
+        md2.patch = md2.patch.replace('\r', '\r\n')
+        md2._verify_patch(tree_a.branch.repository)
+        md2.patch = md2.patch.replace('content_c', 'content_d')
+        self.assertRaises(errors.PatchVerificationFailed, md2._verify_patch,
+            tree_a.branch.repository)
+        self.assertRaises(errors.PatchVerificationFailed,
+                          md2.install_revisions, tree_a.branch.repository)

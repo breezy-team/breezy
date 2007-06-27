@@ -2053,6 +2053,12 @@ class IllegalMergeDirectivePayload(BzrError):
         self.start = start
 
 
+class PatchVerificationFailed(BzrError):
+    """A patch from a merge directive could not be verified"""
+
+    _fmt = "Patch verification failed."
+
+
 class PatchMissing(BzrError):
     """Raise a patch type was specified but no patch supplied"""
 
