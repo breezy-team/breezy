@@ -29,4 +29,7 @@ with KCacheGrind to visualize what the "status" command is doing::
    though the lsprof one is generally recommended. See
    http://docs.python.org/lib/node795.html.
 
+Note that to use --lsprof you must install the lsprof module, which you
+can get with::
 
+  svn co http://codespeak.net/svn/user/arigo/hack/misc/lsprof

@@ -23,7 +23,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
-import smtplib
 import sys
 import tempfile
 import time
@@ -55,8 +54,8 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
-from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
@@ -2473,9 +2472,9 @@ class cmd_selftest(Command):
             clean_selftest_output()
             return 0
         if keep_output:
-            trace.warning("notice: selftest --keep-output "
-                          "is no longer supported; "
-                          "test output is always removed")
+            warning("notice: selftest --keep-output "
+                    "is no longer supported; "
+                    "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
@@ -2552,18 +2551,16 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import MultipleRevisionSources
+        from bzrlib.revision import ensure_null, MultipleRevisionSources
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
 
-        last1 = branch1.last_revision()
-        last2 = branch2.last_revision()
+        last1 = ensure_null(branch1.last_revision())
+        last2 = ensure_null(branch2.last_revision())
 
-        source = MultipleRevisionSources(branch1.repository, 
-                                         branch2.repository)
-        
-        base_rev_id = common_ancestor(last1, last2, source)
+        graph = branch1.repository.get_graph(branch2.repository)
+        base_rev_id = graph.find_unique_lca(last1, last2)
 
         print 'merge base is revision %s' % base_rev_id
 
@@ -2807,8 +2804,8 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            base_revision = common_ancestor(parents[0],
-                                            parents[1], repository)
+            graph = repository.get_graph()
+            base_revision = graph.find_unique_lca(parents[0], parents[1])
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
@@ -3539,8 +3536,11 @@ class cmd_merge_directive(Command):
             help='Message to use when committing this merge')
         ]
 
+    encoding_type = 'exact'
+
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
+        from bzrlib.revision import ensure_null, NULL_REVISION
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
@@ -3571,6 +3571,9 @@ class cmd_merge_directive(Command):
                 revision_id = revision[0].in_history(branch).rev_id
         else:
             revision_id = branch.last_revision()
+        revision_id = ensure_null(revision_id)
+        if revision_id == NULL_REVISION:
+            raise errors.BzrCommandError('No revisions to bundle.')
         directive = merge_directive.MergeDirective.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
@@ -3583,12 +3586,8 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = smtplib.SMTP()
-            server = branch.get_config().get_user_option('smtp_server')
-            if not server:
-                server = 'localhost'
-            s.connect(server)
-            s.sendmail(message['From'], message['To'], message.as_string())
+            s = SMTPConnection(branch.get_config())
+            s.send_email(message)
 
 
 class cmd_tag(Command):
@@ -3807,5 +3806,5 @@ from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
+from bzrlib.weave_commands import cmd_versionedfile_list, cmd_weave_join, \
         cmd_weave_plan_merge, cmd_weave_merge_text

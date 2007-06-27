@@ -19,7 +19,12 @@
 
 
 import bzrlib.errors as errors
-from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
+from bzrlib.deprecated_graph import (
+    all_descendants,
+    Graph,
+    node_distances,
+    select_farthest,
+    )
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -119,7 +124,8 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return (candidate_id in branch.repository.get_ancestry(revision_id))
+    return (candidate_id in branch.repository.get_ancestry(revision_id,
+            topo_sorted=False))
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -253,10 +259,10 @@ def common_ancestor(revision_a, revision_b, revision_source,
                 [revision_a, revision_b])
             # Shortcut the case where one of the tips is already included in
             # the other graphs ancestry.
-            ancestry_a = graph.get_ancestry(revision_a)
+            ancestry_a = graph.get_ancestry(revision_a, topo_sorted=False)
             if revision_b in ancestry_a:
                 return revision_b
-            ancestry_b = graph.get_ancestry(revision_b)
+            ancestry_b = graph.get_ancestry(revision_b, topo_sorted=False)
             if revision_a in ancestry_b:
                 return revision_a
             # convert to a NULL_REVISION based graph.
@@ -476,3 +482,10 @@ def check_not_reserved_id(revision_id):
     """Raise ReservedId if the supplied revision_id is reserved"""
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
+
+def ensure_null(revision_id):
+    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    if revision_id is None:
+        return NULL_REVISION
+    else:
+        return revision_id

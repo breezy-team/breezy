@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  BUGFIXES:
+
+    * Do not suppress pipe errors, etc. in non-display commands
+      (Alexander Belchenko, #87178)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -16,6 +21,39 @@ IN DEVELOPMENT
     * ``bzr missing`` now has better option names ``--this`` and ``--other``.
       (Elliot Murphy)
 
+    * The internal ``weave-list`` command has become ``versionedfile-list``,
+      and now lists knits as well as weaves.  (Aaron Bentley)
+
+    * Automatic merge base selection uses a faster algorithm that chooses
+      better bases in criss-cross merge situations (Aaron Bentley)
+
+    * Progress reporting in ``commit`` has been improved. The various logical
+      stages are now reported on as follows, namely:
+
+      * Collecting changes [Entry x/y] - Stage n/m
+      * Saving data locally - Stage n/m
+      * Uploading data to master branch - Stage n/m
+      * Updating the working tree - Stage n/m
+      * Running post commit hooks - Stage n/m
+      
+      If there is no master branch, the 3rd stage is omitted and the total
+      number of stages is adjusted accordingly.
+      (Ian Clatworthy)
+
+    * Various operations that are now faster due to avoiding unnecessary
+      topological sorts. (Aaron Bentley)
+
+    * The lsprof filename note is emitted via trace.note(), not standard
+      output.  (Aaron Bentley)
+
+    * ``bzrlib`` now exports explicit API compatibility information to assist
+      library users and plugins. See the ``bzrlib.api`` module for details.
+      (Robert Collins)
+
+  INTERNALS:
+
+    * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
@@ -27,6 +65,24 @@ IN DEVELOPMENT
       interface is now self.run_bzr.  The command to run can be passed as
       either a list of parameters, a string containing the command line, or
       (deprecated) varargs parameters.  (Martin Pool)
+
+  BUGFIXES:
+
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
+
+
+bzr 0.17  2007-06-18
+
+  BUGFIXES:
+
+    * Fix crash of commit due to wrong lookup of filesystem encoding.
+      (Colin Watson, #120647)
+
+    * Revert logging just to stderr in commit as broke unicode filenames.
+      (Aaron Bentley, Ian Clatworthy, #120930)
+
 
 bzr 0.17rc1  2007-06-12
 

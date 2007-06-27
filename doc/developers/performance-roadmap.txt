@@ -18,6 +18,8 @@ About the performance roadmap
 
 .. include:: planned-performance-changes.txt
 
+.. include:: planned-change-integration.txt
+
 Analysis of use cases
 #####################
 
@@ -41,3 +43,7 @@ Use cases
 .. include:: merge-scaling.txt
 
 .. include:: bundle-creation.txt
+
+.. include:: commit.txt
+
+.. include:: uncommit.txt

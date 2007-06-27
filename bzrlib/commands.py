@@ -534,14 +534,13 @@ def apply_profiled(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    import cPickle
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
         stats.save(filename)
-        print 'Profile data written to %r.' % filename
+        trace.note('Profile data written to "%s".', filename)
     return ret
 
 
@@ -713,11 +712,7 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now

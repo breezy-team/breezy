@@ -194,7 +194,8 @@ def show_pending_merges(new, to_file, short=False):
         print >>to_file, 'pending merges:'
     if last_revision is not None:
         try:
-            ignore = set(branch.repository.get_ancestry(last_revision))
+            ignore = set(branch.repository.get_ancestry(last_revision,
+                                                        topo_sorted=False))
         except errors.NoSuchRevision:
             # the last revision is a ghost : assume everything is new 
             # except for it
