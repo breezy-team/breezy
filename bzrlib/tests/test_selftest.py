@@ -221,40 +221,133 @@ class TestBzrDirProviderAdapter(TestCase):
 class TestRepositoryProviderAdapter(TestCase):
     """A group of tests that test the repository implementation test adapter."""
 
-    def test_adapted_tests(self):
-        # check that constructor parameters are passed through to the adapted
-        # test.
+    def test_constructor(self):
+        # check that constructor parameters are passed through to the
+        # scenarios.
         from bzrlib.repository import RepositoryTestProviderAdapter
-        input_test = TestRepositoryProviderAdapter(
-            "test_adapted_tests")
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
         adapter = RepositoryTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
-        self.assertEqual(tests[0].repository_format, formats[0][0])
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
-        self.assertEqual(tests[1].repository_format, formats[1][0])
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'C',
+              'repository_format': 'c',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'}),
+            ('str',
+             {'bzrdir_format': 'D',
+              'repository_format': 'd',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'})],
+            adapter.scenarios)
 
     def test_setting_vfs_transport(self):
         """The vfs_transport_factory can be set optionally."""
         from bzrlib.repository import RepositoryTestProviderAdapter
-        input_test = TestRepositoryProviderAdapter(
-            "test_adapted_tests")
-        formats = [("c", "C")]
+        formats = [("a", "b"), ("c", "d")]
         adapter = RepositoryTestProviderAdapter(None, None, formats,
             vfs_transport_factory="vfs")
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(1, len(tests))
-        self.assertEqual(tests[0].vfs_transport_factory, "vfs")
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'b',
+              'repository_format': 'a',
+              'transport_readonly_server': None,
+              'transport_server': None,
+              'vfs_transport_factory': 'vfs'}),
+            ('str',
+             {'bzrdir_format': 'd',
+              'repository_format': 'c',
+              'transport_readonly_server': None,
+              'transport_server': None,
+              'vfs_transport_factory': 'vfs'})],
+            adapter.scenarios)
+
+    def test_adapt_applies_scenarios(self):
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapt_test_to_scenario")
+        adapter = RepositoryTestProviderAdapter(None, None, [])
+        adapter.scenarios = [("1", "dict"), ("2", "settings")]
+        calls = []
+        def capture_call(test, scenario):
+            calls.append((test, scenario))
+            return test
+        adapter.adapt_test_to_scenario = capture_call
+        adapter.adapt(input_test)
+        self.assertEqual([(input_test, ("1", "dict")),
+            (input_test, ("2", "settings"))], calls)
+
+    def test_formats_to_scenarios(self):
+        """The adapter can generate all the scenarios needed."""
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        no_vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
+            [], None)
+        vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
+            [], vfs_transport_factory="vfs")
+        # no_vfs generate scenarios without vfs_transport_factor
+        formats = [("c", "C"), (1, "D")]
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'C',
+              'repository_format': 'c',
+              'transport_readonly_server': 'readonly',
+              'transport_server': 'server'}),
+            ('int',
+             {'bzrdir_format': 'D',
+              'repository_format': 1,
+              'transport_readonly_server': 'readonly',
+              'transport_server': 'server'})],
+            no_vfs_adapter.formats_to_scenarios(formats))
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'C',
+              'repository_format': 'c',
+              'transport_readonly_server': 'readonly',
+              'transport_server': 'server',
+              'vfs_transport_factory': 'vfs'}),
+            ('int',
+             {'bzrdir_format': 'D',
+              'repository_format': 1,
+              'transport_readonly_server': 'readonly',
+              'transport_server': 'server',
+              'vfs_transport_factory': 'vfs'})],
+            vfs_adapter.formats_to_scenarios(formats))
+
+    def test_adapt_test_to_scenario(self):
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapt_test_to_scenario")
+        adapter = RepositoryTestProviderAdapter(None, None, [],
+            vfs_transport_factory="vfs")
+        # setup two adapted tests
+        adapted_test1 = adapter.adapt_test_to_scenario(input_test,
+            ("new id",
+            {"bzrdir_format":"bzr_format",
+             "repository_format":"repo_fmt",
+             "transport_server":"transport_server",
+             "transport_readonly_server":"readonly-server"}))
+        adapted_test2 = adapter.adapt_test_to_scenario(input_test,
+            ("new id 2", {"bzrdir_format":None}))
+        # input_test should have been altered.
+        self.assertRaises(AttributeError, getattr, input_test, "bzrdir_format")
+        # the new tests are mutually incompatible, ensuring it has 
+        # made new ones, and unspecified elements in the scenario
+        # should not have been altered.
+        self.assertEqual("bzr_format", adapted_test1.bzrdir_format)
+        self.assertEqual("repo_fmt", adapted_test1.repository_format)
+        self.assertEqual("transport_server", adapted_test1.transport_server)
+        self.assertEqual("readonly-server",
+            adapted_test1.transport_readonly_server)
+        self.assertEqual(
+            "bzrlib.tests.test_selftest.TestRepositoryProviderAdapter."
+            "test_adapt_test_to_scenario(new id)",
+            adapted_test1.id())
+        self.assertEqual(None, adapted_test2.bzrdir_format)
+        self.assertEqual(
+            "bzrlib.tests.test_selftest.TestRepositoryProviderAdapter."
+            "test_adapt_test_to_scenario(new id 2)",
+            adapted_test2.id())
 
 
 class TestInterRepositoryProviderAdapter(TestCase):

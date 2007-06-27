@@ -1802,25 +1802,53 @@ class RepositoryTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._vfs_transport_factory = vfs_transport_factory
         self._formats = formats
+        self.scenarios = self.formats_to_scenarios(formats)
     
     def adapt(self, test):
+        """Return a TestSuite containing a copy of test for each scenario."""
         result = unittest.TestSuite()
-        for repository_format, bzrdir_format in self._formats:
-            from copy import deepcopy
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
+        for scenario in self.scenarios:
+            result.addTest(self.adapt_test_to_scenario(test, scenario))
+        return result
+
+    def adapt_test_to_scenario(self, test, scenario):
+        """Copy test and apply scenario to it.
+
+        :param test: A test to adapt.
+        :param scenario: A tuple describing the scenarion.
+            The first element of the tuple is the new test id.
+            The second element is a dict containing attributes to set on the
+            test.
+        :return: The adapted test.
+        """
+        from copy import deepcopy
+        new_test = deepcopy(test)
+        for name, value in scenario[1].items():
+            setattr(new_test, name, value)
+        def make_new_test_id():
+            new_id = "%s(%s)" % (new_test.id(), scenario[0])
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (repository_format, bzrdir_format).
+        """
+        result = []
+        for repository_format, bzrdir_format in formats:
+            scenario = (repository_format.__class__.__name__,
+                {"transport_server":self._transport_server,
+                 "transport_readonly_server":self._transport_readonly_server,
+                 "bzrdir_format":bzrdir_format,
+                 "repository_format":repository_format,
+                 })
             # Only override the test's vfs_transport_factory if one was
             # specified, otherwise just leave the default in place.
             if self._vfs_transport_factory:
-                new_test.vfs_transport_factory = self._vfs_transport_factory
-            new_test.bzrdir_format = bzrdir_format
-            new_test.repository_format = repository_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), repository_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
+                scenario[1]['vfs_transport_factory'] = self._vfs_transport_factory
+            result.append(scenario)
         return result
 
 

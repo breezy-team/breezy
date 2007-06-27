@@ -57,6 +57,10 @@ IN DEVELOPMENT
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
 
+    * Add scenarios as a public attribute on RepositoryTestAdapter to allow
+      modification of the generated scenarios before adaption and easier
+      testing. (Robert Collins)
+
   BUGFIXES:
 
     * Work around python-2.4.1 inhability to correctly parse the

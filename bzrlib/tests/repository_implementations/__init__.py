@@ -49,7 +49,10 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
         if format is None:
             # Create a repository of the type we are trying to test.
             made_control = self.make_bzrdir(relpath)
-            return self.repository_format.initialize(made_control)
+            repo = self.repository_format.initialize(made_control)
+            if getattr(self, "repository_to_test_repository"):
+                repo = self.repository_to_test_repository(repo)
+            return repo
         else:
             return super(TestCaseWithRepository, self).make_repository(
                 relpath, format)
