@@ -24,11 +24,10 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/branch_implementations/*.py.
 """
 
+import unittest
+
 from bzrlib import (
     repository,
-    )
-from bzrlib.repository import (
-    RepositoryTestProviderAdapter,
     )
 from bzrlib.repofmt import (
     weaverepo,
@@ -43,6 +42,71 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
+class RepositoryTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple repository formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and bzrdir_format and
+    repository_format classes into each copy. Each copy is also given a new id()
+    to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats,
+                 vfs_transport_factory=None):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._vfs_transport_factory = vfs_transport_factory
+        self._formats = formats
+        self.scenarios = self.formats_to_scenarios(formats)
+    
+    def adapt(self, test):
+        """Return a TestSuite containing a copy of test for each scenario."""
+        result = unittest.TestSuite()
+        for scenario in self.scenarios:
+            result.addTest(self.adapt_test_to_scenario(test, scenario))
+        return result
+
+    def adapt_test_to_scenario(self, test, scenario):
+        """Copy test and apply scenario to it.
+
+        :param test: A test to adapt.
+        :param scenario: A tuple describing the scenarion.
+            The first element of the tuple is the new test id.
+            The second element is a dict containing attributes to set on the
+            test.
+        :return: The adapted test.
+        """
+        from copy import deepcopy
+        new_test = deepcopy(test)
+        for name, value in scenario[1].items():
+            setattr(new_test, name, value)
+        def make_new_test_id():
+            new_id = "%s(%s)" % (new_test.id(), scenario[0])
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (repository_format, bzrdir_format).
+        """
+        result = []
+        for repository_format, bzrdir_format in formats:
+            scenario = (repository_format.__class__.__name__,
+                {"transport_server":self._transport_server,
+                 "transport_readonly_server":self._transport_readonly_server,
+                 "bzrdir_format":bzrdir_format,
+                 "repository_format":repository_format,
+                 })
+            # Only override the test's vfs_transport_factory if one was
+            # specified, otherwise just leave the default in place.
+            if self._vfs_transport_factory:
+                scenario[1]['vfs_transport_factory'] = self._vfs_transport_factory
+            result.append(scenario)
+        return result
+
+
 class TestCaseWithRepository(TestCaseWithBzrDir):
 
     def make_repository(self, relpath, format=None):
@@ -50,7 +114,7 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
             # Create a repository of the type we are trying to test.
             made_control = self.make_bzrdir(relpath)
             repo = self.repository_format.initialize(made_control)
-            if getattr(self, "repository_to_test_repository"):
+            if getattr(self, "repository_to_test_repository", None):
                 repo = self.repository_to_test_repository(repo)
             return repo
         else:

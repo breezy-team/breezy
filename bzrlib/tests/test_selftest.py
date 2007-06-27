@@ -224,7 +224,7 @@ class TestRepositoryProviderAdapter(TestCase):
     def test_constructor(self):
         # check that constructor parameters are passed through to the
         # scenarios.
-        from bzrlib.repository import RepositoryTestProviderAdapter
+        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
@@ -244,7 +244,7 @@ class TestRepositoryProviderAdapter(TestCase):
 
     def test_setting_vfs_transport(self):
         """The vfs_transport_factory can be set optionally."""
-        from bzrlib.repository import RepositoryTestProviderAdapter
+        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
         formats = [("a", "b"), ("c", "d")]
         adapter = RepositoryTestProviderAdapter(None, None, formats,
             vfs_transport_factory="vfs")
@@ -264,7 +264,7 @@ class TestRepositoryProviderAdapter(TestCase):
             adapter.scenarios)
 
     def test_adapt_applies_scenarios(self):
-        from bzrlib.repository import RepositoryTestProviderAdapter
+        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
         input_test = TestRepositoryProviderAdapter(
             "test_adapt_test_to_scenario")
         adapter = RepositoryTestProviderAdapter(None, None, [])
@@ -280,7 +280,7 @@ class TestRepositoryProviderAdapter(TestCase):
 
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
-        from bzrlib.repository import RepositoryTestProviderAdapter
+        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
         no_vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
             [], None)
         vfs_adapter = RepositoryTestProviderAdapter("server", "readonly",
@@ -315,7 +315,7 @@ class TestRepositoryProviderAdapter(TestCase):
             vfs_adapter.formats_to_scenarios(formats))
 
     def test_adapt_test_to_scenario(self):
-        from bzrlib.repository import RepositoryTestProviderAdapter
+        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
         input_test = TestRepositoryProviderAdapter(
             "test_adapt_test_to_scenario")
         adapter = RepositoryTestProviderAdapter(None, None, [],
