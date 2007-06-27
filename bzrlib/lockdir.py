@@ -192,6 +192,8 @@ class LockDir(object):
         
         If you wish to block until the lock can be obtained, call wait_lock()
         instead.
+
+        :return: The lock token.
         """
         if self._fake_read_lock:
             raise LockContention(self)
@@ -229,6 +231,7 @@ class LockDir(object):
             # safe on all platforms.
             # FIXME: we should remove the pending lock if we fail, 
             # https://bugs.launchpad.net/bzr/+bug/109169
+            return self.nonce
         except errors.PermissionDenied:
             self._trace("... lock failed, permission denied")
             raise
@@ -392,6 +395,8 @@ class LockDir(object):
         is raised.  Either way, this function should return within
         approximately `timeout` seconds.  (It may be a bit more if
         a transport operation takes a long time to complete.)
+
+        :return: The lock token.
         """
         if timeout is None:
             timeout = _DEFAULT_TIMEOUT_SECONDS
@@ -405,8 +410,7 @@ class LockDir(object):
         last_info = None
         while True:
             try:
-                self.attempt_lock()
-                return
+                return self.attempt_lock()
             except LockContention:
                 pass
             new_info = self.peek()
@@ -432,8 +436,10 @@ class LockDir(object):
                                       deadline_str)
 
             if time.time() + poll < deadline:
+                self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
+                self._trace("timeout after waiting %ss", timeout)
                 raise LockContention(self)
     
     def leave_in_place(self):
@@ -466,8 +472,7 @@ class LockDir(object):
             self._locked_via_token = True
             return token
         else:
-            self.wait_lock()
-            return self.peek().get('nonce')
+            return self.wait_lock()
 
     def lock_read(self):
         """Compatibility-mode shared lock.
@@ -488,15 +493,19 @@ class LockDir(object):
         """Wait a certain period for a lock to be released."""
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
+        #
+        # XXX: Is this really needed?  Do people want to wait for the lock but
+        # not acquire it?  As of bzr 0.17, this seems to only be called from
+        # the test suite.
         deadline = time.time() + timeout
         while True:
             if self.peek():
                 return
             if time.time() + poll < deadline:
-                self._trace("Waiting %ss", poll)
+                self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
-                self._trace("Timeout after waiting %ss", timeout)
+                self._trace("temeout after waiting %ss", timeout)
                 raise LockContention(self)
 
     def _format_lock_info(self, info):

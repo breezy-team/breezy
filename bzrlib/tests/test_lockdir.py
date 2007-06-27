@@ -625,3 +625,11 @@ class TestLockDir(TestCaseWithTransport):
         os.mkdir(lock_path)
         osutils.make_readonly(lock_path)
         self.assertRaises(errors.PermissionDenied, ld1.attempt_lock)
+
+    def test_lock_by_token(self):
+        ld1 = self.get_lock()
+        token = ld1.lock_write()
+        self.assertNotEqual(None, token)
+        ld2 = self.get_lock()
+        t2 = ld2.lock_write(token)
+        self.assertEqual(token, t2)
