@@ -50,9 +50,15 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * Remove unnecessary lock probes when acquiring a lockdir.
+      (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
+      lockdirs are taken or released.  (Martin Pool)
 
   TESTING:
 
