@@ -839,8 +839,14 @@ class TestCase(unittest.TestCase):
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
-            raise AssertionError('pattern "%r" not found in "%r"'
-                    % (needle_re, haystack))
+            if '\n' in haystack or len(haystack) > 60:
+                # a long string, format it in a more readable way
+                raise AssertionError(
+                        'pattern "%s" not found in\n"""\\\n%s"""\n'
+                        % (needle_re, haystack))
+            else:
+                raise AssertionError('pattern "%s" not found in "%s"'
+                        % (needle_re, haystack))
 
     def assertNotContainsRe(self, haystack, needle_re):
         """Assert that a does not match a regular expression"""
