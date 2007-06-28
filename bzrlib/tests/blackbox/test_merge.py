@@ -311,9 +311,8 @@ class TestMerge(ExternalBase):
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
         md = merge_directive.MergeDirective2.from_objects(
-            source.repository, revision_id, 0, 0, target)
-        if base_revision_id is not None:
-            md.base_revision_id = base_revision_id
+            source.repository, revision_id, 0, 0, target,
+            base_revision_id=base_revision_id)
         if mangle_patch:
             md.patch = 'asdf\n'
         self.build_tree_contents([(filename, ''.join(md.to_lines()))])

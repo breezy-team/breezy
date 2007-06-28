@@ -412,7 +412,8 @@ class MergeDirective2(_BaseMergeDirective):
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
                  target_branch, patch_type='bundle',
-                 local_target_branch=None, public_branch=None, message=None):
+                 local_target_branch=None, public_branch=None, message=None,
+                 base_revision_id=None):
         """Generate a merge directive from various objects
 
         :param repository: The repository containing the revision
@@ -453,6 +454,8 @@ class MergeDirective2(_BaseMergeDirective):
             graph = repository.get_graph(submit_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                                                 submit_revision_id)
+            if base_revision_id is None:
+                base_revision_id = ancestor_id
             if patch_type is None:
                 patch = None
                 bundle = None
@@ -460,7 +463,7 @@ class MergeDirective2(_BaseMergeDirective):
                 repository.fetch(submit_branch.repository, submit_revision_id)
                 if patch_type in ('bundle', 'diff'):
                     patch = klass._generate_diff(repository, revision_id,
-                                                 ancestor_id)
+                                                 base_revision_id)
                 if patch_type == 'bundle':
                     bundle = klass._generate_bundle(repository, revision_id,
                         ancestor_id).encode('base-64')
@@ -479,7 +482,7 @@ class MergeDirective2(_BaseMergeDirective):
             for entry in reversed(locked):
                 entry.unlock()
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, public_branch, message, bundle, ancestor_id)
+            patch, public_branch, message, bundle, base_revision_id)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,

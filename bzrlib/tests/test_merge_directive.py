@@ -538,10 +538,11 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
 
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
-        public_branch=None, message=None):
+        public_branch=None, message=None, base_revision_id=None):
         return merge_directive.MergeDirective2.from_objects(
             repository, revision_id, time, timezone, target_branch,
-            patch_type, local_target_branch, public_branch, message)
+            patch_type, local_target_branch, public_branch, message,
+            base_revision_id)
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
@@ -559,8 +560,12 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         tree_a, tree_b, branch_c = self.make_trees()
         md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 60,
             tree_b.branch.base, patch_type='bundle',
-            public_branch=tree_a.branch.base)
+            public_branch=tree_a.branch.base, base_revision_id=None)
         self.assertEqual('rev1', md.base_revision_id)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 60,
+            tree_b.branch.base, patch_type='bundle',
+            public_branch=tree_a.branch.base, base_revision_id='null:')
+        self.assertEqual('null:', md.base_revision_id)
         lines = md.to_lines()
         md2 = merge_directive.MergeDirective.from_lines(lines)
         self.assertEqual(md2.base_revision_id, md.base_revision_id)

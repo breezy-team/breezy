@@ -3573,12 +3573,15 @@ class cmd_merge_directive(Command):
         if patch_type != "bundle" and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or'
                                          ' known')
+        base_revision_id = None
         if revision is not None:
-            if len(revision) != 1:
+            if len(revision) > 2:
                 raise errors.BzrCommandError('bzr merge-directive takes '
-                    'exactly one revision identifier')
-            else:
-                revision_id = revision[0].in_history(branch).rev_id
+                    'at most two one revision identifiers')
+            revision_id = revision[-1].in_history(branch).rev_id
+            if len(revision) == 2:
+                base_revision_id = revision[0].in_history(branch).rev_id
+                base_revision_id = ensure_null(base_revision_id)
         else:
             revision_id = branch.last_revision()
         revision_id = ensure_null(revision_id)
@@ -3588,7 +3591,7 @@ class cmd_merge_directive(Command):
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
             public_branch=public_branch, patch_type=patch_type,
-            message=message)
+            message=message, base_revision_id=base_revision_id)
         if mail_to is None:
             if sign:
                 self.outf.write(directive.to_signed(branch))
