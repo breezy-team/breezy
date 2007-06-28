@@ -300,6 +300,14 @@ class BundleInfoV4(object):
         finally:
             repository.unlock()
 
+    def get_merge_request(self, target_repo):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.target, 'inapplicable'
+
+
     def get_bundle_reader(self):
         self._fileobj.seek(0)
         return BundleReader(self._fileobj)

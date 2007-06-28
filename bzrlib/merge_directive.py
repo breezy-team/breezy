@@ -318,6 +318,13 @@ class MergeDirective(_BaseMergeDirective):
                                        ancestor_id, s, '0.9')
         return s.getvalue()
 
+    def get_merge_request(self, repository):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.revision_id, 'inapplicable'
+
 
 class MergeDirective2(_BaseMergeDirective):
 
@@ -484,15 +491,13 @@ class MergeDirective2(_BaseMergeDirective):
         stored_patch = re.sub(' *\n', '\n', stored_patch)
         return (calculated_patch == stored_patch)
 
-    def install_revisions_base(self, repository):
-        self.install_revisions(repository)
-        return self.base_revision_id, self.revision_id, 'verified'
+    def get_merge_request(self, repository):
+        """Provide data for performing a merge
 
-    def install_revisions(self, repository):
-        _BaseMergeDirective.install_revisions(self, repository)
+        Returns suggested base, suggested target, and patch verification status
+        """
         verified = self._maybe_verify(repository)
-        if verified == 'failed':
-            raise errors.PatchVerificationFailed()
+        return self.base_revision_id, self.revision_id, verified
 
     def _maybe_verify(self, repository):
         if self.patch is not None:
@@ -502,11 +507,6 @@ class MergeDirective2(_BaseMergeDirective):
                 return 'failed'
         else:
             return 'inapplicable'
-
-    def install_revisions_base(self, repository):
-        _BaseMergeDirective.install_revisions(self, repository)
-        verified = self._maybe_verify(repository)
-        return None, self.revision_id, verified
 
 
 class MergeDirectiveFormatRegistry(registry.Registry):

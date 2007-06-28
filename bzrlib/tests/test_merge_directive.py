@@ -435,13 +435,14 @@ class TestMergeDirectiveBranch(object):
         self.assertEqual('rev2a', revision)
         self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
 
-    def test_install_revisions_base_branch(self):
+    def test_get_merge_request(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
-            tree_b.branch.base, patch_type=None,
+            tree_b.branch.base, patch_type='bundle',
             public_branch=tree_a.branch.base)
         self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
-        base, revision, verified = md.install_revisions_base(
+        md.install_revisions(tree_b.branch.repository)
+        base, revision, verified = md.get_merge_request(
             tree_b.branch.repository)
         if isinstance(md, merge_directive.MergeDirective):
             self.assertIs(None, base)
@@ -451,6 +452,37 @@ class TestMergeDirectiveBranch(object):
             self.assertEqual('verified', verified)
         self.assertEqual('rev2a', revision)
         self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type=None,
+            public_branch=tree_a.branch.base)
+        base, revision, verified = md.get_merge_request(
+            tree_b.branch.repository)
+        if isinstance(md, merge_directive.MergeDirective):
+            self.assertIs(None, base)
+            self.assertEqual('inapplicable', verified)
+        else:
+            self.assertEqual('rev1', base)
+            self.assertEqual('inapplicable', verified)
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type='diff',
+            public_branch=tree_a.branch.base)
+        base, revision, verified = md.get_merge_request(
+            tree_b.branch.repository)
+        if isinstance(md, merge_directive.MergeDirective):
+            self.assertIs(None, base)
+            self.assertEqual('inapplicable', verified)
+        else:
+            self.assertEqual('rev1', base)
+            self.assertEqual('verified', verified)
+        md.patch='asdf'
+        base, revision, verified = md.get_merge_request(
+            tree_b.branch.repository)
+        if isinstance(md, merge_directive.MergeDirective):
+            self.assertIs(None, base)
+            self.assertEqual('inapplicable', verified)
+        else:
+            self.assertEqual('rev1', base)
+            self.assertEqual('failed', verified)
 
     def test_install_revisions_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
@@ -552,5 +584,3 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         md2.patch = md2.patch.replace('content_c', 'content_d')
         self.assertFalse(md2._verify_patch(tree_a.branch.repository))
-        self.assertRaises(errors.PatchVerificationFailed,
-                          md2.install_revisions, tree_a.branch.repository)

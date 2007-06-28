@@ -462,6 +462,13 @@ class BundleInfo(object):
         apply_bundle.install_bundle(target_repo, self)
         return self.target
 
+    def get_merge_request(self, target_repo):
+        """Provide data for performing a merge
+
+        Returns suggested base, suggested target, and patch verification status
+        """
+        return None, self.target, 'inapplicable'
+
 
 class BundleTree(Tree):
     def __init__(self, base_tree, revision_id):

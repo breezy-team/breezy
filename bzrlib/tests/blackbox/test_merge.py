@@ -21,6 +21,7 @@
 
 import os
 
+from bzrlib import merge_directive
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import ConflictList, ContentsConflict
@@ -290,3 +291,19 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge', '../tree_a', retcode=1)
         self.assertEqual(tree_b.conflicts(),
                          [ContentsConflict('file', file_id='file-id')])
+
+    def test_directive_cherrypick(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        source.add('a')
+        source.commit('Added a', rev_id='rev1')
+        self.build_tree(['source/b'])
+        source.add('b')
+        source.commit('Added b', rev_id='rev2')
+        target = self.make_branch_and_tree('target')
+        target.commit('empty commit')
+        md = merge_directive.MergeDirective2.from_objects(
+            source.branch.repository, 'rev2', 0, 0, 'target')
+        md.base_revision_id = 'rev1'
+        self.build_tree_contents([('directive', ''.join(md.to_lines()))])
+        self.run_bzr('merge -d target directive', retcode=3)

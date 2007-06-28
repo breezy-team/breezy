@@ -1027,6 +1027,14 @@ class BundleTester(object):
         self.assertRaises(errors.IncompatibleRevision,
                           bundle.install_revisions, repo)
 
+    def test_get_merge_request(self):
+        tree = self.make_simple_tree()
+        tree.commit('hello', rev_id='rev1')
+        tree.commit('hello', rev_id='rev2')
+        bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
+        result = bundle.get_merge_request(tree.branch.repository)
+        self.assertEqual((None, 'rev1', 'inapplicable'), result)
+
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
 
