@@ -493,6 +493,11 @@ class Commit(object):
         else:
             old_revid = bzrlib.revision.NULL_REVISION
         for hook in Branch.hooks['post_commit']:
+            # show the running hook in the progress bar. As hooks may
+            # end up doing nothing (e.g. because they are not configured by
+            # the user) this is still showing progress, not showing overall
+            # actions - its up to each plugin to show a UI if it want's to
+            # (such as 'Emailing diff to foo@example.com').
             self.pb_stage_name = "Running post commit hooks [%s]" % \
                 Branch.hooks.get_hook_name(hook)
             self._emit_progress()

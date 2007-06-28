@@ -39,6 +39,9 @@ class Hooks(dict):
         """Get the name for a_callable for UI display.
 
         If no name has been registered, the string 'No hook name' is returned.
+        We use a fixed string rather than repr or the callables module because
+        the code names are rarely meaningful for end users and this is not 
+        intended for debugging.
         """
         return self._callable_names.get(a_callable, "No hook name")
 
