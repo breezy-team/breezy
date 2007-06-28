@@ -36,7 +36,7 @@ Use cases
 
 .. include:: add.txt
 
-.. include:: performance-commit.txt
+.. include:: commit.txt
 
 .. include:: gc.txt
 
@@ -47,7 +47,5 @@ Use cases
 .. include:: merge-scaling.txt
 
 .. include:: bundle-creation.txt
-
-.. include:: commit.txt
 
 .. include:: uncommit.txt

@@ -8,6 +8,7 @@ strict digraph performance {
   bundle_analysis[label="Work required analysis for creating a bundle"];
   commit_analysis[label="Work required analysis for commit"];
   fetch_analysis[label="Work required analysis for push/pull"];
+  gc_analysis[label="Work required analysis for gc"];
   revert_analysis[label="Work required analysis for revert"];
   revert_path_analysis[label="Work required analysis for revert of selected paths"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
@@ -35,6 +36,7 @@ strict digraph performance {
   log_api_stack[label="Targeted API stack for log"];
   log_path_api_stack[label="Targeted API stack for log of selected paths."];
   diff_api_stack[label="Targeted API stack for diff"];
+  gc_api_stack[label="Targeted API stack for gc"];
   revert_api_stack[label="Targeted API stack for revert"];
   revert_path_api_stack[label="Targeted API stack for revert of selected paths"];
   merge_api_stack[label="Targeted API stack for merge"];
