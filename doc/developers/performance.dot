@@ -1,5 +1,6 @@
 /* ESTIMATES ARE VERY ROUGH APPROXIMATIONS */
 strict digraph performance {
+  rankdir=LR
   /* completed node list */
   node[color="green"];
   add_analysis[label="Work required analysis for add"];
