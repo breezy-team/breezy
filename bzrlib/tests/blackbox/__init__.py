@@ -32,6 +32,10 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           )
 from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eighteen,
+    )
 import bzrlib.ui as ui
 
 
@@ -119,13 +123,11 @@ def test_suite():
 
 class ExternalBase(TestCaseWithTransport):
 
-    def runbzr(self, args, retcode=0, backtick=False):
+    @deprecated_method(zero_eighteen)
+    def runbzr(self, args, retcode=0):
         if isinstance(args, basestring):
             args = args.split()
-        if backtick:
-            return self.run_bzr_captured(args, retcode=retcode)[0]
-        else:
-            return self.run_bzr_captured(args, retcode=retcode)
+        return self.run_bzr(args, retcode=retcode)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
@@ -133,4 +135,4 @@ class ExternalBase(TestCaseWithTransport):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr_captured(args)[0], output)
+        self.assertEquals(self.run_bzr(*args)[0], output)

@@ -1222,14 +1222,26 @@ class _KnitIndex(_KnitComponentFile):
                 # or a different failure, and raise. RBC 20060407
                 continue
 
-            parents = []
-            for value in rec[4:-1]:
-                if value[0] == '.':
-                    # uncompressed reference
-                    parent_id = value[1:]
-                else:
-                    parent_id = history[int(value)]
-                parents.append(parent_id)
+            try:
+                parents = []
+                for value in rec[4:-1]:
+                    if value[0] == '.':
+                        # uncompressed reference
+                        parent_id = value[1:]
+                    else:
+                        parent_id = history[int(value)]
+                    parents.append(parent_id)
+            except (IndexError, ValueError), e:
+                # The parent could not be decoded to get its parent row. This
+                # at a minimum will cause this row to have wrong parents, or
+                # even to apply a delta to the wrong base and decode
+                # incorrectly. its therefore not usable, and because we have
+                # encountered a situation where a new knit index had this
+                # corrupt we can't asssume that no other rows referring to the
+                # index of this record actually mean the subsequent uncorrupt
+                # one, so we error.
+                raise errors.KnitCorrupt(self._filename,
+                    "line %r: %s" % (rec, e))
 
             version_id, options, pos, size = rec[:4]
             version_id = version_id

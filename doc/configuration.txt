@@ -180,6 +180,16 @@ For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+smtp_server
+-----------
+(Default: "localhost"). SMTP server to use when Bazaar needs to send
+email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin.
+
+smtp_username, smtp_password
+----------------------------
+User and password to authenticate to the SMTP server. If smtp_username
+is set, and smtp_password is not, Bazaar will prompt for a password.
+
 
 Branch 6 Options
 ================

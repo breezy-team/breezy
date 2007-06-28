@@ -1,3 +1,7 @@
+.. This document describes _how_ to do use case analyses and what we want
+.. to get out of them; for the specific cases see the files referenced by
+.. performance-roadmap.txt 
+
 Analysing a specific use case
 =============================
 
@@ -49,7 +53,7 @@ design with are:
    - The time to get bzr ready to begin the use case.
 
 - scaling: how does performance change when any of the follow aspects
-  of the system are ratched massively up or down:
+  of the system are ratcheted massively up or down:
 
    - number of files/dirs/symlinks/subtrees in a tree (both working and 
      revision trees)
@@ -100,7 +104,7 @@ file-level operation latency considerations.
 Many performance problems only become visible when changing the scaling knobs
 upwards to large trees. On small trees its our baseline performance that drives
 incremental improvements; on large trees its the amount of processing per item
-that drives performance. A significant goal therefore is to keep the amouont of
+that drives performance. A significant goal therefore is to keep the amount of
 data to be processed under control. Ideally we can scale in a sublinear fashion
 for all operations, but we MUST NOT scale even linearly for operations that
 invoke a latency multiplier. For example, reading a file on disk requires
