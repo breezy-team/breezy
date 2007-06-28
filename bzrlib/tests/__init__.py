@@ -2340,7 +2340,7 @@ def test_suite():
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    from bzrlib.transport import TransportTestProviderAdapter
+    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
     for package in packages_to_test():

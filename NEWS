@@ -48,11 +48,15 @@ IN DEVELOPMENT
 
   LIBRARY API BREAKS:
 
-    * ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
-      to ``bzrlib.tests.repository_implementations``. 
+    * Testing cleanups - 
+     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      to ``bzrlib.tests.repository_implementations``;
       ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
-      to ``bzrlib.tests.interrepository_implementations``.
+      to ``bzrlib.tests.interrepository_implementations``;
+      ``bzrlib.transport.TransportTestProviderAdapter`` has moved to 
+      ``bzrlib.tests.test_transport_implementations``.
       These changes are an API break in the testing infrastructure only.
+      (Robert Collins)
 
   INTERNALS:
 

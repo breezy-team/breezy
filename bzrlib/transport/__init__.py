@@ -1177,52 +1177,6 @@ class Server(object):
         raise NotImplementedError
 
 
-class TransportTestProviderAdapter(object):
-    """A tool to generate a suite testing all transports for a single test.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_class and transport_server classes into each copy. Each copy
-    is also given a new id() to make it easy to identify.
-    """
-
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for klass, server_factory in self._test_permutations():
-            new_test = deepcopy(test)
-            new_test.transport_class = klass
-            new_test.transport_server = server_factory
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), server_factory.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    def get_transport_test_permutations(self, module):
-        """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            ##warning("transport module %s doesn't provide get_test_permutations()"
-            ##       % module.__name__)
-            return []
-        return module.get_test_permutations()
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        for module in _get_transport_modules():
-            try:
-                result.extend(self.get_transport_test_permutations(reduce(getattr, 
-                    (module).split('.')[1:],
-                     __import__(module))))
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us 
-                # from running this test
-                pass
-        return result
-
-
 class TransportLogger(object):
     """Adapt a transport to get clear logging data on api calls.
     

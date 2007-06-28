@@ -114,7 +114,8 @@ class TestTransportProviderAdapter(TestCase):
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1,2), (3,4)]
-        from bzrlib.transport import TransportTestProviderAdapter
+        from bzrlib.tests.test_transport_implementations \
+            import TransportTestProviderAdapter
         adapter = TransportTestProviderAdapter()
         self.assertEqual(sample_permutation,
                          adapter.get_transport_test_permutations(MockModule()))
@@ -125,9 +126,9 @@ class TestTransportProviderAdapter(TestCase):
         # - we assume if this matches its probably doing the right thing
         # especially in combination with the tests for setting the right
         # classes below.
-        from bzrlib.transport import (TransportTestProviderAdapter,
-                                      _get_transport_modules
-                                      )
+        from bzrlib.tests.test_transport_implementations \
+            import TransportTestProviderAdapter
+        from bzrlib.transport import _get_transport_modules
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
@@ -150,17 +151,16 @@ class TestTransportProviderAdapter(TestCase):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
-        input_test = TestTransportProviderAdapter(
-            "test_adapter_sets_transport_class")
-        from bzrlib.transport import TransportTestProviderAdapter
-        suite = TransportTestProviderAdapter().adapt(input_test)
-        tests = list(iter(suite))
-        self.assertTrue(len(tests) > 6)
+        from bzrlib.tests.test_transport_implementations \
+            import TransportTestProviderAdapter
+        scenarios = TransportTestProviderAdapter().scenarios
         # there are at least that many builtin transports
-        one_test = tests[0]
-        self.assertTrue(issubclass(one_test.transport_class, 
+        self.assertTrue(len(scenarios) > 6)
+        one_scenario = scenarios[0]
+        self.assertIsInstance(one_scenario[0], str)
+        self.assertTrue(issubclass(one_scenario[1]["transport_class"],
                                    bzrlib.transport.Transport))
-        self.assertTrue(issubclass(one_test.transport_server, 
+        self.assertTrue(issubclass(one_scenario[1]["transport_server"],
                                    bzrlib.transport.Server))
 
 
