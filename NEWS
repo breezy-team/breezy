@@ -50,6 +50,10 @@ IN DEVELOPMENT
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
+    * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
+      allows a nicer UI when hooks are running as the current hook can
+      be displayed. (Robert Collins)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test

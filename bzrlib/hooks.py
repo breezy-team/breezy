@@ -31,6 +31,17 @@ class Hooks(dict):
     FOO hook is triggered.
     """
 
+    def __init__(self):
+        dict.__init__(self)
+        self._callable_names = {}
+
+    def get_hook_name(self, a_callable):
+        """Get the name for a_callable for UI display.
+
+        If no name has been registered, the string 'No hook name' is returned.
+        """
+        return self._callable_names.get(a_callable, "No hook name")
+
     def install_hook(self, hook_name, a_callable):
         """Install a_callable in to the hook hook_name.
 
@@ -44,3 +55,7 @@ class Hooks(dict):
             self[hook_name].append(a_callable)
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
+
+    def name_hook(self, a_callable, name):
+        """Associate name with a_callable to show users what is running."""
+        self._callable_names[a_callable] = name
