@@ -760,8 +760,8 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = debug.debug_flags
-        debug.debug_flags = set()
+        self._preserved_debug_flags = set(debug.debug_flags)
+        debug.debug_flags.clear()
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -1117,7 +1117,8 @@ class TestCase(unittest.TestCase):
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restore_debug_flags(self):
-        debug.debug_flags = self._preserved_debug_flags
+        debug.debug_flags.clear()
+        debug.debug_flags.update(self._preserved_debug_flags)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
