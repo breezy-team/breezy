@@ -194,6 +194,7 @@ class LockDir(object):
         instead.
 
         :return: The lock token.
+        :raises LockContention: if the lock is held by someone else.
         """
         if self._fake_read_lock:
             raise LockContention(self)
@@ -202,7 +203,7 @@ class LockDir(object):
         try:
             self._trace("lock_write...")
             start_time = time.time()
-            tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
+            tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
             try:
                 self.transport.mkdir(tmpname)
             except NoSuchFile:
@@ -210,7 +211,6 @@ class LockDir(object):
                 # which is okay, it will be caught later and determined
                 # to be a LockContention.
                 self.create(mode=self._dir_modebits)
-                
                 # After creating the lock directory, try again
                 self.transport.mkdir(tmpname)
 
@@ -224,11 +224,20 @@ class LockDir(object):
                                                 info_bytes)
 
             self.transport.rename(tmpname, self._held_dir)
+            # We must check we really got the lock, because Launchpad's sftp server at one
+            # time had a bug were the rename would successfully move the new
+            # directory into the existing directory, which was incorrect.
+            # It's possible some other servers or filesystems will have a
+            # similar bug allowing someone to think they got the lock when
+            # it's already held.
+            info = self.peek()
+            if info['nonce'] != self.nonce:
+                raise errors.LockError("%s: rename succeeded, "
+                    "but lock is still held by someone else" % (self,))
+            # we don't call confirm here because we don't want to set
+            # _lock_held til we're sure it's true, and because it's really a
+            # problem, not just regular contention, if this fails
             self._lock_held = True
-            # we used to do self.confirm() at this point, but it's really
-            # unnecessary, we have no substantial chance of having it broken
-            # just as it's acquired, and we believe that this lock design is
-            # safe on all platforms.
             # FIXME: we should remove the pending lock if we fail, 
             # https://bugs.launchpad.net/bzr/+bug/109169
         except errors.PermissionDenied:

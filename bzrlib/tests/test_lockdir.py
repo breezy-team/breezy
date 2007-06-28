@@ -27,6 +27,7 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    transport,
     )
 from bzrlib.errors import (
         LockBreakMismatch,
@@ -633,3 +634,17 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         t2 = ld2.lock_write(token)
         self.assertEqual(token, t2)
+
+    def test_lock_with_buggy_rename(self):
+        # test that lock acquisition handles servers which pretend they
+        # renamed correctly but that actually fail
+        t = transport.get_transport('brokenrename+' + self.get_url())
+        ld1 = LockDir(t, 'test_lock')
+        ld1.create()
+        ld1.attempt_lock()
+        ld2 = LockDir(t, 'test_lock')
+        # we should notice that we failed to lock, even though the transport
+        # has the wrong rename behaviour
+        e = self.assertRaises(errors.LockError, ld2.attempt_lock)
+        self.assertContainsRe(str(e),
+                "rename succeeded, but lock is still held by someone else")
