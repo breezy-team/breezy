@@ -34,7 +34,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from collections import deque
-from copy import deepcopy
 from stat import S_ISDIR
 import unittest
 import urllib

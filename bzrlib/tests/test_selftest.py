@@ -167,27 +167,27 @@ class TestTransportProviderAdapter(TestCase):
 class TestBranchProviderAdapter(TestCase):
     """A group of tests that test the branch implementation test adapter."""
 
-    def test_adapted_tests(self):
+    def test_constructor(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.branch import BranchTestProviderAdapter
-        input_test = TestBranchProviderAdapter(
-            "test_adapted_tests")
+        from bzrlib.tests.branch_implementations import BranchTestProviderAdapter
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
         adapter = BranchTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].branch_format, formats[0][0])
-        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].branch_format, formats[1][0])
-        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual(2, len(adapter.scenarios))
+        self.assertEqual([
+            ('str',
+             {'branch_format': 'c',
+              'bzrdir_format': 'C',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'}),
+            ('str',
+             {'branch_format': 'd',
+              'bzrdir_format': 'D',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'})],
+            adapter.scenarios)
 
 
 class TestBzrDirProviderAdapter(TestCase):
