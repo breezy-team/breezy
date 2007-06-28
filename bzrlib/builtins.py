@@ -2743,6 +2743,8 @@ class cmd_merge(Command):
                     change_reporter=change_reporter)
             finally:
                 pb.finished()
+            if verified == 'failed':
+                warning('Preview patch does not match changes')
             if conflict_count != 0:
                 return 1
             else:
