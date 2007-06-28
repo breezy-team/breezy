@@ -977,6 +977,7 @@ class TestMailAddressExtraction(TestCase):
         self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
 
+
 class TestTreeConfig(TestCaseWithTransport):
 
     def test_get_value(self):
@@ -1003,4 +1004,3 @@ class TestTreeConfig(TestCaseWithTransport):
         self.assertEqual(value, 'value3-top')
         value = tree_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
-
