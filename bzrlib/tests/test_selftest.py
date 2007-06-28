@@ -681,7 +681,7 @@ class TestTestResult(TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        self.requireFeature(test_lsprof.LSProf())
+        self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
@@ -970,7 +970,7 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -989,7 +989,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1009,7 +1009,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1128,6 +1128,13 @@ class SampleTestCase(TestCase):
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
+    def test_debug_flags_sanitised(self):
+        """The bzrlib debug flags should be sanitised by setUp."""
+        # we could set something and run a test that will check
+        # it gets santised, but this is probably sufficient for now:
+        # if someone runs the test with -Dsomething it will error.
+        self.assertEqual(set(), bzrlib.debug.debug_flags)
+
     def inner_test(self):
         # the inner child test
         note("inner_test")
@@ -1193,7 +1200,7 @@ class TestTestCase(TestCase):
         
         Each self.time() call is individually and separately profiled.
         """
-        self.requireFeature(test_lsprof.LSProf())
+        self.requireFeature(test_lsprof.LSProfFeature)
         # overrides the class member with an instance member so no cleanup 
         # needed.
         self._gather_lsprof_in_benchmarks = True

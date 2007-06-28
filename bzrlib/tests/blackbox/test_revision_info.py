@@ -29,7 +29,7 @@ class TestRevisionInfo(ExternalBase):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertContainsRe(self.run_bzr_captured(args, retcode=3)[1], output)
+        self.assertContainsRe(self.run_bzr(args, retcode=3)[1], output)
 
     def test_revision_info(self):
         """Test that 'bzr revision-info' reports the correct thing."""

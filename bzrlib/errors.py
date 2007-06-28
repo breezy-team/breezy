@@ -48,8 +48,8 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar internal_error: if true (or absent) this was probably caused by a
-    bzr bug and should be displayed with a traceback; if False this was
+    :cvar internal_error: if True this was probably caused by a bzr bug and
+    should be displayed with a traceback; if False (or absent) this was
     probably a user or environment error and they don't need the gory details.
     (That can be overridden by -Derror on the command line.)
 
@@ -184,6 +184,18 @@ class DisabledMethod(BzrError):
     def __init__(self, class_name):
         BzrError.__init__(self)
         self.class_name = class_name
+
+
+class IncompatibleAPI(BzrError):
+
+    _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
+        'It supports versions "%(minimum)s" to "%(current)s".'
+
+    def __init__(self, api, wanted, minimum, current):
+        self.api = api
+        self.wanted = wanted
+        self.minimum = minimum
+        self.current = current
 
 
 class InvalidEntryName(BzrError):
@@ -1579,6 +1591,8 @@ class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
 
+    internal_error = True
+
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
 
@@ -2186,3 +2200,17 @@ class DuplicateRecordNameError(ContainerError):
     def __init__(self, name):
         self.name = name
 
+
+class NoDestinationAddress(BzrError):
+
+    _fmt = "Message does not have a destination address."
+
+    internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error

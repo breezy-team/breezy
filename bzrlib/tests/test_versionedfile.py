@@ -384,6 +384,9 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(RevisionNotPresent,
             f.get_ancestry, ['rM', 'rX'])
 
+        self.assertEqual(set(f.get_ancestry('rM')),
+            set(f.get_ancestry('rM', topo_sorted=False)))
+
     def test_mutate_after_finish(self):
         f = self.get_file()
         f.transaction_finished()

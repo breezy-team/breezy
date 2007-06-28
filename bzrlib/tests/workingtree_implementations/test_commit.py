@@ -60,7 +60,7 @@ class CapturingUIFactory(ui.UIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
         if self.depth == 1:
-            self._calls.append(("update", count, total))
+            self._calls.append(("update", count, total, message))
 
 
 class TestCapturingUI(TestCase):
@@ -75,7 +75,7 @@ class TestCapturingUI(TestCase):
         pb2.update('foo', 0, 1)
         pb2.finished()
         pb1.finished()
-        self.assertEqual([("update", 0, 1)], factory._calls)
+        self.assertEqual([("update", 0, 1, 'foo')], factory._calls)
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -345,18 +345,41 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 9 steps: 1 for rev, 2 for inventory, 1 for finishing. 2 for root
-        # and 6 for inventory files.
-        # 2 steps don't trigger an update, as 'a' and 'c' are not 
+        # 4 steps, the first of which is reported 5 times, once per file
+        # 2 files don't trigger an update, as 'a' and 'c' are not 
         # committed.
         self.assertEqual(
-            [("update", 0, 9),
-             ("update", 1, 9),
-             ("update", 2, 9),
-             ("update", 3, 9),
-             ("update", 4, 9),
-             ("update", 5, 9),
-             ("update", 6, 9),
-             ("update", 7, 9)],
+            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 1/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 2/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 3/4] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 4/4] - Stage'),
+             ('update', 2, 4, 'Saving data locally - Stage'),
+             ('update', 3, 4, 'Updating the working tree - Stage'),
+             ('update', 4, 4, 'Running post commit hooks - Stage')],
+            factory._calls
+           )
+
+    def test_commit_progress_shows_hook_names(self):
+        tree = self.make_branch_and_tree('.')
+        # set a progress bar that captures the calls so we can see what is 
+        # emitted
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+        factory = CapturingUIFactory()
+        ui.ui_factory = factory
+        def a_hook(_, _2, _3, _4, _5, _6):
+            pass
+        branch.Branch.hooks.install_hook('post_commit', a_hook)
+        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        tree.commit('first post')
+        self.assertEqual(
+            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 1/1] - Stage'),
+             ('update', 2, 4, 'Saving data locally - Stage'),
+             ('update', 3, 4, 'Updating the working tree - Stage'),
+             ('update', 4, 4, 'Running post commit hooks - Stage'),
+             ('update', 4, 4, 'Running post commit hooks [hook name] - Stage'),
+             ],
             factory._calls
            )
