@@ -197,8 +197,6 @@ class _BaseMergeDirective(object):
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
-        if self.patch is not None:
-            self._verify_patch(target_repo)
         return self.revision_id
 
 
@@ -252,9 +250,6 @@ class MergeDirective(_BaseMergeDirective):
 
     def get_raw_bundle(self):
         return self.bundle
-
-    def _verify_patch(self, repository):
-        pass
 
     def _bundle(self):
         if self.patch_type == 'bundle':
@@ -487,8 +482,31 @@ class MergeDirective2(_BaseMergeDirective):
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)
-        if calculated_patch != stored_patch:
+        return (calculated_patch == stored_patch)
+
+    def install_revisions_base(self, repository):
+        self.install_revisions(repository)
+        return self.base_revision_id, self.revision_id, 'verified'
+
+    def install_revisions(self, repository):
+        _BaseMergeDirective.install_revisions(self, repository)
+        verified = self._maybe_verify(repository)
+        if verified == 'failed':
             raise errors.PatchVerificationFailed()
+
+    def _maybe_verify(self, repository):
+        if self.patch is not None:
+            if self._verify_patch(repository):
+                return 'verified'
+            else:
+                return 'failed'
+        else:
+            return 'inapplicable'
+
+    def install_revisions_base(self, repository):
+        _BaseMergeDirective.install_revisions(self, repository)
+        verified = self._maybe_verify(repository)
+        return None, self.revision_id, verified
 
 
 class MergeDirectiveFormatRegistry(registry.Registry):

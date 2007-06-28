@@ -435,6 +435,23 @@ class TestMergeDirectiveBranch(object):
         self.assertEqual('rev2a', revision)
         self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
 
+    def test_install_revisions_base_branch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
+            tree_b.branch.base, patch_type=None,
+            public_branch=tree_a.branch.base)
+        self.assertFalse(tree_b.branch.repository.has_revision('rev2a'))
+        base, revision, verified = md.install_revisions_base(
+            tree_b.branch.repository)
+        if isinstance(md, merge_directive.MergeDirective):
+            self.assertIs(None, base)
+            self.assertEqual('inapplicable', verified)
+        else:
+            self.assertEqual('rev1', base)
+            self.assertEqual('verified', verified)
+        self.assertEqual('rev2a', revision)
+        self.assertTrue(tree_b.branch.repository.has_revision('rev2a'))
+
     def test_install_revisions_bundle(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 36,
@@ -529,12 +546,11 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         md2._verify_patch(tree_a.branch.repository)
         # Convert to Mac line-endings
         md2.patch = md2.patch.replace('\n', '\r')
-        md2._verify_patch(tree_a.branch.repository)
+        self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         # Convert to DOS line-endings
         md2.patch = md2.patch.replace('\r', '\r\n')
-        md2._verify_patch(tree_a.branch.repository)
+        self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         md2.patch = md2.patch.replace('content_c', 'content_d')
-        self.assertRaises(errors.PatchVerificationFailed, md2._verify_patch,
-            tree_a.branch.repository)
+        self.assertFalse(md2._verify_patch(tree_a.branch.repository))
         self.assertRaises(errors.PatchVerificationFailed,
                           md2.install_revisions, tree_a.branch.repository)
