@@ -2445,3 +2445,34 @@ class Feature(object):
         if getattr(self, 'feature_name', None):
             return self.feature_name()
         return self.__class__.__name__
+
+
+class TestScenarioApplier(object):
+    """A tool to apply scenarios to tests."""
+
+    def adapt(self, test):
+        """Return a TestSuite containing a copy of test for each scenario."""
+        result = unittest.TestSuite()
+        for scenario in self.scenarios:
+            result.addTest(self.adapt_test_to_scenario(test, scenario))
+        return result
+
+    def adapt_test_to_scenario(self, test, scenario):
+        """Copy test and apply scenario to it.
+
+        :param test: A test to adapt.
+        :param scenario: A tuple describing the scenarion.
+            The first element of the tuple is the new test id.
+            The second element is a dict containing attributes to set on the
+            test.
+        :return: The adapted test.
+        """
+        from copy import deepcopy
+        new_test = deepcopy(test)
+        for name, value in scenario[1].items():
+            setattr(new_test, name, value)
+        def make_new_test_id():
+            new_id = "%s(%s)" % (new_test.id(), scenario[0])
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test

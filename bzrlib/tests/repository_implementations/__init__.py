@@ -24,8 +24,6 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/branch_implementations/*.py.
 """
 
-import unittest
-
 from bzrlib import (
     repository,
     )
@@ -35,6 +33,7 @@ from bzrlib.repofmt import (
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
+                          TestScenarioApplier,
                           TestLoader,
                           TestSuite,
                           )
@@ -42,7 +41,7 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
-class RepositoryTestProviderAdapter(object):
+class RepositoryTestProviderAdapter(TestScenarioApplier):
     """A tool to generate a suite testing multiple repository formats at once.
 
     This is done by copying the test once for each transport and injecting
@@ -53,39 +52,13 @@ class RepositoryTestProviderAdapter(object):
 
     def __init__(self, transport_server, transport_readonly_server, formats,
                  vfs_transport_factory=None):
+        TestScenarioApplier.__init__(self)
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._vfs_transport_factory = vfs_transport_factory
         self._formats = formats
         self.scenarios = self.formats_to_scenarios(formats)
     
-    def adapt(self, test):
-        """Return a TestSuite containing a copy of test for each scenario."""
-        result = unittest.TestSuite()
-        for scenario in self.scenarios:
-            result.addTest(self.adapt_test_to_scenario(test, scenario))
-        return result
-
-    def adapt_test_to_scenario(self, test, scenario):
-        """Copy test and apply scenario to it.
-
-        :param test: A test to adapt.
-        :param scenario: A tuple describing the scenarion.
-            The first element of the tuple is the new test id.
-            The second element is a dict containing attributes to set on the
-            test.
-        :return: The adapted test.
-        """
-        from copy import deepcopy
-        new_test = deepcopy(test)
-        for name, value in scenario[1].items():
-            setattr(new_test, name, value)
-        def make_new_test_id():
-            new_id = "%s(%s)" % (new_test.id(), scenario[0])
-            return lambda: new_id
-        new_test.id = make_new_test_id()
-        return new_test
-
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 

@@ -263,21 +263,6 @@ class TestRepositoryProviderAdapter(TestCase):
               'vfs_transport_factory': 'vfs'})],
             adapter.scenarios)
 
-    def test_adapt_applies_scenarios(self):
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        input_test = TestRepositoryProviderAdapter(
-            "test_adapt_test_to_scenario")
-        adapter = RepositoryTestProviderAdapter(None, None, [])
-        adapter.scenarios = [("1", "dict"), ("2", "settings")]
-        calls = []
-        def capture_call(test, scenario):
-            calls.append((test, scenario))
-            return test
-        adapter.adapt_test_to_scenario = capture_call
-        adapter.adapt(input_test)
-        self.assertEqual([(input_test, ("1", "dict")),
-            (input_test, ("2", "settings"))], calls)
-
     def test_formats_to_scenarios(self):
         """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
@@ -314,12 +299,28 @@ class TestRepositoryProviderAdapter(TestCase):
               'vfs_transport_factory': 'vfs'})],
             vfs_adapter.formats_to_scenarios(formats))
 
+
+class TestTestScenarioApplier(TestCase):
+    """Tests for the test adaption facilities."""
+
+    def test_adapt_applies_scenarios(self):
+        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
+        adapter = TestScenarioApplier()
+        adapter.scenarios = [("1", "dict"), ("2", "settings")]
+        calls = []
+        def capture_call(test, scenario):
+            calls.append((test, scenario))
+            return test
+        adapter.adapt_test_to_scenario = capture_call
+        adapter.adapt(input_test)
+        self.assertEqual([(input_test, ("1", "dict")),
+            (input_test, ("2", "settings"))], calls)
+
     def test_adapt_test_to_scenario(self):
-        from bzrlib.tests.repository_implementations import RepositoryTestProviderAdapter
-        input_test = TestRepositoryProviderAdapter(
-            "test_adapt_test_to_scenario")
-        adapter = RepositoryTestProviderAdapter(None, None, [],
-            vfs_transport_factory="vfs")
+        from bzrlib.tests.repository_implementations import TestScenarioApplier
+        input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
+        adapter = TestScenarioApplier()
         # setup two adapted tests
         adapted_test1 = adapter.adapt_test_to_scenario(input_test,
             ("new id",
@@ -340,12 +341,12 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual("readonly-server",
             adapted_test1.transport_readonly_server)
         self.assertEqual(
-            "bzrlib.tests.test_selftest.TestRepositoryProviderAdapter."
+            "bzrlib.tests.test_selftest.TestTestScenarioApplier."
             "test_adapt_test_to_scenario(new id)",
             adapted_test1.id())
         self.assertEqual(None, adapted_test2.bzrdir_format)
         self.assertEqual(
-            "bzrlib.tests.test_selftest.TestRepositoryProviderAdapter."
+            "bzrlib.tests.test_selftest.TestTestScenarioApplier."
             "test_adapt_test_to_scenario(new id 2)",
             adapted_test2.id())
 

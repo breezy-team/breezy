@@ -46,6 +46,12 @@ IN DEVELOPMENT
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
+  LIBRARY API BREAKS:
+
+    * ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      to ``bzrlib.tests.repository_implementations``. This is an API break
+      in the testing infrastructure only.
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
@@ -60,6 +66,9 @@ IN DEVELOPMENT
     * Add scenarios as a public attribute on RepositoryTestAdapter to allow
       modification of the generated scenarios before adaption and easier
       testing. (Robert Collins)
+
+    * New testing support class ``TestScenarioApplier`` which multiplies
+      out a single teste by a list of supplied scenarios. (RobertCollins)
 
   BUGFIXES:
 
