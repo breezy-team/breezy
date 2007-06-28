@@ -58,20 +58,20 @@ class TestCommit(ExternalBase):
         self.run_bzr('init a')
         self.build_tree(['a/a_file'])
         self.run_bzr('add a/a_file')
-        self.run_bzr('commit -m first-commit a')
+        self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
         self.run_bzr('branch a b')
         self.build_tree_contents([('b/a_file', 'changes in b')])
-        self.run_bzr('commit -m first-commit-in-b b')
+        self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
         self.build_tree_contents([('a/a_file', 'new contents')])
-        self.run_bzr('commit -m change-in-a a')
+        self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
         os.chdir('b')
         self.run_bzr('merge ../a', retcode=1) # will conflict
         os.chdir('..')
         self.run_bzr('resolved b/a_file')
-        self.run_bzr('commit -m merge-into-b b')
+        self.run_bzr(['commit', '-m', 'merge into b', 'b'])
 
 
     def test_10_verbose_commit(self):

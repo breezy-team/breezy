@@ -138,13 +138,13 @@ class SubdirCommit(TestCaseInTempDir):
             file(fn, 'w').write('old contents')
 
         run_bzr('add')
-        run_bzr('commit -m first_revision')
+        run_bzr(['commit', '-m', 'first revision'])
 
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('new contents')
 
         mutter('start selective subdir commit')
-        run_bzr('commit a -m commit_a_only')
+        run_bzr(['commit', 'a', '-m', 'commit a only'])
 
         old = b.repository.revision_tree(b.get_rev_id(1))
         new = b.repository.revision_tree(b.get_rev_id(2))
@@ -155,14 +155,14 @@ class SubdirCommit(TestCaseInTempDir):
 
         os.chdir('a')
         # commit from here should do nothing
-        run_bzr('commit . -m commit_subdir_only --unchanged')
+        run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
 
         # commit in subdirectory commits whole tree
-        run_bzr('commit -m commit_whole_tree_from_subdir')
+        run_bzr(['commit', '-m', 'commit whole tree from subdir'])
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')
         eq(v4.get_file_by_path('top').read(), 'new contents')

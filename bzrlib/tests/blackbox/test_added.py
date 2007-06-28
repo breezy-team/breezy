@@ -52,5 +52,5 @@ class TestAdded(TestCaseInTempDir):
         check_added('a\n')
 
         # after commit, now no longer listed
-        bzr('commit -m add_a')
+        bzr(['commit', '-m', 'add a'])
         check_added('')

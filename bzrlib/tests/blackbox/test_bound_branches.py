@@ -294,9 +294,9 @@ class TestBoundBranches(TestCaseWithTransport):
 
         # Check and make sure it also works if parent is ahead multiple
         os.chdir('../base')
-        bzr('commit -m base_3 --unchanged')
-        bzr('commit -m base_4 --unchanged')
-        bzr('commit -m base_5 --unchanged')
+        bzr(['commit', '-m', 'base 3', '--unchanged'])
+        bzr(['commit', '-m', 'base 4', '--unchanged'])
+        bzr(['commit', '-m', 'base 5', '--unchanged'])
         self.check_revno(5)
 
         os.chdir('../child')
@@ -322,9 +322,9 @@ class TestBoundBranches(TestCaseWithTransport):
 
         # Check and make sure it also works if child is ahead multiple
         bzr('unbind')
-        bzr('commit -m child_3 --unchanged')
-        bzr('commit -m child_4 --unchanged')
-        bzr('commit -m child_5 --unchanged')
+        bzr(['commit', '-m', 'child 3', '--unchanged'])
+        bzr(['commit', '-m', 'child 4', '--unchanged'])
+        bzr(['commit', '-m', 'child 5', '--unchanged'])
         self.check_revno(5)
 
         self.check_revno(1, '../base')
@@ -345,7 +345,7 @@ class TestBoundBranches(TestCaseWithTransport):
         os.chdir('other')
         open('c', 'wb').write('file c\n')
         bzr('add c')
-        bzr('commit -m adding_c')
+        bzr(['commit', '-m', 'adding c'])
         new_rev_id = bzr('revision-history')[0].strip().split('\n')[-1]
 
         os.chdir('../child')
@@ -365,7 +365,7 @@ class TestBoundBranches(TestCaseWithTransport):
         # Commit should succeed, and cause merged revisions to
         # be pulled into base
         os.chdir('../child')
-        bzr('commit -m merge_other')
+        bzr(['commit', '-m', 'merge other'])
 
         self.check_revno(2)
 
@@ -383,18 +383,18 @@ class TestBoundBranches(TestCaseWithTransport):
         
         os.chdir('other')
         open('a', 'wb').write('new contents\n')
-        bzr('commit -m changed_a')
+        bzr(['commit', '-m', 'changed a'])
         self.check_revno(2)
         open('a', 'ab').write('and then some\n')
-        bzr('commit -m another_a')
+        bzr(['commit', '-m', 'another a'])
         self.check_revno(3)
         open('a', 'ab').write('and some more\n')
-        bzr('commit -m yet_another_a')
+        bzr(['commit', '-m', 'yet another a'])
         self.check_revno(4)
 
         os.chdir('../child')
         open('a', 'wb').write('also changed a\n')
-        bzr('commit -m child_modified_a')
+        bzr(['commit', '-m', 'child modified a'])
 
         self.check_revno(2)
         self.check_revno(2, '../base')

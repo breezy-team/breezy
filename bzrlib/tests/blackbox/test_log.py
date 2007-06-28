@@ -144,7 +144,7 @@ class TestLog(ExternalBase):
         self.run_bzr('tag tag1')
         os.chdir('../branch2')
         self.run_bzr('merge ../branch1')
-        self.run_bzr('commit -m merge_branch_1')
+        self.run_bzr(['commit', '-m', 'merge branch 1'])
         log = self.run_bzr("log -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
 
@@ -160,18 +160,19 @@ class TestLogMerges(ExternalBase):
 
     def test_merges_are_indented_by_level(self):
         self.build_tree(['parent/'])
-        self.run_bzr('init parent')
-        self.run_bzr('commit -m first_post --unchanged parent')
-        self.run_bzr('branch parent child')
-        self.run_bzr('commit -m branch_1 --unchanged child')
-        self.run_bzr('branch child smallerchild')
-        self.run_bzr('commit -m branch_2 --unchanged smallerchild')
+        self.run_bzr('init', 'parent')
+        self.run_bzr(['commit', '-m', 'first post', '--unchanged', 'parent'])
+        self.run_bzr('branch', 'parent', 'child')
+        self.run_bzr(['commit', '-m', 'branch 1', '--unchanged', 'child'])
+        self.run_bzr('branch', 'child', 'smallerchild')
+        self.run_bzr(['commit', '-m', 'branch 2', '--unchanged',
+                      'smallerchild'])
         os.chdir('child')
-        self.run_bzr('merge ../smallerchild')
-        self.run_bzr('commit -m merge_branch_2')
+        self.run_bzr('merge', '../smallerchild')
+        self.run_bzr(['commit', '-m', 'merge branch 2'])
         os.chdir('../parent')
-        self.run_bzr('merge ../child')
-        self.run_bzr('commit -m merge_branch_1')
+        self.run_bzr('merge', '../child')
+        self.run_bzr(['commit', '-m', 'merge branch 1'])
         out,err = self.run_bzr('log')
         # the log will look something like:
 #        self.assertEqual("""\
@@ -218,15 +219,15 @@ class TestLogMerges(ExternalBase):
         # we check for the indenting of the commit message and the 
         # revision numbers 
         self.assertTrue('revno: 2' in out)
-        self.assertTrue('  merge_branch_1' in out)
+        self.assertTrue('  merge branch 1' in out)
         self.assertTrue('    revno: 1.1.2' in out)
-        self.assertTrue('      merge_branch_2' in out)
+        self.assertTrue('      merge branch 2' in out)
         self.assertTrue('        revno: 1.1.1.1' in out)
-        self.assertTrue('          branch_2' in out)
+        self.assertTrue('          branch 2' in out)
         self.assertTrue('    revno: 1.1.1' in out)
-        self.assertTrue('      branch_1' in out)
+        self.assertTrue('      branch 1' in out)
         self.assertTrue('revno: 1' in out)
-        self.assertTrue('  first_post' in out)
+        self.assertTrue('  first post' in out)
         self.assertEqual('', err)
 
 
@@ -352,26 +353,26 @@ class TestLogFile(TestCaseWithTransport):
         tree.commit('add file2')
         tree.add('file3')
         tree.commit('add file3')
-        self.run_bzr('branch parent child')
+        self.run_bzr('branch', 'parent', 'child')
         print >> file('child/file2', 'wb'), 'hello'
-        self.run_bzr('commit -m branch_1 child')
+        self.run_bzr(['commit', '-m', 'branch 1', 'child'])
         os.chdir('parent')
-        self.run_bzr('merge ../child')
-        self.run_bzr('commit -m merge_child_branch')
+        self.run_bzr('merge', '../child')
+        self.run_bzr(['commit', '-m', 'merge child branch'])
         
-        log = self.run_bzr('log file1')[0]
+        log = self.run_bzr('log', 'file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
         self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file2')[0]
+        log = self.run_bzr('log', 'file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
         self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file3')[0]
+        log = self.run_bzr('log', 'file3')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertContainsRe(log, 'revno: 3\n')

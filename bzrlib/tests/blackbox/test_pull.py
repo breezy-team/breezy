@@ -154,17 +154,17 @@ class TestPull(ExternalBase):
         bzr('init')
         open('foo', 'wb').write('original\n')
         bzr('add foo')
-        bzr('commit -m initial_commit')
+        bzr(['commit', '-m', 'initial commit'])
 
         os.chdir('..')
         bzr('branch a b')
 
         os.chdir('a')
         open('foo', 'wb').write('changed\n')
-        bzr('commit -m later_change')
+        bzr(['commit', '-m', 'later change'])
 
         open('foo', 'wb').write('another\n')
-        bzr('commit -m a_third_change')
+        bzr(['commit', '-m', 'a third change'])
 
         rev_history_a = get_rh(3)
 
@@ -196,17 +196,17 @@ class TestPull(ExternalBase):
         bzr('init')
         open('foo', 'wb').write('original\n')
         bzr('add foo')
-        bzr('commit -m initial_commit')
+        bzr(['commit', '-m', 'initial commit'])
 
         os.chdir('..')
         bzr('branch a b')
 
         os.chdir('a')
         open('foo', 'wb').write('changed\n')
-        bzr('commit -m later_change')
+        bzr(['commit', '-m', 'later change'])
 
         open('foo', 'wb').write('another\n')
-        bzr('commit -m a_third_change')
+        bzr(['commit', '-m', 'a third change'])
 
         rev_history_a = get_rh(3)
 
@@ -218,7 +218,7 @@ class TestPull(ExternalBase):
 
         os.chdir('../a')
         open('foo', 'wb').write('a fourth change\n')
-        bzr('commit -m a_fourth_change')
+        bzr(['commit', '-m', 'a fourth change'])
 
         rev_history_a = get_rh(4)
 
