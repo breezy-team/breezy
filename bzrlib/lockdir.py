@@ -94,6 +94,15 @@ Example usage:
 
 """
 
+
+# TODO: We sometimes have the problem that our attempt to rename '1234' to
+# 'held' fails because the transport server moves into an existing directory,
+# rather than failing the rename.  If we made the info file name the same as
+# the locked directory name we would avoid this problem because moving into
+# the held directory would implicitly clash.  However this would not mesh with
+# the existing locking code and needs a new format of the containing object.
+# -- robertc, mbp 20070628
+
 import os
 import time
 from cStringIO import StringIO
