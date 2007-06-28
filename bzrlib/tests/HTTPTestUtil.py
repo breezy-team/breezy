@@ -162,6 +162,19 @@ class SingleRangeRequestHandler(TestingHTTPRequestHandler):
         return self.get_single_range(file, file_size, start, end)
 
 
+class SingleOnlyRangeRequestHandler(TestingHTTPRequestHandler):
+    """Only reply to simple range requests, errors out on multiple"""
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        """Refuses the multiple ranges request"""
+        if len(ranges) > 1:
+            file.close()
+            self.send_error(416, "Requested range not satisfiable")
+            return
+        (start, end) = ranges[0]
+        return self.get_single_range(file, file_size, start, end)
+
+
 class NoRangeRequestHandler(TestingHTTPRequestHandler):
     """Ignore range requests without notice"""
 
@@ -380,7 +393,8 @@ class DigestAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="%s", algorithm=%s, qop=auth' % (tcs.auth_nonce, 'MD5')
+        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+                                                              'MD5')
         self.send_header(tcs.auth_header_sent,header)
 
 

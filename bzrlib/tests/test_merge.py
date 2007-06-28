@@ -77,8 +77,8 @@ class TestMerge(TestCaseWithTransport):
         wt1.add('bar')
         wt1.commit('add foobar')
         os.chdir('branch2')
-        self.run_bzr('merge', '../branch1/baz', retcode=3)
-        self.run_bzr('merge', '../branch1/foo')
+        self.run_bzr('merge ../branch1/baz', retcode=3)
+        self.run_bzr('merge ../branch1/foo')
         self.failUnlessExists('foo')
         self.failIfExists('bar')
         wt2 = WorkingTree.open('.') # opens branch2
@@ -249,3 +249,24 @@ class TestMerge(TestCaseWithTransport):
         registry.remove('merge4')
         self.assertFalse('merge4' in [x[0] for x in 
                         merge_type_option.iter_switches()])
+
+    def test_merge_other_moves_we_deleted(self):
+        tree_a = self.make_branch_and_tree('A')
+        tree_a.lock_write()
+        self.addCleanup(tree_a.unlock)
+        self.build_tree(['A/a'])
+        tree_a.add('a')
+        tree_a.commit('1', rev_id='rev-1')
+        tree_a.flush()
+        tree_a.rename_one('a', 'b')
+        tree_a.commit('2')
+        bzrdir_b = tree_a.bzrdir.sprout('B', revision_id='rev-1')
+        tree_b = bzrdir_b.open_workingtree()
+        tree_b.lock_write()
+        self.addCleanup(tree_b.unlock)
+        os.unlink('B/a')
+        tree_b.commit('3')
+        try:
+            tree_b.merge_from_branch(tree_a.branch)
+        except AttributeError:
+            self.fail('tried to join a path when name was None')

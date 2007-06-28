@@ -29,17 +29,17 @@ class TestLog(ExternalBase):
 
     def _prepare(self, format=None):
         if format:
-            self.runbzr("init --format="+format)
+            self.run_bzr(["init", "--format="+format])
         else:
-            self.runbzr("init")
+            self.run_bzr("init")
         self.build_tree(['hello.txt', 'goodbye.txt', 'meep.txt'])
-        self.runbzr("add hello.txt")
-        self.runbzr("commit -m message1 hello.txt")
-        self.runbzr("add goodbye.txt")
-        self.runbzr("commit -m message2 goodbye.txt")
-        self.runbzr("add meep.txt")
-        self.runbzr("commit -m message3 meep.txt")
-        self.full_log = self.runbzr("log")[0]
+        self.run_bzr("add hello.txt")
+        self.run_bzr("commit -m message1 hello.txt")
+        self.run_bzr("add goodbye.txt")
+        self.run_bzr("commit -m message2 goodbye.txt")
+        self.run_bzr("add meep.txt")
+        self.run_bzr("commit -m message3 meep.txt")
+        self.full_log = self.run_bzr("log")[0]
 
     def test_log_null_end_revspec(self):
         self._prepare()
@@ -50,46 +50,46 @@ class TestLog(ExternalBase):
         self.assertTrue('message:\n  message2\n' in self.full_log)
         self.assertTrue('message:\n  message3\n' in self.full_log)
 
-        log = self.runbzr("log -r 1..")[0]
+        log = self.run_bzr("log -r 1..")[0]
         self.assertEquals(log, self.full_log)
 
     def test_log_null_begin_revspec(self):
         self._prepare()
-        log = self.runbzr("log -r ..3")[0]
+        log = self.run_bzr("log -r ..3")[0]
         self.assertEquals(self.full_log, log)
 
     def test_log_null_both_revspecs(self):
         self._prepare()
-        log = self.runbzr("log -r ..")[0]
+        log = self.run_bzr("log -r ..")[0]
         self.assertEquals(self.full_log, log)
 
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
-        log = self.runbzr("log -r -3..")[0]
+        log = self.run_bzr("log -r -3..")[0]
         self.assertEquals(self.full_log, log)
 
     def test_log_negative_both_revspec_full_log(self):
         self._prepare()
-        log = self.runbzr("log -r -3..-1")[0]
+        log = self.run_bzr("log -r -3..-1")[0]
         self.assertEquals(self.full_log, log)
 
     def test_log_negative_both_revspec_partial(self):
         self._prepare()
-        log = self.runbzr("log -r -3..-2")[0]
+        log = self.run_bzr("log -r -3..-2")[0]
         self.assertTrue('revno: 1\n' in log)
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' not in log)
 
     def test_log_negative_begin_revspec(self):
         self._prepare()
-        log = self.runbzr("log -r -2..")[0]
+        log = self.run_bzr("log -r -2..")[0]
         self.assertTrue('revno: 1\n' not in log)
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' in log)
 
     def test_log_postive_revspecs(self):
         self._prepare()
-        log = self.runbzr("log -r 1..3")[0]
+        log = self.run_bzr("log -r 1..3")[0]
         self.assertEquals(self.full_log, log)
 
     def test_log_revno_n_path(self):
@@ -101,11 +101,11 @@ class TestLog(ExternalBase):
         os.chdir('branch2')
         self._prepare()
         os.chdir('..')
-        log = self.runbzr("log -r revno:2:branch1..revno:3:branch2",
+        log = self.run_bzr("log -r revno:2:branch1..revno:3:branch2",
                           retcode=3)[0]
-        log = self.runbzr("log -r revno:1:branch2..revno:3:branch2")[0]
+        log = self.run_bzr("log -r revno:1:branch2..revno:3:branch2")[0]
         self.assertEquals(self.full_log, log)
-        log = self.runbzr("log -r revno:1:branch2")[0]
+        log = self.run_bzr("log -r revno:1:branch2")[0]
         self.assertTrue('revno: 1\n' in log)
         self.assertTrue('revno: 2\n' not in log)
         self.assertTrue('branch nick: branch2\n' in log)
@@ -121,14 +121,14 @@ class TestLog(ExternalBase):
 
     def test_log_with_tags(self):
         self._prepare(format='dirstate-tags')
-        self.runbzr('tag -r1 tag1')
-        self.runbzr('tag -r1 tag1.1')
-        self.runbzr('tag tag3')
+        self.run_bzr('tag -r1 tag1')
+        self.run_bzr('tag -r1 tag1.1')
+        self.run_bzr('tag tag3')
         
-        log = self.runbzr("log -r-1")[0]
+        log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
 
-        log = self.runbzr("log -r1")[0]
+        log = self.run_bzr("log -r1")[0]
         # I guess that we can't know the order of tags in the output
         # since dicts are unordered, need to check both possibilities
         self.assertContainsRe(log, r'tags: (tag1, tag1\.1|tag1\.1, tag1)')
@@ -138,15 +138,22 @@ class TestLog(ExternalBase):
         os.chdir('branch1')
         self._prepare(format='dirstate-tags')
         os.chdir('..')
-        self.runbzr('branch branch1 branch2')
+        self.run_bzr('branch branch1 branch2')
         os.chdir('branch1')
-        self.runbzr('commit -m foobar --unchanged')
-        self.runbzr('tag tag1')
+        self.run_bzr('commit -m foobar --unchanged')
+        self.run_bzr('tag tag1')
         os.chdir('../branch2')
-        self.runbzr('merge ../branch1')
-        self.runbzr('commit -m merge_branch_1')
-        log = self.runbzr("log -r-1")[0]
+        self.run_bzr('merge ../branch1')
+        self.run_bzr('commit -m merge_branch_1')
+        log = self.run_bzr("log -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
+
+    def test_log_limit(self):
+        self._prepare()
+        log = self.run_bzr("log --limit 2")[0]
+        self.assertTrue('revno: 1\n' not in log)
+        self.assertTrue('revno: 2\n' in log)
+        self.assertTrue('revno: 3\n' in log)
 
 
 class TestLogMerges(ExternalBase):

@@ -276,6 +276,22 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def ensure_base(self):
+        """Ensure that the directory this transport references exists.
+
+        This will create a directory if it doesn't exist.
+        :return: True if the directory was created, False otherwise.
+        """
+        # The default implementation just uses "Easier to ask for forgiveness
+        # than permission". We attempt to create the directory, and just
+        # suppress a FileExists exception.
+        try:
+            self.mkdir('.')
+        except errors.FileExists:
+            return False
+        else:
+            return True
+
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
         """
@@ -1185,8 +1201,10 @@ class TransportTestProviderAdapter(object):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            warning("transport module %s doesn't provide get_test_permutations()"
+            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
+            ##warning("transport module %s doesn't provide get_test_permutations()"
+            ##       % module.__name__)
             return []
         return module.get_test_permutations()
 

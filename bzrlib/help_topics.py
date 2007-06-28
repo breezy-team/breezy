@@ -193,7 +193,12 @@ command.  (e.g. "bzr --quiet help").
 --profile      Profile execution using the hotshot profiler
 --lsprof       Profile execution using the lsprof profiler
 --lsprof-file  Profile execution using the lsprof profiler, and write the
-               results to a specified file.
+               results to a specified file.  If the filename ends with ".txt",
+               text format will be used.  If the filename ends with
+               ".callgrind", output will be formatted for use with KCacheGrind.
+               Otherwise, the output will be a pickle.
+
+See doc/developers/profiling.txt for more information on profiling.
 
 Note: --version must be supplied before any command.
 """
@@ -276,6 +281,82 @@ Related commands:
               commits are only made locally
 """
 
+_repositories = \
+"""Repositories
+
+Repositories in Bazaar are where committed information is stored. It is
+possible to create a shared repository which allows multiple branches to
+share their information in the same location. When a new branch is
+created it will first look to see if there is a containing repository it
+can share.
+
+When two branches of the same project share a repository, there is
+generally a large space saving. For some operations (e.g. branching
+within the repository) this translates in to a large time saving.
+
+To create a shared repository use the init-repository command (or the alias
+init-repo). This command takes the location of the repository to create. This
+means that 'bzr init-repository repo' will create a directory named 'repo',
+which contains a shared repository. Any new branches that are created in this
+directory will then use it for storage.
+
+It is a good idea to create a repository whenever you might create more
+than one branch of a project. This is true for both working areas where you
+are doing the development, and any server areas that you use for hosting
+projects. In the latter case, it is common to want branches without working
+trees. Since the files in the branch will not be edited directly there is no
+need to use up disk space for a working tree. To create a repository in which
+the branches will not have working trees pass the '--no-trees' option to
+'init-repository'.
+
+Related commands:
+
+  init-repository   Create a shared repository. Use --no-trees to create one
+                    in which new branches won't get a working tree.
+"""
+
+
+_working_trees = \
+"""Working Trees
+
+A working tree is the contents of a branch placed on disk so that you can
+see the files and edit them. The working tree is where you make changes to a
+branch, and when you commit the current state of the working tree is the
+snapshot that is recorded in the commit.
+
+When you push a branch to a remote system, a working tree will not be
+created. If one is already present the files will not be updated. The
+branch information will be updated and the working tree will be marked
+as out-of-date. Updating a working tree remotely is difficult, as there
+may be uncommitted changes or the update may cause content conflicts that are
+difficult to deal with remotely.
+
+If you have a branch with no working tree you can use the 'checkout' command
+to create a working tree. If you run 'bzr checkout .' from the branch it will
+create the working tree. If the branch is updated remotely, you can update the
+working tree by running 'bzr update' in that directory.
+
+If you have a branch with a working tree that you do not want the 'remove-tree'
+command will remove the tree if it is safe. This can be done to avoid the
+warning about the remote working tree not being updated when pushing to the
+branch. It can also be useful when working with a '--no-trees' repository
+(see 'bzr help repositories').
+
+If you want to have a working tree on a remote machine that you push to you
+can either run 'bzr update' in the remote branch after each push, or use some
+other method to update the tree during the push. There is an 'rspush' plugin
+that will update the working tree using rsync as well as doing a push. There
+is also a 'push-and-update' plugin that automates running 'bzr update' via SSH
+after each push.
+
+Useful commands:
+
+  checkout     Create a working tree when a branch does not have one.
+  remove-tree  Removes the working tree from a branch when it is safe to do so.
+  update       When a working tree is out of sync with it's associated branch
+               this will update the tree to match the branch.
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
@@ -295,6 +376,10 @@ def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return bugtracker.tracker_registry.help_topic(topic)
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
+topic_registry.register('repositories', _repositories,
+                        'Basic information on shared repositories.')
+topic_registry.register('working-trees', _working_trees,
+                        'Information on working trees')
 
 
 class HelpTopicIndex(object):
@@ -355,3 +440,4 @@ class RegisteredTopic(object):
     def get_help_topic(self):
         """Return the help topic this can be found under."""
         return self.topic
+

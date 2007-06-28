@@ -54,7 +54,8 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           filter_suite_by_re,
                           sort_suite_by_re,
-                          test_suite
+                          test_lsprof,
+                          test_suite,
                           )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
@@ -620,18 +621,19 @@ class TestTestResult(TestCase):
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
         # if a benchmark time is given, we want a x of y style result.
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms/ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(
+            timed_string, "^ +[0-9]+ms/ +[0-9]+ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -679,10 +681,7 @@ class TestTestResult(TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
@@ -971,7 +970,7 @@ class TestRunner(TestCase):
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -990,7 +989,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1010,7 +1009,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 self.counter -= 1
 
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1129,6 +1128,13 @@ class SampleTestCase(TestCase):
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
+    def test_debug_flags_sanitised(self):
+        """The bzrlib debug flags should be sanitised by setUp."""
+        # we could set something and run a test that will check
+        # it gets santised, but this is probably sufficient for now:
+        # if someone runs the test with -Dsomething it will error.
+        self.assertEqual(set(), bzrlib.debug.debug_flags)
+
     def inner_test(self):
         # the inner child test
         note("inner_test")
@@ -1194,10 +1200,7 @@ class TestTestCase(TestCase):
         
         Each self.time() call is individually and separately profiled.
         """
-        try:
-            import bzrlib.lsprof
-        except ImportError:
-            raise TestSkipped("lsprof not installed.")
+        self.requireFeature(test_lsprof.LSProfFeature)
         # overrides the class member with an instance member so no cleanup 
         # needed.
         self._gather_lsprof_in_benchmarks = True
@@ -1535,3 +1538,16 @@ class TestSelftestFiltering(TestCase):
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
+
+class TestCheckInventoryShape(TestCaseWithTransport):
+
+    def test_check_inventory_shape(self):
+        files = ['a', 'b/', 'b/c']
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        tree.add(files)
+        tree.lock_read()
+        try:
+            self.check_inventory_shape(tree.inventory, files)
+        finally:
+            tree.unlock()

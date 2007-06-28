@@ -35,6 +35,7 @@ lazy_import(globals(), """
 import getpass
 
 from bzrlib import (
+    osutils,
     progress,
     trace,
     )
@@ -111,7 +112,7 @@ class UIFactory(object):
             current_format_name,
             basedir)
 
-            
+
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories."""
 
@@ -131,7 +132,8 @@ class CLIUIFactory(UIFactory):
                 return False
 
     def get_non_echoed_password(self, prompt):
-        return getpass.getpass(prompt)
+        encoding = osutils.get_terminal_encoding()
+        return getpass.getpass(prompt.encode(encoding, 'replace'))
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -144,7 +146,7 @@ class CLIUIFactory(UIFactory):
                  canceled the request.
         """
         prompt += ': '
-        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
+        prompt = (prompt % kwargs)
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
         return self.get_non_echoed_password(prompt)

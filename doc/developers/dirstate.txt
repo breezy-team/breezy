@@ -1,0 +1,3 @@
+Don't really need the hashes of the current versions - just knowing
+whether they've changed or not will generally be enough - and just the
+mtime and ctime of a point in time may be enough?

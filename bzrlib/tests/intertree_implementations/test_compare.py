@@ -867,6 +867,51 @@ class TestIterChanges(TestCaseWithTwoTrees):
             specific_files=specific_files, require_versioned=False,
             want_unversioned=True))
 
+    def test_similar_filenames(self):
+        """Test when we have a few files with similar names."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
+
+        # The trees are actually identical, but they happen to contain
+        # similarly named files.
+        self.build_tree(['tree1/a/',
+                         'tree1/a/b/',
+                         'tree1/a/b/c/',
+                         'tree1/a/b/c/d/',
+                         'tree1/a-c/',
+                         'tree1/a-c/e/',
+                         'tree2/a/',
+                         'tree2/a/b/',
+                         'tree2/a/b/c/',
+                         'tree2/a/b/c/d/',
+                         'tree2/a-c/',
+                         'tree2/a-c/e/',
+                        ])
+        tree1.add(['a', 'a/b', 'a/b/c', 'a/b/c/d', 'a-c', 'a-c/e'],
+                  ['a-id', 'b-id', 'c-id', 'd-id', 'a-c-id', 'e-id'])
+        tree2.add(['a', 'a/b', 'a/b/c', 'a/b/c/d', 'a-c', 'a-c/e'],
+                  ['a-id', 'b-id', 'c-id', 'd-id', 'a-c-id', 'e-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        self.assertEqual([], self.do_iter_changes(tree1, tree2,
+                                                  want_unversioned=True))
+        expected = sorted([
+            self.unchanged(tree2, tree2.get_root_id()),
+            self.unchanged(tree2, 'a-id'),
+            self.unchanged(tree2, 'b-id'),
+            self.unchanged(tree2, 'c-id'),
+            self.unchanged(tree2, 'd-id'),
+            self.unchanged(tree2, 'a-c-id'),
+            self.unchanged(tree2, 'e-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True,
+                                              include_unchanged=True))
+
+
     def test_unversioned_subtree_only_emits_root(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
@@ -1318,3 +1363,70 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
                                               want_unversioned=False))
+
+    def test_renamed_and_added(self):
+        """Test when we have renamed a file, and put another in its place."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # The final changes are:
+        # bzr add b c
+        # bzr mv b a
+        # bzr mv c d
+        # bzr add b c
+
+        self.build_tree_contents([
+            ('tree1/b', 'b contents\n'),
+            ('tree1/c', 'c contents\n'),
+            ('tree2/a', 'b contents\n'),
+            ('tree2/b', 'new b contents\n'),
+            ('tree2/c', 'new c contents\n'),
+            ('tree2/d', 'c contents\n'),
+            ])
+        tree1.add(['b', 'c'], ['b1-id', 'c1-id'])
+        tree2.add(['a', 'b', 'c', 'd'], ['b1-id', 'b2-id', 'c2-id', 'c1-id'])
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.renamed(tree1, tree2, 'b1-id', False),
+            self.renamed(tree1, tree2, 'c1-id', False),
+            self.added(tree2, 'b2-id'),
+            self.added(tree2, 'c2-id'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True))
+
+    def test_renamed_and_unknown(self):
+        """A file was moved on the filesystem, but not in bzr."""
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        root_id = tree1.get_root_id()
+        tree2.set_root_id(root_id)
+
+        # The final changes are:
+        # bzr add a b
+        # mv a a2
+
+        self.build_tree_contents([
+            ('tree1/a', 'a contents\n'),
+            ('tree1/b', 'b contents\n'),
+            ('tree2/a', 'a contents\n'),
+            ('tree2/b', 'b contents\n'),
+            ])
+        tree1.add(['a', 'b'], ['a-id', 'b-id'])
+        tree2.add(['a', 'b'], ['a-id', 'b-id'])
+        os.rename('tree2/a', 'tree2/a2')
+
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+
+        expected = sorted([
+            self.missing('a-id', 'a', 'a', tree2.get_root_id(), 'file'),
+            self.unversioned(tree2, 'a2'),
+            ])
+        self.assertEqual(expected,
+                         self.do_iter_changes(tree1, tree2,
+                                              want_unversioned=True))

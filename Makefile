@@ -25,7 +25,7 @@ extensions:
 	@echo "building extension modules."
 	python setup.py build_ext -i
 
-check: extensions
+check: docs extensions
 	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
@@ -75,6 +75,8 @@ html-docs: docs
 doc_dir := doc 
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
 htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
+dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_htm_files := $(patsubst %.txt, %.htm, $(dev_txt_files)) 
 
 pretty-html-docs: pretty_files
 
@@ -83,11 +85,14 @@ pretty_docs:
 
 pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
 
-doc/HACKING.htm: HACKING
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css HACKING doc/HACKING.htm
+doc/developers/%.htm: doc/developers/%.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
 
-doc/%.htm: doc/%.txt 
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
+doc/developers/HACKING.htm: doc/developers/HACKING
+	python tools/rst2html.py --link-stylesheet --stylesheet=../default.css --footnote-references=superscript $< $@
+
+%.htm: %.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css --footnote-references=superscript $< $@
 
 $(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
@@ -108,15 +113,27 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	python generate_docs.py -o $@ man
 
-docs: $(htm_files) $(MAN_PAGES) doc/HACKING.htm
+ALL_DOCS = $(htm_files) $(MAN_PAGES) doc/developers/HACKING.htm $(dev_htm_files) doc/developers/performance.png
+docs: $(ALL_DOCS)
 
 copy-docs: docs
-	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir $(htm_files) \
+		doc/default.css NEWS README \
+		win32_bzr.exe/doc
+	python tools/win32/ostools.py copytodir doc/developers/HACKING.htm \
+		$(dev_htm_files) \
+		win32_bzr.exe/doc/developers
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove $(htm_files) \
-	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt $(MAN_PAGES)
+	python tools/win32/ostools.py remove $(ALL_DOCS) \
+	$(HTMLDIR) $(PRETTYDIR) doc/bzr_man.txt doc/developers/performance.png
+
+
+# build a png of our performance task list
+doc/developers/performance.png: doc/developers/performance.dot
+	@echo Generating $@
+	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
 
 # make bzr.exe for win32 with py2exe
@@ -144,6 +161,7 @@ clean-win32:
 	python tools/win32/ostools.py remove win32_bzr.exe
 	python tools/win32/ostools.py remove py2exe.log
 	python tools/win32/ostools.py remove doc/*.htm
+	python tools/win32/ostools.py remove doc/developers/*.htm
 	python tools/win32/ostools.py remove doc/bzr_man.txt
 	python tools/win32/ostools.py remove tools/win32/bzr.iss
 	python tools/win32/ostools.py remove bzr-setup*.exe

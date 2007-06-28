@@ -44,6 +44,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.transport.remote import RemoteTransport
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -59,12 +60,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def tearDown(self):
         self.transport.disconnect()
         tests.TestCaseWithTransport.tearDown(self)
-
-    def test_is_readonly(self):
-        # XXX: this is a poor way to test RemoteTransport, but currently there's
-        # no easy way to substitute in a fake client on a transport like we can
-        # with RemoteBzrDir/Branch/Repository.
-        self.assertEqual(self.transport.is_readonly(), False)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport)
@@ -103,19 +98,9 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
 
-
-class ReadonlyRemoteTransportTests(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        self.transport_server = server.ReadonlySmartTCPServer_for_testing
-        super(ReadonlyRemoteTransportTests, self).setUp()
-
-    def test_is_readonly_yes(self):
-        # XXX: this is a poor way to test RemoteTransport, but currently there's
-        # no easy way to substitute in a fake client on a transport like we can
-        # with RemoteBzrDir/Branch/Repository.
-        transport = self.get_readonly_transport()
-        self.assertEqual(transport.is_readonly(), True)
+    def test_remote_branch_repr(self):
+        b = BzrDir.open_from_transport(self.transport).open_branch()
+        self.assertStartsWith(str(b), 'RemoteBranch(')
 
 
 class FakeProtocol(object):
@@ -401,6 +386,58 @@ class TestBranchLockWrite(tests.TestCase):
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
         self.assertEqual(
             [('call', 'Branch.lock_write', ('///quack/', '', ''))],
+            client._calls)
+
+
+class TestTransportIsReadonly(tests.TestCase):
+
+    def test_true(self):
+        client = FakeClient([(('yes',), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(True, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_false(self):
+        client = FakeClient([(('no',), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_error_from_old_server(self):
+        """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
+        
+        Clients should treat it as a "no" response, because is_readonly is only
+        advisory anyway (a transport could be read-write, but then the
+        underlying filesystem could be readonly anyway).
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request 'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
+            client._calls)
+
+    def test_error_from_old_0_11_server(self):
+        """Same as test_error_from_old_server, but with the slightly different
+        error message from bzr 0.11 servers.
+        """
+        client = FakeClient([(
+            ('error', "Generic bzr smart protocol error: "
+                      "bad request u'Transport.is_readonly'"), '')])
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        self.assertEqual(False, transport.is_readonly())
+        self.assertEqual(
+            [('call', 'Transport.is_readonly', ())],
             client._calls)
 
 

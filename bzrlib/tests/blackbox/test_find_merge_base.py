@@ -19,16 +19,23 @@ import os
 
 
 class TestFindMergeBase(ExternalBase):
+
     def test_find_merge_base(self):
         os.mkdir('a')
         os.chdir('a')
-        self.runbzr('init')
-        self.runbzr('commit -m foo --unchanged')
-        self.runbzr('branch . ../b')
-        q = self.run_bzr('find-merge-base', '.', '../b', backtick=True)
-        self.runbzr('commit -m bar --unchanged')
+        self.run_bzr('init')
+        self.run_bzr('commit -m foo --unchanged')
+        self.run_bzr('branch . ../b')
+        q = self.run_bzr(['find-merge-base', '.', '../b'])[0]
+        self.run_bzr('commit -m bar --unchanged')
         os.chdir('../b')
-        self.runbzr('commit -m baz --unchanged')
-        r = self.run_bzr('find-merge-base', '.', '../a', backtick=True)
+        self.run_bzr('commit -m baz --unchanged')
+        r = self.run_bzr(['find-merge-base', '.', '../a'])[0]
         self.assertEqual(q, r)
         
+    def test_find_null_merge_base(self):
+        tree = self.make_branch_and_tree('foo')
+        tree.commit('message')
+        tree2 = self.make_branch_and_tree('bar')
+        r = self.run_bzr('find-merge-base', 'foo', 'bar')[0]
+        self.assertEqual('merge base is revision null:\n', r)

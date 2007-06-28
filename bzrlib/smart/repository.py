@@ -213,7 +213,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     def _tarfile_response(self, tmp_dirname, compression):
         temp = tempfile.NamedTemporaryFile()
         try:
-            self._tarball_of_dir(tmp_dirname, compression, temp.name)
+            self._tarball_of_dir(tmp_dirname, compression, temp.file)
             # all finished; write the tempfile out to the network
             temp.seek(0)
             return SuccessfulSmartServerResponse(('ok',), temp.read())
@@ -222,8 +222,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
         finally:
             temp.close()
 
-    def _tarball_of_dir(self, dirname, compression, tarfile_name):
-        tarball = tarfile.open(tarfile_name, mode='w:' + compression)
+    def _tarball_of_dir(self, dirname, compression, ofile):
+        tarball = tarfile.open(fileobj=ofile, mode='w|' + compression)
         try:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files

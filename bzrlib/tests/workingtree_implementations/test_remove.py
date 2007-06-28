@@ -29,7 +29,6 @@ class TestRemove(TestCaseWithWorkingTree):
     b_c = ['b', 'b/c']
 
     def getTree(self):
-        self.makeAndChdirToTestDir()
         tree = self.make_branch_and_tree('.')
         self.build_tree(TestRemove.files)
         return tree
@@ -203,3 +202,18 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove(TestRemove.b, keep_files=False, force=True)
         self.assertNotInWorkingTree(TestRemove.b_c)
         self.failIfExists(TestRemove.b_c)
+
+    def test_remove_subtree(self):
+        tree = self.make_branch_and_tree('.')
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add('subtree', 'subtree-id')
+        tree.remove('subtree')
+        self.assertIs(None, tree.path2id('subtree'))
+
+    def test_non_cwd(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        tree.add(['dir', 'dir/file'])
+        tree.commit('add file')
+        tree.remove('dir/', keep_files=False)
+        self.failIfExists('tree/dir/file')
