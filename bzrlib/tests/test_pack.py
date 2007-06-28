@@ -89,7 +89,7 @@ class TestContainerReader(tests.TestCase):
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
-        reader = pack.ContainerReader(stream.read)
+        reader = pack.ContainerReader(stream)
         return reader
 
     def test_construct(self):
@@ -213,7 +213,7 @@ class TestBytesRecordReader(tests.TestCase):
 
     def get_reader_for(self, bytes):
         stream = StringIO(bytes)
-        reader = pack.BytesRecordReader(stream.read)
+        reader = pack.BytesRecordReader(stream)
         return reader
 
     def test_record_with_no_name(self):

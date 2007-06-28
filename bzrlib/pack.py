@@ -96,7 +96,7 @@ class ContainerWriter(object):
 
 class BaseReader(object):
 
-    def __init__(self, reader_func):
+    def __init__(self, source_file):
         """Constructor.
 
         :param reader_func: a callable that takes one optional argument,
@@ -104,27 +104,16 @@ class BaseReader(object):
             returns less than the requested number of bytes, then the end of the
             file/stream has been reached.
         """
-        self.reader_func = reader_func
+        self._source = source_file
+
+    def reader_func(self, length=None):
+        return self._source.read(length)
 
     def _read_line(self):
-        """Read a line from the input stream.
-
-        This is a simple but inefficient implementation that just reads one byte
-        at a time.  Lines should not be very long, so this is probably
-        tolerable.
-
-        :returns: a line, without the trailing newline
-        """
-        # XXX: Have a maximum line length, to prevent malicious input from
-        # consuming an unreasonable amount of resources?
-        #   -- Andrew Bennetts, 2007-05-07.
-        line = ''
-        while not line.endswith('\n'):
-            byte = self.reader_func(1)
-            if byte == '':
-                raise errors.UnexpectedEndOfContainerError()
-            line += byte
-        return line[:-1]
+        line = self._source.readline()
+        if not line.endswith('\n'):
+            raise errors.UnexpectedEndOfContainerError()
+        return line.rstrip('\n')
 
 
 class ContainerReader(BaseReader):
@@ -180,7 +169,7 @@ class ContainerReader(BaseReader):
             record_kind = self.reader_func(1)
             if record_kind == 'B':
                 # Bytes record.
-                reader = BytesRecordReader(self.reader_func)
+                reader = BytesRecordReader(self._source)
                 yield reader
             elif record_kind == 'E':
                 # End marker.  There are no more records.
