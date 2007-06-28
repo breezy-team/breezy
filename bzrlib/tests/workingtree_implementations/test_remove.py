@@ -16,7 +16,6 @@
 
 """Tests for interface conformance of 'WorkingTree.remove'"""
 
-import re
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib import errors, osutils
 
@@ -33,11 +32,6 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(TestRemove.files)
         return tree
-
-    def _assertRemoveErrorContainsRe(self, exception, file_detail_re):
-        self.assertContainsRe(str(exception),
-            '(?s)Can\'t remove changed or unknown'
-            ' files:.*' + file_detail_re)
 
     def test_remove_keep(self):
         """Check that files are unversioned but not deleted."""
@@ -66,9 +60,10 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.getTree()
         tree.add(TestRemove.files)
         self.assertInWorkingTree(TestRemove.files)
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.files, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'added:.*a.*b.*b/c.*d')
+        self.assertContainsRe(err.changes_as_text,
+            '(?s)added:.*a.*b/.*b/c.*d/')
         self.assertInWorkingTree(TestRemove.files)
         self.failUnlessExists(TestRemove.files)
 
@@ -79,9 +74,9 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.commit("make sure a is versioned")
         self.build_tree_contents([('a', "some other new content!")])
         self.assertInWorkingTree(TestRemove.a)
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.a, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'modified:.*a')
+        self.assertContainsRe(err.changes_as_text, '(?s)modified:.*a')
         self.assertInWorkingTree(TestRemove.a)
         self.failUnlessExists(TestRemove.a)
 
@@ -131,9 +126,10 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertInWorkingTree(rfilesx)
         self.failUnlessExists(rfilesx)
 
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             rfilesx, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'modified:.*ax.*bx/cx')
+        self.assertContainsRe(err.changes_as_text,
+            '(?s)modified:.*ax.*bx/cx')
         self.assertInWorkingTree(rfilesx)
         self.failUnlessExists(rfilesx)
 
@@ -151,9 +147,10 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_unknown_files(self):
         """Try to delete unknown files."""
         tree = self.getTree()
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.files, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'unknown:.*b/c.*b.*a.*d')
+        self.assertContainsRe(err.changes_as_text,
+            '(?s)unknown:.*d/.*b/c.*b/.*a.*')
 
     def test_remove_nonexisting_files(self):
         """Try to delete non-existing files."""
@@ -180,9 +177,10 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertInWorkingTree(TestRemove.files)
         self.failUnlessExists(TestRemove.files)
         self.build_tree(['b/my_unknown_file'])
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.b, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'unknown:.*b/my_unknown_file')
+        self.assertContainsRe(err.changes_as_text,
+            '(?s)unknown:.*b/my_unknown_file')
         self.assertInWorkingTree(TestRemove.b)
         self.failUnlessExists(TestRemove.b)
 
@@ -203,9 +201,9 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.commit("make sure b and c are versioned")
         self.build_tree_contents([('b/c', "some other new content!")])
         self.assertInWorkingTree(TestRemove.b_c)
-        e = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
             TestRemove.b, keep_files=False)
-        self._assertRemoveErrorContainsRe(e, 'modified:.*b/c')
+        self.assertContainsRe(err.changes_as_text, '(?s)modified:.*b/c')
         self.assertInWorkingTree(TestRemove.b_c)
         self.failUnlessExists(TestRemove.b_c)
 
