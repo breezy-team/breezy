@@ -359,3 +359,27 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ('update', 4, 4, 'Running post commit hooks - Stage')],
             factory._calls
            )
+
+    def test_commit_progress_shows_hook_names(self):
+        tree = self.make_branch_and_tree('.')
+        # set a progress bar that captures the calls so we can see what is 
+        # emitted
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+        factory = CapturingUIFactory()
+        ui.ui_factory = factory
+        def a_hook(_, _2, _3, _4, _5, _6):
+            pass
+        branch.Branch.hooks.install_hook('post_commit', a_hook)
+        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        tree.commit('first post')
+        self.assertEqual(
+            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Entry 1/1] - Stage'),
+             ('update', 2, 4, 'Saving data locally - Stage'),
+             ('update', 3, 4, 'Updating the working tree - Stage'),
+             ('update', 4, 4, 'Running post commit hooks - Stage'),
+             ('update', 4, 4, 'Running post commit hooks [hook name] - Stage'),
+             ],
+            factory._calls
+           )

@@ -338,9 +338,6 @@ class Commit(object):
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             self.reporter.completed(new_revno, self.rev_id)
-
-            # Process the post commit hooks, if any
-            self._emit_progress_set_stage("Running post commit hooks")
             self._process_hooks(old_revno, new_revno)
         finally:
             self._cleanup()
@@ -469,6 +466,8 @@ class Commit(object):
 
     def _process_hooks(self, old_revno, new_revno):
         """Process any registered commit hooks."""
+        # Process the post commit hooks, if any
+        self._emit_progress_set_stage("Running post commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15)
         if self.config.post_commit() is not None:
@@ -494,6 +493,14 @@ class Commit(object):
         else:
             old_revid = bzrlib.revision.NULL_REVISION
         for hook in Branch.hooks['post_commit']:
+            # show the running hook in the progress bar. As hooks may
+            # end up doing nothing (e.g. because they are not configured by
+            # the user) this is still showing progress, not showing overall
+            # actions - its up to each plugin to show a UI if it want's to
+            # (such as 'Emailing diff to foo@example.com').
+            self.pb_stage_name = "Running post commit hooks [%s]" % \
+                Branch.hooks.get_hook_name(hook)
+            self._emit_progress()
             hook(hook_local, hook_master, old_revno, old_revid, new_revno,
                 self.rev_id)
 

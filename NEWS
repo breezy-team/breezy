@@ -38,7 +38,10 @@ IN DEVELOPMENT
       
       If there is no master branch, the 3rd stage is omitted and the total
       number of stages is adjusted accordingly.
-      (Ian Clatworthy)
+
+      Each hook that is run after commit is listed with a name (as hooks
+      can be slow it is useful feedback).
+      (Ian Clatworthy, Robert Collins)
 
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
@@ -53,6 +56,10 @@ IN DEVELOPMENT
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
+      allows a nicer UI when hooks are running as the current hook can
+      be displayed. (Robert Collins)
 
   TESTING:
 
