@@ -436,27 +436,27 @@ class TestRevisionStoreProviderAdapter(TestCase):
 class TestWorkingTreeProviderAdapter(TestCase):
     """A group of tests that test the workingtree implementation test adapter."""
 
-    def test_adapted_tests(self):
+    def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.workingtree import WorkingTreeTestProviderAdapter
-        input_test = TestWorkingTreeProviderAdapter(
-            "test_adapted_tests")
+        from bzrlib.tests.workingtree_implementations \
+            import WorkingTreeTestProviderAdapter
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
         adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].workingtree_format, formats[0][0])
-        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].workingtree_format, formats[1][0])
-        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'C',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': 'c'}),
+            ('str',
+             {'bzrdir_format': 'D',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': 'd'})],
+            adapter.scenarios)
 
 
 class TestTreeProviderAdapter(TestCase):
