@@ -1128,6 +1128,13 @@ class SampleTestCase(TestCase):
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
+    def test_debug_flags_sanitised(self):
+        """The bzrlib debug flags should be sanitised by setUp."""
+        # we could set something and run a test that will check
+        # it gets santised, but this is probably sufficient for now:
+        # if someone runs the test with -Dsomething it will error.
+        self.assertEqual(set(), bzrlib.debug.debug_flags)
+
     def inner_test(self):
         # the inner child test
         note("inner_test")

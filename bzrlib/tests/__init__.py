@@ -752,6 +752,17 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        self._clear_debug_flags()
+
+    def _clear_debug_flags(self):
+        """Prevent externally set debug flags affecting tests.
+        
+        Tests that want to use debug flags can just set them in the
+        debug_flags set during setup/teardown.
+        """
+        self._preserved_debug_flags = set(debug.debug_flags)
+        debug.debug_flags.clear()
+        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -765,9 +776,6 @@ class TestCase(unittest.TestCase):
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
-        # FIXME: Rather than constructing new objects like this, how about
-        # having save() and clear() methods on the base Hook class? mbp
-        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1108,6 +1116,10 @@ class TestCase(unittest.TestCase):
         """Set an environment variable, and reset it when finished."""
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
+    def _restore_debug_flags(self):
+        debug.debug_flags.clear()
+        debug.debug_flags.update(self._preserved_debug_flags)
+
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
@@ -1269,15 +1281,10 @@ class TestCase(unittest.TestCase):
             os.chdir(working_dir)
 
         try:
-            saved_debug_flags = frozenset(debug.debug_flags)
-            debug.debug_flags.clear()
-            try:
-                result = self.apply_redirected(ui.ui_factory.stdin,
-                    stdout, stderr,
-                    bzrlib.commands.run_bzr_catch_errors,
-                    args)
-            finally:
-                debug.debug_flags.update(saved_debug_flags)
+            result = self.apply_redirected(ui.ui_factory.stdin,
+                stdout, stderr,
+                bzrlib.commands.run_bzr_catch_errors,
+                args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
