@@ -53,6 +53,9 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * -D now supports hooks to get debug tracing of hooks (though its currently
+      minimal in nature). (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
