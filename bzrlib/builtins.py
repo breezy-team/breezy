@@ -2637,6 +2637,7 @@ class cmd_merge(Command):
             ):
         from bzrlib.tag import _merge_tags_if_possible
         other_revision_id = None
+        base_revision_id = None
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2665,55 +2666,53 @@ class cmd_merge(Command):
                 mergeable.install_revisions(tree.branch.repository)
                 base_revision_id, other_revision_id, verified =\
                     mergeable.get_merge_request(tree.branch.repository)
-                revision = []
-                if base_revision_id not in tree.branch.repository.get_ancestry(
+                if base_revision_id in tree.branch.repository.get_ancestry(
                     tree.branch.last_revision(), topo_sorted=False):
-                    revision.append(RevisionSpec.from_string(
-                        'revid:' + base_revision_id))
-                revision.append(RevisionSpec.from_string(
-                    'revid:' + other_revision_id))
+                    base_revision_id = None
+                other_branch = None
+                path = ''
+                other = None
+                base = None
 
-        if revision is None \
-                or len(revision) < 1 or revision[0].needs_branch():
-            branch = self._get_remembered_parent(tree, branch, 'Merging from')
+        if other_revision_id is None:
+            if revision is None \
+                    or len(revision) < 1 or revision[0].needs_branch():
+                branch = self._get_remembered_parent(tree, branch,
+                    'Merging from')
 
-        if revision is None or len(revision) < 1:
-            if uncommitted:
-                base = [branch, -1]
-                other = [branch, None]
-            else:
-                base = [None, None]
-                other = [branch, -1]
-            other_branch, path = Branch.open_containing(branch)
-        else:
-            if uncommitted:
-                raise errors.BzrCommandError('Cannot use --uncommitted and'
-                                             ' --revision at the same time.')
-            branch = revision[0].get_branch() or branch
-            if len(revision) == 1:
-                base = [None, None]
-                if other_revision_id is not None:
-                    other_branch = None
-                    path = ""
-                    other = None
+            if revision is None or len(revision) < 1:
+                if uncommitted:
+                    base = [branch, -1]
+                    other = [branch, None]
                 else:
+                    base = [None, None]
+                    other = [branch, -1]
+                other_branch, path = Branch.open_containing(branch)
+            else:
+                if uncommitted:
+                    raise errors.BzrCommandError('Cannot use --uncommitted and'
+                        ' --revision at the same time.')
+                branch = revision[0].get_branch() or branch
+                if len(revision) == 1:
+                    base = [None, None]
                     other_branch, path = Branch.open_containing(branch)
                     revno = revision[0].in_history(other_branch).revno
                     other = [branch, revno]
-            else:
-                assert len(revision) == 2
-                if None in revision:
-                    raise errors.BzrCommandError(
-                        "Merge doesn't permit empty revision specifier.")
-                base_branch, path = Branch.open_containing(branch)
-                branch1 = revision[1].get_branch() or branch
-                other_branch, path1 = Branch.open_containing(branch1)
-                if revision[0].get_branch() is not None:
-                    # then path was obtained from it, and is None.
-                    path = path1
+                else:
+                    assert len(revision) == 2
+                    if None in revision:
+                        raise errors.BzrCommandError(
+                            "Merge doesn't permit empty revision specifier.")
+                    base_branch, path = Branch.open_containing(branch)
+                    branch1 = revision[1].get_branch() or branch
+                    other_branch, path1 = Branch.open_containing(branch1)
+                    if revision[0].get_branch() is not None:
+                        # then path was obtained from it, and is None.
+                        path = path1
 
-                base = [branch, revision[0].in_history(base_branch).revno]
-                other = [branch1, revision[1].in_history(other_branch).revno]
+                    base = [branch, revision[0].in_history(base_branch).revno]
+                    other = [branch1,
+                             revision[1].in_history(other_branch).revno]
 
         if ((tree.branch.get_parent() is None or remember) and
             other_branch is not None):
@@ -2733,6 +2732,7 @@ class cmd_merge(Command):
             try:
                 conflict_count = _merge_helper(
                     other, base, other_rev_id=other_revision_id,
+                    base_rev_id=base_revision_id,
                     check_clean=(not force),
                     merge_type=merge_type,
                     reprocess=reprocess,
@@ -3691,7 +3691,7 @@ def _merge_helper(other_revision, base_revision,
                   pull=False,
                   pb=DummyProgress(),
                   change_reporter=None,
-                  other_rev_id=None):
+                  other_rev_id=None, base_rev_id=None):
     """Merge changes into a tree.
 
     base_revision
@@ -3752,7 +3752,12 @@ def _merge_helper(other_revision, base_revision,
         else:
             merger.set_other(other_revision)
         merger.pp.next_phase()
-        merger.set_base(base_revision)
+        if base_rev_id is not None:
+            merger.set_base_revision(base_rev_id, this_tree.branch)
+        elif base_revision is not None:
+            merger.set_base(base_revision)
+        else:
+            merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:
             note('Nothing to do.')
             return 0

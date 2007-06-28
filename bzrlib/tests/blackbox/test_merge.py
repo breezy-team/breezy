@@ -306,4 +306,6 @@ class TestMerge(ExternalBase):
             source.branch.repository, 'rev2', 0, 0, 'target')
         md.base_revision_id = 'rev1'
         self.build_tree_contents([('directive', ''.join(md.to_lines()))])
-        self.run_bzr('merge -d target directive', retcode=3)
+        self.run_bzr('merge -d target directive')
+        self.failIfExists('target/a')
+        self.failUnlessExists('target/b')

@@ -245,6 +245,20 @@ class Merger(object):
         self.other_tree = self.revision_tree(revision_id)
         self.other_basis = revision_id
 
+    def set_base_revision(self, revision_id, branch):
+        """Set 'base' based on a branch and revision id
+
+        :param revision_id: The revision to use for a tree
+        :param branch: The branch containing this tree
+        """
+        self.base_rev_id = revision_id
+        self.base_branch = branch
+        self.this_branch.fetch(branch, revision_id)
+        self.base_tree = self.revision_tree(revision_id)
+        self.base_is_ancestor = is_ancestor(self.this_basis,
+                                            self.base_rev_id,
+                                            self.this_branch)
+
     def find_base(self):
         self.set_base([None, None])
 
