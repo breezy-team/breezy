@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  BUGFIXES:
+
+    * Do not suppress pipe errors, etc. in non-display commands
+      (Alexander Belchenko, #87178)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -35,12 +40,28 @@ IN DEVELOPMENT
       number of stages is adjusted accordingly.
       (Ian Clatworthy)
 
+    * Various operations that are now faster due to avoiding unnecessary
+      topological sorts. (Aaron Bentley)
+
+    * The lsprof filename note is emitted via trace.note(), not standard
+      output.  (Aaron Bentley)
+
+  INTERNALS:
+
+    * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
       directories as they're used.  This reduces the IO load from 
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
+
+  BUGFIXES:
+
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
 
 
 bzr 0.17  2007-06-18
