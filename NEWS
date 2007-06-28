@@ -59,6 +59,8 @@ IN DEVELOPMENT
       ``bzrlib.tests.branch_implementations``.
       ``bzrlib.bzrdir.BzrDirTestProviderAdapter`` has moved to 
       ``bzrlib.tests.bzrdir_implementations``.
+      ``bzrlib.versionedfile.InterVersionedFileTestProviderAdapter`` has moved
+      to ``bzrlib.tests.interversionedfile_implementations``.
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
