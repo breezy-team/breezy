@@ -976,3 +976,31 @@ class TestMailAddressExtraction(TestCase):
                          config.extract_email_address('Jane <jane@test.com>'))
         self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
+
+class TestTreeConfig(TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        branch = self.make_branch('.')
+        tree_config = config.TreeConfig(branch)
+        tree_config.set_option('value', 'key', 'SECTION')
+        tree_config.set_option('value2', 'key2')
+        tree_config.set_option('value3-top', 'key3')
+        tree_config.set_option('value3-section', 'key3', 'SECTION')
+        value = tree_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = tree_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(tree_config.get_option('non-existant'), None)
+        value = tree_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = tree_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(tree_config.get_option('key2', 'NOSECTION'), None)
+        value = tree_config.get_option('key2', 'NOSECTION', default='default')
+        self.assertEqual(value, 'default')
+        value = tree_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = tree_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')
+
