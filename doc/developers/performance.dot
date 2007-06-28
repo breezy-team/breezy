@@ -73,6 +73,7 @@ strict digraph performance {
   gdfo_usage[label="GDFO Usage\n3 days"];
 
   /* dependencies */
+  gc_analysis -> gc_api_stack;
   gdfo_api -> gdfo_cache;
   gdfo_api -> gdfo_usage;
   xdelta -> xdelta_imp;
