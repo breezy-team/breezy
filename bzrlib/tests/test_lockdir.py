@@ -648,3 +648,22 @@ class TestLockDir(TestCaseWithTransport):
         e = self.assertRaises(errors.LockError, ld2.attempt_lock)
         self.assertContainsRe(str(e),
                 "rename succeeded, but lock is still held by someone else")
+
+    def test_failed_lock_leaves_no_trash(self):
+        # if we fail to acquire the lock, we don't leave pending directories
+        # behind -- https://bugs.launchpad.net/bzr/+bug/109169
+        ld1 = self.get_lock()
+        ld2 = self.get_lock()
+        # should be nothing before we start
+        ld1.create()
+        t = self.get_transport().clone('test_lock')
+        def check_dir(a):
+            self.assertEquals(a, t.list_dir('.'))
+        check_dir([])
+        # when held, that's all we see
+        ld1.attempt_lock()
+        check_dir(['held'])
+        # second guy should fail
+        self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        # no kibble
+        check_dir(['held'])
