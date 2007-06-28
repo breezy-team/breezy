@@ -55,6 +55,8 @@ def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid
 def install_hooks():
     """Install CommitSender to send after commits with bzr >= 0.15 """
     Branch.hooks.install_hook('post_commit', branch_commit_hook)
+    if getattr(Branch.hooks, 'name_hook', None):
+        Branch.hooks.name_hook(branch_commit_hook, "bzr-email")
 
 
 def test_suite():
