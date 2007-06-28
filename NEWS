@@ -73,6 +73,9 @@ IN DEVELOPMENT
       either a list of parameters, a string containing the command line, or
       (deprecated) varargs parameters.  (Martin Pool)
 
+    * The base TestCase now isolates tests from -D parameters by clearing
+      ``debug.debug_flags`` and restores it afterwards. (Robert Collins)
+
   BUGFIXES:
 
     * Work around python-2.4.1 inhability to correctly parse the
