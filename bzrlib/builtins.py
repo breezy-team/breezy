@@ -3143,9 +3143,7 @@ class cmd_annotate(Command):
                 revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.path2id(relpath)
             if file_id is None:
-              raise errors.BzrCommandError("The file '%s' is not present "
-                                           "in the "
-                                           "specified revision" % relpath)
+                raise errors.NotVersionedError(filename)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout,
