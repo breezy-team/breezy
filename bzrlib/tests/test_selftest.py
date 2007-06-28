@@ -357,26 +357,26 @@ class TestInterRepositoryProviderAdapter(TestCase):
     def test_adapted_tests(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.repository import InterRepositoryTestProviderAdapter
-        input_test = TestInterRepositoryProviderAdapter(
-            "test_adapted_tests")
+        from bzrlib.tests.interrepository_implementations import \
+            InterRepositoryTestProviderAdapter
         server1 = "a"
         server2 = "b"
         formats = [(str, "C1", "C2"), (int, "D1", "D2")]
         adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].interrepo_class, formats[0][0])
-        self.assertEqual(tests[0].repository_format, formats[0][1])
-        self.assertEqual(tests[0].repository_format_to, formats[0][2])
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].interrepo_class, formats[1][0])
-        self.assertEqual(tests[1].repository_format, formats[1][1])
-        self.assertEqual(tests[1].repository_format_to, formats[1][2])
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual([
+            ('str',
+             {'interrepo_class': str,
+              'repository_format': 'C1',
+              'repository_format_to': 'C2',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'}),
+            ('int',
+             {'interrepo_class': int,
+              'repository_format': 'D1',
+              'repository_format_to': 'D2',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a'})],
+            adapter.formats_to_scenarios(formats))
 
 
 class TestInterVersionedFileProviderAdapter(TestCase):

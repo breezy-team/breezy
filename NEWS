@@ -49,8 +49,10 @@ IN DEVELOPMENT
   LIBRARY API BREAKS:
 
     * ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
-      to ``bzrlib.tests.repository_implementations``. This is an API break
-      in the testing infrastructure only.
+      to ``bzrlib.tests.repository_implementations``. 
+      ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
+      to ``bzrlib.tests.interrepository_implementations``.
+      These changes are an API break in the testing infrastructure only.
 
   INTERNALS:
 
@@ -63,7 +65,7 @@ IN DEVELOPMENT
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
 
-    * Add scenarios as a public attribute on RepositoryTestAdapter to allow
+    * Add scenarios as a public attribute on the TestAdapter classes to allow
       modification of the generated scenarios before adaption and easier
       testing. (Robert Collins)
 

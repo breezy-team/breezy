@@ -56,7 +56,6 @@ class RepositoryTestProviderAdapter(TestScenarioApplier):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._vfs_transport_factory = vfs_transport_factory
-        self._formats = formats
         self.scenarios = self.formats_to_scenarios(formats)
     
     def formats_to_scenarios(self, formats):
