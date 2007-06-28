@@ -57,6 +57,8 @@ IN DEVELOPMENT
       ``bzrlib.tests.test_transport_implementations``.
       ``bzrlib.branch.BranchTestProviderAdapter`` has moved to
       ``bzrlib.tests.branch_implementations``.
+      ``bzrlib.bzrdir.BzrDirTestProviderAdapter`` has moved to 
+      ``bzrlib.tests.bzrdir_implementations``.
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 

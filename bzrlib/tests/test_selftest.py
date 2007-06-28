@@ -196,26 +196,25 @@ class TestBzrDirProviderAdapter(TestCase):
     def test_adapted_tests(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.bzrdir import BzrDirTestProviderAdapter
-        input_test = TestBzrDirProviderAdapter(
-            "test_adapted_tests")
+        from bzrlib.tests.bzrdir_implementations import BzrDirTestProviderAdapter
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
         adapter = BzrDirTestProviderAdapter(vfs_factory,
             server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].bzrdir_format, formats[0])
-        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].bzrdir_format, formats[1])
-        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual([
+            ('str',
+             {'bzrdir_format': 'c',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'vfs_transport_factory': 'v'}),
+            ('str',
+             {'bzrdir_format': 'd',
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'vfs_transport_factory': 'v'})],
+            adapter.scenarios)
 
 
 class TestRepositoryProviderAdapter(TestCase):
