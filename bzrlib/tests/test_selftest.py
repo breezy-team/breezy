@@ -1538,3 +1538,16 @@ class TestSelftestFiltering(TestCase):
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
+
+class TestCheckInventoryShape(TestCaseWithTransport):
+
+    def test_check_inventory_shape(self):
+        files = ['a', 'b/', 'b/c']
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        tree.add(files)
+        tree.lock_read()
+        try:
+            self.check_inventory_shape(tree.inventory, files)
+        finally:
+            tree.unlock()

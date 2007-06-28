@@ -232,17 +232,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.log('contents of inventory: %r' % inv.entries())
 
         self.check_inventory_shape(inv,
-                                   ['dir', 'dir/sub', 'dir/sub/file'])
+                                   ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()
         self.check_inventory_shape(wt.inventory,
-                                   ['newdir', 'newdir/sub', 'newdir/sub/file'])
+                                   ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
         self.check_inventory_shape(wt.inventory,
-                                   ['newdir', 'newdir/newsub',
+                                   ['newdir/', 'newdir/newsub/',
                                     'newdir/newsub/file'])
         wt.unlock()
 
