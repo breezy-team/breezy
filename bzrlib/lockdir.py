@@ -88,7 +88,7 @@ Example usage:
 >>> t = MemoryTransport()
 >>> l = LockDir(t, 'sample-lock')
 >>> l.create()
->>> l.wait_lock()
+>>> token = l.wait_lock()
 >>> # do something here
 >>> l.unlock()
 
