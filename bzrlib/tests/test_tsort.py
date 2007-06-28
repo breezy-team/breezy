@@ -85,6 +85,12 @@ class TopoSortTests(TestCase):
                                    (8, [0, 1, 4, 5, 6])]),
                                   [0, 1, 2, 3, 4, 5, 6, 7, 8])
 
+    def test_tsort_unincluded_parent(self):
+        """Sort nodes, but don't include some parents in the output"""
+        self.assertSortAndIterate([(0, [1]),
+                                   (1, [2])],
+                                   [1, 0])
+
 
 class MergeSortTests(TestCase):
 

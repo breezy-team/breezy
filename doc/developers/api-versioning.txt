@@ -1,0 +1,130 @@
+==============
+API Versioning
+==============
+
+Status
+======
+
+:Date: 2007-06-26
+
+bzrlib has a rich API which is used both internally, and externally by
+plugins and scripts. To allow the API to change, specifically to allow
+support for features and methods to be removed, without causing hard to
+diagnose bugs in the clients of the API, bzrlib provides explicit API
+compatibility data, and a compact API to allow scripts and plugins to
+ascertain if the bzrlib they are using is compatible to the API they were
+written against.
+
+
+.. contents::
+
+
+Motivation
+==========
+
+To allow plugins to apply their own policy for compatibility with bzrlib,
+without requiring a new release on every library release. Plugins should
+also be able to use the API to export their own compatibility information
+for code reuse between plugins.
+
+
+Terminology
+===========
+
+An **API** is a collection of python objects/modules/packages which can be
+used by plugins and scripts. The ``bzrlib`` **API** covers all of bzrlib,
+but we can be more precise - e.g. the ``WorkingTree API``.
+An **API version** is a tuple ``(major, minor, point)``.
+
+
+API versions
+============
+
+For simplicity we treat API's as being compatible with a range of
+versions: the current release of the API, and some oldest version which is
+also compatible. While we could say that there is a set of older versions
+with which the current version is compatible, a range is easier to
+express, and easier for a human to look at and understand, and finally
+easier to manage. The oldest version with which the API for a python
+object is compatible is obtained by looking up the ``api_minimum_version``
+attribute on the python object handed to ``require_api``, and failing that
+the bzrlib ``api_minimum_version`` is returned. The current version of the
+API is obtained by looking for an ``api_current_version`` attribute, and
+if that is not found, an ``version_info`` attribute (of which the first 3
+elements are used). If no current version can be found, the bzrlib
+``version_info`` attribute is used to generate a current API version.
+This lookup sequence allows users with simple setups (and no python style
+``version_info`` tuple) to still export an API version, and for new API's
+to be managed more granularly later on with a smooth transition -
+everything starts off in lockstep with bzrlib's master version.
+
+API versions are compared lexically to answer the question 'is
+the requested version X <= the current version, and >= the minimum
+version'.
+
+Managing API versions
+=====================
+
+The minimum API versions should be adjusted to the **oldest** API version
+with which client code of the API will successfully run. It should not be
+changed simply because of adding things in a compatible manner, or
+deprecating features, but rather when errors will occur if client code is
+not updated.  Versions for API's from ``bzrlib`` are given the version
+numbers that ``bzrlib`` has had for consistency. Plugins should also take
+this approach and use the version numbering scheme the plugin used.
+
+Exported API's
+==============
+
+Currently we export a single API - the ``bzrlib API`` - and no finer
+grained APIs. The API versioning support was introduced in bzrlib 0.18.
+For plugins or tools that want to dynamically check for the presence of
+the API versioning API, you should compare ``bzrlib.version_info[0:3]``
+with ``(0, 18, 0)``.
+
++------------+---------------+
+| API        | Covers        | 
++============+===============+ 
+| bzrlib     | All of bzrlib |
++------------+---------------+
+
+Use Cases
+=========
+
+Some examples of using the API.
+
+Requiring bzrlib 0.18 in a plugin
+---------------------------------
+
+In the plugins __init__.py::
+
+  import bzrlib
+  from bzrlib.api import require_api
+  from bzrlib.errors import IncompatibleAPI
+  try:
+    require_api(bzrlib, (0, 18, 0))
+  except IncompatibleAPI:
+    raise ImportError("A bzrlib compatible with 0.18 is required.")
+
+Exporting an API from a plugin
+------------------------------
+
+In the plugin ``foo`` exporting the API (in __init__.py)::
+
+  version_info = (0, 0, 1, 'beta', 1)
+  api_version = (0, 0, 1)
+
+In a plugin depending on that plugin (in __init__.py)::
+
+  import bzrlib.plugins.foo
+  from bzrlib.api import require_api
+  from bzrlib.errors import IncompatibleAPI
+  try:
+    require_api(bzrlib.plugins.foo, (0, 0, 1))
+  except IncompatibleAPI:
+    raise ImportError("A bzrlib compatible with 0.0.1 is required.")
+
+
+..
+   vim: ft=rst tw=74 ai
+

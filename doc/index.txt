@@ -51,7 +51,7 @@ and what is documented on the wiki.
 
     How to run a smart HTTP server to allow remote access to Bazaar branches.
 
-* `Guidelines for modifying bzr <HACKING.htm>`_
+* `Guidelines for modifying bzr <developers/index.htm>`_
 
     Guide to policies and tools for working on Bazaar itself.
 

@@ -570,3 +570,21 @@ class TestCwdToURL(TestCaseInTempDir):
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')
+
+
+class TestDeriveToLocation(TestCase):
+    """Test that the mapping of FROM_LOCATION to TO_LOCATION works."""
+
+    def test_to_locations_derived_from_paths(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("bar"))
+        self.assertEqual("bar", derive("../bar"))
+        self.assertEqual("bar", derive("/foo/bar"))
+        self.assertEqual("bar", derive("c:/foo/bar"))
+        self.assertEqual("bar", derive("c:bar"))
+
+    def test_to_locations_derived_from_urls(self):
+        derive = urlutils.derive_to_location
+        self.assertEqual("bar", derive("http://foo/bar"))
+        self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
+        self.assertEqual("foo-bar", derive("lp:foo-bar"))

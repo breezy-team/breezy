@@ -3,6 +3,8 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+import cPickle
+import os
 import sys
 import thread
 import threading
@@ -104,8 +106,42 @@ class Stats(object):
         """Output profiling data in calltree format (for KCacheGrind)."""
         _CallTreeFilter(self.data).output(file)
 
+    def save(self, filename, format=None):
+        """Save profiling data to a file.
+
+        :param filename: the name of the output file
+        :param format: 'txt' for a text representation;
+            'callgrind' for calltree format;
+            otherwise a pickled Python object. A format of None indicates
+            that the format to use is to be found from the extension of
+            filename.
+        """
+        if format is None:
+            ext = os.path.splitext(filename)[1]
+            if len(ext) > 1:
+                format = ext[1:]
+        outfile = open(filename, 'wb')
+        try:
+            if format == "callgrind":
+                self.calltree(outfile)
+            elif format == "txt":
+                self.pprint(file=outfile)
+            else:
+                self.freeze()
+                cPickle.dump(self, outfile, 2)
+        finally:
+            outfile.close()
+
 
 class _CallTreeFilter(object):
+    """Converter of a Stats object to input suitable for KCacheGrind.
+
+    This code is taken from http://ddaa.net/blog/python/lsprof-calltree
+    with the changes made by J.P. Calderone and Itamar applied. Note that
+    isinstance(code, str) needs to be used at times to determine if the code 
+    object is actually an external code object (with a filename, etc.) or
+    a Python built-in.
+    """
 
     def __init__(self, data):
         self.data = data
@@ -130,16 +166,26 @@ class _CallTreeFilter(object):
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
         #print >> out_file, 'ob=%s' % (code.co_filename,)
-        print >> out_file, 'fi=%s' % (code.co_filename,)
+        if isinstance(code, str):
+            print >> out_file, 'fi=~'
+        else:
+            print >> out_file, 'fi=%s' % (code.co_filename,)
         print >> out_file, 'fn=%s' % (label(code, True),)
-        print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+        if isinstance(code, str):
+            print >> out_file, '0 ', inlinetime
+        else:
+            print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
         # recursive calls are counted in entry.calls
         if entry.calls:
             calls = entry.calls
         else:
             calls = []
+        if isinstance(code, str):
+            lineno = 0
+        else:
+            lineno = code.co_firstlineno
         for subentry in calls:
-            self._subentry(code.co_firstlineno, subentry)
+            self._subentry(lineno, subentry)
         print >> out_file
 
     def _subentry(self, lineno, subentry):
@@ -148,11 +194,14 @@ class _CallTreeFilter(object):
         totaltime = int(subentry.totaltime * 1000)
         #print >> out_file, 'cob=%s' % (code.co_filename,)
         print >> out_file, 'cfn=%s' % (label(code, True),)
-        print >> out_file, 'cfi=%s' % (code.co_filename,)
-        print >> out_file, 'calls=%d %d' % (
-            subentry.callcount, code.co_firstlineno)
+        if isinstance(code, str):
+            print >> out_file, 'cfi=~'
+            print >> out_file, 'calls=%d 0' % (subentry.callcount,)
+        else:
+            print >> out_file, 'cfi=%s' % (code.co_filename,)
+            print >> out_file, 'calls=%d %d' % (
+                subentry.callcount, code.co_firstlineno)
         print >> out_file, '%d %d' % (lineno, totaltime)
-
 
 _fn2mod = {}
 

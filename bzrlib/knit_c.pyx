@@ -18,6 +18,9 @@
 
 import sys
 
+from bzrlib import errors
+
+
 cdef extern from "stdlib.h":
     long int strtol(char *nptr, char **endptr, int base)
     unsigned long int strtoul(char *nptr, char **endptr, int base)
@@ -132,6 +135,7 @@ cdef class KnitIndexReader:
     cdef object process_parents(self, char *parent_str, char *end):
         cdef char *next
         cdef int int_parent
+        cdef char *parent_end
 
         # parents = PyString_FromStringAndSize(parent_str,
         #                                      end - parent_str)
@@ -158,11 +162,26 @@ cdef class KnitIndexReader:
             else:
                 # This in an integer mapping to original
                 # TODO: ensure that we are actually parsing the string
-                int_parent = strtol(parent_str, NULL, 10)
+                int_parent = strtol(parent_str, &parent_end, 10)
+
+                # Can the parent be decoded to get its parent row? This
+                # at a minimum will cause this row to have wrong parents, or
+                # even to apply a delta to the wrong base and decode
+                # incorrectly. its therefore not usable, and because we have
+                # encountered a situation where a new knit index had this
+                # corrupt we can't asssume that no other rows referring to the
+                # index of this record actually mean the subsequent uncorrupt
+                # one, so we error.
                 if int_parent >= self.history_len:
                     raise IndexError('Parent index refers to a revision which'
                         ' does not exist yet.'
                         ' %d > %d' % (int_parent, self.history_len))
+                if end < next-1:
+                    # We didn't process all of the string, which means it isn't
+                    # a complete integer.
+                    py_parent = PyString_FromStringAndSize(parent_str,
+                                                           next - parent_str)
+                    raise ValueError('%r is not a valid integer' % (py_parent,))
                 parent = PyList_GET_ITEM(self.history, int_parent)
                 # PyList_GET_ITEM steals a reference
                 Py_INCREF(parent)
@@ -221,7 +240,12 @@ cdef class KnitIndexReader:
         pos = strtol(pos_str, NULL, 10)
         size = strtol(size_str, NULL, 10)
 
-        parents = self.process_parents(parent_str, end)
+        try:
+            parents = self.process_parents(parent_str, end)
+        except (ValueError, IndexError), e:
+            py_line = PyString_FromStringAndSize(start, end - start)
+            raise errors.KnitCorrupt(self.kndx._filename,
+                "line %r: %s" % (py_line, e))
 
         cache_entry = PyDict_GetItem_void(self.cache, version_id)
         if cache_entry == NULL:

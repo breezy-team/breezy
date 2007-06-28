@@ -847,6 +847,12 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    def __eq__(self, other):
+        return self.__class__ is other.__class__
+
+    def __ne__(self, other):
+        return not (self == other)
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the branch object in a_bzrdir."""
@@ -1448,7 +1454,8 @@ class BzrBranch(Branch):
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev)
+            my_ancestry = self.repository.get_ancestry(last_rev,
+                                                       topo_sorted=False)
             if stop_revision in my_ancestry:
                 # last_revision is a descendant of stop_revision
                 return
@@ -1807,7 +1814,8 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision()):
+            if old_tip in self.repository.get_ancestry(self.last_revision(),
+                                                       topo_sorted=False):
                 return None
             return old_tip
         return None
@@ -2077,7 +2085,14 @@ class BzrBranch6(BzrBranch5):
         if revision_id is None:
             revno, revision_id = self.last_revision_info()
         else:
-            revno = self.revision_id_to_revno(revision_id)
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
         destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):

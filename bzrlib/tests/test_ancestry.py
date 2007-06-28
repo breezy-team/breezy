@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import sys
 
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
+from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.revision import is_ancestor
 
 
@@ -33,29 +34,25 @@ class TestAncestry(TestCaseWithMemoryTransport):
 
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
-        tree = self.make_branch_and_memory_tree('.')
-        branch = tree.branch
-        tree.lock_write()
-        tree.add('')
-        rev_id_one = tree.commit('one')
-        rev_id_two = tree.commit('two', allow_pointless=True)
-        tree.unlock()
-
+        builder = BranchBuilder(self.get_transport())
+        rev_id_one = builder.build_commit()
+        rev_id_two = builder.build_commit()
+        branch = builder.get_branch()
         self.assertAncestryEqual([None, rev_id_one, rev_id_two],
             rev_id_two, branch)
         self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
 
-    def test_none_is_always_an_ancestor(self):
-        tree = self.make_branch_and_memory_tree('.')
-        tree.lock_write()
-        tree.add('')
-        # note this is tested before any commits are done.
-        self.assertTrue(is_ancestor(None, None, tree.branch))
-        rev_id = tree.commit('one')
-        tree.unlock()
-        self.assertTrue(is_ancestor(None, None, tree.branch))
-        self.assertTrue(is_ancestor(rev_id, None, tree.branch))
-        self.assertFalse(is_ancestor(None, rev_id, tree.branch))
+    def test_none_is_ancestor_empty_branch(self):
+        branch = self.make_branch('.')
+        self.assertTrue(is_ancestor(None, None, branch))
+
+    def test_none_is_ancestor_non_empty_branch(self):
+        builder = BranchBuilder(self.get_transport())
+        rev_id = builder.build_commit()
+        branch = builder.get_branch()
+        self.assertTrue(is_ancestor(None, None, branch))
+        self.assertTrue(is_ancestor(rev_id, None, branch))
+        self.assertFalse(is_ancestor(None, rev_id, branch))
 
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

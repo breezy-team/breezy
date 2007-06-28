@@ -98,7 +98,6 @@ def _extract_headers(header_text, url):
                 raise errors.InvalidHttpResponse(url,
                     'Opening header line did not start with HTTP: %s'
                     % (first_line,))
-                assert False, 'Opening header line was not HTTP'
             else:
                 break # We are done parsing
         first_header = False
@@ -255,7 +254,7 @@ class HttpTransportBase(Transport, medium.SmartClientMedium):
 
         try_again = False
         # The server does not gives us enough data or
-        # bogus-looking result, let's try again with
+        # a bogus-looking result, let's try again with
         # a simpler request if possible.
         if self._range_hint == 'multi':
             self._range_hint = 'single'
