@@ -46,6 +46,10 @@ IN DEVELOPMENT
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
 
+    * ``bzrlib`` now exports explicit API compatibility information to assist
+      library users and plugins. See the ``bzrlib.api`` module for details.
+      (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
@@ -56,6 +60,11 @@ IN DEVELOPMENT
       directories as they're used.  This reduces the IO load from 
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
+
+    * Clean up many of the APIs for blackbox testing of Bazaar.  The standard 
+      interface is now self.run_bzr.  The command to run can be passed as
+      either a list of parameters, a string containing the command line, or
+      (deprecated) varargs parameters.  (Martin Pool)
 
   BUGFIXES:
 
