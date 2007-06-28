@@ -654,6 +654,9 @@ class Repository(object):
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
 
+    def get_serializer_format(self):
+        return self._serializer.format_num
+
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""

@@ -189,10 +189,10 @@ class BundleWriteOperation(object):
         return self.revision_ids
 
     def write_info(self):
-        serializer_name = self.repository._serializer.format_num
+        serializer_format = self.repository.get_serializer_format()
         supports_rich_root = {True: 1, False: 0}[
             self.repository.supports_rich_root()]
-        self.bundle.add_info_record(serializer=serializer_name,
+        self.bundle.add_info_record(serializer=serializer_format,
                                     supports_rich_root=supports_rich_root)
 
     def iter_file_revisions(self):

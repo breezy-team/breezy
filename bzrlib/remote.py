@@ -470,6 +470,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.revision_tree(revision_id)
 
+    def get_serializer_format(self):
+        self._ensure_real()
+        return self._real_repository.get_serializer_format()
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
