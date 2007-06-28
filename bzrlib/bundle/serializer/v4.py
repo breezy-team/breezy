@@ -243,8 +243,8 @@ class BundleWriteOperation(object):
             revision_order.remove(self.target)
             revision_order.append(self.target)
         self.add_mp_records('inventory', None, inv_vf, revision_order)
-        for revision_id in revision_order:
-            parents = self.repository.revision_parents(revision_id)
+        parents_list = self.repository.get_parents(revision_order)
+        for parents, revision_id in zip(parents_list, revision_order):
             revision_text = self.repository.get_revision_xml(revision_id)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id, None)
