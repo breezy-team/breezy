@@ -22,6 +22,7 @@ from bzrlib import errors
 
 
 cdef extern from "stdlib.h":
+    ctypedef unsigned size_t
     long int strtol(char *nptr, char **endptr, int base)
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
@@ -56,9 +57,7 @@ cdef extern from "Python.h":
 
 
 cdef extern from "string.h":
-    char *strchr(char *s1, char c)
-    int strncmp(char *s1, char *s2, int len)
-    int strcmp(char *s1, char *s2)
+    void *memchr(void *s, int c, size_t n)
 
 
 cdef class KnitIndexReader:
@@ -91,38 +90,24 @@ cdef class KnitIndexReader:
         if not PyList_CheckExact(self.history):
             raise TypeError('kndx._history must be a python list')
 
-    cdef char * _end_of_option(self, char *option_str, char *end):
-        """Find the end of this option string.
-
-        This is similar to doing ``strchr(option_str, ',')``, except
-        it knows to stop if it hits 'end' first.
-        """
-        cdef char * cur
-
-        cur = option_str
-        while cur < end:
-            if cur[0] == c',' or cur[0] == c' ':
-                return cur
-            cur = cur + 1
-        return end
-
     cdef object process_options(self, char *option_str, char *end):
         """Process the options string into a list."""
         cdef char *next
 
+        # This is alternative code which creates a python string and splits it.
+        # It is "correct" and more obvious, but slower than the following code.
+        # It can be uncommented to switch in case the other code is seen as
+        # suspect.
         # options = PyString_FromStringAndSize(option_str,
-        #                                      end-option_str)
+        #                                      end - option_str)
         # return options.split(',')
 
         final_options = []
 
         while option_str < end:
-            # Using strchr here actually hurts performance dramatically.
-            # Because you aren't guaranteed to have a ',' any time soon,
-            # so it may have to search for a long time.
-            # The closest function is memchr, but that seems to be a
-            # GNU extension.
-            next = self._end_of_option(option_str, end)
+            next = <char*>memchr(option_str, c',', end - option_str)
+            if next == NULL:
+                next = end
             next_option = PyString_FromStringAndSize(option_str,
                                                      next - option_str)
             PyList_Append(final_options, next_option)
@@ -137,6 +122,8 @@ cdef class KnitIndexReader:
         cdef int int_parent
         cdef char *parent_end
 
+        # Alternative, correct but slower code.
+        #
         # parents = PyString_FromStringAndSize(parent_str,
         #                                      end - parent_str)
         # real_parents = []
@@ -148,17 +135,18 @@ cdef class KnitIndexReader:
         # return real_parents
 
         parents = []
-        while parent_str <= end and parent_str != NULL:
-            # strchr is safe here, because our lines always end
-            # with ' :'
-            next = strchr(parent_str, c' ')
+        if parent_str == NULL:
+            return []
+        while parent_str <= end:
+            next = <char*>memchr(parent_str, c' ', end - parent_str)
             if next == NULL or next >= end or next == parent_str:
                 break
 
             if parent_str[0] == c'.':
                 # This is an explicit revision id
                 parent_str = parent_str + 1
-                parent = PyString_FromStringAndSize(parent_str, next-parent_str)
+                parent = PyString_FromStringAndSize(parent_str,
+                                                    next - parent_str)
             else:
                 # This in an integer mapping to original
                 # TODO: ensure that we are actually parsing the string
@@ -204,7 +192,7 @@ cdef class KnitIndexReader:
         cdef void *cache_entry
 
         version_id_str = start
-        option_str = strchr(version_id_str, c' ')
+        option_str = <char*>memchr(version_id_str, c' ', end - version_id_str)
         if option_str == NULL or option_str >= end:
             # Short entry
             return 0
@@ -212,21 +200,21 @@ cdef class KnitIndexReader:
         # Move past the space character
         option_str = option_str + 1
 
-        pos_str = strchr(option_str, c' ')
+        pos_str = <char*>memchr(option_str, c' ', end - option_str)
         if pos_str == NULL or pos_str >= end:
             # Short entry
             return 0
         option_end = pos_str
         pos_str = pos_str + 1
 
-        size_str = strchr(pos_str, c' ')
+        size_str = <char*>memchr(pos_str, c' ', end - pos_str)
         if size_str == NULL or size_str >= end:
             # Short entry
             return 0
         size_str = size_str + 1
 
         # TODO: Make sure this works when there are no parents
-        parent_str = strchr(size_str, c' ')
+        parent_str = <char*>memchr(size_str, c' ', end - size_str)
         if parent_str == NULL or parent_str >= end:
             # Missing parents
             return 0
@@ -272,10 +260,10 @@ cdef class KnitIndexReader:
 
         start = self.cur_str
         # Find the next newline
-        last = strchr(start, c'\n')
+        last = <char*>memchr(start, c'\n', self.end_str - start)
         if last == NULL:
             # Process until the end of the file
-            last = self.end_str-1
+            last = self.end_str - 1
             self.cur_str = self.end_str
             line = PyString_FromStringAndSize(start, last - start)
             ending = PyString_FromStringAndSize(last, 1)
