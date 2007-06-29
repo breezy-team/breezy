@@ -60,8 +60,7 @@ def _load_data_py(kndx, fp):
             # corrupt we can't asssume that no other rows referring to the
             # index of this record actually mean the subsequent uncorrupt
             # one, so we error.
-            raise errors.KnitCorrupt(self._filename,
-                "line %r: %s" % (rec, e))
+            raise errors.KnitCorrupt(kndx._filename, "line %r: %s" % (rec, e))
 
         version_id, options, pos, size = rec[:4]
         version_id = version_id

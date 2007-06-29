@@ -126,7 +126,7 @@ cdef class KnitIndexReader:
             next_option = PyString_FromStringAndSize(option_str,
                                                      next - option_str)
             PyList_Append(final_options, next_option)
-                          
+
             # Move past the ','
             option_str = next+1
 
@@ -176,7 +176,7 @@ cdef class KnitIndexReader:
                     raise IndexError('Parent index refers to a revision which'
                         ' does not exist yet.'
                         ' %d > %d' % (int_parent, self.history_len))
-                if end < next-1:
+                if parent_end < next:
                     # We didn't process all of the string, which means it isn't
                     # a complete integer.
                     py_parent = PyString_FromStringAndSize(parent_str,
@@ -245,7 +245,7 @@ cdef class KnitIndexReader:
         except (ValueError, IndexError), e:
             py_line = PyString_FromStringAndSize(start, end - start)
             raise errors.KnitCorrupt(self.kndx._filename,
-                "line %r: %s" % (py_line, e))
+                                     "line %r: %s" % (py_line, e))
 
         cache_entry = PyDict_GetItem_void(self.cache, version_id)
         if cache_entry == NULL:

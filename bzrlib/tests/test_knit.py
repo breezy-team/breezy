@@ -698,6 +698,36 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertRaises(RevisionNotPresent, check, ["c"])
         self.assertRaises(RevisionNotPresent, check, ["a", "b", "c"])
 
+    def test_impossible_parent(self):
+        """Test we get KnitCorrupt if the parent couldn't possibly exist."""
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 4 :"  # We don't have a 4th record
+            ])
+        self.assertRaises(errors.KnitCorrupt,
+                          self.get_knit_index, transport, 'filename', 'r')
+
+    def test_corrupted_parent(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :",
+            "c option 0 1 1v :", # Can't have a parent of '1v'
+            ])
+        self.assertRaises(errors.KnitCorrupt,
+                          self.get_knit_index, transport, 'filename', 'r')
+
+    def test_corrupted_parent_in_list(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :",
+            "c option 0 1 2 v :", # Can't have a parent of 'v'
+            ])
+        self.assertRaises(errors.KnitCorrupt,
+                          self.get_knit_index, transport, 'filename', 'r')
+
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
