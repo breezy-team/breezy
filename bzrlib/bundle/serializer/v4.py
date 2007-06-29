@@ -102,15 +102,13 @@ class BundleReader(object):
             fileobj.readline()
         self.patch_lines = []
         self._container = pack.ContainerReader(
-            StringIO(fileobj.read().decode('bz2')).read)
-#            Have to use StringIO for perf, until ContainerReader fixed.
-#            iterablefile.IterableFile(self.iter_decode(fileobj)).read)
+            iterablefile.IterableFile(self.iter_decode(fileobj)))
 
     @staticmethod
     def iter_decode(fileobj):
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
-            yield decompressor.decompress()
+            yield decompressor.decompress(line)
 
     @staticmethod
     def decode_name(name):
