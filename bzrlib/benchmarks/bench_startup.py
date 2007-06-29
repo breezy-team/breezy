@@ -21,6 +21,7 @@ from bzrlib.benchmarks import Benchmark
 
 
 class StartupBenchmark(Benchmark):
+    """Benchmark startup costs for certain bzr commands."""
 
     def make_simple_tree(self):
         """A small, simple tree. No caching needed"""
