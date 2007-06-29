@@ -53,6 +53,12 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * Implement ``_KnitIndex._load_data`` in a pyrex extension. The pyrex
+      version is approximately 2-3x faster at parsing a ``.kndx`` file.
+      Which yields a measurable improvement for commands which have to
+      read from the repository, such as a 1s => 0.75s improvement in
+      ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
