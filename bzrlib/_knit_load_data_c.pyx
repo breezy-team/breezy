@@ -24,7 +24,6 @@ from bzrlib import errors
 cdef extern from "stdlib.h":
     ctypedef unsigned size_t
     long int strtol(char *nptr, char **endptr, int base)
-    unsigned long int strtoul(char *nptr, char **endptr, int base)
 
 
 cdef extern from "Python.h":
@@ -33,27 +32,16 @@ cdef extern from "Python.h":
     int PyDict_SetItem(object p, object key, object val) except -1
 
     int PyList_Append(object lst, object item) except -1
-    void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
-    object PyList_GET_ITEM (object lst, int index)
+    object PyList_GET_ITEM(object lst, int index)
     int PyList_CheckExact(object)
 
-    int PyTuple_CheckExact(object)
     void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
-    object PyTuple_New(int)
-    int PyTuple_SetItem(object tpl, int offset, object val)
-    void PyTuple_SET_ITEM(object tpl, int offset, object val)
-    object PyTuple_Pack(int n, ...)
 
     char *PyString_AsString(object p)
-    char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
-    object PyString_FromString(char *)
     object PyString_FromStringAndSize(char *, int)
     int PyString_Size(object p)
-    int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
-    int PyString_CheckExact(object p)
 
     void Py_INCREF(object)
-    void Py_DECREF(object)
 
 
 cdef extern from "string.h":
@@ -246,6 +234,8 @@ cdef class KnitIndexReader:
             index = self.history_len
             self.history_len = self.history_len + 1
         else:
+            # PyTuple_GetItem_void_void does *not* increment the reference
+            # counter, but casting to <object> does.
             index = <object>PyTuple_GetItem_void_void(cache_entry, 5)
 
         PyDict_SetItem(self.cache, version_id,
