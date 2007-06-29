@@ -1,3 +1,12 @@
+bzr-builddeb (0.18) unstable; urgency=low
+
+  * uscan is now used to download an upstream tarball if the version required
+    is not available and the user has a watch file. Thanks to Daniel Holbach
+    for the insipration for how to implement this. This makes devscripts a
+    dependency.
+
+ -- James Westby <jw+debian@jameswestby.net>  Fri, 29 Jun 2007 18:04:36 +0100
+
 bzr-builddeb (0.17) unstable; urgency=low
 
   [ James Westby ]

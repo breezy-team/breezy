@@ -93,6 +93,55 @@ class DebBuild(object):
       if keep_source_dir:
         raise NoSourceDirError;
 
+  def _watchfile_name(self):
+    watchfile = 'debian/watch'
+    if self._properties.larstiq():
+      watchfile = 'watch'
+    return watchfile
+
+  def _has_watch(self):
+    watchfile = self._watchfile_name()
+    if not self._tree.has_filename(watchfile):
+      info("There is no debian/watch file, so can't use that to"
+           " retrieve upstream tarball")
+      return False
+    if self._tree.path2id(watchfile) is None:
+      info("There is a debian/watch file, but it needs to be added to the "
+           "branch before I can use it to get the upstream tarball")
+      return False
+    return True
+
+  def _get_upstream_from_watch(self):
+    (tmp, tempfilename) = tempfile.mkstemp()
+    tmp = os.fdopen(tmp, 'wb')
+    watch_id = self._tree.path2id(self._watchfile_name())
+    assert watch_id is not None, "watchfile must be in the tree"
+    watch = self._tree.get_file_text(watch_id)
+    tmp.write(watch)
+    tmp.close()
+    info("Using uscan to look for the upstream tarball")
+    try:
+      r = os.system("uscan --upstream-version %s --force-download --rename "
+                    "--package %s --watchfile %s --check-dirname-level 0" % \
+                    (self._properties.upstream_version(),
+                     self._properties.package(), tempfilename))
+      if r != 0:
+        raise DebianError("uscan failed to retrieve the upstream tarball")
+    finally:
+      os.unlink(tempfilename)
+    # Tarball is now renamed in the parent dir, either as .tar.gz or .tar.bz2
+    from repack_tarball import repack_tarball
+    fetched_tarball = os.path.join('..', self._tarball_name())
+    desired_tarball = self._tarball_name()
+    if not os.path.exists(fetched_tarball):
+      fetched_tarball = fetched_tarball[:-2] + 'bz2'
+      if not os.path.exists(fetched_tarball):
+        raise DebianError("Could not find the upstream tarball after uscan "
+                          "downloaded it.")
+    repack_tarball(fetched_tarball, desired_tarball,
+                   target_dir=self._properties.tarball_dir())
+    os.unlink(fetched_tarball)
+
   def _find_tarball(self):
     """Find the upstream tarball and return it's location.
 
@@ -102,11 +151,16 @@ class DebBuild(object):
     tarballdir = self._properties.tarball_dir()
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
-    if not os.path.exists(tarballdir):
-      raise DebianError('Could not find dir with upstream tarballs: '
-          +tarballdir)
     if not os.path.exists(tarball):
-      raise DebianError('Could not find upstream tarball at '+tarball)
+      if not self._has_watch():
+        raise DebianError('Could not find upstream tarball at '+tarball)
+      else:
+        if not os.path.exists(tarballdir):
+          os.mkdir(tarballdir)
+        else:
+          if not os.path.isdir(tarballdir):
+            raise DebianError('%s is not a directory.' % tarballdir)
+        self._get_upstream_from_watch()
     return tarball
 
   def _tarball_name(self):

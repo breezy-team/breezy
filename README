@@ -272,7 +272,9 @@ the ``.orig.tar.gz`` files::
   $ mkdir tarballs
 
 Then copy the ``.orig.tar.gz`` file for the current version in to this 
-directory.
+directory. If you do not have the upstream tarball for the current version,
+but you do have a ``watch`` file detailing where it can be found then the
+plugin will automatically retrieve the tarballs as they are needed.
 
 If upstream holds their code in a bzr branch then you don't need to create the
 tarballs yourself, you can instead have the plugin export the upstream code and
@@ -330,7 +332,10 @@ that first.
 To create a non-native package you need an upstream tarball to build against.
 Set the ``orig-dir`` variable to the directory containing the tarball that
 you want to use and the plugin will pick it up and you will have a non-native
-package.
+package. If you do not have the upstream tarball corresponding to the version
+of the package you are trying to build, but you have a ``watch`` file
+detailing where it can be found then it will be automatically retrieved when
+needed.
 
 However sometimes you might be upstream of a package as well as Debian
 maintainer, but it is not a native package. In that case you may version
