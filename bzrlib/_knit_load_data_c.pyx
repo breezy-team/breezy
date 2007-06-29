@@ -78,7 +78,7 @@ cdef int string_to_int_safe(char *s, char *end, int *out) except -1:
 
     # We can't just return the integer because of how pyrex determines when
     # there is an exception.
-    out[0] = strtol(s, &integer_end, 10)
+    out[0] = <int>strtol(s, &integer_end, 10)
     if integer_end != end:
         py_s = PyString_FromStringAndSize(s, end-s)
         raise ValueError('%r is not a valid integer' % (py_s,))
