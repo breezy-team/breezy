@@ -132,6 +132,7 @@ clean-docs:
 
 # build a png of our performance task list
 doc/developers/performance.png: doc/developers/performance.dot
+	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
 
