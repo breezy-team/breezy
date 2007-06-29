@@ -64,6 +64,18 @@ def _load_data_py(kndx, fp):
 
         version_id, options, pos, size = rec[:4]
         version_id = version_id
+        try:
+            pos = int(pos)
+        except ValueError, e:
+            raise errors.KnitCorrupt(kndx._filename,
+                                     "invalid position on line %r: %s"
+                                     % (rec, e))
+        try:
+            size = int(size)
+        except ValueError, e:
+            raise errors.KnitCorrupt(kndx._filename,
+                                     "invalid size on line %r: %s"
+                                     % (rec, e))
 
         # See kndx._cache_version
         # only want the _history index to reference the 1st
@@ -76,8 +88,8 @@ def _load_data_py(kndx, fp):
             index = cache[version_id][5]
         cache[version_id] = (version_id,
                              options.split(','),
-                             int(pos),
-                             int(size),
+                             pos,
+                             size,
                              parents,
                              index)
         # end kndx._cache_version

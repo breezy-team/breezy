@@ -753,6 +753,38 @@ class LowLevelKnitIndexTests(TestCase):
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
 
+    def test_invalid_position(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 1v 1 :",
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+
+    def test_invalid_size(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 1 1v :",
+            ])
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
+
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 

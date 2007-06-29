@@ -60,6 +60,31 @@ cdef extern from "string.h":
     void *memchr(void *s, int c, size_t n)
 
 
+cdef int string_to_int_safe(char *s, char *end, int *out) except -1:
+    """Convert a base10 string to an integer.
+
+    This makes sure the whole string is consumed, or it raises ValueError.
+    This is similar to how int(s) works, except you don't need a Python
+    String object.
+
+    :param s: The string to convert
+    :param end: The character after the integer. So if the string is '12\0',
+        this should be pointing at the '\0'. If the string was '12 ' then this
+        should point at the ' '.
+    :param out: This is the integer that will be returned
+    :return: -1 if an exception is raised. 0 otherwise
+    """
+    cdef char *integer_end
+
+    # We can't just return the integer because of how pyrex determines when
+    # there is an exception.
+    out[0] = strtol(s, &integer_end, 10)
+    if integer_end != end:
+        py_s = PyString_FromStringAndSize(s, end-s)
+        raise ValueError('%r is not a valid integer' % (py_s,))
+    return 0
+
+
 cdef class KnitIndexReader:
 
     cdef object kndx
@@ -149,27 +174,12 @@ cdef class KnitIndexReader:
                                                     next - parent_str)
             else:
                 # This in an integer mapping to original
-                # TODO: ensure that we are actually parsing the string
-                int_parent = strtol(parent_str, &parent_end, 10)
+                string_to_int_safe(parent_str, next, &int_parent)
 
-                # Can the parent be decoded to get its parent row? This
-                # at a minimum will cause this row to have wrong parents, or
-                # even to apply a delta to the wrong base and decode
-                # incorrectly. its therefore not usable, and because we have
-                # encountered a situation where a new knit index had this
-                # corrupt we can't asssume that no other rows referring to the
-                # index of this record actually mean the subsequent uncorrupt
-                # one, so we error.
                 if int_parent >= self.history_len:
                     raise IndexError('Parent index refers to a revision which'
                         ' does not exist yet.'
                         ' %d > %d' % (int_parent, self.history_len))
-                if parent_end < next:
-                    # We didn't process all of the string, which means it isn't
-                    # a complete integer.
-                    py_parent = PyString_FromStringAndSize(parent_str,
-                                                           next - parent_str)
-                    raise ValueError('%r is not a valid integer' % (py_parent,))
                 parent = PyList_GET_ITEM(self.history, int_parent)
                 # PyList_GET_ITEM steals a reference
                 Py_INCREF(parent)
@@ -213,7 +223,6 @@ cdef class KnitIndexReader:
             return 0
         size_str = size_str + 1
 
-        # TODO: Make sure this works when there are no parents
         parent_str = <char*>memchr(size_str, c' ', end - size_str)
         if parent_str == NULL or parent_str >= end:
             # Missing parents
@@ -224,11 +233,9 @@ cdef class KnitIndexReader:
                                                 version_id_size)
         options = self.process_options(option_str, option_end)
 
-        # TODO: Check that we are actually reading integers
-        pos = strtol(pos_str, NULL, 10)
-        size = strtol(size_str, NULL, 10)
-
         try:
+            string_to_int_safe(pos_str, size_str - 1, &pos)
+            string_to_int_safe(size_str, parent_str - 1, &size)
             parents = self.process_parents(parent_str, end)
         except (ValueError, IndexError), e:
             py_line = PyString_FromStringAndSize(start, end - start)
