@@ -34,7 +34,7 @@ IN DEVELOPMENT
     * Progress reporting in ``commit`` has been improved. The various logical
       stages are now reported on as follows, namely:
 
-      * Collecting changes [Entry x/y] - Stage n/m
+      * Collecting changes [Directory x] - Stage n/m
       * Saving data locally - Stage n/m
       * Uploading data to master branch - Stage n/m
       * Updating the working tree - Stage n/m

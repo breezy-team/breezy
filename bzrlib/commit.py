@@ -65,7 +65,8 @@ from bzrlib.branch import Branch
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
-                           StrictCommitFailed
+                           StrictCommitFailed,
+                           NoSuchId
                            )
 from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
                             is_inside_or_parent_of_any,
@@ -255,11 +256,6 @@ class Commit(object):
             # Check that the working tree is up to date
             old_revno,new_revno = self._check_out_of_date_tree()
 
-            if strict:
-                # raise an exception as soon as we find a single unknown.
-                for unknown in self.work_tree.unknowns():
-                    raise StrictCommitFailed()
-                   
             if self.config is None:
                 self.config = self.branch.get_config()
 
@@ -286,7 +282,7 @@ class Commit(object):
             self.pb.show_spinner = False
             self.pb.show_eta = False
             self.pb.show_count = True
-            self.pb.show_bar = False
+            self.pb.show_bar = True
 
             # After a merge, a selected file commit is not supported.
             # See 'bzr help merge' for an explanation as to why.
@@ -296,7 +292,8 @@ class Commit(object):
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             
             # Collect the changes
-            self._emit_progress_set_stage("Collecting changes", show_entries=True)
+            self._emit_progress_set_stage("Collecting changes",
+                    entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             self._update_builder_with_changes()
@@ -591,24 +588,70 @@ class Commit(object):
 
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %s", specific_files)
-        work_inv = self.work_tree.inventory
-        assert work_inv.root is not None
-        self.pb_entries_total = len(work_inv)
 
         # Check and warn about old CommitBuilders
-        entries = work_inv.iter_entries()
+        root_added_already = False
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
                 ' the root entry as of bzr 0.10.', DeprecationWarning, 
                 stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
-            entries.next()
+            root_added_already = True
 
+        # Build the new inventory. _populate_from_tree() is the preferred
+        # direction here but it doesn't support multiple parents yet,
+        # it triggers a unicode normalisation issue in the test suite and
+        # it needs more testing.
+        populator = self._populate_from_inventory
+        #if len(self.parents) == 1:
+        #    populator = self._populate_from_tree
+        populator(specific_files, root_added_already)
+
+        # If specific files/directories were nominated, it is possible
+        # that some data from outside those needs to be preserved from
+        # the basis tree. For example, if a file x is moved from out of
+        # directory foo into directory bar and the user requests
+        # ``commit foo``, then information about bar/x must also be
+        # recorded.
+        if specific_files:
+            for path, new_ie in self.basis_inv.iter_entries():
+                if new_ie.file_id in self.builder.new_inventory:
+                    continue
+                if is_inside_any(specific_files, path):
+                    continue
+                ie = new_ie.copy()
+                ie.revision = None
+                self.builder.record_entry_contents(ie, self.parent_invs, path,
+                                                   self.basis_tree)
+
+        # Report what was deleted. We could skip this when no deletes are
+        # detected to gain a performance win, but it arguably serves as a
+        # 'safety check' by informing the user whenever anything disappears.
+        for path, ie in self.basis_inv.iter_entries():
+            if ie.file_id not in self.builder.new_inventory:
+                self.reporter.deleted(path)
+
+    def _populate_from_inventory(self, specific_files, root_added_already):
+        """Populate the CommitBuilder by walking the working tree inventory."""
+        if self.strict:
+            # raise an exception as soon as we find a single unknown.
+            for unknown in self.work_tree.unknowns():
+                raise StrictCommitFailed()
+               
         deleted_ids = []
         deleted_paths = set()
+        work_inv = self.work_tree.inventory
+        assert work_inv.root is not None
+        entries = work_inv.iter_entries()
+        if root_added_already:
+            entries.next()
         for path, new_ie in entries:
-            self._emit_progress_next_entry()
             file_id = new_ie.file_id
+            name = new_ie.name
+            parent_id = new_ie.parent_id
+            kind = new_ie.kind
+            if kind == 'directory':
+                self._emit_progress_next_entry()
 
             # Skip files that have been deleted from the working tree.
             # The deleted files/directories are also recorded so they
@@ -625,98 +668,168 @@ class Commit(object):
                     continue
             try:
                 kind = self.work_tree.kind(file_id)
+                # TODO: specific_files filtering before nested tree processing?
                 if kind == 'tree-reference' and self.recursive == 'down':
-                    # nested tree: commit in it
-                    sub_tree = WorkingTree.open(self.work_tree.abspath(path))
-                    # FIXME: be more comprehensive here:
-                    # this works when both trees are in --trees repository,
-                    # but when both are bound to a different repository,
-                    # it fails; a better way of approaching this is to 
-                    # finally implement the explicit-caches approach design
-                    # a while back - RBC 20070306.
-                    if (sub_tree.branch.repository.bzrdir.root_transport.base
-                        ==
-                        self.work_tree.branch.repository.bzrdir.root_transport.base):
-                        sub_tree.branch.repository = \
-                            self.work_tree.branch.repository
-                    try:
-                        sub_tree.commit(message=None, revprops=self.revprops,
-                            recursive=self.recursive,
-                            message_callback=self.message_callback,
-                            timestamp=self.timestamp, timezone=self.timezone,
-                            committer=self.committer,
-                            allow_pointless=self.allow_pointless,
-                            strict=self.strict, verbose=self.verbose,
-                            local=self.local, reporter=self.reporter)
-                    except errors.PointlessCommit:
-                        pass
-                if kind != new_ie.kind:
-                    new_ie = inventory.make_entry(kind, new_ie.name,
-                                                  new_ie.parent_id, file_id)
+                    self._commit_nested_tree(path)
             except errors.NoSuchFile:
                 pass
-            # mutter('check %s {%s}', path, file_id)
-            if (not specific_files or 
-                is_inside_or_parent_of_any(specific_files, path)):
-                    # mutter('%s selected for commit', path)
-                    ie = new_ie.copy()
-                    ie.revision = None
-            else:
-                # mutter('%s not selected for commit', path)
-                if self.basis_inv.has_id(file_id):
-                    ie = self.basis_inv[file_id].copy()
-                else:
-                    # this entry is new and not being committed
-                    continue
-            self.builder.record_entry_contents(ie, self.parent_invs, 
-                path, self.work_tree)
-            # describe the nature of the change that has occurred relative to
-            # the basis inventory.
-            if (self.basis_inv.has_id(ie.file_id)):
-                basis_ie = self.basis_inv[ie.file_id]
-            else:
-                basis_ie = None
-            change = ie.describe_change(basis_ie, ie)
-            if change in (InventoryEntry.RENAMED, 
-                InventoryEntry.MODIFIED_AND_RENAMED):
-                old_path = self.basis_inv.id2path(ie.file_id)
-                self.reporter.renamed(change, old_path, path)
-            else:
-                self.reporter.snapshot_change(change, path)
+
+            # Record an entry for this item
+            # Note: I don't particularly want to have the existing_ie
+            # parameter but the test suite currently (28-Jun-07) breaks
+            # without it thanks to a unicode normalisation issue. :-(
+            definitely_changed = kind != new_ie.kind 
+            self._record_entry(path, file_id, specific_files, kind, name,
+                parent_id, definitely_changed, new_ie)
 
         # Unversion IDs that were found to be deleted
         self.work_tree.unversion(deleted_ids)
 
-        # If specific files/directories were nominated, it is possible
-        # that some data from outside those needs to be preserved from
-        # the basis tree. For example, if a file x is moved from out of
-        # directory foo into directory bar and the user requests
-        # ``commit foo``, then information about bar/x must also be
-        # recorded.
-        if specific_files:
-            for path, new_ie in self.basis_inv.iter_entries():
-                if new_ie.file_id in work_inv:
-                    continue
-                if is_inside_any(specific_files, path):
-                    continue
-                ie = new_ie.copy()
-                ie.revision = None
-                self.builder.record_entry_contents(ie, self.parent_invs, path,
-                                                   self.basis_tree)
+    def _populate_from_tree(self, specific_files, root_added_already):
+        """Populate the CommitBuilder by walking the working tree."""
+        # Until trees supports an "iter_commitable" iterator that
+        # understand multiple parents, this assertion is required.
+        assert len(self.parents) == 1
 
-        # Report what was deleted. We could skip this when no deletes are
-        # detected to gain a performance win, but it arguably serves as a
-        # 'safety check' by informing the user whenever anything disappears.
-        for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.builder.new_inventory:
-                self.reporter.deleted(path)
+        deleted_ids = []
+        deleted_paths = set()
+        entries = self.work_tree._iter_changes(self.basis_tree,
+            include_unchanged=True, want_unversioned=True,
+            require_versioned=False)
+        if root_added_already:
+            entries.next()
+        for entry in entries:
+            (file_id, paths, changed_content, versioned_flags, parents, names,
+                kinds, executables) = entry
+            kind = kinds[1]
+            if kind == 'directory':
+                self._emit_progress_next_entry()
 
-    def _emit_progress_set_stage(self, name, show_entries=False):
+            # Skip unknowns unless strict mode
+            if versioned_flags == (False,False):
+                if self.strict:
+                    raise StrictCommitFailed()
+                else:
+                    continue
+
+            # Skip missing files (may auto-delete these one day)
+            # Note that when a filter of specific files is given, we must
+            # only skip/record deleted files matching that filter.
+            if kind is None:
+                path = paths[0]
+                if is_inside_any(deleted_paths, path):
+                    continue
+                if not specific_files or is_inside_any(specific_files, path):
+                    deleted_paths.add(path)
+                    self.reporter.missing(path)
+                    deleted_ids.append(file_id)
+                    continue
+                # It's missing but still needs to be recorded
+                index = 0
+            else:
+                index = 1
+            path = paths[index]
+            kind = kinds[index]
+            path = paths[index]
+            parent = parents[index]
+            name = names[index]
+
+            # TODO: specific_files filtering before nested tree processing?
+            # TODO: keep track of nested trees and don't recurse into them?
+            if kind == 'tree-reference' and self.recursive == 'down':
+                self._commit_nested_tree(path)
+
+            # Record an entry for this item
+            self._record_entry(path, file_id, specific_files, kind,
+                name, parent, changed_content, None)
+            # Note: If the iterator passed back the sha here we could
+            # set it and the executable info *now* into the inventory entry
+            # saving look ups later
+
+        # Unversion IDs that were found to be deleted
+        # Note: the logic above collects some IDs already gone so
+        # we walk the list and trap the exception
+        for id in deleted_ids:
+            try:
+                self.work_tree.unversion([id])
+            except NoSuchId:
+                pass
+
+    def _commit_nested_tree(self, path):
+        "Commit a nested tree."
+        sub_tree = WorkingTree.open(self.work_tree.abspath(path))
+        # FIXME: be more comprehensive here:
+        # this works when both trees are in --trees repository,
+        # but when both are bound to a different repository,
+        # it fails; a better way of approaching this is to 
+        # finally implement the explicit-caches approach design
+        # a while back - RBC 20070306.
+        if (sub_tree.branch.repository.bzrdir.root_transport.base
+            ==
+            self.work_tree.branch.repository.bzrdir.root_transport.base):
+            sub_tree.branch.repository = \
+                self.work_tree.branch.repository
+        try:
+            sub_tree.commit(message=None, revprops=self.revprops,
+                recursive=self.recursive,
+                message_callback=self.message_callback,
+                timestamp=self.timestamp, timezone=self.timezone,
+                committer=self.committer,
+                allow_pointless=self.allow_pointless,
+                strict=self.strict, verbose=self.verbose,
+                local=self.local, reporter=self.reporter)
+        except errors.PointlessCommit:
+            pass
+
+    def _record_entry(self, path, file_id, specific_files, kind, name,
+                      parent_id, definitely_changed, existing_ie=None):
+        "Record the new inventory entry for a path if any."
+        # mutter('check %s {%s}', path, file_id)
+        if (not specific_files or 
+            is_inside_or_parent_of_any(specific_files, path)):
+                # mutter('%s selected for commit', path)
+                if definitely_changed or existing_ie is None:
+                    ie = inventory.make_entry(kind, name, parent_id, file_id)
+                else:
+                    ie = existing_ie.copy()
+                    ie.revision = None
+        else:
+            # mutter('%s not selected for commit', path)
+            if self.basis_inv.has_id(file_id):
+                ie = self.basis_inv[file_id].copy()
+            else:
+                # this entry is new and not being committed
+                ie = None
+        if ie is not None:
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                path, self.work_tree)
+            self._report_change(ie, path)
+        return ie
+
+    def _report_change(self, ie, path):
+        """Report a change to the user.
+
+        The change that has occurred is described relative to the basis
+        inventory.
+        """
+        if (self.basis_inv.has_id(ie.file_id)):
+            basis_ie = self.basis_inv[ie.file_id]
+        else:
+            basis_ie = None
+        change = ie.describe_change(basis_ie, ie)
+        if change in (InventoryEntry.RENAMED, 
+            InventoryEntry.MODIFIED_AND_RENAMED):
+            old_path = self.basis_inv.id2path(ie.file_id)
+            self.reporter.renamed(change, old_path, path)
+        else:
+            self.reporter.snapshot_change(change, path)
+
+    def _emit_progress_set_stage(self, name, entries_title=None):
         """Set the progress stage and emit an update to the progress bar."""
         self.pb_stage_name = name
         self.pb_stage_count += 1
-        self.pb_entries_show = show_entries
-        if show_entries:
+        self.pb_entries_title = entries_title
+        if entries_title is not None:
             self.pb_entries_count = 0
             self.pb_entries_total = '?'
         self._emit_progress()
@@ -727,9 +840,14 @@ class Commit(object):
         self._emit_progress()
 
     def _emit_progress(self):
-        if self.pb_entries_show:
-            text = "%s [Entry %d/%s] - Stage" % (self.pb_stage_name,
-                self.pb_entries_count,str(self.pb_entries_total))
+        if self.pb_entries_title:
+            if self.pb_entries_total == '?':
+                text = "%s [%s %d] - Stage" % (self.pb_stage_name,
+                    self.pb_entries_title, self.pb_entries_count)
+            else:
+                text = "%s [%s %d/%s] - Stage" % (self.pb_stage_name,
+                    self.pb_entries_title, self.pb_entries_count,
+                    str(self.pb_entries_total))
         else:
             text = "%s - Stage" % (self.pb_stage_name)
         self.pb.update(text, self.pb_stage_count, self.pb_stage_total)

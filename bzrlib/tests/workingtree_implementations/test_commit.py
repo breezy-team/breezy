@@ -345,15 +345,10 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 4 steps, the first of which is reported 5 times, once per file
-        # 2 files don't trigger an update, as 'a' and 'c' are not 
-        # committed.
+        # 4 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 1/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 2/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 3/4] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 4/4] - Stage'),
+            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
              ('update', 2, 4, 'Saving data locally - Stage'),
              ('update', 3, 4, 'Updating the working tree - Stage'),
              ('update', 4, 4, 'Running post commit hooks - Stage')],
@@ -374,8 +369,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         branch.Branch.hooks.name_hook(a_hook, 'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Entry 0/?] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Entry 1/1] - Stage'),
+            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
+             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
              ('update', 2, 4, 'Saving data locally - Stage'),
              ('update', 3, 4, 'Updating the working tree - Stage'),
              ('update', 4, 4, 'Running post commit hooks - Stage'),

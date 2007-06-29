@@ -76,12 +76,24 @@ class MemoryTree(mutabletree.MutableTree):
         """See Tree.get_file."""
         return self._file_transport.get(self.id2path(file_id))
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         """See Tree.get_file_sha1()."""
         if path is None:
             path = self.id2path(file_id)
         stream = self._file_transport.get(path)
         return sha_file(stream)
+
+    def _comparison_data(self, entry, path):
+        """See Tree._comparison_data."""
+        if entry is None:
+            return None, False, None
+        return entry.kind, entry.executable, None
+
+    def _file_size(self, entry, stat_value):
+        """See Tree._file_size."""
+        if entry is None:
+            return 0
+        return entry.text_size
 
     @needs_read_lock
     def get_parent_ids(self):
