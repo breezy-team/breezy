@@ -716,6 +716,8 @@ class LowLevelKnitIndexTests(TestCase):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
+            else:
+                raise
 
     def test_corrupted_parent(self):
         transport = MockTransport([
@@ -734,6 +736,8 @@ class LowLevelKnitIndexTests(TestCase):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
+            else:
+                raise
 
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
@@ -752,6 +756,8 @@ class LowLevelKnitIndexTests(TestCase):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
+            else:
+                raise
 
     def test_invalid_position(self):
         transport = MockTransport([
@@ -768,6 +774,8 @@ class LowLevelKnitIndexTests(TestCase):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
+            else:
+                raise
 
     def test_invalid_size(self):
         transport = MockTransport([
@@ -784,6 +792,8 @@ class LowLevelKnitIndexTests(TestCase):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
+            else:
+                raise
 
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
