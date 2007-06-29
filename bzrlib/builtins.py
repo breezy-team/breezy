@@ -23,7 +23,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
-import smtplib
 import sys
 import tempfile
 import time
@@ -56,6 +55,7 @@ from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
@@ -2488,9 +2488,9 @@ class cmd_selftest(Command):
             clean_selftest_output()
             return 0
         if keep_output:
-            trace.warning("notice: selftest --keep-output "
-                          "is no longer supported; "
-                          "test output is always removed")
+            warning("notice: selftest --keep-output "
+                    "is no longer supported; "
+                    "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
@@ -3183,6 +3183,8 @@ class cmd_annotate(Command):
             else:
                 revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.path2id(relpath)
+            if file_id is None:
+                raise errors.NotVersionedError(filename)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout,
@@ -3577,6 +3579,8 @@ class cmd_merge_directive(Command):
             help='Message to use when committing this merge')
         ]
 
+    encoding_type = 'exact'
+
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
         from bzrlib.revision import ensure_null, NULL_REVISION
@@ -3625,12 +3629,8 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = smtplib.SMTP()
-            server = branch.get_config().get_user_option('smtp_server')
-            if not server:
-                server = 'localhost'
-            s.connect(server)
-            s.sendmail(message['From'], message['To'], message.as_string())
+            s = SMTPConnection(branch.get_config())
+            s.send_email(message)
 
 
 class cmd_tag(Command):

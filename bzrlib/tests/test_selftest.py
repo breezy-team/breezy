@@ -1128,6 +1128,13 @@ class SampleTestCase(TestCase):
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
+    def test_debug_flags_sanitised(self):
+        """The bzrlib debug flags should be sanitised by setUp."""
+        # we could set something and run a test that will check
+        # it gets santised, but this is probably sufficient for now:
+        # if someone runs the test with -Dsomething it will error.
+        self.assertEqual(set(), bzrlib.debug.debug_flags)
+
     def inner_test(self):
         # the inner child test
         note("inner_test")
@@ -1531,3 +1538,16 @@ class TestSelftestFiltering(TestCase):
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
+
+class TestCheckInventoryShape(TestCaseWithTransport):
+
+    def test_check_inventory_shape(self):
+        files = ['a', 'b/', 'b/c']
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(files)
+        tree.add(files)
+        tree.lock_read()
+        try:
+            self.check_inventory_shape(tree.inventory, files)
+        finally:
+            tree.unlock()

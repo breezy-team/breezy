@@ -18,6 +18,8 @@ About the performance roadmap
 
 .. include:: planned-performance-changes.txt
 
+.. include:: performance-contributing.txt
+
 .. include:: planned-change-integration.txt
 
 Analysis of use cases
@@ -34,6 +36,8 @@ Use cases
 
 .. include:: add.txt
 
+.. include:: commit.txt
+
 .. include:: gc.txt
 
 .. include:: revert.txt
@@ -43,3 +47,5 @@ Use cases
 .. include:: merge-scaling.txt
 
 .. include:: bundle-creation.txt
+
+.. include:: uncommit.txt

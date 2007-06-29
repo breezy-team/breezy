@@ -201,7 +201,8 @@ class Merger(object):
             return
         if self.other_rev_id is None:
             return
-        ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
+        ancestry = set(self.this_branch.repository.get_ancestry(
+            self.this_basis, topo_sorted=False))
         if self.other_rev_id in ancestry:
             return
         self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))

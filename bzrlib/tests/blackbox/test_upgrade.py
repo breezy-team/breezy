@@ -61,15 +61,15 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         bzrdir.BzrDirFormat._set_default_format(self.old_format)
 
     def test_readonly_url_error(self):
-        (out, err) = self.run_bzr_captured(
-            ['upgrade', self.get_readonly_url('format_5_branch')], 3)
+        (out, err) = self.run_bzr(
+            ['upgrade', self.get_readonly_url('format_5_branch')], retcode=3)
         self.assertEqual(out, "")
         self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URLs.\n")
 
     def test_upgrade_up_to_date(self):
         # when up to date we should get a message to that effect
-        (out, err) = self.run_bzr_captured(
-            ['upgrade', 'current_format_branch'], 3)
+        (out, err) = self.run_bzr(
+            ['upgrade', 'current_format_branch'], retcode=3)
         self.assertEqual("", out)
         self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
                              "directory, format 1 is already at the most "
@@ -79,8 +79,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # when upgrading a checkout, the branch location and a suggestion
         # to upgrade it should be emitted even if the checkout is up to 
         # date
-        (out, err) = self.run_bzr_captured(
-            ['upgrade', 'current_format_checkout'], 3)
+        (out, err) = self.run_bzr(
+            ['upgrade', 'current_format_checkout'], retcode=3)
         self.assertEqual("This is a checkout. The branch (%s) needs to be "
                          "upgraded separately.\n" 
                          % get_transport(self.get_url('current_format_branch')).base,
@@ -107,7 +107,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         url = get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
-        (out, err) = self.run_bzr_captured(
+        (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
@@ -131,7 +131,7 @@ finished
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
-        (out, err) = self.run_bzr_captured(
+        (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history

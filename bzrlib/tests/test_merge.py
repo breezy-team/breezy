@@ -77,8 +77,8 @@ class TestMerge(TestCaseWithTransport):
         wt1.add('bar')
         wt1.commit('add foobar')
         os.chdir('branch2')
-        self.run_bzr('merge', '../branch1/baz', retcode=3)
-        self.run_bzr('merge', '../branch1/foo')
+        self.run_bzr('merge ../branch1/baz', retcode=3)
+        self.run_bzr('merge ../branch1/foo')
         self.failUnlessExists('foo')
         self.failIfExists('bar')
         wt2 = WorkingTree.open('.') # opens branch2

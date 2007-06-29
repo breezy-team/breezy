@@ -157,7 +157,7 @@ class RemoteTransport(transport.ConnectedTransport):
             return False
         else:
             self._translate_error(resp)
-        assert False, 'weird response %r' % (resp,)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
     def get_smart_client(self):
         return self._get_connection()

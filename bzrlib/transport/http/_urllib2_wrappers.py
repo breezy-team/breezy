@@ -916,6 +916,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    handler_order = 500
+
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -971,6 +973,9 @@ def get_new_cnonce(nonce, nonce_count):
 
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
+
+    # Before basic as digest is a bit more secure
+    handler_order = 490
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous

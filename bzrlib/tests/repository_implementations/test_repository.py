@@ -29,22 +29,10 @@ from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-
-
-class TestCaseWithRepository(TestCaseWithBzrDir):
-
-    def make_repository(self, relpath, format=None):
-        if format is None:
-            # Create a repository of the type we are trying to test.
-            made_control = self.make_bzrdir(relpath)
-            return self.repository_format.initialize(made_control)
-        else:
-            return super(TestCaseWithRepository, self).make_repository(
-                relpath, format)
 
 
 class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
@@ -537,6 +525,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
+
+    def test_get_unsorted_ancestry(self):
+        repo = self.bzrdir.open_repository()
+        self.assertEqual(set(repo.get_ancestry('rev3')),
+                         set(repo.get_ancestry('rev3', topo_sorted=False)))
 
     def test_get_revision_graph(self):
         # we can get a mapping of id->parents for the entire revision graph or bits thereof.

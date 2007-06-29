@@ -37,6 +37,7 @@ import os
 from pprint import pformat
 import random
 import re
+import shlex
 import stat
 from subprocess import Popen, PIPE
 import sys
@@ -76,6 +77,10 @@ import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_eighteen,
+    )
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -749,6 +754,17 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        self._clear_debug_flags()
+
+    def _clear_debug_flags(self):
+        """Prevent externally set debug flags affecting tests.
+        
+        Tests that want to use debug flags can just set them in the
+        debug_flags set during setup/teardown.
+        """
+        self._preserved_debug_flags = set(debug.debug_flags)
+        debug.debug_flags.clear()
+        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -762,9 +778,6 @@ class TestCase(unittest.TestCase):
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
-        # FIXME: Rather than constructing new objects like this, how about
-        # having save() and clear() methods on the base Hook class? mbp
-        # 20070416
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -986,6 +999,9 @@ class TestCase(unittest.TestCase):
     def applyDeprecated(self, deprecation_format, a_callable, *args, **kwargs):
         """Call a deprecated callable without warning the user.
 
+        Note that this only captures warnings raised by symbol_versioning.warn,
+        not other callers that go direct to the warning module.
+
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the 
             parameter to deprecated_method/deprecated_function. If the 
@@ -1014,6 +1030,9 @@ class TestCase(unittest.TestCase):
         applyDeprecated helper function is probably more suited for most tests
         as it allows you to simply specify the deprecation format being used
         and will ensure that that is issued for the function being called.
+
+        Note that this only captures warnings raised by symbol_versioning.warn,
+        not other callers that go direct to the warning module.
 
         :param expected: a list of the deprecation warnings expected, in order
         :param callable: The callable to call
@@ -1098,6 +1117,10 @@ class TestCase(unittest.TestCase):
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
+
+    def _restore_debug_flags(self):
+        debug.debug_flags.clear()
+        debug.debug_flags.update(self._preserved_debug_flags)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
@@ -1195,6 +1218,7 @@ class TestCase(unittest.TestCase):
         else:
             return "DELETED log file to reduce memory footprint"
 
+    @deprecated_method(zero_eighteen)
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
@@ -1207,30 +1231,36 @@ class TestCase(unittest.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
+    @deprecated_method(zero_eighteen)
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
         """Invoke bzr and return (stdout, stderr).
 
-        Useful for code that wants to check the contents of the
-        output, the way error messages are presented, etc.
+        Don't call this method, just use run_bzr() which is equivalent.
 
-        This should be the main method for tests that want to exercise the
-        overall behavior of the bzr application (rather than a unit test
-        or a functional test of the library.)
-
-        Much of the old code runs bzr by forking a new copy of Python, but
-        that is slower, harder to debug, and generally not necessary.
-
-        This runs bzr through the interface that catches and reports
-        errors, and with logging set to something approximating the
-        default, so that error reporting can be checked.
-
-        :param argv: arguments to invoke bzr
-        :param retcode: expected return code, or None for don't-care.
-        :param encoding: encoding for sys.stdout and sys.stderr
+        :param argv: Arguments to invoke bzr.  This may be either a 
+            single string, in which case it is split by shlex into words, 
+            or a list of arguments.
+        :param retcode: Expected return code, or None for don't-care.
+        :param encoding: Encoding for sys.stdout and sys.stderr
         :param stdin: A string to be used as stdin for the command.
         :param working_dir: Change to this directory before running
         """
+        return self._run_bzr_autosplit(argv, retcode=retcode,
+                encoding=encoding, stdin=stdin, working_dir=working_dir,
+                )
+
+    def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
+            working_dir):
+        """Run bazaar command line, splitting up a string command line."""
+        if isinstance(args, basestring):
+            args = list(shlex.split(args))
+        return self._run_bzr_core(args, retcode=retcode,
+                encoding=encoding, stdin=stdin, working_dir=working_dir,
+                )
+
+    def _run_bzr_core(self, args, retcode, encoding, stdin,
+            working_dir):
         if encoding is None:
             encoding = bzrlib.user_encoding
         stdout = StringIOWrapper()
@@ -1238,7 +1268,7 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
-        self.log('run bzr: %r', argv)
+        self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setLevel(logging.INFO)
@@ -1253,15 +1283,10 @@ class TestCase(unittest.TestCase):
             os.chdir(working_dir)
 
         try:
-            saved_debug_flags = frozenset(debug.debug_flags)
-            debug.debug_flags.clear()
-            try:
-                result = self.apply_redirected(ui.ui_factory.stdin,
-                                               stdout, stderr,
-                                               bzrlib.commands.run_bzr_catch_errors,
-                                               argv)
-            finally:
-                debug.debug_flags.update(saved_debug_flags)
+            result = self.apply_redirected(ui.ui_factory.stdin,
+                stdout, stderr,
+                bzrlib.commands.run_bzr_catch_errors,
+                args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -1282,16 +1307,34 @@ class TestCase(unittest.TestCase):
     def run_bzr(self, *args, **kwargs):
         """Invoke bzr, as if it were run from the command line.
 
+        The argument list should not include the bzr program name - the
+        first argument is normally the bzr command.  Arguments may be
+        passed in three ways:
+
+        1- A list of strings, eg ["commit", "a"].  This is recommended
+        when the command contains whitespace or metacharacters, or 
+        is built up at run time.
+
+        2- A single string, eg "add a".  This is the most convenient 
+        for hardcoded commands.
+
+        3- Several varargs parameters, eg run_bzr("add", "a").  
+        This is not recommended for new code.
+
+        This runs bzr through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
         or a functional test of the library.)
 
-        This sends the stdout/stderr results into the test's log,
-        where it may be useful for debugging.  See also run_captured.
-
         :param stdin: A string to be used as stdin for the command.
-        :param retcode: The status code the command should return
+        :param retcode: The status code the command should return; 
+            default 0.
         :param working_dir: The directory to run the command in
+        :param error_regexes: A list of expected error messages.  If 
+        specified they must be seen in the error output of the command.
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1299,13 +1342,24 @@ class TestCase(unittest.TestCase):
         working_dir = kwargs.pop('working_dir', None)
         error_regexes = kwargs.pop('error_regexes', [])
 
-        out, err = self.run_bzr_captured(args, retcode=retcode,
-            encoding=encoding, stdin=stdin, working_dir=working_dir)
+        if len(args) == 1:
+            if isinstance(args[0], (list, basestring)):
+                args = args[0]
+        else:
+            ## symbol_versioning.warn(zero_eighteen % "passing varargs to run_bzr",
+            ##         DeprecationWarning, stacklevel=2)
+            # not done yet, because too many tests would need to  be updated -
+            # but please don't do this in new code.  -- mbp 20070626
+            pass
+
+        out, err = self._run_bzr_autosplit(args=args,
+            retcode=retcode,
+            encoding=encoding, stdin=stdin, working_dir=working_dir,
+            )
 
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
-
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:
@@ -1491,7 +1545,7 @@ class TestCase(unittest.TestCase):
         shape = list(shape)             # copy
         for path, ie in inv.entries():
             name = path.replace('\\', '/')
-            if ie.kind == 'dir':
+            if ie.kind == 'directory':
                 name = name + '/'
             if name in shape:
                 shape.remove(name)
@@ -1534,23 +1588,6 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
-    def merge(self, branch_from, wt_to):
-        """A helper for tests to do a ui-less merge.
-
-        This should move to the main library when someone has time to integrate
-        it in.
-        """
-        # minimal ui-less merge.
-        wt_to.branch.fetch(branch_from)
-        base_rev = common_ancestor(branch_from.last_revision(),
-                                   wt_to.branch.last_revision(),
-                                   wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(),
-                    wt_to.branch.repository.revision_tree(base_rev),
-                    this_tree=wt_to)
-        wt_to.add_parent_tree_id(branch_from.last_revision())
-
     def reduceLockdirTimeout(self):
         """Reduce the default lock timeout for the duration of the test, so that
         if LockContention occurs during a test, it does so quickly.
@@ -1562,8 +1599,6 @@ class TestCase(unittest.TestCase):
             bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
         self.addCleanup(resetTimeout)
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-
-BzrTestBase = TestCase
 
 
 class TestCaseWithMemoryTransport(TestCase):
@@ -1878,6 +1913,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
+        os.chdir(self.TEST_ROOT)
         _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
@@ -2255,6 +2291,7 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
+                   'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
@@ -2301,6 +2338,7 @@ def test_suite():
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
+                   'bzrlib.tests.test_smtp_connection',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_ssh_transport',
                    'bzrlib.tests.test_status',

@@ -1175,6 +1175,10 @@ class TestAuth(object):
         self.build_tree_contents([('a', 'contents of a\n'),
                                   ('b', 'contents of b\n'),])
         self.old_factory = ui.ui_factory
+        # The following has the unfortunate side-effect of hiding any ouput
+        # during the tests (including pdb prompts). Feel free to comment them
+        # for debugging purposes but leave them in place, there are needed to
+        # run the tests without any console
         self.old_stdout = sys.stdout
         sys.stdout = StringIOWrapper()
         self.addCleanup(self.restoreUIFactory)
