@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,13 +52,13 @@ class _CompiledKnitFeature(Feature):
 
     def _probe(self):
         try:
-            import bzrlib.knit_c
+            import bzrlib._knit_load_data_c
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib.knit_c'
+        return 'bzrlib._knit_load_data_c'
 
 CompiledKnitFeature = _CompiledKnitFeature()
 
@@ -262,7 +262,8 @@ class LowLevelKnitIndexTests(TestCase):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        knit._load_data = knit._load_data_py
+        from bzrlib._knit_load_data_py import _load_data_py
+        knit._load_data = _load_data_py
         return _KnitIndex(*args, **kwargs)
 
     def test_no_such_file(self):
@@ -707,7 +708,8 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        knit._load_data = knit._load_data_c
+        from bzrlib._knit_load_data_c import _load_data_c
+        knit._load_data = _load_data_c
         return _KnitIndex(*args, **kwargs)
 
 

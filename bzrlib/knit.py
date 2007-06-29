@@ -1899,76 +1899,7 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
         return besti, bestj, bestsize
 
 
-def _load_data_py(knit, fp):
-    cache = knit._cache
-    history = knit._history
-
-    knit.check_header(fp)
-    # readlines reads the whole file at once:
-    # bad for transports like http, good for local disk
-    # we save 60 ms doing this one change (
-    # from calling readline each time to calling
-    # readlines once.
-    # probably what we want for nice behaviour on
-    # http is a incremental readlines that yields, or
-    # a check for local vs non local indexes,
-    history_top = len(history) - 1
-    for line in fp.readlines():
-        rec = line.split()
-        if len(rec) < 5 or rec[-1] != ':':
-            # corrupt line.
-            # FIXME: in the future we should determine if its a
-            # short write - and ignore it 
-            # or a different failure, and raise. RBC 20060407
-            continue
-
-        try:
-            parents = []
-            for value in rec[4:-1]:
-                if value[0] == '.':
-                    # uncompressed reference
-                    parent_id = value[1:]
-                else:
-                    parent_id = history[int(value)]
-                parents.append(parent_id)
-        except (IndexError, ValueError), e:
-            # The parent could not be decoded to get its parent row. This
-            # at a minimum will cause this row to have wrong parents, or
-            # even to apply a delta to the wrong base and decode
-            # incorrectly. its therefore not usable, and because we have
-            # encountered a situation where a new knit index had this
-            # corrupt we can't asssume that no other rows referring to the
-            # index of this record actually mean the subsequent uncorrupt
-            # one, so we error.
-            raise errors.KnitCorrupt(self._filename,
-                "line %r: %s" % (rec, e))
-
-        version_id, options, pos, size = rec[:4]
-        version_id = version_id
-
-        # See knit._cache_version
-        # only want the _history index to reference the 1st
-        # index entry for version_id
-        if version_id not in cache:
-            history_top += 1
-            index = history_top
-            history.append(version_id)
-        else:
-            index = cache[version_id][5]
-        cache[version_id] = (version_id,
-                             options.split(','),
-                             int(pos),
-                             int(size),
-                             parents,
-                             index)
-        # end knit._cache_version
-
-_load_data = _load_data_py
-
-
 try:
-    from bzrlib.knit_c import _load_data_c
+    from bzrlib._knit_load_data_c import _load_data_c as _load_data
 except ImportError:
-    pass
-else:
-    _load_data = _load_data_c
+    from bzrlib._knit_load_data_py import _load_data_py as _load_data
