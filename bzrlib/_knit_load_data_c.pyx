@@ -160,8 +160,6 @@ cdef class KnitIndexReader:
         # return real_parents
 
         parents = []
-        if parent_str == NULL:
-            return []
         while parent_str <= end:
             next = <char*>memchr(parent_str, c' ', end - parent_str)
             if next == NULL or next >= end or next == parent_str:
