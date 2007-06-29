@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import difflib
 import gzip
 import sha
+import sys
 
 from bzrlib import (
     errors,
@@ -705,8 +706,16 @@ class LowLevelKnitIndexTests(TestCase):
             "a option 0 1 :",
             "b option 0 1 4 :"  # We don't have a 4th record
             ])
-        self.assertRaises(errors.KnitCorrupt,
-                          self.get_knit_index, transport, 'filename', 'r')
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.IndexError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
 
     def test_corrupted_parent(self):
         transport = MockTransport([
@@ -715,18 +724,34 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 0 1 :",
             "c option 0 1 1v :", # Can't have a parent of '1v'
             ])
-        self.assertRaises(errors.KnitCorrupt,
-                          self.get_knit_index, transport, 'filename', 'r')
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
 
     def test_corrupted_parent_in_list(self):
         transport = MockTransport([
             _KnitIndex.HEADER,
             "a option 0 1 :",
             "b option 0 1 :",
-            "c option 0 1 2 v :", # Can't have a parent of 'v'
+            "c option 0 1 1 v :", # Can't have a parent of 'v'
             ])
-        self.assertRaises(errors.KnitCorrupt,
-                          self.get_knit_index, transport, 'filename', 'r')
+        try:
+            self.assertRaises(errors.KnitCorrupt,
+                              self.get_knit_index, transport, 'filename', 'r')
+        except TypeError, e:
+            if (str(e) == ('exceptions must be strings, classes, or instances,'
+                           ' not exceptions.ValueError')
+                and sys.version_info[0:2] >= (2,5)):
+                self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
+                                  ' raising new style exceptions with python'
+                                  ' >=2.5')
 
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
