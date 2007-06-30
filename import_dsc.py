@@ -323,10 +323,7 @@ class SourcesImporter(DscImporter):
     if self.sources_path.endswith(".gz"):
       sources_file = gzip.GzipFile(fileobj=sources_file)
     dsc_files = []
-    for source in sources_file.read().split('\n\n'):
-      if source == '':
-        continue
-      source = deb822.Sources(source)
+    for source in deb822.Sources.iter_paragraphs(sources_file):
       base_dir = source['Directory']
       if not self._check_basedir(base_dir):
         continue
