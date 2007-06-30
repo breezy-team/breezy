@@ -339,7 +339,7 @@ class cmd_import_snapshot(Command):
     if directory is None:
       directory = package
     importer = SnapshotImporter(package)
-    importer.do_import(directory)
+    importer.import_dsc(directory)
 
 
 register_command(cmd_import_snapshot)

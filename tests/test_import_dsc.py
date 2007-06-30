@@ -27,7 +27,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 from errors import ImportError
-from import_dsc import import_dsc
+from import_dsc import DscImporter
 
 def write_to_file(filename, contents):
   f = open(filename, 'wb')
@@ -43,7 +43,7 @@ def append_to_file(filename, contents):
   finally:
     f.close()
 
-class TestImportDsc(TestCaseWithTransport):
+class TestDscImporter(TestCaseWithTransport):
 
   basedir = 'package'
   target = 'target'
@@ -134,12 +134,12 @@ Standards-Version: 3.7.2
 Build-Depends: debhelper (>= 5.0.0)
 Files:
  8636a3e8ae81664bac70158503aaf53a 1328218 %s
-""" % (package, version, file1))
+""" % (package, version, os.path.basename(file1)))
     i = 1
     for extra_file in extra_files:
       append_to_file(filename,
                      " 1acd97ad70445afd5f2a64858296f21%d 20709 %s\n" % \
-                     (i, extra_file))
+                     (i, os.path.basename(extra_file)))
       i += 1
 
   def make_dsc_1(self):
@@ -166,44 +166,45 @@ Files:
 
   def import_dsc_1(self):
     self.make_dsc_1()
-    import_dsc(self.target, [self.dsc_1])
+    DscImporter([self.dsc_1]).import_dsc(self.target)
 
   def import_dsc_1b(self):
     self.make_dsc_1()
     self.make_dsc_1b()
-    import_dsc(self.target, [self.dsc_1, self.dsc_1b])
+    DscImporter([self.dsc_1, self.dsc_1b]).import_dsc(self.target)
 
   def import_dsc_1b_repeated_diff(self):
     self.make_dsc_1()
     self.make_dsc_1b()
-    import_dsc(self.target, [self.dsc_1, self.dsc_1b, self.dsc_1b])
+    DscImporter([self.dsc_1, self.dsc_1b, self.dsc_1b]).import_dsc(self.target)
 
   def import_dsc_1c(self):
     self.make_dsc_1()
     self.make_dsc_1b()
     self.make_dsc_1c()
-    import_dsc(self.target, [self.dsc_1, self.dsc_1c, self.dsc_1b])
+    DscImporter([self.dsc_1, self.dsc_1c, self.dsc_1b]).import_dsc(self.target)
 
   def import_dsc_2(self):
     self.make_dsc_1()
     self.make_dsc_1b()
     self.make_dsc_1c()
     self.make_dsc_2()
-    import_dsc(self.target,
-               [self.dsc_1, self.dsc_1b, self.dsc_1c, self.dsc_2])
+    importer = DscImporter([self.dsc_1, self.dsc_1b, self.dsc_1c, self.dsc_2])
+    importer.import_dsc(self.target)
 
   def import_dsc_2_repeated_orig(self):
     self.make_dsc_1()
     self.make_dsc_1b_repeated_orig()
     self.make_dsc_1c()
     self.make_dsc_2()
-    import_dsc(self.target,
-               [self.dsc_1, self.dsc_1b, self.dsc_1c, self.dsc_2])
+    importer = DscImporter([self.dsc_1, self.dsc_1b, self.dsc_1c, self.dsc_2])
+    importer.import_dsc(self.target)
 
   def test_import_dsc_target_extant(self):
     os.mkdir(self.target)
     write_to_file('package_0.1.dsc', '')
-    self.assertRaises(FileExists, import_dsc, self.target, ['package_0.1.dsc'])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(FileExists, importer.import_dsc, self.target)
 
   def test_import_one_dsc_tree(self):
     self.import_dsc_1()
@@ -474,17 +475,21 @@ Files:
   def test_import_dsc_restrictions_on_dscs(self):
     """Test that errors are raised for confusing sets of .dsc files."""
     self.make_dsc(self.dsc_1, '0.1-1', self.diff_1)
-    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
     self.make_dsc(self.dsc_1, '0.1-1', self.orig_1)
-    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
     self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1, self.diff_1])
-    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
     self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.orig_1, self.diff_1])
-    self.assertRaises(ImportError, import_dsc, self.target, [self.dsc_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
     self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1])
     self.make_dsc(self.dsc_1b, '0.1-2', self.diff_1b, package='otherpackage')
-    self.assertRaises(ImportError, import_dsc, self.target,
-                      [self.dsc_1, self.dsc_1b])
+    importer = DscImporter([self.dsc_1, self.dsc_1b])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
 
   def test_import_four_dsc_two_upstream_history_repeated_orig(self):
     self.import_dsc_2_repeated_orig()
@@ -528,4 +533,23 @@ Files:
     self.assertEqual(len(changes.modified), 1)
     self.assertEqual(changes.modified[0][0], 'debian/changelog')
     self.assertEqual(changes.modified[0][2], 'file')
+
+  def test_import_dsc_different_dir(self):
+    source = 'source'
+    os.mkdir(source)
+    self.diff_1 = os.path.join(source, self.diff_1)
+    self.orig_1 = os.path.join(source, self.orig_1)
+    self.dsc_1 = os.path.join(source, self.dsc_1)
+    self.import_dsc_1()
+    self.failUnlessExists(self.target)
+    tree = WorkingTree.open(self.target)
+    tree.lock_read()
+    expected_inv = ['README', 'CHANGELOG', 'Makefile', 'debian/',
+                    'debian/changelog', 'debian/install']
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    for path in expected_inv:
+      self.failUnlessExists(os.path.join(self.target, path))
 
