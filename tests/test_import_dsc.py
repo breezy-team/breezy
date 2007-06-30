@@ -57,6 +57,10 @@ class TestDscImporter(TestCaseWithTransport):
   dsc_1b = 'package_0.1-2.dsc'
   dsc_1c = 'package_0.1-3.dsc'
   dsc_2 = 'package_0.2-1.dsc'
+  native_1 = 'package_0.1.tar.gz'
+  native_2 = 'package_0.2.tar.gz'
+  native_dsc_1 = 'package_0.1.dsc'
+  native_dsc_2 = 'package_0.2.dsc'
 
   def make_base_package(self):
     os.mkdir(self.basedir)
@@ -490,6 +494,13 @@ Files:
     self.make_dsc(self.dsc_1b, '0.1-2', self.diff_1b, package='otherpackage')
     importer = DscImporter([self.dsc_1, self.dsc_1b])
     self.assertRaises(ImportError, importer.import_dsc, self.target)
+    self.make_dsc(self.dsc_1, '0.1', self.diff_1b, [self.orig_1,
+                                                    self.native_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
+    self.make_dsc(self.dsc_1, '0.1', self.native_1, [self.native_1])
+    importer = DscImporter([self.dsc_1])
+    self.assertRaises(ImportError, importer.import_dsc, self.target)
 
   def test_import_four_dsc_two_upstream_history_repeated_orig(self):
     self.import_dsc_2_repeated_orig()
@@ -552,4 +563,74 @@ Files:
       tree.unlock()
     for path in expected_inv:
       self.failUnlessExists(os.path.join(self.target, path))
+
+  def make_native_dsc_1(self):
+    self.make_base_package()
+    os.mkdir(os.path.join(self.basedir, 'debian'))
+    write_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
+                  'version 1\n')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.add(self.basedir)
+    finally:
+      tar.close()
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+
+  def make_native_dsc_2(self):
+    self.extend_base_package()
+    append_to_file(os.path.join(self.basedir, 'debian', 'changelog'),
+                   'version 2\n')
+    tar = tarfile.open(self.native_2, 'w:gz')
+    try:
+      tar.add(self.basedir)
+    finally:
+      tar.close()
+    self.make_dsc(self.native_dsc_2, '0.2', self.native_2)
+
+  def test_import_dsc_native_single(self):
+    self.make_native_dsc_1()
+    importer = DscImporter([self.native_dsc_1])
+    importer.import_dsc(self.target)
+    tree = WorkingTree.open(self.target)
+    expected_inv = ['CHANGELOG', 'README', 'Makefile', 'debian/',
+                    'debian/changelog']
+    tree.lock_read()
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 1)
+    rev = tree.branch.repository.get_revision(rh[0])
+    self.assertEqual(rev.message,
+                     "import package from %s" % \
+                     os.path.basename(self.native_1))
+    self.assertEqual(len(tree.get_parent_ids()), 1)
+
+  def test_import_dsc_native_double(self):
+    self.make_native_dsc_1()
+    self.make_native_dsc_2()
+    importer = DscImporter([self.native_dsc_1, self.native_dsc_2])
+    importer.import_dsc(self.target)
+    tree = WorkingTree.open(self.target)
+    expected_inv = ['CHANGELOG', 'README', 'Makefile', 'NEWS', 'debian/',
+                    'debian/changelog']
+    tree.lock_read()
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 2)
+    rev = tree.branch.repository.get_revision(rh[0])
+    self.assertEqual(rev.message,
+                     "import package from %s" % \
+                     os.path.basename(self.native_1))
+    rev = tree.branch.repository.get_revision(rh[1])
+    self.assertEqual(rev.message,
+                     "import package from %s" % \
+                     os.path.basename(self.native_2))
+    self.assertEqual(len(tree.get_parent_ids()), 1)
+    parents = tree.branch.repository.revision_tree(rh[1]).get_parent_ids()
+    self.assertEqual(len(parents), 1)
 

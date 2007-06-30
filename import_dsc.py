@@ -38,8 +38,8 @@ from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
 from errors import ImportError
 from merge_upstream import make_upstream_tag
 
-# TODO: support native packages (should be easy).
-# TODO: Use a transport to retrieve the files, so that they can be got remotely
+# TODO: Allow native->non-native transitions and back
+# TODO: support explicit upstream branch.
 
 def open_file(path, transport, base_dir=None):
   """Open a file, possibly over a transport.
@@ -126,6 +126,29 @@ class DscImporter(object):
     finally:
       f.close()
     return dangling_revid
+
+  def import_native(self, tree, origname, version, dangling_revid=None,
+                    last_upstream=None, transport=None, base_dir=None):
+    f = open_file(origname, transport, base_dir=base_dir)[0]
+    try:
+      if last_upstream is not None:
+        old_upstream_revid = tree.branch.tags.lookup_tag(
+                                 make_upstream_tag(last_upstream))
+        tree.revert([],
+                    tree.branch.repository.revision_tree(old_upstream_revid))
+      import_tar(tree, f)
+      if last_upstream is not None:
+        tree.set_parent_ids([old_upstream_revid])
+        revno = tree.branch.revision_id_to_revno(old_upstream_revid)
+        tree.branch.set_last_revision_info(revno, old_upstream_revid)
+      if dangling_revid is not None:
+        tree.add_parent_tree_id(dangling_revid)
+      tree.commit('import package from %s' % (os.path.basename(origname)))
+      upstream_version = version.upstream_version
+      tree.branch.tags.set_tag(make_upstream_tag(upstream_version),
+                               tree.branch.last_revision())
+    finally:
+      f.close()
 
   def _patch_tree(self, patch, basedir):
     cmd = ['patch', '--strip', '1', '--quiet', '--directory', basedir]
@@ -240,6 +263,7 @@ class DscImporter(object):
   def _decode_dsc(self, dsc, dscname):
     orig_file = None
     diff_file = None
+    native_file = None
     self._check_package_name(dsc['Source'])
     for file_details in dsc['files']:
       name = file_details['name']
@@ -251,19 +275,30 @@ class DscImporter(object):
         if diff_file is not None:
           raise ImportError("%s contains more than one .diff.gz" % dscname)
         diff_file = name
-    if diff_file is None:
-      raise ImportError("%s contains only a .orig.tar.gz, it must contain a "
-                        ".diff.gz as well" % dscname)
+      elif name.endswith('.tar.gz'):
+        if native_file is not None:
+          raise ImportError("%s contains more than one .tar.gz" % dscname)
+        native_file = name
     version = Version(dsc['Version'])
     if self.transport is not None:
       base_dir = urlutils.split(dscname)[0]
     else:
       base_dir = None
     dsc_transport = self.cache.get_transport(dscname)
-    if orig_file is not None:
-      self._add_to_safe(orig_file, version, 'orig', base_dir, dsc_transport)
-    self._check_orig_exists(version)
-    self._add_to_safe(diff_file, version, 'diff', base_dir, dsc_transport)
+    if native_file is not None:
+      if diff_file is not None or orig_file is not None:
+        raise ImportError("%s contains both a native package and a normal "
+                          "package." % dscname)
+      self._add_to_safe(native_file, version, 'native', base_dir,
+                        dsc_transport)
+    else:
+      if diff_file is None:
+        raise ImportError("%s contains only a .orig.tar.gz, it must contain a "
+                          ".diff.gz as well" % dscname)
+      if orig_file is not None:
+        self._add_to_safe(orig_file, version, 'orig', base_dir, dsc_transport)
+      self._check_orig_exists(version)
+      self._add_to_safe(diff_file, version, 'diff', base_dir, dsc_transport)
 
   def import_dsc(self, target_dir):
     if os.path.exists(target_dir):
@@ -298,6 +333,14 @@ class DscImporter(object):
                            transport=transport, base_dir=base_dir)
           info("imported %s" % filename)
           dangling_revid = None
+        elif type == 'native':
+          self.import_native(tree, filename, version,
+                             dangling_revid=dangling_revid,
+                             last_upstream=last_upstream,
+                             transport=transport, base_dir=base_dir)
+          dangling_revid = None
+          last_upstream = version.upstream_version
+          info("imported %s" % filename)
     finally:
       tree.unlock()
 
