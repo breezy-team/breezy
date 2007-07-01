@@ -22,7 +22,6 @@ import gzip
 import os
 import shutil
 import tarfile
-import zipfile
 
 from bzrlib.errors import (NoSuchFile,
                            FileExists,

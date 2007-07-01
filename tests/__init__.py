@@ -18,8 +18,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import changes
-import config
 import shutil
 import tarfile
 import zipfile

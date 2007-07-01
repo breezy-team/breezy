@@ -21,10 +21,7 @@
 import shutil
 import os
 
-from bzrlib.atomicfile import AtomicFile
-from bzrlib.ignores import parse_ignore_file
 from bzrlib.trace import info, mutter
-from bzrlib.workingtree import WorkingTree
 
 from debian_bundle.changelog import Changelog
 

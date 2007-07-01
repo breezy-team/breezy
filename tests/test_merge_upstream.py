@@ -19,17 +19,14 @@
 #
 
 import os
-import shutil
 
 from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.errors import (BzrCommandError,
-                           InvalidRevisionSpec,
                            NoSuchFile,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tests import TestCaseWithTransport
 
 from merge_upstream import merge_upstream

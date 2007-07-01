@@ -183,7 +183,7 @@ class BuilderTestCase(TestCaseWithTransport):
 
   def write_changelog(self, changelog, filename):
     f = open(filename, 'w')
-    c.write_to_open_file(f)
+    changelog.write_to_open_file(f)
     f.close()
 
   def get_arch(self):

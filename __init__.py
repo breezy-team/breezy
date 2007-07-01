@@ -25,13 +25,10 @@
 import os
 
 from bzrlib.commands import Command, register_command
-from bzrlib.trace import info, warning
+from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
+from bzrlib.trace import info, warning
 from bzrlib.workingtree import WorkingTree
-from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
-from bzrlib.trace import info, mutter
-import bzrlib.transport
 
 from builder import (DebBuild,
                      DebMergeBuild,
@@ -43,9 +40,7 @@ from config import DebBuildConfig
 from errors import (ChangedError,
                     StopBuild,
                     )
-from merge_upstream import merge_upstream
 from properties import BuildProperties
-from repack_tarball import repack_tarball
 from util import goto_branch, find_changelog, is_clean
 
 dont_purge_opt = Option('dont-purge',
