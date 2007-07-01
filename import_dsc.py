@@ -30,6 +30,7 @@ from bzrlib import (bzrdir,
                     generate_ids,
                     urlutils,
                     )
+from bzrlib.config import ConfigObj
 from bzrlib.errors import FileExists, BzrError
 from bzrlib.osutils import file_iterator, isdir, basename
 from bzrlib.trace import warning, info
@@ -44,7 +45,6 @@ from bzrlib.plugins.bzrtools.upstream_import import (common_directory,
 from errors import ImportError
 from merge_upstream import make_upstream_tag
 
-# TODO: Allow native->non-native transitions and back
 # TODO: support explicit upstream branch.
 
 def import_tar(tree, tar_input, file_ids_from=None):
@@ -236,9 +236,12 @@ class DscImporter(object):
     try:
       dangling_revid = None
       dangling_tree = None
+      old_upstream_tree = None
       if last_upstream is not None:
         old_upstream_revid = tree.branch.tags.lookup_tag(
                                  make_upstream_tag(last_upstream))
+        old_upstream_tree = tree.branch.repository.revision_tree(
+                                  old_upstream_revid)
         if old_upstream_revid != tree.branch.last_revision():
           dangling_revid = tree.branch.last_revision()
           dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
@@ -251,6 +254,46 @@ class DscImporter(object):
         tree.branch.set_last_revision_info(revno, old_upstream_revid)
       if dangling_revid is not None:
         tree.add_parent_tree_id(dangling_revid)
+      config_filename = '.bzr-builddeb/default.conf'
+      to_add = False
+      to_add_dir = False
+      if not tree.has_filename(config_filename):
+        if not tree.has_filename(os.path.dirname(config_filename)):
+          os.mkdir(os.path.join(tree.basedir,
+                                os.path.dirname(config_filename)))
+          to_add_dir = True
+        conf = open(os.path.join(tree.basedir, config_filename), 'wb')
+        conf.close()
+        to_add = True
+      config_ = ConfigObj(os.path.join(tree.basedir, config_filename))
+      try:
+        config_['BUILDDEB']
+      except KeyError:
+        config_['BUILDDEB'] = {}
+      try:
+        current_value = config_['BUILDDEB']['native']
+      except KeyError:
+        current_value = False
+      if not current_value:
+        config_['BUILDDEB']['native'] = True
+        config_.write()
+      if to_add_dir:
+        file_id = None
+        parent = os.path.dirname(config_filename)
+        if old_upstream_tree is not None:
+          file_id = old_upstream_tree.path2id(parent)
+        if file_id is not None:
+          tree.add([parent], [file_id])
+        else:
+          tree.add([parent])
+      if to_add:
+        file_id = None
+        if old_upstream_tree is not None:
+          file_id = old_upstream_tree.path2id(config_filename)
+        if file_id is not None:
+          tree.add([config_filename], [file_id])
+        else:
+          tree.add([config_filename])
       tree.commit('import package from %s' % (os.path.basename(origname)))
       upstream_version = version.upstream_version
       tree.branch.tags.set_tag(make_upstream_tag(upstream_version),
@@ -434,25 +477,31 @@ class DscImporter(object):
     try:
       last_upstream = None
       dangling_revid = None
+      last_native = False
       for (filename, version, type, base_dir, transport) in self.safe_files:
         if type == 'orig':
+          if last_native:
+            last_upstream = None
           dangling_revid = self.import_orig(tree, filename, version,
                                             last_upstream=last_upstream,
                                             transport=transport,
                                             base_dir=base_dir)
           info("imported %s" % filename)
           last_upstream = version.upstream_version
+          last_native = False
         elif type == 'diff':
           self.import_diff(tree, filename, version,
                            dangling_revid=dangling_revid,
                            transport=transport, base_dir=base_dir)
           info("imported %s" % filename)
           dangling_revid = None
+          last_native = False
         elif type == 'native':
           self.import_native(tree, filename, version,
                              last_upstream=last_upstream,
                              transport=transport, base_dir=base_dir)
-          last_upstream = None
+          last_upstream = version.upstream_version
+          last_native = True
           info("imported %s" % filename)
     finally:
       tree.unlock()
