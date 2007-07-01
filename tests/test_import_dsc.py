@@ -700,3 +700,68 @@ Files:
     self.assertEqual(len(changes.removed), 1)
     self.assertEqual(changes.removed[0][0], 'debian/install')
 
+  def test_native_to_non_native(self):
+    self.make_native_dsc_1()
+    shutil.rmtree(os.path.join(self.basedir, 'debian'))
+    self.make_dsc_2()
+    importer = DscImporter([self.native_dsc_1, self.dsc_2])
+    importer.import_dsc(self.target)
+    tree = WorkingTree.open(self.target)
+    expected_inv = ['CHANGELOG', 'README', 'Makefile', 'NEWS', 'from_debian',
+                    'debian/', 'debian/changelog', 'debian/install']
+    tree.lock_read()
+    try:
+      self.check_inventory_shape(tree.inventory, expected_inv)
+    finally:
+      tree.unlock()
+    self.assertEqual(tree.changes_from(tree.basis_tree()).has_changed(), False)
+    rh = tree.branch.revision_history()
+    self.assertEqual(len(rh), 3)
+    rev = tree.branch.repository.get_revision(rh[0])
+    self.assertEqual(rev.message,
+                     "import package from %s" % \
+                     os.path.basename(self.native_1))
+    rev = tree.branch.repository.get_revision(rh[1])
+    self.assertEqual(rev.message,
+                     "import upstream from %s" % \
+                     os.path.basename(self.orig_2))
+    rev = tree.branch.repository.get_revision(rh[2])
+    self.assertEqual(rev.message,
+                     "merge packaging changes from %s" % \
+                     os.path.basename(self.diff_2))
+    self.assertEqual(len(tree.get_parent_ids()), 1)
+    parents = tree.branch.repository.revision_tree(rh[1]).get_parent_ids()
+    self.assertEqual(len(parents), 1)
+    parents = tree.branch.repository.revision_tree(rh[2]).get_parent_ids()
+    self.assertEqual(len(parents), 1)
+    up_tree = tree.branch.repository.revision_tree(rh[1])
+    changes = tree.changes_from(up_tree)
+    self.assertEqual(len(changes.added), 3)
+    self.assertEqual(changes.added[0][0], 'debian')
+    self.assertEqual(changes.added[1][0], 'debian/changelog')
+    self.assertEqual(changes.added[2][0], 'debian/install')
+    self.assertEqual(changes.modified, [])
+    self.assertEqual(changes.removed, [])
+    changes = up_tree.changes_from(tree.branch.repository.revision_tree(rh[0]))
+    self.assertEqual(len(changes.added), 2)
+    self.assertEqual(changes.added[0][0], 'NEWS')
+    self.assertEqual(changes.added[1][0], 'from_debian')
+    self.assertEqual(len(changes.modified), 1, str(changes.modified))
+    self.assertEqual(changes.modified[0][0], 'Makefile')
+    self.assertEqual(len(changes.removed), 2)
+    self.assertEqual(changes.removed[0][0], 'debian')
+    self.assertEqual(changes.removed[1][0], 'debian/changelog')
+    # FIXME: Should changelog etc. be added/removed or not?
+    changes = tree.changes_from(tree.branch.repository.revision_tree(rh[0]))
+    self.assertEqual(len(changes.added), 5, str(changes.added))
+    self.assertEqual(changes.added[0][0], 'NEWS')
+    self.assertEqual(changes.added[1][0], 'debian')
+    self.assertEqual(changes.added[2][0], 'debian/changelog')
+    self.assertEqual(changes.added[3][0], 'debian/install')
+    self.assertEqual(changes.added[4][0], 'from_debian')
+    self.assertEqual(len(changes.modified), 1)
+    self.assertEqual(changes.modified[0][0], 'Makefile')
+    self.assertEqual(len(changes.removed), 2)
+    self.assertEqual(changes.removed[0][0], 'debian')
+    self.assertEqual(changes.removed[1][0], 'debian/changelog')
+

@@ -452,7 +452,7 @@ class DscImporter(object):
           self.import_native(tree, filename, version,
                              last_upstream=last_upstream,
                              transport=transport, base_dir=base_dir)
-          last_upstream = version.upstream_version
+          last_upstream = None
           info("imported %s" % filename)
     finally:
       tree.unlock()
