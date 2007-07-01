@@ -21,18 +21,24 @@
 import gzip
 import os
 from subprocess import Popen, PIPE
+import tarfile
 
 import deb822
 from debian_bundle.changelog import Version
 
 from bzrlib import (bzrdir,
+                    generate_ids,
                     urlutils,
                     )
 from bzrlib.errors import FileExists, BzrError
+from bzrlib.osutils import file_iterator, isdir, basename
 from bzrlib.trace import warning, info
+from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import get_transport
 
-from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
+from bzrlib.plugins.bzrtools.upstream_import import (common_directory,
+                                                     names_of_files,
+                                                     add_implied_parents,
                                                      )
 
 from errors import ImportError
@@ -40,6 +46,101 @@ from merge_upstream import make_upstream_tag
 
 # TODO: Allow native->non-native transitions and back
 # TODO: support explicit upstream branch.
+
+def import_tar(tree, tar_input, file_ids_from=None):
+    """Replace the contents of a working directory with tarfile contents.
+    The tarfile may be a gzipped stream.  File ids will be updated.
+    """
+    tar_file = tarfile.open('lala', 'r', tar_input)
+    import_archive(tree, tar_file, file_ids_from=file_ids_from)
+
+
+def do_directory(tt, trans_id, tree, relative_path, path):
+    if isdir(path) and tree.path2id(relative_path) is not None:
+        tt.cancel_deletion(trans_id)
+    else:
+        tt.create_directory(trans_id)
+
+
+def import_archive(tree, archive_file, file_ids_from=None):
+    prefix = common_directory(names_of_files(archive_file))
+    tt = TreeTransform(tree)
+
+    removed = set()
+    for path, entry in tree.inventory.iter_entries():
+        if entry.parent_id is None:
+            continue
+        trans_id = tt.trans_id_tree_path(path)
+        tt.delete_contents(trans_id)
+        removed.add(path)
+
+    added = set()
+    implied_parents = set()
+    seen = set()
+    for member in archive_file.getmembers():
+        if member.type == 'g':
+            # type 'g' is a header
+            continue
+        relative_path = member.name
+        if prefix is not None:
+            relative_path = relative_path[len(prefix)+1:]
+            relative_path = relative_path.rstrip('/')
+        if relative_path == '':
+            continue
+        add_implied_parents(implied_parents, relative_path)
+        trans_id = tt.trans_id_tree_path(relative_path)
+        added.add(relative_path.rstrip('/'))
+        path = tree.abspath(relative_path)
+        if member.name in seen:
+            if tt.final_kind(trans_id) == 'file':
+                tt.set_executability(None, trans_id)
+            tt.cancel_creation(trans_id)
+        seen.add(member.name)
+        if member.isreg():
+            tt.create_file(file_iterator(archive_file.extractfile(member)),
+                           trans_id)
+            executable = (member.mode & 0111) != 0
+            tt.set_executability(executable, trans_id)
+        elif member.isdir():
+            do_directory(tt, trans_id, tree, relative_path, path)
+        elif member.issym():
+            tt.create_symlink(member.linkname, trans_id)
+        else:
+            continue
+        if tt.tree_file_id(trans_id) is None:
+            if (file_ids_from is not None and
+                file_ids_from.has_filename(relative_path)):
+                file_id = file_ids_from.path2id(relative_path)
+                assert file_id is not None
+                tt.version_file(file_id, trans_id)
+            else:
+                name = basename(member.name.rstrip('/'))
+                file_id = generate_ids.gen_file_id(name)
+                tt.version_file(file_id, trans_id)
+
+    for relative_path in implied_parents.difference(added):
+        if relative_path == "":
+            continue
+        trans_id = tt.trans_id_tree_path(relative_path)
+        path = tree.abspath(relative_path)
+        do_directory(tt, trans_id, tree, relative_path, path)
+        if tt.tree_file_id(trans_id) is None:
+            if (file_ids_from is not None and
+                file_ids_from.has_filename(relative_path)):
+                file_id = file_ids_from.path2id(relative_path)
+                assert file_id is not None
+                tt.version_file(file_id, trans_id)
+            else:
+                tt.version_file(trans_id, trans_id)
+        added.add(relative_path)
+
+    for path in removed.difference(added):
+        tt.unversion_file(tt.trans_id_tree_path(path))
+
+    for conflict in cook_conflicts(resolve_conflicts(tt), tt):
+        warning(conflict)
+    tt.apply()
+
 
 def open_file(path, transport, base_dir=None):
   """Open a file, possibly over a transport.
@@ -108,13 +209,15 @@ class DscImporter(object):
     f = open_file(origname, transport, base_dir=base_dir)[0]
     try:
       dangling_revid = None
+      dangling_tree = None
       if last_upstream is not None:
         dangling_revid = tree.branch.last_revision()
+        dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
         old_upstream_revid = tree.branch.tags.lookup_tag(
                                  make_upstream_tag(last_upstream))
         tree.revert([],
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f)
+      import_tar(tree, f, file_ids_from=dangling_tree)
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
@@ -127,16 +230,21 @@ class DscImporter(object):
       f.close()
     return dangling_revid
 
-  def import_native(self, tree, origname, version, dangling_revid=None,
-                    last_upstream=None, transport=None, base_dir=None):
+  def import_native(self, tree, origname, version, last_upstream=None,
+                    transport=None, base_dir=None):
     f = open_file(origname, transport, base_dir=base_dir)[0]
     try:
+      dangling_revid = None
+      dangling_tree = None
       if last_upstream is not None:
         old_upstream_revid = tree.branch.tags.lookup_tag(
                                  make_upstream_tag(last_upstream))
+        if old_upstream_revid != tree.branch.last_revision():
+          dangling_revid = tree.branch.last_revision()
+          dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
         tree.revert([],
                     tree.branch.repository.revision_tree(old_upstream_revid))
-      import_tar(tree, f)
+      import_tar(tree, f, file_ids_from=dangling_tree)
       if last_upstream is not None:
         tree.set_parent_ids([old_upstream_revid])
         revno = tree.branch.revision_id_to_revno(old_upstream_revid)
@@ -176,6 +284,44 @@ class DscImporter(object):
       touched_paths.append(filename)
     return touched_paths
 
+  def _add_implied_parents(self, tree, implied_parents, path,
+                           file_ids_from=None):
+    parent = os.path.dirname(path)
+    if parent == '':
+      return
+    if parent in implied_parents:
+      return
+    implied_parents.add(parent)
+    self._add_implied_parents(tree, implied_parents, parent,
+                              file_ids_from=file_ids_from)
+    if file_ids_from is None:
+      tree.add([parent])
+    else:
+      file_id = file_ids_from.path2id(parent)
+      if file_id is None:
+        tree.add([parent])
+      else:
+        tree.add([parent], [file_id])
+
+  def _update_path_info(self, tree, touched_paths, other_parent, main_parent):
+    implied_parents = set()
+    for path in touched_paths:
+      if not tree.has_filename(path):
+        tree.remove([path], verbose=False)
+      elif not other_parent.has_filename(path):
+        self._add_implied_parents(tree, implied_parents, path,
+                                  file_ids_from=other_parent)
+        tree.add([path])
+      elif not (main_parent.has_filename(path) and
+                other_parent.has_filename(path)):
+        self._add_implied_parents(tree, implied_parents, path,
+                                  file_ids_from=other_parent)
+        file_id = other_parent.path2id(path)
+        if file_id is None:
+          tree.add([path])
+        else:
+          tree.add([path], [file_id])
+
   def import_diff(self, tree, diffname, version, dangling_revid=None,
                   transport=None, base_dir=None):
     upstream_version = version.upstream_version
@@ -193,38 +339,7 @@ class DscImporter(object):
       self._patch_tree(f, tree.basedir)
       f.seek(0)
       touched_paths = self._get_touched_paths(f)
-      implied_parents = set()
-
-      def add_implied_parents(path, file_ids_from=None):
-        parent = os.path.dirname(path)
-        if parent == '':
-          return
-        if parent in implied_parents:
-          return
-        implied_parents.add(parent)
-        add_implied_parents(parent)
-        if file_ids_from is None:
-          tree.add([parent])
-        else:
-          file_id = file_ids_from.path2id(parent)
-          if file_id is None:
-            tree.add([parent])
-          else:
-            tree.add([parent], [file_id])
-
-      for path in touched_paths:
-        if not tree.has_filename(path):
-          tree.remove([path], verbose=False)
-        if not current_tree.has_filename(path):
-          add_implied_parents(path)
-          tree.add([path])
-        if not up_tree.has_filename(path) and current_tree.has_filename(path):
-          add_implied_parents(path, file_ids_from=current_tree)
-          file_id = current_tree.path2id(path)
-          if file_id is None:
-            tree.add([path])
-          else:
-            tree.add([path], [file_id])
+      self._update_path_info(tree, touched_paths, current_tree, up_tree)
       if dangling_revid is not None:
         tree.add_parent_tree_id(dangling_revid)
       tree.commit('merge packaging changes from %s' % \
@@ -335,10 +450,8 @@ class DscImporter(object):
           dangling_revid = None
         elif type == 'native':
           self.import_native(tree, filename, version,
-                             dangling_revid=dangling_revid,
                              last_upstream=last_upstream,
                              transport=transport, base_dir=base_dir)
-          dangling_revid = None
           last_upstream = version.upstream_version
           info("imported %s" % filename)
     finally:
