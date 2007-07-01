@@ -46,6 +46,7 @@ from errors import ImportError
 from merge_upstream import make_upstream_tag
 
 # TODO: support explicit upstream branch.
+# TODO: support incremental importing.
 
 def import_tar(tree, tar_input, file_ids_from=None):
     """Replace the contents of a working directory with tarfile contents.
