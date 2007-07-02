@@ -1,0 +1,52 @@
+Contributing to the performance drive
+=====================================
+
+.. contents:: :local:
+
+What needs doing?
+-----------------
+
+There is plenty of code to write. Testers are always welcome for experimental
+changes. In general, pick a BLUE node from performance.png which has nothing
+pointing at it that is also BLUE, and start working on that.
+
+Status
+------
+
+The performance drive is well under way. At the moment we are finalising the
+analysis documents from the sprint at London. If you were not at that sprint,
+please read the analysis documents - consider them living documents much like
+code, to be patched and corrected.
+
+If you were at the London performance sprint, please help finish documenting
+the core command analysis work. The core commands that have not been analysed
+are listed in performance.dot as the BLUE nodes. For quick reference:
+
+* status
+* log
+* diff
+* uncommit
+* missing
+* update
+* cbranch
+
+Once a given command has had its analysis created, the bottleneck of 'folk who
+attended London' is removed. The next task is in general the creation of a
+targeted API stack for that command. This API stack is done by starting with
+the cmd object in ``builtins.py`` and cleaning up the code so that the API used
+there is one which allows an implementation matching the analysis document.
+This then gets repeated, iteratively, on each of the called API's, until all
+the current slow code is cleanly abstracted behind the ``Tree``, ``Branch`` and
+``Repository`` API's.
+
+Resources
+---------
+
+The usual resources for contributing to bzr - the mailing list, wiki, bug
+tracker and IRC channels are documented in the HACKING_ document. Additionally
+there are members of the project focusing on performance at the moment who are
+willing to mentor contributors on performance issues. Just send a mail to the
+list asking for mentoring on the step of the performance plan you want to help
+with.
+
+.. _HACKING: HACKING.htm

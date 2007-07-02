@@ -1,6 +1,8 @@
 Commit Performance Notes
 ========================
 
+.. contents:: :local:
+
 Changes to commit
 -----------------
 
@@ -12,7 +14,6 @@ the user interface, and the general process of committing.
 Phase two is to have better interfaces by which a good workingtree format
 can efficiently pass data to a good storage format.  If we get phase one
 right, it will be relatively easy and non-disruptive to bring this in.
-
 
 
 Commit: The Minimum Work Required

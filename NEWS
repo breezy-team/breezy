@@ -5,6 +5,10 @@ IN DEVELOPMENT
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
 
+    * Display a useful error message when the user requests to annotate
+      a file that is not present in the specified revision.
+      (James Westby, #122656)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -38,13 +42,20 @@ IN DEVELOPMENT
       
       If there is no master branch, the 3rd stage is omitted and the total
       number of stages is adjusted accordingly.
-      (Ian Clatworthy)
+
+      Each hook that is run after commit is listed with a name (as hooks
+      can be slow it is useful feedback).
+      (Ian Clatworthy, Robert Collins)
 
     * Various operations that are now faster due to avoiding unnecessary
       topological sorts. (Aaron Bentley)
 
     * The lsprof filename note is emitted via trace.note(), not standard
       output.  (Aaron Bentley)
+
+    * ``bzrlib`` now exports explicit API compatibility information to assist
+      library users and plugins. See the ``bzrlib.api`` module for details.
+      (Robert Collins)
 
   LIBRARY API BREAKS:
 
@@ -72,6 +83,10 @@ IN DEVELOPMENT
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
+    * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
+      allows a nicer UI when hooks are running as the current hook can
+      be displayed. (Robert Collins)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
@@ -93,6 +108,14 @@ IN DEVELOPMENT
       by altering the repository scenarios to include a scenario that sets this
       attribute during the test parameterisation in
       ``bzrlib.tests.repository.repository_implementations``. (Robert Collins)
+
+    * Clean up many of the APIs for blackbox testing of Bazaar.  The standard 
+      interface is now self.run_bzr.  The command to run can be passed as
+      either a list of parameters, a string containing the command line, or
+      (deprecated) varargs parameters.  (Martin Pool)
+
+    * The base TestCase now isolates tests from -D parameters by clearing
+      ``debug.debug_flags`` and restores it afterwards. (Robert Collins)
 
   BUGFIXES:
 

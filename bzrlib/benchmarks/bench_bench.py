@@ -29,6 +29,7 @@ from bzrlib.tests import TestSkipped
 
 
 class MakeKernelLikeTreeBenchmark(Benchmark):
+    """Benchmark creating benchmark trees."""
 
     def test_make_kernel_like_tree(self):
         """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 

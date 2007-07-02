@@ -852,7 +852,7 @@ class TreeConfig(IniBasedConfig):
             obj = self._get_config()
             try:
                 if section is not None:
-                    obj[section]
+                    obj = obj[section]
                 result = obj[name]
             except KeyError:
                 result = default
