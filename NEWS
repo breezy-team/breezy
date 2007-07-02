@@ -57,6 +57,9 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
+    * ``bzrtracefilename --version`` now shows the location of the bzr log file, which
+      is especially useful on Windows.  (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
