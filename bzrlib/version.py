@@ -25,6 +25,7 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    trace,
     )
 from bzrlib.branch import Branch
 
@@ -50,6 +51,7 @@ def show_version():
     else:
         print bzrlib.__path__[0]
     print "Using bazaar configuration:", config.config_dir()
+    print "Logging to:", trace._bzr_log_filename
     print
     print bzrlib.__copyright__
     print "http://bazaar-vcs.org/"

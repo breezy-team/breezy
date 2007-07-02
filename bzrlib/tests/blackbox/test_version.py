@@ -30,3 +30,4 @@ class TestVersion(ExternalBase):
         self.assertEquals(1, out.count("Using python standard library:"))
         self.assertEquals(1, out.count("Using bzrlib:"))
         self.assertEquals(1, out.count("Using bazaar configuration:"))
+        self.assertContainsRe(out, r'(?m)^Logging to:.*bzr\.log')
