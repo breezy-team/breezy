@@ -12,11 +12,11 @@ strict digraph performance {
   gc_analysis[label="Work required analysis for gc"];
   revert_analysis[label="Work required analysis for revert"];
   revert_path_analysis[label="Work required analysis for revert of selected paths"];
+  status_analysis[label="Work required analysis for status"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
 
   /* uncompleted node list - add new tasks here */
   node[color="blue"];
-  status_analysis[label="Work required analysis for status"];
   log_analysis[label="Work required analysis for log"];
   log_path_analysis[label="Work required analysis for log of selected paths."];
   diff_analysis[label="Work required analysis for diff"];
