@@ -86,6 +86,14 @@ IN DEVELOPMENT
     * New testing support class ``TestScenarioApplier`` which multiplies
       out a single teste by a list of supplied scenarios. (RobertCollins)
 
+    * Setting ``repository_to_test_repository`` on a repository_implementations
+      test will cause it to be called during repository creation, allowing the
+      testing of repository classes which are not based around the Format
+      concept. For example a repository adapter can be tested in this manner,
+      by altering the repository scenarios to include a scenario that sets this
+      attribute during the test parameterisation in
+      ``bzrlib.tests.repository.repository_implementations``. (Robert Collins)
+
   BUGFIXES:
 
     * Work around python-2.4.1 inhability to correctly parse the
