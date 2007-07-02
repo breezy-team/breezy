@@ -17,6 +17,9 @@ across the from and to tree, and any pending merges in the to tree).
    parents recursively.
 2. Changes to the tree shape - adds/deletes/renames.
 3. Changes to versioned content - kind changes and content changes.
+4. Unknown files in the to tree.
+5. Files with conflicts in the to tree.
+
 
 Ideal work for working tree to historical status
 ------------------------------------------------
@@ -32,6 +35,15 @@ We need to do the following things at a minimum:
    We arguably don't care about tracking metadata for this - only the value of
    the tree the user commited.
 
+1. The entire contents of directories which are versioned when showing
+   unknowns.
+
+1. Whether a given unversioned path is unknown or ignored.
+
+1. The list conflicted paths in the tree (which match the users path
+   selection?)
+
+
 Expanding on the tree difference case we will need to:
 
 1. Stat every path in working trees which is included by the users path
@@ -43,7 +55,9 @@ Expanding on the tree difference case we will need to:
    common case. There are alternative ways to achieve this - we could record
    a pointer to a revision which contained this fileid with the current content
    rather than storing the content's hash; but this seems to be a pointless 
-   double-indirection unless we save enough storage in the working tree.
+   double-indirection unless we save enough storage in the working tree. A
+   variation of this is to not record an explicit pointer but instead
+   define an implicit pointer as being to the left-hand-parent tree.
 
 
 Locality of reference

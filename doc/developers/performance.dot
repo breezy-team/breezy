@@ -13,6 +13,7 @@ strict digraph performance {
   revert_analysis[label="Work required analysis for revert"];
   revert_path_analysis[label="Work required analysis for revert of selected paths"];
   status_analysis[label="Work required analysis for status"];
+  uncommit_analysis[label="Work required analysis for uncommit"];
   wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
 
   /* uncompleted node list - add new tasks here */
@@ -22,7 +23,6 @@ strict digraph performance {
   diff_analysis[label="Work required analysis for diff"];
   diff_path_analysis[label="Work required analysis for diff of selected paths"];
   merge_analysis[label="Work required analysis for merge"];
-  uncommit_analysis[label="Work required analysis for uncommit"];
   missing_analysis[label="Work required analysis for missing"];
   update_analysis[label="Work required analysis for update"];
   cbranch_analysis[label="Work required analysis for cbranch"];
