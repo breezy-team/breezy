@@ -616,6 +616,35 @@ class Repository(object):
             pb.finished()
         return result
 
+    def get_data_about_revision_ids(self, revision_ids):
+        """Get an iterable about data for a given set of revision IDs.
+
+        The named data will be ordered so that it can be fetched and inserted in
+        that order safely.
+        
+        :returns: (knit-kind, file-id, versions)
+        """
+        # XXX: it's a bit weird to control the inventory weave caching in this
+        # generator.  Ideally the caching would be done in fetch.py I think.
+        inv_w = self.get_inventory_weave()
+        inv_w.enable_cache()
+
+        # file ids that changed
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        for file_id, altered_versions in file_ids.iteritems():
+            yield ("file", file_id, altered_versions)
+
+        # inventory
+        yield ("inventory", None, revision_ids)
+        inv_w.clear_cache()
+
+        # signatures
+        # XXX
+
+        # revisions
+        yield ("revisions", None, revision_ids)
+
+
     @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',

@@ -132,18 +132,33 @@ class RepoFetcher(object):
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()
-            # something to do ?
-            if revs:
-                pp.next_phase()
-                self._fetch_weave_texts(revs)
-                pp.next_phase()
-                self._fetch_inventory_weave(revs)
-                pp.next_phase()
-                self._fetch_revision_texts(revs)
-                self.count_copied += len(revs)
+            self._fetch_everything_for_revisions(revs, pp)
         finally:
             self.pb.clear()
 
+    def _fetch_everything_for_revisions(self, revs, pp):
+        """Fetch all data for the given set of revisions."""
+        if revs is None:
+            return
+        what_to_do = self.from_repository.get_data_about_revision_ids(revs)
+        for knit_kind, file_id, revisions in what_to_do:
+            if knit_kind == "file":
+                self._fetch_weave_text(file_id, revisions)
+            elif knit_kind == "inventory":
+                # XXX:
+                # Once we've processed all the files, then we generate the root
+                # texts (if necessary), then we process the inventory.  It's a
+                # bit distasteful to have knit_kind == "inventory" mean this,
+                # perhaps it should happen on the first non-"file" knit, in case
+                # it's not always inventory?
+                self._generate_root_texts(revs)
+                self._fetch_inventory_weave(revs)
+            elif knit_kind == "revisions":
+                self._fetch_revision_texts(revs)
+            else:
+                raise AssertionError("Unknown knit kind %r" % knit_kind)
+        self.count_copied += len(revs)
+        
     def _revids_to_fetch(self):
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
@@ -173,24 +188,27 @@ class RepoFetcher(object):
             for file_id, required_versions in file_ids.items():
                 texts_pb.update("fetch texts", count, num_file_ids)
                 count +=1
-                to_weave = self.to_weaves.get_weave_or_empty(file_id,
-                    self.to_repository.get_transaction())
-                from_weave = self.from_weaves.get_weave(file_id,
-                    self.from_repository.get_transaction())
-                # we fetch all the texts, because texts do
-                # not reference anything, and its cheap enough
-                to_weave.join(from_weave, version_ids=required_versions)
-                # we don't need *all* of this data anymore, but we dont know
-                # what we do. This cache clearing will result in a new read 
-                # of the knit data when we do the checkout, but probably we
-                # want to emit the needed data on the fly rather than at the
-                # end anyhow.
-                # the from weave should know not to cache data being joined,
-                # but its ok to ask it to clear.
-                from_weave.clear_cache()
-                to_weave.clear_cache()
+                self._fetch_weave_text(file_id, required_versions)
         finally:
             texts_pb.finished()
+
+    def _fetch_weave_text(self, file_id, required_versions):
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_repository.get_transaction())
+        from_weave = self.from_weaves.get_weave(file_id,
+            self.from_repository.get_transaction())
+        # we fetch all the texts, because texts do
+        # not reference anything, and its cheap enough
+        to_weave.join(from_weave, version_ids=required_versions)
+        # we don't need *all* of this data anymore, but we dont know
+        # what we do. This cache clearing will result in a new read 
+        # of the knit data when we do the checkout, but probably we
+        # want to emit the needed data on the fly rather than at the
+        # end anyhow.
+        # the from weave should know not to cache data being joined,
+        # but its ok to ask it to clear.
+        from_weave.clear_cache()
+        to_weave.clear_cache()
 
     def _fetch_inventory_weave(self, revs):
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -218,6 +236,15 @@ class RepoFetcher(object):
         finally:
             pb.finished()
 
+    def _generate_root_texts(self, revs):
+        """This will be called by __fetch between fetching weave texts and
+        fetching the inventory weave.
+
+        Subclasses should override this if they need to generate root texts
+        after fetching weave texts.
+        """
+        pass
+        
 
 class GenericRepoFetcher(RepoFetcher):
     """This is a generic repo to repo fetcher.
@@ -359,6 +386,9 @@ class Model1toKnit2Fetcher(GenericRepoFetcher):
 
     def _fetch_weave_texts(self, revs):
         GenericRepoFetcher._fetch_weave_texts(self, revs)
+        self._generate_root_texts(revs)
+
+    def _generate_root_texts(self, revs):
         # Now generate a weave for the tree root
         self.helper.generate_root_texts(revs)
 
@@ -377,6 +407,9 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_weave_texts(self, revs):
         KnitRepoFetcher._fetch_weave_texts(self, revs)
+        self._generate_root_texts(revs)
+
+    def _generate_root_texts(self, revs):
         # Now generate a weave for the tree root
         self.helper.generate_root_texts(revs)
 
