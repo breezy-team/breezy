@@ -2471,8 +2471,6 @@ class TestScenarioApplier(object):
         new_test = deepcopy(test)
         for name, value in scenario[1].items():
             setattr(new_test, name, value)
-        def make_new_test_id():
-            new_id = "%s(%s)" % (new_test.id(), scenario[0])
-            return lambda: new_id
-        new_test.id = make_new_test_id()
+        new_id = "%s(%s)" % (new_test.id(), scenario[0])
+        new_test.id = lambda: new_id
         return new_test
