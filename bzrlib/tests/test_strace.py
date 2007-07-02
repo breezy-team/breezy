@@ -67,6 +67,5 @@ class TestStrace(TestCaseWithTransport):
         """Checks that a reasonable raw strace log was found by strace."""
         def function():
             self.build_tree(['myfile'])
-        _, result = strace(function,
-                           strace_follow_children=False)
+        unused, result = strace(function, strace_follow_children=False)
         self.assertContainsRe(result.raw_log, 'myfile')
