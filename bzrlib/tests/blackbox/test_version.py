@@ -26,8 +26,8 @@ class TestVersion(ExternalBase):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertEquals(1, out.count(bzrlib.__version__))
-        self.assertEquals(1, out.count("Using python interpreter:"))
-        self.assertEquals(1, out.count("Using python standard library:"))
+        self.assertEquals(1, out.count("Using Python interpreter:"))
+        self.assertEquals(1, out.count("Using Python standard library:"))
         self.assertEquals(1, out.count("Using bzrlib:"))
-        self.assertEquals(1, out.count("Using bazaar configuration:"))
-        self.assertContainsRe(out, r'(?m)^Logging to:.*bzr\.log')
+        self.assertEquals(1, out.count("Using Bazaar configuration:"))
+        self.assertContainsRe(out, r'(?m)^Using Bazaar log file:.*bzr\.log')
