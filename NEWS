@@ -60,6 +60,28 @@ IN DEVELOPMENT
     * ``bzrtracefilename --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
 
+  LIBRARY API BREAKS:
+
+    * Testing cleanups - 
+     ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
+      to ``bzrlib.tests.repository_implementations``;
+      ``bzrlib.repository.InterRepositoryTestProviderAdapter`` has been moved
+      to ``bzrlib.tests.interrepository_implementations``;
+      ``bzrlib.transport.TransportTestProviderAdapter`` has moved to 
+      ``bzrlib.tests.test_transport_implementations``.
+      ``bzrlib.branch.BranchTestProviderAdapter`` has moved to
+      ``bzrlib.tests.branch_implementations``.
+      ``bzrlib.bzrdir.BzrDirTestProviderAdapter`` has moved to 
+      ``bzrlib.tests.bzrdir_implementations``.
+      ``bzrlib.versionedfile.InterVersionedFileTestProviderAdapter`` has moved
+      to ``bzrlib.tests.interversionedfile_implementations``.
+      ``bzrlib.store.revision.RevisionStoreTestProviderAdapter`` has moved to
+      ``bzrlib.tests.revisionstore_implementations``.
+      ``bzrlib.workingtree.WorkingTreeTestProviderAdapter`` has moved to
+      ``bzrlib.tests.workingtree_implementations``.
+      These changes are an API break in the testing infrastructure only.
+      (Robert Collins)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
@@ -74,6 +96,21 @@ IN DEVELOPMENT
       directories as they're used.  This reduces the IO load from 
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
+
+    * Add scenarios as a public attribute on the TestAdapter classes to allow
+      modification of the generated scenarios before adaption and easier
+      testing. (Robert Collins)
+
+    * New testing support class ``TestScenarioApplier`` which multiplies
+      out a single teste by a list of supplied scenarios. (RobertCollins)
+
+    * Setting ``repository_to_test_repository`` on a repository_implementations
+      test will cause it to be called during repository creation, allowing the
+      testing of repository classes which are not based around the Format
+      concept. For example a repository adapter can be tested in this manner,
+      by altering the repository scenarios to include a scenario that sets this
+      attribute during the test parameterisation in
+      ``bzrlib.tests.repository.repository_implementations``. (Robert Collins)
 
     * Clean up many of the APIs for blackbox testing of Bazaar.  The standard 
       interface is now self.run_bzr.  The command to run can be passed as
