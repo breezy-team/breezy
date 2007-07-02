@@ -19,10 +19,11 @@ Support for foreign branches (Subversion)
 """
 import os
 import sys
+import tempfile
 import unittest
 import bzrlib
 
-from bzrlib.trace import warning
+from bzrlib.trace import warning, mutter
 
 __version__ = '0.4.0'
 COMPATIBLE_BZR_VERSIONS = [(0, 15), (0, 16), (0, 17), (0, 18)]
@@ -135,6 +136,7 @@ class cmd_svn_import(Command):
             standalone = False
 
         if os.path.isfile(from_location):
+            from convert import load_dumpfile
             tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
             mutter('loading dumpfile %r to %r' % (from_location, tmp_repos))
             load_dumpfile(from_location, tmp_repos)
@@ -148,6 +150,7 @@ class cmd_svn_import(Command):
                 trees, all)
 
         if tmp_repos is not None:
+            from bzrlib import osutils
             osutils.rmtree(tmp_repos)
 
 

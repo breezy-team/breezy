@@ -26,6 +26,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Support using custom branching schemes.
 
+   * Add blackbox test for svn-import with dumpfile. (#123493)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

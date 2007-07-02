@@ -15,8 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Blackbox tests."""
 
+from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.trace import mutter
+
 from tests import TestCaseWithSubversionRepository
+
+import os
+
+from revids import generate_svn_revision_id
 
 class TestBranch(ExternalBase,TestCaseWithSubversionRepository):
     def test_branch_empty(self):
@@ -26,3 +33,165 @@ class TestBranch(ExternalBase,TestCaseWithSubversionRepository):
     def test_log_empty(self):
         repos_url = self.make_client('d', 'de')
         self.assertEquals('', self.runbzr(['log', repos_url])[1])
+
+    def test_dumpfile(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        uuid = "606c7b1f-987c-4826-b37d-eb456ceb87e1"
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb456ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 102
+Content-length: 102
+
+K 7
+svn:log
+V 2
+rm
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:30.775369Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 4
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: y
+Node-action: delete
+
+
+Revision-number: 5
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+
+
+""")
+        self.assertEquals(('', ''), 
+                          self.runbzr(['svn-import', '--scheme=none', 
+                                       filename, 'dc']))
+        newrepos = Repository.open("dc")
+        self.assertTrue(newrepos.has_revision(
+            generate_svn_revision_id(uuid, 5, "", "none")))
+        self.assertTrue(newrepos.has_revision(
+            generate_svn_revision_id(uuid, 1, "", "none")))
+        inv1 = newrepos.get_inventory(
+                generate_svn_revision_id(uuid, 1, "", "none"))
+        inv2 = newrepos.get_inventory(
+                generate_svn_revision_id(uuid, 5, "", "none"))
+        self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
+
+

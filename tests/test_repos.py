@@ -28,7 +28,6 @@ import os
 
 import svn.fs
 
-from convert import load_dumpfile
 from errors import InvalidPropertyValue
 from fileids import generate_svn_file_id, generate_file_id
 import format
