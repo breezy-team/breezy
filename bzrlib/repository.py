@@ -616,7 +616,7 @@ class Repository(object):
             pb.finished()
         return result
 
-    def get_data_about_revision_ids(self, revision_ids):
+    def get_data_about_revision_ids(self, revision_ids, pb):
         """Get an iterable about data for a given set of revision IDs.
 
         The named data will be ordered so that it can be fetched and inserted in
@@ -634,7 +634,11 @@ class Repository(object):
 
         # file ids that changed
         file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        count = 0
+        num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
+            pb.update("fetch texts", count, num_file_ids)
+            count += 1
             yield ("file", file_id, altered_versions)
 
         # inventory

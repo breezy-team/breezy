@@ -140,23 +140,18 @@ class RepoFetcher(object):
         """Fetch all data for the given set of revisions."""
         if revs is None:
             return
-        what_to_do = self.from_repository.get_data_about_revision_ids(revs)
-        count = 0
-        phase = 'initial'
-        pb = None
+        phase = 'file'
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            what_to_do = self.from_repository.get_data_about_revision_ids(revs, pb)
             for knit_kind, file_id, revisions in what_to_do:
                 if knit_kind != phase:
                     phase = knit_kind
+                    # Make a new progress bar for this phase
+                    pb.finished()
                     pp.next_phase()
-                    # Make a new progress bar for this phase (and finish the
-                    # previous one, if any).
-                    if pb is not None:
-                        pb.finished()
                     pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 if knit_kind == "file":
-                    pb.update("fetch texts", count)
-                    count += 1
                     self._fetch_weave_text(file_id, revisions)
                 elif knit_kind == "inventory":
                     # XXX:
