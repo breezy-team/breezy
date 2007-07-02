@@ -60,6 +60,9 @@ IN DEVELOPMENT
     * ``bzrtracefilename --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
 
+    * Long log format reports deltas on merge revisions. 
+      (John Arbash Meinel, Kent Gibson)
+
   LIBRARY API BREAKS:
 
     * Testing cleanups - 
