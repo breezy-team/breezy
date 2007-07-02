@@ -39,15 +39,17 @@ def strace(function, *args, **kwargs):
     # thread is running. The following allows the test suite to disable fork
     # following to work around the bug.  It's a bit dirty to pollute the kwargs
     # so we take a likely-to-be-unique name to avoid conflicts (*args and
-    # *kwargs are related to 'function').
-    follow_childrens = kwargs.pop('strace_follow_childrens', True)
+    # *kwargs are related to 'function'). It's also ugly, but the best
+    # alternative I can think of is to declare another function, which is ugly
+    # too.
+    follow_children = kwargs.pop('strace_follow_children', True)
     # capture strace output to a file
     log_file = tempfile.NamedTemporaryFile()
     log_file_fd = log_file.fileno()
     pid = os.getpid()
     # start strace
     strace_cmd = ['strace', '-r', '-tt', '-p', str(pid), '-o', log_file.name]
-    if follow_childrens:
+    if follow_children:
         strace_args.append('-f')
     proc = subprocess.Popen(strace_cmd,
                             stdout=subprocess.PIPE,
