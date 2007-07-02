@@ -64,11 +64,13 @@ Locality of reference
 ---------------------
 
 - We should stat files in the same directory without reading or statting
-files in other directories.
+  files in other directories. That is we should do all the statting we
+  intend to do within a given directory without doing any other IO, to
+  minimise pressure on the drive heads to seek.
 
 - We should read files in the same directory without reading or writing
-files in other directories - and note this is separate to statting (file
-data is usually physically disjoint to metadata).
+  files in other directories - and note this is separate to statting (file
+  data is usually physically disjoint to metadata).
 
 
 Scaling observations
