@@ -9,6 +9,9 @@ IN DEVELOPMENT
       a file that is not present in the specified revision.
       (James Westby, #122656)
 
+    * Don't use the '-f' strace option during tests.
+      (Vincent Ladeuil, #102019).
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling

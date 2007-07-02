@@ -33,16 +33,25 @@ def strace(function, *args, **kwargs):
 
     :return: a tuple: function-result, a StraceResult.
     """
+    # FIXME: strace is buggy
+    # (https://bugs.launchpad.net/ubuntu/+source/strace/+bug/103133) and the
+    # test suite hangs if the '-f' is given to strace *and* more than one
+    # thread is running. The following allows the test suite to disable fork
+    # following to work around the bug.  It's a bit dirty to pollute the kwargs
+    # so we take a likely-to-be-unique name to avoid conflicts (*args and
+    # *kwargs are related to 'function').
+    follow_childrens = kwargs.pop('strace_follow_childrens', True)
     # capture strace output to a file
     log_file = tempfile.NamedTemporaryFile()
     log_file_fd = log_file.fileno()
     pid = os.getpid()
     # start strace
-    proc = subprocess.Popen(['strace',
-        '-f', '-r', '-tt', '-p', str(pid), '-o', log_file.name
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
+    strace_cmd = ['strace', '-r', '-tt', '-p', str(pid), '-o', log_file.name]
+    if follow_childrens:
+        strace_args.append('-f')
+    proc = subprocess.Popen(strace_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     # Wait for strace to attach
     attached_notice = proc.stdout.readline()
     # Run the function to strace

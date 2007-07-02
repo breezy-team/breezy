@@ -51,13 +51,15 @@ class TestStrace(TestCaseWithTransport):
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
-        strace(function, "a", "b", c="c")
+        strace(function, "a", "b", c="c",
+               strace_follow_childrens=False)
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
         def function():
             return "foo"
-        result, strace_result = strace(function)
+        result, strace_result = strace(function,
+                                       strace_follow_childrens=False)
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)
 
@@ -65,5 +67,6 @@ class TestStrace(TestCaseWithTransport):
         """Checks that a reasonable raw strace log was found by strace."""
         def function():
             self.build_tree(['myfile'])
-        _, result = strace(function)
+        _, result = strace(function,
+                           strace_follow_childrens=False)
         self.assertContainsRe(result.raw_log, 'myfile')
