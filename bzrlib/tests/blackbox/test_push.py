@@ -58,7 +58,7 @@ class TestPush(ExternalBase):
 
         # test push for failure without push location set
         os.chdir('branch_a')
-        out = self.runbzr('push', retcode=3)
+        out = self.run_bzr('push', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
 
@@ -169,9 +169,9 @@ class TestPush(ExternalBase):
         t = self.make_branch_and_tree('from')
         t.commit(allow_pointless=True,
                 message='first commit')
-        self.runbzr('push -d from to-one')
+        self.run_bzr('push -d from to-one')
         self.failUnlessExists('to-one')
-        self.runbzr('push -d %s %s' 
+        self.run_bzr('push -d %s %s' 
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 

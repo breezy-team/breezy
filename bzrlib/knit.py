@@ -1085,14 +1085,14 @@ class KnitVersionedFile(VersionedFile):
         except KeyError:
             raise RevisionNotPresent(version_id, self.filename)
 
-    def get_ancestry(self, versions):
+    def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         if isinstance(versions, basestring):
             versions = [versions]
         if not versions:
             return []
         versions = [osutils.safe_revision_id(v) for v in versions]
-        return self._index.get_ancestry(versions)
+        return self._index.get_ancestry(versions, topo_sorted)
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry_with_ghosts."""
@@ -1113,7 +1113,7 @@ class KnitVersionedFile(VersionedFile):
         from bzrlib.weave import Weave
 
         w = Weave(self.filename)
-        ancestry = self.get_ancestry(version_ids)
+        ancestry = set(self.get_ancestry(version_ids, topo_sorted=False))
         sorted_graph = topo_sort(self._index.get_graph())
         version_list = [vid for vid in sorted_graph if vid in ancestry]
         
@@ -1128,14 +1128,14 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.plan_merge."""
         ver_a = osutils.safe_revision_id(ver_a)
         ver_b = osutils.safe_revision_id(ver_b)
-        ancestors_b = set(self.get_ancestry(ver_b))
+        ancestors_b = set(self.get_ancestry(ver_b, topo_sorted=False))
         def status_a(revision, text):
             if revision in ancestors_b:
                 return 'killed-b', text
             else:
                 return 'new-a', text
         
-        ancestors_a = set(self.get_ancestry(ver_a))
+        ancestors_a = set(self.get_ancestry(ver_a, topo_sorted=False))
         def status_b(revision, text):
             if revision in ancestors_a:
                 return 'killed-a', text
@@ -1331,14 +1331,26 @@ class _KnitIndex(_KnitComponentFile):
                 # or a different failure, and raise. RBC 20060407
                 continue
 
-            parents = []
-            for value in rec[4:-1]:
-                if value[0] == '.':
-                    # uncompressed reference
-                    parent_id = value[1:]
-                else:
-                    parent_id = history[int(value)]
-                parents.append(parent_id)
+            try:
+                parents = []
+                for value in rec[4:-1]:
+                    if value[0] == '.':
+                        # uncompressed reference
+                        parent_id = value[1:]
+                    else:
+                        parent_id = history[int(value)]
+                    parents.append(parent_id)
+            except (IndexError, ValueError), e:
+                # The parent could not be decoded to get its parent row. This
+                # at a minimum will cause this row to have wrong parents, or
+                # even to apply a delta to the wrong base and decode
+                # incorrectly. its therefore not usable, and because we have
+                # encountered a situation where a new knit index had this
+                # corrupt we can't asssume that no other rows referring to the
+                # index of this record actually mean the subsequent uncorrupt
+                # one, so we error.
+                raise errors.KnitCorrupt(self._filename,
+                    "line %r: %s" % (rec, e))
 
             version_id, options, pos, size = rec[:4]
             version_id = version_id
@@ -1363,7 +1375,7 @@ class _KnitIndex(_KnitComponentFile):
     def get_graph(self):
         return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
 
-    def get_ancestry(self, versions):
+    def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         # get a graph of all the mentioned versions:
         graph = {}
@@ -1379,6 +1391,8 @@ class _KnitIndex(_KnitComponentFile):
             # if not completed and not a ghost
             pending.update([p for p in parents if p not in graph])
             graph[version] = parents
+        if not topo_sorted:
+            return graph.keys()
         return topo_sort(graph.items())
 
     def get_ancestry_with_ghosts(self, versions):

@@ -309,9 +309,12 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_lines)
 
-    def get_ancestry(self, version_ids):
+    def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
+
+        This list will not be topologically sorted if topo_sorted=False is
+        passed.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""

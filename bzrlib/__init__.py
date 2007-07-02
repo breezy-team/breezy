@@ -37,6 +37,9 @@ __copyright__ = "Copyright 2005, 2006, 2007 Canonical Ltd."
 
 version_info = (0, 18, 0, 'dev', 0)
 
+# API compatibility version: bzrlib is currently API compatible with 0.18.
+api_minimum_version = (0, 18, 0)
+
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:

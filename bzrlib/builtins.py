@@ -23,7 +23,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
-import smtplib
 import sys
 import tempfile
 import time
@@ -56,6 +55,7 @@ from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
@@ -2472,9 +2472,9 @@ class cmd_selftest(Command):
             clean_selftest_output()
             return 0
         if keep_output:
-            trace.warning("notice: selftest --keep-output "
-                          "is no longer supported; "
-                          "test output is always removed")
+            warning("notice: selftest --keep-output "
+                    "is no longer supported; "
+                    "test output is always removed")
 
         if numbered_dirs is None and sys.platform == 'win32':
             numbered_dirs = True
@@ -2551,13 +2551,13 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import MultipleRevisionSources
+        from bzrlib.revision import ensure_null, MultipleRevisionSources
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
 
-        last1 = branch1.last_revision()
-        last2 = branch2.last_revision()
+        last1 = ensure_null(branch1.last_revision())
+        last2 = ensure_null(branch2.last_revision())
 
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
@@ -3142,6 +3142,8 @@ class cmd_annotate(Command):
             else:
                 revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.path2id(relpath)
+            if file_id is None:
+                raise errors.NotVersionedError(filename)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout,
@@ -3536,8 +3538,11 @@ class cmd_merge_directive(Command):
             help='Message to use when committing this merge')
         ]
 
+    encoding_type = 'exact'
+
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
+        from bzrlib.revision import ensure_null, NULL_REVISION
         if patch_type == 'plain':
             patch_type = None
         branch = Branch.open('.')
@@ -3568,6 +3573,9 @@ class cmd_merge_directive(Command):
                 revision_id = revision[0].in_history(branch).rev_id
         else:
             revision_id = branch.last_revision()
+        revision_id = ensure_null(revision_id)
+        if revision_id == NULL_REVISION:
+            raise errors.BzrCommandError('No revisions to bundle.')
         directive = merge_directive.MergeDirective.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
@@ -3580,12 +3588,8 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = smtplib.SMTP()
-            server = branch.get_config().get_user_option('smtp_server')
-            if not server:
-                server = 'localhost'
-            s.connect(server)
-            s.sendmail(message['From'], message['To'], message.as_string())
+            s = SMTPConnection(branch.get_config())
+            s.send_email(message)
 
 
 class cmd_tag(Command):

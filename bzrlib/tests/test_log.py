@@ -18,7 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import log
-from bzrlib.tests import BzrTestBase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.log import (show_log,
                         get_view_revisions,
                         LogRevision,

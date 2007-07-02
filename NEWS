@@ -1,5 +1,14 @@
 IN DEVELOPMENT
 
+  BUGFIXES:
+
+    * Do not suppress pipe errors, etc. in non-display commands
+      (Alexander Belchenko, #87178)
+
+    * Display a useful error message when the user requests to annotate
+      a file that is not present in the specified revision.
+      (James Westby, #122656)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -22,12 +31,63 @@ IN DEVELOPMENT
     * Automatic merge base selection uses a faster algorithm that chooses
       better bases in criss-cross merge situations (Aaron Bentley)
 
+    * Progress reporting in ``commit`` has been improved. The various logical
+      stages are now reported on as follows, namely:
+
+      * Collecting changes [Entry x/y] - Stage n/m
+      * Saving data locally - Stage n/m
+      * Uploading data to master branch - Stage n/m
+      * Updating the working tree - Stage n/m
+      * Running post commit hooks - Stage n/m
+      
+      If there is no master branch, the 3rd stage is omitted and the total
+      number of stages is adjusted accordingly.
+
+      Each hook that is run after commit is listed with a name (as hooks
+      can be slow it is useful feedback).
+      (Ian Clatworthy, Robert Collins)
+
+    * Various operations that are now faster due to avoiding unnecessary
+      topological sorts. (Aaron Bentley)
+
+    * The lsprof filename note is emitted via trace.note(), not standard
+      output.  (Aaron Bentley)
+
+    * ``bzrlib`` now exports explicit API compatibility information to assist
+      library users and plugins. See the ``bzrlib.api`` module for details.
+      (Robert Collins)
+
+    * ``bzrtracefilename --version`` now shows the location of the bzr log file, which
+      is especially useful on Windows.  (Martin Pool)
+
+  INTERNALS:
+
+    * New SMTPConnection class to unify email handling.  (Adeodato Simó)
+
+    * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
+      allows a nicer UI when hooks are running as the current hook can
+      be displayed. (Robert Collins)
+
   TESTING:
 
     * Removed the ``--keep-output`` option from selftest and clean up test
       directories as they're used.  This reduces the IO load from 
       running the test suite and cuts the time by about half.
       (Andrew Bennetts, Martin Pool)
+
+    * Clean up many of the APIs for blackbox testing of Bazaar.  The standard 
+      interface is now self.run_bzr.  The command to run can be passed as
+      either a list of parameters, a string containing the command line, or
+      (deprecated) varargs parameters.  (Martin Pool)
+
+    * The base TestCase now isolates tests from -D parameters by clearing
+      ``debug.debug_flags`` and restores it afterwards. (Robert Collins)
+
+  BUGFIXES:
+
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
 
 
 bzr 0.17  2007-06-18

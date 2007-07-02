@@ -39,7 +39,7 @@ class TestTagging(TestCaseWithTransport):
             format=format)
 
     def test_tag_command_help(self):
-        out, err = self.run_bzr_captured(['help', 'tag'])
+        out, err = self.run_bzr(['help', 'tag'])
         self.assertContainsRe(out, 'Create a tag')
 
     def test_cannot_tag_range(self):

@@ -858,7 +858,7 @@ class Repository(object):
             yield RevisionTree(self, inv, revision_id)
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
 
         The first element of the list is always None, indicating the origin 
@@ -873,7 +873,7 @@ class Repository(object):
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
-        candidates = w.get_ancestry(revision_id)
+        candidates = w.get_ancestry(revision_id, topo_sorted)
         return [None] + candidates # self._eliminate_revisions_not_present(candidates)
 
     @needs_read_lock

@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import graph
+from bzrlib import (
+    errors,
+    graph,
+    )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
@@ -118,7 +121,7 @@ history_shortcut = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'],
                     'rev3a': ['rev2a', 'rev2b'], 'rev3b': ['rev2b', 'rev2c']}
 
 
-class TestGraphWalker(TestCaseWithMemoryTransport):
+class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
         tree = self.prepare_memory_tree('.')
@@ -170,6 +173,7 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
         ancestry_1 should always have a single common ancestor
         """
         graph = self.make_graph(ancestry_1)
+        self.assertRaises(errors.InvalidRevisionId, graph.find_lca, None)
         self.assertEqual(set([NULL_REVISION]),
                          graph.find_lca(NULL_REVISION, NULL_REVISION))
         self.assertEqual(set([NULL_REVISION]),
@@ -276,3 +280,11 @@ class TestGraphWalker(TestCaseWithMemoryTransport):
                          stacked.get_parents(['rev2', 'rev2']))
         self.assertEqual([['rev4',], ['rev4']],
                          stacked.get_parents(['rev1', 'rev1']))
+
+    def test_iter_topo_order(self):
+        graph = self.make_graph(ancestry_1)
+        args = ['rev2a', 'rev3', 'rev1']
+        topo_args = list(graph.iter_topo_order(args))
+        self.assertEqual(set(args), set(topo_args))
+        self.assertTrue(topo_args.index('rev2a') > topo_args.index('rev1'))
+        self.assertTrue(topo_args.index('rev2a') < topo_args.index('rev3'))
