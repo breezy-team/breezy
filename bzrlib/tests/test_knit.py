@@ -1110,7 +1110,7 @@ class BasicKnitTests(KnitTests):
         knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # write a short write to the file and ensure that its ignored
-        indexfile = file('test.kndx', 'at')
+        indexfile = file('test.kndx', 'ab')
         indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
         indexfile.close()
         # we should be able to load this file again
