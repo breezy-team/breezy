@@ -140,6 +140,14 @@ class RepoFetcher(object):
         """Fetch all data for the given set of revisions."""
         if revs is None:
             return
+        # The first phase is "file".  We pass the progress bar for it directly
+        # into get_data_about_revision_ids, which has more information about how
+        # that phase is progressing than we do.  Progress updates for the other
+        # phases are taken care of in this function.
+        # XXX: there should be a clear owner of the progress reporting.  Perhaps
+        # get_data_about_revision_ids should have a richer API than it does at
+        # the moment, so that it can feed the progress information back to this
+        # function?
         phase = 'file'
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
