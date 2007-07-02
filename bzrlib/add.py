@@ -364,17 +364,17 @@ def __add_one_and_parent(tree, inv, parent_ie, path, kind, action):
     return added + [path.raw_path]
 
 
-def __add_one(tree, inv, parent_ie, path, kind, action):
+def __add_one(tree, inv, parent_ie, path, kind, file_id_callback):
     """Add a new entry to the inventory.
 
     :param inv: Inventory which will receive the new entry.
     :param parent_ie: Parent inventory entry.
     :param kind: Kind of new entry (file, directory, etc)
-    :param action: callback(inv, parent_ie, path, kind); return a file_id 
+    :param file_id_callback: callback(inv, parent_ie, path, kind); return a file_id 
         or None to generate a new file id
     :returns: None
     """
-    file_id = action(inv, parent_ie, path, kind)
+    file_id = file_id_callback(inv, parent_ie, path, kind)
     entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                                         file_id=file_id)
     inv.add(entry)

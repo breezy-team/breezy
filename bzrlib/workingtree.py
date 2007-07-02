@@ -615,7 +615,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # should probably put it back with the previous ID.
         # the read and write working inventory should not occur in this 
         # function - they should be part of lock_write and unlock.
-        inv = self.read_working_inventory()
+        inv = self.inventory
         for f, file_id, kind in zip(files, ids, kinds):
             assert kind is not None
             if file_id is None:
@@ -623,7 +623,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 file_id = osutils.safe_file_id(file_id)
                 inv.add_path(f, kind=kind, file_id=file_id)
-        self._write_inventory(inv)
+            self._inventory_is_modified = True
 
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
