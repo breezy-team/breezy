@@ -625,7 +625,10 @@ class Repository(object):
         :returns: (knit-kind, file-id, versions)
         """
         # XXX: it's a bit weird to control the inventory weave caching in this
-        # generator.  Ideally the caching would be done in fetch.py I think.
+        # generator.  Ideally the caching would be done in fetch.py I think.  Or
+        # maybe this generator should explicitly have the contract that it
+        # should not be iterated until the previously yielded item has been
+        # processed?
         inv_w = self.get_inventory_weave()
         inv_w.enable_cache()
 

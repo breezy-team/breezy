@@ -141,25 +141,47 @@ class RepoFetcher(object):
         if revs is None:
             return
         what_to_do = self.from_repository.get_data_about_revision_ids(revs)
-        for knit_kind, file_id, revisions in what_to_do:
-            if knit_kind == "file":
-                self._fetch_weave_text(file_id, revisions)
-            elif knit_kind == "inventory":
-                # XXX:
-                # Once we've processed all the files, then we generate the root
-                # texts (if necessary), then we process the inventory.  It's a
-                # bit distasteful to have knit_kind == "inventory" mean this,
-                # perhaps it should happen on the first non-"file" knit, in case
-                # it's not always inventory?
-                self._generate_root_texts(revs)
-                self._fetch_inventory_weave(revs)
-            elif knit_kind == "revisions":
-                self._fetch_revision_texts(revs)
-            else:
-                raise AssertionError("Unknown knit kind %r" % knit_kind)
+        count = 0
+        phase = 'initial'
+        pb = None
+        try:
+            for knit_kind, file_id, revisions in what_to_do:
+                if knit_kind != phase:
+                    phase = knit_kind
+                    pp.next_phase()
+                    # Make a new progress bar for this phase (and finish the
+                    # previous one, if any).
+                    if pb is not None:
+                        pb.finished()
+                    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                if knit_kind == "file":
+                    pb.update("fetch texts", count)
+                    count += 1
+                    self._fetch_weave_text(file_id, revisions)
+                elif knit_kind == "inventory":
+                    # XXX:
+                    # Once we've processed all the files, then we generate the root
+                    # texts (if necessary), then we process the inventory.  It's a
+                    # bit distasteful to have knit_kind == "inventory" mean this,
+                    # perhaps it should happen on the first non-"file" knit, in case
+                    # it's not always inventory?
+                    self._generate_root_texts(revs)
+                    self._fetch_inventory_weave(revs, pb)
+                elif knit_kind == "revisions":
+                    self._fetch_revision_texts(revs, pb)
+                else:
+                    raise AssertionError("Unknown knit kind %r" % knit_kind)
+        finally:
+            if pb is not None:
+                pb.finished()
         self.count_copied += len(revs)
         
     def _revids_to_fetch(self):
+        """Determines the exact revisions needed from self.from_repository to
+        install self._last_revision in self.to_repository.
+
+        If no revisions need to be fetched, then this just returns None.
+        """
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
@@ -173,24 +195,6 @@ class RepoFetcher(object):
                                                            self._last_revision)
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
-
-    def _fetch_weave_texts(self, revs):
-        texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            # fileids_altered_by_revision_ids requires reading the inventory
-            # weave, we will need to read the inventory weave again when
-            # all this is done, so enable caching for that specific weave
-            inv_w = self.from_repository.get_inventory_weave()
-            inv_w.enable_cache()
-            file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
-            count = 0
-            num_file_ids = len(file_ids)
-            for file_id, required_versions in file_ids.items():
-                texts_pb.update("fetch texts", count, num_file_ids)
-                count +=1
-                self._fetch_weave_text(file_id, required_versions)
-        finally:
-            texts_pb.finished()
 
     def _fetch_weave_text(self, file_id, required_versions):
         to_weave = self.to_weaves.get_weave_or_empty(file_id,
@@ -210,31 +214,27 @@ class RepoFetcher(object):
         from_weave.clear_cache()
         to_weave.clear_cache()
 
-    def _fetch_inventory_weave(self, revs):
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    def _fetch_inventory_weave(self, revs, pb):
+        pb.update("fetch inventory", 0, 2)
+        to_weave = self.to_control.get_weave('inventory',
+                self.to_repository.get_transaction())
+
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            pb.update("fetch inventory", 0, 2)
-            to_weave = self.to_control.get_weave('inventory',
-                    self.to_repository.get_transaction())
-    
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            try:
-                # just merge, this is optimisable and its means we don't
-                # copy unreferenced data such as not-needed inventories.
-                pb.update("fetch inventory", 1, 3)
-                from_weave = self.from_repository.get_inventory_weave()
-                pb.update("fetch inventory", 2, 3)
-                # we fetch only the referenced inventories because we do not
-                # know for unselected inventories whether all their required
-                # texts are present in the other repository - it could be
-                # corrupt.
-                to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
-                              version_ids=revs)
-                from_weave.clear_cache()
-            finally:
-                child_pb.finished()
+            # just merge, this is optimisable and its means we don't
+            # copy unreferenced data such as not-needed inventories.
+            pb.update("fetch inventory", 1, 3)
+            from_weave = self.from_repository.get_inventory_weave()
+            pb.update("fetch inventory", 2, 3)
+            # we fetch only the referenced inventories because we do not
+            # know for unselected inventories whether all their required
+            # texts are present in the other repository - it could be
+            # corrupt.
+            to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
+                          version_ids=revs)
+            from_weave.clear_cache()
         finally:
-            pb.finished()
+            child_pb.finished()
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
@@ -253,37 +253,29 @@ class GenericRepoFetcher(RepoFetcher):
     It triggers a reconciliation after fetching to ensure integrity.
     """
 
-    def _fetch_revision_texts(self, revs):
+    def _fetch_revision_texts(self, revs, pb):
         """Fetch revision object texts"""
-        rev_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            to_txn = self.to_transaction = self.to_repository.get_transaction()
-            count = 0
-            total = len(revs)
-            to_store = self.to_repository._revision_store
-            for rev in revs:
-                pb = bzrlib.ui.ui_factory.nested_progress_bar()
-                try:
-                    pb.update('copying revisions', count, total)
-                    try:
-                        sig_text = self.from_repository.get_signature_text(rev)
-                        to_store.add_revision_signature_text(rev, sig_text, to_txn)
-                    except errors.NoSuchRevision:
-                        # not signed.
-                        pass
-                    to_store.add_revision(self.from_repository.get_revision(rev),
-                                          to_txn)
-                    count += 1
-                finally:
-                    pb.finished()
-            # fixup inventory if needed: 
-            # this is expensive because we have no inverse index to current ghosts.
-            # but on local disk its a few seconds and sftp push is already insane.
-            # so we just-do-it.
-            # FIXME: repository should inform if this is needed.
-            self.to_repository.reconcile()
-        finally:
-            rev_pb.finished()
+        to_txn = self.to_transaction = self.to_repository.get_transaction()
+        count = 0
+        total = len(revs)
+        to_store = self.to_repository._revision_store
+        for rev in revs:
+            pb.update('copying revisions', count, total)
+            try:
+                sig_text = self.from_repository.get_signature_text(rev)
+                to_store.add_revision_signature_text(rev, sig_text, to_txn)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            to_store.add_revision(self.from_repository.get_revision(rev),
+                                  to_txn)
+            count += 1
+        # fixup inventory if needed: 
+        # this is expensive because we have no inverse index to current ghosts.
+        # but on local disk its a few seconds and sftp push is already insane.
+        # so we just-do-it.
+        # FIXME: repository should inform if this is needed.
+        self.to_repository.reconcile()
     
 
 class KnitRepoFetcher(RepoFetcher):
@@ -294,7 +286,7 @@ class KnitRepoFetcher(RepoFetcher):
     copy revision texts.
     """
 
-    def _fetch_revision_texts(self, revs):
+    def _fetch_revision_texts(self, revs, pb):
         # may need to be a InterRevisionStore call here.
         from_transaction = self.from_repository.get_transaction()
         to_transaction = self.to_repository.get_transaction()
@@ -384,15 +376,10 @@ class Model1toKnit2Fetcher(GenericRepoFetcher):
         GenericRepoFetcher.__init__(self, to_repository, from_repository,
                                     last_revision, pb)
 
-    def _fetch_weave_texts(self, revs):
-        GenericRepoFetcher._fetch_weave_texts(self, revs)
-        self._generate_root_texts(revs)
-
     def _generate_root_texts(self, revs):
-        # Now generate a weave for the tree root
         self.helper.generate_root_texts(revs)
 
-    def _fetch_inventory_weave(self, revs):
+    def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
  
 
@@ -405,15 +392,10 @@ class Knit1to2Fetcher(KnitRepoFetcher):
         KnitRepoFetcher.__init__(self, to_repository, from_repository,
                                  last_revision, pb)
 
-    def _fetch_weave_texts(self, revs):
-        KnitRepoFetcher._fetch_weave_texts(self, revs)
-        self._generate_root_texts(revs)
-
     def _generate_root_texts(self, revs):
-        # Now generate a weave for the tree root
         self.helper.generate_root_texts(revs)
 
-    def _fetch_inventory_weave(self, revs):
+    def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
         
 
