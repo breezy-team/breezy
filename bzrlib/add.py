@@ -23,46 +23,12 @@ import sys
 
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.inventory import InventoryEntry
-from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
+from bzrlib.inventory import InventoryEntry
 import bzrlib.osutils
+from bzrlib.symbol_versioning import *
+from bzrlib.trace import mutter, note, warning
 from bzrlib.workingtree import WorkingTree
-
-
-def glob_expand_for_win32(file_list):
-    """Replacement for glob expansion by the shell.
-
-    Win32's cmd.exe does not do glob expansion (eg ``*.py``), so we do our own
-    here.
-
-    :param file_list: A list of filenames which may include shell globs.
-    :return: An expanded list of filenames.
-    """
-    if not file_list:
-        return
-    import glob
-    expanded_file_list = []
-    for possible_glob in file_list:
-        glob_files = glob.glob(possible_glob)
-
-        if glob_files == []:
-            # special case to let the normal code path handle
-            # files that do not exists
-            expanded_file_list.append(possible_glob)
-        else:
-            expanded_file_list += glob_files
-    return expanded_file_list
-
-
-def _prepare_file_list(file_list):
-    """Prepare a file list for use by smart_add_*."""
-    if sys.platform == 'win32':
-        file_list = glob_expand_for_win32(file_list)
-    if not file_list:
-        file_list = [u'.']
-    file_list = list(file_list)
-    return file_list
 
 
 class AddAction(object):
@@ -150,6 +116,7 @@ add_action_add_and_print = AddAction(should_print=True)
 add_action_print = add_action_add_and_print
 
 
+@deprecated_function(zero_eighteen)
 def smart_add(file_list, recurse=True, action=None, save=True):
     """Add files to version, optionally recursing into directories.
 
@@ -159,7 +126,6 @@ def smart_add(file_list, recurse=True, action=None, save=True):
     Returns the number of files added.
     Please see smart_add_tree for more detail.
     """
-    file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
     return smart_add_tree(tree, file_list, recurse, action=action, save=save)
 
@@ -218,8 +184,10 @@ def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     if action is None:
         action = AddAction()
     
-    prepared_list = _prepare_file_list(file_list)
-    mutter("smart add of %r, originally %r", prepared_list, file_list)
+    if not file_list:
+        # no paths supplied: add the entire tree.
+        file_list = [u'.']
+    mutter("smart add of %r")
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
@@ -229,7 +197,7 @@ def _smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     # validate user file paths and convert all paths to tree 
     # relative : its cheaper to make a tree relative path an abspath
     # than to convert an abspath to tree relative.
-    for filepath in prepared_list:
+    for filepath in file_list:
         rf = FastPath(tree.relpath(filepath))
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
