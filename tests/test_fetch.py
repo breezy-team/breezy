@@ -1306,6 +1306,50 @@ Node-copyfrom-path: x
         rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", "none"))
         self.assertEqual([oldrepos.generate_revision_id(0, "", "none")], rev.parent_ids)
 
+    def test_fetch_property_change_only(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bla': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc", "some:property", "some data\n")
+        self.client_commit("dc", "My 3")
+        self.client_set_prop("dc", "some2:property", "some data\n")
+        self.client_commit("dc", "My 2")
+        self.client_set_prop("dc", "some:property", "some data\n")
+        self.client_commit("dc", "My 4")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertEquals([
+            oldrepos.generate_revision_id(0, "", "none"),
+            oldrepos.generate_revision_id(1, "", "none"),
+            oldrepos.generate_revision_id(2, "", "none"),
+            oldrepos.generate_revision_id(3, "", "none"),
+            ], newrepos.all_revision_ids())
+
+    def test_fetch_property_change_only_trunk(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bla': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_commit("dc", "My 3")
+        self.client_set_prop("dc/trunk", "some2:property", "some data\n")
+        self.client_commit("dc", "My 2")
+        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_commit("dc", "My 4")
+        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertEquals([
+            oldrepos.generate_revision_id(1, "trunk", "trunk0"),
+            oldrepos.generate_revision_id(2, "trunk", "trunk0"),
+            oldrepos.generate_revision_id(3, "trunk", "trunk0"),
+            ], newrepos.all_revision_ids())
+
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/trunk/adir/afile': "data", 

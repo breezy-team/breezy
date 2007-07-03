@@ -807,6 +807,20 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repos.generate_revision_id(1, "", "none"))
         self.assertEqual({"test": "bla"}, renames)
 
+    def test_fetch_property_change_only_trunk(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bla': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_commit("dc", "My 3")
+        self.client_set_prop("dc/trunk", "some2:property", "some data\n")
+        self.client_commit("dc", "My 2")
+        self.client_set_prop("dc/trunk", "some:property", "some other data\n")
+        self.client_commit("dc", "My 4")
+        oldrepos = Repository.open("svn+"+repos_url)
+        self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
+
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')
 
@@ -1130,5 +1144,6 @@ class MetadataMarshallerTests(TestCase):
     def test_parse_revid_property_empty_revid(self):
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revid_property("2 "))
+
 
 

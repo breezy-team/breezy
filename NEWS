@@ -28,6 +28,8 @@ bzr-svn 0.4	UNRELEASED
 
    * Add blackbox test for svn-import with dumpfile. (#123493)
 
+   * Consistently treat property changes as actual changes (#122115)
+
   PERFORMANCE
 
    * do_update() is now used to find the contents of a directory recursively. 

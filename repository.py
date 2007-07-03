@@ -445,6 +445,7 @@ class SvnRepository(Repository):
         :return: New revision id.
         """
         assert isinstance(path, str)
+        assert isinstance(revnum, int)
 
         # Look in the cache to see if it already has a revision id
         revid = self.revmap.lookup_branch_revnum(revnum, path, scheme)
@@ -620,7 +621,7 @@ class SvnRepository(Repository):
             # revision there, so yield it.
             for p in paths:
                 assert isinstance(p, str)
-                if p.startswith(branch_path+"/") or branch_path == "":
+                if p == branch_path or p.startswith(branch_path+"/") or branch_path == "":
                     yield (branch_path, revnum)
                     yielded = True
                     break
