@@ -18,3 +18,4 @@
 debug_flags = set()
 """Set of flags that enable different debug behaviour"""
 
+# hooks - debug activity about hooks.
