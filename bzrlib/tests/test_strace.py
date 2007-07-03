@@ -20,7 +20,7 @@
 import errno
 import subprocess
 
-from bzrlib.strace import StraceFeature, strace, StraceResult
+from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -51,15 +51,15 @@ class TestStrace(TestCaseWithTransport):
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
-        strace(function, "a", "b", c="c",
-               strace_follow_children=False)
+        strace_detailed(function, ["a", "b"], {"c": "c"},
+                        follow_children=False)
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
         def function():
             return "foo"
-        result, strace_result = strace(function,
-                                       strace_follow_children=False)
+        result, strace_result = strace_detailed(function,[], {},
+                                                follow_children=False)
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)
 
@@ -67,5 +67,6 @@ class TestStrace(TestCaseWithTransport):
         """Checks that a reasonable raw strace log was found by strace."""
         def function():
             self.build_tree(['myfile'])
-        unused, result = strace(function, strace_follow_children=False)
+        unused, result = strace_detailed(function, [], {},
+                                         follow_children=False)
         self.assertContainsRe(result.raw_log, 'myfile')

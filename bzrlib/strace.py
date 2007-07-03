@@ -33,16 +33,16 @@ def strace(function, *args, **kwargs):
 
     :return: a tuple: function-result, a StraceResult.
     """
+    return strace_detailed(function, args, kwargs)
+
+
+def strace_detailed(function, args, kwargs, follow_children=True):
     # FIXME: strace is buggy
     # (https://bugs.launchpad.net/ubuntu/+source/strace/+bug/103133) and the
     # test suite hangs if the '-f' is given to strace *and* more than one
-    # thread is running. The following allows the test suite to disable fork
-    # following to work around the bug.  It's a bit dirty to pollute the kwargs
-    # so we take a likely-to-be-unique name to avoid conflicts (*args and
-    # *kwargs are related to 'function'). It's also ugly, but the best
-    # alternative I can think of is to declare another function, which is ugly
-    # too.
-    follow_children = kwargs.pop('strace_follow_children', True)
+    # thread is running. Using follow_children=False allows the test suite to
+    # disable fork following to work around the bug.
+
     # capture strace output to a file
     log_file = tempfile.NamedTemporaryFile()
     log_file_fd = log_file.fileno()
