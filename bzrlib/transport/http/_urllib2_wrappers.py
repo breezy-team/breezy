@@ -728,7 +728,7 @@ class ProxyHandler(urllib2.ProxyHandler):
     Note: the proxy handling *may* modify the protocol used; the request may be
     against an https server proxied through an http proxy. So, https_request
     will be called, but later it's really http_open that will be called. This
-    explain why we don't have to call self.parent.open as the urllib2 did.
+    explains why we don't have to call self.parent.open as the urllib2 did.
     """
 
     # Proxies must be in front
@@ -880,7 +880,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    _max_retry = 3
+    _max_retry = 2
     """We don't want to retry authenticating endlessly"""
 
     # The following attributes should be defined by daughter
@@ -911,7 +911,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # Don't try  to authenticate endlessly
         if self._retry_count is None:
             # The retry being recusrsive calls, None identify the first try
-            self._retry_count = 1
+            self._retry_count = 0
         else:
             self._retry_count += 1
             if self._retry_count > self._max_retry:
