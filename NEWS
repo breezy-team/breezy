@@ -83,12 +83,11 @@ IN DEVELOPMENT
       (Robert Collins)
 
     * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
-      win32. Callers of the function should do this. (Robert Collins)
+      win32. Callers of the function should do this and use the new
+      ``MutableTree.smart_add`` method instead.(Robert Collins)
 
     * ``bzrlib.add.glob_expand_for_win32`` is now
       ``bzrlib.win32utils.glob_expand``.  (Robert Collins)
-
-    * ``bzrlib.smart_add`` is deprecated. (Robert Collins)
 
   INTERNALS:
 
@@ -101,6 +100,10 @@ IN DEVELOPMENT
     * New method ``_glob_expand_file_list_if_needed`` on the ``Command`` class
       for dealing with unexpanded glob lists - e.g. on the win32 platform. This
       was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)
+
+    * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
+      deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
+      Martin Pool)
 
   TESTING:
 
