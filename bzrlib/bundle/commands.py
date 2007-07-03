@@ -21,12 +21,14 @@ and for applying a changeset.
 """
 
 import sys
+from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
+    merge_directive,
     revision as _mod_revision,
     urlutils,
     transport,
@@ -38,120 +40,22 @@ from bzrlib.option import Option
 from bzrlib.trace import note
 
 
-class cmd_bundle_revisions(Command):
-    """Generate a revision bundle.
-
-    This bundle contains all of the meta-information of a
-    diff, rather than just containing the patch information.
-
-    You can apply it to another tree using 'bzr merge'.
-
-    bzr bundle-revisions
-        - Generate a bundle relative to a remembered location
-
-    bzr bundle-revisions BASE
-        - Bundle to apply the current tree into BASE
-
-    bzr bundle-revisions --revision A
-        - Bundle to apply revision A to remembered location 
-
-    bzr bundle-revisions --revision A..B
-        - Bundle to transform A into B
-    """
-    takes_options = ['revision', 'remember',
-                     Option("output", help="write bundle to specified file",
-                            type=unicode)]
-    takes_args = ['base?']
-    aliases = ['bundle']
-    encoding_type = 'exact'
-
-    def run(self, base=None, revision=None, output=None, remember=False):
-        from bzrlib import user_encoding
-        from bzrlib.bundle.serializer import write_bundle
-
-        target_branch = branch.Branch.open_containing(u'.')[0]
-        target_branch.lock_write()
-        locked = [target_branch]
-
-        try:
-            if base is None:
-                base_specified = False
-            else:
-                base_specified = True
-
-            if revision is None:
-                target_revision = target_branch.last_revision()
-            elif len(revision) < 3:
-                target_revision = revision[-1].in_history(target_branch).rev_id
-                if len(revision) == 2:
-                    if base_specified:
-                        raise errors.BzrCommandError(
-                            'Cannot specify base as well as two revision'
-                            ' arguments.')
-                    revspec = revision[0].in_history(target_branch)
-                    base_revision = revspec.rev_id
-            else:
-                raise errors.BzrCommandError('--revision takes 1 or 2 '
-                                             'parameters')
-
-            if revision is None or len(revision) < 2:
-                submit_branch = target_branch.get_submit_branch()
-                if base is None:
-                    base = submit_branch
-                if base is None:
-                    base = target_branch.get_parent()
-                if base is None:
-                    raise errors.BzrCommandError("No base branch known or"
-                                                 " specified.")
-                elif not base_specified:
-                    # FIXME:
-                    # note() doesn't pay attention to terminal_encoding() so
-                    # we must format with 'ascii' to be safe
-                    note('Using saved location: %s',
-                         urlutils.unescape_for_display(base, 'ascii'))
-                base_branch = branch.Branch.open(base)
-                base_branch.lock_read()
-                locked.append(base_branch)
-                if submit_branch is None or remember:
-                    if base_specified:
-                        target_branch.set_submit_branch(base_branch.base)
-                    elif remember:
-                        raise errors.BzrCommandError(
-                            '--remember requires a branch to be specified.')
-                target_branch.repository.fetch(base_branch.repository,
-                                               base_branch.last_revision())
-                graph = target_branch.repository.get_graph()
-                base_revision = graph.find_unique_lca(
-                    _mod_revision.ensure_null(base_branch.last_revision()),
-                    _mod_revision.ensure_null(target_revision))
-
-            if output is not None:
-                fileobj = file(output, 'wb')
-            else:
-                fileobj = sys.stdout
-            write_bundle(target_branch.repository, target_revision,
-                         base_revision, fileobj)
-        finally:
-            for item in reversed(locked):
-                item.unlock()
-
-
 class cmd_bundle_info(Command):
     """Output interesting stats about a bundle"""
 
     hidden = True
     takes_args = ['location']
-    takes_options = [Option('verbose', help="output decoded contents",
-                            short_name='v')]
+    takes_options = []
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
         from bzrlib.bundle.serializer import read_bundle
+        from bzrlib.bundle import read_mergeable_from_url
         from bzrlib import osutils
         term_encoding = osutils.get_terminal_encoding()
-        dirname, basename = urlutils.split(location)
-        bundle_file = transport.get_transport(dirname).get(basename)
-        bundle_info = read_bundle(bundle_file)
+        bundle_info = read_mergeable_from_url(location)
+        if isinstance(bundle_info, merge_directive._BaseMergeDirective):
+            bundle_info = read_bundle(StringIO(bundle_info.get_raw_bundle()))
         reader_method = getattr(bundle_info, 'get_bundle_reader', None)
         if reader_method is None:
             raise errors.BzrCommandError('Bundle format not supported')

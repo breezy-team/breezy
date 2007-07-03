@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,12 +19,18 @@
 import os
 from StringIO import StringIO
 
-from bzrlib.bundle.serializer import read_bundle
+from bzrlib import merge_directive
+from bzrlib.bundle import serializer
 from bzrlib.bzrdir import BzrDir
 from bzrlib import tests
 
 
-class TestBundle(tests.TestCaseWithTransport):
+def read_bundle(fileobj):
+    md = merge_directive.MergeDirective.from_lines(fileobj.readlines())
+    return serializer.read_bundle(StringIO(md.get_raw_bundle()))
+
+
+class TestSubmit(tests.TestCaseWithTransport):
 
     def make_trees(self):
         grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
@@ -39,10 +45,10 @@ class TestBundle(tests.TestCaseWithTransport):
         """Parent location is used as a basis by default"""
         self.make_trees()
         os.chdir('grandparent')
-        errmsg = self.run_bzr('bundle', retcode=3)[1]
-        self.assertContainsRe(errmsg, 'No base branch known or specified')
+        errmsg = self.run_bzr('submit', retcode=3)[1]
+        self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
-        stdout, stderr = self.run_bzr('bundle')
+        stdout, stderr = self.run_bzr('submit')
         self.assertEqual(stderr.count('Using saved location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
@@ -55,20 +61,20 @@ class TestBundle(tests.TestCaseWithTransport):
         """Submit location can be used and set"""
         self.make_trees()        
         os.chdir('branch')
-        br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
+        br = read_bundle(StringIO(self.run_bzr('submit')[0]))
         self.assertRevisions(br, ['revision3'])
-        br = read_bundle(StringIO(self.run_bzr('bundle', '../grandparent')[0]))
+        br = read_bundle(StringIO(self.run_bzr('submit ../grandparent')[0]))
         self.assertRevisions(br, ['revision3', 'revision2'])
         # submit location should be auto-remembered
+        br = read_bundle(StringIO(self.run_bzr('submit')[0]))
+        self.assertRevisions(br, ['revision3', 'revision2'])
+        self.run_bzr('submit ../parent')
         br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
         self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('bundle', '../parent')
-        br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
-        self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('bundle', '../parent', '--remember')
+        self.run_bzr('submit ../parent --remember')
         br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
         self.assertRevisions(br, ['revision3'])
-        err = self.run_bzr('bundle', '--remember', retcode=3)[1]
+        err = self.run_bzr('submit --remember', retcode=3)[1]
         self.assertContainsRe(err, 
                               '--remember requires a branch to be specified.')
 
@@ -77,25 +83,32 @@ class TestBundle(tests.TestCaseWithTransport):
         os.chdir('branch')
         bi = read_bundle(StringIO(self.run_bzr('bundle', '../grandparent')[0]))
         self.assertRevisions(bi, ['revision3', 'revision2'])
-        out = StringIO(self.run_bzr('bundle', '../grandparent', '-r', '-2')[0])
+        out = StringIO(self.run_bzr('submit ../grandparent -r -2')[0])
         bi = read_bundle(out)
         self.assertRevisions(bi, ['revision2'])
-        bi = read_bundle(StringIO(self.run_bzr('bundle', '-r', '-2..-1')[0]))
-        self.assertRevisions(bi, ['revision3'])
-        self.run_bzr('bundle', '../grandparent', '-r', '-2..-1', retcode=3)
+        sio = StringIO(self.run_bzr('submit -r -2..-1')[0])
+        md = merge_directive.MergeDirective.from_lines(sio.readlines())
+        self.assertEqual('revision2', md.base_revision_id)
+        self.assertEqual('revision3', md.revision_id)
+        sio.seek(0)
+        bi = read_bundle(sio)
+        self.assertRevisions(bi, ['revision2', 'revision3'])
+        self.run_bzr('submit ../grandparent -r -2..-1')
 
     def test_output(self):
         # check output for consistency
         # win32 stdout converts LF to CRLF,
-        # and this is breaks the created bundle
+        # which would break patch-based bundles
         self.make_trees()        
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('bundle')[0]
+        stdout = self.run_bzr_subprocess('submit')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
     def test_no_common_ancestor(self):
         foo = self.make_branch_and_tree('foo')
+        foo.commit('rev a')
         bar = self.make_branch_and_tree('bar')
+        bar.commit('rev b')
         os.chdir('foo')
-        self.run_bzr('bundle', '../bar')
+        self.run_bzr('submit ../bar')

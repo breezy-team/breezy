@@ -341,6 +341,9 @@ class TestMergeDirectiveBranch(object):
         self.assertRaises(errors.PublicBranchOutOfDate,
             self.from_objects, tree_a.branch.repository, 'rev2a', 500, 144,
             tree_b.branch.base, public_branch=branch_c.base, patch_type='diff')
+        self.assertRaises(errors.PublicBranchOutOfDate,
+            self.from_objects, tree_a.branch.repository, 'rev2a', 500, 144,
+            tree_b.branch.base, public_branch=branch_c.base, patch_type=None)
         # public branch is not checked if patch format is bundle.
         md1 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 144,
             tree_b.branch.base, public_branch=branch_c.base)
@@ -366,7 +369,7 @@ class TestMergeDirectiveBranch(object):
 
     def test_message(self):
         tree_a, tree_b, branch_c = self.make_trees()
-        md3 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+        md3 = self.from_objects(tree_a.branch.repository, 'rev1', 500, 120,
             tree_b.branch.base, patch_type=None, public_branch=branch_c.base,
             message='Merge message')
         md3.to_lines()
@@ -539,10 +542,13 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
         public_branch=None, message=None, base_revision_id=None):
+        include_patch = (patch_type in ('bundle', 'diff'))
+        include_bundle = (patch_type == 'bundle')
+        assert patch_type in ('bundle', 'diff', None)
         return merge_directive.MergeDirective2.from_objects(
             repository, revision_id, time, timezone, target_branch,
-            patch_type, local_target_branch, public_branch, message,
-            base_revision_id)
+            include_patch, include_bundle, local_target_branch, public_branch,
+            message, base_revision_id)
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
