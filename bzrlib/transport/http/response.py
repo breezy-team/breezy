@@ -279,7 +279,9 @@ def handle_response(url, code, headers, data):
         return data
     elif code == 404:
         raise errors.NoSuchFile(url)
-    elif code == 416:
+    # Some servers will retun "400: Bad Request" when too much ranges are
+    # specified
+    elif code in (400, 416):
         # We don't know which, but one of the ranges we specified
         # was wrong. So we raise with 0 for a lack of a better
         # magic value.

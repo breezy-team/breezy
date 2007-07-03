@@ -357,6 +357,32 @@ Useful commands:
                this will update the tree to match the branch.
 """
 
+_status_flags = \
+"""Status Flags
+
+Status flags are used to summarise changes to the working tree in a concise
+manner.  They are in the form:
+   xxx   <filename>
+where the columns' meanings are as follows.
+
+Column 1: versioning / renames
+  + File versioned
+  - File unversioned
+  R File renamed
+  ? File unknown
+  C File has conflicts
+  P Entry for a pending merge (not a file)
+
+Column 2: Contents
+  N File created
+  D File deleted
+  K File kind changed
+  M File modified
+
+Column 3: Execute
+  * The execute bit was changed
+"""
+
 
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
@@ -372,6 +398,8 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
+topic_registry.register('status-flags', _status_flags,
+                        "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return bugtracker.tracker_registry.help_topic(topic)
