@@ -195,3 +195,20 @@ Node-copyfrom-path: x
         self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
 
 
+    def test_list(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
+        self.client_add("dc/foo")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "Msg")
+        self.assertEquals(('a/bla\na/foo\n', ''), 
+              self.runbzr(['ls', "a"]))
+
+    def test_info_remote(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
+        self.client_add("dc/foo")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "Msg")
+        self.assertEquals(
+              "Repository branch (format: unnamed)\nLocation:\n  shared repository: %s/\n  repository branch: .\n" % repos_url, self.runbzr(['info', "a"])[0])
