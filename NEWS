@@ -9,6 +9,9 @@ IN DEVELOPMENT
       a file that is not present in the specified revision.
       (James Westby, #122656)
 
+    * Commands that use status flags now have a reference to 'help
+      status-flags'.  (Daniel Watkins, #113436)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
