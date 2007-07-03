@@ -216,7 +216,7 @@ class LockDir(object):
             self._trace("lock_write...")
             start_time = time.time()
             tmpname = self._create_pending_dir()
-
+    
             self.transport.rename(tmpname, self._held_dir)
             # We must check we really got the lock, because Launchpad's sftp
             # server at one time had a bug were the rename would successfully
@@ -258,7 +258,6 @@ class LockDir(object):
             self.create(mode=self._dir_modebits)
             # After creating the lock directory, try again
             self.transport.mkdir(tmpname)
-        
         self.nonce = rand_chars(20)
         info_bytes = self._prepare_info()
         # We use put_file_non_atomic because we just created a new unique
@@ -291,7 +290,19 @@ class LockDir(object):
             self.transport.rename(self._held_dir, tmpname)
             self._lock_held = False
             self.transport.delete(tmpname + self.__INFO_NAME)
-            self.transport.rmdir(tmpname)
+            try:
+                self.transport.rmdir(tmpname)
+            except DirectoryNotEmpty, e:
+                # There might have been junk left over by a rename that moved
+                # another locker within the 'held' directory.  do a slower
+                # deletion where we list the directory and remove everything
+                # within it.
+                #
+                # Maybe this should be broader to allow for ftp servers with
+                # non-specific error messages?
+                self._trace("doing recursive deletion of non-empty directory "
+                        "%s", tmpname)
+                self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
 

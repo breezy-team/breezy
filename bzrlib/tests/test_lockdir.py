@@ -641,13 +641,16 @@ class TestLockDir(TestCaseWithTransport):
         t = transport.get_transport('brokenrename+' + self.get_url())
         ld1 = LockDir(t, 'test_lock')
         ld1.create()
+
+        import pdb;pdb.set_trace()
         ld1.attempt_lock()
         ld2 = LockDir(t, 'test_lock')
-        # we should notice that we failed to lock, even though the transport
-        # has the wrong rename behaviour
-        e = self.assertRaises(errors.LockError, ld2.attempt_lock)
-        self.assertContainsRe(str(e),
-                "rename succeeded, but lock is still held by someone else")
+        # we should fail to lock
+        e = self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        # now the original caller should succeed in unlocking
+        ld1.unlock()
+        # and there should be nothing left over
+        self.assertEquals([], t.list_dir('test_lock'))
 
     def test_failed_lock_leaves_no_trash(self):
         # if we fail to acquire the lock, we don't leave pending directories

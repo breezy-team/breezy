@@ -19,7 +19,10 @@
 
 from stat import S_ISDIR
 
-import bzrlib.errors as errors
+from bzrlib import (
+        errors,
+        urlutils,
+        )
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
@@ -35,6 +38,8 @@ class BrokenRenameTransportDecorator(TransportDecorator):
         """See Transport.rename().
         """
         try:
+            if self._decorated.has(rel_to):
+                rel_to = urlutils.join(rel_to, urlutils.basename(rel_from))
             self._decorated.rename(rel_from, rel_to)
         except (errors.DirectoryNotEmpty, errors.FileExists), e:
             # absorb the error
