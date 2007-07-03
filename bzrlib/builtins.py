@@ -2674,6 +2674,7 @@ class cmd_merge(Command):
                 base = None
 
         if other_revision_id is None:
+            verified = 'inapplicable'
             if revision is None \
                     or len(revision) < 1 or revision[0].needs_branch():
                 branch = self._get_remembered_parent(tree, branch,
