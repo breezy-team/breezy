@@ -212,39 +212,50 @@ class LockDir(object):
         :raises LockContention: If the lock is held by someone else.  The exception
             contains the info of the current holder of the lock.
         """
+        self._trace("lock_write...")
+        start_time = time.time()
+        tmpname = self._create_pending_dir()
         try:
-            self._trace("lock_write...")
-            start_time = time.time()
-            tmpname = self._create_pending_dir()
-    
             self.transport.rename(tmpname, self._held_dir)
-            # We must check we really got the lock, because Launchpad's sftp
-            # server at one time had a bug were the rename would successfully
-            # move the new directory into the existing directory, which was
-            # incorrect.  It's possible some other servers or filesystems will
-            # have a similar bug allowing someone to think they got the lock
-            # when it's already held.
-            info = self.peek()
-            self._trace("after locking, info=%r", info)
-            if info['nonce'] != self.nonce:
-                self._trace("rename succeeded, "
-                    "but lock is still held by someone else")
-                raise LockContention(self)
-            # we don't call confirm here because we don't want to set
-            # _lock_held til we're sure it's true, and because it's really a
-            # problem, not just regular contention, if this fails
-            self._lock_held = True
-            # FIXME: we should remove the pending lock if we fail, 
-            # https://bugs.launchpad.net/bzr/+bug/109169
-        except errors.PermissionDenied:
-            self._trace("... lock failed, permission denied")
-            raise
         except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
             self._trace("... contention, %s", e)
+            self._remove_pending_dir(tmpname)
             raise LockContention(self)
+        except Exception, e:
+            self._trace("... lock failed, %s", e)
+            self._remove_pending_dir(tmpname)
+            raise
+        # We must check we really got the lock, because Launchpad's sftp
+        # server at one time had a bug were the rename would successfully
+        # move the new directory into the existing directory, which was
+        # incorrect.  It's possible some other servers or filesystems will
+        # have a similar bug allowing someone to think they got the lock
+        # when it's already held.
+        info = self.peek()
+        self._trace("after locking, info=%r", info)
+        if info['nonce'] != self.nonce:
+            self._trace("rename succeeded, "
+                "but lock is still held by someone else")
+            raise LockContention(self)
+        # we don't call confirm here because we don't want to set
+        # _lock_held til we're sure it's true, and because it's really a
+        # problem, not just regular contention, if this fails
+        self._lock_held = True
+        # FIXME: we should remove the pending lock if we fail, 
+        # https://bugs.launchpad.net/bzr/+bug/109169
         self._trace("... lock succeeded after %dms",
                 (time.time() - start_time) * 1000)
         return self.nonce
+
+    def _remove_pending_dir(self, tmpname):
+        """Remove the pending directory
+
+        This is called if we failed to rename into place, so that the pending 
+        dirs don't clutter up the lockdir.
+        """
+        self._trace("remove %s", tmpname)
+        self.transport.delete(tmpname + self.__INFO_NAME)
+        self.transport.rmdir(tmpname)
 
     def _create_pending_dir(self):
         tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
@@ -435,7 +446,11 @@ class LockDir(object):
         :return: The lock token.
         :raises LockContention: if the lock is held by someone else.
         """
-        return self.wait_lock(max_attempts=1)
+        if self._fake_read_lock:
+            raise LockContention(self)
+        if self.transport.is_readonly():
+            raise UnlockableTransport(self.transport)
+        return self._lock_core()
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
@@ -466,53 +481,49 @@ class LockDir(object):
         deadline_str = None
         last_info = None
         attempt_count = 0
-        if self._fake_read_lock:
-            raise LockContention(self)
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
         while True:
             attempt_count += 1
             try:
-                return self._lock_core()
-            except LockContention, err:
-                # TODO: LockContention should only be raised when we're know
-                # that the lock is held by someone else, in which case we
-                # should include the locker info, so it can be used here.
-                # In other cases, such as having a malformed lock present, we
-                # should raise a different.
-                #
-                # we shouldn't need to peek again here, because _lock_core
-                # does it
-                new_info = self.peek()
-                if new_info is not None and new_info != last_info:
-                    if last_info is None:
-                        start = 'Unable to obtain'
-                    else:
-                        start = 'Lock owner changed for'
-                    last_info = new_info
-                    formatted_info = self._format_lock_info(new_info)
-                    if deadline_str is None:
-                        deadline_str = time.strftime('%H:%M:%S',
-                                                     time.localtime(deadline))
-                    self._report_function('%s %s\n'
-                                          '%s\n' # held by
-                                          '%s\n' # locked ... ago
-                                          'Will continue to try until %s\n',
-                                          start,
-                                          formatted_info[0],
-                                          formatted_info[1],
-                                          formatted_info[2],
-                                          deadline_str)
-
-                if (max_attempts is not None) and (attempt_count >= max_attempts):
-                    self._trace("exceeded %d attempts")
-                    raise LockContention(self)
-                if time.time() + poll < deadline:
-                    self._trace("waiting %ss", poll)
-                    time.sleep(poll)
+                return self.attempt_lock()
+            except LockContention:
+                # possibly report the blockage, then try again
+                pass
+            # TODO: In a few cases, we find out that there's contention by
+            # reading the held info and observing that it's not ours.  In
+            # those cases it's a bit redundant to read it again.  However,
+            # the normal case (??) is that the rename fails and so we
+            # don't know who holds the lock.  For simplicity we peek
+            # always.
+            new_info = self.peek()
+            if new_info is not None and new_info != last_info:
+                if last_info is None:
+                    start = 'Unable to obtain'
                 else:
-                    self._trace("timeout after waiting %ss", timeout)
-                    raise LockContention(self)
+                    start = 'Lock owner changed for'
+                last_info = new_info
+                formatted_info = self._format_lock_info(new_info)
+                if deadline_str is None:
+                    deadline_str = time.strftime('%H:%M:%S',
+                                                 time.localtime(deadline))
+                self._report_function('%s %s\n'
+                                      '%s\n' # held by
+                                      '%s\n' # locked ... ago
+                                      'Will continue to try until %s\n',
+                                      start,
+                                      formatted_info[0],
+                                      formatted_info[1],
+                                      formatted_info[2],
+                                      deadline_str)
+
+            if (max_attempts is not None) and (attempt_count >= max_attempts):
+                self._trace("exceeded %d attempts")
+                raise LockContention(self)
+            if time.time() + poll < deadline:
+                self._trace("waiting %ss", poll)
+                time.sleep(poll)
+            else:
+                self._trace("timeout after waiting %ss", timeout)
+                raise LockContention(self)
     
     def leave_in_place(self):
         self._locked_via_token = True
@@ -577,7 +588,7 @@ class LockDir(object):
                 self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
-                self._trace("temeout after waiting %ss", timeout)
+                self._trace("timeout after waiting %ss", timeout)
                 raise LockContention(self)
 
     def _format_lock_info(self, info):
@@ -601,7 +612,7 @@ class LockDir(object):
             if token != lock_token:
                 raise errors.TokenMismatch(token, lock_token)
             else:
-                self._trace("Revalidated by token %r", token)
+                self._trace("revalidated by token %r", token)
 
     def _trace(self, format, *args):
         if 'lock' not in debug.debug_flags:
