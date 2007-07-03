@@ -226,6 +226,9 @@ elif 'py2exe' in sys.argv:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
+    # email package from std python library use lazy import,
+    # so we need to explicitly add all package
+    additional_packages.append('email')
 
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,
