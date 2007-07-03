@@ -12,6 +12,14 @@ IN DEVELOPMENT
     * Commands that use status flags now have a reference to 'help
       status-flags'.  (Daniel Watkins, #113436)
 
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
+
+    * Issue a CONNECT request when connecting to an https server
+      via a proxy to enable SSL tunneling.
+     (Vincent Ladeuil, #120678)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -132,12 +140,6 @@ IN DEVELOPMENT
     * Add a relpath parameter to get_transport methods in test framework to
       avoid useless cloning.
       (Vincent Ladeuil, #110448)
-
-  BUGFIXES:
-
-    * Work around python-2.4.1 inhability to correctly parse the
-      authentication header.
-      (Vincent Ladeuil, #121889)
 
 
 bzr 0.17  2007-06-18
