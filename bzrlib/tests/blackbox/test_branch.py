@@ -28,13 +28,13 @@ from bzrlib.workingtree import WorkingTree
 class TestBranch(ExternalBase):
 
     def example_branch(test):
-        test.runbzr('init')
+        test.run_bzr('init')
         file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
+        test.run_bzr('add hello')
+        test.run_bzr('commit -m setup hello')
         file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+        test.run_bzr('add goodbye')
+        test.run_bzr('commit -m setup goodbye')
 
     def test_branch(self):
         """Branch from one branch to another."""
@@ -42,12 +42,12 @@ class TestBranch(ExternalBase):
         os.chdir('a')
         self.example_branch()
         os.chdir('..')
-        self.runbzr('branch a b')
+        self.run_bzr('branch a b')
         b = branch.Branch.open('b')
         self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
-        self.runbzr('branch a c -r 1')
+        self.run_bzr('branch a c -r 1')
         os.chdir('b')
-        self.runbzr('commit -m foo --unchanged')
+        self.run_bzr('commit -m foo --unchanged')
         os.chdir('..')
 
     def test_branch_only_copies_history(self):

@@ -150,6 +150,36 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.wfile.write(out_buffer.getvalue())
 
 
+class LimitedRangeRequestHandler(TestingHTTPRequestHandler):
+    """Errors out when range specifiers exceed the limit"""
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        """Refuses the multiple ranges request"""
+        tcs = self.server.test_case_server
+        if tcs.range_limit is not None and len(ranges) > tcs.range_limit:
+            file.close()
+            # Emulate apache behavior
+            self.send_error(400, "Bad Request")
+            return
+        return TestingHTTPRequestHandler.get_multiple_ranges(self, file,
+                                                             file_size, ranges)
+
+    def do_GET(self):
+        tcs = self.server.test_case_server
+        tcs.GET_request_nb += 1
+        return TestingHTTPRequestHandler.do_GET(self)
+
+
+class LimitedRangeHTTPServer(HttpServer):
+    """An HttpServer erroring out on requests with too much range specifiers"""
+
+    def __init__(self, request_handler=LimitedRangeRequestHandler,
+                 range_limit=None):
+        HttpServer.__init__(self, request_handler)
+        self.range_limit = range_limit
+        self.GET_request_nb = 0
+
+
 class SingleRangeRequestHandler(TestingHTTPRequestHandler):
     """Always reply to range request as if they were single.
 
@@ -337,8 +367,6 @@ class AuthRequestHandler(TestingHTTPRequestHandler):
             self.end_headers()
             return
 
-        TestingHTTPRequestHandler.do_GET(self)
-
 
 class BasicAuthRequestHandler(AuthRequestHandler):
     """Implements the basic authentication of a request"""
@@ -393,7 +421,8 @@ class DigestAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="%s", algorithm=%s, qop=auth' % (tcs.auth_nonce, 'MD5')
+        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+                                                              'MD5')
         self.send_header(tcs.auth_header_sent,header)
 
 

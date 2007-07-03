@@ -109,15 +109,20 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         connect_calls = []
         def connect(self, host='localhost', port=0):
             connect_calls.append((self, host, port))
+        def starttls(self):
+            pass
         old_sendmail = smtplib.SMTP.sendmail
         smtplib.SMTP.sendmail = sendmail
         old_connect = smtplib.SMTP.connect
         smtplib.SMTP.connect = connect
+        old_starttls = smtplib.SMTP.starttls
+        smtplib.SMTP.starttls = starttls
         try:
             result = self.run_bzr(*args, **kwargs)
         finally:
             smtplib.SMTP.sendmail = old_sendmail
             smtplib.SMTP.connect = old_connect
+            smtplib.SMTP.starttls = old_starttls
         return result + (connect_calls, sendmail_calls)
 
     def test_mail_default(self):
@@ -132,8 +137,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(('localhost', 0), call[1:3])
         self.assertEqual(1, len(sendmail_calls))
         call = sendmail_calls[0]
-        self.assertEqual(('J. Random Hacker <jrandom@example.com>',
-                          'pqm@example.com'), call[1:3])
+        self.assertEqual(('jrandom@example.com', ['pqm@example.com']),
+                call[1:3])
         self.assertContainsRe(call[3], EMAIL1)
 
     def test_pull_raw(self):
@@ -227,3 +232,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         os.chdir('foo')
         self.run_bzr_error(('No revisions to bundle.', ),
                             'merge-directive', '../bar')
+
+    def test_encoding_exact(self):
+        tree1, tree2 = self.prepare_merge_directive()
+        tree1.commit(u'messag\xe9')
+        self.run_bzr('merge-directive', '../tree2') # no exception raised

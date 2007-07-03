@@ -186,6 +186,18 @@ class DisabledMethod(BzrError):
         self.class_name = class_name
 
 
+class IncompatibleAPI(BzrError):
+
+    _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
+        'It supports versions "%(minimum)s" to "%(current)s".'
+
+    def __init__(self, api, wanted, minimum, current):
+        self.api = api
+        self.wanted = wanted
+        self.minimum = minimum
+        self.current = current
+
+
 class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
@@ -1579,6 +1591,8 @@ class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
 
+    internal_error = True
+
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
 
@@ -2134,3 +2148,69 @@ class UnexpectedSmartServerResponse(BzrError):
 
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
+
+
+class ContainerError(BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+    
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+    internal_error = False
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: \"%(name)s\""
+
+    def __init__(self, name):
+        self.name = name
+
+
+class NoDestinationAddress(BzrError):
+
+    _fmt = "Message does not have a destination address."
+
+    internal_error = True
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error

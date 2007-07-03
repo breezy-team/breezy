@@ -2,22 +2,40 @@
 Bazaar Developers Guide
 =======================
 
--------------------
+###################
 Documentation index
--------------------
+###################
+
+Process
+=======
 
 * `General HACKING HOWTO <HACKING.htm>`_
 
   Guide to policies and tools for working on Bazaar itself.
 
+* `Profiling notes <profiling.htm>`_
+
+  Instructions on how to profile bzr code and visualize the results.
+
+Plans
+=====
+
 * `Performance roadmap <performance-roadmap.htm>`_
 
   The roadmap for fixing performance in bzr over the next few releases.
+
+Specifications
+==============
+
+* `API versioning <api-versioning.htm>`_
+
+  bzrlib API versioning.
+
+* `Bundles <bundles.htm>`_
+
+  All about bzr bundles.
 
 * `Container format <container-format.htm>`_
 
   Notes on a container format for streaming and storing Bazaar data.
 
-* `Profiling notes <profiling.htm>`_
-
-  Instructions on how to profile bzr code and visualize the results.

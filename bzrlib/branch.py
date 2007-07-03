@@ -19,8 +19,6 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from copy import deepcopy
-from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
@@ -1454,7 +1452,8 @@ class BzrBranch(Branch):
             # we fetch here regardless of whether we need to so that we pickup
             # filled in ghosts.
             self.fetch(other, stop_revision)
-            my_ancestry = self.repository.get_ancestry(last_rev)
+            my_ancestry = self.repository.get_ancestry(last_rev,
+                                                       topo_sorted=False)
             if stop_revision in my_ancestry:
                 # last_revision is a descendant of stop_revision
                 return
@@ -1813,7 +1812,8 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip in self.repository.get_ancestry(self.last_revision()):
+            if old_tip in self.repository.get_ancestry(self.last_revision(),
+                                                       topo_sorted=False):
                 return None
             return old_tip
         return None
@@ -2095,40 +2095,6 @@ class BzrBranch6(BzrBranch5):
 
     def _make_tags(self):
         return BasicTags(self)
-
-
-class BranchTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple branch formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and branch_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = TestSuite()
-        for branch_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.branch_format = branch_format
-            def make_new_test_id():
-                # the format can be either a class or an instance
-                name = getattr(branch_format, '__name__',
-                        branch_format.__class__.__name__)
-                new_id = "%s(%s)" % (new_test.id(), name)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
 
 
 ######################################################################

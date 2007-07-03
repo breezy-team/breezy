@@ -44,7 +44,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bisect import bisect_left
 import collections
-from copy import deepcopy
 import errno
 import itertools
 import operator
@@ -2772,42 +2771,3 @@ WorkingTreeFormat.set_default_format(__default_format)
 # and not independently creatable, so are not registered.
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
-
-
-class WorkingTreeTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple workingtree formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and workingtree_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
-        """Clone test for adaption."""
-        new_test = deepcopy(test)
-        new_test.transport_server = self._transport_server
-        new_test.transport_readonly_server = self._transport_readonly_server
-        new_test.bzrdir_format = bzrdir_format
-        new_test.workingtree_format = workingtree_format
-        def make_new_test_id():
-            new_id = "%s(%s)" % (test.id(), variation)
-            return lambda: new_id
-        new_test.id = make_new_test_id()
-        return new_test
-    
-    def adapt(self, test):
-        from bzrlib.tests import TestSuite
-        result = TestSuite()
-        for workingtree_format, bzrdir_format in self._formats:
-            new_test = self._clone_test(
-                test,
-                bzrdir_format,
-                workingtree_format, workingtree_format.__class__.__name__)
-            result.addTest(new_test)
-        return result

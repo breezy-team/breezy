@@ -27,7 +27,7 @@ class TestHelp(ExternalBase):
 
     def test_help_basic(self):
         for cmd in ['--help', 'help', '-h', '-?']:
-            output = self.runbzr(cmd)[0]
+            output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
             if not line1.startswith('Bazaar'):
                 self.fail("bad output from bzr %s:\n%r" % (cmd, output))
@@ -54,7 +54,7 @@ class TestHelp(ExternalBase):
 
     def test_help_checkouts(self):
         """Smoke test for 'bzr help checkouts'"""
-        out, err = self.runbzr('help checkouts')
+        out, err = self.run_bzr('help checkouts')
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
         
@@ -72,44 +72,49 @@ class TestHelp(ExternalBase):
 
     def test_help_repositories(self):
         """Smoke test for 'bzr help repositories'"""
-        out, err = self.runbzr('help repositories')
+        out, err = self.run_bzr('help repositories')
         self.assertEqual(bzrlib.help_topics._repositories, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'bzr help working-trees'"""
-        out, err = self.runbzr('help working-trees')
+        out, err = self.run_bzr('help working-trees')
         self.assertEqual(bzrlib.help_topics._working_trees, out)
 
+    def test_help_status_flags(self):
+        """Smoke test for 'bzr help status-flags'"""
+        out, err = self.run_bzr('help status-flags')
+        self.assertEqual(bzrlib.help_topics._status_flags, out)
+
     def test_help_commands(self):
-        dash_help  = self.runbzr('--help commands')[0]
-        commands   = self.runbzr('help commands')[0]
-        hidden = self.runbzr('help hidden-commands')[0]
-        long_help  = self.runbzr('help --long')[0]
-        qmark_long = self.runbzr('? --long')[0]
-        qmark_cmds = self.runbzr('? commands')[0]
+        dash_help  = self.run_bzr('--help commands')[0]
+        commands   = self.run_bzr('help commands')[0]
+        hidden = self.run_bzr('help hidden-commands')[0]
+        long_help  = self.run_bzr('help --long')[0]
+        qmark_long = self.run_bzr('? --long')[0]
+        qmark_cmds = self.run_bzr('? commands')[0]
         self.assertEquals(dash_help, commands)
         self.assertEquals(dash_help, long_help)
         self.assertEquals(dash_help, qmark_long)
         self.assertEquals(dash_help, qmark_cmds)
 
     def test_hidden(self):
-        commands = self.runbzr('help commands')[0]
-        hidden = self.runbzr('help hidden-commands')[0]
+        commands = self.run_bzr('help commands')[0]
+        hidden = self.run_bzr('help hidden-commands')[0]
         self.assertTrue('commit' in commands)
         self.assertTrue('commit' not in hidden)
         self.assertTrue('rocks' in hidden)
         self.assertTrue('rocks' not in commands)
 
     def test_help_detail(self):
-        dash_h  = self.runbzr('commit -h')[0]
-        help_x  = self.runbzr('help commit')[0]
-        qmark_x = self.runbzr('help commit')[0]
+        dash_h  = self.run_bzr('commit -h')[0]
+        help_x  = self.run_bzr('help commit')[0]
+        qmark_x = self.run_bzr('help commit')[0]
         self.assertEquals(dash_h, help_x)
         self.assertEquals(dash_h, qmark_x)
 
     def test_help_help(self):
-        help = self.runbzr('help help')[0]
-        qmark = self.runbzr('? ?')[0]
+        help = self.run_bzr('help help')[0]
+        qmark = self.run_bzr('? ?')[0]
         self.assertEquals(help, qmark)
         for line in help.split('\n'):
             if '--long' in line:

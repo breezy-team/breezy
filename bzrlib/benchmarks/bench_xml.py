@@ -24,6 +24,7 @@ from bzrlib.benchmarks import Benchmark
 
 
 class BenchXMLSerializer(Benchmark):
+    """Benchmarks for serializing to/from XML."""
 
     def test_write_to_string_kernel_like_inventory(self):
         # On jam's machine, ElementTree serializer took: 2161ms/13487ms

@@ -24,6 +24,7 @@ from bzrlib.workingtree import WorkingTree
 
 
 class WorkingTreeBenchmark(Benchmark):
+    """Benchmarks for `bzrlib.workingtree` performance."""
 
     def test_list_files_kernel_like_tree(self):
         tree = self.make_kernel_like_added_tree()

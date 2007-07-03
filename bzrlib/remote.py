@@ -110,7 +110,7 @@ class RemoteBzrDir(BzrDir):
         elif response == ('nobranch',):
             raise errors.NotBranchError(path=self.root_transport.base)
         else:
-            assert False, 'unexpected response code %r' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
@@ -367,7 +367,7 @@ class RemoteRepository(object):
         elif response[0] == 'UnlockableTransport':
             raise errors.UnlockableTransport(self.bzrdir.root_transport)
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def lock_write(self, token=None):
         if not self._lock_mode:
@@ -416,7 +416,7 @@ class RemoteRepository(object):
         elif response[0] == 'TokenMismatch':
             raise errors.TokenMismatch(token, '(remote token)')
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
         self._lock_count -= 1
@@ -533,9 +533,9 @@ class RemoteRepository(object):
         return self._real_repository.control_weaves
 
     @needs_read_lock
-    def get_ancestry(self, revision_id):
+    def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id)
+        return self._real_repository.get_ancestry(revision_id, topo_sorted)
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -849,7 +849,7 @@ class RemoteBranch(branch.Branch):
         elif response[0] == 'ReadOnlyError':
             raise errors.ReadOnlyError(self)
         else:
-            assert False, 'unexpected response code %r' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
             
     def lock_write(self, token=None):
         if not self._lock_mode:
@@ -899,7 +899,7 @@ class RemoteBranch(branch.Branch):
             raise errors.TokenMismatch(
                 str((branch_token, repo_token)), '(remote tokens)')
         else:
-            assert False, 'unexpected response code %s' % (response,)
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
         self._lock_count -= 1

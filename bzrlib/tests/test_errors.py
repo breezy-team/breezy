@@ -46,6 +46,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
 
+    def test_incompatibleAPI(self):
+        error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
+        self.assertEqualDiff(
+            'The API for "module" is not compatible with "(1, 2, 3)". '
+            'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -264,6 +271,47 @@ class TestErrors(TestCaseWithTransport):
         e = errors.UnexpectedSmartServerResponse(('not yes',))
         self.assertEqual(
             "Could not understand response from smart server: ('not yes',)",
+            str(e))
+
+    def test_unknown_container_format(self):
+        """Test the formatting of UnknownContainerFormatError."""
+        e = errors.UnknownContainerFormatError('bad format string')
+        self.assertEqual(
+            "Unrecognised container format: 'bad format string'",
+            str(e))
+
+    def test_unexpected_end_of_container(self):
+        """Test the formatting of UnexpectedEndOfContainerError."""
+        e = errors.UnexpectedEndOfContainerError()
+        self.assertEqual(
+            "Unexpected end of container stream", str(e))
+
+    def test_unknown_record_type(self):
+        """Test the formatting of UnknownRecordTypeError."""
+        e = errors.UnknownRecordTypeError("X")
+        self.assertEqual(
+            "Unknown record type: 'X'",
+            str(e))
+
+    def test_invalid_record(self):
+        """Test the formatting of InvalidRecordError."""
+        e = errors.InvalidRecordError("xxx")
+        self.assertEqual(
+            "Invalid record: xxx",
+            str(e))
+
+    def test_container_has_excess_data(self):
+        """Test the formatting of ContainerHasExcessDataError."""
+        e = errors.ContainerHasExcessDataError("excess bytes")
+        self.assertEqual(
+            "Container has data after end marker: 'excess bytes'",
+            str(e))
+
+    def test_duplicate_record_name_error(self):
+        """Test the formatting of DuplicateRecordNameError."""
+        e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
+        self.assertEqual(
+            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
             str(e))
 
 

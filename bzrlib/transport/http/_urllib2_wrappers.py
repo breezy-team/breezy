@@ -180,11 +180,13 @@ class Request(urllib2.Request):
 
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
-                 connection=None, parent=None,):
+                 connection=None, parent=None,
+                 accepted_errors=None):
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
         self.connection = connection
+        self.accepted_errors = accepted_errors
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
@@ -1030,6 +1032,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    handler_order = 500
+
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -1085,6 +1089,9 @@ def get_new_cnonce(nonce, nonce_count):
 
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
+
+    # Before basic as digest is a bit more secure
+    handler_order = 490
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
@@ -1247,13 +1254,24 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     instead, we leave our Transport handle them.
     """
 
+    accepted_errors = [200, # Ok
+                       206, # Partial content
+                       404, # Not found
+                       ]
+    """The error codes the caller will handle.
+
+    This can be specialized in the request on a case-by case basis, but the
+    common cases are covered here.
+    """
+
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
 
-        if code not in (200, # Ok
-                        206, # Partial content
-                        404, # Not found
-                        ):
+        accepted_errors = request.accepted_errors
+        if accepted_errors is None:
+            accepted_errors = self.accepted_errors
+
+        if code not in accepted_errors:
             response = self.parent.error('http', request, response,
                                          code, msg, hdrs)
         return response
@@ -1265,12 +1283,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     """Translate common errors into bzr Exceptions"""
 
     def http_error_default(self, req, fp, code, msg, hdrs):
-        if code == 404:
-            raise errors.NoSuchFile(req.get_selector(),
-                                    extra=HTTPError(req.get_full_url(),
-                                                    code, msg,
-                                                    hdrs, fp))
-        elif code == 403:
+        if code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
         elif code == 416:
             # We don't know which, but one of the ranges we
@@ -1281,6 +1294,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
                                              % (code, msg))
+
 
 class Opener(object):
     """A wrapper around urllib2.build_opener
@@ -1305,6 +1319,7 @@ class Opener(object):
             HTTPSHandler,
             HTTPDefaultErrorHandler,
             )
+
         self.open = self._opener.open
         if DEBUG >= 2:
             # When dealing with handler order, it's easy to mess
