@@ -53,6 +53,7 @@ from bzrlib.tests.HTTPTestUtil import (
     HTTPDigestAuthServer,
     HTTPServerRedirecting,
     InvalidStatusRequestHandler,
+    LimitedRangeHTTPServer,
     NoRangeRequestHandler,
     ProxyBasicAuthServer,
     ProxyDigestAuthServer,
@@ -65,6 +66,7 @@ from bzrlib.tests.HTTPTestUtil import (
     WallRequestHandler,
     )
 from bzrlib.transport import (
+    _CoalescedOffset,
     do_catching_redirections,
     get_transport,
     Transport,
@@ -361,30 +363,6 @@ class TestHttpTransportRegistration(TestCase):
         self.assertIsInstance(t, HttpTransport_urllib)
 
 
-class TestOffsets(TestCase):
-    """Test offsets_to_ranges method"""
-
-    def test_offsets_to_ranges_simple(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-        ranges = to_range([(10, 1)])
-        self.assertEqual([[10, 10]], ranges)
-
-        ranges = to_range([(0, 1), (1, 1)])
-        self.assertEqual([[0, 1]], ranges)
-
-        ranges = to_range([(1, 1), (0, 1)])
-        self.assertEqual([[0, 1]], ranges)
-
-    def test_offset_to_ranges_overlapped(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-
-        ranges = to_range([(10, 1), (20, 2), (22, 5)])
-        self.assertEqual([[10, 10], [20, 26]], ranges)
-
-        ranges = to_range([(10, 1), (11, 2), (22, 5)])
-        self.assertEqual([[10, 12], [22, 26]], ranges)
-
-
 class TestPost(object):
 
     def _test_post_body_is_received(self, scheme):
@@ -427,12 +405,15 @@ class TestRangeHeader(TestCase):
     """Test range_header method"""
 
     def check_header(self, value, ranges=[], tail=0):
-        range_header = HttpTransportBase.range_header
-        self.assertEqual(value, range_header(ranges, tail))
+        offsets = [ (start, end - start + 1) for start, end in ranges]
+        coalesce = Transport._coalesce_offsets
+        coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
+        range_header = HttpTransportBase._range_header
+        self.assertEqual(value, range_header(coalesced, tail))
 
     def test_range_header_single(self):
-        self.check_header('0-9', ranges=[[0,9]])
-        self.check_header('100-109', ranges=[[100,109]])
+        self.check_header('0-9', ranges=[(0,9)])
+        self.check_header('100-109', ranges=[(100,109)])
 
     def test_range_header_tail(self):
         self.check_header('-10', tail=10)
@@ -734,6 +715,67 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
     """Tests range requests refusing server for pycurl implementation"""
 
 
+class TestLimitedRangeRequestServer(object):
+    """Tests readv requests against server that errors out on too much ranges.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    range_limit = 3
+
+    def create_transport_readonly_server(self):
+        # Requests with more range specifiers will error out
+        return LimitedRangeHTTPServer(range_limit=self.range_limit)
+
+    def get_transport(self):
+        return self._transport(self.get_readonly_server().get_url())
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        # We need to manipulate ranges that correspond to real chunks in the
+        # response, so we build a content appropriately.
+        filler = ''.join(['abcdefghij' for _ in range(102)])
+        content = ''.join(['%04d' % v + filler for v in range(16)])
+        self.build_tree_contents([('a', content)],)
+
+    def test_few_ranges(self):
+        t = self.get_transport()
+        l = list(t.readv('a', ((0, 4), (1024, 4), )))
+        self.assertEqual(l[0], (0, '0000'))
+        self.assertEqual(l[1], (1024, '0001'))
+        self.assertEqual(1, self.get_readonly_server().GET_request_nb)
+
+    def test_a_lot_of_ranges(self):
+        t = self.get_transport()
+        l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
+        self.assertEqual(l[0], (0, '0000'))
+        self.assertEqual(l[1], (1024, '0001'))
+        self.assertEqual(l[2], (4096, '0004'))
+        self.assertEqual(l[3], (8192, '0008'))
+        # The server will refuse to serve the first request (too much ranges),
+        # a second request will succeeds.
+        self.assertEqual(2, self.get_readonly_server().GET_request_nb)
+
+
+class TestLimitedRangeRequestServer_urllib(TestLimitedRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests limited range requests server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestLimitedRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                                          TestLimitedRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests limited range requests server for pycurl implementation"""
+
+
+
 class TestHttpProxyWhiteBox(TestCase):
     """Whitebox test proxy http authorization.
 
@@ -926,18 +968,21 @@ class TestRanges(object):
         server = self.get_readonly_server()
         self.transport = self._transport(server.get_url())
 
-    def _file_contents(self, relpath, ranges, tail_amount=0):
-         code, data = self.transport._get(relpath, ranges)
-         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-         for start, end in ranges:
-             data.seek(start)
-             yield data.read(end - start + 1)
+    def _file_contents(self, relpath, ranges):
+        offsets = [ (start, end - start + 1) for start, end in ranges]
+        coalesce = self.transport._coalesce_offsets
+        coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
+        code, data = self.transport._get(relpath, coalesced)
+        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        for start, end in ranges:
+            data.seek(start)
+            yield data.read(end - start + 1)
 
     def _file_tail(self, relpath, tail_amount):
-         code, data = self.transport._get(relpath, [], tail_amount)
-         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-         data.seek(-tail_amount + 1, 2)
-         return data.read(tail_amount)
+        code, data = self.transport._get(relpath, [], tail_amount)
+        self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+        data.seek(-tail_amount + 1, 2)
+        return data.read(tail_amount)
 
     def test_range_header(self):
         # Valid ranges
@@ -946,11 +991,11 @@ class TestRanges(object):
         # Tail
         self.assertEqual('789', self._file_tail('a', 3))
         # Syntactically invalid range
-        self.assertRaises(errors.InvalidRange,
-                          self.transport._get, 'a', [(4, 3)])
+        self.assertListRaises(errors.InvalidRange,
+                          self._file_contents, 'a', [(4, 3)])
         # Semantically invalid range
-        self.assertRaises(errors.InvalidRange,
-                          self.transport._get, 'a', [(42, 128)])
+        self.assertListRaises(errors.InvalidRange,
+                          self._file_contents, 'a', [(42, 128)])
 
 
 class TestRanges_urllib(TestRanges, TestCaseWithWebserver):

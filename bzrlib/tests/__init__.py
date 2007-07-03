@@ -1638,19 +1638,27 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_readonly_server = None
         self.__vfs_server = None
 
-    def get_transport(self):
-        """Return a writeable transport for the test scratch space"""
-        t = get_transport(self.get_url())
+    def get_transport(self, relpath=None):
+        """Return a writeable transport.
+
+        This transport is for the test scratch space relative to
+        "self._test_root""
+        
+        :param relpath: a path relative to the base url.
+        """
+        t = get_transport(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
-    def get_readonly_transport(self):
+    def get_readonly_transport(self, relpath=None):
         """Return a readonly transport for the test scratch space
         
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
+
+        :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_readonly_url())
+        t = get_transport(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -1687,11 +1695,7 @@ class TestCaseWithMemoryTransport(TestCase):
         These should only be downwards relative, not upwards.
         """
         base = self.get_readonly_server().get_url()
-        if relpath is not None:
-            if not base.endswith('/'):
-                base = base + '/'
-            base = base + relpath
-        return base
+        return self._adjust_url(base, relpath)
 
     def get_vfs_only_server(self):
         """Get the vfs only read/write server instance.
@@ -2278,6 +2282,7 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
+                   'bzrlib.tests.test_pack',
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
@@ -2384,7 +2389,7 @@ def test_suite():
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    from bzrlib.transport import TransportTestProviderAdapter
+    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
     for package in packages_to_test():
@@ -2489,3 +2494,32 @@ class Feature(object):
         if getattr(self, 'feature_name', None):
             return self.feature_name()
         return self.__class__.__name__
+
+
+class TestScenarioApplier(object):
+    """A tool to apply scenarios to tests."""
+
+    def adapt(self, test):
+        """Return a TestSuite containing a copy of test for each scenario."""
+        result = unittest.TestSuite()
+        for scenario in self.scenarios:
+            result.addTest(self.adapt_test_to_scenario(test, scenario))
+        return result
+
+    def adapt_test_to_scenario(self, test, scenario):
+        """Copy test and apply scenario to it.
+
+        :param test: A test to adapt.
+        :param scenario: A tuple describing the scenarion.
+            The first element of the tuple is the new test id.
+            The second element is a dict containing attributes to set on the
+            test.
+        :return: The adapted test.
+        """
+        from copy import deepcopy
+        new_test = deepcopy(test)
+        for name, value in scenario[1].items():
+            setattr(new_test, name, value)
+        new_id = "%s(%s)" % (new_test.id(), scenario[0])
+        new_test.id = lambda: new_id
+        return new_test

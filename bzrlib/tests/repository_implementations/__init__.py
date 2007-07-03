@@ -27,20 +27,56 @@ rather than in tests/branch_implementations/*.py.
 from bzrlib import (
     repository,
     )
-from bzrlib.repository import (
-    RepositoryTestProviderAdapter,
-    )
 from bzrlib.repofmt import (
     weaverepo,
     )
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
+                          TestScenarioApplier,
                           TestLoader,
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
+
+
+class RepositoryTestProviderAdapter(TestScenarioApplier):
+    """A tool to generate a suite testing multiple repository formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and bzrdir_format and
+    repository_format classes into each copy. Each copy is also given a new id()
+    to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats,
+                 vfs_transport_factory=None):
+        TestScenarioApplier.__init__(self)
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._vfs_transport_factory = vfs_transport_factory
+        self.scenarios = self.formats_to_scenarios(formats)
+    
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of (repository_format, bzrdir_format).
+        """
+        result = []
+        for repository_format, bzrdir_format in formats:
+            scenario = (repository_format.__class__.__name__,
+                {"transport_server":self._transport_server,
+                 "transport_readonly_server":self._transport_readonly_server,
+                 "bzrdir_format":bzrdir_format,
+                 "repository_format":repository_format,
+                 })
+            # Only override the test's vfs_transport_factory if one was
+            # specified, otherwise just leave the default in place.
+            if self._vfs_transport_factory:
+                scenario[1]['vfs_transport_factory'] = self._vfs_transport_factory
+            result.append(scenario)
+        return result
 
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
@@ -49,7 +85,10 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
         if format is None:
             # Create a repository of the type we are trying to test.
             made_control = self.make_bzrdir(relpath)
-            return self.repository_format.initialize(made_control)
+            repo = self.repository_format.initialize(made_control)
+            if getattr(self, "repository_to_test_repository", None):
+                repo = self.repository_to_test_repository(repo)
+            return repo
         else:
             return super(TestCaseWithRepository, self).make_repository(
                 relpath, format)

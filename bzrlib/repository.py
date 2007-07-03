@@ -20,7 +20,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import re
 import time
-import unittest
 
 from bzrlib import (
     bzrdir,
@@ -1824,102 +1823,6 @@ InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterRemoteRepository)
-
-
-class RepositoryTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple repository formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and bzrdir_format and
-    repository_format classes into each copy. Each copy is also given a new id()
-    to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats,
-                 vfs_transport_factory=None):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._vfs_transport_factory = vfs_transport_factory
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for repository_format, bzrdir_format in self._formats:
-            from copy import deepcopy
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            # Only override the test's vfs_transport_factory if one was
-            # specified, otherwise just leave the default in place.
-            if self._vfs_transport_factory:
-                new_test.vfs_transport_factory = self._vfs_transport_factory
-            new_test.bzrdir_format = bzrdir_format
-            new_test.repository_format = repository_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), repository_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-
-class InterRepositoryTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple inter repository formats.
-
-    This is done by copying the test once for each interrepo provider and injecting
-    the transport_server, transport_readonly_server, repository_format and 
-    repository_to_format classes into each copy.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._formats = formats
-    
-    def adapt(self, test):
-        result = unittest.TestSuite()
-        for interrepo_class, repository_format, repository_format_to in self._formats:
-            from copy import deepcopy
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.interrepo_class = interrepo_class
-            new_test.repository_format = repository_format
-            new_test.repository_format_to = repository_format_to
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), interrepo_class.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of interrepo permutations to test."""
-        from bzrlib.repofmt import knitrepo, weaverepo
-        result = []
-        # test the default InterRepository between format 6 and the current 
-        # default format.
-        # XXX: robertc 20060220 reinstate this when there are two supported
-        # formats which do not have an optimal code path between them.
-        #result.append((InterRepository,
-        #               RepositoryFormat6(),
-        #               RepositoryFormatKnit1()))
-        for optimiser_class in InterRepository._optimisers:
-            format_to_test = optimiser_class._get_repo_format_to_test()
-            if format_to_test is not None:
-                result.append((optimiser_class,
-                               format_to_test, format_to_test))
-        # if there are specific combinations we want to use, we can add them 
-        # here.
-        result.append((InterModel1and2,
-                       weaverepo.RepositoryFormat5(),
-                       knitrepo.RepositoryFormatKnit3()))
-        result.append((InterKnit1and2,
-                       knitrepo.RepositoryFormatKnit1(),
-                       knitrepo.RepositoryFormatKnit3()))
-        return result
 
 
 class CopyConverter(object):
