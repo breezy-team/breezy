@@ -82,7 +82,7 @@ class TestHelp(ExternalBase):
 
     def test_help_status_flags(self):
         """Smoke test for 'bzr help status-flags'"""
-        out, err = self.runbzr('help status-flags')
+        out, err = self.run_bzr('help status-flags')
         self.assertEqual(bzrlib.help_topics._status_flags, out)
 
     def test_help_commands(self):
