@@ -237,12 +237,7 @@ class LockDir(object):
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")
             raise LockContention(self)
-        # we don't call confirm here because we don't want to set
-        # _lock_held til we're sure it's true, and because it's really a
-        # problem, not just regular contention, if this fails
         self._lock_held = True
-        # FIXME: we should remove the pending lock if we fail, 
-        # https://bugs.launchpad.net/bzr/+bug/109169
         self._trace("... lock succeeded after %dms",
                 (time.time() - start_time) * 1000)
         return self.nonce
