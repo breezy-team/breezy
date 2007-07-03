@@ -22,6 +22,7 @@ import bzrlib.osutils as osutils
 
 
 class WalkDirsBenchmark(Benchmark):
+    """Benchmarks for `bzrlib.osutils.walkdirs`"""
 
     def test_walkdirs_kernel_like_tree(self):
         """Walking a kernel sized tree is fast!(150ms)."""

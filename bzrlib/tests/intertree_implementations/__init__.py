@@ -35,10 +35,12 @@ from bzrlib.tests.tree_implementations import (
     revision_tree_from_workingtree,
     TestCaseWithTree,
     )
+from bzrlib.tests.workingtree_implementations import (
+    WorkingTreeTestProviderAdapter,
+    )
 from bzrlib.tree import InterTree
 from bzrlib.workingtree import (
     WorkingTreeFormat3,
-    WorkingTreeTestProviderAdapter,
     )
 
 
@@ -61,26 +63,35 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
 class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each InterTree implementation in bzrlib."""
 
-    def adapt(self, test):
-        result = TestSuite()
+    def formats_to_scenarios(self, formats):
+        """Transform the input formats to a list of scenarios.
+
+        :param formats: A list of tuples:.
+            (intertree_class,
+             workingtree_format,
+             workingtree_format_to,
+             mutable_trees_to_test_trees)
+        """
+        result = []
         for (intertree_class,
             workingtree_format,
             workingtree_format_to,
-            mutable_trees_to_test_trees) in self._formats:
-            new_test = self._clone_test(
-                test,
-                workingtree_format._matchingbzrdir,
-                workingtree_format,
-                intertree_class.__name__)
-            new_test.intertree_class = intertree_class
-            new_test.workingtree_format_to = workingtree_format_to
-            # mutable_trees_to_test_trees takes two trees and converts them to
-            # whatever relationship the optimiser under test requires.
-            new_test.mutable_trees_to_test_trees = mutable_trees_to_test_trees
-            # workingtree_to_test_tree is set to disable changing individual
-            # trees: instead the mutable_trees_to_test_trees helper is used.
-            new_test.workingtree_to_test_tree = return_parameter
-            result.addTest(new_test)
+            mutable_trees_to_test_trees) in formats:
+            scenario = (intertree_class.__name__, {
+                "transport_server":self._transport_server,
+                "transport_readonly_server":self._transport_readonly_server,
+                "bzrdir_format":workingtree_format._matchingbzrdir,
+                "workingtree_format":workingtree_format,
+                "intertree_class":intertree_class,
+                "workingtree_format_to":workingtree_format_to,
+                # mutable_trees_to_test_trees takes two trees and converts them to,
+                # whatever relationship the optimiser under test requires.,
+                "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
+                # workingtree_to_test_tree is set to disable changing individual,
+                # trees: instead the mutable_trees_to_test_trees helper is used.,
+                "workingtree_to_test_tree":return_parameter,
+                })
+            result.append(scenario)
         return result
 
 

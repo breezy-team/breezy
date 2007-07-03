@@ -884,16 +884,18 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertRaises(self, excClass, func, *args, **kwargs):
+    def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
 
         :param excClass: As for the except statement, this may be either an
-        exception class, or a tuple of classes.
+            exception class, or a tuple of classes.
+        :param callableObj: A callable, will be passed ``*args`` and
+            ``**kwargs``.
 
         Returns the exception so that you can examine it.
         """
         try:
-            func(*args, **kwargs)
+            callableObj(*args, **kwargs)
         except excClass, e:
             return e
         else:
@@ -978,7 +980,7 @@ class TestCase(unittest.TestCase):
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         :return: A tuple (warnings, result). result is the result of calling
-            a_callable(*args, **kwargs).
+            a_callable(``*args``, ``**kwargs``).
         """
         local_warnings = []
         def capture_warnings(msg, cls=None, stacklevel=None):
@@ -1001,15 +1003,16 @@ class TestCase(unittest.TestCase):
         not other callers that go direct to the warning module.
 
         :param deprecation_format: The deprecation format that the callable
-            should have been deprecated with. This is the same type as the 
-            parameter to deprecated_method/deprecated_function. If the 
+            should have been deprecated with. This is the same type as the
+            parameter to deprecated_method/deprecated_function. If the
             callable is not deprecated with this format, an assertion error
             will be raised.
         :param a_callable: A callable to call. This may be a bound method or
-            a regular function. It will be called with *args and **kwargs.
+            a regular function. It will be called with ``*args`` and
+            ``**kwargs``.
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
-        :return: The result of a_callable(*args, **kwargs)
+        :return: The result of a_callable(``*args``, ``**kwargs``)
         """
         call_warnings, result = self._capture_warnings(a_callable,
             *args, **kwargs)
@@ -1327,12 +1330,15 @@ class TestCase(unittest.TestCase):
         overall behavior of the bzr application (rather than a unit test
         or a functional test of the library.)
 
-        :param stdin: A string to be used as stdin for the command.
-        :param retcode: The status code the command should return; 
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+
+        :keyword stdin: A string to be used as stdin for the command.
+        :keyword retcode: The status code the command should return;
             default 0.
-        :param working_dir: The directory to run the command in
-        :param error_regexes: A list of expected error messages.  If 
-        specified they must be seen in the error output of the command.
+        :keyword working_dir: The directory to run the command in
+        :keyword error_regexes: A list of expected error messages.  If
+            specified they must be seen in the error output of the command.
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1368,18 +1374,19 @@ class TestCase(unittest.TestCase):
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
         """Run bzr, and check that stderr contains the supplied regexes
-        
-        :param error_regexes: Sequence of regular expressions which 
+
+        :param error_regexes: Sequence of regular expressions which
             must each be found in the error output. The relative ordering
             is not enforced.
         :param args: command-line arguments for bzr
         :param kwargs: Keyword arguments which are interpreted by run_bzr
             This function changes the default value of retcode to be 3,
             since in most cases this is run when you expect bzr to fail.
-        :return: (out, err) The actual output of running the command (in case you
-                 want to do more inspection)
+        :return: (out, err) The actual output of running the command (in case
+            you want to do more inspection)
 
-        Examples of use:
+        Examples of use::
+
             # Make sure that commit is failing because there is nothing to do
             self.run_bzr_error(['no changes to commit'],
                                'commit', '-m', 'my commit comment')
@@ -1402,14 +1409,14 @@ class TestCase(unittest.TestCase):
         handling, or early startup code, etc.  Subprocess code can't be 
         profiled or debugged so easily.
 
-        :param retcode: The status code that is expected.  Defaults to 0.  If
+        :keyword retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
-        :param env_changes: A dictionary which lists changes to environment
+        :keyword env_changes: A dictionary which lists changes to environment
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
-        :param universal_newlines: Convert CRLF => LF
-        :param allow_plugins: By default the subprocess is run with
+        :keyword universal_newlines: Convert CRLF => LF
+        :keyword allow_plugins: By default the subprocess is run with
             --no-plugins to ensure test reproducibility. Also, it is possible
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
@@ -1439,7 +1446,7 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param process_args: a list of arguments to pass to the bzr executable,
-            for example `['--version']`.
+            for example ``['--version']``.
         :param env_changes: A dictionary which lists changes to environment
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
@@ -1765,11 +1772,12 @@ class TestCaseWithMemoryTransport(TestCase):
         capabilities of the local filesystem, but it might actually be a
         MemoryTransport or some other similar virtual filesystem.
 
-        This is the backing transport (if any) of the server returned by 
+        This is the backing transport (if any) of the server returned by
         get_url and get_readonly_url.
 
         :param relpath: provides for clients to get a path relative to the base
             url.  These should only be downwards relative, not upwards.
+        :return: A URL
         """
         base = self.get_vfs_only_server().get_url()
         return self._adjust_url(base, relpath)
@@ -1911,6 +1919,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
+        os.chdir(self.TEST_ROOT)
         _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
@@ -1922,14 +1931,13 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         This assumes that all the elements in the tree being built are new.
 
         This doesn't add anything to a branch.
-        :param line_endings: Either 'binary' or 'native'
-                             in binary mode, exact contents are written
-                             in native mode, the line endings match the
-                             default platform endings.
 
-        :param transport: A transport to write to, for building trees on 
-                          VFS's. If the transport is readonly or None,
-                          "." is opened automatically.
+        :param line_endings: Either 'binary' or 'native'
+            in binary mode, exact contents are written in native mode, the
+            line endings match the default platform endings.
+        :param transport: A transport to write to, for building trees on VFS's.
+            If the transport is readonly or None, "." is opened automatically.
+        :return: None
         """
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
@@ -2378,7 +2386,7 @@ def test_suite():
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    from bzrlib.transport import TransportTestProviderAdapter
+    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
     for package in packages_to_test():
@@ -2483,3 +2491,32 @@ class Feature(object):
         if getattr(self, 'feature_name', None):
             return self.feature_name()
         return self.__class__.__name__
+
+
+class TestScenarioApplier(object):
+    """A tool to apply scenarios to tests."""
+
+    def adapt(self, test):
+        """Return a TestSuite containing a copy of test for each scenario."""
+        result = unittest.TestSuite()
+        for scenario in self.scenarios:
+            result.addTest(self.adapt_test_to_scenario(test, scenario))
+        return result
+
+    def adapt_test_to_scenario(self, test, scenario):
+        """Copy test and apply scenario to it.
+
+        :param test: A test to adapt.
+        :param scenario: A tuple describing the scenarion.
+            The first element of the tuple is the new test id.
+            The second element is a dict containing attributes to set on the
+            test.
+        :return: The adapted test.
+        """
+        from copy import deepcopy
+        new_test = deepcopy(test)
+        for name, value in scenario[1].items():
+            setattr(new_test, name, value)
+        new_id = "%s(%s)" % (new_test.id(), scenario[0])
+        new_test.id = lambda: new_id
+        return new_test
