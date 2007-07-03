@@ -641,8 +641,6 @@ class TestLockDir(TestCaseWithTransport):
         t = transport.get_transport('brokenrename+' + self.get_url())
         ld1 = LockDir(t, 'test_lock')
         ld1.create()
-
-        import pdb;pdb.set_trace()
         ld1.attempt_lock()
         ld2 = LockDir(t, 'test_lock')
         # we should fail to lock
