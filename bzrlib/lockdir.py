@@ -249,8 +249,11 @@ class LockDir(object):
         dirs don't clutter up the lockdir.
         """
         self._trace("remove %s", tmpname)
-        self.transport.delete(tmpname + self.__INFO_NAME)
-        self.transport.rmdir(tmpname)
+        try:
+            self.transport.delete(tmpname + self.__INFO_NAME)
+            self.transport.rmdir(tmpname)
+        except PathError, e:
+            note("error removing pending lock: %s", e)
 
     def _create_pending_dir(self):
         tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
