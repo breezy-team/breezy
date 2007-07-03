@@ -192,7 +192,7 @@ class LogWalker(object):
 
         paths = {}
         for p, act, cf, cr in self.db.execute(query):
-            paths[p] = (act, cf, cr)
+            paths[p.encode("utf-8")] = (act, cf, cr)
         return paths
 
     def get_revision_info(self, revnum):

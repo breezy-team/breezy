@@ -61,8 +61,8 @@ def get_local_changes(paths, scheme, generate_revid, get_children=None):
                 if (crp == "" and new_p == ""):
                     data = ('M', None, None)
                 else:
-                    data = (data[0], crp, generate_revid(data[2], cbp, 
-                                                         str(scheme)))
+                    data = (data[0], crp, generate_revid(
+                                  data[2], cbp.encode("utf-8"), str(scheme)))
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
@@ -149,7 +149,8 @@ class FileIdMap(object):
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
                                              revnum, scheme):
-            revid = self.repos.generate_revision_id(rev, bp, scheme)
+            revid = self.repos.generate_revision_id(rev, bp.encode("utf-8"), 
+                                                    scheme)
             map = self.load(revid)
             if map != {}:
                 # found the nearest cached map

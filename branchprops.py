@@ -36,11 +36,11 @@ class BranchPropertyList:
         self.pool = Pool()
 
     def _get_dir_props(self, path, revnum):
-        assert path != None
+        assert isinstance(path, str)
         path = path.lstrip("/")
 
         try:
-            (_, _, props) = self.log.transport.get_dir(path.encode('utf8'), 
+            (_, _, props) = self.log.transport.get_dir(path, 
                 revnum, pool=self.pool)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
@@ -51,6 +51,7 @@ class BranchPropertyList:
 
     def get_properties(self, path, origrevnum):
         assert path is not None
+        assert isinstance(path, str)
         assert isinstance(origrevnum, int) and origrevnum >= 0
         proplist = {}
         revnum = self.log.find_latest_change(path, origrevnum)
@@ -73,7 +74,7 @@ class BranchPropertyList:
 
     def get_property(self, path, revnum, name, default=None):
         assert isinstance(revnum, int)
-        assert isinstance(path, basestring)
+        assert isinstance(path, str)
         props = self.get_properties(path, revnum)
         if props.has_key(name):
             return props[name]
@@ -81,6 +82,7 @@ class BranchPropertyList:
 
     def get_property_diff(self, path, revnum, name):
         """Returns the new lines that were added to a particular property."""
+        assert isinstance(path, str)
         # If the path this property is set on didn't change, then 
         # the property can't have changed.
         if not self.log.touches_path(path, revnum):
@@ -91,7 +93,8 @@ class BranchPropertyList:
         if prev_path is None and prev_revnum == -1:
             previous = ""
         else:
-            previous = self.get_property(prev_path, prev_revnum, name, "")
+            previous = self.get_property(prev_path.encode("utf-8"), 
+                                         prev_revnum, name, "")
         if len(previous) > len(current) or current[0:len(previous)] != previous:
             mutter('original part changed!')
             return ""

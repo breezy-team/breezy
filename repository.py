@@ -444,6 +444,8 @@ class SvnRepository(Repository):
 
         :return: New revision id.
         """
+        assert isinstance(path, str)
+
         # Look in the cache to see if it already has a revision id
         revid = self.revmap.lookup_branch_revnum(revnum, path, scheme)
         if revid is not None:
@@ -602,8 +604,8 @@ class SvnRepository(Repository):
         :param scheme: Name of the branching scheme to use
         :return: iterator over the ancestors
         """
-
         assert branch_path is not None
+        assert isinstance(branch_path, str)
         assert isinstance(revnum, int) and revnum >= 0
         if not scheme.is_branch(branch_path) and \
            not scheme.is_tag(branch_path):
@@ -617,6 +619,7 @@ class SvnRepository(Repository):
             # If something underneath branch_path changed, there is a 
             # revision there, so yield it.
             for p in paths:
+                assert isinstance(p, str)
                 if p.startswith(branch_path+"/") or branch_path == "":
                     yield (branch_path, revnum)
                     yielded = True
@@ -641,7 +644,7 @@ class SvnRepository(Repository):
                     # for now, just make it look like the branch ended here
                     return
                 revnum = paths[branch_path][2]
-                branch_path = paths[branch_path][1]
+                branch_path = paths[branch_path][1].encode("utf-8")
                 continue
             
             # Make sure we get the right location for the next time if 
@@ -656,7 +659,7 @@ class SvnRepository(Repository):
                     assert paths[p][1] is not None and paths[p][0] in ('A', 'R'), "Parent didn't exist yet, but child wasn't added !?"
 
                     revnum = paths[p][2]
-                    branch_path = paths[p][1] + branch_path[len(p):]
+                    branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
 
     """Return all the changes that happened in a branch 
     between branch_path and revnum. 
