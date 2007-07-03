@@ -90,8 +90,7 @@ class BundleWriter(object):
         :file_id: must be None
         """
         metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff',
-                    'sha1': sha1}
+                    'storage_kind': 'mpdiff'}
         self._add_record(bytes, {'parents': parents,
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
