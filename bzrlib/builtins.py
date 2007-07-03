@@ -52,7 +52,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
-from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.smtp_connection import SMTPConnection
@@ -2675,6 +2674,7 @@ class cmd_merge(Command):
                 base = None
 
         if other_revision_id is None:
+            verified = 'inapplicable'
             if revision is None \
                     or len(revision) < 1 or revision[0].needs_branch():
                 branch = self._get_remembered_parent(tree, branch,
@@ -3534,6 +3534,8 @@ class cmd_merge_directive(Command):
 
     takes_args = ['submit_branch?', 'public_branch?']
 
+    hidden = True
+
     takes_options = [
         RegistryOption.from_kwargs('patch-type',
             'The type of patch to include in the directive',
@@ -3553,8 +3555,11 @@ class cmd_merge_directive(Command):
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None):
         from bzrlib.revision import ensure_null, NULL_REVISION
-        if patch_type == 'plain':
-            patch_type = None
+        include_patch, include_bundle = {
+            'plain': (False, False),
+            'diff': (True, False),
+            'bundle': (True, True),
+            }[patch_type]
         branch = Branch.open('.')
         stored_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
@@ -3572,7 +3577,7 @@ class cmd_merge_directive(Command):
             public_branch = stored_public_branch
         elif stored_public_branch is None:
             branch.set_public_branch(public_branch)
-        if patch_type != "bundle" and public_branch is None:
+        if not include_bundle and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or'
                                          ' known')
         base_revision_id = None
@@ -3592,8 +3597,9 @@ class cmd_merge_directive(Command):
         directive = merge_directive.MergeDirective2.from_objects(
             branch.repository, revision_id, time.time(),
             osutils.local_time_offset(), submit_branch,
-            public_branch=public_branch, patch_type=patch_type,
-            message=message, base_revision_id=base_revision_id)
+            public_branch=public_branch, include_patch=include_patch,
+            include_bundle=include_bundle, message=message,
+            base_revision_id=base_revision_id)
         if mail_to is None:
             if sign:
                 self.outf.write(directive.to_signed(branch))
@@ -3604,6 +3610,96 @@ class cmd_merge_directive(Command):
             s = SMTPConnection(branch.get_config())
             s.send_email(message)
 
+
+class cmd_submit(Command):
+    """Create a merge-directive for submiting changes.
+
+    A merge directive provides many things needed for requesting merges:
+    - A machine-readable description of the merge to perform
+    - An optional patch that is a preview of the changes requested
+    - An optional bundle of revision data, so that the changes can be applied
+      directly from the merge directive, without retrieving data from a
+      branch.
+
+    If --no-bundle is specified, then public_branch is needed (and must be
+    up-to-date), so that the receiver can perform the merge using the
+    public_branch.  The public_branch is always included if known, so that
+    people can check it later.
+
+    The submit branch defaults to the parent, but can be overridden.  Both
+    submit branch and public branch will be remembered if supplied.
+
+    If a public_branch is known for the submit_branch, that public submit
+    branch is used in the merge instructions.  This means that a local mirror
+    can be used as your actual submit branch.
+    """
+
+    encoding_type = 'exact'
+
+    aliases = ['bundle', 'bundle-revisions']
+
+    takes_args = ['submit_branch?', 'public_branch?']
+    takes_options = [Option('no-bundle',
+                     help='Do not include a bundle in the merge directive'),
+                     Option('no-patch',
+                     help='Do not include a preview patch in the merge'
+                     ' directive'),
+                     Option('remember',
+                            help='Remember submit and public branch'),
+                     'revision']
+
+    def run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False):
+        from bzrlib.revision import ensure_null, NULL_REVISION
+        branch = Branch.open_containing('.')[0]
+        if remember and submit_branch is None:
+            raise errors.BzrCommandError(
+                '--remember requires a branch to be specified.')
+        stored_submit_branch = branch.get_submit_branch()
+        remembered_submit_branch = False
+        if submit_branch is None:
+            submit_branch = stored_submit_branch
+            remembered_submit_branch = True
+        else:
+            if stored_submit_branch is None or remember:
+                branch.set_submit_branch(submit_branch)
+        if submit_branch is None:
+            submit_branch = branch.get_parent()
+            remembered_submit_branch = True
+        if submit_branch is None:
+            raise errors.BzrCommandError('No submit branch known or specified')
+        if remembered_submit_branch:
+            note('Using saved location: %s', submit_branch)
+
+        stored_public_branch = branch.get_public_branch()
+        if public_branch is None:
+            public_branch = stored_public_branch
+        elif stored_public_branch is None or remember:
+            branch.set_public_branch(public_branch)
+        if no_bundle and public_branch is None:
+            raise errors.BzrCommandError('No public branch specified or'
+                                         ' known')
+        base_revision_id = None
+        if revision is not None:
+            if len(revision) > 2:
+                raise errors.BzrCommandError('bzr submit takes '
+                    'at most two one revision identifiers')
+            revision_id = revision[-1].in_history(branch).rev_id
+            if len(revision) == 2:
+                base_revision_id = revision[0].in_history(branch).rev_id
+                base_revision_id = ensure_null(base_revision_id)
+        else:
+            revision_id = branch.last_revision()
+        revision_id = ensure_null(revision_id)
+        if revision_id == NULL_REVISION:
+            raise errors.BzrCommandError('No revisions to bundle.')
+        directive = merge_directive.MergeDirective2.from_objects(
+            branch.repository, revision_id, time.time(),
+            osutils.local_time_offset(), submit_branch,
+            public_branch=public_branch, include_patch=not no_patch,
+            include_bundle=not no_bundle, message=None,
+            base_revision_id=base_revision_id)
+        self.outf.writelines(directive.to_lines())
 
 class cmd_tag(Command):
     """Create a tag naming a revision.
@@ -3825,7 +3921,6 @@ merge = _merge_helper
 from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import (
-    cmd_bundle_revisions,
     cmd_bundle_info,
     )
 from bzrlib.sign_my_commits import cmd_sign_my_commits

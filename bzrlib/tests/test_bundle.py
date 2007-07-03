@@ -30,7 +30,7 @@ from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bundle.serializer import write_bundle, read_bundle, v4
+from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
@@ -1034,6 +1034,26 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
         result = bundle.get_merge_request(tree.branch.repository)
         self.assertEqual((None, 'rev1', 'inapplicable'), result)
+
+    def test_with_subtree(self):
+        tree = self.make_branch_and_tree('tree',
+                                         format='dirstate-with-subtree')
+        self.b1 = tree.branch
+        subtree = self.make_branch_and_tree('tree/subtree',
+                                            format='dirstate-with-subtree')
+        tree.add('subtree')
+        tree.commit('hello', rev_id='rev1')
+        try:
+            bundle = read_bundle(self.create_bundle_text(None, 'rev1')[0])
+        except errors.IncompatibleBundleFormat:
+            raise TestSkipped("Format 0.8 doesn't work with knit3")
+        if isinstance(bundle, v09.BundleInfo09):
+            raise TestSkipped("Format 0.9 doesn't work with subtrees")
+        repo = self.make_repository('repo', format='knit')
+        self.assertRaises(errors.IncompatibleRevision,
+                          bundle.install_revisions, repo)
+        repo2 = self.make_repository('repo2', format='dirstate-with-subtree')
+        bundle.install_revisions(repo2)
 
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):

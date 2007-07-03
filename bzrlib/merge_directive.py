@@ -127,11 +127,11 @@ class _BaseMergeDirective(object):
             patch = type_handler[patch_type](repository, revision_id,
                                              ancestor_id)
 
-            if public_branch is not None and patch_type != 'bundle':
-                public_branch_obj = _mod_branch.Branch.open(public_branch)
-                if not public_branch_obj.repository.has_revision(revision_id):
-                    raise errors.PublicBranchOutOfDate(public_branch,
-                                                       revision_id)
+        if public_branch is not None and patch_type != 'bundle':
+            public_branch_obj = _mod_branch.Branch.open(public_branch)
+            if not public_branch_obj.repository.has_revision(revision_id):
+                raise errors.PublicBranchOutOfDate(public_branch,
+                                                   revision_id)
 
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
             patch, patch_type, public_branch, message)
@@ -411,7 +411,7 @@ class MergeDirective2(_BaseMergeDirective):
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
-                 target_branch, patch_type='bundle',
+                 target_branch, include_patch=True, include_bundle=True,
                  local_target_branch=None, public_branch=None, message=None,
                  base_revision_id=None):
         """Generate a merge directive from various objects
@@ -421,16 +421,16 @@ class MergeDirective2(_BaseMergeDirective):
         :param time: The POSIX timestamp of the date the request was issued.
         :param timezone: The timezone of the request
         :param target_branch: The url of the branch to merge into
-        :param patch_type: 'bundle', 'diff' or None, depending on the type of
-            patch desired.
+        :param include_patch: If true, include a preview patch
+        :param include_bundle: If true, include a bundle
         :param local_target_branch: a local copy of the target branch
         :param public_branch: location of a public branch containing the target
             revision.
         :param message: Message to use when committing the merge
         :return: The merge directive
 
-        The public branch is always used if supplied.  If the patch_type is
-        not 'bundle', the public branch must be supplied, and will be verified.
+        The public branch is always used if supplied.  If no bundle is
+        included, the public branch must be supplied, and will be verified.
 
         If the message is not supplied, the message from revision_id will be
         used for the commit.
@@ -456,28 +456,28 @@ class MergeDirective2(_BaseMergeDirective):
                                                 submit_revision_id)
             if base_revision_id is None:
                 base_revision_id = ancestor_id
-            if patch_type is None:
-                patch = None
-                bundle = None
-            else:
+            if (include_patch, include_bundle) != (False, False):
                 repository.fetch(submit_branch.repository, submit_revision_id)
-                if patch_type in ('bundle', 'diff'):
-                    patch = klass._generate_diff(repository, revision_id,
-                                                 base_revision_id)
-                if patch_type == 'bundle':
-                    bundle = klass._generate_bundle(repository, revision_id,
-                        ancestor_id).encode('base-64')
-                else:
-                    bundle = None
+            if include_patch:
+                patch = klass._generate_diff(repository, revision_id,
+                                             base_revision_id)
+            else:
+                patch = None
 
-                if public_branch is not None and patch_type != 'bundle':
-                    public_branch_obj = _mod_branch.Branch.open(public_branch)
-                    public_branch_obj.lock_read()
-                    locked.append(public_branch_obj)
-                    if not public_branch_obj.repository.has_revision(
-                        revision_id):
-                        raise errors.PublicBranchOutOfDate(public_branch,
-                                                           revision_id)
+            if include_bundle:
+                bundle = klass._generate_bundle(repository, revision_id,
+                    ancestor_id).encode('base-64')
+            else:
+                bundle = None
+
+            if public_branch is not None and not include_bundle:
+                public_branch_obj = _mod_branch.Branch.open(public_branch)
+                public_branch_obj.lock_read()
+                locked.append(public_branch_obj)
+                if not public_branch_obj.repository.has_revision(
+                    revision_id):
+                    raise errors.PublicBranchOutOfDate(public_branch,
+                                                       revision_id)
         finally:
             for entry in reversed(locked):
                 entry.unlock()

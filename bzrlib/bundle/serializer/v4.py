@@ -90,8 +90,7 @@ class BundleWriter(object):
         :file_id: must be None
         """
         metadata = {'parents': parents,
-                    'storage_kind': 'mpdiff',
-                    'sha1': sha1}
+                    'storage_kind': 'mpdiff'}
         self._add_record(bytes, {'parents': parents,
             'storage_kind': 'fulltext'}, repo_kind, revision_id, file_id)
 
@@ -508,7 +507,10 @@ class RevisionInstaller(object):
         target_inv = self._source_serializer.read_inventory_from_string(
             ''.join(target_lines))
         self._handle_root(target_inv, parent_ids)
-        self._repository.add_inventory(revision_id, target_inv, parent_ids)
+        try:
+            self._repository.add_inventory(revision_id, target_inv, parent_ids)
+        except errors.UnsupportedInventoryKind:
+            raise errors.IncompatibleRevision(repr(self._repository))
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id
