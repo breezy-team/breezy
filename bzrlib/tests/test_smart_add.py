@@ -154,10 +154,11 @@ class TestAddActions(TestCase):
 
     def run_action(self, output):
         from bzrlib.add import AddAction
-        from bzrlib.mutabletree import FastPath
+        from bzrlib.mutabletree import _FastPath
         inv = Inventory()
         stdout = StringIO()
         action = AddAction(to_file=stdout, should_print=bool(output))
 
-        self.apply_redirected(None, stdout, None, action, inv, None, FastPath('path'), 'file')
+        self.apply_redirected(None, stdout, None, action, inv, None,
+            _FastPath('path'), 'file')
         self.assertEqual(stdout.getvalue(), output)

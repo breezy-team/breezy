@@ -310,7 +310,7 @@ class MutableTree(tree.Tree):
         # relative : its cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative.
         for filepath in file_list:
-            rf = FastPath(self.relpath(filepath))
+            rf = _FastPath(self.relpath(filepath))
             # validate user parameters. Our recursive code avoids adding new files
             # that need such validation 
             if self.is_control_filename(rf.raw_path):
@@ -428,7 +428,7 @@ class MutableTree(tree.Tree):
                         mutter("skip control directory %r", subp)
                     elif subf in this_ie.children:
                         # recurse into this already versioned subdir.
-                        dirs_to_add.append((FastPath(subp, subf), this_ie))
+                        dirs_to_add.append((_FastPath(subp, subf), this_ie))
                     else:
                         # user selection overrides ignoes
                         # ignore while selecting files - if we globbed in the
@@ -439,14 +439,14 @@ class MutableTree(tree.Tree):
                             ignored.setdefault(ignore_glob, []).append(subp)
                         else:
                             #mutter("queue to add sub-file %r", subp)
-                            dirs_to_add.append((FastPath(subp, subf), this_ie))
+                            dirs_to_add.append((_FastPath(subp, subf), this_ie))
 
         if len(added) > 0 and save:
             self._write_inventory(inv)
         return added, ignored
 
 
-class FastPath(object):
+class _FastPath(object):
     """A path object with fast accessors for things like basename."""
 
     __slots__ = ['raw_path', 'base_path']
@@ -491,7 +491,8 @@ def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
         # note that the dirname use leads to some extra str copying etc but as
         # there are a limited number of dirs we can be nested under, it should
         # generally find it very fast and not recurse after that.
-        added = _add_one_and_parent(tree, inv, None, FastPath(dirname(path.raw_path)), 'directory', action)
+        added = _add_one_and_parent(tree, inv, None,
+            _FastPath(dirname(path.raw_path)), 'directory', action)
         parent_id = inv.path2id(dirname(path.raw_path))
         parent_ie = inv[parent_id]
     _add_one(tree, inv, parent_ie, path, kind, action)

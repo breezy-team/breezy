@@ -84,10 +84,13 @@ IN DEVELOPMENT
 
     * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
       win32. Callers of the function should do this and use the new
-      ``MutableTree.smart_add`` method instead.(Robert Collins)
+      ``MutableTree.smart_add`` method instead. (Robert Collins)
 
     * ``bzrlib.add.glob_expand_for_win32`` is now
       ``bzrlib.win32utils.glob_expand``.  (Robert Collins)
+
+    * ``bzrlib.add.FastPath`` is now private and moved to 
+      ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
 
   INTERNALS:
 
