@@ -37,7 +37,8 @@ class TestContainerWriter(tests.TestCase):
         output = StringIO()
         writer = pack.ContainerWriter(output.write)
         writer.begin()
-        self.assertEqual('Bazaar pack format 1\n', output.getvalue())
+        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\n',
+                         output.getvalue())
 
     def test_end(self):
         """The end() method writes an End Marker record."""
@@ -45,7 +46,8 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.end()
-        self.assertEqual('Bazaar pack format 1\nE', output.getvalue())
+        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nE',
+                         output.getvalue())
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
@@ -53,7 +55,8 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=[])
-        self.assertEqual('Bazaar pack format 1\nB3\n\nabc', output.getvalue())
+        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc',
+                         output.getvalue())
 
     def test_add_bytes_record_one_name(self):
         """Add a bytes record with one name."""
@@ -61,8 +64,10 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1'])
-        self.assertEqual('Bazaar pack format 1\nB3\nname1\n\nabc',
-                         output.getvalue())
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\n\nabc',
+            output.getvalue())
 
     def test_add_bytes_record_two_names(self):
         """Add a bytes record with two names."""
@@ -70,8 +75,10 @@ class TestContainerWriter(tests.TestCase):
         writer = pack.ContainerWriter(output.write)
         writer.begin()
         writer.add_bytes_record('abc', names=['name1', 'name2'])
-        self.assertEqual('Bazaar pack format 1\nB3\nname1\nname2\n\nabc',
-                         output.getvalue())
+        self.assertEqual(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B3\nname1\nname2\n\nabc',
+            output.getvalue())
 
     def test_add_bytes_record_invalid_name(self):
         """Adding a Bytes record with a name with whitespace in it raises
@@ -102,7 +109,8 @@ class TestContainerReader(tests.TestCase):
 
     def test_empty_container(self):
         """Read an empty container."""
-        reader = self.get_reader_for("Bazaar pack format 1\nE")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nE")
         self.assertEqual([], list(reader.iter_records()))
 
     def test_unknown_format(self):
@@ -115,14 +123,16 @@ class TestContainerReader(tests.TestCase):
         """Containers that don't end with an End Marker record should cause
         UnexpectedEndOfContainerError to be raised.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\n")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\n")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, iterator.next)
 
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
-        reader = self.get_reader_for("Bazaar pack format 1\nX")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nX")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnknownRecordTypeError, iterator.next)
@@ -134,7 +144,8 @@ class TestContainerReader(tests.TestCase):
         TestBytesRecordReader.  This test is here to ensure that
         ContainerReader's integration with BytesRecordReader is working.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\nB5\n\naaaaaE")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nB5\n\naaaaaE")
         expected_records = [([], 'aaaaa')]
         self.assertEqual(
             expected_records,
@@ -143,14 +154,15 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_empty_container(self):
         """validate does not raise an error for a container with no records."""
-        reader = self.get_reader_for("Bazaar pack format 1\nE")
+        reader = self.get_reader_for("Bazaar pack format 1 (introduced in 0.18)\nE")
         # No exception raised
         reader.validate()
 
     def test_validate_non_empty_valid_container(self):
         """validate does not raise an error for a container with a valid record.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\nB3\nname\n\nabcE")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nB3\nname\n\nabcE")
         # No exception raised
         reader.validate()
 
@@ -160,7 +172,7 @@ class TestContainerReader(tests.TestCase):
         It may raise either UnexpectedEndOfContainerError or
         UnknownContainerFormatError, depending on exactly what the string is.
         """
-        inputs = ["", "x", "Bazaar pack format 1", "bad\n"]
+        inputs = ["", "x", "Bazaar pack format 1 (introduced in 0.18)", "bad\n"]
         for input in inputs:
             reader = self.get_reader_for(input)
             self.assertRaises(
@@ -172,14 +184,16 @@ class TestContainerReader(tests.TestCase):
         """validate raises UnknownRecordTypeError for unrecognised record
         types.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\nX")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nX")
         self.assertRaises(errors.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
         """validate raises ContainerHasExcessDataError if there are any bytes
         after the end of the container.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\nEcrud")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nEcrud")
         self.assertRaises(
             errors.ContainerHasExcessDataError, reader.validate)
 
@@ -187,7 +201,8 @@ class TestContainerReader(tests.TestCase):
         """validate raises UnexpectedEndOfContainerError if there's no end of
         container marker, even if the container up to this point has been valid.
         """
-        reader = self.get_reader_for("Bazaar pack format 1\n")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
@@ -196,7 +211,7 @@ class TestContainerReader(tests.TestCase):
         multiple times in the container.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1\n"
+            "Bazaar pack format 1 (introduced in 0.18)\n"
             "B0\nname\n\n"
             "B0\nname\n\n"
             "E")
@@ -204,7 +219,8 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
-        reader = self.get_reader_for("Bazaar pack format 1\nB0\n\xcc\n\nE")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
         
 
