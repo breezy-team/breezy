@@ -99,10 +99,8 @@ class BaseReader(object):
     def __init__(self, source_file):
         """Constructor.
 
-        :param reader_func: a callable that takes one optional argument,
-            ``size``, and returns at most that many bytes.  When the callable
-            returns less than the requested number of bytes, then the end of the
-            file/stream has been reached.
+        :param source_file: a file-like object with `read` and `readline`
+            methods.
         """
         self._source = source_file
 
