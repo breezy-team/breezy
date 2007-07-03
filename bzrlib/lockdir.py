@@ -194,55 +194,42 @@ class LockDir(object):
         """
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
+        self._trace("create lock directory")
         self.transport.mkdir(self.path, mode=mode)
 
-    def attempt_lock(self):
-        """Take the lock; fail if it's already held.
+    def _lock_core(self):
+        """Make the pending directory and attempt to rename into place.
         
-        If you wish to block until the lock can be obtained, call wait_lock()
-        instead.
+        If the rename succeeds, we read back the info file to check that we
+        really got the lock.
 
-        :return: The lock token.
-        :raises LockContention: if the lock is held by someone else.
+        If we fail to acquire the lock, this method is responsible for
+        cleaning up the pending directory if possible.  (But it doesn't do
+        that yet.)
+
+        :returns: The nonce of the lock, if it was successfully acquired.
+
+        :raises LockContention: If the lock is held by someone else.  The exception
+            contains the info of the current holder of the lock.
         """
-        if self._fake_read_lock:
-            raise LockContention(self)
-        if self.transport.is_readonly():
-            raise UnlockableTransport(self.transport)
         try:
             self._trace("lock_write...")
             start_time = time.time()
-            tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
-            try:
-                self.transport.mkdir(tmpname)
-            except NoSuchFile:
-                # This may raise a FileExists exception
-                # which is okay, it will be caught later and determined
-                # to be a LockContention.
-                self.create(mode=self._dir_modebits)
-                # After creating the lock directory, try again
-                self.transport.mkdir(tmpname)
-
-            self.nonce = rand_chars(20)
-            info_bytes = self._prepare_info()
-            # We use put_file_non_atomic because we just created a new unique
-            # directory so we don't have to worry about files existing there.
-            # We'll rename the whole directory into place to get atomic
-            # properties
-            self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
-                                                info_bytes)
+            tmpname = self._create_pending_dir()
 
             self.transport.rename(tmpname, self._held_dir)
-            # We must check we really got the lock, because Launchpad's sftp server at one
-            # time had a bug were the rename would successfully move the new
-            # directory into the existing directory, which was incorrect.
-            # It's possible some other servers or filesystems will have a
-            # similar bug allowing someone to think they got the lock when
-            # it's already held.
+            # We must check we really got the lock, because Launchpad's sftp
+            # server at one time had a bug were the rename would successfully
+            # move the new directory into the existing directory, which was
+            # incorrect.  It's possible some other servers or filesystems will
+            # have a similar bug allowing someone to think they got the lock
+            # when it's already held.
             info = self.peek()
+            self._trace("after locking, info=%r", info)
             if info['nonce'] != self.nonce:
-                raise errors.LockError("%s: rename succeeded, "
-                    "but lock is still held by someone else" % (self,))
+                self._trace("rename succeeded, "
+                    "but lock is still held by someone else")
+                raise LockContention(self)
             # we don't call confirm here because we don't want to set
             # _lock_held til we're sure it's true, and because it's really a
             # problem, not just regular contention, if this fails
@@ -258,6 +245,29 @@ class LockDir(object):
         self._trace("... lock succeeded after %dms",
                 (time.time() - start_time) * 1000)
         return self.nonce
+
+    def _create_pending_dir(self):
+        tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
+        try:
+            self.transport.mkdir(tmpname)
+        except NoSuchFile:
+            # This may raise a FileExists exception
+            # which is okay, it will be caught later and determined
+            # to be a LockContention.
+            self._trace("lock directory does not exist, creating it")
+            self.create(mode=self._dir_modebits)
+            # After creating the lock directory, try again
+            self.transport.mkdir(tmpname)
+        
+        self.nonce = rand_chars(20)
+        info_bytes = self._prepare_info()
+        # We use put_file_non_atomic because we just created a new unique
+        # directory so we don't have to worry about files existing there.
+        # We'll rename the whole directory into place to get atomic
+        # properties
+        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
+                                            info_bytes)
+        return tmpname
 
     def unlock(self):
         """Release a held lock
@@ -405,7 +415,18 @@ class LockDir(object):
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()
 
-    def wait_lock(self, timeout=None, poll=None):
+    def attempt_lock(self):
+        """Take the lock; fail if it's already held.
+        
+        If you wish to block until the lock can be obtained, call wait_lock()
+        instead.
+
+        :return: The lock token.
+        :raises LockContention: if the lock is held by someone else.
+        """
+        return self.wait_lock(max_attempts=1)
+
+    def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
 
         If the lock can be acquired within the bounded time, it
@@ -414,51 +435,73 @@ class LockDir(object):
         approximately `timeout` seconds.  (It may be a bit more if
         a transport operation takes a long time to complete.)
 
+        :param timeout: Approximate maximum amount of time to wait for the
+        lock, in seconds.
+         
+        :param poll: Delay in seconds between retrying the lock.
+
+        :param max_attempts: Maximum number of times to try to lock.
+
         :return: The lock token.
         """
         if timeout is None:
             timeout = _DEFAULT_TIMEOUT_SECONDS
         if poll is None:
             poll = _DEFAULT_POLL_SECONDS
-
-        # XXX: the transport interface doesn't let us guard 
-        # against operations there taking a long time.
+        # XXX: the transport interface doesn't let us guard against operations
+        # there taking a long time, so the total elapsed time or poll interval
+        # may be more than was requested.
         deadline = time.time() + timeout
         deadline_str = None
         last_info = None
+        attempt_count = 0
+        if self._fake_read_lock:
+            raise LockContention(self)
+        if self.transport.is_readonly():
+            raise UnlockableTransport(self.transport)
         while True:
+            attempt_count += 1
             try:
-                return self.attempt_lock()
-            except LockContention:
-                pass
-            new_info = self.peek()
-            self._trace('last_info: %s, new info: %s', last_info, new_info)
-            if new_info is not None and new_info != last_info:
-                if last_info is None:
-                    start = 'Unable to obtain'
-                else:
-                    start = 'Lock owner changed for'
-                last_info = new_info
-                formatted_info = self._format_lock_info(new_info)
-                if deadline_str is None:
-                    deadline_str = time.strftime('%H:%M:%S',
-                                                 time.localtime(deadline))
-                self._report_function('%s %s\n'
-                                      '%s\n' # held by
-                                      '%s\n' # locked ... ago
-                                      'Will continue to try until %s\n',
-                                      start,
-                                      formatted_info[0],
-                                      formatted_info[1],
-                                      formatted_info[2],
-                                      deadline_str)
+                return self._lock_core()
+            except LockContention, err:
+                # TODO: LockContention should only be raised when we're know
+                # that the lock is held by someone else, in which case we
+                # should include the locker info, so it can be used here.
+                # In other cases, such as having a malformed lock present, we
+                # should raise a different.
+                #
+                # we shouldn't need to peek again here, because _lock_core
+                # does it
+                new_info = self.peek()
+                if new_info is not None and new_info != last_info:
+                    if last_info is None:
+                        start = 'Unable to obtain'
+                    else:
+                        start = 'Lock owner changed for'
+                    last_info = new_info
+                    formatted_info = self._format_lock_info(new_info)
+                    if deadline_str is None:
+                        deadline_str = time.strftime('%H:%M:%S',
+                                                     time.localtime(deadline))
+                    self._report_function('%s %s\n'
+                                          '%s\n' # held by
+                                          '%s\n' # locked ... ago
+                                          'Will continue to try until %s\n',
+                                          start,
+                                          formatted_info[0],
+                                          formatted_info[1],
+                                          formatted_info[2],
+                                          deadline_str)
 
-            if time.time() + poll < deadline:
-                self._trace("waiting %ss", poll)
-                time.sleep(poll)
-            else:
-                self._trace("timeout after waiting %ss", timeout)
-                raise LockContention(self)
+                if (max_attempts is not None) and (attempt_count >= max_attempts):
+                    self._trace("exceeded %d attempts")
+                    raise LockContention(self)
+                if time.time() + poll < deadline:
+                    self._trace("waiting %ss", poll)
+                    time.sleep(poll)
+                else:
+                    self._trace("timeout after waiting %ss", timeout)
+                    raise LockContention(self)
     
     def leave_in_place(self):
         self._locked_via_token = True
