@@ -126,6 +126,10 @@ IN DEVELOPMENT
     * The base TestCase now isolates tests from -D parameters by clearing
       ``debug.debug_flags`` and restores it afterwards. (Robert Collins)
 
+    * Add a relpath parameter to get_transport methods in test framework to
+      avoid useless cloning.
+      (Vincent Ladeuil, #110448)
+
   BUGFIXES:
 
     * Work around python-2.4.1 inhability to correctly parse the
