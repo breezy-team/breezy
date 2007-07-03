@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+import os
 import sys
 import tempfile
 import tarfile
@@ -223,7 +224,9 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
-        tarball = tarfile.open(fileobj=ofile, mode='w|' + compression)
+        filename = os.path.basename(ofile.name)
+        tarball = tarfile.open(fileobj=ofile, name=filename,
+            mode='w|' + compression)
         try:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files
