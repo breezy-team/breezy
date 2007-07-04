@@ -3633,7 +3633,8 @@ class cmd_submit(Command):
 
     If a public_branch is known for the submit_branch, that public submit
     branch is used in the merge instructions.  This means that a local mirror
-    can be used as your actual submit branch.
+    can be used as your actual submit branch, once you have set public_branch
+    for that mirror.
     """
 
     encoding_type = 'exact'
