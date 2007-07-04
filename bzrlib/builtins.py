@@ -389,7 +389,7 @@ class cmd_add(Command):
                 tree = WorkingTree.open_containing(file_list[0])[0]
             else:
                 tree = WorkingTree.open_containing(u'.')[0]
-            added, ignored = bzrlib.add.smart_add_tree(tree, file_list, not
+            added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
         finally:
             if base_tree is not None:
