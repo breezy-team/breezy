@@ -29,7 +29,7 @@ from bzrlib import (
     bzrdir,
     )
 from bzrlib.osutils import dirname
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 """)
 
 from bzrlib import (
