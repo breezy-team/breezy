@@ -175,13 +175,12 @@ class TestAdd(ExternalBase):
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 
     def test_add_dry_run(self):
-        # ensure that --dry-run actually don't add anything
-        base_tree = self.make_branch_and_tree('.')
-        self.build_tree(['spam'])
-        out = self.run_bzr(['add', '--dry-run'], retcode=0)[0]
-        self.assertEquals('added spam\n', out)
-        out = self.run_bzr(['added'], retcode=0)[0]
-        self.assertEquals('', out)
+        """Test a dry run add, make sure nothing is added."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        self.assertEqual(list(wt.unknowns()), ['inertiatic'])
+        self.run_bzr('add --dry-run')
+        self.assertEqual(list(wt.unknowns()), ['inertiatic'])
 
     def test_add_control_dir(self):
         """The control dir and its content should be refused."""

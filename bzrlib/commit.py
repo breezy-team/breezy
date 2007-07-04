@@ -57,6 +57,7 @@ import time
 from cStringIO import StringIO
 
 from bzrlib import (
+    debug,
     errors,
     inventory,
     tree,
@@ -501,6 +502,8 @@ class Commit(object):
             self.pb_stage_name = "Running post commit hooks [%s]" % \
                 Branch.hooks.get_hook_name(hook)
             self._emit_progress()
+            if 'hooks' in debug.debug_flags:
+                mutter("Invoking commit hook: %r", hook)
             hook(hook_local, hook_master, old_revno, old_revid, new_revno,
                 self.rev_id)
 

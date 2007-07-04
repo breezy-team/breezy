@@ -828,8 +828,8 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        raise AssertionError(message + 
-                             self._ndiff_strings(a, b))      
+        raise AssertionError(message +
+                             self._ndiff_strings(a, b))
         
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
@@ -847,8 +847,14 @@ class TestCase(unittest.TestCase):
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
-            raise AssertionError('pattern "%r" not found in "%r"'
-                    % (needle_re, haystack))
+            if '\n' in haystack or len(haystack) > 60:
+                # a long string, format it in a more readable way
+                raise AssertionError(
+                        'pattern "%s" not found in\n"""\\\n%s"""\n'
+                        % (needle_re, haystack))
+            else:
+                raise AssertionError('pattern "%s" not found in "%s"'
+                        % (needle_re, haystack))
 
     def assertNotContainsRe(self, haystack, needle_re):
         """Assert that a does not match a regular expression"""
@@ -1638,19 +1644,27 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_readonly_server = None
         self.__vfs_server = None
 
-    def get_transport(self):
-        """Return a writeable transport for the test scratch space"""
-        t = get_transport(self.get_url())
+    def get_transport(self, relpath=None):
+        """Return a writeable transport.
+
+        This transport is for the test scratch space relative to
+        "self._test_root""
+        
+        :param relpath: a path relative to the base url.
+        """
+        t = get_transport(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
-    def get_readonly_transport(self):
+    def get_readonly_transport(self, relpath=None):
         """Return a readonly transport for the test scratch space
         
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
+
+        :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_readonly_url())
+        t = get_transport(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -1687,11 +1701,7 @@ class TestCaseWithMemoryTransport(TestCase):
         These should only be downwards relative, not upwards.
         """
         base = self.get_readonly_server().get_url()
-        if relpath is not None:
-            if not base.endswith('/'):
-                base = base + '/'
-            base = base + relpath
-        return base
+        return self._adjust_url(base, relpath)
 
     def get_vfs_only_server(self):
         """Get the vfs only read/write server instance.

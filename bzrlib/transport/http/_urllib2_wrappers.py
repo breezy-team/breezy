@@ -108,6 +108,13 @@ class Response(httplib.HTTPResponse):
                 if self.debuglevel > 0:
                     print "Consumed body: [%s]" % body
             self.close()
+        elif self.status == 200:
+            # Whatever the request is, it went ok, so we surely don't want to
+            # close the connection. Some cases are not correctly detected by
+            # httplib.HTTPConnection.getresponse (called by
+            # httplib.HTTPResponse.begin). The CONNECT response for the https
+            # through proxy case is one.
+            self.will_close = False
 
 
 # Not inheriting from 'object' because httplib.HTTPConnection doesn't.
@@ -125,16 +132,36 @@ class AbstractHTTPConnection:
         # Preserve our preciousss
         sock = self.sock
         self.sock = None
+        # Let httplib.HTTPConnection do its housekeeping 
         self.close()
+        # Restore our preciousss
         self.sock = sock
 
 
 class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
-    pass
+
+    # XXX: Needs refactoring at the caller level.
+    def __init__(self, host, port=None, strict=None, proxied_host=None):
+        httplib.HTTPConnection.__init__(self, host, port, strict)
+        self.proxied_host = proxied_host
 
 
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
-    pass
+
+    def __init__(self, host, port=None, key_file=None, cert_file=None,
+                 strict=None, proxied_host=None):
+        httplib.HTTPSConnection.__init__(self, host, port,
+                                         key_file, cert_file, strict)
+        self.proxied_host = proxied_host
+
+    def connect(self):
+        httplib.HTTPConnection.connect(self)
+        if self.proxied_host is None:
+            self.connect_to_origin()
+
+    def connect_to_origin(self):
+        ssl = socket.ssl(self.sock, self.key_file, self.cert_file)
+        self.sock = httplib.FakeSocket(self.sock, ssl)
 
 
 class Request(urllib2.Request):
@@ -153,11 +180,13 @@ class Request(urllib2.Request):
 
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
-                 connection=None, parent=None,):
+                 connection=None, parent=None,
+                 accepted_errors=None):
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
         self.connection = connection
+        self.accepted_errors = accepted_errors
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
@@ -169,9 +198,46 @@ class Request(urllib2.Request):
         # Some authentication schemes may add more entries.
         self.auth = {}
         self.proxy_auth = {}
+        self.proxied_host = None
 
     def get_method(self):
         return self.method
+
+    def set_proxy(self, proxy, type):
+        """Set the proxy and remember the proxied host."""
+        self.proxied_host = self.get_host()
+        urllib2.Request.set_proxy(self, proxy, type)
+
+
+class _ConnectRequest(Request):
+
+    def __init__(self, request):
+        """Constructor
+        
+        :param request: the first request sent to the proxied host, already
+            processed by the opener (i.e. proxied_host is already set).
+        """
+        # We give a fake url and redefine get_selector or urllib2 will be
+        # confused
+        Request.__init__(self, 'CONNECT', request.get_full_url(),
+                         connection=request.connection)
+        assert request.proxied_host is not None
+        self.proxied_host = request.proxied_host
+
+    def get_selector(self):
+        return self.proxied_host
+
+    def set_proxy(self, proxy, type):
+        """Set the proxy without remembering the proxied host.
+
+        We already know the proxied host by definition, the CONNECT request
+        occurs only when the connection goes through a proxy. The usual
+        processing (masquerade the request so that the connection is done to
+        the proxy while the request is targeted at another host) does not apply
+        here. In fact, the connection is already established with proxy and we
+        just want to enable the SSL tunneling.
+        """
+        urllib2.Request.set_proxy(self, proxy, type)
 
 
 def extract_credentials(url):
@@ -213,10 +279,9 @@ def extract_authentication_uri(url):
     return '%s://%s' % (scheme, host)
 
 
-# The urlib2.xxxAuthHandler handle the authentication of the
-# requests, to do that, they need an urllib2 PasswordManager *at
-# build time*. We also need one to reuse the passwords entered by
-# the user.
+# The AuthHandler classes handle the authentication of the requests, to do
+# that, they need a PasswordManager *at build time*. We also need one to reuse
+# the passwords entered by the user.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
 
     def __init__(self):
@@ -242,9 +307,11 @@ class ConnectionHandler(urllib2.BaseHandler):
             # handled in the higher levels
             raise errors.InvalidURL(request.get_full_url(), 'no host given.')
 
-        # We create a connection (but it will not connect yet)
+        # We create a connection (but it will not connect until the first
+        # request is made)
         try:
-            connection = http_connection_class(host)
+            connection = http_connection_class(
+                host, proxied_host=request.proxied_host)
         except httplib.InvalidURL, exception:
             # There is only one occurrence of InvalidURL in httplib
             raise errors.InvalidURL(request.get_full_url(),
@@ -367,12 +434,11 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 else:
                     # All other exception are considered connection related.
 
-                    # httplib.HTTPException should indicate a bug
-                    # in the urllib implementation, somewhow the
-                    # httplib pipeline is in an incorrect state,
-                    # we retry in hope that this will correct the
-                    # problem but that may need investigation
-                    # (note that no such bug is known as of
+                    # httplib.HTTPException should indicate a bug in our
+                    # urllib-based implementation, somewhow the httplib
+                    # pipeline is in an incorrect state, we retry in hope that
+                    # this will correct the problem but that may need
+                    # investigation (note that no such bug is known as of
                     # 20061005 --vila).
 
                     # socket errors generally occurs for reasons
@@ -383,7 +449,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     # FIXME: and then there is HTTPError raised by:
                     # - HTTPDefaultErrorHandler (we define our own)
                     # - HTTPRedirectHandler.redirect_request 
-                    # - AbstractDigestAuthHandler.http_error_auth_reqed
 
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
@@ -498,9 +563,40 @@ class HTTPHandler(AbstractHTTPHandler):
 class HTTPSHandler(AbstractHTTPHandler):
     """A custom handler that just thunks into HTTPSConnection"""
 
-    def https_open(self, request):
-        return self.do_open(HTTPSConnection, request)
+    https_request = AbstractHTTPHandler.http_request
 
+    def https_open(self, request):
+        connection = request.connection
+        assert isinstance(connection, HTTPSConnection)
+        if connection.sock is None and \
+                connection.proxied_host is not None and \
+                request.get_method() != 'CONNECT' : # Don't loop
+            # FIXME: We need a gazillion connection tests here, but we still
+            # miss a https server :-( :
+            # - with and without proxy
+            # - with and without certificate
+            # - with self-signed certificate
+            # - with and without authentication
+            # - with good and bad credentials (especially the proxy auth aound
+            #   CONNECT)
+            # - with basic and digest schemes
+            # - reconnection on errors
+            # - connection persistence behaviour (including reconnection)
+
+            # We are about to connect for the first time via a proxy, we must
+            # issue a CONNECT request first to establish the encrypted link
+            connect = _ConnectRequest(request)
+            response = self.parent.open(connect)
+            if response.code != 200:
+                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                        connect.proxied_host, self.host))
+            # Housekeeping
+            connection.fake_close()
+            # Establish the connection encryption 
+            connection.connect_to_origin()
+            # Propagate the connection to the original request
+            request.connection = connection
+        return self.do_open(HTTPSConnection, request)
 
 class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
     """Handles redirect requests.
@@ -623,17 +719,18 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 class ProxyHandler(urllib2.ProxyHandler):
     """Handles proxy setting.
 
-    Copied and modified from urllib2 to be able to modify the
-    request during the request pre-processing instead of
-    modifying it at _open time. As we capture (or create) the
-    connection object during request processing, _open time was
-    too late.
+    Copied and modified from urllib2 to be able to modify the request during
+    the request pre-processing instead of modifying it at _open time. As we
+    capture (or create) the connection object during request processing, _open
+    time was too late.
 
-    Note that the proxy handling *may* modify the protocol used;
-    the request may be against an https server proxied through an
-    http proxy. So, https_request will be called, but later it's
-    really http_open that will be called. This explain why we
-    don't have to call self.parent.open as the urllib2 did.
+    The main task is to modify the request so that the connection is done to
+    the proxy while the request still refers to the destination host.
+
+    Note: the proxy handling *may* modify the protocol used; the request may be
+    against an https server proxied through an http proxy. So, https_request
+    will be called, but later it's really http_open that will be called. This
+    explains why we don't have to call self.parent.open as the urllib2 did.
     """
 
     # Proxies must be in front
@@ -713,6 +810,10 @@ class ProxyHandler(urllib2.ProxyHandler):
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
+        # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
+        # grok user:password@host:port as well as
+        # http://user:password@host:port
+
         # Extract credentials from the url and store them in the
         # password manager so that the proxy AuthHandler can use
         # them later.
@@ -781,6 +882,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    _max_retry = 2
+    """We don't want to retry authenticating endlessly"""
+
     # The following attributes should be defined by daughter
     # classes:
     # - auth_required_header:  the header received from the server
@@ -790,6 +894,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         self.password_manager = password_manager
         self.find_user_password = password_manager.find_user_password
         self.add_password = password_manager.add_password
+        self._retry_count = None
 
     def update_auth(self, auth, key, value):
         """Update a value in auth marking the auth as modified if needed"""
@@ -805,6 +910,16 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         :param headers: The headers for the authentication error response.
         :return: None or the response for the authenticated request.
         """
+        # Don't try  to authenticate endlessly
+        if self._retry_count is None:
+            # The retry being recusrsive calls, None identify the first try
+            self._retry_count = 0
+        else:
+            self._retry_count += 1
+            if self._retry_count > self._max_retry:
+                # Let's be ready for next round
+                self._retry_count = None
+                return None
         server_header = headers.get(self.auth_required_header, None)
         if server_header is None:
             # The http error MUST have the associated
@@ -880,7 +995,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         :param request: The succesfully authenticated request.
         :param response: The server response (may contain auth info).
         """
-        pass
+        # It may happen that we need to reconnect later, let's be ready
+        self._retry_count = None
 
     def get_password(self, user, authuri, realm=None):
         """Ask user for a password if none is already available."""
@@ -1138,13 +1254,24 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     instead, we leave our Transport handle them.
     """
 
+    accepted_errors = [200, # Ok
+                       206, # Partial content
+                       404, # Not found
+                       ]
+    """The error codes the caller will handle.
+
+    This can be specialized in the request on a case-by case basis, but the
+    common cases are covered here.
+    """
+
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
 
-        if code not in (200, # Ok
-                        206, # Partial content
-                        404, # Not found
-                        ):
+        accepted_errors = request.accepted_errors
+        if accepted_errors is None:
+            accepted_errors = self.accepted_errors
+
+        if code not in accepted_errors:
             response = self.parent.error('http', request, response,
                                          code, msg, hdrs)
         return response
@@ -1156,12 +1283,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     """Translate common errors into bzr Exceptions"""
 
     def http_error_default(self, req, fp, code, msg, hdrs):
-        if code == 404:
-            raise errors.NoSuchFile(req.get_selector(),
-                                    extra=HTTPError(req.get_full_url(),
-                                                    code, msg,
-                                                    hdrs, fp))
-        elif code == 403:
+        if code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
         elif code == 416:
             # We don't know which, but one of the ranges we
@@ -1172,6 +1294,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
                                              % (code, msg))
+
 
 class Opener(object):
     """A wrapper around urllib2.build_opener
@@ -1196,6 +1319,7 @@ class Opener(object):
             HTTPSHandler,
             HTTPDefaultErrorHandler,
             )
+
         self.open = self._opener.open
         if DEBUG >= 2:
             # When dealing with handler order, it's easy to mess

@@ -615,7 +615,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # should probably put it back with the previous ID.
         # the read and write working inventory should not occur in this 
         # function - they should be part of lock_write and unlock.
-        inv = self.read_working_inventory()
+        inv = self.inventory
         for f, file_id, kind in zip(files, ids, kinds):
             assert kind is not None
             if file_id is None:
@@ -623,7 +623,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 file_id = osutils.safe_file_id(file_id)
                 inv.add_path(f, kind=kind, file_id=file_id)
-        self._write_inventory(inv)
+            self._inventory_is_modified = True
 
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
@@ -1970,7 +1970,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self):
+    def update(self, change_reporter=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2006,12 +2006,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 old_tip = self.branch.update()
             else:
                 old_tip = None
-            return self._update_tree(old_tip)
+            return self._update_tree(old_tip, change_reporter)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None):
+    def _update_tree(self, old_tip=None, change_reporter=None):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2045,7 +2045,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                       self.branch,
                                       to_tree,
                                       basis,
-                                      this_tree=self)
+                                      this_tree=self,
+                                      change_reporter=change_reporter)
             finally:
                 basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
@@ -2093,7 +2094,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   self.branch,
                                   other_tree,
                                   base_tree,
-                                  this_tree=self)
+                                  this_tree=self,
+                                  change_reporter=change_reporter)
         return result
 
     def _write_hashcache_if_dirty(self):

@@ -16,5 +16,14 @@
 
 
 debug_flags = set()
-"""Set of flags that enable different debug behaviour"""
+"""Set of flags that enable different debug behaviour.
 
+These are set with eg ``-Dlock`` on the bzr command line.
+
+Options include:
+    
+ * hooks 
+ * lock - trace when lockdir locks are taken or released
+ * error - show stack traces for all top level exceptions
+
+"""

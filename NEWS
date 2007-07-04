@@ -9,6 +9,27 @@ IN DEVELOPMENT
       a file that is not present in the specified revision.
       (James Westby, #122656)
 
+    * Commands that use status flags now have a reference to 'help
+      status-flags'.  (Daniel Watkins, #113436)
+
+    * Work around python-2.4.1 inhability to correctly parse the
+      authentication header.
+      (Vincent Ladeuil, #121889)
+
+    * Issue a CONNECT request when connecting to an https server
+      via a proxy to enable SSL tunneling.
+     (Vincent Ladeuil, #120678)
+
+    * Fix ``bzr log -r`` to support selecting merge revisions, both 
+      individually and as part of revision ranges.
+      (Kent Gibson, #4663)
+ 
+    * Don't leave cruft behind when failing to acquire a lockdir.
+      (Martin Pool, #109169)
+
+    * Don't use the '-f' strace option during tests.
+      (Vincent Ladeuil, #102019).
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
@@ -57,8 +78,14 @@ IN DEVELOPMENT
       library users and plugins. See the ``bzrlib.api`` module for details.
       (Robert Collins)
 
-    * ``bzrtracefilename --version`` now shows the location of the bzr log file, which
+    * Remove unnecessary lock probes when acquiring a lockdir.
+      (Martin Pool)
+
+    * ``bzr --version`` now shows the location of the bzr log file, which
       is especially useful on Windows.  (Martin Pool)
+
+    * -D now supports hooks to get debug tracing of hooks (though its currently
+      minimal in nature). (Robert Collins)
 
     * Long log format reports deltas on merge revisions. 
       (John Arbash Meinel, Kent Gibson)
@@ -85,13 +112,36 @@ IN DEVELOPMENT
       These changes are an API break in the testing infrastructure only.
       (Robert Collins)
 
+    * ``bzrlib.add.smart_add_tree`` will no longer perform glob expansion on
+      win32. Callers of the function should do this and use the new
+      ``MutableTree.smart_add`` method instead. (Robert Collins)
+
+    * ``bzrlib.add.glob_expand_for_win32`` is now
+      ``bzrlib.win32utils.glob_expand``.  (Robert Collins)
+
+    * ``bzrlib.add.FastPath`` is now private and moved to 
+      ``bzrlib.mutabletree._FastPath``. (Robert Collins, Martin Pool)
+
+    * ``LockDir.wait`` removed.  (Martin Pool)
+
   INTERNALS:
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
+    * New ``-Dlock`` option to log (to ~/.bzr.log) information on when 
+      lockdirs are taken or released.  (Martin Pool)
+
     * ``bzrlib`` Hooks are now nameable using ``Hooks.name_hook``. This 
       allows a nicer UI when hooks are running as the current hook can
       be displayed. (Robert Collins)
+
+    * New method ``_maybe_expand_globs`` on the ``Command`` class for 
+      dealing with unexpanded glob lists - e.g. on the win32 platform. This
+      was moved from ``bzrlib.add._prepare_file_list``. (Robert Collins)
+
+    * ``bzrlib.add.smart_add`` and ``bzrlib.add.smart_add_tree`` are now
+      deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
+      Martin Pool)
 
   TESTING:
 
@@ -123,11 +173,9 @@ IN DEVELOPMENT
     * The base TestCase now isolates tests from -D parameters by clearing
       ``debug.debug_flags`` and restores it afterwards. (Robert Collins)
 
-  BUGFIXES:
-
-    * Work around python-2.4.1 inhability to correctly parse the
-      authentication header.
-      (Vincent Ladeuil, #121889)
+    * Add a relpath parameter to get_transport methods in test framework to
+      avoid useless cloning.
+      (Vincent Ladeuil, #110448)
 
 
 bzr 0.17  2007-06-18

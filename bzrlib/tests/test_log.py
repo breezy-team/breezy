@@ -710,9 +710,9 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         self.assertEqual([], delta.removed)
 
     def assertAllRevisionsForFileID(self, tree, file_id, revisions):
-        """Make sure _get_revisions_touching_file_id returns the right values.
+        """Make sure _filter_revisions_touching_file_id returns the right values.
 
-        Get the return value from _get_revisions_touching_file_id and make
+        Get the return value from _filter_revisions_touching_file_id and make
         sure they are correct.
         """
         # The api for _get_revisions_touching_file_id is a little crazy,
@@ -722,9 +722,11 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
         view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
                                                 'reverse', True)
-        actual_revs = log._get_revisions_touching_file_id(tree.branch, file_id,
-                                                          mainline,
-                                                          view_revs_iter)
+        actual_revs = log._filter_revisions_touching_file_id(
+                            tree.branch, 
+                            file_id,
+                            mainline,
+                            list(view_revs_iter))
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):

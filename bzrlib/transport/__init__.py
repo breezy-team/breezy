@@ -574,7 +574,7 @@ class Transport(object):
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
-        :return: yield _CoalescedOffset objects, which have members for wher
+        :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
         """
@@ -1257,8 +1257,14 @@ register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+
+register_transport_proto('brokenrename+')
+register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
+        'BrokenRenameTransportDecorator')
+
 register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
