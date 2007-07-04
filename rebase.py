@@ -100,31 +100,134 @@ def unmarshall_rebase_plan(text):
         replace_map[pts[0]] = (pts[1], pts[2:])
     return (last_revision_info, replace_map)
 
-def generate_simple_plan(subject_branch, start_revid, onto_revid):
-    """Create a simple rebase plan that replays history based 
-    on one revision being mapped.
 
-    :param subject_branch: Branch that will be changed
-    :param start_revid: Revision at which to start replaying
-    :param onto_revid: Revision on top of which to replay
+def regenerate_default_revid(rev):
+    return gen_revision_id(rev.committer, rev.timestamp)
+
+
+def generate_simple_plan(repository, history, start_revid, onto_revid, 
+                         generate_revid=regenerate_default_revid):
+    """Create a simple rebase plan that replays history based 
+    on one revision being replayed on top of another.
+
+    :param repository: Repository
+    :param history: Revision history
+    :param start_revid: Id of revision at which to start replaying
+    :param onto_revid: Id of revision on top of which to replay
+    :param generate_revid: Function for generating new revision ids
 
     :return: replace map
     """
+    assert start_revid in history
+    assert repository.has_revision(start_revid)
+    assert repository.has_revision(onto_revid)
     replace_map = {}
+    i = history.index(start_revid)
+    new_parent = onto_revid
+    for oldrevid in history[i:]: 
+        rev = repository.get_revision(oldrevid)
+        parents = rev.parent_ids
+        assert len(parents) == 0 or \
+                parents[0] == history[history.index(oldrevid)-1]
+        parents[0] = new_parent
+        newrevid = generate_revid(rev)
+        assert newrevid != oldrevid
+        replace_map[oldrevid] = (newrevid, parents)
+        new_parent = newrevid
+    return replace_map
 
-    need_rewrite = []
 
-    for revid in need_rewrite:
-        replace_map[revid] = gen_revision_id()
-    # TODO
+def generate_transpose_plan(repository, graph, renames, 
+        generate_revid=regenerate_default_revid):
+    """Create a rebase plan that replaces the bottom of 
+    a revision graph.
 
-def rebase(wt, replace_map):
+    :param repository: Repository
+    :param graph: Revision graph in which to operate
+    :param renames: Renames of revision
+    :param generate_revid: Function for creating new revision ids
+    """
+    replace_map = {}
+    todo = []
+    for r in renames:
+        replace_map[r] = (renames[r], 
+                          repository.revision_parents(renames[r]))
+        todo.append(r)
+
+    def find_revision_children(revid):
+        for x in graph: 
+            if revid in graph[x]: 
+                yield x
+
+    while len(todo) > 0:
+        r = todo.pop()
+        # Find children of r in graph
+        children = list(find_revision_children(r))
+        # Add entry for them in replace_map
+        for c in children:
+            rev = repository.get_revision(c)
+            if replace_map.has_key(c):
+                parents = replace_map[c][1]
+            else:
+                parents = rev.parent_ids
+            # replace r in parents with replace_map[r][0]
+            parents[parents.index(r)] = replace_map[r][0]
+            replace_map[c] = (generate_revid(rev), parents)
+            assert replace_map[c][0] != rev.revision_id
+        # Add them to todo[]
+        todo.extend(children)
+
+    return replace_map
+
+
+def rebase(repository, replace_map, replay_fn):
     """Rebase a working tree according to the specified map.
 
-    :param wt: Working tree to rebase
+    :param repository: Repository that contains the revisions
     :param replace_map: Dictionary with revisions to (optionally) rewrite
+    :param merge_fn: Function for replaying a revision
     """
-    #TODO
+    todo = []
+    for revid in replace_map:
+        if not repository.has_revision(replace_map[revid][0]):
+            todo.append(revid)
+    dependencies = {}
+
+    # Figure out the dependencies
+    for revid in todo:
+        possible = True
+        for p in replace_map[revid][1]:
+            if repository.has_revision(p):
+                continue
+            possible = False
+            if not dependencies.has_key(p):
+                dependencies[p] = []
+            dependencies[p].append(revid)
+
+    pb = ui.ui_factory.nested_progress_bar()
+    i = 0
+    try:
+        while len(todo) > 0:
+            pb.update('rebase revisions', i, len(replace_map))
+            i += 1
+            revid = todo.pop()
+            (newrevid, newparents) = replace_map[revid]
+            if not all(map(repository.has_revision, newparents)):
+                # Not all parents present yet, avoid for now
+                continue
+            if repository.has_revision(newrevid):
+                # Was already converted, no need to worry about it again
+                continue
+            replay_fn(repository, revid, newrevid, newparents)
+            assert repository.has_revision(newrevid)
+            assert repository.revision_parents(newrevid) == newparents
+            if dependencies.has_key(newrevid):
+                todo.extend(dependencies[newrevid])
+                del dependencies[newrevid]
+    finally:
+        pb.finished()
+        
+    assert all(map(repository.has_revision, [replace_map[r][0] for r in replace_map]))
      
 
 # Change the parent of a revision
@@ -212,3 +315,12 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     return builder.commit(oldrev.message)
 
 
+def workingtree_replay(wt):
+    """Returns a function that can replay revisions in wt.
+
+    :param wt: Working tree in which to do the replays.
+    """
+    def replay(repository, oldrevid, newrevid, newparents):
+        # TODO
+        pass
+    return replay

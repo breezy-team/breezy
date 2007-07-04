@@ -5,7 +5,8 @@ famous git-rebase.
 How it works
 ============
 The plugin will start off by writing a plan for the rebase, which it 
-will write to .bzr/checkout/rebase-state. If the rebase is interrupted and 
+will write to .bzr/checkout/rebase-state. If the rebase is interrupted 
+(conflicts that have to be resolved by the user) and 
 needs to be continued or aborted, it will read this file to see what needs 
 (still) needs to be done.
 

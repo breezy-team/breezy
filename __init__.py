@@ -30,7 +30,7 @@ class cmd_rebase(Command):
     def run(self, upstream_location, onto=None):
         from rebase import (generate_simple_plan, rebase, 
                             rebase_plan_exists, write_rebase_plan, 
-                            read_rebase_plan)
+                            read_rebase_plan, workingtree_replay)
         upstream = Branch.open(upstream_location)
         wt = WorkingTree.open('.')
         wt.write_lock()
@@ -59,7 +59,7 @@ class cmd_rebase(Command):
 
             # Start executing plan
             try:
-                rebase(wt, replace_map)
+                rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
             except Conflict:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file
@@ -91,7 +91,7 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, rebase_plan_exists
+        from rebase import read_rebase_plan, rebase_plan_exists, workingtree_replay
         wt = WorkingTree.open('.')
         wt.write_lock()
         try:
@@ -103,7 +103,7 @@ class cmd_rebase_continue(Command):
 
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt, replace_map)
+                rebase(wt.branch.repository, replace_map, workingtree_replay(wt))
             except Conflict:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  

@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import UnknownFormatError
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
-                    change_revision_parent) 
+                    change_revision_parent, generate_simple_plan,
+                    generate_transpose_plan) 
 
 
 class RebasePlanReadWriterTests(TestCase):
@@ -65,3 +67,81 @@ class ConversionTests(TestCaseWithTransport):
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
         self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
+
+
+class PlanCreatorTests(TestCaseWithTransport):
+    def test_simple_plan_creator(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="bla")
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bloe")
+        wt.set_last_revision("bla")
+        b.set_revision_history(["bla"])
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bla2")
+
+        self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
+                generate_simple_plan(b.repository, b.revision_history(), "bla2", "bloe", 
+                    lambda y: "new"+y.revision_id))
+     
+    def test_simple_plan_creator_extra_history(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="bla")
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bloe")
+        wt.set_last_revision("bla")
+        b.set_revision_history(["bla"])
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bla2")
+        file('hello', 'w').write('universe')
+        wt.commit(message='change hello again', rev_id="bla3")
+
+        self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
+                generate_simple_plan(b.repository, b.revision_history(), "bla2", "bloe", 
+                    lambda y: "new"+y.revision_id))
+ 
+
+    def test_generate_transpose_plan(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="bla")
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bloe")
+        wt.set_last_revision("bla")
+        b.set_revision_history(["bla"])
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bla2")
+        file('hello', 'w').write('universe')
+        wt.commit(message='change hello again', rev_id="bla3")
+        wt.set_last_revision("bla")
+        b.set_revision_history(["bla"])
+        file('hello', 'w').write('somebar')
+        wt.commit(message='change hello yet again', rev_id="blie")
+        wt.set_last_revision(NULL_REVISION)
+        b.set_revision_history([])
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="lala")
+
+        self.assertEquals({
+                'bla': ('lala', []),
+                'blie': ('newblie', ['lala']),
+            },
+                generate_transpose_plan(b.repository, b.repository.get_revision_graph("blie"), 
+                {"bla": "lala"}, lambda y: "new"+y.revision_id))
+        self.assertEquals({
+                'bla': ('lala', []),
+                'bla2': ('newbla2', ['lala']),
+                'bla3': ('newbla3', ['newbla2']),
+                'blie': ('newblie', ['lala']),
+                'bloe': ('newbloe', ['lala'])},
+                generate_transpose_plan(b.repository, b.repository.get_revision_graph(), 
+                {"bla": "lala"}, lambda y: "new"+y.revision_id))
+
