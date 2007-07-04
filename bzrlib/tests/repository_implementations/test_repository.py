@@ -16,6 +16,7 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
+from itertools import imap
 import re
 
 import bzrlib
@@ -414,6 +415,42 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
+
+    def test_get_data_stream(self):
+        # Make a repo with a revision
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Get a data stream (a file-like object) for that revision
+        try:
+            stream = repo.get_data_stream(['rev_id'])
+        except NotImplementedError:
+            # Not all repositories suppor streaming.
+            return
+
+        # The data stream is a valid pack file with records for:
+        #   * the file knit
+        #   * the inventory knit
+        #   * the revisions knit
+        # in that order.
+        from bzrlib import pack
+        expected_record_names = ['file:file1', 'inventory', 'revisions']
+        streamed_names = []
+        for names, read_bytes in pack.ContainerReader(stream).iter_records():
+            read_bytes(None) # XXX: should be unnecessary; pack should automatically skip unread records.
+            [name] = names
+            streamed_names.append(name)
+
+        if repo.supports_rich_root():
+            inv = repo.get_inventory('rev_id')
+            expected_record_name = 'file:' + inv.root.file_id
+            self.assertTrue(expected_record_name in streamed_names)
+            streamed_names.remove(expected_record_name)
+
+        self.assertEqual(expected_record_names, streamed_names)
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

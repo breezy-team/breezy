@@ -323,6 +323,9 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def get_data_stream(self, revision_ids):
+        raise NotImplementedError(self.get_data_stream)
+
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
         """Return the revision ids that other has that this does not.
@@ -615,7 +618,7 @@ class Repository(object):
             pb.finished()
         return result
 
-    def get_data_about_revision_ids(self, revision_ids, files_pb):
+    def get_data_about_revision_ids(self, revision_ids, files_pb=None):
         """Get an iterable about data for a given set of revision IDs.
 
         The named data will be ordered so that it can be fetched and inserted in
@@ -636,7 +639,8 @@ class Repository(object):
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
-            files_pb.update("fetch texts", count, num_file_ids)
+            if files_pb is not None:
+                files_pb.update("fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
         # We're done with the files_pb.  Note that it finished by the caller,
@@ -652,7 +656,6 @@ class Repository(object):
 
         # revisions
         yield ("revisions", None, revision_ids)
-
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -1778,43 +1781,117 @@ class InterKnit1and2(InterKnitRepo):
         return f.count_copied, f.failed_revisions
 
 
-class InterRemoteRepository(InterRepository):
-    """Code for converting between RemoteRepository objects.
-
-    This just gets an non-remote repository from the RemoteRepository, and calls
-    InterRepository.get again.
-    """
+class InterRemoteToOther(InterRepository):
 
     def __init__(self, source, target):
-        if isinstance(source, remote.RemoteRepository):
-            source._ensure_real()
-            real_source = source._real_repository
-        else:
-            real_source = source
-        if isinstance(target, remote.RemoteRepository):
-            target._ensure_real()
-            real_target = target._real_repository
-        else:
-            real_target = target
-        self.real_inter = InterRepository.get(real_source, real_target)
+        InterRepository.__init__(self, source, target)
+        self._real_inter = None
 
     @staticmethod
     def is_compatible(source, target):
         if isinstance(source, remote.RemoteRepository):
             return True
-        if isinstance(target, remote.RemoteRepository):
-            return True
         return False
 
+    def _ensure_real_inter(self):
+        if self._real_inter is None:
+            self.source._ensure_real()
+            real_source = self.source._real_repository
+            self._real_inter = InterRepository.get(real_source, self.target)
+    
     def copy_content(self, revision_id=None):
-        self.real_inter.copy_content(revision_id=revision_id)
+        self._ensure_real_inter()
+        self._real_inter.copy_content(revision_id=revision_id)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
-        self.real_inter.fetch(revision_id=revision_id, pb=pb)
+        """See InterRepository.fetch()."""
+        self._ensure_real_inter()
+        self._real_inter.fetch(revision_id=revision_id, pb=pb)
+#        from bzrlib.fetch import RemoteToOtherFetcher
+#        mutter("Using fetch logic to copy between %s(remote) and %s(%s)",
+#               self.source, self.target, self.target._format)
+#        # TODO: jam 20070210 This should be an assert, not a translate
+#        revision_id = osutils.safe_revision_id(revision_id)
+#        f = RemoteToOtherFetcher(to_repository=self.target,
+#                                 from_repository=self.source,
+#                                 last_revision=revision_id,
+#                                 pb=pb)
+#        return f.count_copied, f.failed_revisions
 
     @classmethod
     def _get_repo_format_to_test(self):
         return None
+
+
+class InterOtherToRemote(InterRepository):
+
+    def __init__(self, source, target):
+        InterRepository.__init__(self, source, target)
+        self._real_inter = None
+
+    @staticmethod
+    def is_compatible(source, target):
+        if isinstance(target, remote.RemoteRepository):
+            return True
+        return False
+
+    def _ensure_real_inter(self):
+        if self._real_inter is None:
+            self.target._ensure_real()
+            real_target = self.target._real_repository
+            self._real_inter = InterRepository.get(self.source, real_target)
+    
+    def copy_content(self, revision_id=None):
+        self._ensure_real_inter()
+        self._real_inter.copy_content(revision_id=revision_id)
+
+    def fetch(self, revision_id=None, pb=None):
+        self._ensure_real_inter()
+        self._real_inter.fetch(revision_id=revision_id, pb=pb)
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
+#class InterRemoteRepository(InterRepository): #XXX: delete this class.
+#    """Code for converting between RemoteRepository objects.
+#
+#    This just gets an non-remote repository from the RemoteRepository, and calls
+#    InterRepository.get again.
+#    """
+#
+#    def __init__(self, source, target):
+#        if isinstance(source, remote.RemoteRepository):
+#            source._ensure_real()
+#            real_source = source._real_repository
+#        else:
+#            real_source = source
+#        if isinstance(target, remote.RemoteRepository):
+#            target._ensure_real()
+#            real_target = target._real_repository
+#        else:
+#            real_target = target
+#        self.real_inter = InterRepository.get(real_source, real_target)
+#
+#    @staticmethod
+#    def is_compatible(source, target):
+#        if isinstance(source, remote.RemoteRepository):
+#            return True
+#        if isinstance(target, remote.RemoteRepository):
+#            return True
+#        return False
+#
+#    def copy_content(self, revision_id=None):
+#        self.real_inter.copy_content(revision_id=revision_id)
+#
+#    def fetch(self, revision_id=None, pb=None):
+#        self.real_inter.fetch(revision_id=revision_id, pb=pb)
+#
+#    @classmethod
+#    def _get_repo_format_to_test(self):
+#        return None
 
 
 InterRepository.register_optimiser(InterSameDataRepository)
@@ -1822,7 +1899,9 @@ InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
-InterRepository.register_optimiser(InterRemoteRepository)
+#InterRepository.register_optimiser(InterRemoteRepository)
+InterRepository.register_optimiser(InterRemoteToOther)
+InterRepository.register_optimiser(InterOtherToRemote)
 
 
 class CopyConverter(object):

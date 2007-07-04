@@ -127,6 +127,48 @@ class KnitRepository(MetaDirRepository):
             raise errors.NoSuchRevision(self, revision_id)
 
     @needs_read_lock
+    def get_data_stream(self, revision_ids):
+        from bzrlib.pack import ContainerWriter
+        from cStringIO import StringIO
+        filelike = StringIO()
+        pack = ContainerWriter(filelike.write)
+        pack.begin()
+        for knit_kind, file_id, versions in self.get_data_about_revision_ids(revision_ids):
+            if knit_kind == 'file':
+                name = 'file:' + file_id
+                knit = self.text_store.get_weave_or_empty(
+                    file_id, self.get_transaction())
+            elif knit_kind == 'inventory':
+                name = 'inventory'
+                knit = self.get_inventory_weave()
+            elif knit_kind == 'revisions':
+                name = 'revisions'
+                knit = self.control_weaves.get_weave(
+                    'revisions', self.get_transaction())
+            else:
+                raise AssertionError('Unknown knit kind %r' % (knit_kind,))
+            knit_stream = knit.get_data_stream(versions)
+            # serialise knit_stream to bytes
+            #  * format signature + CR
+            #  * version + SPC
+            #  * options (comma-separated) + SPC
+            #  * parents (space-separated) + CR
+            #  * bytes
+
+            format_signature, data_list, callable = knit_stream
+            bytes = format_signature + '\n'
+            for version, options, length, parents in data_list:
+                options = ','.join(options)
+                bytes += '%s %s %s\n' % (version, options, ' '.join(parents))
+                print repr(bytes)
+                bytes += callable(length)
+            # end serialise
+            pack.add_bytes_record(bytes, [name])
+        pack.end()
+        filelike.seek(0)
+        return filelike
+
+    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         revision_id = osutils.safe_revision_id(revision_id)

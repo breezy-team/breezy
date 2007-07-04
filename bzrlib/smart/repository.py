@@ -239,3 +239,10 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
+
+
+#class SmartServerRepositoryFetchRevisions(SmartServerRepositoryRequest)
+#
+#    def do_repository_request(self, repository, *revision_ids):
+#        stream = repository.get_data_stream(revision_ids)
+#        return SuccessfulSmartServerResponse((), 

@@ -668,6 +668,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
+    def get_data_stream(self, revision_ids):
+        self._ensure_real()
+        return self._real_repository.get_data_stream(revision_ids)
+
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.

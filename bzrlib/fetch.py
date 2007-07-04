@@ -402,6 +402,15 @@ class Knit1to2Fetcher(KnitRepoFetcher):
         self.helper.regenerate_inventory(revs)
         
 
+class RemoteToOtherFetcher(GenericRepoFetcher):
+    
+    def _fetch_everything_for_revisions(self, revs, pp):
+        # XXX: this assumes that we want RemoteRepository.get_data_stream to
+        # deserialise the smart response.
+        data_stream = self.from_repository.get_data_stream(revs, pp)
+        self.to_repository.insert_data_stream(data_stream)
+
+
 class Fetcher(object):
     """Backwards compatibility glue for branch.fetch()."""
 

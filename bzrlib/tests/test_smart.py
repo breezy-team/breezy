@@ -766,6 +766,24 @@ class TestSmartServerRepositoryTarball(tests.TestCaseWithTransport):
             "extraneous file present in tar file")
 
 
+#class TestSmartServerRepositoryFetchRevisions(tests.TestCaseWithTransport):
+#
+#    def test_fetch_revisions(self):
+#        backing = self.get_transport()
+#        request = smart.repository.SmartServerRepositoryFetchRevisions(backing)
+#        tree = self.make_branch_and_memory_tree('.')
+#        tree.lock_write()
+#        tree.add('')
+#        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+#        rev_id2_utf8 = u'\xc9'.encode('utf-8')
+#        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
+#        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+#        tree.unlock()
+#
+#        self.assertEqual(SmartServerResponse(('ok', ), 'pack XXX of both revisions'),
+#            request.execute(backing.local_abspath(''), rev_id2_utf8))
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
 
     def test_is_readonly_no(self):
