@@ -1055,6 +1055,16 @@ class BundleTester(object):
         repo2 = self.make_repository('repo2', format='dirstate-with-subtree')
         bundle.install_revisions(repo2)
 
+    def test_revision_id_with_slash(self):
+        self.tree1 = self.make_branch_and_tree('tree')
+        self.b1 = self.tree1.branch
+        try:
+            self.tree1.commit('Revision/id/with/slashes', rev_id='rev/id')
+        except ValueError:
+            raise TestSkipped("Repository doesn't support revision ids with"
+                              " slashes")
+        bundle = self.get_valid_bundle(None, 'rev/id')
+
 
 class V08BundleTester(BundleTester, TestCaseWithTransport):
 
@@ -1460,18 +1470,18 @@ class TestBundleWriterReader(TestCase):
                           'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
                           record)
 
-    def test_name_encode(self):
+    def test_encode_name(self):
         self.assertEqual('revision/rev1',
             v4.BundleWriter.encode_name('revision', 'rev1'))
-        self.assertEqual('file/rev1/file-id-1',
-            v4.BundleWriter.encode_name('file', 'rev1', 'file-id-1'))
+        self.assertEqual('file/rev//1/file-id-1',
+            v4.BundleWriter.encode_name('file', 'rev/1', 'file-id-1'))
         self.assertEqual('info',
             v4.BundleWriter.encode_name('info', None, None))
 
-    def test_name_decode(self):
+    def test_decode_name(self):
         self.assertEqual(('revision', 'rev1', None),
             v4.BundleReader.decode_name('revision/rev1'))
-        self.assertEqual(('file', 'rev1', 'file-id-1'),
-            v4.BundleReader.decode_name('file/rev1/file-id-1'))
+        self.assertEqual(('file', 'rev/1', 'file-id-1'),
+            v4.BundleReader.decode_name('file/rev//1/file-id-1'))
         self.assertEqual(('info', None, None),
                          v4.BundleReader.decode_name('info'))

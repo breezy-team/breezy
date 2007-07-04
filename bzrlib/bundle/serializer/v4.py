@@ -117,11 +117,8 @@ class BundleWriter(object):
             assert revision_id is None
         else:
             assert revision_id is not None
-        names = [content_kind]
-        if revision_id is not None:
-            names.append(revision_id)
-            if file_id is not None:
-                names.append(file_id)
+        names = [n.replace('/', '//') for n in
+                 (content_kind, revision_id, file_id) if n is not None]
         return '/'.join(names)
 
     def _add_record(self, bytes, metadata, repo_kind, revision_id, file_id):
@@ -167,8 +164,16 @@ class BundleReader(object):
 
         :retval: content_kind, revision_id, file_id
         """
-        names = name.split('/')
-        content_kind = names[0]
+        segments = re.split('//?', name)
+        names = []
+        for segment in segments:
+            if segment == '//':
+                names[-1] += '/'
+            if segment == '/':
+                names.append('')
+            else:
+                names[-1] += segment
+        content_kind = name[0]
         revision_id = None
         file_id = None
         if len(names) > 1:

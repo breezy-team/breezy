@@ -160,9 +160,13 @@ Content-kind may be one of:
 :revision: the revision metadata for a revision
 :signature: the revision signature for a revision
 
-Names are constructed like so: ``content-kind/revision-id/file-id``.
+Names are constructed like so: ``content-kind/revision-id/file-id``.  Values
+are iterpreted left-to-right, so if two values are present, they are
+content-kind and revision-id.
 A record has a file-id if-and-only-if it is a file record.
-
+Info records have no revision or file-id.
+Inventory, revision and signature all have content-kind and revision-id, but
+no file-id.
 
 Layout
 ~~~~~~
