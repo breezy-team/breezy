@@ -145,7 +145,8 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 if scheme is None:
                     scheme = BranchingScheme.guess_scheme(bp)
                 newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
-                if not svn_repository.has_revision(newrevid):
+                if not repository.has_revision(newrevid) and \
+                   not svn_repository.has_revision(newrevid):
                     # Not a revision that can be upgraded using the remote repository, 
                     # nothing to do
                     if svn_repository.uuid == uuid:

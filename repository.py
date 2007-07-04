@@ -291,16 +291,10 @@ class SvnRepository(Repository):
             return True
 
         try:
-            (path, revnum, scheme) = self.lookup_revision_id(revision_id)
+            self.lookup_revision_id(revision_id)
+            return True
         except NoSuchRevision:
             return False
-
-        try:
-            return (svn.core.svn_node_none != self.transport.check_path(path, revnum))
-        except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
-                return False
-            raise
 
     def revision_trees(self, revids):
         """See Repository.revision_trees()."""
