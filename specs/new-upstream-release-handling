@@ -1,7 +1,7 @@
 Handling of new upstream releases
 =================================
 
-Status: Draft
+Status: Partial implementation
 
 Rationale
 ---------
@@ -63,9 +63,9 @@ it.
 Design
 ------
 
-A new command something like ``deb-new-upstream`` that takes the version number
-and does the right thing, or errors out if it doesn't have the information to
-decide. Perhaps it could prompt for the information it needs.
+A new command something like that takes the version number and does the right
+thing, or errors out if it doesn't have the information to decide. Perhaps it
+could prompt for the information it needs.
 
 Normal mode
 -----------
@@ -109,6 +109,17 @@ The tags could also be seen as useful themselves, as it makes it easy to see
 things like the current packaging changes by diffing te HEAD with the tag
 for the last upstream version. If tags are also made for packaging releases
 then they could be even more useful.
+
+UI
+--
+
+A new command
+
+  bzr deb merge-upstream
+
+that takes the new upstream version as an argument. A tarball must be supplied
+for those modes that need it, and can be supplied for those that can use it.
+This tarball can be local or remote.
 
 Code changes
 ------------

@@ -1,5 +1,5 @@
-Building a remote branch
-========================
+Importing from source packages
+==============================
 
 Status: Part Implementation.
 
@@ -15,6 +15,10 @@ The plugin should support creating a branch from these files.
 Services like snapshot.debian.net can be used to get old versions of a package,
 and providing a way to import from them automatically will be a great aid to
 maintainers without copies of all of their uploaded packages.
+
+It should also aim to support incremental imports, so that the command can
+be used in an extant branch to import a .dsc in to the current state. This
+would allow uploads outside of the packaging system to be incorporated.
 
 Design
 ------
@@ -84,4 +88,22 @@ option of import-dsc.
 Also left to do is implementations for other modes, especially native. Merge
 mode is complicated by the fact that the old packages may have changes outside
 debian/.
+
+UI
+--
+
+Have a command
+
+  bzr deb import-dsc
+
+which imports a set of .dsc files, given on the command line. Can either be
+local or remote.
+
+Could also take a file which lists the files to import.
+
+A --snapshot option that supplements the files on the command line
+with those stored at snapshot.d.n. This might need to take the name of the
+package as an option, but it would be better to avoid that.
+
+An option to name the output branch would be good.
 
