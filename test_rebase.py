@@ -15,9 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import UnknownFormatError
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
-from rebase import marshall_rebase_plan, unmarshall_rebase_plan
+from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
+                    change_revision_parent) 
+
 
 class RebasePlanReadWriterTests(TestCase):
     def test_simple_marshall_rebase_plan(self):
@@ -42,3 +44,24 @@ oldrev newrev newparent1 newparent2
 1 bla
 oldrev newrev newparent1 newparent2
 """)
+
+
+class ConversionTests(TestCaseWithTransport):
+    def test_simple(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id="bla")
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bloe")
+        wt.set_last_revision("bla")
+        b.set_revision_history(["bla"])
+        file('hello', 'w').write('world')
+        wt.commit(message='change hello', rev_id="bla2")
+        
+        newrev = change_revision_parent(wt.branch.repository, "bla2", "bla4", 
+                                        ["bloe"])
+        self.assertEqual("bla4", newrev)
+        self.assertTrue(wt.branch.repository.has_revision(newrev))
+        self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))

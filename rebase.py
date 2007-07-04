@@ -14,9 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.config import Config
 from bzrlib.errors import UnknownFormatError
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.trace import mutter
+import bzrlib.ui as ui
 
 REBASE_PLAN_FILENAME = 'rebase-plan'
 REBASE_PLAN_VERSION = 1
@@ -115,3 +117,98 @@ def generate_simple_plan(subject_branch, start_revid, onto_revid):
     for revid in need_rewrite:
         replace_map[revid] = gen_revision_id()
     # TODO
+
+def rebase(wt, replace_map):
+    """Rebase a working tree according to the specified map.
+
+    :param wt: Working tree to rebase
+    :param replace_map: Dictionary with revisions to (optionally) rewrite
+    """
+    #TODO
+     
+
+# Change the parent of a revision
+def change_revision_parent(repository, oldrevid, newrevid, new_parents):
+    """Create a copy of a revision with different parents.
+
+    :param repository: Repository in which the revision is present.
+    :param oldrevid: Revision id of the revision to copy.
+    :param newrevid: Revision id of the revision to create.
+    :param new_parents: Revision ids of the new parent revisions.
+    """
+    assert isinstance(new_parents, list)
+    mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
+    oldrev = repository.get_revision(oldrevid)
+
+    builder = repository.get_commit_builder(branch=None, parents=new_parents, 
+                                  config=Config(),
+                                  committer=oldrev.committer,
+                                  timestamp=oldrev.timestamp,
+                                  timezone=oldrev.timezone,
+                                  revprops=oldrev.properties,
+                                  revision_id=newrevid)
+
+    # Check what new_ie.file_id should be
+    # use old and new parent inventories to generate new_id map
+    old_parents = oldrev.parent_ids
+    new_id = {}
+    for (oldp, newp) in zip(old_parents, new_parents):
+        oldinv = repository.get_revision_inventory(oldp)
+        newinv = repository.get_revision_inventory(newp)
+        for path, ie in oldinv.iter_entries():
+            if newinv.has_filename(path):
+                new_id[ie.file_id] = newinv.path2id(path)
+
+    i = 0
+    class MapTree:
+        def __init__(self, oldtree, map):
+            self.oldtree = oldtree
+            self.map = map
+
+        def old_id(self, file_id):
+            for x in self.map:
+                if self.map[x] == file_id:
+                    return x
+            return file_id
+
+        def get_file_sha1(self, file_id, path=None):
+            return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
+                                              path=path)
+
+        def get_file(self, file_id):
+            return self.oldtree.get_file(self.old_id(file_id=file_id))
+
+        def is_executable(self, file_id, path=None):
+            return self.oldtree.is_executable(self.old_id(file_id=file_id), 
+                                              path=path)
+
+    oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
+    oldinv = repository.get_revision_inventory(oldrevid)
+    total = len(oldinv)
+    pb = ui.ui_factory.nested_progress_bar()
+    transact = repository.get_transaction()
+    try:
+        for path, ie in oldinv.iter_entries():
+            pb.update('upgrading file', i, total)
+            i += 1
+            new_ie = ie.copy()
+            if new_ie.revision == oldrevid:
+                new_ie.revision = None
+            def lookup(file_id):
+                try:
+                    return new_id[file_id]
+                except KeyError:
+                    return file_id
+
+            new_ie.file_id = lookup(new_ie.file_id)
+            new_ie.parent_id = lookup(new_ie.parent_id)
+            builder.record_entry_contents(new_ie, 
+                   map(repository.get_revision_inventory, new_parents), 
+                   path, oldtree)
+    finally:
+        pb.finished()
+
+    builder.finish_inventory()
+    return builder.commit(oldrev.message)
+
+
