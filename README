@@ -12,13 +12,28 @@ needs to be continued or aborted, it will read this file to see what needs
 The rebase-state file contains the following information:
  * last-revision-info when the rebase was started
  * map of revisions that need to be replaced. In simple situations, 
-   this would just be one revision. In more complex situations 
-   (upgrading from one bzr-svn mapping version to another), it 
-   could be a longer list.
+   this would contain the revision on top of which the rebase is taking 
+   place and the revisions that are only on the branch that is being 
+   rebased.
 
-   The map is from old to new revids.
- * map of revisions that need to be rewritten. In simple situations, 
-   this would be the set of revisions between the upstream head and the 
-   local working tree head.
+   The map is from old revid to a tupole with new revid and new parents.
 
-   The map is from old to (planned) new revids.
+   For example, in the following scenario:
+
+   A -> B -> C -> D main
+        \ -> E -> F next
+
+   Where next would be rebased on top of main, the replace map would look 
+   something like this:
+
+	E -> (E', [D])
+	F -> (F', [E'])
+
+   Corner cases would be situations like this:
+
+    A -> B -> C -> D main
+	     |\-> G -\
+         \ -> E ---> F next
+
+    Would G get rebased on top of D rather than B?
+

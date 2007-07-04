@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch
-from bzrlib.commands import Command, Option, display_command
+from bzrlib.commands import Command, Option, display_command, register_command
 from bzrlib.errors import BzrCommandError
 from bzrlib.workingtree import WorkingTree
 
@@ -42,25 +42,24 @@ class cmd_rebase(Command):
             # Pull required revisions
             wt.branch.repository.fetch(upstream.repository, 
                                        upstream.last_revision())
-            if onto is not None:
-                wt.branch.repository.fetch(upstream.repository, onto)
-
             if onto is None:
                 onto = upstream.last_revision()
 
+            wt.branch.repository.fetch(upstream.repository, onto)
+
             # Create plan
-            (start_rev, replace_map, rewrite_map) = generate_simple_plan(
-                    wt.branch, upstream, onto)
+            replace_map = generate_simple_plan(
+                    wt.branch, upstream.last_revision(), onto)
 
             # Write plan file
-            write_rebase_plan(wt, replace_map, rewrite_map)
+            write_rebase_plan(wt, replace_map)
 
             # Set last-revision back to start revision
-            wt.set_last_revision(start_rev)
+            wt.set_last_revision(onto)
 
             # Start executing plan
             try:
-                rebase(wt, replace_map, rewrite_map)
+                rebase(wt, replace_map)
             except Conflict:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file
@@ -100,11 +99,11 @@ class cmd_rebase_continue(Command):
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError("There are still conflicts present")
             # Read plan file
-            (replace_map, rewrite_map) = read_rebase_plan(wt)[1:2]
+            replace_map = read_rebase_plan(wt)[1]
 
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt, replace_map, rewrite_map)
+                rebase(wt, replace_map)
             except Conflict:
                 raise BzrCommandError("A conflict occurred applying a patch. Resolve the conflict and run 'bzr rebase-continue' or run 'bzr rebase-abort'.")
             # Remove plan file  
@@ -112,6 +111,10 @@ class cmd_rebase_continue(Command):
         finally:
             wt.unlock()
 
+
+register_command(cmd_rebase)
+register_command(cmd_rebase_abort)
+register_command(cmd_rebase_continue)
 
 def test_suite():
     from unittest import TestSuite
