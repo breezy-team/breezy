@@ -155,23 +155,6 @@ class cmd_status(Command):
     --short gives a status flags for each item, similar to the SVN's status
     command.
 
-    Column 1: versioning / renames
-      + File versioned
-      - File unversioned
-      R File renamed
-      ? File unknown
-      C File has conflicts
-      P Entry for a pending merge (not a file)
-
-    Column 2: Contents
-      N File created
-      D File deleted
-      K File kind changed
-      M File modified
-
-    Column 3: Execute
-      * The execute bit was changed
-
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
@@ -190,7 +173,7 @@ class cmd_status(Command):
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
-    _see_also = ['diff', 'revert']
+    _see_also = ['diff', 'revert', 'status-flags']
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
@@ -565,7 +548,7 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
-    _see_also = ['push', 'update']
+    _see_also = ['push', 'update', 'status-flags']
     takes_options = ['remember', 'overwrite', 'revision', 'verbose',
         Option('directory',
             help='branch to pull into, '
@@ -1030,7 +1013,8 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update()
+            conflicts = tree.update(delta._ChangeReporter(
+                                        unversioned_filter=tree.is_ignored))
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
@@ -1656,7 +1640,7 @@ class cmd_log(Command):
                 rev1 = None
                 rev2 = None
             elif len(revision) == 1:
-                rev1 = rev2 = revision[0].in_history(b).revno
+                rev1 = rev2 = revision[0].in_history(b)
             elif len(revision) == 2:
                 if revision[1].get_branch() != revision[0].get_branch():
                     # b is taken from revision[0].get_branch(), and
@@ -1665,26 +1649,11 @@ class cmd_log(Command):
                     raise errors.BzrCommandError(
                         "Log doesn't accept two revisions in different"
                         " branches.")
-                if revision[0].spec is None:
-                    # missing begin-range means first revision
-                    rev1 = 1
-                else:
-                    rev1 = revision[0].in_history(b).revno
-
-                if revision[1].spec is None:
-                    # missing end-range means last known revision
-                    rev2 = b.revno()
-                else:
-                    rev2 = revision[1].in_history(b).revno
+                rev1 = revision[0].in_history(b)
+                rev2 = revision[1].in_history(b)
             else:
                 raise errors.BzrCommandError(
                     'bzr log --revision takes one or two values.')
-
-            # By this point, the revision numbers are converted to the +ve
-            # form if they were supplied in the -ve form, so we can do
-            # this comparison in relative safety
-            if rev1 > rev2:
-                (rev2, rev1) = (rev1, rev2)
 
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
@@ -2609,7 +2578,7 @@ class cmd_merge(Command):
     --force is given.
     """
 
-    _see_also = ['update', 'remerge']
+    _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
         Option('show-base', help="Show base revision text in "
