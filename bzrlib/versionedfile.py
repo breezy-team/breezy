@@ -268,6 +268,7 @@ class VersionedFile(object):
         return result
 
     def make_mpdiffs(self, version_ids):
+        """Create multiparent diffs for specified versions"""
         knit_versions = set()
         for version_id in version_ids:
             knit_versions.add(version_id)
@@ -291,6 +292,11 @@ class VersionedFile(object):
         return None
 
     def add_mpdiffs(self, records):
+        """Add mpdiffs to this versionedfile
+
+        Records should be iterables of version, parents, expected_sha1,
+        mpdiff.  mpdiff should be a MultiParent instance.
+        """
         vf_parents = {}
         for version, parents, expected_sha1, mpdiff in records:
             mpvf = multiparent.MultiMemoryVersionedFile()
