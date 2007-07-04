@@ -35,7 +35,7 @@ class TestHelp(ExternalBase):
 
     def test_help_topics(self):
         """Smoketest for 'bzr help topics'"""
-        out, err = self.run_bzr('help', 'topics')
+        out, err = self.run_bzr('help topics')
         self.assertContainsRe(out, 'basic')
         self.assertContainsRe(out, 'topics')
         self.assertContainsRe(out, 'commands')
@@ -43,7 +43,7 @@ class TestHelp(ExternalBase):
 
     def test_help_revisionspec(self):
         """Smoke test for 'bzr help revisionspec'"""
-        out, err = self.run_bzr('help', 'revisionspec')
+        out, err = self.run_bzr('help revisionspec')
         self.assertContainsRe(out, 'revno:')
         self.assertContainsRe(out, 'date:')
         self.assertContainsRe(out, 'revid:')
@@ -60,7 +60,7 @@ class TestHelp(ExternalBase):
         
     def test_help_urlspec(self):
         """Smoke test for 'bzr help urlspec'"""
-        out, err = self.run_bzr('help', 'urlspec')
+        out, err = self.run_bzr('help urlspec')
         self.assertContainsRe(out, 'aftp://')
         self.assertContainsRe(out, 'bzr://')
         self.assertContainsRe(out, 'bzr\+ssh://')
