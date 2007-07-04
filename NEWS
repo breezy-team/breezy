@@ -27,6 +27,9 @@ IN DEVELOPMENT
     * Don't leave cruft behind when failing to acquire a lockdir.
       (Martin Pool, #109169)
 
+    * Warn when setting ``push_location`` to a value that will be masked by
+      locations.conf.  (Aaron Bentley, #122286)
+
   IMPROVEMENTS:
 
     * The --lsprof-file option now dumps a text rendering of the profiling
